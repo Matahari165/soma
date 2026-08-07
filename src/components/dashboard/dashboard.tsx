@@ -1,33 +1,55 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Bell, Check, ChevronRight, RefreshCw, Settings2, Sparkles, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, RefreshCw, Settings2, Sparkles, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useDialogLayer } from "@/components/use-dialog-layer";
 import type { DashboardSnapshot } from "@/domain/health";
 
 import { MetricCard } from "./metric-card";
 import { RecoveryTrend, SleepRegularity, WeeklyEffort } from "./widgets";
 
+type WidgetId = "weekly-effort" | "recovery-trend" | "sleep-regularity";
+type Widget = { id: WidgetId; visible: boolean };
+const defaultWidgets: Widget[] = [{ id: "weekly-effort", visible: true }, { id: "recovery-trend", visible: true }, { id: "sleep-regularity", visible: true }];
+const widgetIds = new Set<WidgetId>(defaultWidgets.map((widget) => widget.id));
+
+function normalizeWidgets(value: unknown): Widget[] {
+  if (!value || typeof value !== "object" || !("widgets" in value) || !Array.isArray(value.widgets)) return defaultWidgets;
+  const valid = value.widgets.filter((item): item is Widget => Boolean(
+    item && typeof item === "object" && "id" in item && "visible" in item &&
+    widgetIds.has(item.id as WidgetId) && typeof item.visible === "boolean",
+  ));
+  if (valid.length !== defaultWidgets.length || new Set(valid.map((item) => item.id)).size !== defaultWidgets.length) return defaultWidgets;
+  return valid;
+}
+
 export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMode: boolean }) {
-  type WidgetId = "weekly-effort" | "recovery-trend" | "sleep-regularity";
-  type Widget = { id: WidgetId; visible: boolean };
-  const defaultWidgets: Widget[] = [{ id: "weekly-effort", visible: true }, { id: "recovery-trend", visible: true }, { id: "sleep-regularity", visible: true }];
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const customizeRef = useRef<HTMLElement>(null);
+  const closeCustomization = useCallback(() => {
+    if (!saving) setCustomizing(false);
+  }, [saving]);
+
+  useDialogLayer({ open: customizing, onClose: closeCustomization, containerRef: customizeRef });
 
   useEffect(() => {
     Promise.resolve().then(() => {
       const local = window.localStorage.getItem("soma:dashboard-layout");
       if (local) {
-        try { setWidgets(JSON.parse(local).widgets); } catch { /* use the safe default */ }
+        try { setWidgets(normalizeWidgets(JSON.parse(local))); } catch { setWidgets(defaultWidgets); }
       } else if (!demoMode) {
-        fetch("/api/dashboard-layout").then((response) => response.json()).then((layout) => setWidgets(layout.widgets ?? defaultWidgets)).catch(() => undefined);
+        fetch("/api/dashboard-layout")
+          .then((response) => response.ok ? response.json() : Promise.reject(new Error("Layout unavailable")))
+          .then((layout) => setWidgets(normalizeWidgets(layout)))
+          .catch(() => setWidgets(defaultWidgets));
       }
     });
-  // The initial layout is intentionally loaded once.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoMode]);
 
   function move(index: number, direction: -1 | 1) {
@@ -37,9 +59,21 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
   }
 
   async function saveLayout() {
-    window.localStorage.setItem("soma:dashboard-layout", JSON.stringify({ widgets }));
-    if (!demoMode) await fetch("/api/dashboard-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets }) });
-    setSaved(true); setTimeout(() => { setSaved(false); setCustomizing(false); }, 600);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (!demoMode) {
+        const response = await fetch("/api/dashboard-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets }) });
+        if (!response.ok) throw new Error("Your layout could not be saved. Try again.");
+      }
+      window.localStorage.setItem("soma:dashboard-layout", JSON.stringify({ widgets }));
+      setSaved(true);
+      window.setTimeout(() => { setSaved(false); setCustomizing(false); }, 650);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Your layout could not be saved. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const widgetComponents: Record<WidgetId, React.ReactNode> = {
@@ -54,13 +88,12 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
       <div className="page-header">
         <div>
           <p className="page-date">{data.dateLabel}</p>
-          <h1>Good afternoon, {data.greetingName}.</h1>
+          <h1>{data.greeting}, {data.greetingName}.</h1>
           <p className="page-subtitle">Here is what your body is telling you today.</p>
         </div>
         <div className="page-actions">
           {demoMode && <span className="demo-badge">Demo data</span>}
           <button className="secondary-button" type="button" onClick={() => setCustomizing(true)}><Settings2 size={17} /> Customize</button>
-          <button className="icon-button icon-button--surface" type="button" aria-label="View notifications"><Bell size={18} /></button>
         </div>
       </div>
 
@@ -119,7 +152,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
       </section>
 
       <p className="medical-note">Soma supports general wellness and is not a medical device. Seek professional advice for health concerns.</p>
-      {customizing && <><button className="panel-backdrop" type="button" onClick={() => setCustomizing(false)} aria-label="Close customization panel" /><aside className="customize-panel" aria-label="Customize dashboard"><header><div><span className="eyebrow">Dashboard layout</span><h2>Customize your overview</h2></div><button className="icon-button" type="button" onClick={() => setCustomizing(false)} aria-label="Close"><X size={19} /></button></header><p>The three primary scores stay fixed. Choose and order the supporting widgets below.</p><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div><button className="primary-button" type="button" onClick={() => void saveLayout()}>{saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}
+      {customizing && <><button className="panel-backdrop" type="button" onClick={closeCustomization} aria-label="Close customization panel" /><aside ref={customizeRef} className="customize-panel" role="dialog" aria-modal="true" aria-labelledby="customize-title"><header><div><span className="eyebrow">Dashboard layout</span><h2 id="customize-title">Customize your overview</h2></div><button className="icon-button" type="button" onClick={closeCustomization} aria-label="Close customization"><X size={19} /></button></header><p>The three primary scores stay fixed. Choose and order the supporting widgets below.</p><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="primary-button" type="button" onClick={() => void saveLayout()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={17} />Saving…</> : saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}
     </div>
   );
 }

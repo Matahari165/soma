@@ -17,7 +17,10 @@ export function AnalyticsDetail({ eyebrow, title, description, points, stats, pr
       <section className="analytics-stats" aria-label={`${title} highlights`}>{stats.map((stat) => <article key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><p>{stat.note}</p></article>)}</section>
       <section className="analytics-panel">
         <div className="section-heading"><div><span className="eyebrow">Last {points.length} days</span><h2>Score trend</h2></div><span className="quality-pill">Personal data</span></div>
-        {points.length ? <div className="bar-chart" role="img" aria-label={`${title} scores over time`}>{points.map((point) => <div className="bar-column" key={point.date}><span className="bar-value">{point.score ?? "—"}</span><span className="bar-track"><span style={{ height: `${point.score ?? 0}%` }} /></span><small>{new Date(`${point.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "narrow" })}</small></div>)}</div> : <p className="empty-state">No complete days yet. Connect Google Health and sync your data.</p>}
+        {points.length ? <ol className="bar-chart" aria-label={`${title} scores over time`}>{points.map((point) => {
+          const day = new Date(`${point.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" });
+          return <li className="bar-column" key={point.date} aria-label={`${day}: ${point.score === null ? "score unavailable" : `${point.score} out of 100`}`}><span className="bar-value" aria-hidden="true">{point.score ?? "—"}</span><span className="bar-track" aria-hidden="true"><span style={{ height: `${point.score ?? 0}%` }} /></span><small aria-hidden="true">{day.slice(0, 1)}</small></li>;
+        })}</ol> : <p className="empty-state">No complete days yet. Connect Google Health and sync your data.</p>}
       </section>
       <div className="analytics-two-column">
         <section className="analytics-panel"><span className="eyebrow">Inputs</span><h2>What this score uses</h2><div className="driver-list"><p><span>{primaryLabel}</span><strong>{points.at(-1)?.primary ?? "—"}</strong></p><p><span>{secondaryLabel}</span><strong>{points.at(-1)?.secondary ?? "—"}</strong></p></div><p className="explanation"><CircleHelp size={17} />{explanation}</p></section>

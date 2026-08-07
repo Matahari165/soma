@@ -7,6 +7,16 @@ import type { DashboardSnapshot, DailyScore, ScoreKind } from "@/domain/health";
 type ScoreRow = { score_date: string; kind: ScoreKind; score: number | null; status: DailyScore["status"]; drivers: Record<string, unknown>; calculated_at: string };
 type MetricRow = { metric_date: string; sleep_minutes: number | null; sleep_need_minutes: number | null; sleep_regularity: number | null; bedtime: string | null; wake_time: string | null; hrv_ms: number | null; resting_heart_rate: number | null; steps: number | null; zone_minutes: number | null; source_freshness: { latestMeasuredAt?: string | null } };
 
+function greetingFor(timeZone: string) {
+  let hour: number;
+  try {
+    hour = Number(new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hourCycle: "h23" }).format(new Date()));
+  } catch {
+    hour = new Date().getUTCHours();
+  }
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
+
 function clockFromMinutes(value: unknown) {
   if (typeof value !== "number") return null;
   const hour24 = Math.floor(value / 60) % 24;
@@ -39,7 +49,14 @@ function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: Metric
 }
 
 export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
-  if (getDataMode() === "demo") return dashboardSnapshot;
+  if (getDataMode() === "demo") {
+    const now = new Date();
+    return {
+      ...dashboardSnapshot,
+      dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", weekday: "long", month: "long", day: "numeric" }).format(now),
+      greeting: greetingFor("Europe/Paris"),
+    };
+  }
   const user = await getCurrentUser();
   if (!user) return dashboardSnapshot;
   const supabase = await createSupabaseServerClient();
@@ -63,6 +80,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
 
   return {
     dateLabel: date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+    greeting: greetingFor(profile?.timezone ?? "UTC"),
     greetingName: profile?.display_name ?? user.displayName ?? "there",
     scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, latestFor(kind), latestMetric, historyFor(kind))),
     summary: brief?.generated_text ?? "Soma is still building your first evidence-based summary.",

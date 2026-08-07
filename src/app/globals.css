@@ -20,6 +20,8 @@
   --effort-soft: #fbf0e3;
   --shadow-sm: 0 1px 2px rgb(23 33 30 / 5%), 0 8px 24px rgb(23 33 30 / 4%);
   --shadow-lg: 0 22px 60px rgb(20 35 31 / 14%);
+  --border: var(--line);
+  --shadow-soft: var(--shadow-sm);
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;
@@ -48,7 +50,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -74,7 +78,9 @@ a {
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid rgb(23 108 90 / 35%);
   outline-offset: 3px;
 }
@@ -265,7 +271,8 @@ input:focus-visible {
 
 .mobile-header,
 .bottom-nav,
-.mobile-menu {
+.mobile-menu,
+.mobile-menu-backdrop {
   display: none;
 }
 
@@ -864,7 +871,7 @@ input:focus-visible {
   .insight-list { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-top: 64px; padding-bottom: 75px; }
   .mobile-header {
@@ -894,6 +901,15 @@ input:focus-visible {
     background: var(--surface);
     padding: 10px;
     box-shadow: var(--shadow-lg);
+  }
+  .mobile-menu-backdrop {
+    position: fixed;
+    z-index: 38;
+    inset: 64px 0 0;
+    display: block;
+    width: 100%;
+    border: 0;
+    background: rgb(16 25 22 / 20%);
   }
   .bottom-nav {
     position: fixed;
@@ -935,7 +951,10 @@ input:focus-visible {
   .sync-time svg { width: 14px; height: 14px; }
   .primary-metrics { margin-top: 12px; }
   .metric-card { padding: 18px; }
-  .metric-card__main { margin-top: 23px; }
+  .metric-card__main { margin-top: 18px; }
+  .metric-delta { margin-top: 14px; }
+  .metric-action { min-height: 0; margin-top: 12px; }
+  .metric-card__footer { margin-top: 12px; padding-top: 8px; }
   .metric-detail { min-height: 0; }
   .metric-card__footer a { min-height: 44px; }
   .soma-summary { grid-template-columns: auto 1fr; padding: 18px; }

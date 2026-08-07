@@ -1,10 +1,13 @@
-import { ArrowRight, CalendarDays, Clock, Info, TrendingUp } from "lucide-react";
+import { ArrowRight, Clock, Info, MoonStar, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 import type { DashboardSnapshot } from "@/domain/health";
 
 export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"] }) {
   const max = 80;
+  const remaining = Math.max(0, data.targetMin - data.current);
+  const todayIndex = data.days.findIndex((day) => day.today);
+  const activeDaysRemaining = todayIndex >= 0 ? data.days.slice(todayIndex + 1).length : 0;
   return (
     <article className="widget">
       <div className="widget-header">
@@ -31,14 +34,14 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
           </div>
         ))}
       </div>
-      <p className="widget-note">You are 72 points from your weekly minimum with three active days remaining.</p>
+      <p className="widget-note">{remaining ? `${remaining} points to your weekly minimum with ${activeDaysRemaining} days remaining.` : "You have reached your weekly minimum. Extra effort is optional."}</p>
     </article>
   );
 }
 
 export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend"] }) {
   const points = data.map((item, index) => {
-    const x = 8 + (index / (data.length - 1)) * 284;
+    const x = data.length === 1 ? 150 : 8 + (index / (data.length - 1)) * 284;
     const y = 96 - ((item.value - 45) / 45) * 82;
     return `${x},${y}`;
   }).join(" ");
@@ -57,7 +60,7 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
         <polyline points={points} className="trend-line" />
         {data.map((item, index) => {
           const [cx, cy] = points.split(" ")[index].split(",");
-          return <circle key={item.label} cx={cx} cy={cy} r={index === data.length - 1 ? 4 : 2.5} className="trend-point" />;
+          return <circle key={item.label} cx={cx} cy={cy} r={index === data.length - 1 ? 4 : 2.5} className="trend-point"><title>{`${item.label}: ${item.value} out of 100`}</title></circle>;
         })}
       </svg>
       <div className="chart-labels" aria-hidden="true">
@@ -89,5 +92,5 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
 }
 
 function MoonIcon() {
-  return <CalendarDays size={17} />;
+  return <MoonStar size={17} />;
 }

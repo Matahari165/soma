@@ -2,6 +2,7 @@ import type { DashboardSnapshot } from "@/domain/health";
 
 export const dashboardSnapshot: DashboardSnapshot = {
   dateLabel: "Friday, August 7",
+  greeting: "Good afternoon",
   greetingName: "Jeremy",
   scores: [
     {

@@ -33,6 +33,7 @@ export type Insight = {
 
 export type DashboardSnapshot = {
   dateLabel: string;
+  greeting: string;
   greetingName: string;
   scores: DailyScore[];
   summary: string;
