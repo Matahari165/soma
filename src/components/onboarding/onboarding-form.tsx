@@ -1,0 +1,159 @@
+"use client";
+
+import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+
+import { goalLabels, type OnboardingInput } from "@/domain/profile";
+
+const steps = ["About you", "Your goal", "Sleep", "Health data"];
+
+const defaultForm: OnboardingInput = {
+  displayName: "Jeremy",
+  dateOfBirth: "2000-01-01",
+  heightCm: 175,
+  weightKg: 70,
+  sexForHealthCalculations: "prefer_not_to_say",
+  primaryGoal: "build_muscle",
+  secondaryGoal: null,
+  baseSleepTargetMinutes: 480,
+  usualWakeTime: "07:00",
+  importRange: "90_days",
+  timezone: "Europe/Paris",
+};
+
+export function OnboardingForm({ demoMode }: { demoMode: boolean }) {
+  const router = useRouter();
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState(defaultForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sleepHours = useMemo(() => form.baseSleepTargetMinutes / 60, [form.baseSleepTargetMinutes]);
+
+  function update<K extends keyof OnboardingInput>(key: K, value: OnboardingInput[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function finish() {
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Onboarding could not be saved.");
+
+      if (demoMode) {
+        window.localStorage.setItem("soma:onboarding", JSON.stringify(form));
+      }
+
+      router.push("/settings?setup=health");
+      router.refresh();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Onboarding could not be saved.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="onboarding-shell">
+      <aside className="onboarding-aside">
+        <Link className="brand brand--auth" href="/" aria-label="Soma home">
+          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
+          <span>Soma</span>
+        </Link>
+        <div>
+          <span className="eyebrow">Set up your baseline</span>
+          <h1>Make Soma yours.</h1>
+          <p>These details help Soma estimate your needs and targets. You can change them later.</p>
+        </div>
+        <ol className="onboarding-steps">
+          {steps.map((label, index) => (
+            <li className={index === step ? "is-current" : index < step ? "is-done" : ""} key={label}>
+              <span>{index < step ? <Check size={15} /> : index + 1}</span>{label}
+            </li>
+          ))}
+        </ol>
+      </aside>
+
+      <main className="onboarding-main" id="main-page-content">
+        <div className="onboarding-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>
+          <span style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
+        </div>
+        <form className="onboarding-card" onSubmit={(event) => event.preventDefault()}>
+          <span className="eyebrow">Step {step + 1} of {steps.length}</span>
+          {step === 0 && (
+            <fieldset>
+              <legend>Tell us about you</legend>
+              <p className="form-intro">Soma uses these values only for your own health calculations.</p>
+              <div className="form-grid">
+                <label className="field field--wide">Name<input required value={form.displayName} onChange={(event) => update("displayName", event.target.value)} /></label>
+                <label className="field">Date of birth<input required type="date" value={form.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label>
+                <label className="field">Sex for health calculations<select value={form.sexForHealthCalculations} onChange={(event) => update("sexForHealthCalculations", event.target.value as OnboardingInput["sexForHealthCalculations"])}><option value="prefer_not_to_say">Prefer not to say</option><option value="female">Female</option><option value="male">Male</option><option value="intersex">Intersex</option></select></label>
+                <label className="field">Height (cm)<input required min="50" max="260" type="number" value={form.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label>
+                <label className="field">Weight (kg)<input required min="20" max="400" step="0.1" type="number" value={form.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label>
+              </div>
+            </fieldset>
+          )}
+          {step === 1 && (
+            <fieldset>
+              <legend>What are you working toward?</legend>
+              <p className="form-intro">Your goal changes the target Soma recommends, not the effort you have already completed.</p>
+              <div className="choice-grid">
+                {Object.entries(goalLabels).map(([value, label]) => (
+                  <label className={form.primaryGoal === value ? "choice-card is-selected" : "choice-card"} key={value}>
+                    <input type="radio" name="primaryGoal" value={value} checked={form.primaryGoal === value} onChange={() => update("primaryGoal", value as OnboardingInput["primaryGoal"])} />
+                    <span><strong>{label}</strong><small>Primary goal</small></span>
+                    {form.primaryGoal === value && <Check size={18} />}
+                  </label>
+                ))}
+              </div>
+              <label className="field field--secondary">Optional secondary goal<select value={form.secondaryGoal ?? ""} onChange={(event) => update("secondaryGoal", event.target.value ? event.target.value as OnboardingInput["primaryGoal"] : null)}><option value="">No secondary goal</option>{Object.entries(goalLabels).filter(([value]) => value !== form.primaryGoal).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+            </fieldset>
+          )}
+          {step === 2 && (
+            <fieldset>
+              <legend>Set your sleep foundation</legend>
+              <p className="form-intro">Eight hours is the starting point. Soma may recommend slightly more when sleep debt or effort increases your need.</p>
+              <div className="sleep-target-control">
+                <span>Base sleep target</span>
+                <strong>{sleepHours.toFixed(sleepHours % 1 ? 1 : 0)} hours</strong>
+                <input aria-label="Base sleep target" type="range" min="360" max="600" step="15" value={form.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))} />
+                <div><small>6h</small><small>10h</small></div>
+              </div>
+              <label className="field field--wake">Usual wake time<input type="time" required value={form.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /><small>This anchors your first bedtime recommendation.</small></label>
+            </fieldset>
+          )}
+          {step === 3 && (
+            <fieldset>
+              <legend>Choose your health history</legend>
+              <p className="form-intro">Soma imports the latest 90 days first. A full-history import then continues in the background.</p>
+              <div className="import-choices">
+                <label className={form.importRange === "90_days" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "90_days"} onChange={() => update("importRange", "90_days")} /><span><strong>Last 90 days</strong><small>Faster first import and enough data for useful baselines.</small></span></label>
+                <label className={form.importRange === "all_history" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "all_history"} onChange={() => update("importRange", "all_history")} /><span><strong>All available history</strong><small>Recent data appears first; older records import in the background.</small></span></label>
+              </div>
+              <div className="consent-preview"><strong>Google Health is connected separately.</strong><p>Soma will request read-only access to sleep, activity, and health measurements. You can decline individual scopes or disconnect later.</p></div>
+            </fieldset>
+          )}
+
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="form-navigation">
+            <button className="secondary-button" type="button" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}><ArrowLeft size={17} /> Back</button>
+            {step < steps.length - 1 ? (
+              <button className="primary-button" type="button" onClick={() => setStep((current) => current + 1)}>Continue <ArrowRight size={17} /></button>
+            ) : (
+              <button className="primary-button" type="button" onClick={finish} disabled={saving}>{saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}{saving ? "Saving…" : "Finish setup"}</button>
+            )}
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+}

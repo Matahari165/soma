@@ -1,0 +1,33 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { getCurrentUser } from "@/lib/auth";
+import { getDataMode } from "@/lib/env";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const widgetSchema = z.object({ id: z.enum(["weekly-effort", "recovery-trend", "sleep-regularity"]), visible: z.boolean() });
+const layoutSchema = z.object({ widgets: z.array(widgetSchema).length(3).refine((widgets) => new Set(widgets.map((widget) => widget.id)).size === 3) });
+const defaultLayout = { widgets: ["weekly-effort", "recovery-trend", "sleep-regularity"].map((id) => ({ id, visible: true })) };
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  if (getDataMode() === "demo") return NextResponse.json(defaultLayout);
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin.from("dashboard_layouts").select("layout").eq("user_id", user.id).maybeSingle();
+  const parsed = layoutSchema.safeParse(data?.layout);
+  return NextResponse.json(parsed.success ? parsed.data : defaultLayout);
+}
+
+export async function PUT(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const parsed = layoutSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Dashboard layout is invalid." }, { status: 400 });
+  if (getDataMode() === "live") {
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin.from("dashboard_layouts").upsert({ user_id: user.id, layout: parsed.data, version: 1 }, { onConflict: "user_id" });
+    if (error) return NextResponse.json({ error: "Dashboard layout could not be saved." }, { status: 500 });
+  }
+  return NextResponse.json(parsed.data);
+}

@@ -1,0 +1,110 @@
+import type { DashboardSnapshot } from "@/domain/health";
+
+export const dashboardSnapshot: DashboardSnapshot = {
+  dateLabel: "Friday, August 7",
+  greetingName: "Jeremy",
+  scores: [
+    {
+      kind: "sleep",
+      score: 84,
+      status: "steady",
+      label: "Sleep",
+      value: "7h 34m",
+      target: "of 8h 18m needed",
+      delta: "+28m vs. 7-day average",
+      detail: "Good duration, with a slightly later bedtime than your usual range.",
+      action: "Aim to be in bed by 10:47 PM tonight.",
+      href: "/sleep",
+      freshness: {
+        measuredAt: "7:18 AM",
+        syncedAt: "7:32 AM",
+        state: "fresh",
+      },
+      history: [68, 74, 71, 82, 79, 77, 84],
+    },
+    {
+      kind: "recovery",
+      score: 72,
+      status: "steady",
+      label: "Recovery",
+      value: "Ready for a solid day",
+      target: "HRV 51 ms · RHR 58 bpm",
+      delta: "+6 points vs. yesterday",
+      detail: "HRV returned to your normal range after two lower days.",
+      action: "Your planned moderate session is well supported.",
+      href: "/recovery",
+      freshness: {
+        measuredAt: "7:18 AM",
+        syncedAt: "7:32 AM",
+        state: "fresh",
+      },
+      history: [76, 65, 61, 58, 63, 66, 72],
+    },
+    {
+      kind: "effort",
+      score: 38,
+      status: "building",
+      label: "Effort",
+      value: "38 of 62–74",
+      target: "Today's target zone",
+      delta: "4,620 steps · 18 zone min",
+      detail: "You are on track for this time of day and have room for your workout.",
+      action: "A 45-minute strength session fits today's target.",
+      href: "/activity",
+      freshness: {
+        measuredAt: "1:42 PM",
+        syncedAt: "1:45 PM",
+        state: "partial",
+      },
+      history: [61, 52, 68, 42, 73, 47, 38],
+    },
+  ],
+  summary:
+    "Your recovery has moved back into its usual range after two quieter days. Sleep duration improved, but keeping tonight's bedtime close to 10:47 PM would protect your regularity. You have enough capacity for the strength session you planned.",
+  insights: [
+    {
+      id: "hrv-return",
+      category: "positive",
+      title: "HRV is back in your normal range",
+      description:
+        "Your 51 ms reading is 9% above your 7-day average after two lower nights.",
+      evidence: "Based on 7 complete nights",
+    },
+    {
+      id: "bedtime-regularity",
+      category: "attention",
+      title: "Bedtime has shifted later",
+      description:
+        "Your average bedtime is 31 minutes later this week. A 10:47 PM bedtime would move you closer to your usual rhythm.",
+      evidence: "Compared with your previous 30 days",
+    },
+  ],
+  weeklyEffort: {
+    current: 318,
+    targetMin: 390,
+    targetMax: 450,
+    days: [
+      { label: "M", value: 61 },
+      { label: "T", value: 52 },
+      { label: "W", value: 68 },
+      { label: "T", value: 42 },
+      { label: "F", value: 38, today: true },
+      { label: "S", value: 0 },
+      { label: "S", value: 0 },
+    ],
+  },
+  recoveryTrend: [
+    { label: "Sat", value: 76 },
+    { label: "Sun", value: 65 },
+    { label: "Mon", value: 61 },
+    { label: "Tue", value: 58 },
+    { label: "Wed", value: 63 },
+    { label: "Thu", value: 66 },
+    { label: "Today", value: 72 },
+  ],
+  sleepRegularity: {
+    bedtime: "10:58 PM",
+    wakeTime: "7:18 AM",
+    consistency: 81,
+  },
+};
