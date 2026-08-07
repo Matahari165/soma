@@ -18,6 +18,13 @@ function daysAgo(days: number) {
   return date;
 }
 
+function clearOAuthCookies(response: NextResponse) {
+  response.cookies.delete("soma_health_oauth_state");
+  response.cookies.delete("soma_health_pkce");
+  response.cookies.delete("soma_health_return");
+  return response;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const user = await getCurrentUser();
@@ -28,9 +35,10 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const stateCookie = cookieStore.get("soma_health_oauth_state")?.value;
   const verifier = cookieStore.get("soma_health_pkce")?.value;
+  const returnTarget = cookieStore.get("soma_health_return")?.value;
 
   if (!code || !state || !stateCookie || !verifier || state !== stateCookie) {
-    return NextResponse.redirect(new URL("/settings?health=invalid_state", url.origin));
+    return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=invalid_state", url.origin)));
   }
 
   try {
@@ -76,13 +84,11 @@ export async function GET(request: Request) {
         status: "queued",
       });
     }
-    await admin.from("sync_jobs").insert(jobs);
+    const { error: jobError } = await admin.from("sync_jobs").insert(jobs);
+    if (jobError) throw new Error("Initial Google Health import could not be queued.");
 
-    const response = NextResponse.redirect(new URL("/settings?health=connected", url.origin));
-    response.cookies.delete("soma_health_oauth_state");
-    response.cookies.delete("soma_health_pkce");
-    return response;
+    return clearOAuthCookies(NextResponse.redirect(new URL(returnTarget === "dashboard" ? "/?health=connected" : "/settings?health=connected", url.origin)));
   } catch {
-    return NextResponse.redirect(new URL("/settings?health=connection_failed", url.origin));
+    return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=connection_failed", url.origin)));
   }
 }

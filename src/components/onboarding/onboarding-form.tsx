@@ -36,7 +36,7 @@ export function OnboardingForm({ demoMode }: { demoMode: boolean }) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function finish() {
+  async function finish(connectHealth: boolean) {
     setSaving(true);
     setError(null);
 
@@ -54,7 +54,12 @@ export function OnboardingForm({ demoMode }: { demoMode: boolean }) {
         window.localStorage.setItem("soma:onboarding", JSON.stringify(form));
       }
 
-      router.push("/settings?setup=health");
+      if (connectHealth && !demoMode) {
+        window.location.assign(new URL("/api/health/google/connect?source=onboarding", window.location.origin).toString());
+        return;
+      }
+
+      router.push(connectHealth ? "/settings?health=demo" : "/");
       router.refresh();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Onboarding could not be saved.");
@@ -133,13 +138,13 @@ export function OnboardingForm({ demoMode }: { demoMode: boolean }) {
           )}
           {step === 3 && (
             <fieldset>
-              <legend>Choose your health history</legend>
-              <p className="form-intro">Soma imports the latest 90 days first. A full-history import then continues in the background.</p>
+              <legend>Connect Fitbit through Google Health</legend>
+              <p className="form-intro">After Fitbit syncs your bracelet, Google Health makes the authorized data available to Soma. Soma imports the latest 90 days first; a full-history import then continues in the background.</p>
               <div className="import-choices">
                 <label className={form.importRange === "90_days" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "90_days"} onChange={() => update("importRange", "90_days")} /><span><strong>Last 90 days</strong><small>Faster first import and enough data for useful baselines.</small></span></label>
                 <label className={form.importRange === "all_history" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "all_history"} onChange={() => update("importRange", "all_history")} /><span><strong>All available history</strong><small>Recent data appears first; older records import in the background.</small></span></label>
               </div>
-              <div className="consent-preview"><strong>Google Health is connected separately.</strong><p>Soma will request read-only access to sleep, activity, and health measurements. You can decline individual scopes or disconnect later.</p></div>
+              <div className="consent-preview"><strong>You will review access on Google next.</strong><p>Soma requests read-only access to sleep, activity, and health measurements. You can decline scopes, finish without connecting, or disconnect later.</p></div>
             </fieldset>
           )}
 
@@ -149,7 +154,10 @@ export function OnboardingForm({ demoMode }: { demoMode: boolean }) {
             {step < steps.length - 1 ? (
               <button className="primary-button" type="button" onClick={() => setStep((current) => current + 1)}>Continue <ArrowRight size={17} /></button>
             ) : (
-              <button className="primary-button" type="button" onClick={finish} disabled={saving}>{saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}{saving ? "Saving…" : "Finish setup"}</button>
+              <div className="onboarding-finish-actions">
+                <button className="text-link" type="button" onClick={() => void finish(false)} disabled={saving}>Finish without connecting</button>
+                <button className="primary-button" type="button" onClick={() => void finish(true)} disabled={saving}>{saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}{saving ? "Saving…" : demoMode ? "Finish demo setup" : "Save and connect Google Health"}</button>
+              </div>
             )}
           </div>
         </form>

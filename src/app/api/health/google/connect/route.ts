@@ -19,5 +19,6 @@ export async function GET(request: Request) {
   const cookieOptions = { httpOnly: true, sameSite: "lax" as const, secure, path: "/", maxAge: 600 };
   response.cookies.set("soma_health_oauth_state", state, cookieOptions);
   response.cookies.set("soma_health_pkce", verifier, cookieOptions);
+  response.cookies.set("soma_health_return", new URL(request.url).searchParams.get("source") === "onboarding" ? "dashboard" : "settings", cookieOptions);
   return response;
 }
