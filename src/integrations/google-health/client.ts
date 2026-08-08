@@ -26,9 +26,42 @@ export const GOOGLE_HEALTH_DATA_TYPES = [
   "active-energy-burned",
   "time-in-heart-rate-zone",
   "exercise",
+  "active-minutes",
+  "activity-level",
+  "altitude",
+  "blood-glucose",
+  "body-fat",
+  "calories-in-heart-rate-zone",
+  "core-body-temperature",
+  "daily-vo2-max",
+  "distance",
+  "floors",
+  "height",
+  "oxygen-saturation",
+  "respiratory-rate-sleep-summary",
+  "run-vo2-max",
+  "sedentary-period",
+  "swim-lengths-data",
+  "total-calories",
+  "vo2-max",
+  "weight",
 ] as const;
 
 export type GoogleHealthDataType = (typeof GOOGLE_HEALTH_DATA_TYPES)[number];
+
+export const GOOGLE_HEALTH_DAILY_ROLLUP_TYPES = [
+  "steps",
+  "active-zone-minutes",
+  "active-energy-burned",
+  "time-in-heart-rate-zone",
+  "active-minutes",
+  "altitude",
+  "calories-in-heart-rate-zone",
+  "distance",
+  "floors",
+  "sedentary-period",
+  "total-calories",
+] as const satisfies readonly GoogleHealthDataType[];
 
 type TokenResponse = {
   access_token: string;
@@ -46,6 +79,11 @@ type IdentityResponse = {
 
 export type DataPointListResponse = {
   dataPoints?: Record<string, unknown>[];
+  nextPageToken?: string;
+};
+
+export type DailyRollupResponse = {
+  rollupDataPoints?: Record<string, unknown>[];
   nextPageToken?: string;
 };
 
@@ -115,11 +153,14 @@ export function refreshGoogleHealthToken(refreshToken: string) {
   }));
 }
 
-async function googleHealthRequest<T>(path: string, accessToken: string) {
+async function googleHealthRequest<T>(path: string, accessToken: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
     },
     cache: "no-store",
   });
@@ -151,6 +192,25 @@ const filterMetadata: Record<GoogleHealthDataType, { field: string; type: "physi
   "active-energy-burned": { field: "active_energy_burned.interval.start_time", type: "physical" },
   "time-in-heart-rate-zone": { field: "time_in_heart_rate_zone.interval.start_time", type: "physical" },
   exercise: { field: "exercise.interval.start_time", type: "physical" },
+  "active-minutes": { field: "active_minutes.interval.start_time", type: "physical" },
+  "activity-level": { field: "activity_level.interval.start_time", type: "physical" },
+  altitude: { field: "altitude.interval.start_time", type: "physical" },
+  "blood-glucose": { field: "blood_glucose.sample_time.physical_time", type: "physical" },
+  "body-fat": { field: "body_fat.sample_time.physical_time", type: "physical" },
+  "calories-in-heart-rate-zone": { field: "calories_in_heart_rate_zone.interval.start_time", type: "physical" },
+  "core-body-temperature": { field: "core_body_temperature.sample_time.physical_time", type: "physical" },
+  "daily-vo2-max": { field: "dailyVo2Max.date", type: "date" },
+  distance: { field: "distance.interval.start_time", type: "physical" },
+  floors: { field: "floors.interval.start_time", type: "physical" },
+  height: { field: "height.sample_time.physical_time", type: "physical" },
+  "oxygen-saturation": { field: "oxygen_saturation.sample_time.physical_time", type: "physical" },
+  "respiratory-rate-sleep-summary": { field: "respiratory_rate_sleep_summary.sample_time.physical_time", type: "physical" },
+  "run-vo2-max": { field: "run_vo2_max.sample_time.physical_time", type: "physical" },
+  "sedentary-period": { field: "sedentary_period.interval.start_time", type: "physical" },
+  "swim-lengths-data": { field: "swim_lengths_data.interval.start_time", type: "physical" },
+  "total-calories": { field: "total_calories.interval.start_time", type: "physical" },
+  "vo2-max": { field: "vo2_max.sample_time.physical_time", type: "physical" },
+  weight: { field: "weight.sample_time.physical_time", type: "physical" },
 };
 
 function dateOnly(date: Date) {
@@ -179,5 +239,38 @@ export function listGoogleHealthDataPoints(input: {
   return googleHealthRequest<DataPointListResponse>(
     `/users/me/dataTypes/${input.dataType}/dataPoints?${query.toString()}`,
     input.accessToken,
+  );
+}
+
+function civilDateTime(date: Date) {
+  return {
+    date: {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+      day: date.getUTCDate(),
+    },
+    time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 },
+  };
+}
+
+export function dailyRollUpGoogleHealthData(input: {
+  accessToken: string;
+  dataType: GoogleHealthDataType;
+  start: Date;
+  end: Date;
+  pageToken?: string;
+}) {
+  return googleHealthRequest<DailyRollupResponse>(
+    `/users/me/dataTypes/${input.dataType}/dataPoints:dailyRollUp`,
+    input.accessToken,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        range: { start: civilDateTime(input.start), end: civilDateTime(input.end) },
+        windowSizeDays: 1,
+        pageSize: 10000,
+        ...(input.pageToken ? { pageToken: input.pageToken } : {}),
+      }),
+    },
   );
 }

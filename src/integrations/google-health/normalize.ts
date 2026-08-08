@@ -59,3 +59,29 @@ export function normalizeGoogleHealthPoint(
     updated_at: new Date().toISOString(),
   };
 }
+
+export function normalizeGoogleHealthDailyRollup(
+  userId: string,
+  dataType: string,
+  point: Record<string, unknown>,
+) {
+  const civilStartTime = nestedObject(point, "civilStartTime");
+  const civilEndTime = nestedObject(point, "civilEndTime");
+  const civilDate = civilDateFrom(civilStartTime?.date);
+  const sourceRecordId = stableHash(civilDate ? `${dataType}:${civilDate}` : `${dataType}:${JSON.stringify(point)}`);
+
+  return {
+    user_id: userId,
+    provider: "google_health",
+    data_type: dataType,
+    source_record_id: sourceRecordId,
+    start_time: null,
+    end_time: null,
+    civil_date: civilDate,
+    recording_method: "RECORDING_METHOD_DAILY_ROLLUP",
+    source_device: null,
+    payload: { dailyRollup: point, civilEndTime },
+    measured_at: null,
+    updated_at: new Date().toISOString(),
+  };
+}

@@ -2,6 +2,7 @@ import { aggregateHealthRecords, type NormalizedHealthRecord } from "@/domain/he
 import { generateEveningBrief, generateMorningBrief, generateWeeklyBrief } from "@/domain/briefs/generate";
 import { spearmanCorrelation, type CorrelationPoint } from "@/domain/correlations/spearman";
 import { generateHealthInsights } from "@/domain/insights/engine";
+import { acuteChronicLoadRatio, activityRegularity, isActiveDay } from "@/domain/metrics/wellness";
 import { calculateEffortScore, calculateEffortTarget, type FitnessGoal } from "@/domain/scores/effort";
 import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
@@ -47,6 +48,7 @@ export async function recomputeUserHealth(userId: string) {
   const scoreRows: Record<string, unknown>[] = [];
   const metricRows: Record<string, unknown>[] = [];
   const effortByDate = new Map<string, number>();
+  const sleepDebtByDate = new Map<string, number | null>();
 
   for (const [index, day] of days.entries()) {
     const history = days.slice(Math.max(0, index - 30), index);
@@ -69,12 +71,35 @@ export async function recomputeUserHealth(userId: string) {
     effortByDate.set(day.metric_date, effort.score);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
-    const weeklyEffort = days.slice(Math.max(0, weekStart), index).reduce((sum, item) => sum + (effortByDate.get(item.metric_date) ?? 0), 0);
+    const weeklyEffort = days.slice(Math.max(0, weekStart), index + 1).reduce((sum, item) => sum + (effortByDate.get(item.metric_date) ?? 0), 0);
     const target = calculateEffortTarget({ goal: primaryGoal, recoveryScore: recovery.score, weeklyEffortSoFar: weeklyEffort, daysRemainingIncludingToday: Math.max(1, 7 - ((weekday + 6) % 7)) });
     const regularBedtime = regularNights.length ? regularNights.at(-1)?.bedtimeMinutes ?? 23 * 60 : 23 * 60;
     const bedtimeRecommendation = recommendBedtime({ wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5), sleepNeedMinutes: sleepNeed.estimatedNeedMinutes, recentEfficiencyPercent: day.sleep_efficiency ?? 85, regularBedtimeMinutes: regularBedtime, windDownMinutes: sleepPreferences?.wind_down_minutes ?? 30 });
 
-    metricRows.push({ user_id: userId, ...day, sleep_need_minutes: sleepNeed.estimatedNeedMinutes, sleep_regularity: regularity });
+    const dailySleepDebt = day.sleep_minutes === null ? null : sleepNeed.estimatedNeedMinutes - day.sleep_minutes;
+    sleepDebtByDate.set(day.metric_date, dailySleepDebt);
+    const cumulativeSleepDebt = Math.max(0, Math.round(days.slice(Math.max(0, index - 13), index + 1).reduce((sum, item) => sum + (sleepDebtByDate.get(item.metric_date) ?? 0), 0)));
+    const recentActivity = days.slice(Math.max(0, index - 27), index + 1).map((item) => ({
+      steps: item.steps,
+      activeZoneMinutes: item.zone_minutes,
+      activeMinutes: item.active_minutes,
+      effortScore: effortByDate.get(item.metric_date) ?? null,
+    }));
+    const regularitySummary = activityRegularity(recentActivity);
+    const loadRatio = acuteChronicLoadRatio(days.slice(0, index + 1).map((item) => effortByDate.get(item.metric_date) ?? null));
+    metricRows.push({
+      user_id: userId,
+      ...day,
+      sleep_need_minutes: sleepNeed.estimatedNeedMinutes,
+      sleep_regularity: regularity,
+      daily_sleep_debt_minutes: dailySleepDebt,
+      cumulative_sleep_debt_minutes: cumulativeSleepDebt,
+      active_day: isActiveDay({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes }),
+      active_day_rate_28d: regularitySummary.activeDayRate,
+      activity_consistency_28d: regularitySummary.consistencyScore,
+      weekly_load: weeklyEffort,
+      acute_chronic_load_ratio: loadRatio,
+    });
     scoreRows.push(
       { user_id: userId, score_date: day.metric_date, kind: "sleep", score: sleep?.score ?? null, status: sleep ? (sleep.score >= 80 ? "restorative" : sleep.score >= 60 ? "steady" : "building") : "limited", drivers: sleep ? { duration: sleep.durationComponent, efficiency: sleep.efficiencyComponent, regularity: sleep.regularityComponent, bedtimeRecommendationMinutes: bedtimeRecommendation.bedtimeMinutes } : {}, algorithm_version: sleep?.algorithmVersion ?? "sleep-v0.1" },
       { user_id: userId, score_date: day.metric_date, kind: "recovery", score: recovery.score, status: recovery.status, drivers: recovery.drivers, algorithm_version: recovery.algorithmVersion },

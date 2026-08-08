@@ -26,4 +26,46 @@ describe("aggregateHealthRecords", () => {
     expect(day.sleep_efficiency).toBe(91.7);
     expect(day.resting_heart_rate).toBeNull();
   });
+
+  it("extracts current Google sleep, oxygen and temperature fields", () => {
+    const [day] = aggregateHealthRecords([
+      record({ data_type: "sleep", start_time: "2026-08-06T22:30:00Z", end_time: "2026-08-07T06:30:00Z", payload: { sleep: { stages: [{ type: "AWAKE" }, { type: "LIGHT" }], summary: { minutesAsleep: 420, minutesInSleepPeriod: 480, minutesAwake: 60, minutesToFallAsleep: 18, stagesSummary: [{ type: "DEEP", minutes: 90, count: 3 }, { type: "REM", minutes: 105, count: 4 }, { type: "LIGHT", minutes: 225, count: 8 }, { type: "AWAKE", minutes: 60, count: 6 }] } } } }),
+      record({ data_type: "daily-oxygen-saturation", payload: { dailyOxygenSaturation: { averagePercentage: 96.2, lowerBoundPercentage: 94.7, upperBoundPercentage: 97.4 } } }),
+      record({ data_type: "daily-sleep-temperature-derivations", payload: { dailySleepTemperatureDerivations: { nightlyTemperatureCelsius: 33.7, baselineTemperatureCelsius: 33.4 } } }),
+    ]);
+    expect(day.sleep_latency_minutes).toBe(18);
+    expect(day.sleep_fragmentation).toBe(0.1);
+    expect(day.sleep_deep_percent).toBe(18.8);
+    expect(day.oxygen_saturation).toBe(96.2);
+    expect(day.oxygen_saturation_lower).toBe(94.7);
+    expect(day.skin_temperature_delta).toBeCloseTo(0.3);
+  });
+
+  it("sums activity levels and uses measured heart-rate-zone intervals", () => {
+    const [day] = aggregateHealthRecords([
+      record({ data_type: "active-minutes", payload: { activeMinutes: { activeMinutesByActivityLevel: [{ activityLevel: "LIGHT", activeMinutes: "18" }, { activityLevel: "MODERATE", activeMinutes: "12" }, { activityLevel: "VIGOROUS", activeMinutes: "7" }] } } }),
+      record({ data_type: "time-in-heart-rate-zone", start_time: "2026-08-07T10:00:00Z", end_time: "2026-08-07T10:15:00Z", payload: { timeInHeartRateZone: { heartRateZoneType: "MODERATE" } } }),
+      record({ data_type: "respiratory-rate-sleep-summary", payload: { respiratoryRateSleepSummary: { deepSleepStats: { breathsPerMinute: 13.2 }, fullSleepStats: { breathsPerMinute: 14.6 } } } }),
+    ]);
+
+    expect(day.active_minutes).toBe(37);
+    expect(day.moderate_zone_minutes).toBe(15);
+    expect(day.respiratory_rate).toBe(14.6);
+  });
+
+  it("reads reconciled daily rollups without confusing a true zero with missing data", () => {
+    const [day] = aggregateHealthRecords([
+      record({ data_type: "steps", payload: { dailyRollup: { steps: { countSum: "0" } } } }),
+      record({ data_type: "active-zone-minutes", payload: { dailyRollup: { activeZoneMinutes: { sumInFatBurnHeartZone: "8", sumInCardioHeartZone: "12", sumInPeakHeartZone: "4" } } } }),
+      record({ data_type: "time-in-heart-rate-zone", payload: { dailyRollup: { timeInHeartRateZone: { timeInHeartRateZones: [{ heartRateZone: "LIGHT", duration: "600s" }, { heartRateZone: "VIGOROUS", duration: "300s" }] } } } }),
+      record({ data_type: "sedentary-period", payload: { dailyRollup: { sedentaryPeriod: { durationSum: "21600s" } } } }),
+    ]);
+
+    expect(day.steps).toBe(0);
+    expect(day.zone_minutes).toBe(24);
+    expect(day.light_zone_minutes).toBe(10);
+    expect(day.vigorous_zone_minutes).toBe(5);
+    expect(day.sedentary_minutes).toBe(360);
+    expect(day.active_energy_kcal).toBeNull();
+  });
 });

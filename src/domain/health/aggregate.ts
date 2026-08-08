@@ -11,17 +11,48 @@ export type AggregatedHealthDay = {
   metric_date: string;
   sleep_minutes: number | null;
   sleep_efficiency: number | null;
+  sleep_latency_minutes: number | null;
+  sleep_awake_minutes: number | null;
+  sleep_awake_percent: number | null;
+  sleep_awakenings: number | null;
+  sleep_fragmentation: number | null;
+  sleep_deep_minutes: number | null;
+  sleep_deep_percent: number | null;
+  sleep_rem_minutes: number | null;
+  sleep_rem_percent: number | null;
+  sleep_light_minutes: number | null;
+  sleep_light_percent: number | null;
   bedtime: string | null;
   wake_time: string | null;
   hrv_ms: number | null;
   resting_heart_rate: number | null;
   respiratory_rate: number | null;
   oxygen_saturation: number | null;
+  oxygen_saturation_lower: number | null;
+  oxygen_saturation_upper: number | null;
   skin_temperature_delta: number | null;
+  nightly_temperature_celsius: number | null;
+  baseline_temperature_celsius: number | null;
   steps: number | null;
   active_energy_kcal: number | null;
+  total_energy_kcal: number | null;
   zone_minutes: number | null;
+  light_zone_minutes: number | null;
+  moderate_zone_minutes: number | null;
+  vigorous_zone_minutes: number | null;
+  peak_zone_minutes: number | null;
+  active_minutes: number | null;
+  sedentary_minutes: number | null;
   exercise_minutes: number | null;
+  distance_km: number | null;
+  floors: number | null;
+  weight_kg: number | null;
+  body_fat_percent: number | null;
+  vo2_max: number | null;
+  altitude_gain_m: number | null;
+  height_cm: number | null;
+  core_body_temperature_celsius: number | null;
+  blood_glucose_mg_dl: number | null;
   data_quality: { presentTypes: string[]; recordCount: number };
   source_freshness: { latestMeasuredAt: string | null };
 };
@@ -56,6 +87,20 @@ function findNumber(value: unknown, keys: string[]): number | null {
   return null;
 }
 
+function findNumbers(value: unknown, keys: string[], output: number[] = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) findNumbers(item, keys, output);
+    return output;
+  }
+  if (!isObject(value)) return output;
+  for (const key of keys) {
+    const found = toNumber(value[key]);
+    if (found !== null) output.push(found);
+  }
+  for (const child of Object.values(value)) findNumbers(child, keys, output);
+  return output;
+}
+
 function recordDate(record: NormalizedHealthRecord) {
   return record.civil_date ?? (record.end_time ?? record.start_time ?? record.measured_at)?.slice(0, 10) ?? null;
 }
@@ -74,6 +119,87 @@ function total(values: number[]) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
 }
 
+function findStrings(value: unknown, key: string, output: string[] = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) findStrings(item, key, output);
+    return output;
+  }
+  if (!isObject(value)) return output;
+  if (typeof value[key] === "string") output.push(String(value[key]));
+  for (const child of Object.values(value)) findStrings(child, key, output);
+  return output;
+}
+
+function durationMinutes(value: unknown) {
+  if (typeof value === "number") return value / 60;
+  if (typeof value !== "string") return null;
+  const match = value.match(/^(-?\d+(?:\.\d+)?)s$/);
+  return match ? Number(match[1]) / 60 : toNumber(value);
+}
+
+function findStageSummary(payload: unknown, type: string) {
+  const visit = (value: unknown): number[] => {
+    if (Array.isArray(value)) return value.flatMap(visit);
+    if (!isObject(value)) return [];
+    if (String(value.type ?? "").toUpperCase() === type) {
+      const minutes = toNumber(value.minutes);
+      return minutes === null ? [] : [minutes];
+    }
+    return Object.values(value).flatMap(visit);
+  };
+  return total(visit(payload));
+}
+
+function findObject(value: unknown, key: string): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findObject(item, key); if (found) return found; }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  if (isObject(value[key])) return value[key] as Record<string, unknown>;
+  for (const child of Object.values(value)) { const found = findObject(child, key); if (found) return found; }
+  return null;
+}
+
+function awakeSegmentCount(payload: unknown) {
+  const sleep = findObject(payload, "sleep");
+  if (!sleep) return null;
+  const stages = Array.isArray(sleep.stages) ? sleep.stages : [];
+  const measuredCount = stages.filter((stage) => isObject(stage) && String(stage.type).toUpperCase() === "AWAKE").length;
+  if (measuredCount) return measuredCount;
+  const summary = isObject(sleep.summary) && Array.isArray(sleep.summary.stagesSummary) ? sleep.summary.stagesSummary : [];
+  return summary.reduce((sum, stage) => isObject(stage) && String(stage.type).toUpperCase() === "AWAKE" ? sum + (toNumber(stage.count) ?? 0) : sum, 0) || null;
+}
+
+function zoneMinutes(records: NormalizedHealthRecord[], zone: string) {
+  const values: number[] = [];
+  for (const record of records) {
+    const visit = (value: unknown): number[] => {
+      if (Array.isArray(value)) return value.flatMap(visit);
+      if (!isObject(value)) return [];
+      const label = String(value.heartRateZone ?? value.heartRateZoneType ?? "").toUpperCase();
+      if (label.includes(zone)) {
+        const directMinutes = toNumber(value.activeZoneMinutes) ?? toNumber(value.minutes) ?? toNumber(value.durationMinutes) ?? durationMinutes(value.duration);
+        if (directMinutes !== null) return [directMinutes];
+      }
+      return Object.values(value).flatMap(visit);
+    };
+    const matchedValues = visit(record.payload);
+    if (matchedValues.length) {
+      values.push(...matchedValues);
+      continue;
+    }
+    const zones = findStrings(record.payload, "heartRateZone").concat(findStrings(record.payload, "heartRateZoneType"));
+    const intervalMinutes = zones.some((value) => value.toUpperCase().includes(zone)) ? minutesBetween(record.start_time, record.end_time) : null;
+    if (intervalMinutes !== null) values.push(intervalMinutes);
+  }
+  return total(values);
+}
+
+function summedNumbers(records: NormalizedHealthRecord[], keys: string[]) {
+  return total(records.flatMap((record) => findNumbers(record.payload, keys)));
+}
+
 export function aggregateHealthRecords(records: NormalizedHealthRecord[]): AggregatedHealthDay[] {
   const groups = new Map<string, NormalizedHealthRecord[]>();
   for (const record of records) {
@@ -89,27 +215,87 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[]): Aggre
     const timeInBed = sleep.map((record) => findNumber(record.payload, ["minutesInSleepPeriod", "timeInBedMinutes"])).filter((value): value is number => value !== null);
     const totalSleep = total(sleepMinutes);
     const totalInBed = total(timeInBed);
+    const sleepAwakeMinutes = total(sleep.map((record) => findNumber(record.payload, ["minutesAwake"])).filter((value): value is number => value !== null));
+    const sleepLatencyMinutes = total(sleep.map((record) => findNumber(record.payload, ["minutesToFallAsleep"])).filter((value): value is number => value !== null));
+    const stageMinutes = (type: string) => total(sleep.map((record) => findStageSummary(record.payload, type)).filter((value): value is number => value !== null));
+    const deepMinutes = stageMinutes("DEEP");
+    const remMinutes = stageMinutes("REM");
+    const lightMinutes = stageMinutes("LIGHT");
+    const awakeMinutes = stageMinutes("AWAKE") ?? sleepAwakeMinutes;
+    const awakeSegments = total(sleep.map((record) => awakeSegmentCount(record.payload)).filter((value): value is number => value !== null));
+    const stagePercent = (minutes: number | null) => minutes === null || !totalInBed ? null : Math.round((minutes / totalInBed) * 1000) / 10;
     const bedtime = sleep.map((record) => record.start_time).filter((value): value is string => Boolean(value)).sort().at(0) ?? null;
     const wakeTime = sleep.map((record) => record.end_time).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
     const values = (type: string, keys: string[]) => byType(type).map((record) => findNumber(record.payload, keys)).filter((value): value is number => value !== null);
     const exerciseMinutes = byType("exercise").map((record) => minutesBetween(record.start_time, record.end_time)).filter((value): value is number => value !== null);
+    const sedentaryMinutes = byType("sedentary-period").map((record) => minutesBetween(record.start_time, record.end_time)
+      ?? durationMinutes(findStrings(record.payload, "durationSum").at(0))).filter((value): value is number => value !== null);
+    const activeMinutes = byType("active-minutes").map((record) => total(findNumbers(record.payload, ["activeMinutes", "activeMinutesSum"]))).filter((value): value is number => value !== null);
+    const temperatureNightly = average(values("daily-sleep-temperature-derivations", ["nightlyTemperatureCelsius"]));
+    const temperatureBaseline = average(values("daily-sleep-temperature-derivations", ["baselineTemperatureCelsius"]));
+    const oxygenAverage = average(values("daily-oxygen-saturation", ["averagePercentage", "averageSaturationPercentage", "percentage"]))
+      ?? average(values("oxygen-saturation", ["percentage"]));
+    const respiratoryAverage = average(values("daily-respiratory-rate", ["averageBreathsPerMinute", "breathsPerMinute", "respiratoryRate"]))
+      ?? average(byType("respiratory-rate-sleep-summary").map((record) => findNumber(findObject(record.payload, "fullSleepStats"), ["breathsPerMinute"])).filter((value): value is number => value !== null));
+    const timeInZones = byType("time-in-heart-rate-zone");
+    const activeZones = byType("active-zone-minutes");
+    const lightZone = zoneMinutes(timeInZones, "LIGHT");
+    const moderateZone = zoneMinutes(timeInZones, "MODERATE");
+    const vigorousZone = zoneMinutes(timeInZones, "VIGOROUS");
+    const peakZone = zoneMinutes(timeInZones, "PEAK");
+    const activeZoneMinutes = summedNumbers(activeZones, ["activeZoneMinutes", "sumInFatBurnHeartZone", "sumInCardioHeartZone", "sumInPeakHeartZone"]);
     const latestMeasuredAt = day.map((record) => record.measured_at).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
 
     return {
       metric_date: date,
       sleep_minutes: totalSleep === null ? null : Math.round(totalSleep),
       sleep_efficiency: totalSleep !== null && totalInBed ? Math.round((totalSleep / totalInBed) * 1000) / 10 : null,
+      sleep_latency_minutes: sleepLatencyMinutes,
+      sleep_awake_minutes: awakeMinutes,
+      sleep_awake_percent: stagePercent(awakeMinutes),
+      sleep_awakenings: awakeSegments,
+      sleep_fragmentation: awakeSegments !== null && totalSleep ? Math.round((awakeSegments / (totalSleep / 60)) * 10) / 10 : null,
+      sleep_deep_minutes: deepMinutes,
+      sleep_deep_percent: stagePercent(deepMinutes),
+      sleep_rem_minutes: remMinutes,
+      sleep_rem_percent: stagePercent(remMinutes),
+      sleep_light_minutes: lightMinutes,
+      sleep_light_percent: stagePercent(lightMinutes),
       bedtime,
       wake_time: wakeTime,
       hrv_ms: average(values("daily-heart-rate-variability", ["averageHeartRateVariabilityMilliseconds"])),
       resting_heart_rate: average(values("daily-resting-heart-rate", ["beatsPerMinute", "restingHeartRate"])),
-      respiratory_rate: average(values("daily-respiratory-rate", ["averageBreathsPerMinute", "breathsPerMinute", "respiratoryRate"])),
-      oxygen_saturation: average(values("daily-oxygen-saturation", ["averageSaturationPercentage", "percentage", "oxygenSaturation"])),
-      skin_temperature_delta: average(values("daily-sleep-temperature-derivations", ["temperatureDeltaCelsius", "deltaCelsius"])),
-      steps: total(values("steps", ["count", "steps"])),
-      active_energy_kcal: total(values("active-energy-burned", ["kilocalories", "kcal"])),
-      zone_minutes: total(values("active-zone-minutes", ["minutes", "activeZoneMinutes"])),
+      respiratory_rate: respiratoryAverage,
+      oxygen_saturation: oxygenAverage,
+      oxygen_saturation_lower: average(values("daily-oxygen-saturation", ["lowerBoundPercentage"])),
+      oxygen_saturation_upper: average(values("daily-oxygen-saturation", ["upperBoundPercentage"])),
+      skin_temperature_delta: temperatureNightly !== null && temperatureBaseline !== null ? Math.round((temperatureNightly - temperatureBaseline) * 100) / 100 : null,
+      nightly_temperature_celsius: temperatureNightly,
+      baseline_temperature_celsius: temperatureBaseline,
+      steps: summedNumbers(byType("steps"), ["count", "countSum"]),
+      active_energy_kcal: total(values("active-energy-burned", ["kilocalories", "kcal", "kcalSum"])),
+      total_energy_kcal: total(values("total-calories", ["kcal", "kcalSum", "totalCaloriesKcal"])),
+      zone_minutes: activeZoneMinutes,
+      light_zone_minutes: lightZone,
+      moderate_zone_minutes: moderateZone,
+      vigorous_zone_minutes: vigorousZone,
+      peak_zone_minutes: peakZone,
+      active_minutes: total(activeMinutes),
+      sedentary_minutes: total(sedentaryMinutes),
       exercise_minutes: total(exerciseMinutes),
+      distance_km: (() => { const millimeters = total(values("distance", ["millimeters", "millimetersSum", "distanceMillimeters"])); return millimeters === null ? null : Math.round((millimeters / 1_000_000) * 100) / 100; })(),
+      floors: total(values("floors", ["count", "countSum"])),
+      weight_kg: (() => { const grams = average(values("weight", ["weightGrams", "weightGramsAvg"])); return grams === null ? null : Math.round((grams / 1000) * 100) / 100; })(),
+      body_fat_percent: average(values("body-fat", ["percentage", "percentageAvg"])),
+      vo2_max: average([
+        ...values("daily-vo2-max", ["vo2Max", "runVo2Max"]),
+        ...values("vo2-max", ["vo2Max"]),
+        ...values("run-vo2-max", ["runVo2Max"]),
+      ]),
+      altitude_gain_m: (() => { const millimeters = total(values("altitude", ["gainMillimeters", "gainMillimetersSum"])); return millimeters === null ? null : Math.round((millimeters / 1000) * 10) / 10; })(),
+      height_cm: (() => { const millimeters = average(values("height", ["heightMillimeters", "heightMillimetersAvg"])); return millimeters === null ? null : Math.round((millimeters / 10) * 10) / 10; })(),
+      core_body_temperature_celsius: average(values("core-body-temperature", ["temperatureCelsius", "temperatureCelsiusAvg"])),
+      blood_glucose_mg_dl: average(values("blood-glucose", ["bloodGlucoseMilligramsPerDeciliter", "bloodGlucoseMilligramsPerDeciliterAvg"])),
       data_quality: { presentTypes: [...new Set(day.map((record) => record.data_type))].sort(), recordCount: day.length },
       source_freshness: { latestMeasuredAt },
     };

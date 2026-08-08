@@ -9,6 +9,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 
 import "./globals.css";
 import "./product-flows.css";
+import "./health-analytics.css";
 import "./vital-signal.css";
 import "./vital-signal-flows.css";
 import "./vital-signal-responsive.css";

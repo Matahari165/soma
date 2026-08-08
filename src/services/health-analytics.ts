@@ -1,0 +1,232 @@
+import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export type HealthMetricDay = {
+  metric_date: string;
+  sleep_minutes: number | null;
+  sleep_need_minutes: number | null;
+  sleep_efficiency: number | null;
+  sleep_regularity: number | null;
+  sleep_latency_minutes: number | null;
+  sleep_awake_minutes: number | null;
+  sleep_awake_percent: number | null;
+  sleep_awakenings: number | null;
+  sleep_fragmentation: number | null;
+  sleep_deep_minutes: number | null;
+  sleep_deep_percent: number | null;
+  sleep_rem_minutes: number | null;
+  sleep_rem_percent: number | null;
+  sleep_light_minutes: number | null;
+  sleep_light_percent: number | null;
+  daily_sleep_debt_minutes: number | null;
+  cumulative_sleep_debt_minutes: number | null;
+  bedtime: string | null;
+  wake_time: string | null;
+  hrv_ms: number | null;
+  resting_heart_rate: number | null;
+  respiratory_rate: number | null;
+  oxygen_saturation: number | null;
+  oxygen_saturation_lower: number | null;
+  oxygen_saturation_upper: number | null;
+  skin_temperature_delta: number | null;
+  nightly_temperature_celsius: number | null;
+  baseline_temperature_celsius: number | null;
+  steps: number | null;
+  active_energy_kcal: number | null;
+  total_energy_kcal: number | null;
+  zone_minutes: number | null;
+  light_zone_minutes: number | null;
+  moderate_zone_minutes: number | null;
+  vigorous_zone_minutes: number | null;
+  peak_zone_minutes: number | null;
+  active_minutes: number | null;
+  sedentary_minutes: number | null;
+  exercise_minutes: number | null;
+  distance_km: number | null;
+  floors: number | null;
+  weight_kg: number | null;
+  body_fat_percent: number | null;
+  vo2_max: number | null;
+  altitude_gain_m: number | null;
+  height_cm: number | null;
+  core_body_temperature_celsius: number | null;
+  blood_glucose_mg_dl: number | null;
+  active_day: boolean | null;
+  active_day_rate_28d: number | null;
+  activity_consistency_28d: number | null;
+  weekly_load: number | null;
+  acute_chronic_load_ratio: number | null;
+  source_freshness: { latestMeasuredAt?: string | null };
+};
+
+export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown> };
+export type SleepStageSegment = { type: "AWAKE" | "LIGHT" | "DEEP" | "REM" | "ASLEEP" | "RESTLESS"; startTime: string; endTime: string };
+export type HeartRateSample = { measuredAt: string; bpm: number };
+export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null };
+
+export type HealthAnalytics = {
+  timezone: string;
+  days: HealthMetricDay[];
+  scores: ScoreDay[];
+  latestSleepStages: SleepStageSegment[];
+  heartRateSamples: HeartRateSample[];
+  exercises: ExerciseSummary[];
+};
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function findObject(value: unknown, key: string): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findObject(item, key); if (found) return found; }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  if (isObject(value[key])) return value[key] as Record<string, unknown>;
+  for (const child of Object.values(value)) { const found = findObject(child, key); if (found) return found; }
+  return null;
+}
+
+function findNumber(value: unknown, keys: string[]): number | null {
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findNumber(item, keys); if (found !== null) return found; }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const key of keys) {
+    const number = Number(value[key]);
+    if (value[key] !== null && value[key] !== undefined && Number.isFinite(number)) return number;
+  }
+  for (const child of Object.values(value)) { const found = findNumber(child, keys); if (found !== null) return found; }
+  return null;
+}
+
+function durationMinutes(value: unknown) {
+  if (typeof value !== "string") return null;
+  const seconds = Number(value.replace(/s$/, ""));
+  return Number.isFinite(seconds) ? seconds / 60 : null;
+}
+
+function previewAnalytics(): HealthAnalytics {
+  const now = new Date();
+  const days = Array.from({ length: 91 }, (_, index): HealthMetricDay => {
+    const date = new Date(now);
+    date.setDate(date.getDate() - (90 - index));
+    const wave = Math.sin(index / 5);
+    const sleep = Math.round(445 + wave * 24 + index * 0.18);
+    const target = 480 + Math.round(Math.max(0, 12 - wave * 8));
+    const deep = Math.round(sleep * (0.19 + wave * 0.01));
+    const rem = Math.round(sleep * (0.23 - wave * 0.008));
+    const light = sleep - deep - rem;
+    const steps = Math.round(7_600 + wave * 1_900 + index * 14);
+    const metricDate = date.toISOString().slice(0, 10);
+    const previousDate = new Date(date);
+    previousDate.setDate(previousDate.getDate() - 1);
+    const bedtimeDate = previousDate.toISOString().slice(0, 10);
+    return {
+      metric_date: metricDate, sleep_minutes: sleep, sleep_need_minutes: target, sleep_efficiency: 91 + wave * 2, sleep_regularity: 79 + wave * 6,
+      sleep_latency_minutes: 14 - wave * 3, sleep_awake_minutes: 36 - wave * 5, sleep_awake_percent: 7.2 - wave, sleep_awakenings: 8 - wave * 2, sleep_fragmentation: 1.1 - wave * 0.2,
+      sleep_deep_minutes: deep, sleep_deep_percent: (deep / (sleep + 36)) * 100, sleep_rem_minutes: rem, sleep_rem_percent: (rem / (sleep + 36)) * 100, sleep_light_minutes: light, sleep_light_percent: (light / (sleep + 36)) * 100,
+      daily_sleep_debt_minutes: target - sleep, cumulative_sleep_debt_minutes: Math.max(0, 170 - index * 1.1), bedtime: `${bedtimeDate}T22:48:00Z`, wake_time: `${metricDate}T06:58:00Z`,
+      hrv_ms: 49 + wave * 5 + index * 0.06, resting_heart_rate: 61 - wave * 2 - index * 0.025, respiratory_rate: 14.4 + wave * 0.35, oxygen_saturation: 96.1 + wave * 0.45,
+      oxygen_saturation_lower: 94.8 + wave * 0.3, oxygen_saturation_upper: 97.4 + wave * 0.3, skin_temperature_delta: wave * 0.18, nightly_temperature_celsius: 33.4 + wave * 0.18, baseline_temperature_celsius: 33.4,
+      steps, active_energy_kcal: 520 + wave * 110, total_energy_kcal: 2_180 + wave * 130, zone_minutes: 31 + wave * 12, light_zone_minutes: 12, moderate_zone_minutes: 10 + wave * 4, vigorous_zone_minutes: 6 + wave * 4, peak_zone_minutes: 3 + wave * 2,
+      active_minutes: 52 + wave * 15, sedentary_minutes: 560 - wave * 35, exercise_minutes: 38 + wave * 18, distance_km: steps * 0.00072, floors: 11 + wave * 4, weight_kg: 74.2 - index * 0.004, body_fat_percent: 17.4 - index * 0.003, vo2_max: 47.2 + index * 0.012,
+      altitude_gain_m: 82 + wave * 25, height_cm: 178, core_body_temperature_celsius: null, blood_glucose_mg_dl: null,
+      active_day: steps >= 7_500, active_day_rate_28d: 71, activity_consistency_28d: 78, weekly_load: 408 + wave * 30, acute_chronic_load_ratio: 1.04 + wave * 0.04, source_freshness: { latestMeasuredAt: date.toISOString() },
+    };
+  });
+  const scores = days.flatMap((day, index): ScoreDay[] => [
+    { score_date: day.metric_date, kind: "sleep", score: Math.round(76 + Math.sin(index / 5) * 7 + index * 0.05), drivers: {} },
+    { score_date: day.metric_date, kind: "recovery", score: Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07), drivers: {} },
+    { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { targetMinimum: 55, targetMaximum: 75 } },
+  ]);
+  const lastDate = days.at(-1)?.metric_date ?? now.toISOString().slice(0, 10);
+  const lastBedtime = new Date(`${lastDate}T12:00:00Z`);
+  lastBedtime.setUTCDate(lastBedtime.getUTCDate() - 1);
+  const lastBedtimeDate = lastBedtime.toISOString().slice(0, 10);
+  return {
+    timezone: "Europe/Paris",
+    days,
+    scores,
+    latestSleepStages: [
+      { type: "LIGHT", startTime: `${lastBedtimeDate}T22:48:00Z`, endTime: `${lastBedtimeDate}T23:25:00Z` },
+      { type: "DEEP", startTime: `${lastBedtimeDate}T23:25:00Z`, endTime: `${lastDate}T00:30:00Z` },
+      { type: "LIGHT", startTime: `${lastDate}T00:30:00Z`, endTime: `${lastDate}T02:10:00Z` },
+      { type: "REM", startTime: `${lastDate}T02:10:00Z`, endTime: `${lastDate}T03:02:00Z` },
+      { type: "AWAKE", startTime: `${lastDate}T03:02:00Z`, endTime: `${lastDate}T03:10:00Z` },
+      { type: "LIGHT", startTime: `${lastDate}T03:10:00Z`, endTime: `${lastDate}T05:12:00Z` },
+      { type: "REM", startTime: `${lastDate}T05:12:00Z`, endTime: `${lastDate}T06:58:00Z` },
+    ],
+    heartRateSamples: Array.from({ length: 48 }, (_, index) => ({ measuredAt: new Date(now.getTime() - (47 - index) * 30 * 60_000).toISOString(), bpm: Math.round(62 + Math.sin(index / 3) * 8 + (index > 27 && index < 32 ? 55 : 0)) })),
+    exercises: [
+      { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 41, calories: 430, distanceKm: 7.2, averageHeartRate: 151, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1 },
+      { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
+    ],
+  };
+}
+
+export async function getHealthAnalytics(): Promise<HealthAnalytics> {
+  if (isLocalPreviewMode()) return previewAnalytics();
+  const user = await getCurrentUser();
+  if (!user) return { timezone: "Europe/Paris", days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
+  const supabase = await createSupabaseServerClient();
+  const [{ data: profile }, { data: metrics }, { data: scores }, { data: sleeps }, { data: heartRates }, { data: exercises }] = await Promise.all([
+    supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
+    supabase.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
+    supabase.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false }).limit(273),
+    supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).limit(1),
+    supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").order("measured_at", { ascending: false }).limit(1000),
+    supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).limit(20),
+  ]);
+
+  const sleep = findObject(sleeps?.[0]?.payload, "sleep");
+  const stages = Array.isArray(sleep?.stages) ? sleep.stages : [];
+  const latestSleepStages = stages.flatMap((stage): SleepStageSegment[] => {
+    if (!isObject(stage) || typeof stage.startTime !== "string" || typeof stage.endTime !== "string") return [];
+    const type = String(stage.type) as SleepStageSegment["type"];
+    return ["AWAKE", "LIGHT", "DEEP", "REM", "ASLEEP", "RESTLESS"].includes(type) ? [{ type, startTime: stage.startTime, endTime: stage.endTime }] : [];
+  });
+  const heartRateSamples = (heartRates ?? []).flatMap((record): HeartRateSample[] => {
+    const bpm = findNumber(record.payload, ["beatsPerMinute"]);
+    return bpm === null || !record.measured_at ? [] : [{ measuredAt: record.measured_at, bpm }];
+  }).reverse();
+  const exerciseSummaries = (exercises ?? []).map((record): ExerciseSummary => {
+    const exercise = findObject(record.payload, "exercise") ?? {};
+    const metricsSummary = isObject(exercise.metricsSummary) ? exercise.metricsSummary : {};
+    const duration = record.start_time && record.end_time ? (Date.parse(record.end_time) - Date.parse(record.start_time)) / 60_000 : null;
+    return {
+      id: record.source_record_id,
+      date: record.civil_date ?? record.start_time?.slice(0, 10) ?? "",
+      name: String(exercise.displayName ?? exercise.exerciseType ?? "Exercise"),
+      type: String(exercise.exerciseType ?? "OTHER"),
+      durationMinutes: duration,
+      activeMinutes: durationMinutes(exercise.activeDuration),
+      calories: findNumber(metricsSummary, ["caloriesKcal"]),
+      distanceKm: (() => { const mm = findNumber(metricsSummary, ["distanceMillimeters"]); return mm === null ? null : mm / 1_000_000; })(),
+      averageHeartRate: findNumber(metricsSummary, ["averageHeartRateBeatsPerMinute"]),
+      zoneMinutes: findNumber(metricsSummary, ["activeZoneMinutes"]),
+      averageSpeedKph: (() => { const mm = findNumber(metricsSummary, ["averageSpeedMillimetersPerSecond"]); return mm === null ? null : mm * 0.0036; })(),
+      averagePaceSecondsPerKm: (() => { const secondsPerMeter = findNumber(metricsSummary, ["averagePaceSecondsPerMeter"]); return secondsPerMeter === null ? null : secondsPerMeter * 1000; })(),
+      elevationGainMeters: (() => { const mm = findNumber(metricsSummary, ["elevationGainMillimeters"]); return mm === null ? null : mm / 1000; })(),
+      steps: findNumber(metricsSummary, ["steps"]),
+      runVo2Max: findNumber(metricsSummary, ["runVo2Max"]),
+      swimLengths: findNumber(metricsSummary, ["totalSwimLengths"]),
+      cadence: findNumber(metricsSummary, ["avgCadenceStepsPerMinute"]),
+      strideLengthMeters: (() => { const mm = findNumber(metricsSummary, ["avgStrideLengthMillimeters"]); return mm === null ? null : mm / 1000; })(),
+      groundContactMilliseconds: (() => { const raw = findObject(metricsSummary, "mobilityMetrics")?.avgGroundContactTimeDuration; const minutes = durationMinutes(raw); return minutes === null ? null : minutes * 60_000; })(),
+      verticalOscillationMillimeters: findNumber(metricsSummary, ["avgVerticalOscillationMillimeters"]),
+      verticalRatio: findNumber(metricsSummary, ["avgVerticalRatio"]),
+    };
+  });
+  return {
+    timezone: profile?.timezone ?? "Europe/Paris",
+    days: [...((metrics ?? []) as HealthMetricDay[])].reverse(),
+    scores: [...((scores ?? []) as ScoreDay[])].reverse(),
+    latestSleepStages,
+    heartRateSamples,
+    exercises: exerciseSummaries,
+  };
+}

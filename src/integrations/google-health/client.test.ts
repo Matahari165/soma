@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildGoogleHealthAuthorizationUrl, getGoogleHealthClientId } from "./client";
+import {
+  GOOGLE_HEALTH_DAILY_ROLLUP_TYPES,
+  buildGoogleHealthAuthorizationUrl,
+  createTimeFilter,
+  getGoogleHealthClientId,
+} from "./client";
 
 const originalClientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
 const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -35,5 +40,32 @@ describe("Google Health OAuth configuration", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "http://soma.example.com";
 
     expect(() => buildGoogleHealthAuthorizationUrl("state", "challenge")).toThrow("must use HTTPS");
+  });
+});
+
+describe("Google Health query contracts", () => {
+  it("uses reconciled daily rollups for additive activity totals", () => {
+    expect(GOOGLE_HEALTH_DAILY_ROLLUP_TYPES).toEqual(expect.arrayContaining([
+      "steps",
+      "active-zone-minutes",
+      "active-energy-burned",
+      "time-in-heart-rate-zone",
+      "active-minutes",
+      "distance",
+      "floors",
+      "sedentary-period",
+      "total-calories",
+    ]));
+    expect(GOOGLE_HEALTH_DAILY_ROLLUP_TYPES).not.toContain("heart-rate");
+    expect(GOOGLE_HEALTH_DAILY_ROLLUP_TYPES).not.toContain("sleep");
+    expect(GOOGLE_HEALTH_DAILY_ROLLUP_TYPES).not.toContain("exercise");
+  });
+
+  it("keeps civil-date and physical-time filters distinct", () => {
+    const start = new Date("2026-08-01T00:00:00.000Z");
+    const end = new Date("2026-08-08T00:00:00.000Z");
+
+    expect(createTimeFilter("daily-resting-heart-rate", start, end)).toContain('dailyRestingHeartRate.date >= "2026-08-01"');
+    expect(createTimeFilter("heart-rate", start, end)).toContain('heart_rate.sample_time.physical_time >= "2026-08-01T00:00:00.000Z"');
   });
 });

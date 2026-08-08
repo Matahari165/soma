@@ -4,11 +4,13 @@ import { recomputeUserHealth } from "@/services/analysis";
 
 import {
   GOOGLE_HEALTH_DATA_TYPES,
+  GOOGLE_HEALTH_DAILY_ROLLUP_TYPES,
+  dailyRollUpGoogleHealthData,
   type GoogleHealthDataType,
   listGoogleHealthDataPoints,
   refreshGoogleHealthToken,
 } from "./client";
-import { normalizeGoogleHealthPoint } from "./normalize";
+import { normalizeGoogleHealthDailyRollup, normalizeGoogleHealthPoint } from "./normalize";
 
 type SyncCursor = {
   typeIndex?: number;
@@ -121,19 +123,24 @@ export async function processGoogleHealthSyncJob(jobId: string) {
     const start = new Date(claimedJob.range_start);
     const end = new Date(claimedJob.range_end);
     const windowStart = new Date(claimedJob.cursor.windowStart ?? claimedJob.range_start);
-    const windowDays = dataType === "heart-rate" ? 14 : 90;
+    const windowDays = dataType === "heart-rate" || dataType === "active-minutes" || dataType === "total-calories" || dataType === "calories-in-heart-rate-zone" ? 14 : 90;
     const windowEnd = earlierDate(addDays(windowStart, windowDays), end);
     const accessToken = await getAccessToken(rawConnection as ProviderConnection);
-    const response = await listGoogleHealthDataPoints({
-      accessToken,
-      dataType,
-      start: windowStart,
-      end: windowEnd,
-      pageToken: claimedJob.cursor.pageToken,
-    });
-    const records = (response.dataPoints ?? []).map((point) =>
-      normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point),
-    );
+    const usesDailyRollup = GOOGLE_HEALTH_DAILY_ROLLUP_TYPES.includes(dataType as (typeof GOOGLE_HEALTH_DAILY_ROLLUP_TYPES)[number]);
+    let nextPageToken: string | undefined;
+    let points: Record<string, unknown>[];
+    if (usesDailyRollup) {
+      const response = await dailyRollUpGoogleHealthData({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: claimedJob.cursor.pageToken });
+      points = response.rollupDataPoints ?? [];
+      nextPageToken = response.nextPageToken;
+    } else {
+      const response = await listGoogleHealthDataPoints({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: claimedJob.cursor.pageToken });
+      points = response.dataPoints ?? [];
+      nextPageToken = response.nextPageToken;
+    }
+    const records = points.map((point) => usesDailyRollup
+      ? normalizeGoogleHealthDailyRollup(claimedJob.user_id, dataType, point)
+      : normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point));
     await upsertRecords(records);
     const { error: freshnessError } = await admin.from("provider_connections").update({
       last_synced_at: new Date().toISOString(),
@@ -144,8 +151,8 @@ export async function processGoogleHealthSyncJob(jobId: string) {
 
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
-    if (response.nextPageToken) {
-      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: response.nextPageToken };
+    if (nextPageToken) {
+      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: nextPageToken };
     } else if (windowEnd < end) {
       nextCursor = { typeIndex, windowStart: windowEnd.toISOString() };
     } else {
