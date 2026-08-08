@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
+import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
 import { requireServerEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -26,24 +27,68 @@ function webhookRange(payload: Record<string, unknown>) {
 
 async function queueWebhookJobs() {
   const admin = createSupabaseAdminClient();
-  const { data: events } = await admin.from("webhook_events").select("*").eq("status", "queued").order("received_at").limit(20);
+  const { data: events } = await admin.from("webhook_events").select("*").eq("status", "queued").order("received_at").limit(100);
+  const healthUserIds = [...new Set((events ?? []).map((event) => event.health_user_id).filter((value): value is string => Boolean(value)))];
+  const connectionResult = healthUserIds.length
+    ? await admin.from("provider_connections").select("id,user_id,external_user_id").eq("provider", "google_health").in("external_user_id", healthUserIds)
+    : { data: [], error: null };
+  if (connectionResult.error) return;
+  const connectionByExternalId = new Map((connectionResult.data ?? []).map((connection) => [connection.external_user_id, connection]));
+  const candidates: WebhookJobCandidate[] = [];
   for (const event of events ?? []) {
-    const { data: connection } = await admin.from("provider_connections").select("id,user_id").eq("external_user_id", event.health_user_id).eq("provider", "google_health").maybeSingle();
+    const connection = connectionByExternalId.get(event.health_user_id);
     if (!connection || !event.data_type) {
       await admin.from("webhook_events").update({ status: "failed", last_error: "No matching connection." }).eq("id", event.id);
       continue;
     }
     const range = webhookRange(event.payload as Record<string, unknown>);
-    await admin.from("sync_jobs").insert({
-      user_id: connection.user_id,
-      connection_id: connection.id,
-      import_range: "90_days",
-      data_types: [event.data_type],
-      range_start: range.start.toISOString(),
-      range_end: range.end.toISOString(),
-      status: "queued",
+    candidates.push({
+      eventId: event.id,
+      userId: connection.user_id,
+      connectionId: connection.id,
+      dataType: event.data_type,
+      rangeStart: range.start.toISOString(),
+      rangeEnd: range.end.toISOString(),
     });
-    await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", event.id);
+  }
+
+  for (const job of coalesceWebhookJobs(candidates)) {
+    const { data: openJobs, error: openJobsError } = await admin.from("sync_jobs")
+      .select("id,range_start,range_end,data_types,cursor,updated_at")
+      .eq("user_id", job.userId)
+      .eq("connection_id", job.connectionId)
+      .eq("status", "queued")
+      .contains("data_types", [job.dataType])
+      .order("created_at")
+      .limit(20);
+    if (openJobsError) continue;
+    const existing = openJobs?.find((item) => item.data_types?.length === 1 && Object.keys(item.cursor ?? {}).length === 0);
+    let stored = false;
+    if (existing) {
+      const result = await admin.from("sync_jobs")
+        .update(mergeWebhookRange(existing, job))
+        .eq("id", existing.id)
+        .eq("status", "queued")
+        .eq("updated_at", existing.updated_at)
+        .select("id")
+        .maybeSingle();
+      stored = Boolean(result.data) && !result.error;
+    }
+    if (!stored) {
+      const result = await admin.from("sync_jobs").insert({
+        user_id: job.userId,
+        connection_id: job.connectionId,
+        import_range: "90_days",
+        data_types: [job.dataType],
+        range_start: job.rangeStart,
+        range_end: job.rangeEnd,
+        status: "queued",
+      });
+      stored = !result.error;
+    }
+    if (stored) {
+      await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).in("id", job.eventIds);
+    }
   }
 }
 
