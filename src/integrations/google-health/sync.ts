@@ -135,6 +135,12 @@ export async function processGoogleHealthSyncJob(jobId: string) {
       normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point),
     );
     await upsertRecords(records);
+    const { error: freshnessError } = await admin.from("provider_connections").update({
+      last_synced_at: new Date().toISOString(),
+      status: "connected",
+      last_error_code: null,
+    }).eq("id", claimedJob.connection_id);
+    if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
 
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
