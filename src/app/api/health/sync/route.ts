@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import { GOOGLE_HEALTH_DATA_TYPES } from "@/integrations/google-health/client";
 import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
+  if (isLocalPreviewMode()) return NextResponse.json({ jobs: [{ id: "preview-sync", status: "completed", progress: 100, completed_at: new Date().toISOString() }] });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
@@ -17,6 +19,7 @@ export async function GET() {
 }
 
 export async function POST() {
+  if (isLocalPreviewMode()) return NextResponse.json({ jobId: "preview-sync", completed: true, message: "Local preview data refreshed. Nothing was sent." });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();

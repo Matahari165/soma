@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { askSomaCoach } from "@/integrations/openai/coach";
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { stableHash } from "@/lib/crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -10,6 +11,14 @@ const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), thre
 const threadIdSchema = z.string().uuid();
 
 export async function GET(request: Request) {
+  if (isLocalPreviewMode()) {
+    const threadId = "30000000-0000-4000-8000-000000000001";
+    const requestedThreadId = new URL(request.url).searchParams.get("threadId");
+    return NextResponse.json({
+      threads: [{ id: threadId, title: "Understanding recovery", updatedAt: new Date().toISOString() }],
+      messages: requestedThreadId ? [{ id: "preview-message", role: "assistant", content: "Your demo recovery signal is above its recent range, supported by more regular sleep. Treat this as an interpretation of sample data, not medical advice.", evidence: ["Demo recovery · 82/100", "Demo sleep regularity · 84%"] }] : [],
+    });
+  }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const requestedThreadId = new URL(request.url).searchParams.get("threadId");
@@ -53,6 +62,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid message." }, { status: 400 });
+  if (isLocalPreviewMode()) return NextResponse.json({
+    answer: `In this local preview, “${parsed.data.message.slice(0, 120)}” can be explored using the demo signals. Sleep is 86, recovery is 82, and effort is 63. No external AI was contacted.`,
+    evidence: ["Demo Sleep · 86/100", "Demo Recovery · 82/100", "Demo Effort · 63/100"],
+    proposedAction: parsed.data.message.toLowerCase().includes("program") ? { type: "create_workout_program", title: "Create a demo strength program", description: "Preview a three-exercise program. Confirmation remains required.", payload: { programName: "Coach Strength A", exerciseNames: ["Back squat", "Bench press", "Romanian deadlift"] } } : null,
+    threadId: parsed.data.threadId ?? "30000000-0000-4000-8000-000000000002",
+    proposalId: parsed.data.message.toLowerCase().includes("program") ? "40000000-0000-4000-8000-000000000001" : null,
+  });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
+import { previewDashboard, previewProfile } from "@/lib/local-preview";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const userTables = ["profiles", "health_goals", "sleep_preferences", "dashboard_layouts", "sync_jobs", "health_records", "daily_health_metrics", "daily_scores", "insights", "correlation_results", "briefs", "coach_threads", "coach_messages", "agent_action_proposals", "workout_programs", "workout_program_exercises", "workout_sessions", "workout_session_sets", "consent_events", "audit_events"];
 
 export async function GET() {
+  if (isLocalPreviewMode()) return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), preview: true, profile: previewProfile, dashboard: previewDashboard }, null, 2), { headers: { "Content-Type": "application/json", "Content-Disposition": "attachment; filename=soma-local-preview.json" } });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();

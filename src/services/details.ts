@@ -1,9 +1,12 @@
 import { getCurrentUser } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isLocalPreviewMode } from "@/lib/env";
+import { previewCorrelations, previewDetails } from "@/lib/local-preview";
 
 export type DetailPoint = { date: string; score: number | null; primary: number | null; secondary: number | null };
 
 export async function getMetricDetail(kind: "sleep" | "recovery" | "effort") {
+  if (isLocalPreviewMode()) return previewDetails[kind];
   const user = await getCurrentUser();
   if (!user) return [];
   const supabase = await createSupabaseServerClient();
@@ -19,6 +22,7 @@ export async function getMetricDetail(kind: "sleep" | "recovery" | "effort") {
 }
 
 export async function getCorrelations() {
+  if (isLocalPreviewMode()) return previewCorrelations;
   const user = await getCurrentUser();
   if (!user) return [];
   const supabase = await createSupabaseServerClient();

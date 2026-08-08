@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { onboardingSchema } from "@/domain/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isLocalPreviewMode } from "@/lib/env";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -19,6 +20,8 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
 
   const input = parsed.data;
   const supabase = await createSupabaseServerClient();

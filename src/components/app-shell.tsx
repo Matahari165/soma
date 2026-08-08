@@ -10,16 +10,17 @@ import {
   LayoutDashboard,
   Menu,
   MessageCircle,
+  Radio,
   Settings,
-  Sparkles,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
+import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
 import type { SomaUser } from "@/lib/auth";
 
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
@@ -34,16 +35,6 @@ const navigation = [
 ];
 
 const mobileNavigation = navigation.slice(0, 4);
-
-function SomaMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </span>
-  );
-}
 
 function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
   return (
@@ -63,26 +54,20 @@ function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: Reac
   );
 }
 
-export function AppShell({ children, user }: { children: React.ReactNode; user: SomaUser | null }) {
+export function AppShell({ children, user, localPreview = false }: { children: React.ReactNode; user: SomaUser | null; localPreview?: boolean }) {
   const pathname = usePathname();
   const [coachOpen, setCoachOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const coachPanelRef = useRef<HTMLElement>(null);
+  const mobileMenuRef = useRef<HTMLElement>(null);
   const closeCoach = useCallback(() => setCoachOpen(false), []);
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const displayName = user?.displayName ?? "Soma user";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const onCoachPage = pathname.startsWith("/coach");
 
   useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const closeMenu = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
-    };
-    document.addEventListener("keydown", closeMenu);
-    return () => document.removeEventListener("keydown", closeMenu);
-  }, [mobileMenuOpen]);
+  useDialogLayer({ open: mobileMenuOpen, onClose: closeMobileMenu, containerRef: mobileMenuRef });
 
   if (
     (pathname === "/" && !user) ||
@@ -99,11 +84,10 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <div className="app-shell">
+    <div className={localPreview ? "app-shell app-shell--preview" : "app-shell"}>
       <aside className="sidebar" aria-label="Primary navigation">
         <Link className="brand" href="/" aria-label="Soma home">
-          <SomaMark />
-          <span>Soma</span>
+          <SomaLogo />
         </Link>
 
         <nav className="sidebar-nav">
@@ -144,12 +128,11 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
 
       <header className="mobile-header">
         <Link className="brand" href="/" aria-label="Soma home">
-          <SomaMark />
-          <span>Soma</span>
+          <SomaLogo compact />
         </Link>
         <div className="mobile-header__actions">
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
-            <Sparkles size={19} />
+            <SomaSymbol className="coach-symbol" />
           </button>}
           <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -158,22 +141,22 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
       </header>
 
       {mobileMenuOpen && (
-        <><button className="mobile-menu-backdrop" type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Dismiss menu" /><nav id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation">
+        <><button className="mobile-menu-backdrop" type="button" onClick={closeMobileMenu} aria-label="Dismiss menu" /><nav ref={mobileMenuRef} id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation" role="dialog" aria-modal="true">
           {navigation.slice(4).map(({ label, href, icon: Icon }) => (
-            <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMobileMenuOpen(false)}>
+            <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={closeMobileMenu}>
               <Icon size={19} />
               {label}
             </Link>
           ))}
-          <Link href="/workouts" className={isActive("/workouts") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/workouts") ? "page" : undefined} onClick={() => setMobileMenuOpen(false)}><Dumbbell size={19} />Workouts</Link>
-          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={() => setMobileMenuOpen(false)}><Settings size={19} />Settings</Link>
+          <Link href="/workouts" className={isActive("/workouts") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/workouts") ? "page" : undefined} onClick={closeMobileMenu}><Dumbbell size={19} />Workouts</Link>
+          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} />Settings</Link>
         </nav></>
       )}
 
       <main className="main-content">{children}</main>
 
       {!onCoachPage && <button className="coach-fab" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
-        <Sparkles size={20} />
+        <Radio size={20} />
         <span>Ask Soma</span>
       </button>}
 
@@ -184,7 +167,7 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
             key={href}
             className={isActive(href) ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"}
             aria-current={isActive(href) ? "page" : undefined}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <Icon size={20} strokeWidth={1.8} />
             <span>{label}</span>

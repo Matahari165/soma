@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isLocalPreviewMode } from "@/lib/env";
+
 const publicPaths = [
   "/login",
   "/auth/callback",
@@ -56,6 +58,11 @@ export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const isPublicPath = request.nextUrl.pathname === "/" || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
+
+  if (isLocalPreviewMode()) {
+    if (request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
+    return secureResponse(response);
+  }
 
   if (!url || !anonKey) {
     if (isPublicPath) return secureResponse(response);

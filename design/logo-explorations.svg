@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760">
+  <rect width="1200" height="760" fill="#fff"/>
+  <g fill="#111" font-family="Arial, sans-serif">
+    <text x="64" y="70" font-size="22" font-weight="700" letter-spacing="3">SOMA — VITAL SIGNAL / SYMBOL STUDY</text>
+    <text x="64" y="105" font-size="15" fill="#555">Monochrome comparison and small-size legibility test</text>
+  </g>
+  <g transform="translate(64 165)" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="scale(3.6)">
+      <path d="M2 8h8l3-4 4 8 3-4h10"/><path d="M2 16h10l3-4 4 8 3-4h8"/><path d="M2 24h8l4-4 4 8 4-4h8"/>
+    </g>
+  </g>
+  <text x="64" y="330" font-family="Arial" font-size="18" font-weight="700">A · TRIAD PULSE</text>
+  <text x="64" y="356" font-family="Arial" font-size="12" fill="#555"><tspan x="64" dy="0">Three synchronized measurements.</tspan><tspan x="64" dy="18">Clear, but too close to a generic waveform.</tspan></text>
+  <g transform="translate(445 165)" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="scale(3.6)">
+      <path d="M4 5h19c4 0 6 2 6 5s-2 5-6 5H9c-4 0-6 2-6 5s2 5 6 5h19"/>
+      <circle cx="4" cy="5" r="1.5" fill="#111" stroke="none"/><circle cx="28" cy="25" r="1.5" fill="#111" stroke="none"/>
+    </g>
+  </g>
+  <text x="445" y="330" font-family="Arial" font-size="18" font-weight="700">B · SIGNAL PATH</text>
+  <text x="445" y="356" font-family="Arial" font-size="12" fill="#555"><tspan x="445" dy="0">A single measured path forming an S.</tspan><tspan x="445" dy="18">Strong, but it does not express multiple signals.</tspan></text>
+  <g transform="translate(825 165)" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="scale(3.6)">
+      <path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/>
+      <path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/>
+      <path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/>
+    </g>
+  </g>
+  <text x="825" y="330" font-family="Arial" font-size="18" font-weight="700">C · PHASE S — SELECTED</text>
+  <text x="825" y="356" font-family="Arial" font-size="12" fill="#555"><tspan x="825" dy="0">Three bodily streams converge into one</tspan><tspan x="825" dy="18">readable S-shaped signal.</tspan></text>
+  <line x1="64" y1="420" x2="1136" y2="420" stroke="#ddd"/>
+  <text x="64" y="466" font-family="Arial" font-size="18" font-weight="700">SELECTED SYMBOL · SIZE TEST</text>
+  <g fill="none" stroke="#111" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(72 520) scale(.5)" stroke-width="2"><path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/><path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/><path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/></g>
+    <g transform="translate(160 512) scale(.75)" stroke-width="2"><path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/><path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/><path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/></g>
+    <g transform="translate(264 504)" stroke-width="2"><path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/><path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/><path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/></g>
+    <g transform="translate(390 488) scale(2)" stroke-width="2"><path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/><path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/><path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/></g>
+  </g>
+  <g font-family="Arial" font-size="13" fill="#555"><text x="70" y="585">16 px</text><text x="157" y="585">24 px</text><text x="260" y="585">32 px</text><text x="390" y="585">64 px</text></g>
+  <rect x="640" y="482" width="496" height="160" rx="8" fill="#111"/>
+  <g transform="translate(692 525) scale(2)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16.5C25 6.5 28 8.5 28 12s-3.5 5-8 5h-8c-4 0-7 1.5-7 5s3 5.5 7.5 5.5H28"/><path d="M4 11h16c1.8 0 3 .4 3 1.2s-1.2 1.2-3 1.2h-8C4.8 13.4 1 16.6 1 22c0 5.6 4.2 9 11.5 9H28"/><path d="M4 2h17c6.7 0 10 3.8 10 10s-4.8 9-11 9h-8c-1.3 0-2 .3-2 1s.8 1 2.5 1H28"/></g>
+  <text x="790" y="570" font-family="Arial" font-size="32" font-weight="700" letter-spacing="5" fill="#fff">SOMA</text>
+  <text x="792" y="595" font-family="Arial" font-size="12" letter-spacing="3" fill="#aaa">VITAL SIGNAL</text>
+</svg>

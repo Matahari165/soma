@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.discriminatedUnion("action", [
@@ -11,6 +12,10 @@ const schema = z.discriminatedUnion("action", [
 ]);
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (isLocalPreviewMode()) {
+    const body = await request.json().catch(() => ({})) as { action?: string };
+    return NextResponse.json({ status: body.action === "complete" ? "completed" : body.action === "pause" ? "paused" : body.action === "resume" ? "active" : "saved", preview: true });
+  }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));

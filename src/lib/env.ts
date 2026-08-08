@@ -5,6 +5,10 @@ export function hasSupabaseConfig() {
   );
 }
 
+export function isLocalPreviewMode() {
+  return process.env.NODE_ENV !== "production" && process.env.SOMA_LOCAL_PREVIEW === "true";
+}
+
 export function requireServerEnv(name: string) {
   const value = process.env[name];
 

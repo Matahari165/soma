@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const widgetSchema = z.object({ id: z.enum(["weekly-effort", "recovery-trend", "sleep-regularity"]), visible: z.boolean() });
@@ -9,6 +10,7 @@ const layoutSchema = z.object({ widgets: z.array(widgetSchema).length(3).refine(
 const defaultLayout = { widgets: ["weekly-effort", "recovery-trend", "sleep-regularity"].map((id) => ({ id, visible: true })) };
 
 export async function GET() {
+  if (isLocalPreviewMode()) return NextResponse.json(defaultLayout);
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
@@ -22,6 +24,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = layoutSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Dashboard layout is invalid." }, { status: 400 });
+  if (isLocalPreviewMode()) return NextResponse.json(parsed.data);
   const admin = createSupabaseAdminClient();
   const { error } = await admin.from("dashboard_layouts").upsert({ user_id: user.id, layout: parsed.data, version: 1 }, { onConflict: "user_id" });
   if (error) return NextResponse.json({ error: "Dashboard layout could not be saved." }, { status: 500 });

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { decryptSecret } from "@/lib/crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
+  if (isLocalPreviewMode()) return NextResponse.json({ connection: { provider: "google_health", status: "connected", scopes: ["demo.readonly"], last_synced_at: new Date().toISOString(), metadata: { preview: true } } });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
@@ -16,6 +18,7 @@ export async function GET() {
 }
 
 export async function DELETE() {
+  if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const decisionSchema = z.object({ decision: z.enum(["confirm", "reject"]) });
@@ -11,6 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = decisionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
+  if (isLocalPreviewMode()) return NextResponse.json({ status: parsed.data.decision === "confirm" ? "executed in local preview" : "rejected" });
   const { id } = await context.params;
   const admin = createSupabaseAdminClient();
   if (parsed.data.decision === "reject") {

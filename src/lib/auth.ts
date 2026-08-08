@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { hasSupabaseConfig } from "@/lib/env";
+import { hasSupabaseConfig, isLocalPreviewMode } from "@/lib/env";
+import { previewUser } from "@/lib/local-preview";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type SomaUser = {
@@ -10,6 +11,7 @@ export type SomaUser = {
 };
 
 export async function getCurrentUser(): Promise<SomaUser | null> {
+  if (isLocalPreviewMode()) return previewUser;
   if (!hasSupabaseConfig()) {
     return null;
   }

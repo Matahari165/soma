@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
+import { SomaLogo } from "@/components/soma-logo";
 import { goalLabels, type OnboardingInput } from "@/domain/profile";
 
 const steps = ["About you", "Your goal", "Sleep", "Health data"];
@@ -114,8 +115,7 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
     <div className="onboarding-shell">
       <aside className="onboarding-aside">
         <Link className="brand brand--auth" href="/" aria-label="Soma home">
-          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
-          <span>Soma</span>
+          <SomaLogo />
         </Link>
         <div>
           <span className="eyebrow">Set up your baseline</span>

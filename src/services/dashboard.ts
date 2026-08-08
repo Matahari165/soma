@@ -1,6 +1,8 @@
 import { getCurrentUser, type SomaUser } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { DashboardSnapshot, DailyScore, ScoreKind } from "@/domain/health";
+import { isLocalPreviewMode } from "@/lib/env";
+import { previewDashboard } from "@/lib/local-preview";
 
 type ScoreRow = { score_date: string; kind: ScoreKind; score: number | null; status: DailyScore["status"]; drivers: Record<string, unknown>; calculated_at: string };
 type MetricRow = { metric_date: string; sleep_minutes: number | null; sleep_need_minutes: number | null; sleep_regularity: number | null; bedtime: string | null; wake_time: string | null; hrv_ms: number | null; resting_heart_rate: number | null; steps: number | null; zone_minutes: number | null; source_freshness: { latestMeasuredAt?: string | null } };
@@ -47,6 +49,7 @@ function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: Metric
 }
 
 export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<DashboardSnapshot> {
+  if (isLocalPreviewMode()) return previewDashboard;
   const user = currentUser ?? await getCurrentUser();
   if (!user) {
     const now = new Date();

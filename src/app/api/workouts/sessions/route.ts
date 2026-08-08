@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({ programId: z.string().uuid(), name: z.string().min(1).max(120) });
 
 export async function POST(request: Request) {
+  if (isLocalPreviewMode()) return NextResponse.json({ id: crypto.randomUUID(), status: "active", preview: true }, { status: 201 });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));

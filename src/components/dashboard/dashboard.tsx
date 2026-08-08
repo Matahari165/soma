@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, Settings2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronRight, CircleSlash, LoaderCircle, Radio, Settings2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -115,7 +115,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
       <section className="dashboard-hero" aria-labelledby="today-heading">
         <div className="page-header">
           <div>
-            <p className="page-date">{data.dateLabel}</p>
+            <p className="page-date"><Radio size={13} aria-hidden="true" /> {data.dateLabel} · Personal signal</p>
             <h1 id="today-heading">{data.greeting}, {data.greetingName}.</h1>
           </div>
           <div className="page-actions">
@@ -124,14 +124,26 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
         </div>
 
         <nav className="primary-metrics" aria-label="Today's primary health scores">
-          {data.scores.map((score) => <ScoreLink metric={score} key={score.kind} />)}
+          <header className="signal-array__header">
+            <div><span className="eyebrow">Live instrument · 03 channels</span><h2>Body signal array</h2></div>
+            <div className="signal-array__legend" aria-hidden="true"><span>Measure</span><span>Recent trace</span><span>Context</span><span>State</span></div>
+          </header>
+          <div className="signal-array__rows">
+            {data.scores.map((score, index) => <ScoreLink metric={score} index={index} key={score.kind} />)}
+          </div>
+          <footer className="signal-array__footer"><span>Recent complete readings</span><span aria-hidden="true">Oldest</span><span className="signal-array__timeline" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span><span aria-hidden="true">Latest</span></footer>
         </nav>
       </section>
 
       <section className="soma-summary" aria-labelledby="soma-summary-title">
-        <h2 className="sr-only" id="soma-summary-title">Soma summary</h2>
-        <p>{data.summary}</p>
-        <Link className="summary-button" href="/coach">Ask a follow-up <ChevronRight size={16} /></Link>
+        <div className="summary-rail" aria-hidden="true"><span /><span /><span /></div>
+        <div>
+          <span className="eyebrow">Soma brief · Interpretation</span>
+          <h2 id="soma-summary-title">Today&apos;s reading</h2>
+          <p>{data.summary}</p>
+          <small>Generated from the measurements currently available to Soma. General wellness guidance only.</small>
+        </div>
+        <Link className="summary-button" href="/coach">Ask about this reading <ChevronRight size={16} /></Link>
       </section>
 
       <section className="section-block" aria-labelledby="insights-heading">
@@ -139,10 +151,10 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
           <h2 id="insights-heading">Today&apos;s insights</h2>
           <Link className="text-link" href="/trends">View all <ChevronRight size={15} /></Link>
         </div>
-        <div className="insight-list">
-          {data.insights.map((insight) => (
+        {data.insights.length ? <div className="insight-list">
+          {data.insights.map((insight, index) => (
             <article className={`insight insight--${insight.category}`} key={insight.id}>
-              <span className="insight-marker" aria-hidden="true" />
+              <span className="insight-priority" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
               <div>
                 <h3>{insight.title}</h3>
                 <p>{insight.description}</p>
@@ -151,7 +163,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
               <Link href="/trends" aria-label={`Explore insight: ${insight.title}`}><ChevronRight size={18} /></Link>
             </article>
           ))}
-        </div>
+        </div> : <div className="inline-empty" role="status"><CircleSlash size={20} aria-hidden="true" /><div><strong>No evidence-based insights yet</strong><p>Insights appear after Soma has enough complete, current measurements to compare.</p></div></div>}
       </section>
 
       {visibleWidgets.length > 0 && <section className="section-block" aria-labelledby="overview-heading">

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Activity, LockKeyhole, Sparkles } from "lucide-react";
+import { Activity, BrainCircuit, LockKeyhole } from "lucide-react";
 import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { SomaLogo } from "@/components/soma-logo";
 import { hasSupabaseConfig } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -14,8 +15,7 @@ export default function LoginPage() {
     <main className="auth-page" id="main-page-content">
       <section className="auth-intro">
         <Link className="brand brand--auth" href="/" aria-label="Soma home">
-          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
-          <span>Soma</span>
+          <SomaLogo />
         </Link>
         <div className="auth-intro__copy">
           <span className="eyebrow">Your health, made understandable</span>
@@ -24,7 +24,7 @@ export default function LoginPage() {
         </div>
         <div className="auth-principles">
           <span><Activity size={18} /> Personal baselines, not generic judgment</span>
-          <span><Sparkles size={18} /> AI explanations grounded in your metrics</span>
+          <span><BrainCircuit size={18} /> Explanations grounded in your metrics</span>
           <span><LockKeyhole size={18} /> Private by default, with explicit consent</span>
         </div>
       </section>
