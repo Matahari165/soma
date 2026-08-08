@@ -5,6 +5,7 @@ import {
   buildGoogleHealthAuthorizationUrl,
   createDailyRollupRange,
   createTimeFilter,
+  dailyRollupPageSize,
   getGoogleHealthClientId,
 } from "./client";
 
@@ -78,5 +79,12 @@ describe("Google Health query contracts", () => {
       start: { date: { year: 2026, month: 8, day: 8 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
       end: { date: { year: 2026, month: 8, day: 9 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
     });
+  });
+
+  it("keeps daily rollup pagination inside Google duration limits", () => {
+    expect(dailyRollupPageSize("steps")).toBe(90);
+    expect(dailyRollupPageSize("active-minutes")).toBe(14);
+    expect(dailyRollupPageSize("total-calories")).toBe(14);
+    expect(dailyRollupPageSize("calories-in-heart-rate-zone")).toBe(14);
   });
 });

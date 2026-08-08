@@ -266,6 +266,10 @@ export function createDailyRollupRange(start: Date, end: Date) {
   return { start: civilDateTime(normalizedStart), end: civilDateTime(normalizedEnd) };
 }
 
+export function dailyRollupPageSize(dataType: GoogleHealthDataType) {
+  return dataType === "active-minutes" || dataType === "total-calories" || dataType === "calories-in-heart-rate-zone" ? 14 : 90;
+}
+
 export function dailyRollUpGoogleHealthData(input: {
   accessToken: string;
   dataType: GoogleHealthDataType;
@@ -281,7 +285,7 @@ export function dailyRollUpGoogleHealthData(input: {
       body: JSON.stringify({
         range: createDailyRollupRange(input.start, input.end),
         windowSizeDays: 1,
-        pageSize: 10000,
+        pageSize: dailyRollupPageSize(input.dataType),
         ...(input.pageToken ? { pageToken: input.pageToken } : {}),
       }),
     },
