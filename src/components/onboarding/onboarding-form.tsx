@@ -118,9 +118,9 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
           <SomaLogo />
         </Link>
         <div>
-          <span className="eyebrow">Set up your baseline</span>
-          <h1>Make Soma yours.</h1>
-          <p>These details help Soma estimate your needs and targets. You can change them later.</p>
+          <span className="eyebrow">Build your atlas</span>
+          <h1>Start with you.</h1>
+          <p>A few details shape your first personal baseline.</p>
         </div>
         <ol className="onboarding-steps">
           {steps.map((label, index) => (

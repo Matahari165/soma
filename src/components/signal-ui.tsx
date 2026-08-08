@@ -14,6 +14,13 @@ export function MetricStatus({ status }: { status: ScoreStatus }) {
   return <span className={`metric-status metric-status--${status}`}><Icon size={14} aria-hidden="true" />{statusLabels[status]}</span>;
 }
 
+function measuredLabel(value: string) {
+  if (value === "unknown") return "no measurement";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "measured recently";
+  return `measured ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+}
+
 export function DataFreshnessLabel({ freshness }: { freshness: DataFreshness }) {
   const label = freshness.state === "fresh"
     ? "Current signal"
@@ -22,8 +29,6 @@ export function DataFreshnessLabel({ freshness }: { freshness: DataFreshness }) 
       : freshness.state === "partial"
         ? "Partial signal"
         : "Signal unavailable";
-  const measured = freshness.measuredAt === "unknown"
-    ? "no measurement"
-    : `measured ${new Date(freshness.measuredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const measured = measuredLabel(freshness.measuredAt);
   return <span className={`data-freshness data-freshness--${freshness.state}`}><Clock3 size={13} aria-hidden="true" />{label} · {measured} · processed {freshness.syncedAt}</span>;
 }

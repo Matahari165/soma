@@ -19,12 +19,12 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const score = latestEffort?.score ?? null;
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.find((scoreDay) => scoreDay.score_date === day.metric_date)?.score ?? null })));
   const latestExercise = data.exercises.at(0);
-  return <HealthPageShell eyebrow="Latest complete activity" title="Activity" description="Movement, cardiovascular time and training load — explained against your recent habits." score={score} scoreLabel="Effort score">
+  return <HealthPageShell eyebrow="Movement field" title="Activity" description="Movement, training load, and the rhythm of your active days." score={score} scoreLabel="Effort score">
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest activity summary">
         <article className="health-primary-card health-primary-card--featured"><span>Steps</span><strong>{number(latest.steps)}</strong><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>
         <article className="health-primary-card"><span>Active calories</span><strong>{latest.active_energy_kcal === null ? "—" : `${number(latest.active_energy_kcal)} kcal`}</strong><p>Activity energy, excluding basal expenditure.</p></article>
-        <article className="health-primary-card"><span>Daily load</span><strong>{score ?? "—"}</strong><p>50% zones · 25% exercise · 15% energy · 10% steps.</p></article>
+        <article className="health-primary-card"><span>Daily load</span><strong>{score ?? "—"}</strong><p>Zones · exercise · movement</p></article>
         <article className="health-primary-card"><span>Weekly load</span><strong>{number(latest.weekly_load)}</strong><p>Sum of daily effort scores since Monday.</p></article>
         <article className="health-primary-card"><span>Recent / habitual</span><strong>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</strong><p>Last 7 days divided by average weekly load over up to 28 days.</p></article>
         <article className="health-primary-card"><span>Activity regularity</span><strong>{regularity.consistencyScore === null ? "—" : `${regularity.consistencyScore}%`}</strong><p>{regularity.activeDayRate === null ? "Baseline pending." : `${regularity.activeDayRate}% of measured days were active.`}</p></article>
@@ -70,6 +70,6 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         <div><dt>Vertical ratio</dt><dd>{latestExercise.verticalRatio === null ? "—" : `${latestExercise.verticalRatio.toFixed(1)}%`}</dd></div>
         <div><dt>Swim lengths</dt><dd>{number(latestExercise.swimLengths)}</dd></div>
       </dl></section>}
-    </> : <section className="health-panel health-empty">Connect Google Health and sync measured activity to build this page.</section>}
+    </> : <section className="health-panel health-empty"><Footprints size={24} aria-hidden="true" /><div><h2>Your movement field is empty</h2><p>Sync one measured activity day to begin.</p></div></section>}
   </HealthPageShell>;
 }

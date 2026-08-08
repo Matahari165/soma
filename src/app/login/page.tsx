@@ -18,28 +18,28 @@ export default function LoginPage() {
           <SomaLogo />
         </Link>
         <div className="auth-intro__copy">
-          <span className="eyebrow">Your health, made understandable</span>
-          <h1>See the signal.<br />Skip the searching.</h1>
-          <p>Soma brings sleep, recovery, activity, and coaching into one calm daily view.</p>
+          <span className="eyebrow">Welcome back</span>
+          <h1>Return to<br /> <em>your rhythm.</em></h1>
+          <p>Your atlas is ready when you are.</p>
         </div>
         <div className="auth-principles">
-          <span><Activity size={18} /> Personal baselines, not generic judgment</span>
-          <span><BrainCircuit size={18} /> Explanations grounded in your metrics</span>
-          <span><LockKeyhole size={18} /> Private by default, with explicit consent</span>
+          <span><Activity size={18} /> Personal baseline</span>
+          <span><BrainCircuit size={18} /> Clear context</span>
+          <span><LockKeyhole size={18} /> Private by default</span>
         </div>
       </section>
       <section className="auth-card-wrap">
         <div className="auth-card">
-          <span className="eyebrow">Welcome to Soma</span>
+          <span className="eyebrow">Soma account</span>
           <h2>Sign in to continue</h2>
-          <p>Use the Google account that will authorize your Google Health data.</p>
+          <p>Continue with the account linked to your atlas.</p>
           {configured ? (
             <GoogleSignInButton />
           ) : (
             <p className="configuration-note" role="alert">Google sign-in is not configured. Add the Supabase project values before using Soma.</p>
           )}
           <div className="auth-consent-note">
-            Google sign-in creates your Soma account. Google Health access is requested separately and can be disconnected at any time.
+            Health access is requested separately and can be removed at any time.
           </div>
           <p className="legal-copy">By continuing, you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</p>
         </div>

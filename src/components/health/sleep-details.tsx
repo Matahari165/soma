@@ -29,21 +29,21 @@ function timingRegularity(days: HealthMetricDay[], key: "bedtime" | "wake_time")
 }
 
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.findLast((day) => day.sleep_minutes !== null);
+  const latest = data.days.findLast((day) => day.sleep_minutes !== null && day.sleep_minutes > 0);
   const score = data.scores.findLast((item) => item.kind === "sleep" && item.score_date === latest?.metric_date)?.score ?? null;
   const target = latest?.sleep_need_minutes ?? null;
   const debt = latest?.daily_sleep_debt_minutes ?? null;
   const bedtimeRegularity = timingRegularity(data.days, "bedtime");
   const wakeRegularity = timingRegularity(data.days, "wake_time");
-  return <HealthPageShell eyebrow="Last complete night" title="Sleep" description="Duration, continuity, timing and stages — always compared with your personal history." score={score} scoreLabel="Sleep score">
+  return <HealthPageShell eyebrow="Night atlas" title="Sleep" description="How long, how well, and how consistently you slept." score={score} scoreLabel="Sleep score">
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest sleep summary">
         <article className="health-primary-card health-primary-card--featured"><span>Total sleep</span><strong>{latest.sleep_minutes === null ? "—" : duration(latest.sleep_minutes)}</strong><p>{target === null ? "Target is being estimated." : `Target ${duration(target)} · ${debt === null ? "gap unavailable" : debt > 0 ? `${duration(debt)} short` : `${duration(debt)} above target`}`}</p></article>
-        <article className="health-primary-card"><span>Efficiency</span><strong>{latest.sleep_efficiency === null ? "—" : `${latest.sleep_efficiency.toFixed(1)}%`}</strong><p>Time asleep divided by the measured sleep period.</p></article>
-        <article className="health-primary-card"><span>Time to sleep</span><strong>{latest.sleep_latency_minutes === null ? "—" : `${Math.round(latest.sleep_latency_minutes)} min`}</strong><p>Measured latency after going to bed.</p></article>
+        <article className="health-primary-card"><span>Efficiency</span><strong>{latest.sleep_efficiency === null ? "—" : `${latest.sleep_efficiency.toFixed(1)}%`}</strong><p>Share of the night spent asleep</p></article>
+        <article className="health-primary-card"><span>Fell asleep in</span><strong>{latest.sleep_latency_minutes === null ? "—" : `${Math.round(latest.sleep_latency_minutes)} min`}</strong><p>From bedtime to sleep</p></article>
         <article className="health-primary-card"><span>Awake</span><strong>{latest.sleep_awake_minutes === null ? "—" : `${Math.round(latest.sleep_awake_minutes)} min`}</strong><p>{latest.sleep_awake_percent === null ? "Relative share unavailable." : `${latest.sleep_awake_percent.toFixed(1)}% of the measured sleep period.`}</p></article>
         <article className="health-primary-card"><span>Fragmentation</span><strong>{latest.sleep_fragmentation === null ? "—" : `${latest.sleep_fragmentation.toFixed(1)}/h`}</strong><p>{latest.sleep_awakenings === null ? "Awakenings unavailable." : `${Math.round(latest.sleep_awakenings)} awake segments detected.`}</p></article>
-        <article className="health-primary-card"><span>Sleep debt</span><strong>{latest.cumulative_sleep_debt_minutes === null ? "—" : duration(latest.cumulative_sleep_debt_minutes)}</strong><p>Rolling 14-day debt; extra sleep repays recent deficits.</p></article>
+        <article className="health-primary-card"><span>Sleep debt</span><strong>{latest.cumulative_sleep_debt_minutes === null ? "—" : duration(latest.cumulative_sleep_debt_minutes)}</strong><p>Rolling 14-day gap</p></article>
       </section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest night</span><h2>Sleep architecture</h2></div><span className="quality-pill">Measured stages</span></div><SleepStageTimeline stages={data.latestSleepStages} /><SleepStageDistribution stages={[
@@ -67,6 +67,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" description="Awake segments per hour of measured sleep." />
         <MetricTrendCard label="Cumulative debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" description="Rolling 14-day gap after accounting for sleep surplus." format={(value) => duration(value)} />
       </section>
-    </> : <section className="health-panel health-empty">Connect Google Health and sync complete sleep sessions to build this page.</section>}
+    </> : <section className="health-panel health-empty"><MoonStar size={24} aria-hidden="true" /><div><h2>Your night atlas is waiting</h2><p>Sync one complete sleep session to begin.</p></div></section>}
   </HealthPageShell>;
 }

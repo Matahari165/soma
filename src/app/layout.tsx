@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Archivo, Newsreader } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
 import { SkipLink } from "@/components/skip-link";
+import { ThemeInitializer } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 
@@ -13,28 +14,30 @@ import "./health-analytics.css";
 import "./vital-signal.css";
 import "./vital-signal-flows.css";
 import "./vital-signal-responsive.css";
+import "./living-atlas.css";
 
-const plexSans = IBM_Plex_Sans({
+const archivo = Archivo({
   subsets: ["latin"],
   weight: "variable",
   display: "swap",
-  variable: "--font-soma-sans",
+  variable: "--font-atlas-sans",
 });
 
-const plexMono = IBM_Plex_Mono({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "variable",
+  style: ["normal", "italic"],
   display: "swap",
-  variable: "--font-soma-mono",
+  variable: "--font-atlas-serif",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "SOMA — Vital Signal",
+    default: "Soma — Living Atlas",
     template: "%s · Soma",
   },
-  applicationName: "SOMA — Vital Signal",
-  description: "A precise personal reading of sleep, recovery, activity, and effort signals.",
+  applicationName: "Soma — Living Atlas",
+  description: "Your sleep, recovery, movement, and training patterns in one personal atlas.",
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
   },
@@ -43,8 +46,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "dark",
-  themeColor: "#080D0B",
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F3F0E7" },
+    { media: "(prefers-color-scheme: dark)", color: "#111714" },
+  ],
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -55,8 +61,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${plexSans.variable} ${plexMono.variable}`} lang="en" data-scroll-behavior="smooth">
+    <html className={`${archivo.variable} ${newsreader.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
+        <ThemeInitializer />
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo Data · Nothing is sent or saved</span></div>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>

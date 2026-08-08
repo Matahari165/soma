@@ -70,10 +70,10 @@ export function CoachWorkspace() {
       <button className="coach-history-toggle" type="button" onClick={() => setHistoryOpen((current) => !current)} aria-expanded={historyOpen} aria-controls="coach-conversation-history">{historyOpen ? <X size={17} /> : <History size={17} />}{historyOpen ? "Close history" : "History"}</button>
       <button onClick={newConversation} type="button"><MessageSquarePlus size={17} />New chat</button>
       <nav id="coach-conversation-history" aria-label="Conversation history"><span>Recent</span>{threads.length ? threads.map((thread) => <button className={selectedId === thread.id ? "is-active" : ""} key={thread.id} onClick={() => openConversation(thread.id)} type="button">{thread.title}</button>) : <p>No saved conversations yet.</p>}</nav>
-      <p>Coach uses summarized Soma metrics, not your raw provider payloads.</p>
+      <p>Coach reads summaries, never raw provider payloads.</p>
     </aside>
     <section className="coach-workspace" aria-label="Soma Coach conversation">
-      <header><div><strong>Soma Coach</strong><span>Answers grounded in your data</span></div><span className="quality-pill">Confirm before changes</span></header>
+      <header><div><strong>Soma Coach</strong><span>Your atlas, in conversation</span></div><span className="quality-pill">You approve changes</span></header>
       {loading ? <div className="coach-loading" role="status"><LoaderCircle className="spin" />Loading conversation…</div> : error ? <div className="load-error" role="alert"><AlertCircle /><h2>Coach could not load</h2><p>{error}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Try again</button></div> : <CoachChat key={conversationVersion} initialMessages={messages} initialThreadId={selectedId} onThreadCreated={registerThread} />}
     </section>
   </div>;

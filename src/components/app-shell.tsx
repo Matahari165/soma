@@ -21,6 +21,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
 import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { SomaUser } from "@/lib/auth";
 
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
@@ -91,7 +92,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </Link>
 
         <nav className="sidebar-nav">
-          <p className="nav-label">Overview</p>
+          <p className="nav-label">Your atlas</p>
           {navigation.map(({ label, href, icon: Icon }) => (
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
@@ -114,13 +115,14 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             <Settings size={19} strokeWidth={1.8} />
             <span>Settings</span>
           </Link>
+          <ThemeToggle />
         </div>
 
         <Link className="profile-card" href="/settings" aria-label={`Open settings for ${displayName}`}>
           <span className="avatar">{initials}</span>
           <span>
             <strong>{displayName}</strong>
-            <small>Personal account</small>
+            <small>Your account</small>
           </span>
           <ChevronRight size={17} />
         </Link>
@@ -131,6 +133,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <SomaLogo compact />
         </Link>
         <div className="mobile-header__actions">
+          <ThemeToggle compact />
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
             <SomaSymbol className="coach-symbol" />
           </button>}

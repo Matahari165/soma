@@ -14,8 +14,8 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
     <article className="widget">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">Weekly target</span>
-          <h3>Effort balance</h3>
+          <span className="eyebrow">Seven days</span>
+          <h3>Effort range</h3>
         </div>
         <span className="widget-icon"><TrendingUp size={18} /></span>
       </div>
@@ -37,7 +37,7 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
             </div>
           ))}
         </div>
-        <p className="widget-note">{hasTarget ? remaining ? `${remaining} points to your weekly minimum with ${activeDaysRemaining} days remaining.` : "You have reached your weekly minimum. Extra effort is optional." : "Your weekly target will appear once Soma has enough activity data."}</p>
+        <p className="widget-note">{hasTarget ? remaining ? `${remaining} points left · ${activeDaysRemaining} days` : "Weekly range reached" : "Target building"}</p>
       </> : <WidgetEmpty title="No activity data yet" description="Sync Google Health to build your weekly effort view." />}
     </article>
   );
@@ -94,7 +94,7 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
     <article className="widget widget--regularity">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">Last seven nights</span>
+          <span className="eyebrow">Night rhythm</span>
           <h3>Sleep regularity</h3>
         </div>
         <span className="regularity-score" aria-label={hasConsistency ? `${data.consistency} percent regularity` : "Regularity baseline pending"}>{hasConsistency ? `${data.consistency}%` : "—"}</span>
@@ -104,7 +104,7 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
         <span className="sleep-window__line" aria-hidden="true" />
         <div><Clock size={17} /><span>Average wake time</span><strong>{data.wakeTime}</strong></div>
       </div>
-      <p className="widget-note"><Info size={14} /> {hasConsistency ? "Regularity compares your sleep timing across recent nights." : "At least three complete nights are needed for a regularity score."}</p></> : <WidgetEmpty title="Sleep baseline pending" description="Sync at least three complete nights to measure your regularity." />}
+      <p className="widget-note"><Info size={14} /> {hasConsistency ? "Based on your recent sleep timing" : "At least three complete nights are needed."}</p></> : <WidgetEmpty title="Sleep baseline pending" description="Three complete nights are needed." />}
     </article>
   );
 }

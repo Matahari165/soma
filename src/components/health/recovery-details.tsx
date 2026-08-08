@@ -7,16 +7,16 @@ import { MetricTrendCard } from "./metric-trend-card";
 const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.findLast((day) => day.hrv_ms !== null || day.resting_heart_rate !== null);
+  const latest = data.days.findLast((day) => (day.hrv_ms !== null && day.hrv_ms > 0) || (day.resting_heart_rate !== null && day.resting_heart_rate > 0));
   const score = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date)?.score ?? null;
   const heartRates = data.heartRateSamples.map((sample) => sample.bpm);
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
   const heartAverage = heartRates.length ? heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length : null;
-  return <HealthPageShell eyebrow="Latest complete physiology" title="Recovery" description="See what changed, how durable it looks, and how today compares with your own 7, 30 and 90-day history." score={score} scoreLabel="Recovery score">
+  return <HealthPageShell eyebrow="Body reserve" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} scoreLabel="Recovery score">
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
-        <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Daily RMSSD compared with your personal baseline.</p></article>
+        <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Against your baseline</p></article>
         <article className="health-primary-card"><span>Resting heart rate</span><strong>{latest.resting_heart_rate === null ? "—" : `${Math.round(latest.resting_heart_rate)} bpm`}</strong><p>Lower or higher is interpreted relative to your own history.</p></article>
         <article className="health-primary-card"><span>Nightly SpO₂</span><strong>{latest.oxygen_saturation === null ? "—" : `${latest.oxygen_saturation.toFixed(1)}%`}</strong><p>{latest.oxygen_saturation_lower === null || latest.oxygen_saturation_upper === null ? "Nightly range unavailable." : `${latest.oxygen_saturation_lower.toFixed(1)}–${latest.oxygen_saturation_upper.toFixed(1)}% reported range.`}</p></article>
         <article className="health-primary-card"><span>Respiration</span><strong>{latest.respiratory_rate === null ? "—" : `${latest.respiratory_rate.toFixed(1)}/min`}</strong><p>Nightly rate compared with recent readings.</p></article>
@@ -39,6 +39,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Core temperature" points={points(data.days, "core_body_temperature_celsius")} unit="°C" direction="context_only" description="A separately recorded core measurement, not the wearable skin-temperature delta." />
         <MetricTrendCard label="Blood glucose" points={points(data.days, "blood_glucose_mg_dl")} unit="mg/dL" direction="context_only" description="Shown as recorded context only, without diagnostic interpretation." />
       </section>
-    </> : <section className="health-panel health-empty">Wear your device overnight and sync Google Health to build your personal baseline.</section>}
+    </> : <section className="health-panel health-empty"><div><h2>Recovery needs an overnight signal</h2><p>Sync HRV or resting heart rate to begin.</p></div></section>}
   </HealthPageShell>;
 }

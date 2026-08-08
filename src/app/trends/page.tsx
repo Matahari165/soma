@@ -17,15 +17,41 @@ export default async function TrendsPage() {
   const [correlations, analytics] = await Promise.all([getCorrelations(), getHealthAnalytics()]);
   const metricPoints = (key: keyof HealthMetricDay) => analytics.days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
   const scorePoints = (kind: "sleep" | "recovery" | "effort") => analytics.scores.filter((score) => score.kind === kind).map((score) => ({ date: score.score_date, value: score.score }));
-  return <div className="analytics-page" id="main-page-content"><header className="analytics-hero"><div><span className="eyebrow">Patterns over time</span><h1>Trends</h1><p>See what changed against your previous 7, 30 and 90 complete days before exploring relationships.</p></div><div className="correlation-key" aria-label="How to read trends"><strong>Personal context</strong><span>Values use your own history</span><span>Missing days are never zero</span></div></header>
+  const hasData = (points: Array<{ value: number | null }>) => points.some((point) => point.value !== null);
+
+  const sleepScores = scorePoints("sleep");
+  const recoveryScores = scorePoints("recovery");
+  const effortScores = scorePoints("effort");
+  const hrvPoints = metricPoints("hrv_ms");
+  const restingHeartRatePoints = metricPoints("resting_heart_rate");
+  const stepPoints = metricPoints("steps");
+
+  const trendCards = [
+    hasData(sleepScores) ? <MetricTrendCard key="sleep" label="Sleep score" points={sleepScores} unit="/100" direction="higher_is_better" description="Duration, efficiency and timing regularity." /> : null,
+    hasData(recoveryScores) ? <MetricTrendCard key="recovery" label="Recovery score" points={recoveryScores} unit="/100" direction="higher_is_better" description="HRV, resting heart rate and sleep support." /> : null,
+    hasData(effortScores) ? <MetricTrendCard key="effort" label="Effort score" points={effortScores} unit="/100" direction="context_only" description="Completed load beside your recommended range." /> : null,
+    hasData(hrvPoints) ? <MetricTrendCard key="hrv" label="HRV" points={hrvPoints} unit="ms" direction="higher_is_better" description="Daily RMSSD against your personal range." /> : null,
+    hasData(restingHeartRatePoints) ? <MetricTrendCard key="rhr" label="Resting heart rate" points={restingHeartRatePoints} unit="bpm" direction="lower_is_better" description="Changes relative to your baseline." /> : null,
+    hasData(stepPoints) ? <MetricTrendCard key="steps" label="Steps" points={stepPoints} direction="higher_is_better" description="Movement across measured days." format={(value) => Math.round(value).toLocaleString("en-US")} /> : null,
+  ].filter((card) => card !== null);
+  const hiddenMetrics = 6 - trendCards.length;
+
+  return <div className="analytics-page" id="main-page-content">
+    <header className="analytics-hero">
+      <div><span className="eyebrow">Your timeline</span><h1>Trends</h1><p>Changes that matter, measured against your own history.</p></div>
+      <div className="correlation-key" aria-label="How to read trends"><strong>Personal baseline</strong><span>Missing days stay missing</span></div>
+    </header>
+
     <section className="metric-trend-grid trends-overview" aria-label="Personal trend overview">
-      <MetricTrendCard label="Sleep score" points={scorePoints("sleep")} unit="/100" direction="higher_is_better" description="Duration, efficiency and timing regularity." />
-      <MetricTrendCard label="Recovery score" points={scorePoints("recovery")} unit="/100" direction="higher_is_better" description="HRV, resting heart rate and sleep support." />
-      <MetricTrendCard label="Effort score" points={scorePoints("effort")} unit="/100" direction="context_only" description="Completed load is interpreted beside recovery and your target." />
-      <MetricTrendCard label="HRV" points={metricPoints("hrv_ms")} unit="ms" direction="higher_is_better" description="Daily RMSSD against your personal range." />
-      <MetricTrendCard label="Resting heart rate" points={metricPoints("resting_heart_rate")} unit="bpm" direction="lower_is_better" description="Changes are interpreted relative to your baseline." />
-      <MetricTrendCard label="Steps" points={metricPoints("steps")} direction="higher_is_better" description="Measured movement across complete activity days." format={(value) => Math.round(value).toLocaleString("en-US")} />
+      {trendCards}
+      {hiddenMetrics > 0 && <article className="metric-trend-card metric-trend-card--locked"><strong>{hiddenMetrics}</strong><h2>more patterns will unlock</h2><p>Sleep and overnight measurements are still incomplete.</p></article>}
     </section>
-    <div className="health-section-heading trends-heading"><div><span className="eyebrow">Associations</span><h2>What moves together</h2></div></div>
-    {correlations.length ? <section className="correlation-grid" aria-label="Your correlations">{correlations.map((item) => { const coefficient = item.coefficient === null ? null : Number(item.coefficient); return <article className="correlation-card" key={item.id}><div><span className="quality-pill">{String(item.quality_status).replaceAll("_", " ")}</span><span className="correlation-value" aria-label={relationshipLabel(coefficient)}>{coefficient === null ? "—" : `${coefficient > 0 ? "+" : ""}${coefficient.toFixed(2)}`}</span></div><span className="correlation-strength">{relationshipLabel(coefficient)}</span><h2>{String(item.variable_x).replaceAll("_", " ")} ↔ {String(item.variable_y).replaceAll("_", " ")}</h2><p>{item.explanation}</p><footer><span>Spearman</span><span>{item.sample_size} paired days</span><span>Lag {item.lag_days} day{item.lag_days === 1 ? "" : "s"}</span></footer></article>; })}</section> : <section className="analytics-panel empty-state"><h2>No reliable patterns yet</h2><p>Keep syncing daily. Soma will show relationships after enough paired days are available.</p></section>}<p className="medical-note">Correlation does not prove causation. Use these patterns as questions to explore, not diagnoses.</p></div>;
+
+    <div className="health-section-heading trends-heading"><div><span className="eyebrow">Relationships</span><h2>What moves together</h2></div></div>
+    {correlations.length ? <section className="correlation-grid" aria-label="Your correlations">{correlations.map((item) => {
+      const coefficient = item.coefficient === null ? null : Number(item.coefficient);
+      return <article className="correlation-card" key={item.id}><div><span className="quality-pill">{String(item.quality_status).replaceAll("_", " ")}</span><span className="correlation-value" aria-label={relationshipLabel(coefficient)}>{coefficient === null ? "—" : `${coefficient > 0 ? "+" : ""}${coefficient.toFixed(2)}`}</span></div><span className="correlation-strength">{relationshipLabel(coefficient)}</span><h2>{String(item.variable_x).replaceAll("_", " ")} ↔ {String(item.variable_y).replaceAll("_", " ")}</h2><p>{item.explanation}</p><footer><span>{item.sample_size} paired days</span><span>Lag {item.lag_days} day{item.lag_days === 1 ? "" : "s"}</span></footer></article>;
+    })}</section> : <section className="analytics-panel empty-state"><h2>No relationships yet</h2><p>Fourteen paired days unlock this view.</p></section>}
+    <p className="medical-note">A relationship is a clue, not a cause.</p>
+  </div>;
 }

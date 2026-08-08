@@ -9,9 +9,13 @@ export function LineTrendChart({ values, label, target }: { values: Array<number
   const x = (index: number) => 8 + (index / Math.max(values.length - 1, 1)) * 284;
   const y = (value: number) => 92 - ((value - min) / range) * 76;
   const points = available.map((point) => `${x(point.index)},${y(point.value)}`).join(" ");
+  const areaPoints = `8,92 ${points} 292,92`;
+  const average = available.reduce((sum, point) => sum + point.value, 0) / available.length;
   return <svg className="health-line-chart" viewBox="0 0 300 104" role="img" aria-label={`${label} trend across ${available.length} complete readings`}>
     <line x1="8" y1="92" x2="292" y2="92" className="health-chart-grid" />
+    <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Average ${average.toFixed(1)}`}</title></line>
     {target !== null && target !== undefined && <line x1="8" y1={y(target)} x2="292" y2={y(target)} className="health-chart-target"><title>{`Target ${target}`}</title></line>}
+    <polygon points={areaPoints} className="health-chart-area" />
     <polyline points={points} className="health-chart-line" />
     {available.map((point, index) => <circle key={`${point.index}-${point.value}`} cx={x(point.index)} cy={y(point.value)} r={index === available.length - 1 ? 3.5 : 1.8} className="health-chart-point"><title>{`${point.value.toFixed(1)}`}</title></circle>)}
   </svg>;
