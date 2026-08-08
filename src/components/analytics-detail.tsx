@@ -1,5 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, CircleHelp, Clock3 } from "lucide-react";
 
+import { ScoreRing } from "@/components/dashboard/score-ring";
+import type { ScoreKind } from "@/domain/health";
 import type { DetailPoint } from "@/services/details";
 
 type Stat = { label: string; value: string; note: string };
@@ -8,11 +10,15 @@ export function AnalyticsDetail({ eyebrow, title, description, points, stats, pr
   const latest = points.at(-1)?.score ?? null;
   const previous = points.at(-2)?.score ?? null;
   const delta = latest !== null && previous !== null ? latest - previous : null;
+  const kind: ScoreKind = title === "Sleep" ? "sleep" : title === "Recovery" ? "recovery" : "effort";
   return (
     <div className="analytics-page" id="main-page-content">
       <header className="analytics-hero">
         <div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>
-        <div className="analytics-score"><span>Latest score</span><strong>{latest ?? "—"}<small>/100</small></strong>{delta !== null && <p className={delta >= 0 ? "is-up" : "is-down"}>{delta >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}{Math.abs(delta)} vs. previous day</p>}</div>
+        <div className={`analytics-score analytics-score--${kind}`}>
+          <div><span>Latest score</span>{delta !== null && <p className={delta >= 0 ? "is-up" : "is-down"}>{delta >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}{Math.abs(delta)} vs. previous day</p>}</div>
+          <ScoreRing kind={kind} label={title} score={latest} size="compact" />
+        </div>
       </header>
       <section className="analytics-stats" aria-label={`${title} highlights`}>{stats.map((stat) => <article key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><p>{stat.note}</p></article>)}</section>
       <section className="analytics-panel">

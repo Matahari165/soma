@@ -85,26 +85,28 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
 
   return (
     <div className="dashboard-page">
-      <div className="page-header">
-        <div>
-          <p className="page-date">{data.dateLabel}</p>
-          <h1>{data.greeting}, {data.greetingName}.</h1>
-          <p className="page-subtitle">Here is what your body is telling you today.</p>
+      <section className="dashboard-hero" aria-labelledby="today-heading">
+        <div className="page-header">
+          <div>
+            <p className="page-date">{data.dateLabel}</p>
+            <h1 id="today-heading">{data.greeting}, {data.greetingName}.</h1>
+            <p className="page-subtitle">Your body, at a glance.</p>
+          </div>
+          <div className="page-actions">
+            {demoMode && <span className="demo-badge">Demo data</span>}
+            <button className="secondary-button" type="button" onClick={() => setCustomizing(true)}><Settings2 size={17} /> Customize</button>
+          </div>
         </div>
-        <div className="page-actions">
-          {demoMode && <span className="demo-badge">Demo data</span>}
-          <button className="secondary-button" type="button" onClick={() => setCustomizing(true)}><Settings2 size={17} /> Customize</button>
+
+        <div className="sync-banner" role="status">
+          <span className="sync-dot" aria-hidden="true" />
+          <span>All available data processed</span>
+          <span className="sync-time"><RefreshCw size={13} /> Last sync 1:45 PM</span>
         </div>
-      </div>
 
-      <div className="sync-banner" role="status">
-        <span className="sync-dot" aria-hidden="true" />
-        <span>All available data processed</span>
-        <span className="sync-time"><RefreshCw size={13} /> Last sync 1:45 PM</span>
-      </div>
-
-      <section className="primary-metrics" aria-label="Today's primary health scores">
-        {data.scores.map((score) => <MetricCard metric={score} key={score.kind} />)}
+        <div className="primary-metrics" aria-label="Today's primary health scores">
+          {data.scores.map((score) => <MetricCard metric={score} key={score.kind} />)}
+        </div>
       </section>
 
       <section className="soma-summary" aria-labelledby="soma-summary-title">
