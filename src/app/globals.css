@@ -318,19 +318,6 @@ textarea:focus-visible {
   gap: 10px;
 }
 
-.demo-badge {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  border: 1px solid #dbcfae;
-  border-radius: 999px;
-  background: #fffaf0;
-  color: #73591c;
-  padding: 0 11px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .secondary-button,
 .icon-button,
 .summary-button,
@@ -770,7 +757,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .page-actions .demo-badge { order: 1; }
   .section-heading h2 { font-size: 18px; }
   .insight { padding: 16px 13px; }
 }
@@ -848,7 +834,6 @@ textarea:focus-visible {
 
 .dashboard-hero .page-date { color: #8fa19a; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
 .dashboard-hero .page-header h1 { color: #f7faf8; font-size: clamp(29px, 3vw, 44px); font-weight: 620; }
-.dashboard-hero .demo-badge { border-color: rgb(240 162 95 / 28%); background: rgb(240 162 95 / 10%); color: #ffc28d; }
 .dashboard-hero .secondary-button { border-color: rgb(255 255 255 / 12%); background: rgb(255 255 255 / 7%); color: #dce5e1; box-shadow: none; }
 .dashboard-hero .secondary-button:hover { border-color: rgb(255 255 255 / 24%); background: rgb(255 255 255 / 11%); color: white; }
 
@@ -958,7 +943,6 @@ textarea:focus-visible {
   .dashboard-hero .page-date { margin-bottom: 2px; font-size: 9px; }
   .dashboard-hero .page-header h1 { font-size: 24px; }
   .dashboard-hero .page-actions { width: auto; margin-top: 0; }
-  .dashboard-hero .demo-badge { min-height: 28px; }
   .dashboard-hero .primary-metrics {
     grid-template-columns: repeat(3, 128px);
     gap: clamp(30px, 8vw, 64px);

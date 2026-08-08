@@ -16,10 +16,10 @@ Production is ready only after these checks use a deployed URL and a real accoun
 
 ## Deployment
 
-- Use Vercel Hobby for the initial personal, non-commercial beta.
+- Use Vercel Hobby for the personal, non-commercial production application.
 - Use Supabase Free while storage and database limits are sufficient.
-- Keep preview deployments in demo mode unless they use an isolated Supabase project.
-- Apply database migrations before switching a production build to live mode.
+- Preview deployments must use an isolated Supabase project or remain unavailable to users.
+- Apply database migrations before deploying application code that depends on them.
 - Keep a copy of the previous deployment and record the migration filename before each release.
 
 ## Background synchronization
@@ -35,7 +35,7 @@ Google Health webhooks are the primary freshness signal. Supabase Cron calls `/a
 
 ## Monitoring
 
-Review daily during the private beta:
+Review daily in production:
 
 - failed or stuck `sync_jobs`;
 - failed `webhook_events`;
@@ -48,7 +48,7 @@ Do not log raw health payloads, authorization headers, cookies, or OAuth tokens.
 
 ## Incident procedure
 
-1. Stop the affected integration or switch the deployment back to demo mode.
+1. Stop the affected integration or temporarily disable the affected route.
 2. Revoke exposed credentials at Google, Supabase, OpenAI, or Vercel.
 3. Preserve sanitized logs and identify affected user IDs and time range.
 4. Restore service with rotated secrets and a reviewed patch.
@@ -60,7 +60,7 @@ Do not log raw health payloads, authorization headers, cookies, or OAuth tokens.
 - Soma Coach runs only on user request; deterministic briefs do not require AI.
 - Coach sends daily summaries, not raw provider payloads.
 - Watch Supabase storage before enabling all-history imports for many users.
-- Set provider usage alerts before public beta.
+- Set provider usage alerts before a public launch.
 - OpenAI is usage-based and is not assumed to be free.
 
 ## Known external limits

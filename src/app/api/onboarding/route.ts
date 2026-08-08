@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
 import { onboardingSchema } from "@/domain/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -19,10 +18,6 @@ export async function POST(request: Request) {
       { error: "Please check the onboarding fields.", fields: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
-  }
-
-  if (getDataMode() === "demo") {
-    return NextResponse.json({ ok: true, mode: "demo" });
   }
 
   const input = parsed.data;
@@ -73,5 +68,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Goals could not be saved." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, mode: "live" });
+  return NextResponse.json({ ok: true });
 }

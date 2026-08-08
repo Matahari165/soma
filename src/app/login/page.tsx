@@ -3,12 +3,11 @@ import { Activity, LockKeyhole, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-import { getDataMode, hasSupabaseConfig } from "@/lib/env";
+import { hasSupabaseConfig } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default function LoginPage() {
-  const demoMode = getDataMode() === "demo";
   const configured = hasSupabaseConfig();
 
   return (
@@ -34,13 +33,10 @@ export default function LoginPage() {
           <span className="eyebrow">Welcome to Soma</span>
           <h2>Sign in to continue</h2>
           <p>Use the Google account that will authorize your Google Health data.</p>
-          {configured && !demoMode ? (
+          {configured ? (
             <GoogleSignInButton />
           ) : (
-            <>
-              <Link className="google-button" href="/onboarding"><Sparkles size={19} /> Continue in demo mode</Link>
-              <p className="configuration-note">Google sign-in activates when Supabase keys and live mode are configured.</p>
-            </>
+            <p className="configuration-note" role="alert">Google sign-in is not configured. Add the Supabase project values before using Soma.</p>
           )}
           <div className="auth-consent-note">
             Google sign-in creates your Soma account. Google Health access is requested separately and can be disconnected at any time.

@@ -2,7 +2,7 @@
 
 > Status: approved foundation, implementation started 7 August 2026
 > Product language: English only
-> Initial audience: personal beta, built as a multi-user product from day one
+> Initial audience: personal production use, built as a multi-user product from day one
 
 ## 1. Product vision
 
@@ -374,7 +374,7 @@ Google endpoints impose range and rate limits. The importer must paginate, use b
 
 ### 10.2 Why this is the initial low-cost choice
 
-Supabase currently provides a $0 tier with PostgreSQL, social OAuth, 500 MB of database space, and 1 GB of file storage. Vercel provides a free Hobby plan for personal non-commercial projects. This is sufficient for development and an initial personal beta.
+Supabase currently provides a $0 tier with PostgreSQL, social OAuth, 500 MB of database space, and 1 GB of file storage. Vercel provides a free Hobby plan for personal non-commercial projects. This is sufficient for development and initial personal production use.
 
 It is not a promise that a multi-user health product will remain free. Dense time-series health data grows quickly. Before opening Soma broadly, estimate storage from real imports and move to a paid plan or a dedicated time-series/archive design when needed.
 
@@ -440,7 +440,7 @@ All user-owned tables include `user_id`, timestamps, and database row-level secu
 - Keep recent detailed series readily queryable.
 - Preserve older detailed series in compressed, user-partitioned archives if database size becomes a constraint.
 - Never delete or downsample the only copy silently.
-- Provide export and deletion controls before public beta.
+- Provide export and deletion controls before a public launch.
 
 ## 12. Security and privacy baseline
 
@@ -516,7 +516,7 @@ Deliverables:
 - Next.js/TypeScript project and quality tooling.
 - English design tokens and responsive application shell.
 - Desktop sidebar and mobile bottom navigation.
-- Today dashboard with the three fixed score cards, Soma summary, insights, and supporting widgets using explicit demo data.
+- Today dashboard with the three fixed score cards, Soma summary, insights, and honest empty states before the first import.
 - Source/freshness/data-quality states represented in the UI model.
 - Initial domain types and score contracts.
 - Supabase client boundaries and environment template.
@@ -529,7 +529,7 @@ Exit criteria:
 - Works at 375 px and 1440 px without horizontal overflow.
 - All visible product copy is English.
 - Keyboard navigation and focus indicators work.
-- Demo and real-data modes cannot be confused.
+- No illustrative health values are shipped in the user-facing application.
 - `lint`, type checking, tests, and production build pass.
 
 ### Phase 2 — Authentication and onboarding
@@ -560,7 +560,7 @@ Deliverables:
 - Background full-history import.
 - Webhook receiver and reconciliation job.
 - Normalization, deduplication, checkpoints, and sync status.
-- Real data replacing demo data behind the same contracts.
+- Real data filling the existing empty-state contracts.
 
 Exit criteria:
 
@@ -662,9 +662,9 @@ Mock tests are necessary but never sufficient proof that OAuth, webhooks, or rea
 
 ## 17. Environments and deployment
 
-- `local`: mock data and local development.
+- `local`: local development against an isolated Supabase project.
 - `preview`: one Vercel deployment per branch or pull request, isolated from production data.
-- `production`: personal beta first, with live credentials and explicit access control.
+- `production`: personal application with live credentials and explicit access control.
 
 Environment variables are documented in `.env.example`. Secrets are configured only in local untracked files and provider dashboards.
 
@@ -698,7 +698,7 @@ Pricing and free-tier limits can change and must be rechecked before launch.
 |---|---|
 | Google Health scopes or approval block access | Validate one real account early in Phase 3; keep fixtures and provider boundary isolated |
 | Wearable sync is not truly real time | Show measurement and sync freshness; use webhooks plus reconciliation; avoid “live” claims |
-| Free database fills with dense heart-rate data | Measure bytes per imported day; partition and compress older detailed records; budget paid storage before multi-user beta |
+| Free database fills with dense heart-rate data | Measure bytes per imported day; partition and compress older detailed records; budget paid storage before a multi-user release |
 | Scores appear medically authoritative | Explain inputs and uncertainty; version formulas; withhold low-quality scores; use wellness language |
 | AI hallucinates causes or advice | Ground it in structured facts, label interpretation, restrict tools, and provide deterministic fallbacks |
 | Too many alerts create anxiety | Require magnitude, duration, confidence, and prioritization; support dismiss and feedback |

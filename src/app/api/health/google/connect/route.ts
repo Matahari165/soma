@@ -5,13 +5,10 @@ import { NextResponse } from "next/server";
 import { buildGoogleHealthAuthorizationUrl } from "@/integrations/google-health/client";
 import { getCurrentUser } from "@/lib/auth";
 import { createPkcePair } from "@/lib/crypto";
-import { getDataMode } from "@/lib/env";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
-  if (getDataMode() === "demo") return NextResponse.redirect(new URL("/settings?health=demo", request.url));
-
   const source = new URL(request.url).searchParams.get("source") === "onboarding" ? "onboarding" : "settings";
   const state = randomBytes(32).toString("base64url");
   const { verifier, challenge } = createPkcePair();

@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: "Set up Soma" };
 
 export default async function OnboardingPage() {
   const user = await requireCurrentUser();
-  return <OnboardingForm demoMode={user.isDemo} initialDisplayName={user.displayName} />;
+  return <OnboardingForm initialDisplayName={user.displayName} />;
 }

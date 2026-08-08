@@ -6,12 +6,7 @@ The product and architecture are defined in [DEVELOPMENT_PLAN.md](./DEVELOPMENT_
 
 ## Product status
 
-All planned product modules are implemented behind two explicit modes:
-
-- `demo`: a complete local experience with labelled illustrative data and no external account required;
-- `live`: multi-user Google authentication, Google Health ingestion, personal scores, alerts, correlations, Soma Coach, workout persistence, export, and deletion.
-
-Live provider verification still requires your own Supabase, Google Health, OpenAI, and deployment credentials. Mock tests cannot prove a real Fitbit synchronization.
+Soma is a live, account-based application. Google authentication, Google Health ingestion, personal scores, alerts, correlations, Soma Coach, workout persistence, export, and deletion all use the signed-in user's real data. The product contains no sample account or fabricated health measurements.
 
 ## Local setup
 
@@ -36,11 +31,7 @@ pnpm verify
 
 This runs linting, TypeScript checks, unit tests, and a production build.
 
-## Data mode
-
-`NEXT_PUBLIC_SOMA_DATA_MODE=demo` is intentionally visible in the interface. Demo values must never be presented as real user measurements.
-
-## Live setup
+## Production setup
 
 1. Create a Supabase project and configure Google as its only sign-in provider.
 2. Apply both files in `supabase/migrations` in filename order.
@@ -50,10 +41,9 @@ This runs linting, TypeScript checks, unit tests, and a production build.
    - Supabase redirect allow list: `https://YOUR-DOMAIN/auth/callback`
    - Google Health OAuth: `https://YOUR-DOMAIN/api/health/google/callback`
    - Google Health webhook: `https://YOUR-DOMAIN/api/health/webhook`
-5. Add the deployed home, privacy, and terms URLs to the Google OAuth consent screen, then add the private-beta account as a test user.
+5. Add the deployed home, privacy, and terms URLs to Google Auth Platform, publish the OAuth audience to production, and complete the applicable branding and data-access verification.
 6. Create a Google Health subscriber with automatic subscriptions for the supported data types. Configure its `endpointAuthorization.secret` to exactly match `GOOGLE_HEALTH_WEBHOOK_SECRET`; the value should include its scheme, for example `Bearer …`.
-7. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. This uses Supabase Cron every five minutes. The included Vercel Hobby cron is a free daily safety net because Hobby does not support frequent schedules.
-8. Change `NEXT_PUBLIC_SOMA_DATA_MODE` to `live` only after the real-account checks in [OPERATIONS.md](./OPERATIONS.md) pass.
+7. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. This uses Supabase Cron every minute. The included Vercel Hobby cron is a free daily safety net because Hobby does not support frequent schedules.
 
 ## Architecture
 

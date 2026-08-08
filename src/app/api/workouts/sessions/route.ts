@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({ programId: z.string().uuid(), name: z.string().min(1).max(120) });
@@ -12,7 +11,6 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Session is invalid." }, { status: 400 });
-  if (getDataMode() === "demo") return NextResponse.json({ id: crypto.randomUUID(), status: "active" }, { status: 201 });
   const admin = createSupabaseAdminClient();
   const { data: program } = await admin.from("workout_programs").select("id,workout_program_exercises(exercise_id,position,target_sets,target_reps_min,rest_seconds)").eq("id", parsed.data.programId).eq("user_id", user.id).single();
   if (!program) return NextResponse.json({ error: "Program not found." }, { status: 404 });

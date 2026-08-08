@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 
 import { SettingsConsole } from "@/components/settings-console";
 import { getGoogleHealthNotice } from "@/integrations/google-health/status";
-import { getDataMode } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ health?: string | string[] }> }) {
   const params = await searchParams;
   const healthStatus = Array.isArray(params.health) ? params.health[0] : params.health;
-  return <SettingsConsole demoMode={getDataMode() === "demo"} initialHealthNotice={getGoogleHealthNotice(healthStatus)} />;
+  return <SettingsConsole initialHealthNotice={getGoogleHealthNotice(healthStatus)} />;
 }

@@ -24,10 +24,6 @@ const notices: Record<string, GoogleHealthNotice> = {
     message: "Google Health is temporarily unavailable. Your Soma profile is saved. Try the connection again in a moment.",
     tone: "error",
   },
-  demo: {
-    message: "Google Health connections are unavailable in demo mode.",
-    tone: "neutral",
-  },
 };
 
 export function getGoogleHealthNotice(status: string | undefined) {

@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const profileSchema = z.object({ displayName: z.string().trim().min(1).max(80), dateOfBirth: z.iso.date(), heightCm: z.number().min(50).max(260), weightKg: z.number().min(20).max(400), primaryGoal: z.enum(["build_muscle", "improve_endurance", "improve_cardio", "general_fitness", "maintain_health", "other"]), baseSleepTargetMinutes: z.number().int().min(240).max(720), usualWakeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), importRange: z.enum(["90_days", "all_history"]) });
-const demoProfile = { displayName: "Jeremy", dateOfBirth: "2000-01-01", heightCm: 175, weightKg: 70, primaryGoal: "build_muscle", baseSleepTargetMinutes: 480, usualWakeTime: "07:00", importRange: "90_days" };
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (getDataMode() === "demo") return NextResponse.json(demoProfile);
   const admin = createSupabaseAdminClient();
   const [{ data: profile }, { data: sleep }, { data: goal }] = await Promise.all([
     admin.from("profiles").select("display_name,date_of_birth,height_cm,weight_kg,import_range").eq("user_id", user.id).single(),
@@ -26,7 +23,6 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check every profile value." }, { status: 400 });
-  if (getDataMode() === "demo") return NextResponse.json(parsed.data);
   const admin = createSupabaseAdminClient();
   const value = parsed.data;
   const updates = await Promise.all([

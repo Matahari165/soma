@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.discriminatedUnion("action", [
@@ -16,7 +15,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Session update is invalid." }, { status: 400 });
-  if (getDataMode() === "demo") return NextResponse.json({ status: parsed.data.action === "complete" ? "completed" : parsed.data.action });
   const { id } = await context.params;
   const admin = createSupabaseAdminClient();
   if (parsed.data.action === "complete_set") {

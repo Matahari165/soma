@@ -1,31 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { askSomaCoach, type CoachAction } from "@/integrations/openai/coach";
+import { askSomaCoach } from "@/integrations/openai/coach";
 import { getCurrentUser } from "@/lib/auth";
 import { stableHash } from "@/lib/crypto";
-import { getDataMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), threadId: z.string().uuid().nullable().optional() });
 const threadIdSchema = z.string().uuid();
-const demoThreadId = "00000000-0000-4000-8000-000000000002";
-
-function demoResponse(message: string) {
-  const lower = message.toLowerCase();
-  const wantsProgram = lower.includes("program") || lower.includes("workout");
-  const action: CoachAction = {
-    type: "create_workout_program",
-    title: "Create Full Body A",
-    description: "A three-exercise starter strength program with three sets per exercise.",
-    payload: { programName: "Full Body A", exerciseNames: ["Back squat", "Bench press", "Bent-over row"], sleepTargetMinutes: null, goal: null, widgetId: null, visible: null },
-  };
-  return {
-    answer: wantsProgram ? "I prepared a strength-program preview. Review it before Soma saves anything." : lower.includes("recovery") ? "Recovery improved because HRV returned to your usual range while sleep duration increased. The latest demo reading is 72/100; this is a wellness signal, not a diagnosis." : "Your sleep is 84/100 and recovery is 72/100. You still have room inside today's effort target. Ask me to compare a period or prepare a program.",
-    evidence: ["Sleep 84/100 · August 7", "Recovery 72/100 · August 7", "Effort 38/100 · partial day"],
-    proposedAction: wantsProgram ? action : null,
-  };
-}
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -34,15 +16,6 @@ export async function GET(request: Request) {
   if (requestedThreadId && !threadIdSchema.safeParse(requestedThreadId).success) {
     return NextResponse.json({ error: "Invalid conversation." }, { status: 400 });
   }
-  if (getDataMode() === "demo") {
-    return NextResponse.json({
-      threads: [{ id: demoThreadId, title: "Your health overview", updatedAt: new Date().toISOString() }],
-      messages: requestedThreadId === demoThreadId
-        ? [{ id: "demo-welcome", role: "assistant", content: "I can explain your Soma data, compare periods, or prepare changes for your confirmation.", evidence: [] }]
-        : [],
-    });
-  }
-
   const admin = createSupabaseAdminClient();
   const { data: threads, error: threadError } = await admin.from("coach_threads")
     .select("id,title,updated_at")
@@ -82,11 +55,6 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid message." }, { status: 400 });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (getDataMode() === "demo") {
-    const result = demoResponse(parsed.data.message);
-    return NextResponse.json({ ...result, threadId: parsed.data.threadId ?? crypto.randomUUID(), proposalId: result.proposedAction ? crypto.randomUUID() : null });
-  }
-
   const admin = createSupabaseAdminClient();
   const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
   const { count } = await admin.from("coach_messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "user").gte("created_at", oneMinuteAgo);

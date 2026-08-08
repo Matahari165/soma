@@ -28,7 +28,7 @@ function clearOAuthCookies(response: NextResponse) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const user = await getCurrentUser();
-  if (!user || user.isDemo) return NextResponse.redirect(new URL("/login", url.origin));
+  if (!user) return NextResponse.redirect(new URL("/login", url.origin));
 
   const providerError = url.searchParams.get("error");
   const code = url.searchParams.get("code");

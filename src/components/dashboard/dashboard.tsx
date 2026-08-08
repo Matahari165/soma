@@ -33,7 +33,7 @@ export function HealthConnectedNotice() {
   </div>;
 }
 
-export function Dashboard({ data, demoMode, healthConnected = false }: { data: DashboardSnapshot; demoMode: boolean; healthConnected?: boolean }) {
+export function Dashboard({ data, healthConnected = false }: { data: DashboardSnapshot; healthConnected?: boolean }) {
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
   const [savedWidgets, setSavedWidgets] = useState<Widget[]>(defaultWidgets);
@@ -62,7 +62,7 @@ export function Dashboard({ data, demoMode, healthConnected = false }: { data: D
           setWidgets(defaultWidgets);
           setSavedWidgets(defaultWidgets);
         }
-      } else if (!demoMode) {
+      } else {
         fetch("/api/dashboard-layout")
           .then((response) => response.ok ? response.json() : Promise.reject(new Error("Layout unavailable")))
           .then((layout) => {
@@ -76,7 +76,7 @@ export function Dashboard({ data, demoMode, healthConnected = false }: { data: D
           });
       }
     });
-  }, [demoMode]);
+  }, []);
 
   function move(index: number, direction: -1 | 1) {
     const nextIndex = index + direction;
@@ -88,10 +88,8 @@ export function Dashboard({ data, demoMode, healthConnected = false }: { data: D
     setSaving(true);
     setSaveError(null);
     try {
-      if (!demoMode) {
-        const response = await fetch("/api/dashboard-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets }) });
-        if (!response.ok) throw new Error("Your layout could not be saved. Try again.");
-      }
+      const response = await fetch("/api/dashboard-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets }) });
+      if (!response.ok) throw new Error("Your layout could not be saved. Try again.");
       window.localStorage.setItem("soma:dashboard-layout", JSON.stringify({ widgets }));
       setSavedWidgets(widgets);
       setSaved(true);
@@ -121,7 +119,6 @@ export function Dashboard({ data, demoMode, healthConnected = false }: { data: D
             <h1 id="today-heading">{data.greeting}, {data.greetingName}.</h1>
           </div>
           <div className="page-actions">
-            {demoMode && <span className="demo-badge">Demo data</span>}
             <button className="secondary-button customize-button" type="button" onClick={() => setCustomizing(true)} aria-label="Customize dashboard"><Settings2 size={17} /><span>Customize</span></button>
           </div>
         </div>

@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     template: "%s · Soma",
   },
   description: "Personal health insights from your sleep, recovery, and activity data.",
+  verification: {
+    google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
+  },
 };
 
 export const viewport: Viewport = {

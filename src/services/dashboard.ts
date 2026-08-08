@@ -1,6 +1,4 @@
-import { dashboardSnapshot } from "@/lib/demo-data";
-import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
+import { getCurrentUser, type SomaUser } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { DashboardSnapshot, DailyScore, ScoreKind } from "@/domain/health";
 
@@ -48,17 +46,22 @@ function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: Metric
   return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Effort", value: missing ? "Not calculated" : `${row?.score} of ${minimum}–${maximum}`, target: "Today's target zone", delta: `${metrics?.steps?.toLocaleString("en-US") ?? "—"} steps · ${Math.round(metrics?.zone_minutes ?? 0)} zone min`, detail: "Today's completed effort stays separate from the goal-aware target.", action: missing ? "Sync activity data to calculate effort." : row.score! < minimum ? "You still have room to move toward today's target." : row.score! > maximum ? "You are above today's target; recovery can take priority." : "You are inside today's recommended range.", href: "/activity", freshness: { measuredAt: metrics?.source_freshness?.latestMeasuredAt ?? "unknown", syncedAt: synced, state: missing ? "missing" : "partial" }, history: histories };
 }
 
-export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
-  if (getDataMode() === "demo") {
+export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<DashboardSnapshot> {
+  const user = currentUser ?? await getCurrentUser();
+  if (!user) {
     const now = new Date();
     return {
-      ...dashboardSnapshot,
-      dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", weekday: "long", month: "long", day: "numeric" }).format(now),
-      greeting: greetingFor("Europe/Paris"),
+      dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" }).format(now),
+      greeting: greetingFor("UTC"),
+      greetingName: "there",
+      scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, undefined, undefined, [])),
+      summary: "Sign in to connect your health data and build your first summary.",
+      insights: [],
+      weeklyEffort: { current: 0, targetMin: 0, targetMax: 0, days: [] },
+      recoveryTrend: [],
+      sleepRegularity: { bedtime: "—", wakeTime: "—", consistency: null },
     };
   }
-  const user = await getCurrentUser();
-  if (!user) return dashboardSnapshot;
   const supabase = await createSupabaseServerClient();
   const [{ data: profile }, { data: rawMetrics }, { data: rawScores }, { data: rawInsights }, { data: brief }] = await Promise.all([
     supabase.from("profiles").select("display_name,timezone").eq("user_id", user.id).single(),

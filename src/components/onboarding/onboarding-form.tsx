@@ -14,36 +14,31 @@ type OnboardingDraft = Omit<OnboardingInput, "heightCm" | "weightKg"> & {
   weightKg: number | "";
 };
 
-const defaultDemoForm: OnboardingInput = {
-  displayName: "Jeremy",
-  dateOfBirth: "2000-01-01",
-  heightCm: 175,
-  weightKg: 70,
+const defaultForm: OnboardingDraft = {
+  displayName: "",
+  dateOfBirth: "",
+  heightCm: "",
+  weightKg: "",
   sexForHealthCalculations: "prefer_not_to_say",
   primaryGoal: "build_muscle",
   secondaryGoal: null,
   baseSleepTargetMinutes: 480,
   usualWakeTime: "07:00",
   importRange: "90_days",
-  timezone: "Europe/Paris",
+  timezone: "UTC",
 };
 
-function createInitialForm(demoMode: boolean, initialDisplayName: string): OnboardingDraft {
-  if (demoMode) return defaultDemoForm;
+function createInitialForm(initialDisplayName: string): OnboardingDraft {
   return {
-    ...defaultDemoForm,
+    ...defaultForm,
     displayName: initialDisplayName,
-    dateOfBirth: "",
-    heightCm: "",
-    weightKg: "",
-    timezone: "UTC",
   };
 }
 
-export function OnboardingForm({ demoMode, initialDisplayName }: { demoMode: boolean; initialDisplayName: string }) {
+export function OnboardingForm({ initialDisplayName }: { initialDisplayName: string }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<OnboardingDraft>(() => createInitialForm(demoMode, initialDisplayName));
+  const [form, setForm] = useState<OnboardingDraft>(() => createInitialForm(initialDisplayName));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -102,11 +97,7 @@ export function OnboardingForm({ demoMode, initialDisplayName }: { demoMode: boo
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Onboarding could not be saved.");
 
-      if (demoMode) {
-        window.localStorage.setItem("soma:onboarding", JSON.stringify(input));
-      }
-
-      if (connectHealth && !demoMode) {
+      if (connectHealth) {
         window.location.assign(new URL("/api/health/google/connect?source=onboarding", window.location.origin).toString());
         return;
       }
@@ -190,13 +181,13 @@ export function OnboardingForm({ demoMode, initialDisplayName }: { demoMode: boo
           )}
           {step === 3 && (
             <fieldset>
-              <legend tabIndex={-1}>{demoMode ? "Explore with demo data" : "Connect Fitbit through Google Health"}</legend>
-              <p className="form-intro">{demoMode ? "Soma will use clearly labelled illustrative values. No Google account or personal health data is connected in demo mode." : "After Fitbit syncs your bracelet, Google Health makes the authorized data available to Soma. Soma imports the latest 90 days first; a full-history import then continues in the background."}</p>
-              {!demoMode && <div className="import-choices">
+              <legend tabIndex={-1}>Connect Fitbit through Google Health</legend>
+              <p className="form-intro">After Fitbit syncs your bracelet, Google Health makes the authorized data available to Soma. Soma imports the latest 90 days first; a full-history import then continues in the background.</p>
+              <div className="import-choices">
                 <label className={form.importRange === "90_days" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "90_days"} onChange={() => update("importRange", "90_days")} /><span><strong>Last 90 days</strong><small>Faster first import and enough data for useful baselines.</small></span></label>
                 <label className={form.importRange === "all_history" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "all_history"} onChange={() => update("importRange", "all_history")} /><span><strong>All available history</strong><small>Recent data appears first; older records import in the background.</small></span></label>
-              </div>}
-              <div className="consent-preview"><strong>{demoMode ? "Demo data stays separate from real measurements." : "You will review access on Google next."}</strong><p>{demoMode ? "When live mode is configured, you can connect Google Health from Settings and review every requested permission first." : "Soma requests read-only access to sleep, activity, and health measurements. You can decline scopes, finish without connecting, or disconnect later."}</p></div>
+              </div>
+              <div className="consent-preview"><strong>You will review access on Google next.</strong><p>Soma requests read-only access to sleep, activity, and health measurements. You can decline scopes, finish without connecting, or disconnect later.</p></div>
             </fieldset>
           )}
 
@@ -207,8 +198,8 @@ export function OnboardingForm({ demoMode, initialDisplayName }: { demoMode: boo
               <button className="primary-button" type="button" onClick={continueToNextStep}>Continue <ArrowRight size={17} /></button>
             ) : (
               <div className="onboarding-finish-actions">
-                {!demoMode && <button className="text-link" type="button" onClick={() => void finish(false)} disabled={saving}>Finish without connecting</button>}
-                <button className="primary-button" type="button" onClick={() => void finish(!demoMode)} disabled={saving}>{saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}{saving ? "Saving…" : demoMode ? "Finish demo setup" : "Save and connect Google Health"}</button>
+                <button className="text-link" type="button" onClick={() => void finish(false)} disabled={saving}>Finish without connecting</button>
+                <button className="primary-button" type="button" onClick={() => void finish(true)} disabled={saving}>{saving ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}{saving ? "Saving…" : "Save and connect Google Health"}</button>
               </div>
             )}
           </div>

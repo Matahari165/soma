@@ -1,13 +1,3 @@
-export type DataMode = "demo" | "live";
-
-export function getDataMode(): DataMode {
-  return process.env.NEXT_PUBLIC_SOMA_DATA_MODE === "live" ? "live" : "demo";
-}
-
-export function isLiveMode() {
-  return getDataMode() === "live";
-}
-
 export function hasSupabaseConfig() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

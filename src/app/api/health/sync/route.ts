@@ -3,26 +3,22 @@ import { NextResponse } from "next/server";
 import { GOOGLE_HEALTH_DATA_TYPES } from "@/integrations/google-health/client";
 import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
-import { getDataMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (getDataMode() === "demo") return NextResponse.json({ mode: "demo", jobs: [] });
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.from("sync_jobs")
     .select("id,import_range,status,progress,error_code,error_message,created_at,started_at,completed_at")
     .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10);
   if (error) return NextResponse.json({ error: "Sync status could not be loaded." }, { status: 500 });
-  return NextResponse.json({ mode: "live", jobs: data });
+  return NextResponse.json({ jobs: data });
 }
 
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (getDataMode() === "demo") return NextResponse.json({ mode: "demo", message: "Demo data is already current." });
-
   const admin = createSupabaseAdminClient();
   const { data: connection } = await admin.from("provider_connections").select("id").eq("user_id", user.id).eq("provider", "google_health").eq("status", "connected").maybeSingle();
   if (!connection) return NextResponse.json({ error: "Connect Google Health before syncing." }, { status: 409 });

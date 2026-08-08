@@ -85,6 +85,7 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
   }, [mobileMenuOpen]);
 
   if (
+    (pathname === "/" && !user) ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/onboarding") ||
@@ -135,7 +136,7 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
           <span className="avatar">{initials}</span>
           <span>
             <strong>{displayName}</strong>
-            <small>{user?.isDemo ? "Demo workspace" : "Personal account"}</small>
+            <small>Personal account</small>
           </span>
           <ChevronRight size={17} />
         </Link>
