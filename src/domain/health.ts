@@ -48,6 +48,6 @@ export type DashboardSnapshot = {
   sleepRegularity: {
     bedtime: string;
     wakeTime: string;
-    consistency: number;
+    consistency: number | null;
   };
 };

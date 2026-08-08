@@ -511,6 +511,9 @@ textarea:focus-visible {
 
 .widget { min-width: 0; padding: 20px; }
 .widget-icon { background: var(--brand-soft); color: var(--brand); }
+.widget-empty { display: grid; min-height: 177px; place-content: center; gap: 7px; padding: 24px 8px; text-align: center; }
+.widget-empty strong { font-size: 13px; }
+.widget-empty p { max-width: 230px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .weekly-number { display: flex; align-items: baseline; gap: 7px; margin-top: 21px; }
 .weekly-number strong { font-size: 30px; font-weight: 690; letter-spacing: -0.05em; }
 .weekly-number span { color: var(--muted); font-size: 11px; }
