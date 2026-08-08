@@ -10,11 +10,13 @@ export function ScoreRing({
   label,
   score,
   size = "large",
+  decorative = false,
 }: {
   kind: ScoreKind;
   label: string;
   score: number | null;
   size?: "large" | "compact";
+  decorative?: boolean;
 }) {
   const boundedScore = score === null ? 0 : Math.min(100, Math.max(0, score));
   const style = {
@@ -24,8 +26,9 @@ export function ScoreRing({
   return (
     <div
       className={`score-ring score-ring--${kind} score-ring--${size}`}
-      role="img"
-      aria-label={score === null ? `${label} score unavailable` : `${label} score ${score} out of 100`}
+      role={decorative ? undefined : "img"}
+      aria-hidden={decorative || undefined}
+      aria-label={decorative ? undefined : score === null ? `${label} score unavailable` : `${label} score ${score} out of 100`}
       style={style}
     >
       <svg viewBox="0 0 128 128" aria-hidden="true">
@@ -42,7 +45,7 @@ export function ScoreRing({
       </svg>
       <span className="score-ring__value">
         <strong>{score ?? "—"}</strong>
-        <small>{score === null ? "No data" : "out of 100"}</small>
+        <small>{label}</small>
       </span>
     </div>
   );

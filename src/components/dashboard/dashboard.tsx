@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, RefreshCw, Settings2, Sparkles, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, Settings2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
 import type { DashboardSnapshot } from "@/domain/health";
 
-import { MetricCard } from "./metric-card";
+import { ScoreLink } from "./score-link";
 import { RecoveryTrend, SleepRegularity, WeeklyEffort } from "./widgets";
 
 type WidgetId = "weekly-effort" | "recovery-trend" | "sleep-regularity";
@@ -90,7 +90,6 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
           <div>
             <p className="page-date">{data.dateLabel}</p>
             <h1 id="today-heading">{data.greeting}, {data.greetingName}.</h1>
-            <p className="page-subtitle">Your body, at a glance.</p>
           </div>
           <div className="page-actions">
             {demoMode && <span className="demo-badge">Demo data</span>}
@@ -98,33 +97,20 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
           </div>
         </div>
 
-        <div className="sync-banner" role="status">
-          <span className="sync-dot" aria-hidden="true" />
-          <span>All available data processed</span>
-          <span className="sync-time"><RefreshCw size={13} /> Last sync 1:45 PM</span>
-        </div>
-
-        <div className="primary-metrics" aria-label="Today's primary health scores">
-          {data.scores.map((score) => <MetricCard metric={score} key={score.kind} />)}
-        </div>
+        <nav className="primary-metrics" aria-label="Today's primary health scores">
+          {data.scores.map((score) => <ScoreLink metric={score} key={score.kind} />)}
+        </nav>
       </section>
 
       <section className="soma-summary" aria-labelledby="soma-summary-title">
-        <div className="summary-icon" aria-hidden="true"><Sparkles size={22} /></div>
-        <div className="summary-copy">
-          <span className="eyebrow">Soma summary</span>
-          <h2 id="soma-summary-title">A good day to build, without overreaching.</h2>
-          <p>{data.summary}</p>
-        </div>
+        <h2 className="sr-only" id="soma-summary-title">Soma summary</h2>
+        <p>{data.summary}</p>
         <Link className="summary-button" href="/coach">Ask a follow-up <ChevronRight size={16} /></Link>
       </section>
 
       <section className="section-block" aria-labelledby="insights-heading">
         <div className="section-heading">
-          <div>
-            <span className="eyebrow">Worth your attention</span>
-            <h2 id="insights-heading">Today&apos;s insights</h2>
-          </div>
+          <h2 id="insights-heading">Today&apos;s insights</h2>
           <Link className="text-link" href="/trends">View all <ChevronRight size={15} /></Link>
         </div>
         <div className="insight-list">
@@ -144,10 +130,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
 
       <section className="section-block" aria-labelledby="overview-heading">
         <div className="section-heading">
-          <div>
-            <span className="eyebrow">Your patterns</span>
-            <h2 id="overview-heading">Weekly overview</h2>
-          </div>
+          <h2 id="overview-heading">Weekly overview</h2>
           <Link href="/trends" className="text-link">Explore trends <ChevronRight size={15} /></Link>
         </div>
         <div className="widget-grid">{widgets.filter((widget) => widget.visible).map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>

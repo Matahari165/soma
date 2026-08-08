@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Figtree } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
@@ -6,6 +7,12 @@ import { getCurrentUser } from "@/lib/auth";
 
 import "./globals.css";
 import "./product-flows.css";
+
+const figtree = Figtree({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-soma",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const user = await getCurrentUser();
 
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html className={figtree.variable} lang="en" data-scroll-behavior="smooth">
       <body>
         <a className="skip-link" href="#main-page-content">Skip to content</a>
         <AppShell user={user}>{children}</AppShell>
