@@ -46,12 +46,14 @@ This runs linting, TypeScript checks, unit tests, and a production build.
 2. Apply both files in `supabase/migrations` in filename order.
 3. Add the environment variables from `.env.example` to the deployment; generate `TOKEN_ENCRYPTION_KEY` as a base64-encoded 32-byte key and `CRON_SECRET` as a random value of at least 16 characters.
 4. Register these callbacks:
-   - Supabase Google auth: `https://YOUR-DOMAIN/auth/callback`
+   - Google OAuth client for Supabase Auth: `https://YOUR-PROJECT.supabase.co/auth/v1/callback`
+   - Supabase redirect allow list: `https://YOUR-DOMAIN/auth/callback`
    - Google Health OAuth: `https://YOUR-DOMAIN/api/health/google/callback`
    - Google Health webhook: `https://YOUR-DOMAIN/api/health/webhook`
-5. Configure the Google Health webhook authorization value to match `GOOGLE_HEALTH_WEBHOOK_SECRET`.
-6. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. This uses Supabase Cron every five minutes. The included Vercel Hobby cron is a free daily safety net because Hobby does not support frequent schedules.
-7. Change `NEXT_PUBLIC_SOMA_DATA_MODE` to `live` only after the real-account checks in [OPERATIONS.md](./OPERATIONS.md) pass.
+5. Add the deployed home, privacy, and terms URLs to the Google OAuth consent screen, then add the private-beta account as a test user.
+6. Create a Google Health subscriber with automatic subscriptions for the supported data types. Configure its `endpointAuthorization.secret` to exactly match `GOOGLE_HEALTH_WEBHOOK_SECRET`; the value should include its scheme, for example `Bearer …`.
+7. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. This uses Supabase Cron every five minutes. The included Vercel Hobby cron is a free daily safety net because Hobby does not support frequent schedules.
+8. Change `NEXT_PUBLIC_SOMA_DATA_MODE` to `live` only after the real-account checks in [OPERATIONS.md](./OPERATIONS.md) pass.
 
 ## Architecture
 

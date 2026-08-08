@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
   const notifications: Notification[] = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
   if (notifications.every((notification) => notification.type === "verification")) {
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({ verified: true }, { status: 201 });
   }
 
   const admin = createSupabaseAdminClient();
