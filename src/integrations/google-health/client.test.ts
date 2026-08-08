@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   GOOGLE_HEALTH_DAILY_ROLLUP_TYPES,
   buildGoogleHealthAuthorizationUrl,
+  createDailyRollupRange,
   createTimeFilter,
   getGoogleHealthClientId,
 } from "./client";
@@ -67,5 +68,15 @@ describe("Google Health query contracts", () => {
 
     expect(createTimeFilter("daily-resting-heart-rate", start, end)).toContain('dailyRestingHeartRate.date >= "2026-08-01"');
     expect(createTimeFilter("heart-rate", start, end)).toContain('heart_rate.sample_time.physical_time >= "2026-08-01T00:00:00.000Z"');
+  });
+
+  it("expands a short webhook range to a valid civil-day rollup", () => {
+    expect(createDailyRollupRange(
+      new Date("2026-08-08T12:41:00.000Z"),
+      new Date("2026-08-08T12:55:00.000Z"),
+    )).toEqual({
+      start: { date: { year: 2026, month: 8, day: 8 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+      end: { date: { year: 2026, month: 8, day: 9 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+    });
   });
 });

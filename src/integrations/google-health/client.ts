@@ -253,6 +253,19 @@ function civilDateTime(date: Date) {
   };
 }
 
+function startOfUtcDay(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+export function createDailyRollupRange(start: Date, end: Date) {
+  const normalizedStart = startOfUtcDay(start);
+  const normalizedEnd = startOfUtcDay(end);
+  if (normalizedEnd.getTime() < end.getTime() || normalizedEnd <= normalizedStart) {
+    normalizedEnd.setUTCDate(normalizedEnd.getUTCDate() + 1);
+  }
+  return { start: civilDateTime(normalizedStart), end: civilDateTime(normalizedEnd) };
+}
+
 export function dailyRollUpGoogleHealthData(input: {
   accessToken: string;
   dataType: GoogleHealthDataType;
@@ -266,7 +279,7 @@ export function dailyRollUpGoogleHealthData(input: {
     {
       method: "POST",
       body: JSON.stringify({
-        range: { start: civilDateTime(input.start), end: civilDateTime(input.end) },
+        range: createDailyRollupRange(input.start, input.end),
         windowSizeDays: 1,
         pageSize: 10000,
         ...(input.pageToken ? { pageToken: input.pageToken } : {}),
