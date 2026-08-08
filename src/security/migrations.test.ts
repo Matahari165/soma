@@ -35,7 +35,9 @@ describe("database security contract", () => {
 
   it("keeps the background sync setup safe to run after a rotation", () => {
     expect(schedule).toContain("vault.update_secret");
-    expect(schedule).toContain("soma-sync-every-five-minutes");
+    expect(schedule).toContain("cron.unschedule");
+    expect(schedule).toContain("soma-sync-every-minute");
+    expect(schedule).toContain("'* * * * *'");
     expect(schedule).toContain("vault.decrypted_secrets");
   });
 });

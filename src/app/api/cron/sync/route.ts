@@ -4,6 +4,8 @@ import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { requireServerEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export const maxDuration = 50;
+
 function authorized(request: Request) {
   return request.headers.get("authorization") === `Bearer ${requireServerEnv("CRON_SECRET")}`;
 }
@@ -53,17 +55,15 @@ export async function GET(request: Request) {
   await admin.from("sync_jobs").update({ status: "queued", started_at: null })
     .eq("status", "running").lt("started_at", staleBefore);
 
-  const results = [];
-  const deadline = Date.now() + 25_000;
-  while (results.length < 3 && Date.now() < deadline) {
-    const { data: job } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
-    if (!job) break;
-    try {
-      results.push({ id: job.id, ...(await processGoogleHealthSyncJob(job.id)) });
-    } catch {
-      results.push({ id: job.id, error: true });
-      break;
-    }
+  const { data: job } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
+  if (!job) return NextResponse.json({ processed: [] });
+
+  let result;
+  try {
+    result = { id: job.id, ...(await processGoogleHealthSyncJob(job.id)) };
+  } catch {
+    result = { id: job.id, error: true };
   }
+  const results = [result];
   return NextResponse.json({ processed: results });
 }

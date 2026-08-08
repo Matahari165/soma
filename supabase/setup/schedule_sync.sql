@@ -26,9 +26,14 @@ begin
 end;
 $$;
 
+-- Replace the prior cadence instead of creating a duplicate job on reruns.
+select cron.unschedule(jobid)
+from cron.job
+where jobname in ('soma-sync-every-five-minutes', 'soma-sync-every-minute');
+
 select cron.schedule(
-  'soma-sync-every-five-minutes',
-  '*/5 * * * *',
+  'soma-sync-every-minute',
+  '* * * * *',
   $$
   select net.http_get(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'soma_app_url') || '/api/cron/sync',
