@@ -22,5 +22,8 @@ export function DataFreshnessLabel({ freshness }: { freshness: DataFreshness }) 
       : freshness.state === "partial"
         ? "Partial signal"
         : "Signal unavailable";
-  return <span className={`data-freshness data-freshness--${freshness.state}`}><Clock3 size={13} aria-hidden="true" />{label} · synced {freshness.syncedAt}</span>;
+  const measured = freshness.measuredAt === "unknown"
+    ? "no measurement"
+    : `measured ${new Date(freshness.measuredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  return <span className={`data-freshness data-freshness--${freshness.state}`}><Clock3 size={13} aria-hidden="true" />{label} · {measured} · processed {freshness.syncedAt}</span>;
 }

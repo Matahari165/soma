@@ -33,6 +33,17 @@ function scoreRowsFor(kind: ScoreKind, scores: ScoreRow[]) {
   return scores.filter((row) => row.kind === kind);
 }
 
+export function selectSignalMetric(kind: ScoreKind, metrics: MetricRow[]) {
+  if (kind === "sleep") return metrics.findLast((metric) => metric.sleep_minutes !== null);
+  if (kind === "recovery") return metrics.findLast((metric) => metric.hrv_ms !== null || metric.resting_heart_rate !== null);
+  return metrics.at(-1);
+}
+
+function scoreForMetric(kind: ScoreKind, scores: ScoreRow[], metric: MetricRow | undefined) {
+  if (!metric) return undefined;
+  return scoreRowsFor(kind, scores).findLast((row) => row.score_date === metric.metric_date);
+}
+
 function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: MetricRow | undefined, histories: number[]): DailyScore {
   const missing = row?.score === null || row?.score === undefined;
   const synced = row?.calculated_at ? new Date(row.calculated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "pending";
@@ -77,22 +88,24 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
   const scores = ((rawScores ?? []) as ScoreRow[]).reverse();
   const latestMetric = metrics.at(-1);
   const latestDate = latestMetric?.metric_date ?? new Date().toISOString().slice(0, 10);
-  const latestFor = (kind: ScoreKind) => scoreRowsFor(kind, scores).at(-1);
+  const metricFor = (kind: ScoreKind) => selectSignalMetric(kind, metrics);
+  const latestFor = (kind: ScoreKind) => scoreForMetric(kind, scores, metricFor(kind));
   const historyFor = (kind: ScoreKind) => scoreRowsFor(kind, scores).slice(-7).map((row) => row.score).filter((score): score is number => score !== null);
   const effortRows = scoreRowsFor("effort", scores).slice(-7);
   const effortLatest = latestFor("effort");
   const effortCurrent = effortRows.reduce((sum, row) => sum + (row.score ?? 0), 0);
   const date = new Date(`${latestDate}T12:00:00`);
+  const sleepMetric = metricFor("sleep");
 
   return {
     dateLabel: date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
     greeting: greetingFor(profile?.timezone ?? "UTC"),
     greetingName: profile?.display_name ?? user.displayName ?? "there",
-    scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, latestFor(kind), latestMetric, historyFor(kind))),
+    scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, latestFor(kind), metricFor(kind), historyFor(kind))),
     summary: brief?.generated_text ?? "Soma is still building your first evidence-based summary.",
     insights: (rawInsights ?? []).map((insight) => ({ id: insight.id, category: insight.category, title: insight.title, description: insight.description, evidence: `Confidence ${Math.round(Number((insight.evidence as Record<string, unknown>)?.sampleSize ?? 0))} baseline days` })),
     weeklyEffort: { current: effortCurrent, targetMin: Number(effortLatest?.drivers?.weeklyMinimum ?? 0), targetMax: Number(effortLatest?.drivers?.weeklyMaximum ?? 0), days: effortRows.map((row, index) => ({ label: new Date(`${row.score_date}T12:00:00`).toLocaleDateString("en-US", { weekday: "narrow" }), value: row.score ?? 0, today: index === effortRows.length - 1 })) },
     recoveryTrend: scoreRowsFor("recovery", scores).slice(-7).map((row) => ({ label: new Date(`${row.score_date}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" }), value: row.score ?? 0 })),
-    sleepRegularity: { bedtime: latestMetric?.bedtime ? new Date(latestMetric.bedtime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", wakeTime: latestMetric?.wake_time ? new Date(latestMetric.wake_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", consistency: latestMetric?.sleep_regularity === null || latestMetric?.sleep_regularity === undefined ? null : Math.round(latestMetric.sleep_regularity) },
+    sleepRegularity: { bedtime: sleepMetric?.bedtime ? new Date(sleepMetric.bedtime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", wakeTime: sleepMetric?.wake_time ? new Date(sleepMetric.wake_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", consistency: sleepMetric?.sleep_regularity === null || sleepMetric?.sleep_regularity === undefined ? null : Math.round(sleepMetric.sleep_regularity) },
   };
 }

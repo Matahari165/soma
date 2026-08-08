@@ -115,6 +115,7 @@ export async function processGoogleHealthSyncJob(jobId: string) {
     const typeIndex = claimedJob.cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
+      await recomputeUserHealth(claimedJob.user_id);
       await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", claimedJob.id);
       await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
       return { completed: true, progress: 100 };
@@ -142,13 +143,6 @@ export async function processGoogleHealthSyncJob(jobId: string) {
       ? normalizeGoogleHealthDailyRollup(claimedJob.user_id, dataType, point)
       : normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point));
     await upsertRecords(records);
-    const { error: freshnessError } = await admin.from("provider_connections").update({
-      last_synced_at: new Date().toISOString(),
-      status: "connected",
-      last_error_code: null,
-    }).eq("id", claimedJob.connection_id);
-    if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
-
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
     if (nextPageToken) {
@@ -171,8 +165,13 @@ export async function processGoogleHealthSyncJob(jobId: string) {
     }).eq("id", claimedJob.id);
 
     if (completed) {
-      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
       await recomputeUserHealth(claimedJob.user_id);
+      const { error: freshnessError } = await admin.from("provider_connections").update({
+        last_synced_at: new Date().toISOString(),
+        status: "connected",
+        last_error_code: null,
+      }).eq("id", claimedJob.connection_id);
+      if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
     }
 
     return { completed, progress, imported: records.length, dataType };

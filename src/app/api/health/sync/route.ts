@@ -11,11 +11,22 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.from("sync_jobs")
-    .select("id,import_range,status,progress,error_code,error_message,created_at,started_at,completed_at")
-    .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10);
-  if (error) return NextResponse.json({ error: "Sync status could not be loaded." }, { status: 500 });
-  return NextResponse.json({ jobs: data });
+  const [jobsResult, ...recordResults] = await Promise.all([
+    admin.from("sync_jobs")
+      .select("id,import_range,status,progress,error_code,error_message,created_at,started_at,completed_at")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+    ...["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"].map((dataType) =>
+      admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("data_type", dataType),
+    ),
+  ]);
+  if (jobsResult.error || recordResults.some((result) => result.error)) {
+    return NextResponse.json({ error: "Sync status could not be loaded." }, { status: 500 });
+  }
+  const dataTypes = ["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"];
+  return NextResponse.json({
+    jobs: jobsResult.data,
+    importedRecords: Object.fromEntries(dataTypes.map((dataType, index) => [dataType, recordResults[index].count ?? 0])),
+  });
 }
 
 export async function POST() {

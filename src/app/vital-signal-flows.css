@@ -33,6 +33,15 @@
 .privacy-actions button { min-height: 44px; border: 1px solid var(--signal-border-strong); border-radius: var(--signal-radius-sm); background: var(--signal-surface-2); color: var(--signal-text-soft); font-size: 13px; }
 .scope-note { border: 1px solid var(--signal-border); border-radius: var(--signal-radius-md); background: var(--signal-primary-soft); }
 .scope-note p { color: var(--signal-text-soft); font-size: 13px; }
+.sync-diagnostics { display: grid; gap: 12px; border: 1px solid var(--signal-border); border-radius: var(--signal-radius-md); padding: 16px; }
+.sync-diagnostics > div:first-child { display: flex; justify-content: space-between; gap: 12px; color: var(--signal-text); }
+.sync-diagnostics > div:first-child span { color: var(--signal-muted); font-size: 13px; text-transform: capitalize; }
+.sync-diagnostics progress { width: 100%; accent-color: var(--signal-primary); }
+.sync-diagnostics dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--signal-border); }
+.sync-diagnostics dl > div { display: grid; gap: 4px; background: var(--signal-surface-1); padding: 12px; }
+.sync-diagnostics dt { color: var(--signal-muted); font-size: 12px; }
+.sync-diagnostics dd { margin: 0; color: var(--signal-text); font-size: 14px; }
+.sync-diagnostics > p { margin: 0; color: var(--signal-danger); font-size: 13px; }
 .settings-message { border: 1px solid var(--signal-border-strong); border-radius: var(--signal-radius-sm); background: var(--signal-surface-2); color: var(--signal-text); }
 .settings-message--success { border-color: var(--signal-primary); color: var(--signal-primary); }
 .settings-message--error { border-color: var(--signal-danger); background: rgb(255 123 123 / 10%); color: var(--signal-danger); }

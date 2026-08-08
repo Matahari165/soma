@@ -29,8 +29,8 @@ function timingRegularity(days: HealthMetricDay[], key: "bedtime" | "wake_time")
 }
 
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.at(-1);
-  const score = data.scores.filter((item) => item.kind === "sleep").at(-1)?.score ?? null;
+  const latest = data.days.findLast((day) => day.sleep_minutes !== null);
+  const score = data.scores.findLast((item) => item.kind === "sleep" && item.score_date === latest?.metric_date)?.score ?? null;
   const target = latest?.sleep_need_minutes ?? null;
   const debt = latest?.daily_sleep_debt_minutes ?? null;
   const bedtimeRegularity = timingRegularity(data.days, "bedtime");

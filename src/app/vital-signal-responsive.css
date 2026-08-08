@@ -164,6 +164,7 @@
   .privacy-actions article,
   .inline-confirmation { grid-template-columns: 1fr; align-items: start; }
   .connection-actions { flex-wrap: wrap; }
+  .sync-diagnostics dl { grid-template-columns: 1fr 1fr; }
   .selected-exercises article > div { grid-template-columns: 1fr 1fr; }
 }
 

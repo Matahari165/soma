@@ -67,7 +67,9 @@ describe("Google Health query contracts", () => {
     const start = new Date("2026-08-01T00:00:00.000Z");
     const end = new Date("2026-08-08T00:00:00.000Z");
 
-    expect(createTimeFilter("daily-resting-heart-rate", start, end)).toContain('dailyRestingHeartRate.date >= "2026-08-01"');
+    expect(createTimeFilter("sleep", start, end)).toBe('sleep.interval.civil_end_time >= "2026-08-01" AND sleep.interval.civil_end_time < "2026-08-08"');
+    expect(createTimeFilter("daily-resting-heart-rate", start, end)).toContain('daily_resting_heart_rate.date >= "2026-08-01"');
+    expect(createTimeFilter("daily-heart-rate-variability", start, end)).toContain('daily_heart_rate_variability.date >= "2026-08-01"');
     expect(createTimeFilter("heart-rate", start, end)).toContain('heart_rate.sample_time.physical_time >= "2026-08-01T00:00:00.000Z"');
   });
 

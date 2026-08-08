@@ -7,8 +7,8 @@ import { MetricTrendCard } from "./metric-trend-card";
 const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.at(-1);
-  const score = data.scores.filter((item) => item.kind === "recovery").at(-1)?.score ?? null;
+  const latest = data.days.findLast((day) => day.hrv_ms !== null || day.resting_heart_rate !== null);
+  const score = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date)?.score ?? null;
   const heartRates = data.heartRateSamples.map((sample) => sample.bpm);
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
