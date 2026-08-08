@@ -3,6 +3,7 @@ import { getSiteUrl, requireServerEnv } from "@/lib/env";
 const API_BASE = "https://health.googleapis.com/v4";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_OAUTH_CLIENT_ID_PATTERN = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/i;
 
 export const GOOGLE_HEALTH_SCOPES = [
   "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
@@ -48,10 +49,26 @@ export type DataPointListResponse = {
   nextPageToken?: string;
 };
 
+export function getGoogleHealthClientId() {
+  const clientId = requireServerEnv("GOOGLE_HEALTH_CLIENT_ID").trim();
+  if (!GOOGLE_OAUTH_CLIENT_ID_PATTERN.test(clientId)) {
+    throw new Error("GOOGLE_HEALTH_CLIENT_ID is not a valid Google OAuth client ID.");
+  }
+  return clientId;
+}
+
+export function getGoogleHealthRedirectUri() {
+  const siteUrl = new URL(getSiteUrl());
+  if (siteUrl.protocol !== "https:" && siteUrl.hostname !== "localhost") {
+    throw new Error("NEXT_PUBLIC_SITE_URL must use HTTPS outside localhost.");
+  }
+  return new URL("/api/health/google/callback", siteUrl.origin).toString();
+}
+
 export function buildGoogleHealthAuthorizationUrl(state: string, challenge: string) {
   const url = new URL(AUTH_URL);
-  url.searchParams.set("client_id", requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"));
-  url.searchParams.set("redirect_uri", `${getSiteUrl()}/api/health/google/callback`);
+  url.searchParams.set("client_id", getGoogleHealthClientId());
+  url.searchParams.set("redirect_uri", getGoogleHealthRedirectUri());
   url.searchParams.set("response_type", "code");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
@@ -80,18 +97,18 @@ async function tokenRequest(body: URLSearchParams) {
 
 export function exchangeGoogleHealthCode(code: string, verifier: string) {
   return tokenRequest(new URLSearchParams({
-    client_id: requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"),
+    client_id: getGoogleHealthClientId(),
     client_secret: requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET"),
     code,
     code_verifier: verifier,
     grant_type: "authorization_code",
-    redirect_uri: `${getSiteUrl()}/api/health/google/callback`,
+    redirect_uri: getGoogleHealthRedirectUri(),
   }));
 }
 
 export function refreshGoogleHealthToken(refreshToken: string) {
   return tokenRequest(new URLSearchParams({
-    client_id: requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"),
+    client_id: getGoogleHealthClientId(),
     client_secret: requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET"),
     refresh_token: refreshToken,
     grant_type: "refresh_token",

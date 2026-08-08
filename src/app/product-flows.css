@@ -987,6 +987,7 @@
 .scope-note strong, .scope-note p { display: block; margin: 0; }
 .scope-note p { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .settings-message { border-radius: 9px; background: #edf3f0; padding: 10px 12px; color: var(--brand-dark); font-size: 12px; }
+.settings-message--error { background: #fff0ed; color: #8f3023; }
 .privacy-actions { display: grid; gap: 9px; }
 .privacy-actions article { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 13px; padding: 15px; }
 .privacy-actions article > svg { color: var(--muted); }

@@ -4,14 +4,16 @@ import { AlertCircle, Check, Database, Download, ExternalLink, HeartPulse, Loade
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import type { GoogleHealthNotice } from "@/integrations/google-health/status";
+
 type Profile = { displayName: string; dateOfBirth: string; heightCm: number; weightKg: number; primaryGoal: string; baseSleepTargetMinutes: number; usualWakeTime: string; importRange: "90_days" | "all_history" };
 type SettingsTab = "profile" | "connections" | "privacy";
 const tabOrder: SettingsTab[] = ["profile", "connections", "privacy"];
 const goals = { build_muscle: "Build muscle", improve_endurance: "Improve endurance", improve_cardio: "Improve cardio", general_fitness: "General fitness", maintain_health: "Maintain health", other: "Other" };
 
-export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
+export function SettingsConsole({ demoMode, initialHealthNotice = null }: { demoMode: boolean; initialHealthNotice?: GoogleHealthNotice | null }) {
   const router = useRouter();
-  const [tab, setTab] = useState<SettingsTab>("profile");
+  const [tab, setTab] = useState<SettingsTab>(initialHealthNotice ? "connections" : "profile");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savedProfile, setSavedProfile] = useState<Profile | null>(null);
   const [connection, setConnection] = useState<Record<string, unknown> | null>(null);
@@ -21,7 +23,13 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [deleteText, setDeleteText] = useState("");
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(initialHealthNotice?.message ?? null);
+  const [messageTone, setMessageTone] = useState<GoogleHealthNotice["tone"]>(initialHealthNotice?.tone ?? "neutral");
+
+  function showMessage(nextMessage: string | null, tone: GoogleHealthNotice["tone"] = "neutral") {
+    setMessage(nextMessage);
+    setMessageTone(tone);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,12 +48,12 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
 
   function update<K extends keyof Profile>(key: K, value: Profile[K]) {
     setProfile((current) => current ? { ...current, [key]: value } : current);
-    setMessage(null);
+    showMessage(null);
   }
 
   function selectTab(nextTab: SettingsTab) {
     setTab(nextTab);
-    setMessage(null);
+    showMessage(null);
     setDisconnectConfirm(false);
   }
 
@@ -65,29 +73,29 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
   async function save() {
     if (!profile || !profileValid || !profileDirty || busyAction) return;
     setBusyAction("save");
-    setMessage(null);
+    showMessage(null);
     try {
       const response = await fetch("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Your profile could not be saved.");
       setSavedProfile(profile);
-      setMessage("Profile changes saved.");
+      showMessage("Profile changes saved.", "success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Your profile could not be saved.");
+      showMessage(error instanceof Error ? error.message : "Your profile could not be saved.", "error");
     } finally { setBusyAction(null); }
   }
 
   async function sync() {
     if (busyAction) return;
     setBusyAction("sync");
-    setMessage("Syncing Google Health…");
+    showMessage("Syncing Google Health…");
     try {
       const response = await fetch("/api/health/sync", { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Sync could not be started.");
-      setMessage(result.message ?? `Sync ${result.progress ?? 0}% complete.`);
+      showMessage(result.message ?? `Sync ${result.progress ?? 0}% complete.`, "success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Sync could not be started.");
+      showMessage(error instanceof Error ? error.message : "Sync could not be started.", "error");
     } finally { setBusyAction(null); }
   }
 
@@ -100,16 +108,16 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
       if (!response.ok) throw new Error(result.error ?? "Google Health could not be disconnected.");
       setConnection(null);
       setDisconnectConfirm(false);
-      setMessage("Google Health disconnected. Imported Soma data remains available.");
+      showMessage("Google Health disconnected. Imported Soma data remains available.", "success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Google Health could not be disconnected.");
+      showMessage(error instanceof Error ? error.message : "Google Health could not be disconnected.", "error");
     } finally { setBusyAction(null); }
   }
 
   async function deleteAccount() {
     if (deleteText !== "DELETE MY SOMA DATA" || busyAction) return;
     setBusyAction("delete");
-    setMessage(null);
+    showMessage(null);
     try {
       const response = await fetch("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: deleteText }) });
       const result = await response.json();
@@ -118,7 +126,7 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
       router.push("/login?deleted=1");
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Your account could not be deleted.");
+      showMessage(error instanceof Error ? error.message : "Your account could not be deleted.", "error");
       setBusyAction(null);
     }
   }
@@ -132,7 +140,7 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
       router.push("/login");
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "You could not be signed out.");
+      showMessage(error instanceof Error ? error.message : "You could not be signed out.", "error");
       setBusyAction(null);
     }
   }
@@ -144,6 +152,6 @@ export function SettingsConsole({ demoMode }: { demoMode: boolean }) {
     {tab === "profile" && <section className="settings-card"><div><h2>Profile and targets</h2><p>These values support your personal estimates. Google does not change them automatically.</p></div><div className="settings-form"><label>Name<input required maxLength={80} autoComplete="name" value={profile.displayName} onChange={(event) => update("displayName", event.target.value)} /></label><label>Date of birth<input required type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" value={profile.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label><label>Height (cm)<input required min="50" max="260" type="number" value={profile.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label><label>Weight (kg)<input required min="20" max="400" type="number" step="0.1" value={profile.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label><label>Primary goal<select value={profile.primaryGoal} onChange={(event) => update("primaryGoal", event.target.value)}>{Object.entries(goals).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Base sleep target<select value={profile.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))}><option value="420">7 hours</option><option value="450">7.5 hours</option><option value="480">8 hours</option><option value="510">8.5 hours</option><option value="540">9 hours</option></select></label><label>Usual wake time<input type="time" required value={profile.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /></label><label>Initial import<select value={profile.importRange} onChange={(event) => update("importRange", event.target.value as Profile["importRange"])}><option value="90_days">Last 90 days</option><option value="all_history">All available history</option></select></label></div>{!profileValid && <p className="form-error" role="alert">Check your name, date of birth, height, weight, and wake time.</p>}<button className="primary-button" onClick={() => void save()} disabled={!profileDirty || !profileValid || Boolean(busyAction)} type="button">{busyAction === "save" ? <LoaderCircle className="spin" /> : message === "Profile changes saved." ? <Check /> : <Save />}{busyAction === "save" ? "Saving…" : profileDirty ? "Save changes" : "No changes"}</button></section>}
     {tab === "connections" && <section className="settings-card"><div><h2>Health data connection</h2><p>Google sign-in and Google Health permission are separate. Soma requests read-only health scopes.</p></div><article className="connection-card"><span className="connection-logo" aria-hidden="true"><HeartPulse size={19} /></span><div><strong>Google Health</strong><p>{connection ? `Connected · Last sync ${connection.last_synced_at ? new Date(String(connection.last_synced_at)).toLocaleString("en-US") : "pending"}` : demoMode ? "Demo mode · live connection becomes available after database setup" : "Not connected"}</p></div>{connection ? <div className="connection-actions"><button disabled={Boolean(busyAction)} onClick={() => void sync()} type="button">{busyAction === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Sync now</button><button disabled={Boolean(busyAction)} onClick={() => setDisconnectConfirm(true)} type="button"><Unplug />Disconnect</button></div> : demoMode ? <span className="connection-unavailable" aria-disabled="true">Unavailable in demo</span> : <a href="/api/health/google/connect">Connect <ExternalLink /></a>}</article>{disconnectConfirm && <div className="inline-confirmation" role="alert"><div><strong>Disconnect Google Health?</strong><p>Imported data remains in Soma until you delete your account.</p></div><div><button className="secondary-button" type="button" onClick={() => setDisconnectConfirm(false)}>Cancel</button><button className="danger-button" disabled={busyAction === "disconnect"} onClick={() => void disconnect()} type="button">{busyAction === "disconnect" ? "Disconnecting…" : "Disconnect"}</button></div></div>}<div className="scope-note"><Shield /><div><strong>Read-only by design</strong><p>Sleep, activity and fitness, and health metrics. OAuth tokens are encrypted and never sent to your browser.</p></div></div></section>}
     {tab === "privacy" && <section className="settings-card"><div><h2>Your Soma data</h2><p>Soma keeps your history until you export or delete it. Provider OAuth secrets are excluded from exports.</p></div><div className="privacy-actions"><article><Database /><div><strong>Export all data</strong><p>Download profile, health records, scores, insights, conversations, and workouts as JSON.</p></div><a href="/api/account/export" download><Download />Export JSON</a></article><article><LogOut /><div><strong>Sign out</strong><p>End this browser session without deleting data.</p></div><button disabled={Boolean(busyAction)} onClick={() => void signOut()} type="button">{busyAction === "signout" ? "Signing out…" : "Sign out"}</button></article><article className="danger-zone"><Trash2 /><div><strong>Delete account and all Soma data</strong><p>This cannot be undone. Enter DELETE MY SOMA DATA to confirm.</p><input aria-label="Type DELETE MY SOMA DATA to confirm" value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="DELETE MY SOMA DATA" autoComplete="off" /></div><button disabled={deleteText !== "DELETE MY SOMA DATA" || Boolean(busyAction)} onClick={() => void deleteAccount()} type="button">{busyAction === "delete" ? "Deleting…" : "Delete permanently"}</button></article></div></section>}
-    {message && <p className="settings-message" role="status" aria-live="polite">{message}</p>}
+    {message && <p className={`settings-message settings-message--${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}
   </section></div></div>;
 }

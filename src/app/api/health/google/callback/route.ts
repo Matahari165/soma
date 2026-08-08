@@ -30,12 +30,18 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user || user.isDemo) return NextResponse.redirect(new URL("/login", url.origin));
 
+  const providerError = url.searchParams.get("error");
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieStore = await cookies();
   const stateCookie = cookieStore.get("soma_health_oauth_state")?.value;
   const verifier = cookieStore.get("soma_health_pkce")?.value;
   const returnTarget = cookieStore.get("soma_health_return")?.value;
+
+  if (providerError) {
+    const status = providerError === "access_denied" ? "permission_denied" : "connection_failed";
+    return clearOAuthCookies(NextResponse.redirect(new URL(`/settings?health=${status}`, url.origin)));
+  }
 
   if (!code || !state || !stateCookie || !verifier || state !== stateCookie) {
     return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=invalid_state", url.origin)));
