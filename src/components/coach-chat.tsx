@@ -19,7 +19,8 @@ export function CoachChat({ compact = false, initialThreadId = null, initialMess
   const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior });
   }, [messages, sending]);
 
   async function send(text = message) {

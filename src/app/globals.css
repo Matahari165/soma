@@ -86,6 +86,9 @@ textarea:focus-visible {
 }
 
 .skip-link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
   position: fixed;
   z-index: 100;
   top: 10px;
@@ -444,7 +447,8 @@ textarea:focus-visible {
 .section-block { margin-top: 33px; }
 
 .section-heading h2,
-.widget-header h2 {
+.widget-header h2,
+.widget-header h3 {
   margin: 3px 0 0;
   font-size: 20px;
   font-weight: 680;
@@ -741,6 +745,13 @@ textarea:focus-visible {
   .page-header h1 { font-size: 29px; }
   .page-actions { margin-top: 18px; }
   .page-actions .secondary-button { display: none; }
+  .page-actions .customize-button {
+    display: inline-flex;
+    width: 44px;
+    padding: 0;
+  }
+  .page-actions .customize-button span { display: none; }
+  .dashboard-hero .page-actions { width: 100%; justify-content: space-between; }
   .page-actions .icon-button { margin-left: auto; }
   .primary-metrics { margin-top: 12px; }
   .soma-summary { grid-template-columns: 1fr auto; padding: 18px; }
@@ -889,7 +900,7 @@ textarea:focus-visible {
 }
 .insight { border-radius: 18px; }
 .widget { border-radius: 20px; }
-.section-heading h2, .widget-header h2 { font-weight: 640; }
+.section-heading h2, .widget-header h2, .widget-header h3 { font-weight: 640; }
 
 .coach-fab { background: #10231d; box-shadow: 0 12px 34px rgb(9 27 21 / 24%); }
 
@@ -925,7 +936,7 @@ textarea:focus-visible {
   .dashboard-hero .page-header { display: flex; align-items: center; }
   .dashboard-hero .page-date { margin-bottom: 2px; font-size: 9px; }
   .dashboard-hero .page-header h1 { font-size: 24px; }
-  .dashboard-hero .page-actions { margin-top: 0; }
+  .dashboard-hero .page-actions { width: auto; margin-top: 0; }
   .dashboard-hero .demo-badge { min-height: 28px; }
   .dashboard-hero .primary-metrics {
     grid-template-columns: repeat(3, 128px);

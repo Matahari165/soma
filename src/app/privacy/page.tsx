@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Privacy" };
 
 export default function PrivacyPage() {
   return <main className="legal-page" id="main-page-content"><Link className="brand brand--auth" href="/">Soma</Link><article><span className="eyebrow">Privacy · Version 1.0</span><h1>Your health data stays yours.</h1><p>Last updated August 7, 2026.</p><h2>What Soma stores</h2><p>Your Google account identifier, manually entered profile information, authorized Google Health data, derived scores and insights, Coach conversations, and workouts.</p><h2>Why Soma uses it</h2><p>To show your dashboard, calculate personal wellness trends, generate alerts, answer Coach questions, and run the features you explicitly request.</p><h2>AI processing</h2><p>Soma sends a limited summary of relevant metrics to OpenAI only when you use Coach. Raw provider payloads and OAuth tokens are not included. Requests use store: false.</p><h2>Retention and control</h2><p>Soma keeps your history until you delete your account. You can export your data, disconnect Google Health, or permanently delete everything from Settings.</p><h2>Important limit</h2><p>Soma is a general wellness application, not a medical device. It does not diagnose or replace professional care.</p><Link href="/settings">Return to settings</Link></article></main>;

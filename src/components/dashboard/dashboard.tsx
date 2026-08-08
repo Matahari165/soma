@@ -28,13 +28,17 @@ function normalizeWidgets(value: unknown): Widget[] {
 export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMode: boolean }) {
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
+  const [savedWidgets, setSavedWidgets] = useState<Widget[]>(defaultWidgets);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const customizeRef = useRef<HTMLElement>(null);
   const closeCustomization = useCallback(() => {
-    if (!saving) setCustomizing(false);
-  }, [saving]);
+    if (!saving) {
+      setWidgets(savedWidgets);
+      setCustomizing(false);
+    }
+  }, [savedWidgets, saving]);
 
   useDialogLayer({ open: customizing, onClose: closeCustomization, containerRef: customizeRef });
 
@@ -42,12 +46,26 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
     Promise.resolve().then(() => {
       const local = window.localStorage.getItem("soma:dashboard-layout");
       if (local) {
-        try { setWidgets(normalizeWidgets(JSON.parse(local))); } catch { setWidgets(defaultWidgets); }
+        try {
+          const nextWidgets = normalizeWidgets(JSON.parse(local));
+          setWidgets(nextWidgets);
+          setSavedWidgets(nextWidgets);
+        } catch {
+          setWidgets(defaultWidgets);
+          setSavedWidgets(defaultWidgets);
+        }
       } else if (!demoMode) {
         fetch("/api/dashboard-layout")
           .then((response) => response.ok ? response.json() : Promise.reject(new Error("Layout unavailable")))
-          .then((layout) => setWidgets(normalizeWidgets(layout)))
-          .catch(() => setWidgets(defaultWidgets));
+          .then((layout) => {
+            const nextWidgets = normalizeWidgets(layout);
+            setWidgets(nextWidgets);
+            setSavedWidgets(nextWidgets);
+          })
+          .catch(() => {
+            setWidgets(defaultWidgets);
+            setSavedWidgets(defaultWidgets);
+          });
       }
     });
   }, [demoMode]);
@@ -67,6 +85,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
         if (!response.ok) throw new Error("Your layout could not be saved. Try again.");
       }
       window.localStorage.setItem("soma:dashboard-layout", JSON.stringify({ widgets }));
+      setSavedWidgets(widgets);
       setSaved(true);
       window.setTimeout(() => { setSaved(false); setCustomizing(false); }, 650);
     } catch (error) {
@@ -82,6 +101,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
     "sleep-regularity": <SleepRegularity data={data.sleepRegularity} />,
   };
   const widgetLabels: Record<WidgetId, string> = { "weekly-effort": "Weekly effort", "recovery-trend": "Recovery trend", "sleep-regularity": "Sleep regularity" };
+  const visibleWidgets = widgets.filter((widget) => widget.visible);
 
   return (
     <div className="dashboard-page">
@@ -93,7 +113,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
           </div>
           <div className="page-actions">
             {demoMode && <span className="demo-badge">Demo data</span>}
-            <button className="secondary-button" type="button" onClick={() => setCustomizing(true)}><Settings2 size={17} /> Customize</button>
+            <button className="secondary-button customize-button" type="button" onClick={() => setCustomizing(true)} aria-label="Customize dashboard"><Settings2 size={17} /><span>Customize</span></button>
           </div>
         </div>
 
@@ -128,13 +148,13 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
         </div>
       </section>
 
-      <section className="section-block" aria-labelledby="overview-heading">
+      {visibleWidgets.length > 0 && <section className="section-block" aria-labelledby="overview-heading">
         <div className="section-heading">
           <h2 id="overview-heading">Weekly overview</h2>
           <Link href="/trends" className="text-link">Explore trends <ChevronRight size={15} /></Link>
         </div>
-        <div className="widget-grid">{widgets.filter((widget) => widget.visible).map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>
-      </section>
+        <div className="widget-grid">{visibleWidgets.map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>
+      </section>}
 
       <p className="medical-note">Soma supports general wellness and is not a medical device. Seek professional advice for health concerns.</p>
       {customizing && <><button className="panel-backdrop" type="button" onClick={closeCustomization} aria-label="Close customization panel" /><aside ref={customizeRef} className="customize-panel" role="dialog" aria-modal="true" aria-labelledby="customize-title"><header><div><span className="eyebrow">Dashboard layout</span><h2 id="customize-title">Customize your overview</h2></div><button className="icon-button" type="button" onClick={closeCustomization} aria-label="Close customization"><X size={19} /></button></header><p>The three primary scores stay fixed. Choose and order the supporting widgets below.</p><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="primary-button" type="button" onClick={() => void saveLayout()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={17} />Saving…</> : saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}

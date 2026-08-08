@@ -13,7 +13,7 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
       <div className="widget-header">
         <div>
           <span className="eyebrow">Weekly target</span>
-          <h2>Effort balance</h2>
+          <h3>Effort balance</h3>
         </div>
         <span className="widget-icon"><TrendingUp size={18} /></span>
       </div>
@@ -51,7 +51,7 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
       <div className="widget-header">
         <div>
           <span className="eyebrow">Seven days</span>
-          <h2>Recovery trend</h2>
+          <h3>Recovery trend</h3>
         </div>
         <Link href="/recovery" className="text-link">Explore <ArrowRight size={15} /></Link>
       </div>
@@ -77,7 +77,7 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
       <div className="widget-header">
         <div>
           <span className="eyebrow">Last seven nights</span>
-          <h2>Sleep regularity</h2>
+          <h3>Sleep regularity</h3>
         </div>
         <span className="regularity-score">{data.consistency}%</span>
       </div>

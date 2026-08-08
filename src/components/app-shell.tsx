@@ -71,6 +71,7 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
   const closeCoach = useCallback(() => setCoachOpen(false), []);
   const displayName = user?.displayName ?? "Soma user";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
+  const onCoachPage = pathname.startsWith("/coach");
 
   useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
 
@@ -146,17 +147,17 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
           <span>Soma</span>
         </Link>
         <div className="mobile-header__actions">
-          <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
+          {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
             <Sparkles size={19} />
-          </button>
-          <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label="Open menu" aria-expanded={mobileMenuOpen}>
+          </button>}
+          <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </header>
 
       {mobileMenuOpen && (
-        <><button className="mobile-menu-backdrop" type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" /><nav id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation">
+        <><button className="mobile-menu-backdrop" type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Dismiss menu" /><nav id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation">
           {navigation.slice(4).map(({ label, href, icon: Icon }) => (
             <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMobileMenuOpen(false)}>
               <Icon size={19} />
@@ -170,10 +171,10 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
 
       <main className="main-content">{children}</main>
 
-      <button className="coach-fab" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
+      {!onCoachPage && <button className="coach-fab" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
         <Sparkles size={20} />
         <span>Ask Soma</span>
-      </button>
+      </button>}
 
       <nav className="bottom-nav" aria-label="Mobile primary navigation">
         {mobileNavigation.map(({ label, href, icon: Icon }) => (
