@@ -167,7 +167,7 @@ async function googleHealthRequest<T>(path: string, accessToken: string, init?: 
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Google Health request failed (${response.status}): ${detail.slice(0, 300)}`);
+    throw new Error(`Google Health request failed (${response.status}): ${detail.slice(0, 1000)}`);
   }
 
   return (await response.json()) as T;
