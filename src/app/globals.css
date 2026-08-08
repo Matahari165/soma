@@ -812,6 +812,24 @@ textarea:focus-visible {
   padding-top: 24px;
 }
 
+.dashboard-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #c9ddd5;
+  border-radius: 14px;
+  background: #eef7f3;
+  padding: 10px 12px;
+  color: var(--brand-dark);
+  font-size: 13px;
+}
+.dashboard-notice > svg { color: var(--brand); }
+.dashboard-notice strong { display: block; font-size: 13px; }
+.dashboard-notice p { margin-top: 1px; color: var(--muted); font-size: 12px; }
+.dashboard-notice a { color: var(--brand-dark); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+
 .dashboard-hero {
   position: relative;
   isolation: isolate;
@@ -955,6 +973,8 @@ textarea:focus-visible {
   .dashboard-hero { padding-inline: 10px; }
   .dashboard-hero .page-header h1 { font-size: 27px; }
   .dashboard-hero .primary-metrics { gap: 7px; }
+  .dashboard-notice { grid-template-columns: auto 1fr; }
+  .dashboard-notice a { grid-column: 2; justify-self: start; }
   .soma-summary { display: grid; grid-template-columns: 1fr; border-radius: 18px; padding: 16px; }
   .summary-button { justify-self: start; }
 }

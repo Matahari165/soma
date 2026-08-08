@@ -49,13 +49,20 @@ export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   await queueWebhookJobs();
   const admin = createSupabaseAdminClient();
-  const { data: jobs } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(5);
+  const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await admin.from("sync_jobs").update({ status: "queued", started_at: null })
+    .eq("status", "running").lt("started_at", staleBefore);
+
   const results = [];
-  for (const job of jobs ?? []) {
+  const deadline = Date.now() + 25_000;
+  while (results.length < 3 && Date.now() < deadline) {
+    const { data: job } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
+    if (!job) break;
     try {
       results.push({ id: job.id, ...(await processGoogleHealthSyncJob(job.id)) });
     } catch {
       results.push({ id: job.id, error: true });
+      break;
     }
   }
   return NextResponse.json({ processed: results });

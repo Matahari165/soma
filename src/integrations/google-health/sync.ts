@@ -25,6 +25,8 @@ type SyncJob = {
   range_end: string;
   cursor: SyncCursor;
   attempts: number;
+  progress: number;
+  status: string;
 };
 
 type ProviderConnection = {
@@ -84,34 +86,41 @@ export async function processGoogleHealthSyncJob(jobId: string) {
   if (jobError || !rawJob) throw new Error("Sync job was not found.");
   const job = rawJob as SyncJob;
 
-  const { data: rawConnection, error: connectionError } = await admin
-    .from("provider_connections")
-    .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at")
-    .eq("id", job.connection_id)
-    .single();
-  if (connectionError || !rawConnection) throw new Error("Google Health connection was not found.");
+  if (job.status !== "queued") {
+    return { completed: job.status === "completed", progress: job.progress ?? 0, skipped: true };
+  }
 
-  await admin.from("sync_jobs").update({
+  const { data: rawClaimedJob, error: claimError } = await admin.from("sync_jobs").update({
     status: "running",
     started_at: new Date().toISOString(),
     attempts: job.attempts + 1,
     error_code: null,
     error_message: null,
-  }).eq("id", job.id);
+  }).eq("id", job.id).eq("status", "queued").select("*").maybeSingle();
+  if (claimError) throw new Error("Sync job could not be claimed.");
+  if (!rawClaimedJob) return { completed: false, progress: job.progress ?? 0, skipped: true };
+  const claimedJob = rawClaimedJob as SyncJob;
 
   try {
-    const dataTypes = (job.data_types.length ? job.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
-    const typeIndex = job.cursor.typeIndex ?? 0;
+    const { data: rawConnection, error: connectionError } = await admin
+      .from("provider_connections")
+      .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at")
+      .eq("id", claimedJob.connection_id)
+      .single();
+    if (connectionError || !rawConnection) throw new Error("Google Health connection was not found.");
+
+    const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
+    const typeIndex = claimedJob.cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
-      await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", job.id);
-      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", job.connection_id);
+      await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", claimedJob.id);
+      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
       return { completed: true, progress: 100 };
     }
 
-    const start = new Date(job.range_start);
-    const end = new Date(job.range_end);
-    const windowStart = new Date(job.cursor.windowStart ?? job.range_start);
+    const start = new Date(claimedJob.range_start);
+    const end = new Date(claimedJob.range_end);
+    const windowStart = new Date(claimedJob.cursor.windowStart ?? claimedJob.range_start);
     const windowDays = dataType === "heart-rate" ? 14 : 90;
     const windowEnd = earlierDate(addDays(windowStart, windowDays), end);
     const accessToken = await getAccessToken(rawConnection as ProviderConnection);
@@ -120,10 +129,10 @@ export async function processGoogleHealthSyncJob(jobId: string) {
       dataType,
       start: windowStart,
       end: windowEnd,
-      pageToken: job.cursor.pageToken,
+      pageToken: claimedJob.cursor.pageToken,
     });
     const records = (response.dataPoints ?? []).map((point) =>
-      normalizeGoogleHealthPoint(job.user_id, dataType, point),
+      normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point),
     );
     await upsertRecords(records);
 
@@ -146,23 +155,23 @@ export async function processGoogleHealthSyncJob(jobId: string) {
       attempts: 0,
       status: completed ? "completed" : "queued",
       completed_at: completed ? new Date().toISOString() : null,
-    }).eq("id", job.id);
+    }).eq("id", claimedJob.id);
 
     if (completed) {
-      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", job.connection_id);
-      await recomputeUserHealth(job.user_id);
+      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
+      await recomputeUserHealth(claimedJob.user_id);
     }
 
     return { completed, progress, imported: records.length, dataType };
   } catch (error) {
-    const terminal = job.attempts + 1 >= 3;
+    const terminal = claimedJob.attempts >= 3;
     const message = error instanceof Error ? error.message : "Unknown Google Health sync error.";
     await admin.from("sync_jobs").update({
       status: terminal ? "failed" : "queued",
       error_code: "GOOGLE_HEALTH_SYNC_FAILED",
       error_message: message.slice(0, 1000),
-    }).eq("id", job.id);
-    await admin.from("provider_connections").update({ status: terminal ? "error" : "connected", last_error_code: "GOOGLE_HEALTH_SYNC_FAILED" }).eq("id", job.connection_id);
+    }).eq("id", claimedJob.id);
+    await admin.from("provider_connections").update({ status: terminal ? "error" : "connected", last_error_code: "GOOGLE_HEALTH_SYNC_FAILED" }).eq("id", claimedJob.connection_id);
     throw error;
   }
 }

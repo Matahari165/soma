@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const schema = readFileSync(new URL("../../supabase/migrations/20260808000000_complete_product_schema.sql", import.meta.url), "utf8");
 const hardening = readFileSync(new URL("../../supabase/migrations/20260808130000_production_hardening.sql", import.meta.url), "utf8");
+const serviceRolePrivileges = readFileSync(new URL("../../supabase/migrations/20260808143000_restore_service_role_privileges.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -24,6 +25,12 @@ describe("database security contract", () => {
       expect(hardening).toContain(`create policy ${policy}`);
     }
     expect(hardening).toMatch(/revoke execute on function public\.rls_auto_enable\(\) from public, anon, authenticated/i);
+  });
+
+  it("keeps server-only resources usable by the backend service role", () => {
+    expect(serviceRolePrivileges).toMatch(/grant select, insert, update, delete on all tables in schema public to service_role/i);
+    expect(serviceRolePrivileges).toMatch(/alter default privileges for role postgres in schema public/i);
+    expect(serviceRolePrivileges).not.toMatch(/to (anon|authenticated)/i);
   });
 
   it("keeps the background sync setup safe to run after a rotation", () => {

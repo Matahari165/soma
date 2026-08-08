@@ -27,8 +27,18 @@ export async function POST() {
   const { data: connection } = await admin.from("provider_connections").select("id").eq("user_id", user.id).eq("provider", "google_health").eq("status", "connected").maybeSingle();
   if (!connection) return NextResponse.json({ error: "Connect Google Health before syncing." }, { status: 409 });
 
-  let { data: job } = await admin.from("sync_jobs").select("id").eq("user_id", user.id).in("status", ["queued", "running"]).order("created_at").limit(1).maybeSingle();
+  let { data: job } = await admin.from("sync_jobs").select("id").eq("user_id", user.id).eq("status", "queued").order("created_at").limit(1).maybeSingle();
   if (!job) {
+    const { data: runningJob } = await admin.from("sync_jobs").select("id,progress").eq("user_id", user.id).eq("status", "running").order("created_at").limit(1).maybeSingle();
+    if (runningJob) {
+      return NextResponse.json({
+        jobId: runningJob.id,
+        running: true,
+        progress: runningJob.progress ?? 0,
+        message: "Google Health import is already running in the background.",
+      });
+    }
+
     const end = new Date();
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - 7);
@@ -47,7 +57,13 @@ export async function POST() {
 
   try {
     const result = await processGoogleHealthSyncJob(job.id);
-    return NextResponse.json({ jobId: job.id, ...result });
+    return NextResponse.json({
+      jobId: job.id,
+      ...result,
+      message: result.completed
+        ? "Google Health import is complete."
+        : "Google Health import continues in the background.",
+    });
   } catch {
     return NextResponse.json({ error: "Google Health sync will be retried." }, { status: 502 });
   }

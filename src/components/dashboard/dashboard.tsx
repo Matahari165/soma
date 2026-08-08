@@ -25,7 +25,15 @@ function normalizeWidgets(value: unknown): Widget[] {
   return valid;
 }
 
-export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMode: boolean }) {
+export function HealthConnectedNotice() {
+  return <div className="dashboard-notice" role="status">
+    <Check size={18} aria-hidden="true" />
+    <div><strong>Google Health connected</strong><p>Your first import is running in the background.</p></div>
+    <Link href="/settings?health=connected">View connection</Link>
+  </div>;
+}
+
+export function Dashboard({ data, demoMode, healthConnected = false }: { data: DashboardSnapshot; demoMode: boolean; healthConnected?: boolean }) {
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
   const [savedWidgets, setSavedWidgets] = useState<Widget[]>(defaultWidgets);
@@ -105,6 +113,7 @@ export function Dashboard({ data, demoMode }: { data: DashboardSnapshot; demoMod
 
   return (
     <div className="dashboard-page">
+      {healthConnected && <HealthConnectedNotice />}
       <section className="dashboard-hero" aria-labelledby="today-heading">
         <div className="page-header">
           <div>

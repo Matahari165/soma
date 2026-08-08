@@ -93,7 +93,7 @@ export function SettingsConsole({ demoMode, initialHealthNotice = null }: { demo
       const response = await fetch("/api/health/sync", { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Sync could not be started.");
-      showMessage(result.message ?? `Sync ${result.progress ?? 0}% complete.`, "success");
+      showMessage(result.message ?? "Google Health import continues in the background.", "success");
     } catch (error) {
       showMessage(error instanceof Error ? error.message : "Sync could not be started.", "error");
     } finally { setBusyAction(null); }
