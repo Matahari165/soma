@@ -13,7 +13,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
   const heartAverage = heartRates.length ? heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length : null;
-  return <HealthPageShell eyebrow="Body reserve" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} scoreLabel="Recovery score">
+  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} scoreLabel="Recovery score">
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
         <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Against your baseline</p></article>

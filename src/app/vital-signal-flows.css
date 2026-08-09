@@ -94,12 +94,6 @@
 }
 
 .auth-intro__copy p { max-width: 720px; color: var(--signal-text-soft); font-size: 18px; line-height: 1.6; }
-.auth-principles { z-index: 1; display: grid; max-width: 760px; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid var(--signal-border); }
-.auth-principles span { display: flex; align-items: flex-start; gap: 9px; border-right: 1px solid var(--signal-border); color: var(--signal-muted); padding: 16px; font-size: 13px; }
-.auth-principles span:first-child { padding-left: 0; }
-.auth-principles span:last-child { border-right: 0; }
-.auth-principles svg { flex: 0 0 auto; color: var(--signal-primary); }
-
 .auth-card-wrap,
 .onboarding-main {
   display: grid;

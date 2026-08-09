@@ -2,10 +2,10 @@ import { Activity, BedDouble, ChevronRight, HeartPulse } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
-import { DataFreshnessLabel, MetricStatus } from "@/components/signal-ui";
+import { DataFreshnessLabel } from "@/components/signal-ui";
 import type { DailyScore } from "@/domain/health";
 
-export function ScoreLink({ metric, index }: { metric: DailyScore; index: number }) {
+export function ScoreLink({ metric }: { metric: DailyScore }) {
   const scoreLabel = metric.score === null
     ? `${metric.label} score unavailable`
     : `${metric.label} score ${metric.score} out of 100`;
@@ -24,10 +24,8 @@ export function ScoreLink({ metric, index }: { metric: DailyScore; index: number
       href={metric.href}
       aria-label={`Open ${scoreLabel}`}
     >
-      <span className="score-link__channel" aria-hidden="true">0{index + 1}</span>
       <span className="score-link__identity">
         <span><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{metric.label}</span>
-        <MetricStatus status={metric.status} />
       </span>
       <span className="score-link__reading score-link__gauge" style={scoreStyle}>
         <strong>{metric.score ?? "—"}</strong>
@@ -38,7 +36,7 @@ export function ScoreLink({ metric, index }: { metric: DailyScore; index: number
           <line x1="0" y1="32" x2="100" y2="32" />
           {chartPoints ? <polyline points={chartPoints} /> : null}
         </svg>
-        <small>{metric.history.length > 1 ? `${metric.history.length} recent readings` : "Building history"}</small>
+        <small>{metric.history.length > 1 ? `${metric.history.length} readings` : "Baseline forming"}</small>
       </span>
       <span className="score-link__context"><strong>{metric.value}</strong><small>{metric.detail}</small></span>
       <DataFreshnessLabel freshness={metric.freshness} />

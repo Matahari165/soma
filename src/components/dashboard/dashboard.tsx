@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, ChevronRight, CircleSlash, LoaderCircle, Radio, Settings2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronRight, CircleSlash, LoaderCircle, Settings2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -115,9 +115,8 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
       <section className="dashboard-hero" aria-labelledby="today-heading">
         <div className="page-header">
           <div>
-            <p className="page-date"><Radio size={13} aria-hidden="true" /> {data.dateLabel}</p>
-            <h1 id="today-heading">{data.greeting}, {data.greetingName}.</h1>
-            <p className="page-deck">Your body, mapped for today.</p>
+            <p className="page-date">{data.dateLabel}</p>
+            <h1 id="today-heading">{data.greeting}, {data.greetingName}</h1>
           </div>
           <div className="page-actions">
             <button className="secondary-button customize-button" type="button" onClick={() => setCustomizing(true)} aria-label="Customize dashboard"><Settings2 size={17} /><span>Customize</span></button>
@@ -125,9 +124,9 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
         </div>
 
         <nav className="primary-metrics" aria-label="Today's primary health scores">
-          <header className="signal-array__header"><div><span className="eyebrow">Today&apos;s map</span><h2>Three signals, one picture</h2></div><p>Open a signal to see the measurements behind it.</p></header>
+          <header className="signal-array__header"><h2>Today&apos;s signals</h2></header>
           <div className="signal-array__rows">
-            {data.scores.map((score, index) => <ScoreLink metric={score} index={index} key={score.kind} />)}
+            {data.scores.map((score) => <ScoreLink metric={score} key={score.kind} />)}
           </div>
         </nav>
       </section>
@@ -135,22 +134,20 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
       <section className="soma-summary" aria-labelledby="soma-summary-title">
         <div className="summary-rail" aria-hidden="true"><span /><span /><span /></div>
         <div>
-          <span className="eyebrow">Soma brief</span>
-          <h2 id="soma-summary-title">Today&apos;s reading</h2>
+          <h2 id="soma-summary-title">What matters now</h2>
           <p>{data.summary}</p>
         </div>
-        <Link className="summary-button" href="/coach">Discuss it <ChevronRight size={16} /></Link>
+        <Link className="summary-button" href="/coach">Open Coach <ChevronRight size={16} /></Link>
       </section>
 
       <section className="section-block" aria-labelledby="insights-heading">
         <div className="section-heading">
-          <h2 id="insights-heading">Today&apos;s insights</h2>
-          <Link className="text-link" href="/trends">All patterns <ChevronRight size={15} /></Link>
+          <h2 id="insights-heading">Patterns</h2>
+          <Link className="text-link" href="/trends">View trends <ChevronRight size={15} /></Link>
         </div>
         {data.insights.length ? <div className="insight-list">
-          {data.insights.map((insight, index) => (
+          {data.insights.map((insight) => (
             <article className={`insight insight--${insight.category}`} key={insight.id}>
-              <span className="insight-priority" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
               <div>
                 <h3>{insight.title}</h3>
                 <p>{insight.description}</p>
@@ -159,18 +156,17 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
               <Link href="/trends" aria-label={`Explore insight: ${insight.title}`}><ChevronRight size={18} /></Link>
             </article>
           ))}
-        </div> : <div className="inline-empty" role="status"><CircleSlash size={20} aria-hidden="true" /><div><strong>Your atlas is still taking shape</strong><p>New patterns will appear here as complete measurements arrive.</p></div></div>}
+        </div> : <div className="inline-empty" role="status"><CircleSlash size={20} aria-hidden="true" /><div><strong>More data needed</strong><p>Patterns will appear after complete measurements arrive.</p></div></div>}
       </section>
 
       {visibleWidgets.length > 0 && <section className="section-block" aria-labelledby="overview-heading">
         <div className="section-heading">
-          <h2 id="overview-heading">Weekly overview</h2>
-          <Link href="/trends" className="text-link">Open trends <ChevronRight size={15} /></Link>
+          <h2 id="overview-heading">Last 7 days</h2>
+          <Link href="/trends" className="text-link">Details <ChevronRight size={15} /></Link>
         </div>
         <div className="widget-grid">{visibleWidgets.map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>
       </section>}
 
-      <p className="medical-note">Wellness context, not medical advice.</p>
       {customizing && <><button className="panel-backdrop" type="button" onClick={closeCustomization} aria-label="Close customization panel" /><aside ref={customizeRef} className="customize-panel" role="dialog" aria-modal="true" aria-labelledby="customize-title"><header><div><span className="eyebrow">Dashboard layout</span><h2 id="customize-title">Customize your overview</h2></div><button className="icon-button" type="button" onClick={closeCustomization} aria-label="Close customization"><X size={19} /></button></header><p>The three primary scores stay fixed. Choose and order the supporting widgets below.</p><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="primary-button" type="button" onClick={() => void saveLayout()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={17} />Saving…</> : saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}
     </div>
   );

@@ -27,8 +27,7 @@
   margin: auto 0;
 }
 
-.auth-intro__copy .eyebrow,
-.auth-principles {
+.auth-intro__copy .eyebrow {
   color: #a8bbb5;
 }
 
@@ -47,19 +46,6 @@
   color: #c9d4d0;
   font-size: clamp(17px, 1.8vw, 22px);
   line-height: 1.55;
-}
-
-.auth-principles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 13px 24px;
-  font-size: 12px;
-}
-
-.auth-principles span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .auth-card-wrap {
@@ -552,10 +538,6 @@
 }
 
 @media (max-width: 560px) {
-  .auth-principles {
-    display: grid;
-  }
-
   .form-grid,
   .choice-grid {
     grid-template-columns: 1fr;
@@ -622,8 +604,6 @@
   .auth-intro__copy { margin: auto 0; }
   .auth-intro__copy h1 { margin: 10px 0; font-size: 34px; }
   .auth-intro__copy p { font-size: 14px; line-height: 1.4; }
-  .auth-principles { display: none; }
-
   .auth-card-wrap {
     min-height: 100dvh;
     padding: 10px;

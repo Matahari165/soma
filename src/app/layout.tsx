@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Newsreader } from "next/font/google";
+import { IBM_Plex_Mono, Manrope, Newsreader } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
@@ -16,7 +16,7 @@ import "./vital-signal-flows.css";
 import "./vital-signal-responsive.css";
 import "./living-atlas.css";
 
-const archivo = Archivo({
+const manrope = Manrope({
   subsets: ["latin"],
   weight: "variable",
   display: "swap",
@@ -29,6 +29,13 @@ const newsreader = Newsreader({
   style: ["normal", "italic"],
   display: "swap",
   variable: "--font-atlas-serif",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-atlas-mono",
 });
 
 export const metadata: Metadata = {
@@ -48,8 +55,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   colorScheme: "light dark",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F3F0E7" },
-    { media: "(prefers-color-scheme: dark)", color: "#111714" },
+    { media: "(prefers-color-scheme: light)", color: "#F2F3EE" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D1511" },
   ],
 };
 
@@ -61,7 +68,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${archivo.variable} ${newsreader.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${manrope.variable} ${newsreader.variable} ${plexMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <ThemeInitializer />
         <SkipLink />

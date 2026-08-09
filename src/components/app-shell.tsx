@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Menu,
   MessageCircle,
-  Radio,
   Settings,
   X,
 } from "lucide-react";
@@ -20,7 +19,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
-import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
+import { SomaLogo } from "@/components/soma-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { SomaUser } from "@/lib/auth";
 
@@ -92,7 +91,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </Link>
 
         <nav className="sidebar-nav">
-          <p className="nav-label">Your atlas</p>
+          <p className="nav-label">Daily signals</p>
           {navigation.map(({ label, href, icon: Icon }) => (
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
@@ -122,7 +121,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <span className="avatar">{initials}</span>
           <span>
             <strong>{displayName}</strong>
-            <small>Your account</small>
+            <small>Profile</small>
           </span>
           <ChevronRight size={17} />
         </Link>
@@ -135,7 +134,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         <div className="mobile-header__actions">
           <ThemeToggle compact />
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
-            <SomaSymbol className="coach-symbol" />
+            <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
           </button>}
           <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -157,11 +156,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       )}
 
       <main className="main-content">{children}</main>
-
-      {!onCoachPage && <button className="coach-fab" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
-        <Radio size={20} />
-        <span>Ask Soma</span>
-      </button>}
 
       <nav className="bottom-nav" aria-label="Mobile primary navigation">
         {mobileNavigation.map(({ label, href, icon: Icon }) => (

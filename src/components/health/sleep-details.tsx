@@ -35,7 +35,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const debt = latest?.daily_sleep_debt_minutes ?? null;
   const bedtimeRegularity = timingRegularity(data.days, "bedtime");
   const wakeRegularity = timingRegularity(data.days, "wake_time");
-  return <HealthPageShell eyebrow="Night atlas" title="Sleep" description="How long, how well, and how consistently you slept." score={score} scoreLabel="Sleep score">
+  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} scoreLabel="Sleep score">
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest sleep summary">
         <article className="health-primary-card health-primary-card--featured"><span>Total sleep</span><strong>{latest.sleep_minutes === null ? "—" : duration(latest.sleep_minutes)}</strong><p>{target === null ? "Target is being estimated." : `Target ${duration(target)} · ${debt === null ? "gap unavailable" : debt > 0 ? `${duration(debt)} short` : `${duration(debt)} above target`}`}</p></article>
@@ -67,6 +67,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" description="Awake segments per hour of measured sleep." />
         <MetricTrendCard label="Cumulative debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" description="Rolling 14-day gap after accounting for sleep surplus." format={(value) => duration(value)} />
       </section>
-    </> : <section className="health-panel health-empty"><MoonStar size={24} aria-hidden="true" /><div><h2>Your night atlas is waiting</h2><p>Sync one complete sleep session to begin.</p></div></section>}
+    </> : <section className="health-panel health-empty"><MoonStar size={24} aria-hidden="true" /><div><h2>No sleep data yet</h2><p>Sync one complete sleep session to begin.</p></div></section>}
   </HealthPageShell>;
 }

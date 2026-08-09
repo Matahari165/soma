@@ -94,7 +94,7 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
     <article className="widget widget--regularity">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">Night rhythm</span>
+          <span className="eyebrow">Recent nights</span>
           <h3>Sleep regularity</h3>
         </div>
         <span className="regularity-score" aria-label={hasConsistency ? `${data.consistency} percent regularity` : "Regularity baseline pending"}>{hasConsistency ? `${data.consistency}%` : "—"}</span>

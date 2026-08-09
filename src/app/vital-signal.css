@@ -129,7 +129,6 @@ textarea:focus-visible {
 .nav-label,
 .quality-pill,
 .data-freshness,
-.metric-status,
 .chart-labels,
 .bar-column,
 .correlation-card footer,
@@ -531,15 +530,6 @@ button:disabled,
 .dashboard-hero .score-link::before { background: var(--metric-accent); }
 .dashboard-hero .score-link::after { background: linear-gradient(90deg, var(--metric-accent) 0 9%, transparent 9% 100%); }
 
-.score-link__channel {
-  align-self: start;
-  color: currentColor;
-  font-family: var(--font-soma-mono), "IBM Plex Mono", monospace;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .08em;
-}
-
 .score-link__identity {
   display: grid;
   align-content: center;
@@ -560,7 +550,6 @@ button:disabled,
 .score-link--recovery .score-link__identity > span:first-child svg { color: var(--signal-primary); }
 .score-link--effort .score-link__identity > span:first-child svg { color: var(--signal-effort); }
 
-.metric-status,
 .data-freshness {
   display: inline-flex;
   align-items: center;
@@ -570,11 +559,6 @@ button:disabled,
   font-weight: 500;
 }
 
-.metric-status { width: fit-content; }
-.metric-status--restorative,
-.metric-status--steady { color: var(--signal-primary); }
-.metric-status--building { color: var(--signal-warning); }
-.metric-status--limited,
 .data-freshness--missing { color: var(--signal-muted); }
 .data-freshness--stale,
 .data-freshness--partial { color: var(--signal-warning); }
@@ -735,7 +719,7 @@ button:disabled,
 .insight {
   display: grid;
   min-height: 106px;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   gap: 16px;
   border: 0;
@@ -745,21 +729,11 @@ button:disabled,
   padding: 16px 0;
 }
 
-.insight-priority {
-  color: var(--signal-faint);
-  font-family: var(--font-soma-mono), "IBM Plex Mono", monospace;
-  font-size: 13px;
-}
-
 .insight h3 { margin: 0; color: var(--signal-text); font-size: 17px; font-weight: 600; }
 .insight p { margin: 4px 0; color: var(--signal-text-soft); font-size: 15px; }
 .insight small { color: var(--signal-muted); font-family: var(--font-soma-mono), "IBM Plex Mono", monospace; font-size: 12px; }
 .insight > a { display: grid; width: 44px; height: 44px; place-items: center; border-radius: var(--signal-radius-sm); color: var(--signal-muted); }
 .insight > a:hover { background: var(--signal-surface-2); color: var(--signal-primary); }
-.insight--attention .insight-priority { color: var(--signal-warning); }
-.insight--positive .insight-priority { color: var(--signal-primary); }
-.insight--information .insight-priority { color: var(--signal-info); }
-
 .inline-empty,
 .analytics-unavailable {
   display: flex;

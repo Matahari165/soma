@@ -1,34 +1,23 @@
-import { CircleSlash, Clock3, Radio, TriangleAlert } from "lucide-react";
+import { Clock3 } from "lucide-react";
 
-import type { DataFreshness, ScoreStatus } from "@/domain/health";
-
-const statusLabels: Record<ScoreStatus, string> = {
-  restorative: "Restorative",
-  steady: "Steady",
-  building: "Building",
-  limited: "Limited data",
-};
-
-export function MetricStatus({ status }: { status: ScoreStatus }) {
-  const Icon = status === "limited" ? CircleSlash : status === "building" ? TriangleAlert : Radio;
-  return <span className={`metric-status metric-status--${status}`}><Icon size={14} aria-hidden="true" />{statusLabels[status]}</span>;
-}
+import type { DataFreshness } from "@/domain/health";
 
 function measuredLabel(value: string) {
-  if (value === "unknown") return "no measurement";
+  if (value === "unknown") return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "measured recently";
-  return `measured ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function DataFreshnessLabel({ freshness }: { freshness: DataFreshness }) {
   const label = freshness.state === "fresh"
-    ? "Current signal"
+    ? "Current"
     : freshness.state === "stale"
-      ? "Stale signal"
+      ? "Needs sync"
       : freshness.state === "partial"
-        ? "Partial signal"
-        : "Signal unavailable";
+        ? "Partial"
+        : "Awaiting data";
   const measured = measuredLabel(freshness.measuredAt);
-  return <span className={`data-freshness data-freshness--${freshness.state}`}><Clock3 size={13} aria-hidden="true" />{label} · {measured} · processed {freshness.syncedAt}</span>;
+  const details = `${label}${measured ? ` · ${measured}` : ""} · processed ${freshness.syncedAt}`;
+  return <span className={`data-freshness data-freshness--${freshness.state}`} aria-label={details} title={details}><Clock3 size={13} aria-hidden="true" />{label}{measured ? ` · ${measured}` : ""}</span>;
 }

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Activity, BrainCircuit, LockKeyhole } from "lucide-react";
 import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
@@ -18,21 +17,13 @@ export default function LoginPage() {
           <SomaLogo />
         </Link>
         <div className="auth-intro__copy">
-          <span className="eyebrow">Welcome back</span>
-          <h1>Return to<br /> <em>your rhythm.</em></h1>
-          <p>Your atlas is ready when you are.</p>
-        </div>
-        <div className="auth-principles">
-          <span><Activity size={18} /> Personal baseline</span>
-          <span><BrainCircuit size={18} /> Clear context</span>
-          <span><LockKeyhole size={18} /> Private by default</span>
+          <h1>Welcome<br /> <em>back.</em></h1>
         </div>
       </section>
       <section className="auth-card-wrap">
         <div className="auth-card">
-          <span className="eyebrow">Soma account</span>
           <h2>Sign in to continue</h2>
-          <p>Continue with the account linked to your atlas.</p>
+          <p>Use the account linked to your data.</p>
           {configured ? (
             <GoogleSignInButton />
           ) : (

@@ -38,16 +38,15 @@ export default async function TrendsPage() {
 
   return <div className="analytics-page" id="main-page-content">
     <header className="analytics-hero">
-      <div><span className="eyebrow">Your timeline</span><h1>Trends</h1><p>Changes that matter, measured against your own history.</p></div>
-      <div className="correlation-key" aria-label="How to read trends"><strong>Personal baseline</strong><span>Missing days stay missing</span></div>
+      <div><h1>Trends</h1><p>Your signals, read against your own history.</p></div>
     </header>
 
     <section className="metric-trend-grid trends-overview" aria-label="Personal trend overview">
       {trendCards}
-      {hiddenMetrics > 0 && <article className="metric-trend-card metric-trend-card--locked"><strong>{hiddenMetrics}</strong><h2>more patterns will unlock</h2><p>Sleep and overnight measurements are still incomplete.</p></article>}
+      {hiddenMetrics > 0 && <article className="metric-trend-card metric-trend-card--locked"><strong>{hiddenMetrics}</strong><h2>signals pending</h2><p>More complete nights will reveal them.</p></article>}
     </section>
 
-    <div className="health-section-heading trends-heading"><div><span className="eyebrow">Relationships</span><h2>What moves together</h2></div></div>
+    <div className="health-section-heading trends-heading"><h2>Signals in context</h2></div>
     {correlations.length ? <section className="correlation-grid" aria-label="Your correlations">{correlations.map((item) => {
       const coefficient = item.coefficient === null ? null : Number(item.coefficient);
       return <article className="correlation-card" key={item.id}><div><span className="quality-pill">{String(item.quality_status).replaceAll("_", " ")}</span><span className="correlation-value" aria-label={relationshipLabel(coefficient)}>{coefficient === null ? "—" : `${coefficient > 0 ? "+" : ""}${coefficient.toFixed(2)}`}</span></div><span className="correlation-strength">{relationshipLabel(coefficient)}</span><h2>{String(item.variable_x).replaceAll("_", " ")} ↔ {String(item.variable_y).replaceAll("_", " ")}</h2><p>{item.explanation}</p><footer><span>{item.sample_size} paired days</span><span>Lag {item.lag_days} day{item.lag_days === 1 ? "" : "s"}</span></footer></article>;

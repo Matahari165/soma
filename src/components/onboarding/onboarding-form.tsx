@@ -118,7 +118,6 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
           <SomaLogo />
         </Link>
         <div>
-          <span className="eyebrow">Build your atlas</span>
           <h1>Start with you.</h1>
           <p>A few details shape your first personal baseline.</p>
         </div>
