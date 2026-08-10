@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Manrope, Newsreader } from "next/font/google";
+import { Instrument_Serif, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
@@ -9,41 +9,37 @@ import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 
 import "./globals.css";
-import "./product-flows.css";
-import "./health-analytics.css";
-import "./vital-signal.css";
-import "./vital-signal-flows.css";
-import "./vital-signal-responsive.css";
-import "./living-atlas.css";
+import "./components.css";
+import "./responsive.css";
 
-const manrope = Manrope({
+const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: "variable",
   display: "swap",
-  variable: "--font-atlas-sans",
+  variable: "--font-soma-sans",
 });
 
-const newsreader = Newsreader({
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
-  weight: "variable",
+  weight: "400",
   style: ["normal", "italic"],
   display: "swap",
-  variable: "--font-atlas-serif",
+  variable: "--font-soma-serif",
 });
 
-const plexMono = IBM_Plex_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "variable",
   display: "swap",
-  variable: "--font-atlas-mono",
+  variable: "--font-soma-mono",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "Soma — Living Atlas",
+    default: "Soma — Vital Pulse",
     template: "%s · Soma",
   },
-  applicationName: "Soma — Living Atlas",
+  applicationName: "Soma — Vital Pulse",
   description: "Your sleep, recovery, movement, and training patterns in one personal atlas.",
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
@@ -53,10 +49,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "light dark",
+  colorScheme: "dark light",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F2F3EE" },
-    { media: "(prefers-color-scheme: dark)", color: "#0D1511" },
+    { media: "(prefers-color-scheme: dark)", color: "#06090B" },
+    { media: "(prefers-color-scheme: light)", color: "#F5F6FA" },
   ],
 };
 
@@ -68,7 +64,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${manrope.variable} ${newsreader.variable} ${plexMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${jakartaSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <ThemeInitializer />
         <SkipLink />

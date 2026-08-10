@@ -1,14 +1,17 @@
-# SOMA — VITAL SIGNAL
+# SOMA — VITAL PULSE
 
 The selected **Phase S** symbol is built from three related paths. They represent sleep, recovery, and effort moving at different phases, then resolving into one readable signal. The shared S silhouette connects the physiological idea to Soma without using a heart, medical cross, lightning bolt, or generic AI sparkle.
 
-The mark remains single-color, uses `currentColor`, and is designed on a 32 × 32 grid. Proposal A was rejected as too close to a generic waveform. Proposal B was rejected because one path did not express Soma's multi-signal interpretation.
+The mark uses a **three-color gradient stroke** (emerald → iris → coral) representing the three core domains. The seed dot pulses with a breathing animation. The gradient is applied via SVG `linearGradient` with three stops.
 
 Core identity rules:
 
-- IBM Plex Sans for interface and wordmark.
-- IBM Plex Mono for measures, dates, axes, and technical metadata.
-- 4/6/8/12 px radius hierarchy.
-- Sleep is indigo, Recovery is signal green, Effort is orange, Activity is cyan.
-- Shadows are reserved for overlays.
-- No decorative animation; signal motion only represents real loading or synchronization.
+- Plus Jakarta Sans for interface and wordmark.
+- Instrument Serif for display headings and hero typography.
+- JetBrains Mono for measures, dates, axes, and technical metadata.
+- Sleep is iris violet (`#7C6AFF`), Recovery is emerald (`#00D68F`), Effort is coral (`#FF6B4A`).
+- Dark-first design (`#06090B` canvas) with glassmorphism surfaces.
+- 8/12/18/24 px radius hierarchy.
+- Shadows use colored glows matching domain accents.
+- Motion is organic: spring curves, stagger delays, blur transitions.
+- `prefers-reduced-motion` compliance on all animations.
