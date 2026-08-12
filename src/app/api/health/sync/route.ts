@@ -5,6 +5,7 @@ import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { recomputeUserHealth } from "@/services/analysis";
 
 export async function GET() {
   if (isLocalPreviewMode()) return NextResponse.json({ jobs: [{ id: "preview-sync", status: "completed", progress: 100, completed_at: new Date().toISOString() }] });
@@ -67,6 +68,9 @@ export async function POST() {
 
   try {
     const result = await processGoogleHealthSyncJob(job.id);
+    if (!result.analyticsRefreshed) {
+      await recomputeUserHealth(user.id);
+    }
     return NextResponse.json({
       jobId: job.id,
       ...result,
@@ -74,7 +78,11 @@ export async function POST() {
         ? "Google Health import is complete."
         : "Google Health import continues in the background.",
     });
-  } catch {
+  } catch (error) {
+    console.error("[api/health/sync] manual sync failed", {
+      jobId: job.id,
+      error: error instanceof Error ? error.message : "Unknown manual sync error.",
+    });
     return NextResponse.json({ error: "Google Health sync will be retried." }, { status: 502 });
   }
 }
