@@ -117,10 +117,8 @@
   vector-effect: non-scaling-stroke;
   animation: atlas-draw 900ms var(--ease) both;
 }
-.score-link__plot small { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
 .score-link__context { display: grid; align-content: start; gap: 5px; margin-top: 12px; }
 .score-link__context strong { font-family: var(--font-soma-serif), serif; font-size: 1.22rem; font-weight: 500; line-height: 1; }
-.score-link .data-freshness { align-self: end; margin-top: 14px; }
 .score-link__action { position: absolute; right: 16px; bottom: 16px; display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); }
 
 .dashboard-notice {

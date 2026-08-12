@@ -123,8 +123,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
           </div>
         </div>
 
-        <nav className="primary-metrics" aria-label="Today's primary health scores">
-          <header className="signal-array__header"><h2>Today&apos;s signals</h2></header>
+        <nav className="primary-metrics" aria-label="Primary health scores">
           <div className="signal-array__rows">
             {data.scores.map((score) => <ScoreLink metric={score} key={score.kind} />)}
           </div>
@@ -158,7 +157,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
 
       {visibleWidgets.length > 0 && <section className="section-block" aria-labelledby="overview-heading">
         <div className="section-heading">
-          <h2 id="overview-heading">Last 7 days</h2>
+          <h2 id="overview-heading">Overview</h2>
           <Link href="/trends" className="text-link">Details <ChevronRight size={15} /></Link>
         </div>
         <div className="widget-grid">{visibleWidgets.map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>

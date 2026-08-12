@@ -83,61 +83,6 @@
   --zone-peak: #a8563f;
 }
 
-html[data-theme="night"] {
-  color-scheme: dark;
-  --canvas: #161913;
-  --paper: #1e221b;
-  --paper-strong: #252a21;
-  --ink: #f1ede1;
-  --ink-soft: #c2c3b7;
-  --muted: #92968a;
-  --faint: #6d7167;
-  --line: #383d32;
-  --line-strong: #555b4c;
-  --moss: #95aa87;
-  --moss-dark: #b1c3a6;
-  --moss-soft: #303a2d;
-  --cobalt: #9fb5c8;
-  --cobalt-soft: #293844;
-  --clay: #d58a6d;
-  --clay-soft: #472f27;
-  --ochre: #d0ad69;
-  --ochre-soft: #413821;
-  --danger: #e49a8e;
-  --danger-soft: #462b27;
-  --overlay: rgba(7, 9, 6, .76);
-  --shadow: 0 22px 60px rgba(0, 0, 0, .3);
-  --soma-glass: rgba(30, 34, 27, .96);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    color-scheme: dark;
-    --canvas: #161913;
-    --paper: #1e221b;
-    --paper-strong: #252a21;
-    --ink: #f1ede1;
-    --ink-soft: #c2c3b7;
-    --muted: #92968a;
-    --faint: #6d7167;
-    --line: #383d32;
-    --line-strong: #555b4c;
-    --moss: #95aa87;
-    --moss-dark: #b1c3a6;
-    --moss-soft: #303a2d;
-    --cobalt: #9fb5c8;
-    --cobalt-soft: #293844;
-    --clay: #d58a6d;
-    --clay-soft: #472f27;
-    --ochre: #d0ad69;
-    --ochre-soft: #413821;
-    --danger: #e49a8e;
-    --danger-soft: #462b27;
-    --overlay: rgba(7, 9, 6, .76);
-    --soma-glass: rgba(30, 34, 27, .96);
-  }
-}
-
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--canvas); scroll-behavior: smooth; }
 body {
@@ -298,21 +243,6 @@ textarea:focus-visible,
 .nav-link--active { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
 .nav-link--active svg { color: inherit; }
 .sidebar-secondary { display: grid; gap: 2px; margin-top: auto; }
-
-.theme-toggle {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 11px;
-  padding: 9px 10px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font-size: .9rem;
-  text-align: left;
-}
-.theme-toggle:hover { background: var(--paper-strong); color: var(--ink); }
-.theme-toggle--compact { width: 44px; justify-content: center; padding: 0; }
 
 .profile-card {
   display: grid;

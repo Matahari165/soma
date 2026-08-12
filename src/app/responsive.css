@@ -170,9 +170,8 @@
   .score-link__plot { grid-column: 3; grid-row: 1 / 3; align-self: center; }
   .score-link__context { grid-column: 1; grid-row: 2; margin-top: 0; }
   .score-link__plot svg { height: 42px; }
-  .score-link__plot small { display: none; }
   .score-link__reading strong { font-size: 2.45rem; }
-  .score-link .data-freshness, .score-link__action { display: none; }
+  .score-link__action { display: none; }
   .soma-summary { padding: 12px 14px; }
   .soma-summary p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .section-block { margin-top: 36px; }

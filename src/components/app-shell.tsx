@@ -20,7 +20,6 @@ import { useCallback, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
 import { SomaLogo } from "@/components/soma-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import type { SomaUser } from "@/lib/auth";
 
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
@@ -113,7 +112,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             <Settings size={19} strokeWidth={1.8} />
             <span>Settings</span>
           </Link>
-          <ThemeToggle />
         </div>
 
         <Link className="profile-card" href="/settings" aria-label={`Open settings for ${displayName}`}>
@@ -130,7 +128,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <SomaLogo />
         </Link>
         <div className="mobile-header__actions">
-          <ThemeToggle compact />
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
             <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
           </button>}

@@ -19,7 +19,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const score = latestEffort?.score ?? null;
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.find((scoreDay) => scoreDay.score_date === day.metric_date)?.score ?? null })));
   const latestExercise = data.exercises.at(0);
-  return <HealthPageShell kind="activity" title="Activity" description="Movement, training load, and active days." score={score} scoreLabel="Effort score">
+  return <HealthPageShell kind="activity" title="Activity" description="Movement, training load, and active days." score={score}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest activity summary">
         <article className="health-primary-card health-primary-card--featured"><span>Steps</span><strong>{number(latest.steps)}</strong><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>

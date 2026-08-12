@@ -2,7 +2,6 @@ import { Activity, BedDouble, ChevronRight, HeartPulse } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
-import { DataFreshnessLabel } from "@/components/signal-ui";
 import type { DailyScore } from "@/domain/health";
 
 export function ScoreLink({ metric }: { metric: DailyScore }) {
@@ -36,10 +35,8 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
           <line x1="0" y1="32" x2="100" y2="32" />
           {chartPoints ? <polyline points={chartPoints} /> : null}
         </svg>
-        <small>{metric.history.length > 1 ? `${metric.history.length} readings` : "Baseline forming"}</small>
       </span>
       <span className="score-link__context"><strong>{metric.value}</strong></span>
-      <DataFreshnessLabel freshness={metric.freshness} />
       <span className="score-link__action" aria-hidden="true"><ChevronRight size={18} /></span>
     </Link>
   );

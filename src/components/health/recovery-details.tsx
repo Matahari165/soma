@@ -13,7 +13,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
   const heartAverage = heartRates.length ? heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length : null;
-  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} scoreLabel="Recovery score">
+  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
         <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Against your baseline</p></article>
@@ -37,7 +37,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" />
         <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" />
         <MetricTrendCard label="Core temperature" points={points(data.days, "core_body_temperature_celsius")} unit="°C" direction="context_only" />
-        <MetricTrendCard label="Blood glucose" points={points(data.days, "blood_glucose_mg_dl")} unit="mg/dL" direction="context_only" />
       </section>
     </> : <section className="health-panel health-empty"><div><h2>Recovery needs an overnight signal</h2><p>Sync HRV or resting heart rate to begin.</p></div></section>}
   </HealthPageShell>;

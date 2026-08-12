@@ -14,7 +14,6 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
     <article className="widget">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">Seven days</span>
           <h3>Effort range</h3>
         </div>
         <span className="widget-icon"><TrendingUp size={18} /></span>
@@ -59,15 +58,14 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
   ].filter((label): label is string => Boolean(label))));
   const chartDescription = first && last
     ? data.length === 1
-      ? `Recovery reading: ${first.value} out of 100`
-      : `Recovery trend from ${first.value} to ${last.value} over ${data.length} readings`
+      ? `Latest recovery score: ${first.value} out of 100`
+      : `Recovery trend from ${first.value} to ${last.value}`
     : "Recovery trend";
 
   return (
     <article className="widget">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">{data.length >= 7 ? "Seven days" : "Recent readings"}</span>
           <h3>Recovery trend</h3>
         </div>
         <Link href="/recovery" className="text-link">Explore <ArrowRight size={15} /></Link>
@@ -93,7 +91,6 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
     <article className="widget widget--regularity">
       <div className="widget-header">
         <div>
-          <span className="eyebrow">Recent nights</span>
           <h3>Sleep regularity</h3>
         </div>
         <span className="regularity-score" aria-label={hasConsistency ? `${data.consistency} percent regularity` : "Regularity baseline pending"}>{hasConsistency ? `${data.consistency}%` : "—"}</span>

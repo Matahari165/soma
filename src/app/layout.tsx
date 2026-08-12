@@ -4,7 +4,6 @@ import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
 import { SkipLink } from "@/components/skip-link";
-import { ThemeInitializer } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 
@@ -49,11 +48,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "dark light",
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#161913" },
-    { media: "(prefers-color-scheme: light)", color: "#F2EFE6" },
-  ],
+  colorScheme: "light",
+  themeColor: "#F2EFE6",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -66,7 +62,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html className={`${schibsted.variable} ${newsreader.variable} ${azeretMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
-        <ThemeInitializer />
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo Data · Nothing is sent or saved</span></div>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>

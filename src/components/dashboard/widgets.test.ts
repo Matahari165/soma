@@ -26,8 +26,8 @@ describe("dashboard widget empty and partial states", () => {
       { label: "Fri", value: 67 },
     ] }));
 
-    expect(oneReading).toContain("Recovery reading: 64 out of 100");
-    expect(fourReadings).toContain("Recovery trend from 48 to 67 over 4 readings");
+    expect(oneReading).toContain("Latest recovery score: 64 out of 100");
+    expect(fourReadings).toContain("Recovery trend from 48 to 67");
     expect(fourReadings).not.toContain("Latest recovery:");
   });
 
