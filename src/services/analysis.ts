@@ -10,6 +10,54 @@ import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need"
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const ANALYSIS_DATA_TYPES = [
+  "sleep",
+  "daily-heart-rate-variability",
+  "daily-resting-heart-rate",
+  "daily-respiratory-rate",
+  "daily-oxygen-saturation",
+  "daily-sleep-temperature-derivations",
+  "steps",
+  "active-zone-minutes",
+  "active-energy-burned",
+  "time-in-heart-rate-zone",
+  "exercise",
+  "active-minutes",
+  "altitude",
+  "blood-glucose",
+  "body-fat",
+  "core-body-temperature",
+  "daily-vo2-max",
+  "distance",
+  "floors",
+  "height",
+  "oxygen-saturation",
+  "respiratory-rate-sleep-summary",
+  "run-vo2-max",
+  "sedentary-period",
+  "total-calories",
+  "vo2-max",
+  "weight",
+] as const;
+
+async function loadAnalysisRecords(userId: string, analysisStart: string) {
+  const admin = createSupabaseAdminClient();
+  const rows: NormalizedHealthRecord[] = [];
+  const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from("health_records")
+      .select("id,data_type,civil_date,start_time,end_time,measured_at,payload")
+      .eq("user_id", userId)
+      .in("data_type", [...ANALYSIS_DATA_TYPES])
+      .or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStartTime},start_time.gte.${analysisStartTime},measured_at.gte.${analysisStartTime}`)
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error) return { data: null, error };
+    rows.push(...((data ?? []) as NormalizedHealthRecord[]));
+    if (!data || data.length < 1000) return { data: rows, error: null };
+  }
+}
+
 function minutesSinceMidnight(value: string) {
   const date = new Date(value);
   return date.getHours() * 60 + date.getMinutes();
@@ -32,13 +80,8 @@ function roundedAverage(values: Array<number | null>) {
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
   const analysisStart = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
-  const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
   const [{ data: records, error: recordError }, { data: profile }, { data: sleepPreferences }, { data: goals }] = await Promise.all([
-    admin.from("health_records")
-      .select("data_type,civil_date,start_time,end_time,measured_at,payload")
-      .eq("user_id", userId)
-      .or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStartTime},start_time.gte.${analysisStartTime},measured_at.gte.${analysisStartTime}`)
-      .order("civil_date", { ascending: true, nullsFirst: true }),
+    loadAnalysisRecords(userId, analysisStart),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", userId).single(),
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),
