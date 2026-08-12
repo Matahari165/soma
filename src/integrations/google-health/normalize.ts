@@ -39,7 +39,13 @@ export function normalizeGoogleHealthPoint(
   const startTime = interval ? getString(interval.startTime) : null;
   const endTime = interval ? getString(interval.endTime) : null;
   const measuredAt = endTime ?? startTime ?? physicalTime;
-  const date = civilDateFrom(body.date) ?? getString(body.date) ?? civilDateFrom(nestedObject(interval, "civilEndTime")?.date);
+  const date = civilDateFrom(body.date)
+    ?? getString(body.date)
+    ?? civilDateFrom(nestedObject(interval, "civilEndTime")?.date)
+    ?? endTime?.slice(0, 10)
+    ?? startTime?.slice(0, 10)
+    ?? physicalTime?.slice(0, 10)
+    ?? null;
   const dataSource = isObject(point.dataSource) ? point.dataSource : {};
   const device = isObject(dataSource.device) ? dataSource.device : {};
   const sourceRecordId = getString(point.name) ?? stableHash(JSON.stringify(point));

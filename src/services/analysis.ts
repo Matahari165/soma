@@ -32,8 +32,13 @@ function roundedAverage(values: Array<number | null>) {
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
   const analysisStart = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
+  const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
   const [{ data: records, error: recordError }, { data: profile }, { data: sleepPreferences }, { data: goals }] = await Promise.all([
-    admin.from("health_records").select("data_type,civil_date,start_time,end_time,measured_at,payload").eq("user_id", userId).gte("civil_date", analysisStart).order("civil_date", { ascending: true }),
+    admin.from("health_records")
+      .select("data_type,civil_date,start_time,end_time,measured_at,payload")
+      .eq("user_id", userId)
+      .or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStartTime},start_time.gte.${analysisStartTime},measured_at.gte.${analysisStartTime}`)
+      .order("civil_date", { ascending: true, nullsFirst: true }),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", userId).single(),
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),

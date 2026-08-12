@@ -9,6 +9,13 @@ import { recomputeUserHealth } from "@/services/analysis";
 
 export const maxDuration = 50;
 
+type DashboardRefreshJob = { id: string; data_types: string[] | null };
+
+function isDashboardRefreshJob(job: DashboardRefreshJob) {
+  const expected = new Set(GOOGLE_HEALTH_DASHBOARD_DATA_TYPES);
+  return job.data_types?.length === expected.size && job.data_types.every((dataType) => expected.has(dataType as (typeof GOOGLE_HEALTH_DASHBOARD_DATA_TYPES)[number]));
+}
+
 export async function GET() {
   if (isLocalPreviewMode()) return NextResponse.json({
     jobs: [{ id: "preview-sync", status: "completed", progress: 100, completed_at: new Date().toISOString() }],
@@ -73,9 +80,23 @@ export async function POST() {
   const { data: connection } = await admin.from("provider_connections").select("id").eq("user_id", user.id).eq("provider", "google_health").eq("status", "connected").maybeSingle();
   if (!connection) return NextResponse.json({ error: "Connect Google Health before syncing." }, { status: 409 });
 
-  let { data: job } = await admin.from("sync_jobs").select("id").eq("user_id", user.id).eq("status", "queued").eq("import_range", "90_days").order("created_at").limit(1).maybeSingle();
+  const { data: queuedJobs } = await admin.from("sync_jobs")
+    .select("id,data_types")
+    .eq("user_id", user.id)
+    .eq("status", "queued")
+    .eq("import_range", "90_days")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  let job = (queuedJobs ?? []).find(isDashboardRefreshJob) ?? null;
   if (!job) {
-    const { data: runningJob } = await admin.from("sync_jobs").select("id,progress").eq("user_id", user.id).eq("status", "running").eq("import_range", "90_days").order("created_at").limit(1).maybeSingle();
+    const { data: runningJobs } = await admin.from("sync_jobs")
+      .select("id,data_types,progress")
+      .eq("user_id", user.id)
+      .eq("status", "running")
+      .eq("import_range", "90_days")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const runningJob = (runningJobs ?? []).find(isDashboardRefreshJob);
     if (runningJob) {
       return NextResponse.json({
         jobId: runningJob.id,
@@ -96,7 +117,7 @@ export async function POST() {
       range_start: start.toISOString(),
       range_end: end.toISOString(),
       status: "queued",
-    }).select("id").single();
+    }).select("id,data_types").single();
     job = result.data;
   }
   if (!job) return NextResponse.json({ error: "Sync job could not be created." }, { status: 500 });
