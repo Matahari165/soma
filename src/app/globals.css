@@ -278,25 +278,9 @@ textarea:focus-visible,
 .soma-symbol__core { stroke-width: 1.9; }
 .soma-wordmark { display: grid; line-height: 1; }
 .soma-wordmark strong { font-size: 1.02rem; letter-spacing: .16em; }
-.soma-wordmark small {
-  margin-top: 6px;
-  color: var(--muted);
-  font-family: var(--font-soma-mono), monospace;
-  font-size: .48rem;
-  letter-spacing: .08em;
-}
 .soma-logo { display: inline-flex; align-items: center; gap: 9px; }
-.soma-logo--compact .soma-wordmark small { display: none; }
 
-.sidebar-nav { display: grid; gap: 2px; margin-top: 48px; }
-.nav-label {
-  margin: 0 10px 10px;
-  color: var(--muted);
-  font-family: var(--font-soma-mono), monospace;
-  font-size: .62rem;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
+.sidebar-nav { display: grid; gap: 2px; margin-top: 30px; }
 .nav-link {
   position: relative;
   display: flex;
@@ -352,7 +336,6 @@ textarea:focus-visible,
 }
 .profile-card > span:nth-child(2) { min-width: 0; display: grid; }
 .profile-card strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
-.profile-card small { color: var(--muted); font-size: .68rem; }
 
 .mobile-header, .bottom-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
 

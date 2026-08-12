@@ -28,7 +28,7 @@ describe("dashboard widget empty and partial states", () => {
 
     expect(oneReading).toContain("Recovery reading: 64 out of 100");
     expect(fourReadings).toContain("Recovery trend from 48 to 67 over 4 readings");
-    expect(fourReadings).toContain("Latest recovery: 67 out of 100.");
+    expect(fourReadings).not.toContain("Latest recovery:");
   });
 
   it("does not invent a weekly target or sleep regularity score", () => {

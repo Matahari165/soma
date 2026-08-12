@@ -20,13 +20,12 @@ export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProp
   );
 }
 
-export function SomaLogo({ compact = false }: { compact?: boolean }) {
+export function SomaLogo() {
   return (
-    <span className={compact ? "soma-logo soma-logo--compact" : "soma-logo"}>
+    <span className="soma-logo">
       <SomaSymbol />
       <span className="soma-wordmark">
         <strong>SOMA</strong>
-        {!compact && <small>PERSONAL HEALTH ATLAS</small>}
       </span>
     </span>
   );

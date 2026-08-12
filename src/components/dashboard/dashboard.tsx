@@ -132,12 +132,9 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
       </section>
 
       <section className="soma-summary" aria-labelledby="soma-summary-title">
-        <div className="summary-rail" aria-hidden="true"><span /><span /><span /></div>
-        <div>
-          <h2 id="soma-summary-title">What matters now</h2>
-          <p>{data.summary}</p>
-        </div>
-        <Link className="summary-button" href="/coach">Open Coach <ChevronRight size={16} /></Link>
+        <h2 id="soma-summary-title" className="sr-only">Today&apos;s summary</h2>
+        <p>{data.summary}</p>
+        <Link className="summary-button" href="/coach">Coach <ChevronRight size={16} /></Link>
       </section>
 
       <section className="section-block" aria-labelledby="insights-heading">
@@ -167,7 +164,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
         <div className="widget-grid">{visibleWidgets.map((widget) => <div className="widget-slot" key={widget.id}>{widgetComponents[widget.id]}</div>)}</div>
       </section>}
 
-      {customizing && <><button className="panel-backdrop" type="button" onClick={closeCustomization} aria-label="Close customization panel" /><aside ref={customizeRef} className="customize-panel" role="dialog" aria-modal="true" aria-labelledby="customize-title"><header><div><span className="eyebrow">Dashboard layout</span><h2 id="customize-title">Customize your overview</h2></div><button className="icon-button" type="button" onClick={closeCustomization} aria-label="Close customization"><X size={19} /></button></header><p>The three primary scores stay fixed. Choose and order the supporting widgets below.</p><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="primary-button" type="button" onClick={() => void saveLayout()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={17} />Saving…</> : saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}
+      {customizing && <><button className="panel-backdrop" type="button" onClick={closeCustomization} aria-label="Close customization panel" /><aside ref={customizeRef} className="customize-panel" role="dialog" aria-modal="true" aria-labelledby="customize-title"><header><div><span className="eyebrow">Dashboard layout</span><h2 id="customize-title">Customize your overview</h2></div><button className="icon-button" type="button" onClick={closeCustomization} aria-label="Close customization"><X size={19} /></button></header><div className="customize-list">{widgets.map((widget, index) => <div key={widget.id}><label><input type="checkbox" checked={widget.visible} onChange={() => setWidgets((current) => current.map((item) => item.id === widget.id ? { ...item, visible: !item.visible } : item))} /><span>{widgetLabels[widget.id]}</span></label><span><button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${widgetLabels[widget.id]} up`}><ArrowUp size={15} /></button><button type="button" disabled={index === widgets.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${widgetLabels[widget.id]} down`}><ArrowDown size={15} /></button></span></div>)}</div>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="primary-button" type="button" onClick={() => void saveLayout()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={17} />Saving…</> : saved ? <><Check size={17} />Saved</> : "Save layout"}</button></aside></>}
     </div>
   );
 }

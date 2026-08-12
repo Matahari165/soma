@@ -27,19 +27,17 @@ export default async function TrendsPage() {
   const stepPoints = metricPoints("steps");
 
   const trendCards = [
-    hasData(sleepScores) ? <MetricTrendCard key="sleep" label="Sleep score" points={sleepScores} unit="/100" direction="higher_is_better" description="Duration, efficiency and timing regularity." /> : null,
-    hasData(recoveryScores) ? <MetricTrendCard key="recovery" label="Recovery score" points={recoveryScores} unit="/100" direction="higher_is_better" description="HRV, resting heart rate and sleep support." /> : null,
-    hasData(effortScores) ? <MetricTrendCard key="effort" label="Effort score" points={effortScores} unit="/100" direction="context_only" description="Completed load beside your recommended range." /> : null,
-    hasData(hrvPoints) ? <MetricTrendCard key="hrv" label="HRV" points={hrvPoints} unit="ms" direction="higher_is_better" description="Daily RMSSD against your personal range." /> : null,
-    hasData(restingHeartRatePoints) ? <MetricTrendCard key="rhr" label="Resting heart rate" points={restingHeartRatePoints} unit="bpm" direction="lower_is_better" description="Changes relative to your baseline." /> : null,
-    hasData(stepPoints) ? <MetricTrendCard key="steps" label="Steps" points={stepPoints} direction="higher_is_better" description="Movement across measured days." format={(value) => Math.round(value).toLocaleString("en-US")} /> : null,
+    hasData(sleepScores) ? <MetricTrendCard key="sleep" label="Sleep score" points={sleepScores} unit="/100" direction="higher_is_better" /> : null,
+    hasData(recoveryScores) ? <MetricTrendCard key="recovery" label="Recovery score" points={recoveryScores} unit="/100" direction="higher_is_better" /> : null,
+    hasData(effortScores) ? <MetricTrendCard key="effort" label="Effort score" points={effortScores} unit="/100" direction="context_only" /> : null,
+    hasData(hrvPoints) ? <MetricTrendCard key="hrv" label="HRV" points={hrvPoints} unit="ms" direction="higher_is_better" /> : null,
+    hasData(restingHeartRatePoints) ? <MetricTrendCard key="rhr" label="Resting heart rate" points={restingHeartRatePoints} unit="bpm" direction="lower_is_better" /> : null,
+    hasData(stepPoints) ? <MetricTrendCard key="steps" label="Steps" points={stepPoints} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} /> : null,
   ].filter((card) => card !== null);
   const hiddenMetrics = 6 - trendCards.length;
 
   return <div className="analytics-page" id="main-page-content">
-    <header className="analytics-hero">
-      <div><h1>Trends</h1><p>Your signals, read against your own history.</p></div>
-    </header>
+    <header className="analytics-hero"><div><h1>Trends</h1></div></header>
 
     <section className="metric-trend-grid trends-overview" aria-label="Personal trend overview">
       {trendCards}

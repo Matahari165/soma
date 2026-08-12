@@ -91,7 +91,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </Link>
 
         <nav className="sidebar-nav">
-          <p className="nav-label">Daily signals</p>
           {navigation.map(({ label, href, icon: Icon }) => (
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
@@ -121,7 +120,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <span className="avatar">{initials}</span>
           <span>
             <strong>{displayName}</strong>
-            <small>Profile</small>
           </span>
           <ChevronRight size={17} />
         </Link>
@@ -129,7 +127,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
 
       <header className="mobile-header">
         <Link className="brand" href="/" aria-label="Soma home">
-          <SomaLogo compact />
+          <SomaLogo />
         </Link>
         <div className="mobile-header__actions">
           <ThemeToggle compact />

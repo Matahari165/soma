@@ -1,4 +1,4 @@
-import { CalendarCheck2, Footprints, Gauge, Scale } from "lucide-react";
+import { Footprints } from "lucide-react";
 
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
@@ -23,10 +23,10 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest activity summary">
         <article className="health-primary-card health-primary-card--featured"><span>Steps</span><strong>{number(latest.steps)}</strong><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>
-        <article className="health-primary-card"><span>Active calories</span><strong>{latest.active_energy_kcal === null ? "—" : `${number(latest.active_energy_kcal)} kcal`}</strong><p>Activity energy, excluding basal expenditure.</p></article>
-        <article className="health-primary-card"><span>Daily load</span><strong>{score ?? "—"}</strong><p>Zones · exercise · movement</p></article>
-        <article className="health-primary-card"><span>Weekly load</span><strong>{number(latest.weekly_load)}</strong><p>Sum of daily effort scores since Monday.</p></article>
-        <article className="health-primary-card"><span>Recent / habitual</span><strong>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</strong><p>Last 7 days divided by average weekly load over up to 28 days.</p></article>
+        <article className="health-primary-card"><span>Active calories</span><strong>{latest.active_energy_kcal === null ? "—" : `${number(latest.active_energy_kcal)} kcal`}</strong></article>
+        <article className="health-primary-card"><span>Daily load</span><strong>{score ?? "—"}</strong></article>
+        <article className="health-primary-card"><span>Weekly load</span><strong>{number(latest.weekly_load)}</strong></article>
+        <article className="health-primary-card"><span>Recent / habitual</span><strong>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</strong></article>
         <article className="health-primary-card"><span>Activity regularity</span><strong>{regularity.consistencyScore === null ? "—" : `${regularity.consistencyScore}%`}</strong><p>{regularity.activeDayRate === null ? "Baseline pending." : `${regularity.activeDayRate}% of measured days were active.`}</p></article>
       </section>
 
@@ -34,25 +34,19 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         { label: "Light", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Moderate", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigorous", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Peak", minutes: latest.peak_zone_minutes, tone: "peak" },
       ]} /></section>
 
-      <section className="activity-method-grid" aria-label="How activity signals are calculated">
-        <article><Gauge size={20} aria-hidden="true" /><h2>Daily load</h2><p>Zone minutes carry half the score because they reflect measured cardiovascular intensity. Exercise duration, active energy and steps complete the signal. Every component is capped so one extreme value cannot dominate.</p></article>
-        <article><CalendarCheck2 size={20} aria-hidden="true" /><h2>Active day</h2><p>At least 7,500 steps, 20 Active Zone Minutes, or 30 active minutes. Days with no measurement are excluded rather than counted as inactive.</p></article>
-        <article><Scale size={20} aria-hidden="true" /><h2>Effort–recovery balance</h2><p>The completed effort stays separate from the goal-aware target. Recovery adjusts the recommended range, but never rewrites what you actually did.</p></article>
-      </section>
-
       <section className="metric-trend-grid" aria-label="Activity trends">
-        <MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" description="Current movement compared with complete 7, 30 and 90-day baselines." format={(value) => Math.round(value).toLocaleString("en-US")} />
-        <MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="context_only" description="Useful for comparing your own activity days, not estimating food needs alone." />
-        <MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="context_only" description="Minutes are split by intensity in the detailed zone view." />
-        <MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="context_only" description="Measured session time across Google Health exercises." />
-        <MetricTrendCard label="Distance" points={points(activityDays, "distance_km")} unit="km" direction="context_only" description="Available when supported by the device or recorded exercise." />
-        <MetricTrendCard label="Sedentary time" points={points(activityDays, "sedentary_minutes")} unit="min" direction="lower_is_better" description="Only periods measured while the wearable was worn are included." />
-        <MetricTrendCard label="Active minutes" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" description="Time classified by Google Health as active." />
-        <MetricTrendCard label="Total energy" points={points(activityDays, "total_energy_kcal")} unit="kcal" direction="context_only" description="Active expenditure plus estimated basal expenditure." />
-        <MetricTrendCard label="Floors" points={points(activityDays, "floors")} direction="higher_is_better" description="Daily climbed-floor aggregate when supported by the device." />
-        <MetricTrendCard label="Elevation gain" points={points(activityDays, "altitude_gain_m")} unit="m" direction="context_only" description="Accumulated gain rather than altitude above sea level." />
-        <MetricTrendCard label="Weight" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" description="Shown only when a weight measurement exists." />
-        <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" description="Device or manually recorded body-composition measurement." />
+        <MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} />
+        <MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="context_only" />
+        <MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="context_only" />
+        <MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="context_only" />
+        <MetricTrendCard label="Distance" points={points(activityDays, "distance_km")} unit="km" direction="context_only" />
+        <MetricTrendCard label="Sedentary time" points={points(activityDays, "sedentary_minutes")} unit="min" direction="lower_is_better" />
+        <MetricTrendCard label="Active minutes" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" />
+        <MetricTrendCard label="Total energy" points={points(activityDays, "total_energy_kcal")} unit="kcal" direction="context_only" />
+        <MetricTrendCard label="Floors" points={points(activityDays, "floors")} direction="higher_is_better" />
+        <MetricTrendCard label="Elevation gain" points={points(activityDays, "altitude_gain_m")} unit="m" direction="context_only" />
+        <MetricTrendCard label="Weight" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" />
+        <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" />
       </section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Google Health exercises</span><h2>Recent sessions</h2></div><span className="quality-pill">{data.exercises.length} sessions</span></div>{data.exercises.length ? <div className="exercise-table-wrap" role="region" aria-label="Recent exercise sessions, horizontally scrollable" tabIndex={0}><table className="exercise-table"><thead><tr><th>Session</th><th>Date</th><th>Duration</th><th>Calories</th><th>Distance</th><th>Avg HR</th><th>Zone min</th></tr></thead><tbody>{data.exercises.map((exercise) => <tr key={exercise.id}><th scope="row"><Footprints size={16} aria-hidden="true" />{exercise.name}<small>{exercise.type.replaceAll("_", " ")}</small></th><td>{exercise.date}</td><td>{exercise.durationMinutes === null ? "—" : `${Math.round(exercise.durationMinutes)} min`}</td><td>{exercise.calories === null ? "—" : `${Math.round(exercise.calories)} kcal`}</td><td>{exercise.distanceKm === null ? "—" : `${exercise.distanceKm.toFixed(2)} km`}</td><td>{exercise.averageHeartRate === null ? "—" : `${Math.round(exercise.averageHeartRate)} bpm`}</td><td>{exercise.zoneMinutes === null ? "—" : Math.round(exercise.zoneMinutes)}</td></tr>)}</tbody></table></div> : <p className="health-empty">No Google Health exercises are available yet.</p>}</section>

@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, Info, MoonStar, TrendingUp } from "lucide-react";
+import { ArrowRight, Clock, MoonStar, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 import type { DashboardSnapshot } from "@/domain/health";
@@ -81,7 +81,6 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
         <div className="chart-labels" aria-hidden="true">
           {chartLabels.map((label) => <span key={label}>{label}</span>)}
         </div>
-        <p className="widget-note">Latest recovery: {last?.value} out of 100.</p>
       </> : <WidgetEmpty title="No recovery data yet" description="Wear your device overnight and sync to begin your trend." />}
     </article>
   );
@@ -104,7 +103,7 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
         <span className="sleep-window__line" aria-hidden="true" />
         <div><Clock size={17} /><span>Average wake time</span><strong>{data.wakeTime}</strong></div>
       </div>
-      <p className="widget-note"><Info size={14} /> {hasConsistency ? "Based on your recent sleep timing" : "At least three complete nights are needed."}</p></> : <WidgetEmpty title="Sleep baseline pending" description="Three complete nights are needed." />}
+      {!hasConsistency && <p className="widget-note">At least three complete nights are needed.</p>}</> : <WidgetEmpty title="Sleep baseline pending" description="Three complete nights are needed." />}
     </article>
   );
 }

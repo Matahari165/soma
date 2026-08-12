@@ -17,9 +17,9 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
         <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Against your baseline</p></article>
-        <article className="health-primary-card"><span>Resting heart rate</span><strong>{latest.resting_heart_rate === null ? "—" : `${Math.round(latest.resting_heart_rate)} bpm`}</strong><p>Lower or higher is interpreted relative to your own history.</p></article>
+        <article className="health-primary-card"><span>Resting heart rate</span><strong>{latest.resting_heart_rate === null ? "—" : `${Math.round(latest.resting_heart_rate)} bpm`}</strong></article>
         <article className="health-primary-card"><span>Nightly SpO₂</span><strong>{latest.oxygen_saturation === null ? "—" : `${latest.oxygen_saturation.toFixed(1)}%`}</strong><p>{latest.oxygen_saturation_lower === null || latest.oxygen_saturation_upper === null ? "Nightly range unavailable." : `${latest.oxygen_saturation_lower.toFixed(1)}–${latest.oxygen_saturation_upper.toFixed(1)}% reported range.`}</p></article>
-        <article className="health-primary-card"><span>Respiration</span><strong>{latest.respiratory_rate === null ? "—" : `${latest.respiratory_rate.toFixed(1)}/min`}</strong><p>Nightly rate compared with recent readings.</p></article>
+        <article className="health-primary-card"><span>Respiration</span><strong>{latest.respiratory_rate === null ? "—" : `${latest.respiratory_rate.toFixed(1)}/min`}</strong></article>
         <article className="health-primary-card"><span>Temperature delta</span><strong>{latest.skin_temperature_delta === null ? "—" : `${latest.skin_temperature_delta > 0 ? "+" : ""}${latest.skin_temperature_delta.toFixed(2)} °C`}</strong><p>Nightly temperature minus your 30-day baseline.</p></article>
         <article className="health-primary-card"><span>Heart-rate range</span><strong>{heartMinimum === null || heartMaximum === null ? "—" : `${heartMinimum}–${heartMaximum}`}</strong><p>{heartAverage === null ? "Samples unavailable." : `${Math.round(heartAverage)} bpm average across recent samples.`}</p></article>
       </section>
@@ -30,14 +30,14 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       ]} /></section>
 
       <section className="metric-trend-grid" aria-label="Physiology trends">
-        <MetricTrendCard label="HRV" points={points(data.days, "hrv_ms")} unit="ms" direction="higher_is_better" description="Sustained changes use three recent readings against a 14–30 day baseline." />
-        <MetricTrendCard label="Resting heart rate" points={points(data.days, "resting_heart_rate")} unit="bpm" direction="lower_is_better" description="Interpreted against your baseline rather than a generic population target." />
-        <MetricTrendCard label="SpO₂" points={points(data.days, "oxygen_saturation")} unit="%" direction="context_only" description="A wellness trend only; isolated values are not interpreted diagnostically." />
-        <MetricTrendCard label="Respiration" points={points(data.days, "respiratory_rate")} unit="/min" direction="context_only" description="Durable movement is more informative than a single night." />
-        <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" description="Centered on your own nightly baseline." />
-        <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" description="Shown only when the device and activity support the estimate." />
-        <MetricTrendCard label="Core temperature" points={points(data.days, "core_body_temperature_celsius")} unit="°C" direction="context_only" description="A separately recorded core measurement, not the wearable skin-temperature delta." />
-        <MetricTrendCard label="Blood glucose" points={points(data.days, "blood_glucose_mg_dl")} unit="mg/dL" direction="context_only" description="Shown as recorded context only, without diagnostic interpretation." />
+        <MetricTrendCard label="HRV" points={points(data.days, "hrv_ms")} unit="ms" direction="higher_is_better" />
+        <MetricTrendCard label="Resting heart rate" points={points(data.days, "resting_heart_rate")} unit="bpm" direction="lower_is_better" />
+        <MetricTrendCard label="SpO₂" points={points(data.days, "oxygen_saturation")} unit="%" direction="context_only" />
+        <MetricTrendCard label="Respiration" points={points(data.days, "respiratory_rate")} unit="/min" direction="context_only" />
+        <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" />
+        <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" />
+        <MetricTrendCard label="Core temperature" points={points(data.days, "core_body_temperature_celsius")} unit="°C" direction="context_only" />
+        <MetricTrendCard label="Blood glucose" points={points(data.days, "blood_glucose_mg_dl")} unit="mg/dL" direction="context_only" />
       </section>
     </> : <section className="health-panel health-empty"><div><h2>Recovery needs an overnight signal</h2><p>Sync HRV or resting heart rate to begin.</p></div></section>}
   </HealthPageShell>;

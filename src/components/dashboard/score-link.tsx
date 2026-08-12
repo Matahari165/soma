@@ -38,7 +38,7 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
         </svg>
         <small>{metric.history.length > 1 ? `${metric.history.length} readings` : "Baseline forming"}</small>
       </span>
-      <span className="score-link__context"><strong>{metric.value}</strong><small>{metric.detail}</small></span>
+      <span className="score-link__context"><strong>{metric.value}</strong></span>
       <DataFreshnessLabel freshness={metric.freshness} />
       <span className="score-link__action" aria-hidden="true"><ChevronRight size={18} /></span>
     </Link>
