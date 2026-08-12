@@ -91,7 +91,8 @@ export function shouldRefreshAnalytics(importedRecords: number, windowEnd: Date,
   return windowEnd >= analyticsStart;
 }
 
-export async function processGoogleHealthSyncJob(jobId: string) {
+export async function processGoogleHealthSyncJob(jobId: string, options: { refreshAnalytics?: boolean } = {}) {
+  const refreshAnalytics = options.refreshAnalytics ?? true;
   const admin = createSupabaseAdminClient();
   const { data: rawJob, error: jobError } = await admin.from("sync_jobs").select("*").eq("id", jobId).single();
   if (jobError || !rawJob) throw new Error("Sync job was not found.");
@@ -124,11 +125,11 @@ export async function processGoogleHealthSyncJob(jobId: string) {
     const typeIndex = claimedJob.cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
-      const analytics = await recomputeUserHealth(claimedJob.user_id);
+      const analytics = refreshAnalytics ? await recomputeUserHealth(claimedJob.user_id) : null;
       await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", claimedJob.id);
       await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
       console.info("[google-health-sync] completed pending analytics", { jobId: claimedJob.id, analytics });
-      return { completed: true, progress: 100, analyticsRefreshed: true, analytics };
+      return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics };
     }
 
     const start = new Date(claimedJob.range_start);
@@ -166,9 +167,9 @@ export async function processGoogleHealthSyncJob(jobId: string) {
 
     const completed = nextTypeIndex >= dataTypes.length;
     const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
-    const analyticsRefreshed = shouldRefreshAnalytics(records.length, windowEnd);
+    const analyticsRefreshed = refreshAnalytics && shouldRefreshAnalytics(records.length, windowEnd);
     let analytics = null;
-    if (analyticsRefreshed || completed) {
+    if (analyticsRefreshed || (completed && refreshAnalytics)) {
       analytics = await recomputeUserHealth(claimedJob.user_id);
     }
     await admin.from("sync_jobs").update({
@@ -194,10 +195,10 @@ export async function processGoogleHealthSyncJob(jobId: string) {
       importedRecords: records.length,
       progress,
       completed,
-      analyticsRefreshed: analyticsRefreshed || completed,
+      analyticsRefreshed: analyticsRefreshed || (completed && refreshAnalytics),
       analytics,
     });
-    return { completed, progress, imported: records.length, dataType, analyticsRefreshed: analyticsRefreshed || completed, analytics };
+    return { completed, progress, imported: records.length, dataType, analyticsRefreshed: analyticsRefreshed || (completed && refreshAnalytics), analytics };
   } catch (error) {
     const terminal = claimedJob.attempts >= 3;
     const message = error instanceof Error ? error.message : "Unknown Google Health sync error.";

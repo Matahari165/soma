@@ -49,6 +49,14 @@ export const GOOGLE_HEALTH_DATA_TYPES = [
 
 export type GoogleHealthDataType = (typeof GOOGLE_HEALTH_DATA_TYPES)[number];
 
+export const GOOGLE_HEALTH_DASHBOARD_DATA_TYPES = [
+  "sleep",
+  "daily-heart-rate-variability",
+  "daily-resting-heart-rate",
+  "steps",
+  "active-zone-minutes",
+] as const satisfies readonly GoogleHealthDataType[];
+
 export const GOOGLE_HEALTH_DAILY_ROLLUP_TYPES = [
   "steps",
   "active-zone-minutes",
@@ -217,10 +225,17 @@ function dateOnly(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function exclusiveCivilEndDate(date: Date) {
+  const startOfDay = startOfUtcDay(date);
+  if (startOfDay.getTime() === date.getTime()) return dateOnly(startOfDay);
+  startOfDay.setUTCDate(startOfDay.getUTCDate() + 1);
+  return dateOnly(startOfDay);
+}
+
 export function createTimeFilter(dataType: GoogleHealthDataType, start: Date, end: Date) {
   const metadata = filterMetadata[dataType];
   const startValue = metadata.type === "date" ? dateOnly(start) : start.toISOString();
-  const endValue = metadata.type === "date" ? dateOnly(end) : end.toISOString();
+  const endValue = metadata.type === "date" ? exclusiveCivilEndDate(end) : end.toISOString();
   return `${metadata.field} >= "${startValue}" AND ${metadata.field} < "${endValue}"`;
 }
 
