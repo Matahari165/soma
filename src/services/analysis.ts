@@ -40,7 +40,15 @@ export async function recomputeUserHealth(userId: string) {
   ]);
   if (recordError) throw new Error("Health records could not be read for analysis.");
   const days = aggregateHealthRecords((records ?? []) as NormalizedHealthRecord[]);
-  if (!days.length) return { days: 0, scores: 0, insights: 0 };
+  console.info("[health-analysis] source records loaded", {
+    recordCount: records?.length ?? 0,
+    dayCount: days.length,
+    dataTypes: [...new Set((records ?? []).map((record) => record.data_type))].sort(),
+  });
+  if (!days.length) {
+    console.warn("[health-analysis] no dated health records available", { analysisStart });
+    return { days: 0, scores: 0, insights: 0 };
+  }
 
   const baseSleepTarget = sleepPreferences?.base_target_minutes ?? 480;
   const timezone = profile?.timezone ?? "Europe/Paris";
@@ -163,7 +171,9 @@ export async function recomputeUserHealth(userId: string) {
     { user_id: userId, kind: "evening", brief_date: briefDate, deterministic_facts: facts, generated_text: generateEveningBrief(briefInput), ai_generated: false },
     { user_id: userId, kind: "weekly", brief_date: briefDate, deterministic_facts: { ...facts, periodDays: Math.min(days.length, 7) }, generated_text: weeklyBrief, ai_generated: false },
   ], { onConflict: "user_id,kind,brief_date" });
-  return { days: metricRows.length, scores: scoreRows.length, insights: insights.length };
+  const result = { days: metricRows.length, scores: scoreRows.length, insights: insights.length };
+  console.info("[health-analysis] recompute completed", result);
+  return result;
 }
 
 function observationsFromDays<K extends "sleep_minutes">(days: ReturnType<typeof aggregateHealthRecords>, key: K) {

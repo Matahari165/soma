@@ -8,7 +8,7 @@ import type { GoogleHealthNotice } from "@/integrations/google-health/status";
 
 type Profile = { displayName: string; dateOfBirth: string; heightCm: number; weightKg: number; primaryGoal: string; baseSleepTargetMinutes: number; usualWakeTime: string; importRange: "90_days" | "all_history" };
 type SyncJob = { id: string; status: string; progress: number; error_message: string | null; completed_at: string | null; created_at: string };
-type SyncState = { jobs: SyncJob[]; importedRecords: Record<string, number> };
+type SyncState = { jobs: SyncJob[]; importedRecords: Record<string, number>; analytics: { datedRecords: number; metricDays: number; scoreRows: number } };
 type SettingsTab = "profile" | "connections" | "privacy";
 const tabOrder: SettingsTab[] = ["profile", "connections", "privacy"];
 const goals = { build_muscle: "Build muscle", improve_endurance: "Improve endurance", improve_cardio: "Improve cardio", general_fitness: "General fitness", maintain_health: "Maintain health", other: "Other" };
@@ -169,6 +169,7 @@ function SyncDiagnostics({ state }: { state: SyncState }) {
     <div><strong id="sync-diagnostics-title">Import diagnostics</strong><span>{latest ? `${latest.status} · ${latest.progress}%` : "No import started"}</span></div>
     {latest && <progress max="100" value={latest.progress} aria-label={`Import progress: ${latest.progress}%`} />}
     <dl>{Object.entries(labels).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{state.importedRecords[key] ?? 0} records</dd></div>)}</dl>
+    <dl><div><dt>Dated records</dt><dd>{state.analytics.datedRecords}</dd></div><div><dt>Dashboard days</dt><dd>{state.analytics.metricDays}</dd></div><div><dt>Score rows</dt><dd>{state.analytics.scoreRows}</dd></div></dl>
     {latest?.error_message && <p role="alert">{latest.error_message}</p>}
   </section>;
 }

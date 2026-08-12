@@ -8,25 +8,43 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { recomputeUserHealth } from "@/services/analysis";
 
 export async function GET() {
-  if (isLocalPreviewMode()) return NextResponse.json({ jobs: [{ id: "preview-sync", status: "completed", progress: 100, completed_at: new Date().toISOString() }] });
+  if (isLocalPreviewMode()) return NextResponse.json({
+    jobs: [{ id: "preview-sync", status: "completed", progress: 100, completed_at: new Date().toISOString() }],
+    importedRecords: { sleep: 14, "daily-heart-rate-variability": 14, "daily-resting-heart-rate": 14, steps: 7 },
+    analytics: { datedRecords: 49, metricDays: 14, scoreRows: 42 },
+  });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const [jobsResult, ...recordResults] = await Promise.all([
+  const [jobsResult, datedRecordsResult, metricDaysResult, scoreRowsResult, ...recordResults] = await Promise.all([
     admin.from("sync_jobs")
       .select("id,import_range,status,progress,error_code,error_message,created_at,started_at,completed_at")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+    admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).not("civil_date", "is", null),
+    admin.from("daily_health_metrics").select("metric_date", { count: "exact", head: true }).eq("user_id", user.id),
+    admin.from("daily_scores").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     ...["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"].map((dataType) =>
       admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("data_type", dataType),
     ),
   ]);
-  if (jobsResult.error || recordResults.some((result) => result.error)) {
+  if (jobsResult.error || datedRecordsResult.error || metricDaysResult.error || scoreRowsResult.error || recordResults.some((result) => result.error)) {
     return NextResponse.json({ error: "Sync status could not be loaded." }, { status: 500 });
   }
   const dataTypes = ["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"];
+  const analytics = {
+    datedRecords: datedRecordsResult.count ?? 0,
+    metricDays: metricDaysResult.count ?? 0,
+    scoreRows: scoreRowsResult.count ?? 0,
+  };
+  console.info("[api/health/sync] diagnostics loaded", {
+    latestJobStatus: jobsResult.data?.[0]?.status ?? null,
+    latestJobProgress: jobsResult.data?.[0]?.progress ?? null,
+    analytics,
+  });
   return NextResponse.json({
     jobs: jobsResult.data,
     importedRecords: Object.fromEntries(dataTypes.map((dataType, index) => [dataType, recordResults[index].count ?? 0])),
+    analytics,
   });
 }
 
@@ -68,15 +86,19 @@ export async function POST() {
 
   try {
     const result = await processGoogleHealthSyncJob(job.id);
+    let analytics = result.analytics;
     if (!result.analyticsRefreshed) {
-      await recomputeUserHealth(user.id);
+      analytics = await recomputeUserHealth(user.id);
     }
     return NextResponse.json({
       jobId: job.id,
       ...result,
-      message: result.completed
-        ? "Google Health import is complete."
-        : "Google Health import continues in the background.",
+      analytics,
+      message: analytics && analytics.days > 0
+        ? `Dashboard updated from ${analytics.days} day${analytics.days === 1 ? "" : "s"}. Google Health import continues in the background.`
+        : result.completed
+          ? "Google Health import is complete, but no dated measurements were available for the dashboard."
+          : "Google Health import continues in the background, but Soma has not found dated measurements for the dashboard yet.",
     });
   } catch (error) {
     console.error("[api/health/sync] manual sync failed", {
