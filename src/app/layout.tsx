@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Serif, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Azeret_Mono, Newsreader, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
@@ -12,22 +12,22 @@ import "./globals.css";
 import "./components.css";
 import "./responsive.css";
 
-const jakartaSans = Plus_Jakarta_Sans({
+const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
   weight: "variable",
   display: "swap",
   variable: "--font-soma-sans",
 });
 
-const instrumentSerif = Instrument_Serif({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  weight: "400",
+  weight: "variable",
   style: ["normal", "italic"],
   display: "swap",
   variable: "--font-soma-serif",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const azeretMono = Azeret_Mono({
   subsets: ["latin"],
   weight: "variable",
   display: "swap",
@@ -36,11 +36,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Soma — Vital Pulse",
+    default: "Soma — Personal Health Atlas",
     template: "%s · Soma",
   },
-  applicationName: "Soma — Vital Pulse",
-  description: "Your sleep, recovery, movement, and training patterns in one personal atlas.",
+  applicationName: "Soma",
+  description: "A personal atlas for sleep, recovery, movement, and training.",
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
   },
@@ -51,8 +51,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   colorScheme: "dark light",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#06090B" },
-    { media: "(prefers-color-scheme: light)", color: "#F5F6FA" },
+    { media: "(prefers-color-scheme: dark)", color: "#161913" },
+    { media: "(prefers-color-scheme: light)", color: "#F2EFE6" },
   ],
 };
 
@@ -64,7 +64,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${jakartaSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${newsreader.variable} ${azeretMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <ThemeInitializer />
         <SkipLink />

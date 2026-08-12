@@ -1,529 +1,198 @@
 @import "tailwindcss";
 
-/* ═══════════════════════════════════════════════════════════════
-   SOMA — VITAL PULSE
-   Design system foundation · Dark-first · Glassmorphism
-   ═══════════════════════════════════════════════════════════════ */
+/* SOMA — PHYSIOLOGICAL ATLAS
+   An editorial instrument for reading a personal body history. */
 
-/* ─── Dark Theme (default) ─── */
 :root {
-  color-scheme: dark;
-
-  /* Surfaces — layered depth, NOT flat black */
-  --soma-void: #06090B;
-  --soma-depth: #0C1117;
-  --soma-surface: #131A22;
-  --soma-raised: #1A2332;
-  --soma-glass: rgba(19, 26, 34, 0.72);
-
-  /* Text hierarchy */
-  --soma-text: #F0F2F5;
-  --soma-text-soft: #A0AABB;
-  --soma-text-muted: #5A6B80;
-
-  /* Borders — whisper-thin, not heavy */
-  --soma-border: rgba(255, 255, 255, 0.06);
-  --soma-border-strong: rgba(255, 255, 255, 0.12);
-  --soma-border-glow: rgba(255, 255, 255, 0.20);
-
-  /* ── Domain accent: Emerald (brand) ── */
-  --soma-emerald: #00D68F;
-  --soma-emerald-dim: #00B87A;
-  --soma-emerald-glow: rgba(0, 214, 143, 0.25);
-  --soma-emerald-soft: rgba(0, 214, 143, 0.08);
-
-  /* ── Domain accent: Iris (sleep) ── */
-  --soma-iris: #7C6AFF;
-  --soma-iris-dim: #6554D8;
-  --soma-iris-glow: rgba(124, 106, 255, 0.25);
-  --soma-iris-soft: rgba(124, 106, 255, 0.08);
-
-  /* ── Domain accent: Coral (effort) ── */
-  --soma-coral: #FF6B4A;
-  --soma-coral-dim: #E85D3A;
-  --soma-coral-glow: rgba(255, 107, 74, 0.25);
-  --soma-coral-soft: rgba(255, 107, 74, 0.08);
-
-  /* ── Status ── */
-  --soma-amber: #FFB347;
-  --soma-amber-soft: rgba(255, 179, 71, 0.08);
-  --soma-danger: #FF4757;
-  --soma-danger-soft: rgba(255, 71, 87, 0.08);
-  --soma-cyan: #4FC3F7;
-  --soma-cyan-soft: rgba(79, 195, 247, 0.08);
-
-  /* Semantic domain mapping */
-  --soma-sleep: var(--soma-iris);
-  --soma-sleep-glow: var(--soma-iris-glow);
-  --soma-sleep-soft: var(--soma-iris-soft);
-  --soma-recovery: var(--soma-emerald);
-  --soma-recovery-glow: var(--soma-emerald-glow);
-  --soma-recovery-soft: var(--soma-emerald-soft);
-  --soma-effort: var(--soma-coral);
-  --soma-effort-glow: var(--soma-coral-glow);
-  --soma-effort-soft: var(--soma-coral-soft);
-
-  /* Shadows */
-  --soma-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
-  --soma-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
-  --soma-shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.45);
-  --soma-shadow-glow: 0 0 30px var(--soma-emerald-glow);
-
-  /* Radii */
-  --soma-radius-sm: 8px;
-  --soma-radius-md: 12px;
-  --soma-radius-lg: 18px;
-  --soma-radius-xl: 24px;
-  --soma-radius-full: 9999px;
-
-  /* Motion */
-  --soma-fast: 150ms;
-  --soma-normal: 250ms;
-  --soma-slow: 400ms;
-  --soma-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --soma-ease: cubic-bezier(0.22, 0.68, 0, 1);
-  --soma-ease-out: cubic-bezier(0, 0, 0.2, 1);
-
-  /* Layout */
-  --sidebar-width: 240px;
-
-  /* Sleep stage colors */
-  --stage-deep: #4338CA;
-  --stage-rem: #7C6AFF;
-  --stage-light: #60A5FA;
-  --stage-awake: #FFB347;
-
-  /* HR zone colors */
-  --zone-light: #60A5FA;
-  --zone-moderate: #00D68F;
-  --zone-vigorous: #FFB347;
-  --zone-peak: #FF6B4A;
-
-  /* ═══ Legacy aliases (components reference these) ═══ */
-
-  /* atlas-* aliases */
-  --atlas-canvas: var(--soma-void);
-  --atlas-paper: var(--soma-depth);
-  --atlas-paper-strong: var(--soma-surface);
-  --atlas-ink: var(--soma-text);
-  --atlas-ink-soft: var(--soma-text-soft);
-  --atlas-muted: var(--soma-text-muted);
-  --atlas-faint: var(--soma-text-muted);
-  --atlas-line: var(--soma-border);
-  --atlas-line-strong: var(--soma-border-strong);
-  --atlas-moss: var(--soma-emerald);
-  --atlas-moss-dark: var(--soma-emerald-dim);
-  --atlas-lichen: var(--soma-emerald-soft);
-  --atlas-lime: var(--soma-emerald);
-  --atlas-lime-ink: #06090B;
-  --atlas-coral: var(--soma-coral);
-  --atlas-coral-soft: var(--soma-coral-soft);
-  --atlas-blue: var(--soma-iris);
-  --atlas-blue-soft: var(--soma-iris-soft);
-  --atlas-sun: var(--soma-amber);
-  --atlas-danger: var(--soma-danger);
-  --atlas-overlay: rgba(0, 0, 0, 0.60);
-  --atlas-shadow: var(--soma-shadow-lg);
-  --atlas-radius-sm: var(--soma-radius-sm);
-  --atlas-radius-md: var(--soma-radius-md);
-  --atlas-radius-lg: var(--soma-radius-lg);
-  --atlas-radius-organic: var(--soma-radius-lg);
-  --atlas-fast: var(--soma-fast);
-  --atlas-panel: var(--soma-normal);
-  --atlas-ease: var(--soma-ease);
-
-  /* signal-* aliases */
-  --signal-canvas: var(--soma-void);
-  --signal-surface-1: var(--soma-depth);
-  --signal-surface-2: var(--soma-surface);
-  --signal-surface-3: var(--soma-raised);
-  --signal-border: var(--soma-border);
-  --signal-border-strong: var(--soma-border-strong);
-  --signal-text: var(--soma-text);
-  --signal-text-soft: var(--soma-text-soft);
-  --signal-muted: var(--soma-text-muted);
-  --signal-faint: var(--soma-text-muted);
-  --signal-primary: var(--soma-emerald);
-  --signal-primary-strong: var(--soma-emerald-dim);
-  --signal-primary-soft: var(--soma-emerald-soft);
-  --signal-sleep: var(--soma-sleep);
-  --signal-sleep-soft: var(--soma-sleep-soft);
-  --signal-effort: var(--soma-effort);
-  --signal-effort-soft: var(--soma-effort-soft);
-  --signal-cyan: var(--soma-cyan);
-  --signal-warning: var(--soma-amber);
-  --signal-danger: var(--soma-danger);
-  --signal-info: var(--soma-cyan);
-  --signal-overlay: rgba(0, 0, 0, 0.60);
-  --signal-shadow-overlay: var(--soma-shadow-lg);
-  --signal-radius-xs: var(--soma-radius-sm);
-  --signal-radius-sm: var(--soma-radius-sm);
-  --signal-radius-md: var(--soma-radius-md);
-  --signal-radius-lg: var(--soma-radius-lg);
-  --signal-duration-fast: var(--soma-fast);
-  --signal-duration-panel: var(--soma-normal);
-  --signal-ease: var(--soma-ease);
-
-  /* Bare aliases */
-  --canvas: var(--soma-void);
-  --surface: var(--soma-depth);
-  --surface-soft: var(--soma-surface);
-  --ink: var(--soma-text);
-  --ink-soft: var(--soma-text-soft);
-  --muted: var(--soma-text-muted);
-  --line: var(--soma-border);
-  --line-strong: var(--soma-border-strong);
-  --brand: var(--soma-emerald);
-  --brand-dark: var(--soma-emerald-dim);
-  --brand-soft: var(--soma-emerald-soft);
-  --sleep: var(--soma-sleep);
-  --sleep-soft: var(--soma-sleep-soft);
-  --recovery: var(--soma-recovery);
-  --recovery-soft: var(--soma-recovery-soft);
-  --effort: var(--soma-effort);
-  --effort-soft: var(--soma-effort-soft);
-  --border: var(--soma-border);
-  --shadow-sm: var(--soma-shadow-sm);
-  --shadow-soft: var(--soma-shadow-md);
-  --shadow-lg: var(--soma-shadow-lg);
-  --radius-sm: var(--soma-radius-sm);
-  --radius-md: var(--soma-radius-md);
-  --radius-lg: var(--soma-radius-lg);
-}
-
-/* ─── Light Theme ─── */
-html[data-theme="day"] {
   color-scheme: light;
-  --soma-void: #F5F6FA;
-  --soma-depth: #FFFFFF;
-  --soma-surface: #F0F1F5;
-  --soma-raised: #E8EAF0;
-  --soma-glass: rgba(255, 255, 255, 0.78);
-  --soma-text: #0A0F1A;
-  --soma-text-soft: #4A5568;
-  --soma-text-muted: #8895A7;
-  --soma-border: rgba(0, 0, 0, 0.08);
-  --soma-border-strong: rgba(0, 0, 0, 0.15);
-  --soma-border-glow: rgba(0, 0, 0, 0.25);
-  --soma-emerald: #00B87A;
-  --soma-emerald-dim: #009966;
-  --soma-emerald-glow: rgba(0, 184, 122, 0.20);
-  --soma-emerald-soft: rgba(0, 184, 122, 0.08);
-  --soma-iris: #6554D8;
-  --soma-iris-dim: #5443C0;
-  --soma-iris-glow: rgba(101, 84, 216, 0.20);
-  --soma-iris-soft: rgba(101, 84, 216, 0.06);
-  --soma-coral: #E85D3A;
-  --soma-coral-dim: #D04E2E;
-  --soma-coral-glow: rgba(232, 93, 58, 0.20);
-  --soma-coral-soft: rgba(232, 93, 58, 0.06);
-  --soma-amber: #D4940A;
-  --soma-amber-soft: rgba(212, 148, 10, 0.08);
-  --soma-danger: #D93545;
-  --soma-danger-soft: rgba(217, 53, 69, 0.06);
-  --soma-cyan: #2196B8;
-  --soma-cyan-soft: rgba(33, 150, 184, 0.06);
-  --atlas-lime-ink: #FFFFFF;
-  --soma-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
-  --soma-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --soma-shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.12);
-  --soma-shadow-glow: 0 0 30px var(--soma-emerald-glow);
-  --stage-deep: #4338CA;
-  --stage-rem: #6554D8;
-  --stage-light: #3B82F6;
-  --stage-awake: #D4940A;
-  --zone-light: #3B82F6;
-  --zone-moderate: #00B87A;
-  --zone-vigorous: #D4940A;
-  --zone-peak: #E85D3A;
+  --canvas: #f2efe6;
+  --paper: #fbf8ef;
+  --paper-strong: #fffdf7;
+  --ink: #1c211a;
+  --ink-soft: #4e564a;
+  --muted: #737a6d;
+  --faint: #9ba092;
+  --line: #d5d0c2;
+  --line-strong: #aaa697;
+  --moss: #506b52;
+  --moss-dark: #344b38;
+  --moss-soft: #dfe6d8;
+  --cobalt: #45627e;
+  --cobalt-soft: #dce5e9;
+  --clay: #a8563f;
+  --clay-soft: #f0ded4;
+  --ochre: #a17835;
+  --ochre-soft: #eee4cb;
+  --danger: #9f4036;
+  --danger-soft: #f2ded9;
+  --overlay: rgba(20, 23, 18, .62);
+  --shadow: 0 18px 48px rgba(42, 39, 31, .09);
+  --sidebar-width: 224px;
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --fast: 150ms;
+  --normal: 240ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  /* Compatibility aliases used by existing health components. */
+  --soma-void: var(--canvas);
+  --soma-depth: var(--paper);
+  --soma-surface: var(--paper-strong);
+  --soma-raised: var(--moss-soft);
+  --soma-glass: rgba(251, 248, 239, .94);
+  --soma-text: var(--ink);
+  --soma-text-soft: var(--ink-soft);
+  --soma-text-muted: var(--muted);
+  --soma-border: var(--line);
+  --soma-border-strong: var(--line-strong);
+  --soma-emerald: var(--moss);
+  --soma-emerald-dim: var(--moss-dark);
+  --soma-emerald-soft: var(--moss-soft);
+  --soma-emerald-glow: rgba(80, 107, 82, .15);
+  --soma-iris: var(--cobalt);
+  --soma-iris-soft: var(--cobalt-soft);
+  --soma-coral: var(--clay);
+  --soma-coral-soft: var(--clay-soft);
+  --soma-amber: var(--ochre);
+  --soma-amber-soft: var(--ochre-soft);
+  --soma-danger: var(--danger);
+  --soma-danger-soft: var(--danger-soft);
+  --soma-cyan: var(--cobalt);
+  --soma-radius-sm: var(--radius-sm);
+  --soma-radius-md: var(--radius-md);
+  --soma-radius-lg: var(--radius-lg);
+  --soma-radius-xl: var(--radius-lg);
+  --soma-radius-full: 999px;
+  --soma-fast: var(--fast);
+  --soma-normal: var(--normal);
+  --soma-slow: 420ms;
+  --soma-ease: var(--ease);
+  --soma-spring: var(--ease);
+  --soma-shadow-sm: none;
+  --soma-shadow-md: none;
+  --soma-shadow-lg: var(--shadow);
+  --stage-deep: #354966;
+  --stage-rem: #647b96;
+  --stage-light: #9cabb8;
+  --stage-awake: #b17b47;
+  --zone-light: #8397a5;
+  --zone-moderate: #6f866a;
+  --zone-vigorous: #b28648;
+  --zone-peak: #a8563f;
 }
 
-@media (prefers-color-scheme: light) {
+html[data-theme="night"] {
+  color-scheme: dark;
+  --canvas: #161913;
+  --paper: #1e221b;
+  --paper-strong: #252a21;
+  --ink: #f1ede1;
+  --ink-soft: #c2c3b7;
+  --muted: #92968a;
+  --faint: #6d7167;
+  --line: #383d32;
+  --line-strong: #555b4c;
+  --moss: #95aa87;
+  --moss-dark: #b1c3a6;
+  --moss-soft: #303a2d;
+  --cobalt: #9fb5c8;
+  --cobalt-soft: #293844;
+  --clay: #d58a6d;
+  --clay-soft: #472f27;
+  --ochre: #d0ad69;
+  --ochre-soft: #413821;
+  --danger: #e49a8e;
+  --danger-soft: #462b27;
+  --overlay: rgba(7, 9, 6, .76);
+  --shadow: 0 22px 60px rgba(0, 0, 0, .3);
+  --soma-glass: rgba(30, 34, 27, .96);
+}
+
+@media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    color-scheme: light;
-    --soma-void: #F5F6FA;
-    --soma-depth: #FFFFFF;
-    --soma-surface: #F0F1F5;
-    --soma-raised: #E8EAF0;
-    --soma-glass: rgba(255, 255, 255, 0.78);
-    --soma-text: #0A0F1A;
-    --soma-text-soft: #4A5568;
-    --soma-text-muted: #8895A7;
-    --soma-border: rgba(0, 0, 0, 0.08);
-    --soma-border-strong: rgba(0, 0, 0, 0.15);
-    --soma-border-glow: rgba(0, 0, 0, 0.25);
-    --soma-emerald: #00B87A;
-    --soma-emerald-dim: #009966;
-    --soma-emerald-glow: rgba(0, 184, 122, 0.20);
-    --soma-emerald-soft: rgba(0, 184, 122, 0.08);
-    --soma-iris: #6554D8;
-    --soma-iris-dim: #5443C0;
-    --soma-iris-glow: rgba(101, 84, 216, 0.20);
-    --soma-iris-soft: rgba(101, 84, 216, 0.06);
-    --soma-coral: #E85D3A;
-    --soma-coral-dim: #D04E2E;
-    --soma-coral-glow: rgba(232, 93, 58, 0.20);
-    --soma-coral-soft: rgba(232, 93, 58, 0.06);
-    --soma-amber: #D4940A;
-    --soma-amber-soft: rgba(212, 148, 10, 0.08);
-    --soma-danger: #D93545;
-    --soma-danger-soft: rgba(217, 53, 69, 0.06);
-    --soma-cyan: #2196B8;
-    --soma-cyan-soft: rgba(33, 150, 184, 0.06);
-    --atlas-lime-ink: #FFFFFF;
-    --soma-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
-    --soma-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-    --soma-shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.12);
-    --soma-shadow-glow: 0 0 30px var(--soma-emerald-glow);
-    --stage-deep: #4338CA;
-    --stage-rem: #6554D8;
-    --stage-light: #3B82F6;
-    --stage-awake: #D4940A;
-    --zone-light: #3B82F6;
-    --zone-moderate: #00B87A;
-    --zone-vigorous: #D4940A;
-    --zone-peak: #E85D3A;
+    color-scheme: dark;
+    --canvas: #161913;
+    --paper: #1e221b;
+    --paper-strong: #252a21;
+    --ink: #f1ede1;
+    --ink-soft: #c2c3b7;
+    --muted: #92968a;
+    --faint: #6d7167;
+    --line: #383d32;
+    --line-strong: #555b4c;
+    --moss: #95aa87;
+    --moss-dark: #b1c3a6;
+    --moss-soft: #303a2d;
+    --cobalt: #9fb5c8;
+    --cobalt-soft: #293844;
+    --clay: #d58a6d;
+    --clay-soft: #472f27;
+    --ochre: #d0ad69;
+    --ochre-soft: #413821;
+    --danger: #e49a8e;
+    --danger-soft: #462b27;
+    --overlay: rgba(7, 9, 6, .76);
+    --soma-glass: rgba(30, 34, 27, .96);
   }
 }
 
-
-/* ═══════════════════════════════════════════════════════════════
-   BASE STYLES
-   ═══════════════════════════════════════════════════════════════ */
-
 * { box-sizing: border-box; }
-
-html {
-  background: var(--soma-void);
-  color: var(--soma-text);
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+html { min-width: 320px; background: var(--canvas); scroll-behavior: smooth; }
 body {
+  min-height: 100vh;
   margin: 0;
-  min-width: 320px;
-  background-color: var(--soma-void);
-  /* Subtle dot grid pattern for depth — NOT the old cartography grid */
-  background-image: radial-gradient(circle at center, var(--soma-border) 1px, transparent 1px);
-  background-size: 24px 24px;
-  color: var(--soma-text);
-  font-family: var(--font-soma-sans), "Avenir Next", Avenir, "Segoe UI", sans-serif;
-  font-size: 15px;
+  overflow-x: hidden;
+  background:
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), color-mix(in srgb, var(--line) 26%, transparent) calc(100% - 1px)) 0 0 / 64px 64px,
+    var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-soma-sans), system-ui, sans-serif;
+  font-size: 16px;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
 }
 
-/* ─── Typography Foundation ─── */
-
-h1 {
-  font-family: var(--font-soma-serif), Georgia, serif;
-  font-weight: 480;
-  letter-spacing: -.035em;
-  line-height: 1.1;
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 11%, transparent) .6px, transparent .6px);
+  background-size: 7px 7px;
+  content: "";
+  opacity: .14;
+  pointer-events: none;
 }
 
-h2 {
-  font-family: var(--font-soma-sans), sans-serif;
-  font-weight: 650;
-  letter-spacing: -.025em;
-  line-height: 1.2;
-}
-
-h3 {
-  font-family: var(--font-soma-sans), sans-serif;
-  font-weight: 600;
-  letter-spacing: -.015em;
-  line-height: 1.25;
-}
-
-h4,
-strong { letter-spacing: -.012em; }
-
-em {
-  font-family: var(--font-soma-serif), Georgia, serif;
-  font-style: italic;
-}
-
-/* ─── Interactive Reset ─── */
-
-button,
-input,
-select,
-textarea { font: inherit; }
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  transition:
-    background-color var(--soma-fast) var(--soma-ease),
-    border-color var(--soma-fast) var(--soma-ease),
-    color var(--soma-fast) var(--soma-ease),
-    opacity var(--soma-fast) var(--soma-ease),
-    transform var(--soma-fast) var(--soma-spring),
-    box-shadow var(--soma-normal) var(--soma-ease),
-    filter var(--soma-normal) var(--soma-ease);
-}
-
-button:not(:disabled),
-a { cursor: pointer; }
-
-button:disabled { cursor: not-allowed; opacity: 0.5; }
-
+::selection { background: var(--moss); color: var(--paper-strong); }
 a { color: inherit; text-decoration: none; }
+button, input, select, textarea { color: inherit; font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .46; }
+svg { flex: 0 0 auto; }
 
-/* ─── Focus States — vibrant emerald ring ─── */
+h1, h2, h3, p { margin-block: 0; }
+h1, h2 {
+  font-family: var(--font-soma-serif), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -.035em;
+}
+h1 { font-size: clamp(2.6rem, 5vw, 5.4rem); line-height: .92; }
+h2 { font-size: clamp(1.6rem, 2.7vw, 2.5rem); line-height: 1; }
+h3 { font-size: 1rem; line-height: 1.25; }
+small { line-height: 1.35; }
 
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--soma-emerald);
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--moss-dark);
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px var(--soma-emerald-glow);
 }
-
-/* ─── Selection ─── */
-
-::selection {
-  background: var(--soma-emerald);
-  color: #06090B;
-}
-
-/* ─── Custom Scrollbar ─── */
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--soma-border-strong);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--soma-text-muted);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--soma-border-strong) transparent;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   KEYFRAME ANIMATIONS — Soma motion language
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Page & card entrance — scale + blur for depth */
-@keyframes soma-enter {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.97);
-    filter: blur(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-/* Score ring draw with spring overshoot */
-@keyframes soma-ring-draw {
-  0% { stroke-dashoffset: 339.292; opacity: 0; }
-  20% { opacity: 1; }
-  100% { stroke-dashoffset: var(--ring-offset); }
-}
-
-/* Breathing pulse for logo seed dot */
-@keyframes soma-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-
-/* Glow pulse for active states */
-@keyframes soma-glow-pulse {
-  0%, 100% { box-shadow: 0 0 16px var(--glow-color, rgba(0, 214, 143, 0.12)); }
-  50% { box-shadow: 0 0 32px var(--glow-color, rgba(0, 214, 143, 0.28)); }
-}
-
-/* Slide-in panel with spring overshoot */
-@keyframes soma-panel-in {
-  0% { opacity: 0; transform: translateX(100%); }
-  65% { transform: translateX(-2%); }
-  100% { opacity: 1; transform: translateX(0); }
-}
-
-/* Slide-in from left */
-@keyframes soma-slide-left {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Fade up — used in stagger sequences */
-@keyframes soma-fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Shimmer loading skeleton */
-@keyframes soma-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Typing indicator bounce */
-@keyframes soma-dot-bounce {
-  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-  40% { transform: translateY(-6px); opacity: 1; }
-}
-
-/* Score number count reveal */
-@keyframes soma-count-reveal {
-  from { opacity: 0; transform: translateY(8px) scale(0.9); filter: blur(2px); }
-  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-}
-
-/* Ring glow pulse (for score rings) */
-@keyframes soma-ring-glow {
-  0%, 100% { filter: drop-shadow(0 0 4px var(--ring-glow, rgba(0, 214, 143, 0.15))); }
-  50% { filter: drop-shadow(0 0 12px var(--ring-glow, rgba(0, 214, 143, 0.35))); }
-}
-
-/* Sparkline draw */
-@keyframes soma-line-draw {
-  from { stroke-dashoffset: var(--line-length, 500); }
-  to { stroke-dashoffset: 0; }
-}
-
-/* Gradient rotate for loading states */
-@keyframes soma-gradient-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Legacy animation names (referenced in existing components) */
-@keyframes ring-reveal {
-  from { stroke-dashoffset: 339.292; opacity: .3; }
-  to { stroke-dashoffset: var(--ring-offset); opacity: 1; }
-}
-
-@keyframes panel-in {
-  0% { opacity: 0; transform: translateX(18px); }
-  100% { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes atlas-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   UTILITY CLASSES
-   ═══════════════════════════════════════════════════════════════ */
 
 .sr-only {
   position: absolute;
@@ -538,115 +207,225 @@ textarea:focus-visible {
 }
 
 .skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: var(--canvas);
+  transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+
+.preview-banner {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--sidebar-width);
+  z-index: 70;
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--ochre);
+  background: var(--ochre-soft);
+  color: var(--ink);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .65rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.preview-banner strong { font-weight: 600; }
+
+.app-shell { min-height: 100vh; }
+.main-content {
+  min-height: 100vh;
+  margin-left: var(--sidebar-width);
+  padding-top: 0;
+}
+.app-shell--preview .main-content { padding-top: 28px; }
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  display: flex;
+  width: var(--sidebar-width);
+  flex-direction: column;
+  padding: 24px 18px 18px;
+  border-right: 1px solid var(--line);
+  background: var(--paper);
+}
+.brand {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+}
+.brand-symbol { width: 44px; height: 44px; }
+.soma-symbol__outer,
+.soma-symbol__middle,
+.soma-symbol__core {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.soma-symbol__outer { stroke-width: 1.1; opacity: .4; }
+.soma-symbol__middle { stroke-width: 1.45; opacity: .7; }
+.soma-symbol__core { stroke-width: 1.9; }
+.soma-wordmark { display: grid; line-height: 1; }
+.soma-wordmark strong { font-size: 1.02rem; letter-spacing: .16em; }
+.soma-wordmark small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .48rem;
+  letter-spacing: .08em;
+}
+.soma-logo { display: inline-flex; align-items: center; gap: 9px; }
+.soma-logo--compact .soma-wordmark small { display: none; }
+
+.sidebar-nav { display: grid; gap: 2px; margin-top: 48px; }
+.nav-label {
+  margin: 0 10px 10px;
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .62rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.nav-link {
+  position: relative;
   display: flex;
   min-height: 44px;
   align-items: center;
-  position: fixed;
-  z-index: 100;
-  top: 10px;
-  left: 10px;
-  transform: translateY(-150%);
-  border-radius: var(--soma-radius-sm);
-  background: var(--soma-emerald);
-  color: #06090B;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: transform 0.2s var(--soma-spring);
+  gap: 11px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  color: var(--ink-soft);
+  font-size: .9rem;
+  transition: color var(--fast), background var(--fast), border-color var(--fast);
 }
+.nav-link svg { width: 18px; color: var(--muted); stroke-width: 1.45; }
+.nav-link:hover { border-color: var(--line); background: var(--paper-strong); color: var(--ink); }
+.nav-link--active { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
+.nav-link--active svg { color: inherit; }
+.sidebar-secondary { display: grid; gap: 2px; margin-top: auto; }
 
-.skip-link:focus { transform: translateY(0); }
-
-.eyebrow {
-  font-family: var(--font-soma-sans), sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--soma-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.quality-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--soma-radius-full);
-  font-family: var(--font-soma-sans), sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-.quality-pill--good,
-.quality-pill[data-quality="good"] {
-  background: var(--soma-emerald-soft);
-  color: var(--soma-emerald);
-}
-
-.quality-pill--fair,
-.quality-pill[data-quality="fair"] {
-  background: var(--soma-amber-soft);
-  color: var(--soma-amber);
-}
-
-.quality-pill--poor,
-.quality-pill[data-quality="poor"] {
-  background: var(--soma-danger-soft);
-  color: var(--soma-danger);
-}
-
-.data-freshness {
-  font-family: var(--font-soma-mono), monospace;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--soma-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.medical-note {
-  margin-top: 32px;
-  padding: 16px 20px;
-  border-radius: var(--soma-radius-md);
-  background: var(--soma-surface);
-  border: 1px solid var(--soma-border);
-  font-size: 13px;
-  color: var(--soma-text-muted);
-  line-height: 1.6;
-}
-
-/* ─── Reduced Motion ─── */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ─── Preview Banner ─── */
-.preview-banner {
+.theme-toggle {
   display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: .9rem;
+  text-align: left;
+}
+.theme-toggle:hover { background: var(--paper-strong); color: var(--ink); }
+.theme-toggle--compact { width: 44px; justify-content: center; padding: 0; }
+
+.profile-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  min-height: 56px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .7rem;
+}
+.profile-card > span:nth-child(2) { min-width: 0; display: grid; }
+.profile-card strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.profile-card small { color: var(--muted); font-size: .68rem; }
+
+.mobile-header, .bottom-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
+
+.eyebrow,
+.page-date,
+.quality-pill,
+.analytics-source {
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .67rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.google-button,
+.summary-button {
+  display: inline-flex;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: var(--soma-amber-soft);
-  border-bottom: 1px solid rgba(255, 179, 71, 0.15);
-  color: var(--soma-amber);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-xs);
+  background: var(--ink);
+  color: var(--canvas);
+  font-size: .82rem;
+  font-weight: 650;
+  transition: background var(--fast), color var(--fast), border-color var(--fast);
+}
+.primary-button:hover, .google-button:hover { background: var(--moss-dark); border-color: var(--moss-dark); }
+.secondary-button, .summary-button { background: transparent; color: var(--ink); }
+.secondary-button:hover, .summary-button:hover { background: var(--ink); color: var(--canvas); }
+.danger-button { border-color: var(--danger); background: var(--danger); color: #fff; }
+.icon-button {
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: currentColor;
+}
+.icon-button:hover { border-color: var(--line); background: var(--paper-strong); }
+.text-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid currentColor;
+  color: var(--moss-dark);
+  font-size: .8rem;
+  font-weight: 650;
 }
 
-.preview-banner strong {
-  font-weight: 800;
+@keyframes atlas-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes atlas-draw { from { stroke-dashoffset: 360; } to { stroke-dashoffset: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }
