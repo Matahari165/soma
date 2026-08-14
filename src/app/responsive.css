@@ -173,7 +173,6 @@
   .score-link__plot svg { height: 42px; }
   .score-link__context strong { font-size: .9rem; line-height: 1.05; }
   .score-link__reading strong { font-size: 2.45rem; }
-  .score-link__action { display: none; }
   .soma-summary { padding: 12px 14px; }
   .soma-summary p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .section-block { margin-top: 36px; }
@@ -203,7 +202,7 @@
   .sleep-stage-chart { grid-template-columns: 38px minmax(0, 1fr); gap: 7px; }
   .sleep-stage-timeline { height: 132px; }
   .metric-trend-grid { grid-template-columns: 1fr; border-left: 0; }
-  .metric-trend-card { min-height: 300px; border-left: 1px solid var(--ink); }
+  .metric-trend-card { min-height: 286px; border-left: 1px solid var(--ink); }
   .exercise-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .analytics-hero { grid-template-columns: 1fr; min-height: 136px; }

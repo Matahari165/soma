@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, MoonStar, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Clock, MoonStar } from "lucide-react";
 import Link from "next/link";
 
 import type { DashboardSnapshot } from "@/domain/health";
@@ -11,12 +11,12 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
   const todayIndex = data.days.findIndex((day) => day.today);
   const activeDaysRemaining = todayIndex >= 0 ? data.days.slice(todayIndex + 1).length : 0;
   return (
-    <article className="widget">
+    <Link className="widget widget--clickable" href="/activity" aria-label="Open activity details">
       <div className="widget-header">
         <div>
           <h3>Effort range</h3>
         </div>
-        <span className="widget-icon"><TrendingUp size={18} /></span>
+        <ArrowUpRight className="widget-open" size={18} aria-hidden="true" />
       </div>
       {hasActivity ? <>
         <div className="weekly-number">
@@ -38,19 +38,27 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
         </div>
         <p className="widget-note">{hasTarget ? remaining ? `${remaining} points left · ${activeDaysRemaining} days` : "Weekly range reached" : "Target building"}</p>
       </> : <WidgetEmpty title="No activity data yet" description="Sync Google Health to build your weekly effort view." />}
-    </article>
+    </Link>
   );
 }
 
 export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend"] }) {
+  const values = data.map((item) => item.value);
+  const lowerBound = values.length ? Math.max(0, Math.min(...values) - 6) : 0;
+  const upperBound = values.length ? Math.min(100, Math.max(...values) + 6) : 100;
+  const range = Math.max(upperBound - lowerBound, 1);
   const chartPoints = data.map((item, index) => {
     const x = data.length === 1 ? 150 : 8 + (index / (data.length - 1)) * 284;
-    const y = 96 - (Math.min(100, Math.max(0, item.value)) / 100) * 82;
+    const y = 96 - ((Math.min(upperBound, Math.max(lowerBound, item.value)) - lowerBound) / range) * 82;
     return { ...item, x, y };
   });
   const points = chartPoints.map(({ x, y }) => `${x},${y}`).join(" ");
+  const areaPoints = points ? `8,96 ${points} 292,96` : "";
   const first = data.at(0);
   const last = data.at(-1);
+  const weeklyDelta = first && last ? last.value - first.value : null;
+  const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  const averageY = average === null ? 50 : 96 - ((average - lowerBound) / range) * 82;
   const chartLabels = Array.from(new Set([
     first?.label,
     data[Math.floor((data.length - 1) / 2)]?.label,
@@ -63,16 +71,18 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
     : "Recovery trend";
 
   return (
-    <article className="widget">
+    <Link className="widget widget--clickable" href="/recovery" aria-label="Open recovery details">
       <div className="widget-header">
         <div>
           <h3>Recovery trend</h3>
         </div>
-        <Link href="/recovery" className="text-link">Explore <ArrowRight size={15} /></Link>
+        <ArrowUpRight className="widget-open" size={18} aria-hidden="true" />
       </div>
       {data.length ? <>
+        <div className="recovery-current"><strong>{last?.value}</strong><span>/100</span>{weeklyDelta !== null && <small>{weeklyDelta > 0 ? "+" : ""}{weeklyDelta} this week</small>}</div>
         <svg className="trend-chart" viewBox="0 0 300 110" role="img" aria-label={chartDescription}>
-          <line x1="8" y1="50" x2="292" y2="50" className="trend-baseline" />
+          <line x1="8" y1={averageY} x2="292" y2={averageY} className="trend-baseline"><title>{average === null ? "Average unavailable" : `Weekly average ${Math.round(average)}`}</title></line>
+          {areaPoints ? <polygon points={areaPoints} className="trend-area" /> : null}
           <polyline points={points} className="trend-line" />
           {chartPoints.map((item, index) => <circle key={`${item.label}-${index}`} cx={item.x} cy={item.y} r={index === data.length - 1 ? 4 : 2.5} className="trend-point"><title>{`${item.label}: ${item.value} out of 100`}</title></circle>)}
         </svg>
@@ -80,7 +90,7 @@ export function RecoveryTrend({ data }: { data: DashboardSnapshot["recoveryTrend
           {chartLabels.map((label) => <span key={label}>{label}</span>)}
         </div>
       </> : <WidgetEmpty title="No recovery data yet" description="Wear your device overnight and sync to begin your trend." />}
-    </article>
+    </Link>
   );
 }
 
@@ -88,20 +98,20 @@ export function SleepRegularity({ data }: { data: DashboardSnapshot["sleepRegula
   const hasSleepWindow = data.bedtime !== "—" || data.wakeTime !== "—";
   const hasConsistency = data.consistency !== null;
   return (
-    <article className="widget widget--regularity">
+    <Link className="widget widget--regularity widget--clickable" href="/sleep" aria-label="Open sleep details">
       <div className="widget-header">
         <div>
           <h3>Sleep regularity</h3>
         </div>
-        <span className="regularity-score" aria-label={hasConsistency ? `${data.consistency} percent regularity` : "Regularity baseline pending"}>{hasConsistency ? `${data.consistency}%` : "—"}</span>
+        <span className="regularity-score" aria-label={hasConsistency ? `${data.consistency} percent regularity` : "Regularity baseline pending"}>{hasConsistency ? `${data.consistency}%` : "—"}<ArrowUpRight className="widget-open" size={16} aria-hidden="true" /></span>
       </div>
-      {hasSleepWindow ? <><div className="sleep-window">
+      {hasSleepWindow ? <>{hasConsistency && <span className="regularity-track" aria-hidden="true"><span style={{ width: `${data.consistency}%` }} /></span>}<div className="sleep-window">
         <div><MoonIcon /><span>Average bedtime</span><strong>{data.bedtime}</strong></div>
         <span className="sleep-window__line" aria-hidden="true" />
         <div><Clock size={17} /><span>Average wake time</span><strong>{data.wakeTime}</strong></div>
       </div>
       {!hasConsistency && <p className="widget-note">At least three complete nights are needed.</p>}</> : <WidgetEmpty title="Sleep baseline pending" description="Three complete nights are needed." />}
-    </article>
+    </Link>
   );
 }
 

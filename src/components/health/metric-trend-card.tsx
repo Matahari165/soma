@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
 import { summarizeTrend, type MetricPoint, type TrendDirection } from "@/domain/metrics/trends";
 
@@ -8,13 +9,14 @@ import { MetricReading } from "./metric-reading";
 function defaultFormat(value: number) { return Math.round(value * 10) / 10 + ""; }
 const shortDateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
-export function MetricTrendCard({ label, points, unit, direction, format = defaultFormat, target }: {
+export function MetricTrendCard({ label, points, unit, direction, format = defaultFormat, target, href }: {
   label: string;
   points: MetricPoint[];
   unit?: string;
   direction: TrendDirection;
   format?: (value: number) => string;
   target?: number | null;
+  href?: string;
 }) {
   const trend = summarizeTrend(points, direction);
   const completeCount = points.filter((point) => point.value !== null).length;
@@ -27,12 +29,22 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   const formatDate = (value: string | undefined) => value ? shortDateFormat.format(new Date(`${value}T12:00:00`)) : "";
   const firstDate = formatDate(availablePoints.at(-30)?.date ?? availablePoints.at(0)?.date);
   const lastDate = formatDate(availablePoints.at(-1)?.date);
-  if (completeCount < 2) return <article className="metric-trend-card metric-trend-card--pending"><span>{label}</span><MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} /><p>More readings needed</p></article>;
-  return <article className="metric-trend-card">
+  if (completeCount < 2) {
+    const pendingContent = <><span>{label}</span><MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} /><p>More readings needed</p></>;
+    return href
+      ? <Link className="metric-trend-card metric-trend-card--pending metric-trend-card--link" href={href} aria-label={`Open ${label} details`}>{pendingContent}</Link>
+      : <article className="metric-trend-card metric-trend-card--pending">{pendingContent}</article>;
+  }
+  const variability = trend.variability30d === null ? "unavailable" : format(trend.variability30d);
+  const cardContent = <>
     <header><div><span>{label}</span><MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} /></div><span className={`metric-direction metric-direction--${favorable}`}><Icon size={15} aria-hidden="true" />{delta === null ? "Baseline pending" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}% vs 7d`}</span></header>
     <div className="chart-frame"><LineTrendChart values={points.slice(-30).map((point) => point.value)} label={label} target={target} /></div>
     <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     <div className="baseline-row">{trend.comparisons.map((item) => <span key={item.days}><small>{item.days}d avg</small><strong>{item.average === null ? "—" : format(item.average)}</strong></span>)}</div>
-    <footer><span>30d variability: {trend.variability30d === null ? "—" : format(trend.variability30d)}</span><span>{trend.sustainedChange.replaceAll("_", " ")}</span></footer>
-  </article>;
+    <footer><span>30-day {trend.sustainedChange.replaceAll("_", " ")}</span>{href && <ArrowUpRight className="metric-card-cue" size={17} aria-hidden="true" />}</footer>
+  </>;
+  const accessibleSummary = `${label}. Current ${current === null ? "unavailable" : `${format(current)}${unit ? ` ${unit}` : ""}`}. 30-day variability ${variability}. ${trend.sustainedChange.replaceAll("_", " ")}.`;
+  return href
+    ? <Link className="metric-trend-card metric-trend-card--link" href={href} aria-label={`Open details. ${accessibleSummary}`}>{cardContent}</Link>
+    : <article className="metric-trend-card" aria-label={accessibleSummary}>{cardContent}</article>;
 }

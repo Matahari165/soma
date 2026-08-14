@@ -17,7 +17,7 @@ export function LineTrendChart({ values, label, target }: { values: Array<number
     {target !== null && target !== undefined && <line x1="8" y1={y(target)} x2="292" y2={y(target)} className="health-chart-target"><title>{`Target ${target}`}</title></line>}
     <polygon points={areaPoints} className="health-chart-area" />
     <polyline points={points} className="health-chart-line" />
-    {available.map((point, index) => <circle key={`${point.index}-${point.value}`} cx={x(point.index)} cy={y(point.value)} r={index === available.length - 1 ? 3.5 : 1.8} className="health-chart-point"><title>{`${point.value.toFixed(1)}`}</title></circle>)}
+    {available.map((point, index) => <circle key={`${point.index}-${point.value}`} cx={x(point.index)} cy={y(point.value)} r={index === available.length - 1 ? 3.8 : 1.15} className={index === available.length - 1 ? "health-chart-point health-chart-point--latest" : "health-chart-point"}><title>{`${point.value.toFixed(1)}`}</title></circle>)}
   </svg>;
 }
 

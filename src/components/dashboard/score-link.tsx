@@ -1,4 +1,4 @@
-import { Activity, BedDouble, Check, ChevronRight, CircleSlash, HeartPulse, Minus, TrendingUp } from "lucide-react";
+import { Activity, ArrowUpRight, BedDouble, Check, CircleSlash, HeartPulse, Minus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
@@ -32,7 +32,7 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
       aria-label={`Open ${scoreLabel}. ${statusLabel}. ${freshnessLabel}.`}
     >
       <span className="score-link__identity">
-        <span><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{metric.label}</span>
+        <span><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{metric.label}<ArrowUpRight className="score-link__open" size={14} aria-hidden="true" /></span>
       </span>
       <span className="score-link__reading score-link__gauge" style={scoreStyle}>
         <strong>{metric.score ?? "—"}</strong>
@@ -50,7 +50,6 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
         </svg>
       </span>
       <span className="score-link__context"><strong>{metric.value}</strong></span>
-      <span className="score-link__action" aria-hidden="true"><ChevronRight size={18} /></span>
     </Link>
   );
 }

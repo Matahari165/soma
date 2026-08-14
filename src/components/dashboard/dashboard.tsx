@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, ChevronRight, CircleSlash, LoaderCircle, Settings2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronRight, CircleSlash, LoaderCircle, Settings2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -143,14 +143,14 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
         </div>
         {data.insights.length ? <div className="insight-list">
           {data.insights.map((insight) => (
-            <article className={`insight insight--${insight.category}`} key={insight.id}>
+            <Link className={`insight insight--${insight.category}`} href="/trends" aria-label={`Explore insight: ${insight.title}`} key={insight.id}>
               <div>
                 <h3>{insight.title}</h3>
                 <p>{insight.description}</p>
                 <small>{insight.evidence}</small>
               </div>
-              <Link href="/trends" aria-label={`Explore insight: ${insight.title}`}><ChevronRight size={18} /></Link>
-            </article>
+              <ArrowUpRight className="insight__open" size={18} aria-hidden="true" />
+            </Link>
           ))}
         </div> : <div className="inline-empty" role="status"><CircleSlash size={20} aria-hidden="true" /><div><strong>More data needed</strong><p>Patterns will appear after complete measurements arrive.</p></div></div>}
       </section>
