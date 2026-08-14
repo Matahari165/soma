@@ -19,6 +19,11 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
     const y = 38 - (Math.min(100, Math.max(0, value)) / 100) * 32;
     return `${x},${y}`;
   }).join(" ");
+  const latestPoint = metric.history.length ? {
+    x: metric.history.length === 1 ? 50 : 100,
+    y: 38 - (Math.min(100, Math.max(0, metric.history.at(-1) ?? 0)) / 100) * 32,
+  } : null;
+  const areaPoints = chartPoints ? `0,38 ${chartPoints} 100,38` : "";
 
   return (
     <Link
@@ -39,7 +44,9 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
       <span className="score-link__plot">
         <svg className="score-link__trace" viewBox="0 0 100 40" role="img" aria-label={`${metric.label} recent signal`} preserveAspectRatio="none">
           <line x1="0" y1="32" x2="100" y2="32" />
+          {areaPoints ? <polygon points={areaPoints} /> : null}
           {chartPoints ? <polyline points={chartPoints} /> : null}
+          {latestPoint ? <ellipse cx={latestPoint.x} cy={latestPoint.y} rx="1" ry="2.2" /> : null}
         </svg>
       </span>
       <span className="score-link__context"><strong>{metric.value}</strong></span>

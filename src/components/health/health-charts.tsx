@@ -28,8 +28,11 @@ export function SleepStageTimeline({ stages }: { stages: SleepStageSegment[] }) 
   const durations = stages.map((stage) => Math.max(1, Date.parse(stage.endTime) - Date.parse(stage.startTime)));
   const safeDurations = durations.map((duration) => Number.isFinite(duration) && duration > 0 ? duration : 1);
   const total = safeDurations.reduce((sum, duration) => sum + duration, 0);
-  return <div className="sleep-stage-timeline" role="img" aria-label="Sequence of sleep stages during the latest night">
-    {stages.map((stage, index) => <span key={`${stage.startTime}-${index}`} className={`sleep-stage-segment sleep-stage-segment--${stageClass[stage.type]}`} style={{ flexGrow: safeDurations[index] / total }}><span className="sr-only">{stage.type}</span></span>)}
+  return <div className="sleep-stage-chart">
+    <div className="sleep-stage-axis" aria-hidden="true"><span>Awake</span><span>REM</span><span>Light</span><span>Deep</span></div>
+    <div className="sleep-stage-timeline" role="img" aria-label="Sequence of sleep stages during the latest night">
+      {stages.map((stage, index) => <span key={`${stage.startTime}-${index}`} className={`sleep-stage-segment sleep-stage-segment--${stageClass[stage.type]}`} style={{ flexGrow: safeDurations[index] / total }}><span className="sr-only">{stage.type}</span></span>)}
+    </div>
   </div>;
 }
 

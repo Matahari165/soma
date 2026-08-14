@@ -2,6 +2,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 
 import { HealthPageShell } from "./health-page-shell";
 import { HeartRateCurve, ZoneDistribution } from "./health-charts";
+import { MetricReading } from "./metric-reading";
 import { MetricTrendCard } from "./metric-trend-card";
 
 const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
@@ -16,12 +17,12 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
-        <article className="health-primary-card health-primary-card--featured"><span>HRV</span><strong>{latest.hrv_ms === null ? "—" : `${Math.round(latest.hrv_ms)} ms`}</strong><p>Against your baseline</p></article>
-        <article className="health-primary-card"><span>Resting heart rate</span><strong>{latest.resting_heart_rate === null ? "—" : `${Math.round(latest.resting_heart_rate)} bpm`}</strong></article>
-        <article className="health-primary-card"><span>Nightly SpO₂</span><strong>{latest.oxygen_saturation === null ? "—" : `${latest.oxygen_saturation.toFixed(1)}%`}</strong><p>{latest.oxygen_saturation_lower === null || latest.oxygen_saturation_upper === null ? "Nightly range unavailable." : `${latest.oxygen_saturation_lower.toFixed(1)}–${latest.oxygen_saturation_upper.toFixed(1)}% reported range.`}</p></article>
-        <article className="health-primary-card"><span>Respiration</span><strong>{latest.respiratory_rate === null ? "—" : `${latest.respiratory_rate.toFixed(1)}/min`}</strong></article>
-        <article className="health-primary-card"><span>Temperature delta</span><strong>{latest.skin_temperature_delta === null ? "—" : `${latest.skin_temperature_delta > 0 ? "+" : ""}${latest.skin_temperature_delta.toFixed(2)} °C`}</strong><p>Nightly temperature minus your 30-day baseline.</p></article>
-        <article className="health-primary-card"><span>Heart-rate range</span><strong>{heartMinimum === null || heartMaximum === null ? "—" : `${heartMinimum}–${heartMaximum}`}</strong><p>{heartAverage === null ? "Samples unavailable." : `${Math.round(heartAverage)} bpm average across recent samples.`}</p></article>
+        <article className="health-primary-card health-primary-card--featured"><span>HRV</span><MetricReading value={latest.hrv_ms === null ? "—" : Math.round(latest.hrv_ms)} unit={latest.hrv_ms === null ? undefined : "ms"} /><p>Against your baseline</p></article>
+        <article className="health-primary-card"><span>Resting heart rate</span><MetricReading value={latest.resting_heart_rate === null ? "—" : Math.round(latest.resting_heart_rate)} unit={latest.resting_heart_rate === null ? undefined : "bpm"} /></article>
+        <article className="health-primary-card"><span>Nightly SpO₂</span><MetricReading value={latest.oxygen_saturation === null ? "—" : latest.oxygen_saturation.toFixed(1)} unit={latest.oxygen_saturation === null ? undefined : "%"} /><p>{latest.oxygen_saturation_lower === null || latest.oxygen_saturation_upper === null ? "Nightly range unavailable." : `${latest.oxygen_saturation_lower.toFixed(1)}–${latest.oxygen_saturation_upper.toFixed(1)}% reported range.`}</p></article>
+        <article className="health-primary-card"><span>Respiration</span><MetricReading value={latest.respiratory_rate === null ? "—" : latest.respiratory_rate.toFixed(1)} unit={latest.respiratory_rate === null ? undefined : "/min"} /></article>
+        <article className="health-primary-card"><span>Temperature delta</span><MetricReading value={latest.skin_temperature_delta === null ? "—" : `${latest.skin_temperature_delta > 0 ? "+" : ""}${latest.skin_temperature_delta.toFixed(2)}`} unit={latest.skin_temperature_delta === null ? undefined : "°C"} /><p>Nightly temperature minus your 30-day baseline.</p></article>
+        <article className="health-primary-card"><span>Heart-rate range</span><MetricReading value={heartMinimum === null || heartMaximum === null ? "—" : `${heartMinimum}–${heartMaximum}`} unit={heartMinimum === null || heartMaximum === null ? undefined : "bpm"} /><p>{heartAverage === null ? "Samples unavailable." : `${Math.round(heartAverage)} bpm average across recent samples.`}</p></article>
       </section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Recent samples</span><h2>Heart rate through the day</h2></div><span className="quality-pill">{data.heartRateSamples.length} samples</span></div><HeartRateCurve samples={data.heartRateSamples} /></section>
@@ -29,7 +30,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         { label: "Light", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Moderate", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigorous", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Peak", minutes: latest.peak_zone_minutes, tone: "peak" },
       ]} /></section>
 
-      <section className="metric-trend-grid" aria-label="Physiology trends">
+      <section className="health-trends-block" aria-labelledby="recovery-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="recovery-trends-heading">Recovery trends</h2></div></div><div className="metric-trend-grid">
         <MetricTrendCard label="HRV" points={points(data.days, "hrv_ms")} unit="ms" direction="higher_is_better" />
         <MetricTrendCard label="Resting heart rate" points={points(data.days, "resting_heart_rate")} unit="bpm" direction="lower_is_better" />
         <MetricTrendCard label="SpO₂" points={points(data.days, "oxygen_saturation")} unit="%" direction="context_only" />
@@ -37,7 +38,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" />
         <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" />
         <MetricTrendCard label="Core temperature" points={points(data.days, "core_body_temperature_celsius")} unit="°C" direction="context_only" />
-      </section>
+      </div></section>
     </> : <section className="health-panel health-empty"><div><h2>Recovery needs an overnight signal</h2><p>Sync HRV or resting heart rate to begin.</p></div></section>}
   </HealthPageShell>;
 }

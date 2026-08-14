@@ -5,6 +5,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 
 import { HealthPageShell } from "./health-page-shell";
 import { ZoneDistribution } from "./health-charts";
+import { MetricReading } from "./metric-reading";
 import { MetricTrendCard } from "./metric-trend-card";
 
 const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
@@ -22,19 +23,19 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   return <HealthPageShell kind="activity" title="Activity" description="Movement, training load, and active days." score={score}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest activity summary">
-        <article className="health-primary-card health-primary-card--featured"><span>Steps</span><strong>{number(latest.steps)}</strong><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>
-        <article className="health-primary-card"><span>Active calories</span><strong>{latest.active_energy_kcal === null ? "—" : `${number(latest.active_energy_kcal)} kcal`}</strong></article>
-        <article className="health-primary-card"><span>Daily load</span><strong>{score ?? "—"}</strong></article>
-        <article className="health-primary-card"><span>Weekly load</span><strong>{number(latest.weekly_load)}</strong></article>
-        <article className="health-primary-card"><span>Recent / habitual</span><strong>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</strong></article>
-        <article className="health-primary-card"><span>Activity regularity</span><strong>{regularity.consistencyScore === null ? "—" : `${regularity.consistencyScore}%`}</strong><p>{regularity.activeDayRate === null ? "Baseline pending." : `${regularity.activeDayRate}% of measured days were active.`}</p></article>
+        <article className="health-primary-card health-primary-card--featured"><span>Steps</span><MetricReading value={number(latest.steps)} /><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>
+        <article className="health-primary-card"><span>Active calories</span><MetricReading value={latest.active_energy_kcal === null ? "—" : number(latest.active_energy_kcal)} unit={latest.active_energy_kcal === null ? undefined : "kcal"} /></article>
+        <article className="health-primary-card"><span>Daily load</span><MetricReading value={score ?? "—"} unit={score === null ? undefined : "/100"} /></article>
+        <article className="health-primary-card"><span>Weekly load</span><MetricReading value={number(latest.weekly_load)} /></article>
+        <article className="health-primary-card"><span>Recent / habitual</span><MetricReading value={latest.acute_chronic_load_ratio === null ? "—" : latest.acute_chronic_load_ratio.toFixed(2)} unit={latest.acute_chronic_load_ratio === null ? undefined : "×"} /></article>
+        <article className="health-primary-card"><span>Activity regularity</span><MetricReading value={regularity.consistencyScore ?? "—"} unit={regularity.consistencyScore === null ? undefined : "%"} /><p>{regularity.activeDayRate === null ? "Baseline pending." : `${regularity.activeDayRate}% of measured days were active.`}</p></article>
       </section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest complete day</span><h2>Heart-rate-zone balance</h2></div><span className="quality-pill">{number(latest.zone_minutes)} total min</span></div><ZoneDistribution zones={[
         { label: "Light", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Moderate", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigorous", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Peak", minutes: latest.peak_zone_minutes, tone: "peak" },
       ]} /></section>
 
-      <section className="metric-trend-grid" aria-label="Activity trends">
+      <section className="health-trends-block" aria-labelledby="activity-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="activity-trends-heading">Activity trends</h2></div></div><div className="metric-trend-grid">
         <MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} />
         <MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="context_only" />
         <MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="context_only" />
@@ -47,7 +48,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Elevation gain" points={points(activityDays, "altitude_gain_m")} unit="m" direction="context_only" />
         <MetricTrendCard label="Weight" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" />
         <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" />
-      </section>
+      </div></section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Google Health exercises</span><h2>Recent sessions</h2></div><span className="quality-pill">{data.exercises.length} sessions</span></div>{data.exercises.length ? <div className="exercise-table-wrap" role="region" aria-label="Recent exercise sessions, horizontally scrollable" tabIndex={0}><table className="exercise-table"><thead><tr><th>Session</th><th>Date</th><th>Duration</th><th>Calories</th><th>Distance</th><th>Avg HR</th><th>Zone min</th></tr></thead><tbody>{data.exercises.map((exercise) => <tr key={exercise.id}><th scope="row"><Footprints size={16} aria-hidden="true" />{exercise.name}<small>{exercise.type.replaceAll("_", " ")}</small></th><td>{exercise.date}</td><td>{exercise.durationMinutes === null ? "—" : `${Math.round(exercise.durationMinutes)} min`}</td><td>{exercise.calories === null ? "—" : `${Math.round(exercise.calories)} kcal`}</td><td>{exercise.distanceKm === null ? "—" : `${exercise.distanceKm.toFixed(2)} km`}</td><td>{exercise.averageHeartRate === null ? "—" : `${Math.round(exercise.averageHeartRate)} bpm`}</td><td>{exercise.zoneMinutes === null ? "—" : Math.round(exercise.zoneMinutes)}</td></tr>)}</tbody></table></div> : <p className="health-empty">No Google Health exercises are available yet.</p>}</section>
       {latestExercise && <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest session detail</span><h2>{latestExercise.name}</h2></div><span className="quality-pill">{latestExercise.type.replaceAll("_", " ")}</span></div><dl className="exercise-detail-grid">

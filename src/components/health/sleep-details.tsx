@@ -4,6 +4,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 
 import { HealthPageShell } from "./health-page-shell";
 import { SleepStageDistribution, SleepStageTimeline } from "./health-charts";
+import { MetricReading } from "./metric-reading";
 import { MetricTrendCard } from "./metric-trend-card";
 
 const duration = (minutes: number) => `${Math.floor(Math.abs(minutes) / 60)}h ${Math.round(Math.abs(minutes) % 60)}m`;
@@ -38,11 +39,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest sleep summary">
-        <article className="health-primary-card health-primary-card--featured"><span>Total sleep</span><strong>{latest.sleep_minutes === null ? "—" : duration(latest.sleep_minutes)}</strong><p>{target === null ? "Target is being estimated." : `Target ${duration(target)} · ${debt === null ? "gap unavailable" : debt > 0 ? `${duration(debt)} short` : `${duration(debt)} above target`}`}</p></article>
-        <article className="health-primary-card"><span>Efficiency</span><strong>{latest.sleep_efficiency === null ? "—" : `${latest.sleep_efficiency.toFixed(1)}%`}</strong></article>
-        <article className="health-primary-card"><span>Awake</span><strong>{latest.sleep_awake_minutes === null ? "—" : `${Math.round(latest.sleep_awake_minutes)} min`}</strong><p>{latest.sleep_awake_percent === null ? "Relative share unavailable." : `${latest.sleep_awake_percent.toFixed(1)}% of the measured sleep period.`}</p></article>
-        <article className="health-primary-card"><span>Fragmentation</span><strong>{latest.sleep_fragmentation === null ? "—" : `${latest.sleep_fragmentation.toFixed(1)}/h`}</strong><p>{latest.sleep_awakenings === null ? "Awakenings unavailable." : `${Math.round(latest.sleep_awakenings)} awake segments detected.`}</p></article>
-        <article className="health-primary-card"><span>Sleep debt</span><strong>{latest.cumulative_sleep_debt_minutes === null ? "—" : duration(latest.cumulative_sleep_debt_minutes)}</strong></article>
+        <article className="health-primary-card health-primary-card--featured"><span>Total sleep</span><MetricReading value={latest.sleep_minutes === null ? "—" : duration(latest.sleep_minutes)} /><p>{target === null ? "Target is being estimated." : `Target ${duration(target)} · ${debt === null ? "gap unavailable" : debt > 0 ? `${duration(debt)} short` : `${duration(debt)} above target`}`}</p></article>
+        <article className="health-primary-card"><span>Efficiency</span><MetricReading value={latest.sleep_efficiency === null ? "—" : latest.sleep_efficiency.toFixed(1)} unit={latest.sleep_efficiency === null ? undefined : "%"} /></article>
+        <article className="health-primary-card"><span>Awake</span><MetricReading value={latest.sleep_awake_minutes === null ? "—" : Math.round(latest.sleep_awake_minutes)} unit={latest.sleep_awake_minutes === null ? undefined : "min"} /><p>{latest.sleep_awake_percent === null ? "Relative share unavailable." : `${latest.sleep_awake_percent.toFixed(1)}% of the measured sleep period.`}</p></article>
+        <article className="health-primary-card"><span>Fragmentation</span><MetricReading value={latest.sleep_fragmentation === null ? "—" : latest.sleep_fragmentation.toFixed(1)} unit={latest.sleep_fragmentation === null ? undefined : "/h"} /><p>{latest.sleep_awakenings === null ? "Awakenings unavailable." : `${Math.round(latest.sleep_awakenings)} awake segments detected.`}</p></article>
+        <article className="health-primary-card"><span>Sleep debt</span><MetricReading value={latest.cumulative_sleep_debt_minutes === null ? "—" : duration(latest.cumulative_sleep_debt_minutes)} /></article>
       </section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest night</span><h2>Sleep architecture</h2></div><span className="quality-pill">Measured stages</span></div><SleepStageTimeline stages={data.latestSleepStages} /><SleepStageDistribution stages={[
@@ -58,13 +59,13 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         <article><Clock3 size={20} aria-hidden="true" /><span>Combined timing</span><strong>{latest.sleep_regularity === null ? "—" : `${Math.round(latest.sleep_regularity)}%`}</strong></article>
       </section>
 
-      <section className="metric-trend-grid" aria-label="Sleep trends">
+      <section className="health-trends-block" aria-labelledby="sleep-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="sleep-trends-heading">Sleep trends</h2></div></div><div className="metric-trend-grid">
         <MetricTrendCard label="Total sleep" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={(value) => duration(value)} target={target} />
         <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" />
         <MetricTrendCard label="Awake share" points={points(data.days, "sleep_awake_percent")} unit="%" direction="lower_is_better" />
         <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" />
         <MetricTrendCard label="Cumulative debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" format={(value) => duration(value)} />
-      </section>
+      </div></section>
     </> : <section className="health-panel health-empty"><MoonStar size={24} aria-hidden="true" /><div><h2>No sleep data yet</h2><p>Sync one complete sleep session to begin.</p></div></section>}
   </HealthPageShell>;
 }
