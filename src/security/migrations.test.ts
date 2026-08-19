@@ -60,5 +60,6 @@ describe("database security contract", () => {
       expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`revoke all on function public\\.${functionName}[\\s\\S]*from public, anon, authenticated`, "i"));
       expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
     }
+    expect(atomicWorkoutAndCoachWrites).toContain("extensions.digest(");
   });
 });

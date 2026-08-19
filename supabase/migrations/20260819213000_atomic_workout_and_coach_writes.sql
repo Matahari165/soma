@@ -295,7 +295,7 @@ begin
       coalesce(p_action_arguments, '{}'::jsonb),
       p_action_preview,
       'proposed',
-      encode(digest(p_user_id::text || ':' || v_thread_id::text || ':' || v_assistant_id::text || ':' || p_action_tool_name, 'sha256'), 'hex')
+      encode(extensions.digest(p_user_id::text || ':' || v_thread_id::text || ':' || v_assistant_id::text || ':' || p_action_tool_name, 'sha256'), 'hex')
     )
     returning id into v_proposal_id;
   end if;
