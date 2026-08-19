@@ -30,6 +30,19 @@ export function useDialogLayer({
 
     const previousOverflow = document.body.style.overflow;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const inerted: Array<{ element: HTMLElement; wasInert: boolean }> = [];
+    let layer: HTMLElement | null = containerRef.current;
+    while (layer?.parentElement) {
+      const parent: HTMLElement = layer.parentElement;
+      for (const sibling of Array.from(parent.children)) {
+        if (sibling === layer || !(sibling instanceof HTMLElement)) continue;
+        if (sibling.classList.contains("panel-backdrop")) continue;
+        inerted.push({ element: sibling, wasInert: sibling.hasAttribute("inert") });
+        sibling.setAttribute("inert", "");
+      }
+      if (parent === document.body) break;
+      layer = parent;
+    }
     const focusable = () => {
       const confirmation = containerRef.current?.querySelector<HTMLElement>(".modal-confirmation");
       const scope = confirmation ?? containerRef.current;
@@ -37,9 +50,16 @@ export function useDialogLayer({
     };
     document.body.style.overflow = "hidden";
     window.requestAnimationFrame(() => focusable()[0]?.focus());
+    let confirmationWasOpen = Boolean(containerRef.current?.querySelector(".modal-confirmation"));
     const observer = new MutationObserver(() => {
       const confirmation = containerRef.current?.querySelector<HTMLElement>(".modal-confirmation");
-      if (confirmation && !confirmation.contains(document.activeElement)) focusable()[0]?.focus();
+      if (confirmation) {
+        confirmationWasOpen = true;
+        if (!confirmation.contains(document.activeElement)) focusable()[0]?.focus();
+      } else if (confirmationWasOpen) {
+        confirmationWasOpen = false;
+        focusable()[0]?.focus();
+      }
     });
     if (containerRef.current) observer.observe(containerRef.current, { childList: true, subtree: true });
 
@@ -68,6 +88,9 @@ export function useDialogLayer({
       document.removeEventListener("keydown", handleKeyDown);
       observer.disconnect();
       document.body.style.overflow = previousOverflow;
+      for (const { element, wasInert } of inerted) {
+        if (!wasInert) element.removeAttribute("inert");
+      }
       previousFocus?.focus();
     };
   }, [containerRef, open]);

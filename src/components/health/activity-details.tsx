@@ -16,7 +16,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const activityDays = completedActivityDays(data.days, currentDate);
   const latest = activityDays.at(-1);
   const effortScores = data.scores.filter((item) => item.kind === "effort");
-  const latestEffort = effortScores.findLast((item) => item.score_date === latest?.metric_date);
+  const latestEffort = effortScores.at(-1);
   const score = latestEffort?.score ?? null;
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.find((scoreDay) => scoreDay.score_date === day.metric_date)?.score ?? null })));
   const latestExercise = data.exercises.at(0);

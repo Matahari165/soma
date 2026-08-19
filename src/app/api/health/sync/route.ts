@@ -77,25 +77,28 @@ export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const { data: connection } = await admin.from("provider_connections").select("id").eq("user_id", user.id).eq("provider", "google_health").eq("status", "connected").maybeSingle();
+  const { data: connection, error: connectionError } = await admin.from("provider_connections").select("id").eq("user_id", user.id).eq("provider", "google_health").eq("status", "connected").maybeSingle();
+  if (connectionError) return NextResponse.json({ error: "Google Health connection could not be checked." }, { status: 500 });
   if (!connection) return NextResponse.json({ error: "Connect Google Health before syncing." }, { status: 409 });
 
-  const { data: queuedJobs } = await admin.from("sync_jobs")
+  const { data: queuedJobs, error: queuedJobsError } = await admin.from("sync_jobs")
     .select("id,data_types")
     .eq("user_id", user.id)
     .eq("status", "queued")
     .eq("import_range", "90_days")
     .order("created_at", { ascending: false })
     .limit(20);
+  if (queuedJobsError) return NextResponse.json({ error: "Sync queue could not be checked." }, { status: 500 });
   let job = (queuedJobs ?? []).find(isDashboardRefreshJob) ?? null;
   if (!job) {
-    const { data: runningJobs } = await admin.from("sync_jobs")
+    const { data: runningJobs, error: runningJobsError } = await admin.from("sync_jobs")
       .select("id,data_types,progress")
       .eq("user_id", user.id)
       .eq("status", "running")
       .eq("import_range", "90_days")
       .order("created_at", { ascending: false })
       .limit(20);
+    if (runningJobsError) return NextResponse.json({ error: "Running syncs could not be checked." }, { status: 500 });
     const runningJob = (runningJobs ?? []).find(isDashboardRefreshJob);
     if (runningJob) {
       return NextResponse.json({
@@ -118,6 +121,7 @@ export async function POST() {
       range_end: end.toISOString(),
       status: "queued",
     }).select("id,data_types").single();
+    if (result.error) return NextResponse.json({ error: "Sync job could not be created." }, { status: 500 });
     job = result.data;
   }
   if (!job) return NextResponse.json({ error: "Sync job could not be created." }, { status: 500 });

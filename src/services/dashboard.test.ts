@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { selectSignalMetric } from "./dashboard";
+import { selectDailyFocus } from "@/components/dashboard/dashboard";
+import { previewDashboard } from "@/lib/local-preview";
 
 const base = {
   sleep_need_minutes: null, sleep_regularity: null, bedtime: null, wake_time: null,
@@ -17,5 +19,18 @@ describe("dashboard signal dates", () => {
     expect(selectSignalMetric("sleep", metrics)?.metric_date).toBe("2026-08-07");
     expect(selectSignalMetric("recovery", metrics)?.metric_date).toBe("2026-08-07");
     expect(selectSignalMetric("effort", metrics)?.metric_date).toBe("2026-08-08");
+  });
+});
+
+describe("daily focus", () => {
+  it("selects a limited or building signal before the lowest healthy score", () => {
+    const scores = previewDashboard.scores.map((score) => ({ ...score }));
+    scores[0].status = "limited";
+    scores[0].score = null;
+    expect(selectDailyFocus(scores)?.kind).toBe("sleep");
+  });
+
+  it("otherwise selects the lowest available score", () => {
+    expect(selectDailyFocus(previewDashboard.scores)?.kind).toBe("effort");
   });
 });

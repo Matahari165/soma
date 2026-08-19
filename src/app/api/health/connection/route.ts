@@ -22,12 +22,14 @@ export async function DELETE() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const { data: connection } = await admin.from("provider_connections").select("access_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
+  const { data: connection, error: connectionError } = await admin.from("provider_connections").select("access_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
+  if (connectionError) return NextResponse.json({ error: "Google Health connection could not be loaded." }, { status: 500 });
   if (connection?.access_token_ciphertext) {
     await fetch("https://oauth2.googleapis.com/revoke", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: decryptSecret(connection.access_token_ciphertext) }), signal: AbortSignal.timeout(5000) }).catch(() => undefined);
   }
   const { error } = await admin.from("provider_connections").delete().eq("user_id", user.id).eq("provider", "google_health");
   if (error) return NextResponse.json({ error: "Google Health could not be disconnected." }, { status: 500 });
-  await admin.from("audit_events").insert({ user_id: user.id, event_type: "google_health_disconnected", resource_type: "provider_connection" });
+  const { error: auditError } = await admin.from("audit_events").insert({ user_id: user.id, event_type: "google_health_disconnected", resource_type: "provider_connection" });
+  if (auditError) console.error("[api/health/connection] disconnect audit could not be stored", { userId: user.id });
   return NextResponse.json({ ok: true });
 }

@@ -27,4 +27,12 @@ describe("production-only application contract", () => {
     expect(proxySource).toContain('request.nextUrl.pathname === "/"');
     expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("createServerClient(url, anonKey"));
   });
+
+  it("keeps authenticated server data canonical across dashboard and workouts", () => {
+    const dashboard = readFileSync(`${sourceRoot}/components/dashboard/dashboard.tsx`, "utf8");
+    const workouts = readFileSync(`${sourceRoot}/components/workout-studio.tsx`, "utf8");
+    expect(dashboard).not.toContain("localStorage");
+    expect(workouts).not.toContain("localStorage");
+    expect(workouts).not.toContain("ExerciseFigure");
+  });
 });

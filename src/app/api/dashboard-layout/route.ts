@@ -14,7 +14,8 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const { data } = await admin.from("dashboard_layouts").select("layout").eq("user_id", user.id).maybeSingle();
+  const { data, error } = await admin.from("dashboard_layouts").select("layout").eq("user_id", user.id).maybeSingle();
+  if (error) return NextResponse.json({ error: "Dashboard layout could not be loaded." }, { status: 500 });
   const parsed = layoutSchema.safeParse(data?.layout);
   return NextResponse.json(parsed.success ? parsed.data : defaultLayout);
 }

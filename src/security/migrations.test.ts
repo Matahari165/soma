@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const schema = readFileSync(new URL("../../supabase/migrations/20260808000000_complete_product_schema.sql", import.meta.url), "utf8");
 const hardening = readFileSync(new URL("../../supabase/migrations/20260808130000_production_hardening.sql", import.meta.url), "utf8");
 const serviceRolePrivileges = readFileSync(new URL("../../supabase/migrations/20260808143000_restore_service_role_privileges.sql", import.meta.url), "utf8");
+const atomicProfileUpdates = readFileSync(new URL("../../supabase/migrations/20260819211500_atomic_profile_updates.sql", import.meta.url), "utf8");
+const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_and_coach_writes.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -39,5 +41,24 @@ describe("database security contract", () => {
     expect(schedule).toContain("soma-sync-every-minute");
     expect(schedule).toContain("'* * * * *'");
     expect(schedule).toContain("vault.decrypted_secrets");
+  });
+
+  it("updates profile settings and onboarding atomically through service-only functions", () => {
+    for (const functionName of ["update_soma_profile", "complete_soma_onboarding"]) {
+      expect(atomicProfileUpdates).toMatch(new RegExp(`create or replace function public\\.${functionName}`, "i"));
+      expect(atomicProfileUpdates).toMatch(new RegExp(`revoke all on function public\\.${functionName}[\\s\\S]*from public, anon, authenticated`, "i"));
+      expect(atomicProfileUpdates).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
+    }
+    expect(atomicProfileUpdates).toContain("update public.profiles");
+    expect(atomicProfileUpdates).toContain("update public.sleep_preferences");
+    expect(atomicProfileUpdates).toContain("insert into public.health_goals");
+  });
+
+  it("keeps workout and confirmed Coach multi-table writes atomic and service-only", () => {
+    for (const functionName of ["create_soma_workout_program", "start_soma_workout_session", "execute_soma_proposal", "persist_soma_coach_exchange"]) {
+      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`create or replace function public\\.${functionName}`, "i"));
+      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`revoke all on function public\\.${functionName}[\\s\\S]*from public, anon, authenticated`, "i"));
+      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
+    }
   });
 });

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
-import type { DashboardSnapshot } from "@/domain/health";
+import type { DailyScore, DashboardSnapshot } from "@/domain/health";
 
 import { ScoreLink } from "./score-link";
 import { RecoveryTrend, SleepRegularity, WeeklyEffort } from "./widgets";
@@ -33,6 +33,18 @@ export function HealthConnectedNotice() {
   </div>;
 }
 
+export function selectDailyFocus(scores: DailyScore[]) {
+  const needsAttention = scores.find((score) => score.status === "limited")
+    ?? scores.find((score) => score.status === "building")
+    ?? scores.find((score) => score.freshness.state === "stale" || score.freshness.state === "missing");
+  return needsAttention ?? scores.reduce<DailyScore | undefined>((lowest, score) => {
+    if (!lowest) return score;
+    if (score.score === null) return score;
+    if (lowest.score === null) return lowest;
+    return score.score < lowest.score ? score : lowest;
+  }, undefined);
+}
+
 export function Dashboard({ data, healthConnected = false }: { data: DashboardSnapshot; healthConnected?: boolean }) {
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
@@ -51,31 +63,20 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
   useDialogLayer({ open: customizing, onClose: closeCustomization, containerRef: customizeRef });
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const local = window.localStorage.getItem("soma:dashboard-layout");
-      if (local) {
-        try {
-          const nextWidgets = normalizeWidgets(JSON.parse(local));
-          setWidgets(nextWidgets);
-          setSavedWidgets(nextWidgets);
-        } catch {
-          setWidgets(defaultWidgets);
-          setSavedWidgets(defaultWidgets);
-        }
-      } else {
-        fetch("/api/dashboard-layout")
-          .then((response) => response.ok ? response.json() : Promise.reject(new Error("Layout unavailable")))
-          .then((layout) => {
-            const nextWidgets = normalizeWidgets(layout);
-            setWidgets(nextWidgets);
-            setSavedWidgets(nextWidgets);
-          })
-          .catch(() => {
-            setWidgets(defaultWidgets);
-            setSavedWidgets(defaultWidgets);
-          });
-      }
-    });
+    const controller = new AbortController();
+    fetch("/api/dashboard-layout", { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Layout unavailable")))
+      .then((layout) => {
+        const nextWidgets = normalizeWidgets(layout);
+        setWidgets(nextWidgets);
+        setSavedWidgets(nextWidgets);
+      })
+      .catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setWidgets(defaultWidgets);
+        setSavedWidgets(defaultWidgets);
+      });
+    return () => controller.abort();
   }, []);
 
   function move(index: number, direction: -1 | 1) {
@@ -90,7 +91,6 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
     try {
       const response = await fetch("/api/dashboard-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets }) });
       if (!response.ok) throw new Error("Your layout could not be saved. Try again.");
-      window.localStorage.setItem("soma:dashboard-layout", JSON.stringify({ widgets }));
       setSavedWidgets(widgets);
       setSaved(true);
       window.setTimeout(() => { setSaved(false); setCustomizing(false); }, 650);
@@ -108,6 +108,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
   };
   const widgetLabels: Record<WidgetId, string> = { "weekly-effort": "Weekly effort", "recovery-trend": "Recovery trend", "sleep-regularity": "Sleep regularity" };
   const visibleWidgets = widgets.filter((widget) => widget.visible);
+  const dailyFocus = selectDailyFocus(data.scores);
 
   return (
     <div className="dashboard-page">
@@ -130,10 +131,17 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
         </nav>
       </section>
 
-      <section className="soma-summary" aria-labelledby="soma-summary-title">
-        <h2 id="soma-summary-title" className="sr-only">Today&apos;s summary</h2>
-        <p>{data.summary}</p>
-        <Link className="summary-button" href="/coach">Coach <ChevronRight size={16} /></Link>
+      <section className={`daily-focus daily-focus--${dailyFocus?.kind ?? "recovery"}`} aria-labelledby="daily-focus-title">
+        <div className="daily-focus__signal" aria-hidden="true"><span /></div>
+        <div className="daily-focus__copy">
+          <span className="eyebrow">Today&apos;s focus{dailyFocus ? ` · ${dailyFocus.label}` : ""}</span>
+          <h2 id="daily-focus-title">{dailyFocus?.action ?? "Review your latest signals."}</h2>
+          <p>{data.summary}</p>
+        </div>
+        <div className="daily-focus__actions">
+          {dailyFocus && <Link className="summary-button" href={dailyFocus.href}>Open {dailyFocus.label} <ChevronRight size={16} /></Link>}
+          <Link className="daily-focus__coach" href="/coach">Coach</Link>
+        </div>
       </section>
 
       <section className="section-block" aria-labelledby="insights-heading">

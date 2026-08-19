@@ -51,7 +51,8 @@ export async function GET(request: Request) {
     const tokens = await exchangeGoogleHealthCode(code, verifier);
     const identity = await getGoogleHealthIdentity(tokens.access_token);
     const admin = createSupabaseAdminClient();
-    const { data: existing } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
+    const { data: existing, error: existingError } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
+    if (existingError) throw new Error("Existing Google Health connection could not be loaded.");
     const { data: connection, error } = await admin.from("provider_connections").upsert({
       user_id: user.id,
       provider: "google_health",
@@ -67,7 +68,8 @@ export async function GET(request: Request) {
     if (error || !connection) throw new Error("Google Health connection could not be stored.");
 
     const supabase = await createSupabaseServerClient();
-    const { data: profile } = await supabase.from("profiles").select("import_range").eq("user_id", user.id).single();
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("import_range").eq("user_id", user.id).single();
+    if (profileError) throw new Error("Import preferences could not be loaded.");
     const now = new Date();
     const recentStart = daysAgo(90);
     const jobs = [{

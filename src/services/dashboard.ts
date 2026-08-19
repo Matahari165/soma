@@ -56,7 +56,7 @@ function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: Metric
   }
   const minimum = Number(row?.drivers?.targetMinimum ?? 0);
   const maximum = Number(row?.drivers?.targetMaximum ?? 0);
-  return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Effort", value: missing ? "Not calculated" : `${row?.score} of ${minimum}–${maximum}`, target: "Today's target zone", delta: `${metrics?.steps?.toLocaleString("en-US") ?? "—"} steps · ${Math.round(metrics?.zone_minutes ?? 0)} zone min`, detail: "Today's completed effort stays separate from the goal-aware target.", action: missing ? "Sync activity data to calculate effort." : row.score! < minimum ? "You still have room to move toward today's target." : row.score! > maximum ? "You are above today's target; recovery can take priority." : "You are inside today's recommended range.", href: "/activity", freshness: { measuredAt: metrics?.source_freshness?.latestMeasuredAt ?? "unknown", syncedAt: synced, state: missing ? "missing" : "partial" }, history: histories };
+  return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Effort", value: missing ? "Not calculated" : `${row?.score} of ${minimum}–${maximum}`, target: "Today's target zone", delta: `${metrics?.steps?.toLocaleString("en-US") ?? "—"} steps · ${Math.round(metrics?.zone_minutes ?? 0)} zone min`, detail: "Today's completed effort stays separate from the goal-aware target.", action: missing ? "Sync activity data to calculate effort." : row.score! < minimum ? "You still have room to move toward today's target." : row.score! > maximum ? "You are above today's target; recovery can take priority." : "Keep today's effort in this range; no extra load is needed.", href: "/activity", freshness: { measuredAt: metrics?.source_freshness?.latestMeasuredAt ?? "unknown", syncedAt: synced, state: missing ? "missing" : "partial" }, history: histories };
 }
 
 export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<DashboardSnapshot> {
@@ -77,13 +77,16 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
     };
   }
   const supabase = await createSupabaseServerClient();
-  const [{ data: profile }, { data: rawMetrics }, { data: rawScores }, { data: rawInsights }, { data: brief }] = await Promise.all([
+  const results = await Promise.all([
     supabase.from("profiles").select("display_name,timezone").eq("user_id", user.id).single(),
     supabase.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_need_minutes,sleep_regularity,bedtime,wake_time,hrv_ms,resting_heart_rate,steps,zone_minutes,source_freshness").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(30),
     supabase.from("daily_scores").select("score_date,kind,score,status,drivers,calculated_at").eq("user_id", user.id).order("score_date", { ascending: false }).limit(90),
     supabase.from("insights").select("id,category,title,description,evidence").eq("user_id", user.id).neq("status", "dismissed").order("created_at", { ascending: false }).limit(3),
     supabase.from("briefs").select("generated_text").eq("user_id", user.id).eq("kind", "morning").order("brief_date", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw new Error("Your daily health view is temporarily unavailable.");
+  const [{ data: profile }, { data: rawMetrics }, { data: rawScores }, { data: rawInsights }, { data: brief }] = results;
   const metrics = ((rawMetrics ?? []) as MetricRow[]).reverse();
   const scores = ((rawScores ?? []) as ScoreRow[]).reverse();
   const latestMetric = metrics.at(-1);

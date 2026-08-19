@@ -13,11 +13,14 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
-  const [{ data: profile }, { data: sleep }, { data: goal }] = await Promise.all([
+  const results = await Promise.all([
     admin.from("profiles").select("display_name,date_of_birth,height_cm,weight_kg,import_range").eq("user_id", user.id).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time").eq("user_id", user.id).single(),
     admin.from("health_goals").select("goal_type").eq("user_id", user.id).eq("priority", 1).is("ended_on", null).maybeSingle(),
   ]);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) return NextResponse.json({ error: "Your profile could not be loaded." }, { status: 500 });
+  const [{ data: profile }, { data: sleep }, { data: goal }] = results;
   return NextResponse.json({ displayName: profile?.display_name ?? user.displayName, dateOfBirth: profile?.date_of_birth ?? "", heightCm: Number(profile?.height_cm ?? 175), weightKg: Number(profile?.weight_kg ?? 70), importRange: profile?.import_range ?? "90_days", primaryGoal: goal?.goal_type ?? "general_fitness", baseSleepTargetMinutes: sleep?.base_target_minutes ?? 480, usualWakeTime: String(sleep?.usual_wake_time ?? "07:00").slice(0, 5) });
 }
 
@@ -29,15 +32,17 @@ export async function PUT(request: Request) {
   if (isLocalPreviewMode()) return NextResponse.json(parsed.data);
   const admin = createSupabaseAdminClient();
   const value = parsed.data;
-  const updates = await Promise.all([
-    admin.from("profiles").update({ display_name: value.displayName, date_of_birth: value.dateOfBirth, height_cm: value.heightCm, weight_kg: value.weightKg, import_range: value.importRange }).eq("user_id", user.id),
-    admin.from("sleep_preferences").update({ base_target_minutes: value.baseSleepTargetMinutes, usual_wake_time: value.usualWakeTime }).eq("user_id", user.id),
-  ]);
-  if (updates.some((result) => result.error)) return NextResponse.json({ error: "Profile could not be saved." }, { status: 500 });
-  const { data: currentGoal } = await admin.from("health_goals").select("id,goal_type").eq("user_id", user.id).eq("priority", 1).is("ended_on", null).maybeSingle();
-  if (currentGoal?.goal_type !== value.primaryGoal) {
-    if (currentGoal) await admin.from("health_goals").update({ ended_on: new Date().toISOString().slice(0, 10) }).eq("id", currentGoal.id).eq("user_id", user.id);
-    await admin.from("health_goals").insert({ user_id: user.id, goal_type: value.primaryGoal, priority: 1 });
-  }
+  const { error } = await admin.rpc("update_soma_profile", {
+    p_user_id: user.id,
+    p_display_name: value.displayName,
+    p_date_of_birth: value.dateOfBirth,
+    p_height_cm: value.heightCm,
+    p_weight_kg: value.weightKg,
+    p_import_range: value.importRange,
+    p_base_sleep_target_minutes: value.baseSleepTargetMinutes,
+    p_usual_wake_time: value.usualWakeTime,
+    p_primary_goal: value.primaryGoal,
+  });
+  if (error) return NextResponse.json({ error: "Profile could not be saved." }, { status: 500 });
   return NextResponse.json(parsed.data);
 }

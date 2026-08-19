@@ -80,13 +80,13 @@ function roundedAverage(values: Array<number | null>) {
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
   const analysisStart = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
-  const [{ data: records, error: recordError }, { data: profile }, { data: sleepPreferences }, { data: goals }] = await Promise.all([
+  const [{ data: records, error: recordError }, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
     loadAnalysisRecords(userId, analysisStart),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", userId).single(),
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),
   ]);
-  if (recordError) throw new Error("Health records could not be read for analysis.");
+  if (recordError || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
   const days = aggregateHealthRecords((records ?? []) as NormalizedHealthRecord[]);
   console.info("[health-analysis] source records loaded", {
     recordCount: records?.length ?? 0,
@@ -180,15 +180,17 @@ export async function recomputeUserHealth(userId: string) {
   ];
   const dateStart = days.at(0)?.metric_date as string;
   const dateEnd = days.at(-1)?.metric_date as string;
-  await admin.from("correlation_results").upsert(correlationDefinitions.map((definition) => {
+  const { error: correlationError } = await admin.from("correlation_results").upsert(correlationDefinitions.map((definition) => {
     const result = spearmanCorrelation(definition.first, definition.second, definition.lag);
     return { user_id: userId, variable_x: definition.x, variable_y: definition.y, lag_days: definition.lag, coefficient: result.coefficient, sample_size: result.sampleSize, date_start: dateStart, date_end: dateEnd, quality_status: result.quality, explanation: result.coefficient === null ? "At least 14 paired days are needed." : "This is an association, not proof that one metric causes the other.", algorithm_version: "spearman-v1" };
   }), { onConflict: "user_id,variable_x,variable_y,lag_days,date_start,date_end" });
+  if (correlationError) throw new Error("Health correlations could not be stored.");
 
   const observations = <K extends "resting_heart_rate" | "hrv_ms" | "sleep_minutes">(key: K) => days.map((day) => ({ date: day.metric_date, value: day[key] })).filter((point): point is { date: string; value: number } => point.value !== null);
   const insights = generateHealthInsights({ restingHeartRate: observations("resting_heart_rate"), hrv: observations("hrv_ms"), sleepMinutes: observations("sleep_minutes") });
   if (insights.length) {
-    await admin.from("insights").upsert(insights.map((insight) => ({ user_id: userId, category: insight.category, insight_type: insight.type, title: insight.title, description: insight.description, evidence: insight.evidence, confidence: insight.confidence, rule_version: "insight-rules-v1", evidence_end: days.at(-1)?.metric_date, evidence_start: days.at(-Math.min(days.length, 33))?.metric_date, deduplication_key: insight.deduplicationKey })), { onConflict: "user_id,deduplication_key" });
+    const { error: insightError } = await admin.from("insights").upsert(insights.map((insight) => ({ user_id: userId, category: insight.category, insight_type: insight.type, title: insight.title, description: insight.description, evidence: insight.evidence, confidence: insight.confidence, rule_version: "insight-rules-v1", evidence_end: days.at(-1)?.metric_date, evidence_start: days.at(-Math.min(days.length, 33))?.metric_date, deduplication_key: insight.deduplicationKey })), { onConflict: "user_id,deduplication_key" });
+    if (insightError) throw new Error("Health insights could not be stored.");
   }
 
   const latest = days.at(-1) as typeof days[number];
@@ -214,11 +216,12 @@ export async function recomputeUserHealth(userId: string) {
     insightTitles: briefInput.insightTitles,
   });
   const briefDate = todayIn(timezone);
-  await admin.from("briefs").upsert([
+  const { error: briefError } = await admin.from("briefs").upsert([
     { user_id: userId, kind: "morning", brief_date: briefDate, deterministic_facts: facts, generated_text: generateMorningBrief(briefInput), ai_generated: false },
     { user_id: userId, kind: "evening", brief_date: briefDate, deterministic_facts: facts, generated_text: generateEveningBrief(briefInput), ai_generated: false },
     { user_id: userId, kind: "weekly", brief_date: briefDate, deterministic_facts: { ...facts, periodDays: Math.min(days.length, 7) }, generated_text: weeklyBrief, ai_generated: false },
   ], { onConflict: "user_id,kind,brief_date" });
+  if (briefError) throw new Error("Health summaries could not be stored.");
   const result = { days: metricRows.length, scores: scoreRows.length, insights: insights.length };
   console.info("[health-analysis] recompute completed", result);
   return result;

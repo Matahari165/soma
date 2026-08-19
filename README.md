@@ -6,7 +6,7 @@ The product and architecture are defined in [DEVELOPMENT_PLAN.md](./DEVELOPMENT_
 
 ## Product status
 
-Soma is a live, account-based application. Google authentication, Google Health ingestion, personal scores, alerts, correlations, Soma Coach, workout persistence, export, and deletion all use the signed-in user's real data. The product contains no sample account or fabricated health measurements.
+Soma is a live, account-based application. In production, Google authentication, Google Health ingestion, personal scores, alerts, correlations, Soma Coach, workout persistence, export, and deletion all use the signed-in user's real data. An explicit `SOMA_LOCAL_PREVIEW=true` development mode provides labelled sample data without contacting external services.
 
 ## Local setup
 
@@ -34,7 +34,7 @@ This runs linting, TypeScript checks, unit tests, and a production build.
 ## Production setup
 
 1. Create a Supabase project and configure Google as its only sign-in provider.
-2. Apply both files in `supabase/migrations` in filename order.
+2. Apply every file in `supabase/migrations` in filename order. Database functions used by the API are versioned there with their service-role permissions.
 3. Add the environment variables from `.env.example` to the deployment; generate `TOKEN_ENCRYPTION_KEY` as a base64-encoded 32-byte key and `CRON_SECRET` as a random value of at least 16 characters.
 4. Register these callbacks:
    - Google OAuth client for Supabase Auth: `https://YOUR-PROJECT.supabase.co/auth/v1/callback`

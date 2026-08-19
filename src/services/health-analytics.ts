@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
+import { previewScoreHistory } from "@/lib/local-preview";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type HealthMetricDay = {
@@ -109,7 +110,7 @@ function durationMinutes(value: unknown) {
   return Number.isFinite(seconds) ? seconds / 60 : null;
 }
 
-function previewAnalytics(): HealthAnalytics {
+export function buildPreviewAnalytics(): HealthAnalytics {
   const now = new Date();
   const days = Array.from({ length: 91 }, (_, index): HealthMetricDay => {
     const date = new Date(now);
@@ -143,6 +144,25 @@ function previewAnalytics(): HealthAnalytics {
     { score_date: day.metric_date, kind: "recovery", score: Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07), drivers: {} },
     { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { targetMinimum: 55, targetMaximum: 75 } },
   ]);
+  const canonicalDays = days.slice(-previewScoreHistory.sleep.length);
+  canonicalDays.forEach((day, index) => {
+    const scoreIndex = scores.findIndex((score) => score.score_date === day.metric_date);
+    scores[scoreIndex] = { ...scores[scoreIndex], score: previewScoreHistory.sleep[index] };
+    scores[scoreIndex + 1] = { ...scores[scoreIndex + 1], score: previewScoreHistory.recovery[index] };
+    scores[scoreIndex + 2] = { ...scores[scoreIndex + 2], score: previewScoreHistory.effort[index] };
+  });
+  const latestDay = days.at(-1);
+  if (latestDay) {
+    Object.assign(latestDay, {
+      sleep_minutes: 468,
+      sleep_need_minutes: 490,
+      sleep_regularity: 84,
+      hrv_ms: 57,
+      resting_heart_rate: 57,
+      steps: 8_900,
+      zone_minutes: 33,
+    });
+  }
   const lastDate = days.at(-1)?.metric_date ?? now.toISOString().slice(0, 10);
   const lastBedtime = new Date(`${lastDate}T12:00:00Z`);
   lastBedtime.setUTCDate(lastBedtime.getUTCDate() - 1);
@@ -169,11 +189,11 @@ function previewAnalytics(): HealthAnalytics {
 }
 
 export async function getHealthAnalytics(): Promise<HealthAnalytics> {
-  if (isLocalPreviewMode()) return previewAnalytics();
+  if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
   if (!user) return { timezone: "Europe/Paris", days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
   const supabase = await createSupabaseServerClient();
-  const [{ data: profile }, { data: metrics }, { data: scores }, { data: sleeps }, { data: heartRates }, { data: exercises }] = await Promise.all([
+  const results = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
     supabase.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false }).limit(273),
@@ -181,6 +201,9 @@ export async function getHealthAnalytics(): Promise<HealthAnalytics> {
     supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").order("measured_at", { ascending: false }).limit(1000),
     supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).limit(20),
   ]);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
+  const [{ data: profile }, { data: metrics }, { data: scores }, { data: sleeps }, { data: heartRates }, { data: exercises }] = results;
 
   const sleep = findObject(sleeps?.[0]?.payload, "sleep");
   const stages = Array.isArray(sleep?.stages) ? sleep.stages : [];

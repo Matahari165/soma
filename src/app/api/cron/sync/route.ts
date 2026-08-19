@@ -27,18 +27,20 @@ function webhookRange(payload: Record<string, unknown>) {
 
 async function queueWebhookJobs() {
   const admin = createSupabaseAdminClient();
-  const { data: events } = await admin.from("webhook_events").select("*").eq("status", "queued").order("received_at").limit(100);
+  const { data: events, error: eventsError } = await admin.from("webhook_events").select("*").eq("status", "queued").order("received_at").limit(100);
+  if (eventsError) throw new Error("Queued webhook events could not be loaded.");
   const healthUserIds = [...new Set((events ?? []).map((event) => event.health_user_id).filter((value): value is string => Boolean(value)))];
   const connectionResult = healthUserIds.length
     ? await admin.from("provider_connections").select("id,user_id,external_user_id").eq("provider", "google_health").in("external_user_id", healthUserIds)
     : { data: [], error: null };
-  if (connectionResult.error) return;
+  if (connectionResult.error) throw new Error("Webhook provider connections could not be loaded.");
   const connectionByExternalId = new Map((connectionResult.data ?? []).map((connection) => [connection.external_user_id, connection]));
   const candidates: WebhookJobCandidate[] = [];
   for (const event of events ?? []) {
     const connection = connectionByExternalId.get(event.health_user_id);
     if (!connection || !event.data_type) {
-      await admin.from("webhook_events").update({ status: "failed", last_error: "No matching connection." }).eq("id", event.id);
+      const { error } = await admin.from("webhook_events").update({ status: "failed", last_error: "No matching connection." }).eq("id", event.id);
+      if (error) throw new Error("Invalid webhook event could not be marked as failed.");
       continue;
     }
     const range = webhookRange(event.payload as Record<string, unknown>);
@@ -61,7 +63,7 @@ async function queueWebhookJobs() {
       .contains("data_types", [job.dataType])
       .order("created_at")
       .limit(20);
-    if (openJobsError) continue;
+    if (openJobsError) throw new Error("Open webhook sync jobs could not be loaded.");
     const existing = openJobs?.find((item) => item.data_types?.length === 1 && Object.keys(item.cursor ?? {}).length === 0);
     let stored = false;
     if (existing) {
@@ -87,20 +89,30 @@ async function queueWebhookJobs() {
       stored = !result.error;
     }
     if (stored) {
-      await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).in("id", job.eventIds);
+      const { error } = await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).in("id", job.eventIds);
+      if (error) throw new Error("Processed webhook events could not be completed.");
+    } else {
+      throw new Error("Webhook sync job could not be stored.");
     }
   }
 }
 
 export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  await queueWebhookJobs();
+  try {
+    await queueWebhookJobs();
+  } catch (error) {
+    console.error("[api/cron/sync] webhook queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
+    return NextResponse.json({ error: "Webhook queue could not be processed." }, { status: 500 });
+  }
   const admin = createSupabaseAdminClient();
   const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  await admin.from("sync_jobs").update({ status: "queued", started_at: null })
+  const { error: staleJobError } = await admin.from("sync_jobs").update({ status: "queued", started_at: null })
     .eq("status", "running").lt("started_at", staleBefore);
+  if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 
-  const { data: job } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
+  const { data: job, error: jobError } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
+  if (jobError) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
   if (!job) return NextResponse.json({ processed: [] });
 
   let result;

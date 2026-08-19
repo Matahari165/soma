@@ -40,6 +40,7 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
       </span>
       <span className="score-link__status" aria-label={`${statusLabel}, ${freshnessLabel}`}>
         <StatusIcon size={15} strokeWidth={2} aria-hidden="true" />
+        <span>{statusLabel}</span>
       </span>
       <span className="score-link__plot">
         <svg className="score-link__trace" viewBox="0 0 100 40" role="img" aria-label={`${metric.label} recent signal`} preserveAspectRatio="none">
@@ -49,7 +50,12 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
           {latestPoint ? <ellipse cx={latestPoint.x} cy={latestPoint.y} rx="1" ry="2.2" /> : null}
         </svg>
       </span>
-      <span className="score-link__context"><strong>{metric.value}</strong></span>
+      <span className="score-link__context">
+        <strong>{metric.value}</strong>
+        <span>{metric.target}</span>
+        <small>{metric.delta}</small>
+      </span>
+      <span className="score-link__freshness">{freshnessLabel} · synced {metric.freshness.syncedAt}</span>
     </Link>
   );
 }

@@ -14,10 +14,16 @@ const previewDates = Array.from({ length: 7 }, (_, index) => {
   return date.toISOString().slice(0, 10);
 });
 
+export const previewScoreHistory = {
+  sleep: [72, 76, 74, 81, 79, 84, 86],
+  recovery: [64, 68, 61, 73, 76, 78, 82],
+  effort: [42, 68, 35, 72, 54, 81, 63],
+} satisfies Record<"sleep" | "recovery" | "effort", number[]>;
+
 export const previewDetails: Record<"sleep" | "recovery" | "effort", DetailPoint[]> = {
-  sleep: [72, 76, 74, 81, 79, 84, 86].map((score, index) => ({ date: previewDates[index], score, primary: [421, 438, 429, 452, 447, 461, 468][index], secondary: [68, 71, 70, 78, 76, 82, 84][index] })),
-  recovery: [64, 68, 61, 73, 76, 78, 82].map((score, index) => ({ date: previewDates[index], score, primary: [43, 46, 41, 49, 52, 54, 57][index], secondary: [62, 61, 64, 60, 59, 58, 57][index] })),
-  effort: [42, 68, 35, 72, 54, 81, 63].map((score, index) => ({ date: previewDates[index], score, primary: [6200, 9400, 5100, 10300, 7600, 11800, 8900][index], secondary: [18, 36, 12, 42, 27, 51, 33][index] })),
+  sleep: previewScoreHistory.sleep.map((score, index) => ({ date: previewDates[index], score, primary: [421, 438, 429, 452, 447, 461, 468][index], secondary: [68, 71, 70, 78, 76, 82, 84][index] })),
+  recovery: previewScoreHistory.recovery.map((score, index) => ({ date: previewDates[index], score, primary: [43, 46, 41, 49, 52, 54, 57][index], secondary: [62, 61, 64, 60, 59, 58, 57][index] })),
+  effort: previewScoreHistory.effort.map((score, index) => ({ date: previewDates[index], score, primary: [6200, 9400, 5100, 10300, 7600, 11800, 8900][index], secondary: [18, 36, 12, 42, 27, 51, 33][index] })),
 };
 
 export const previewDashboard: DashboardSnapshot = {
@@ -25,9 +31,9 @@ export const previewDashboard: DashboardSnapshot = {
   greeting: "Good morning",
   greetingName: "Jeremy",
   scores: [
-    { kind: "sleep", score: 86, status: "restorative", label: "Sleep", value: "7h 48m", target: "of 8h 10m needed", delta: "84% regularity", detail: "Duration, efficiency, and regularity are combined transparently.", action: "Keep tonight close to your established sleep window.", href: "/sleep", freshness: { measuredAt: "Today, 07:12", syncedAt: "08:04", state: "fresh" }, history: [72, 76, 74, 81, 79, 84, 86] },
-    { kind: "recovery", score: 82, status: "restorative", label: "Recovery", value: "Above recent range", target: "HRV 57 ms · RHR 57 bpm", delta: "Uses your own recent range", detail: "HRV, resting heart rate, and sleep support today's score.", action: "Use this signal alongside how you feel today.", href: "/recovery", freshness: { measuredAt: "Today, 07:12", syncedAt: "08:04", state: "fresh" }, history: [64, 68, 61, 73, 76, 78, 82] },
-    { kind: "effort", score: 63, status: "steady", label: "Effort", value: "63 of 55–75", target: "Today's target zone", delta: "8,900 steps · 33 zone min", detail: "Completed effort stays separate from the goal-aware target.", action: "You are inside today's recommended range.", href: "/activity", freshness: { measuredAt: "Today, 13:20", syncedAt: "13:28", state: "partial" }, history: [42, 68, 35, 72, 54, 81, 63] },
+    { kind: "sleep", score: previewScoreHistory.sleep.at(-1) ?? null, status: "restorative", label: "Sleep", value: "7h 48m", target: "of 8h 10m needed", delta: "84% regularity", detail: "Duration, efficiency, and regularity are combined transparently.", action: "Keep tonight close to your established sleep window.", href: "/sleep", freshness: { measuredAt: "Today, 07:12", syncedAt: "08:04", state: "fresh" }, history: previewScoreHistory.sleep },
+    { kind: "recovery", score: previewScoreHistory.recovery.at(-1) ?? null, status: "restorative", label: "Recovery", value: "Above recent range", target: "HRV 57 ms · RHR 57 bpm", delta: "Uses your own recent range", detail: "HRV, resting heart rate, and sleep support today's score.", action: "Use this signal alongside how you feel today.", href: "/recovery", freshness: { measuredAt: "Today, 07:12", syncedAt: "08:04", state: "fresh" }, history: previewScoreHistory.recovery },
+    { kind: "effort", score: previewScoreHistory.effort.at(-1) ?? null, status: "steady", label: "Effort", value: "63 of 55–75", target: "Today's target zone", delta: "8,900 steps · 33 zone min", detail: "Completed effort stays separate from the goal-aware target.", action: "Keep today's effort in this range; no extra load is needed.", href: "/activity", freshness: { measuredAt: "Today, 13:20", syncedAt: "13:28", state: "partial" }, history: previewScoreHistory.effort },
   ],
   summary: "Sleep and recovery are both above your recent range. Effort is currently inside today's target, so there is no obvious need to add more load yet.",
   insights: [
