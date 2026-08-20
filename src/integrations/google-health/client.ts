@@ -304,16 +304,23 @@ function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
-export function createDailyRollupRange(start: Date, end: Date) {
-  const normalizedStart = startOfUtcDay(start);
+export function createDailyRollupRange(start: Date, end: Date, maximumDays = 90) {
+  let normalizedStart = startOfUtcDay(start);
   const normalizedEnd = startOfUtcDay(end);
   if (normalizedEnd.getTime() < end.getTime() || normalizedEnd <= normalizedStart) {
     normalizedEnd.setUTCDate(normalizedEnd.getUTCDate() + 1);
   }
+  const earliestAllowedStart = new Date(normalizedEnd);
+  earliestAllowedStart.setUTCDate(earliestAllowedStart.getUTCDate() - maximumDays);
+  if (normalizedStart < earliestAllowedStart) normalizedStart = earliestAllowedStart;
   return { start: civilDateTime(normalizedStart), end: civilDateTime(normalizedEnd) };
 }
 
-export function dailyRollupPageSize(dataType: GoogleHealthDataType) {
+export function dailyRollupPageSize() {
+  return 10_000;
+}
+
+export function dailyRollupRangeDays(dataType: GoogleHealthDataType) {
   return dataType === "active-minutes" || dataType === "total-calories" || dataType === "calories-in-heart-rate-zone" ? 14 : 90;
 }
 
@@ -330,9 +337,9 @@ export function dailyRollUpGoogleHealthData(input: {
     {
       method: "POST",
       body: JSON.stringify({
-        range: createDailyRollupRange(input.start, input.end),
+        range: createDailyRollupRange(input.start, input.end, dailyRollupRangeDays(input.dataType)),
         windowSizeDays: 1,
-        pageSize: dailyRollupPageSize(input.dataType),
+        pageSize: dailyRollupPageSize(),
         ...(input.pageToken ? { pageToken: input.pageToken } : {}),
       }),
     },

@@ -6,6 +6,7 @@ import {
   createDailyRollupRange,
   createTimeFilter,
   dailyRollupPageSize,
+  dailyRollupRangeDays,
   getGrantedGoogleHealthDataTypes,
   getGoogleHealthClientId,
   GOOGLE_HEALTH_SCOPES,
@@ -95,10 +96,30 @@ describe("Google Health query contracts", () => {
   });
 
   it("keeps daily rollup pagination inside Google duration limits", () => {
-    expect(dailyRollupPageSize("steps")).toBe(90);
-    expect(dailyRollupPageSize("active-minutes")).toBe(14);
-    expect(dailyRollupPageSize("total-calories")).toBe(14);
-    expect(dailyRollupPageSize("calories-in-heart-rate-zone")).toBe(14);
+    expect(dailyRollupPageSize()).toBe(10_000);
+    expect(dailyRollupRangeDays("steps")).toBe(90);
+    expect(dailyRollupRangeDays("active-minutes")).toBe(14);
+    expect(dailyRollupRangeDays("total-calories")).toBe(14);
+    expect(dailyRollupRangeDays("calories-in-heart-rate-zone")).toBe(14);
+  });
+
+  it("clamps partial-day rollups to Google's maximum civil range", () => {
+    expect(createDailyRollupRange(
+      new Date("2026-05-22T12:00:00.000Z"),
+      new Date("2026-08-20T12:00:00.000Z"),
+    )).toEqual({
+      start: { date: { year: 2026, month: 5, day: 23 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+      end: { date: { year: 2026, month: 8, day: 21 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+    });
+
+    expect(createDailyRollupRange(
+      new Date("2026-08-06T12:00:00.000Z"),
+      new Date("2026-08-20T12:00:00.000Z"),
+      14,
+    )).toEqual({
+      start: { date: { year: 2026, month: 8, day: 7 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+      end: { date: { year: 2026, month: 8, day: 21 }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+    });
   });
 });
 
