@@ -25,10 +25,10 @@ function normalizeWidgets(value: unknown): Widget[] {
   return valid;
 }
 
-export function HealthConnectedNotice() {
+export function HealthConnectedNotice({ partial = false }: { partial?: boolean }) {
   return <div className="dashboard-notice" role="status">
     <Check size={18} aria-hidden="true" />
-    <div><strong>Google Health connected</strong><p>Your first import is running in the background.</p></div>
+    <div><strong>{partial ? "Google Health partially connected" : "Google Health connected"}</strong><p>{partial ? "Available signals are importing now. You can add the remaining permissions in Settings." : "Your first import is running in the background."}</p></div>
     <Link href="/settings?health=connected">View connection</Link>
   </div>;
 }
@@ -45,7 +45,7 @@ export function selectDailyFocus(scores: DailyScore[]) {
   }, undefined);
 }
 
-export function Dashboard({ data, healthConnected = false }: { data: DashboardSnapshot; healthConnected?: boolean }) {
+export function Dashboard({ data, healthConnectionState = null }: { data: DashboardSnapshot; healthConnectionState?: "connected" | "connected_partial" | null }) {
   const [customizing, setCustomizing] = useState(false);
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
   const [savedWidgets, setSavedWidgets] = useState<Widget[]>(defaultWidgets);
@@ -112,7 +112,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
 
   return (
     <div className="dashboard-page">
-      {healthConnected && <HealthConnectedNotice />}
+      {healthConnectionState && <HealthConnectedNotice partial={healthConnectionState === "connected_partial"} />}
       <section className="dashboard-hero" aria-labelledby="today-heading">
         <div className="page-header">
           <div>
@@ -134,7 +134,7 @@ export function Dashboard({ data, healthConnected = false }: { data: DashboardSn
       <section className={`daily-focus daily-focus--${dailyFocus?.kind ?? "recovery"}`} aria-labelledby="daily-focus-title">
         <div className="daily-focus__signal" aria-hidden="true"><span /></div>
         <div className="daily-focus__copy">
-          <span className="eyebrow">Today&apos;s focus{dailyFocus ? ` · ${dailyFocus.label}` : ""}</span>
+          <span className="eyebrow">{data.isCurrentDay ? "Today’s focus" : "Latest reliable focus"}{dailyFocus ? ` · ${dailyFocus.label}` : ""}</span>
           <h2 id="daily-focus-title">{dailyFocus?.action ?? "Review your latest signals."}</h2>
           <p>{data.summary}</p>
         </div>

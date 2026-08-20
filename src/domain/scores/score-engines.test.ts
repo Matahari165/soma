@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateEffortScore, calculateEffortTarget } from "./effort";
+import { calculateEffortScore, calculateEffortScoreFromAvailable, calculateEffortTarget } from "./effort";
 import { calculateRecoveryScore } from "./recovery";
 import { circularMean, sleepRegularityScore } from "./regularity";
 import { estimateSleepNeed, recommendBedtime } from "./sleep-need";
@@ -41,5 +41,21 @@ describe("score engines", () => {
     const target = calculateEffortTarget({ goal: "build_muscle", recoveryScore: 72, weeklyEffortSoFar: 240, daysRemainingIncludingToday: 3 });
     expect(effort.score).toBeGreaterThan(0);
     expect(target.minimum).toBeLessThan(target.maximum);
+  });
+
+  it("does not convert missing activity into a zero effort score", () => {
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: null, activeEnergyKcal: null, exerciseMinutes: null, steps: null })).toMatchObject({ score: null, coverage: 0 });
+  });
+
+  it("preserves a measured zero when activity inputs are complete", () => {
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 0, activeEnergyKcal: 0, exerciseMinutes: 0, steps: 0 })).toMatchObject({ score: 0, coverage: 1 });
+  });
+
+  it("withholds effort when only one activity input is present", () => {
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: null, activeEnergyKcal: null, exerciseMinutes: null, steps: 4_000 }).score).toBeNull();
+  });
+
+  it("normalizes a sufficiently covered score without turning absent components into zero", () => {
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: 12_000 })).toMatchObject({ score: 100, coverage: 0.5 });
   });
 });

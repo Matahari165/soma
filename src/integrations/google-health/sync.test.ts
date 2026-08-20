@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldRefreshAnalytics } from "./sync";
+import { GoogleHealthRequestError } from "./client";
+import { classifyGoogleHealthSyncError } from "./sync";
 
-describe("Google Health incremental analytics refresh", () => {
-  const now = new Date("2026-08-12T12:00:00.000Z");
-
-  it("refreshes the dashboard after a recent non-empty import batch", () => {
-    expect(shouldRefreshAnalytics(25, new Date("2026-08-12T00:00:00.000Z"), now)).toBe(true);
+describe("Google Health sync failures", () => {
+  it("requires reconnection for an expired token but isolates a denied data type", () => {
+    expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(401, "expired"))).toMatchObject({ retryable: false, connectionStatus: "expired" });
+    expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(403, "partial consent"))).toMatchObject({ retryable: false, connectionStatus: "connected", code: "GOOGLE_HEALTH_PERMISSION_DENIED" });
   });
 
-  it("does not recompute for an empty batch", () => {
-    expect(shouldRefreshAnalytics(0, new Date("2026-08-12T00:00:00.000Z"), now)).toBe(false);
-  });
-
-  it("does not recompute repeatedly while importing old history", () => {
-    expect(shouldRefreshAnalytics(100, new Date("2025-08-12T00:00:00.000Z"), now)).toBe(false);
+  it("keeps transient failures retryable without breaking the connection", () => {
+    expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(429, "limited"))).toMatchObject({ retryable: true, connectionStatus: "connected" });
+    expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(503, "unavailable"))).toMatchObject({ retryable: true, connectionStatus: "connected" });
   });
 });

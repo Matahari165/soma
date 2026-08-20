@@ -5,8 +5,8 @@ import { selectDailyFocus } from "@/components/dashboard/dashboard";
 import { previewDashboard } from "@/lib/local-preview";
 
 const base = {
-  sleep_need_minutes: null, sleep_regularity: null, bedtime: null, wake_time: null,
-  zone_minutes: null, source_freshness: {},
+  sleep_need_minutes: null, sleep_efficiency: null, sleep_regularity: null, bedtime: null, wake_time: null,
+  zone_minutes: null, source_freshness: {}, data_quality: {},
 };
 
 describe("dashboard signal dates", () => {

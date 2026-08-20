@@ -11,6 +11,7 @@ describe("ScoreLink", () => {
     expect(markup).toContain("Restorative");
     expect(markup).toContain("of 8h 10m needed");
     expect(markup).toContain("84% regularity");
-    expect(markup).toContain("Fresh data · synced 08:04");
+    expect(markup).toContain("Current · measured");
+    expect(markup).toContain("100% coverage");
   });
 });

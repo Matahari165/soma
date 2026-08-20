@@ -6,9 +6,9 @@ Production is ready only after these checks use a deployed URL and a real accoun
 
 1. Google-only sign-in completes and creates one profile.
 2. Google Health consent shows only the documented read-only scopes.
-3. A Fitbit synchronization produces raw records, daily metrics, scores, and visible freshness timestamps.
+3. A Google Health synchronization produces raw records, daily metrics, scores, and visible freshness timestamps that agree on the same civil dates.
 4. A second test account cannot read, update, or delete the first account's rows.
-5. Webhook verification returns 204 and one real notification creates an idempotent sync job.
+5. The authorized webhook handshake returns 200/201, its unauthenticated challenge returns 401/403, and one signed notification returns 204 after creating an idempotent sync job.
 6. Soma Coach cites the correct dates and no write executes before confirmation.
 7. Export includes all pages of user data and excludes OAuth token ciphertext.
 8. Account deletion removes the Auth user and every cascading user row.
@@ -24,7 +24,9 @@ Production is ready only after these checks use a deployed URL and a real accoun
 
 ## Background synchronization
 
-Google Health webhooks are the primary freshness signal. Supabase Cron calls `/api/cron/sync` every five minutes to process webhook events and resumable backfills. `vercel.json` adds one daily Vercel Hobby reconciliation because its free tier allows only one cron execution per day.
+Supabase Cron calls `/api/cron/sync` every five minutes as a lightweight worker. This polling does not contact Google by itself. Soma creates at most one automatic import per connection and civil day, during the 11:00 hour in the profile timezone. Webhook corrections are deferred to that daily window; a user-requested manual import starts immediately after the API response and the worker provides retry/recovery.
+
+Apply `supabase/setup/schedule_sync.sql` after every application URL or `CRON_SECRET` rotation. The database uniqueness constraint in `20260820110000_daily_google_health_sync.sql` is the final guard against duplicate automatic imports.
 
 ## Backups and recovery
 

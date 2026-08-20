@@ -12,10 +12,21 @@ describe("metric trends", () => {
   });
 
   it("uses 90 prior values when the current value is also present", () => {
-    const points = Array.from({ length: 91 }, (_, index) => ({ date: `day-${index}`, value: index + 1 }));
+    const points = Array.from({ length: 91 }, (_, index) => ({ date: new Date(Date.UTC(2026, 4, index + 1)).toISOString().slice(0, 10), value: index + 1 }));
     const summary = summarizeTrend(points, "context_only");
 
     expect(summary.comparisons.find((comparison) => comparison.days === 90)?.sampleSize).toBe(90);
+  });
+
+  it("uses calendar days instead of a fixed number of readings", () => {
+    const summary = summarizeTrend([
+      { date: "2026-08-01", value: 10 },
+      { date: "2026-08-10", value: 20 },
+      { date: "2026-08-20", value: 30 },
+    ], "higher_is_better");
+    expect(summary.comparisons[0]).toMatchObject({ days: 7, average: null, sampleSize: 0 });
+    expect(summary.comparisons[1]).toMatchObject({ days: 30, average: 15, sampleSize: 2 });
+    expect(summary.currentDate).toBe("2026-08-20");
   });
 });
 

@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 
 import {
   exchangeGoogleHealthCode,
+  getGrantedGoogleHealthDataTypes,
   getGoogleHealthIdentity,
-  GOOGLE_HEALTH_DATA_TYPES,
   GOOGLE_HEALTH_SCOPES,
 } from "@/integrations/google-health/client";
 import { getCurrentUser } from "@/lib/auth";
@@ -50,6 +50,12 @@ export async function GET(request: Request) {
   try {
     const tokens = await exchangeGoogleHealthCode(code, verifier);
     const identity = await getGoogleHealthIdentity(tokens.access_token);
+    const grantedScopes = tokens.scope?.split(" ").filter(Boolean) ?? [];
+    const grantedDataTypes = getGrantedGoogleHealthDataTypes(grantedScopes);
+    if (!grantedDataTypes.length) {
+      return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=permission_denied", url.origin)));
+    }
+    const consentComplete = GOOGLE_HEALTH_SCOPES.every((scope) => grantedScopes.includes(scope));
     const admin = createSupabaseAdminClient();
     const { data: existing, error: existingError } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
     if (existingError) throw new Error("Existing Google Health connection could not be loaded.");
@@ -61,9 +67,10 @@ export async function GET(request: Request) {
       access_token_ciphertext: encryptSecret(tokens.access_token),
       refresh_token_ciphertext: tokens.refresh_token ? encryptSecret(tokens.refresh_token) : existing?.refresh_token_ciphertext,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      scopes: tokens.scope?.split(" ") ?? [...GOOGLE_HEALTH_SCOPES],
+      scopes: grantedScopes,
       status: "connected",
       last_error_code: null,
+      metadata: { consent_complete: consentComplete, granted_data_type_count: grantedDataTypes.length },
     }, { onConflict: "user_id,provider" }).select("id").single();
     if (error || !connection) throw new Error("Google Health connection could not be stored.");
 
@@ -76,26 +83,29 @@ export async function GET(request: Request) {
       user_id: user.id,
       connection_id: connection.id,
       import_range: "90_days",
-      data_types: [...GOOGLE_HEALTH_DATA_TYPES],
+      data_types: [...grantedDataTypes],
       range_start: recentStart.toISOString(),
       range_end: now.toISOString(),
       status: "queued",
+      sync_trigger: "initial",
     }];
     if (profile?.import_range === "all_history") {
       jobs.push({
         user_id: user.id,
         connection_id: connection.id,
         import_range: "all_history",
-        data_types: [...GOOGLE_HEALTH_DATA_TYPES],
+        data_types: [...grantedDataTypes],
         range_start: new Date("2009-01-01T00:00:00.000Z").toISOString(),
         range_end: recentStart.toISOString(),
         status: "queued",
+        sync_trigger: "initial",
       });
     }
     const { error: jobError } = await admin.from("sync_jobs").insert(jobs);
     if (jobError) throw new Error("Initial Google Health import could not be queued.");
 
-    return clearOAuthCookies(NextResponse.redirect(new URL(returnTarget === "dashboard" ? "/?health=connected" : "/settings?health=connected", url.origin)));
+    const connectionStatus = consentComplete ? "connected" : "connected_partial";
+    return clearOAuthCookies(NextResponse.redirect(new URL(returnTarget === "dashboard" ? `/?health=${connectionStatus}` : `/settings?health=${connectionStatus}`, url.origin)));
   } catch {
     return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=connection_failed", url.origin)));
   }

@@ -12,7 +12,8 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
   const Icon = metric.kind === "sleep" ? BedDouble : metric.kind === "recovery" ? HeartPulse : Activity;
   const StatusIcon = metric.status === "restorative" ? Check : metric.status === "steady" ? Minus : metric.status === "building" ? TrendingUp : CircleSlash;
   const statusLabel = metric.status === "restorative" ? "Restorative" : metric.status === "steady" ? "Steady" : metric.status === "building" ? "Building" : "Limited data";
-  const freshnessLabel = metric.freshness.state === "fresh" ? "Fresh data" : metric.freshness.state === "partial" ? "Partial data" : metric.freshness.state === "stale" ? "Stale data" : "Missing data";
+  const freshnessLabel = metric.freshness.state === "current" ? "Current" : metric.freshness.state === "partial" ? "Partial" : metric.freshness.state === "stale" ? "Out of date" : "Unavailable";
+  const formatDate = (value: string | null) => value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "unknown";
   const scoreStyle = { "--metric-score": metric.score ?? 0 } as CSSProperties;
   const chartPoints = metric.history.map((value, index) => {
     const x = metric.history.length === 1 ? 50 : (index / (metric.history.length - 1)) * 100;
@@ -55,7 +56,7 @@ export function ScoreLink({ metric }: { metric: DailyScore }) {
         <span>{metric.target}</span>
         <small>{metric.delta}</small>
       </span>
-      <span className="score-link__freshness">{freshnessLabel} · synced {metric.freshness.syncedAt}</span>
+      <span className="score-link__freshness">{freshnessLabel} · measured {formatDate(metric.freshness.measuredAt)} · imported {formatDate(metric.freshness.importedAt)} · {Math.round(metric.freshness.coverage * 100)}% coverage</span>
     </Link>
   );
 }

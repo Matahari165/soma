@@ -43,7 +43,7 @@ This runs linting, TypeScript checks, unit tests, and a production build.
    - Google Health webhook: `https://YOUR-DOMAIN/api/health/webhook`
 5. Add the deployed home, privacy, and terms URLs to Google Auth Platform, publish the OAuth audience to production, and complete the applicable branding and data-access verification.
 6. Create a Google Health subscriber with automatic subscriptions for the supported data types. Configure its `endpointAuthorization.secret` to exactly match `GOOGLE_HEALTH_WEBHOOK_SECRET`; the value should include its scheme, for example `Bearer …`.
-7. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. This uses Supabase Cron every minute. The included Vercel Hobby cron is a free daily safety net because Hobby does not support frequent schedules.
+7. Run `supabase/setup/schedule_sync.sql` after replacing its two placeholders. Supabase Cron polls the worker every five minutes; Google is contacted automatically only once per civil day at 11:00 in the profile timezone, or when the user explicitly presses **Sync now**.
 
 ## Architecture
 

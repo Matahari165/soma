@@ -6,7 +6,10 @@ import {
   createDailyRollupRange,
   createTimeFilter,
   dailyRollupPageSize,
+  getGrantedGoogleHealthDataTypes,
   getGoogleHealthClientId,
+  GOOGLE_HEALTH_SCOPES,
+  isGoogleHealthDataType,
 } from "./client";
 
 const originalClientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
@@ -96,5 +99,22 @@ describe("Google Health query contracts", () => {
     expect(dailyRollupPageSize("active-minutes")).toBe(14);
     expect(dailyRollupPageSize("total-calories")).toBe(14);
     expect(dailyRollupPageSize("calories-in-heart-rate-zone")).toBe(14);
+  });
+});
+
+describe("Google Health consent", () => {
+  it("queues only data types covered by granted scopes", () => {
+    expect(getGrantedGoogleHealthDataTypes([GOOGLE_HEALTH_SCOPES[2]])).toEqual(["sleep"]);
+  });
+
+  it("keeps activity and physiological scopes separate", () => {
+    const activity = getGrantedGoogleHealthDataTypes([GOOGLE_HEALTH_SCOPES[0]]);
+    expect(activity).toContain("steps");
+    expect(activity).not.toContain("daily-resting-heart-rate");
+  });
+
+  it("rejects unknown webhook data types", () => {
+    expect(isGoogleHealthDataType("steps")).toBe(true);
+    expect(isGoogleHealthDataType("unknown-signal")).toBe(false);
   });
 });

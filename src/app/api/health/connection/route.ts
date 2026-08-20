@@ -6,7 +6,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
-  if (isLocalPreviewMode()) return NextResponse.json({ connection: { provider: "google_health", status: "connected", scopes: ["demo.readonly"], last_synced_at: new Date().toISOString(), metadata: { preview: true } } });
+  if (isLocalPreviewMode()) return NextResponse.json({ connection: { provider: "google_health", status: "connected", scopes: ["activity.readonly", "health.readonly", "sleep.readonly"], last_synced_at: new Date().toISOString(), metadata: { preview: true, consent_complete: true } } });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();

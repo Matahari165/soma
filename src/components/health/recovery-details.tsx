@@ -1,3 +1,4 @@
+import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
 
 import { HealthPageShell } from "./health-page-shell";
@@ -14,7 +15,10 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
   const heartAverage = heartRates.length ? heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length : null;
-  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score}>
+  const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
+  const driverCoverage = Number(data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date)?.drivers?.coverage);
+  const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate].filter((value) => value !== null).length / 3 : 0 });
+  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} freshness={freshness} timezone={data.timezone}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest recovery signals">
         <article className="health-primary-card health-primary-card--featured"><span>HRV</span><MetricReading value={latest.hrv_ms === null ? "—" : Math.round(latest.hrv_ms)} unit={latest.hrv_ms === null ? undefined : "ms"} /><p>Against your baseline</p></article>

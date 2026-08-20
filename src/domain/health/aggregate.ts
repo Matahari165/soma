@@ -54,7 +54,7 @@ export type AggregatedHealthDay = {
   core_body_temperature_celsius: number | null;
   blood_glucose_mg_dl: number | null;
   data_quality: { presentTypes: string[]; recordCount: number };
-  source_freshness: { latestMeasuredAt: string | null };
+  source_freshness: { latestMeasuredAt: string | null; byType: Record<string, string | null> };
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -101,8 +101,19 @@ function findNumbers(value: unknown, keys: string[], output: number[] = []) {
   return output;
 }
 
-function recordDate(record: NormalizedHealthRecord) {
-  return record.civil_date ?? (record.end_time ?? record.start_time ?? record.measured_at)?.slice(0, 10) ?? null;
+function civilDateIn(value: string, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
+  const year = part("year");
+  const month = part("month");
+  const day = part("day");
+  return year && month && day ? `${year}-${month}-${day}` : null;
+}
+
+function recordDate(record: NormalizedHealthRecord, timeZone: string) {
+  if (record.civil_date) return record.civil_date;
+  const timestamp = record.end_time ?? record.start_time ?? record.measured_at;
+  return timestamp ? civilDateIn(timestamp, timeZone) : null;
 }
 
 function minutesBetween(start: string | null, end: string | null) {
@@ -200,10 +211,10 @@ function summedNumbers(records: NormalizedHealthRecord[], keys: string[]) {
   return total(records.flatMap((record) => findNumbers(record.payload, keys)));
 }
 
-export function aggregateHealthRecords(records: NormalizedHealthRecord[]): AggregatedHealthDay[] {
+export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZone = "UTC"): AggregatedHealthDay[] {
   const groups = new Map<string, NormalizedHealthRecord[]>();
   for (const record of records) {
-    const date = recordDate(record);
+    const date = recordDate(record, timeZone);
     if (!date) continue;
     groups.set(date, [...(groups.get(date) ?? []), record]);
   }
@@ -244,7 +255,9 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[]): Aggre
     const vigorousZone = zoneMinutes(timeInZones, "VIGOROUS");
     const peakZone = zoneMinutes(timeInZones, "PEAK");
     const activeZoneMinutes = summedNumbers(activeZones, ["activeZoneMinutes", "sumInFatBurnHeartZone", "sumInCardioHeartZone", "sumInPeakHeartZone"]);
-    const latestMeasuredAt = day.map((record) => record.measured_at).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
+    const measuredAt = (record: NormalizedHealthRecord) => record.measured_at ?? (record.civil_date ? `${record.civil_date}T12:00:00.000Z` : null);
+    const latestMeasuredAt = day.map(measuredAt).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
+    const freshnessByType = Object.fromEntries([...new Set(day.map((record) => record.data_type))].map((type) => [type, byType(type).map(measuredAt).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null]));
 
     return {
       metric_date: date,
@@ -297,7 +310,7 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[]): Aggre
       core_body_temperature_celsius: average(values("core-body-temperature", ["temperatureCelsius", "temperatureCelsiusAvg"])),
       blood_glucose_mg_dl: average(values("blood-glucose", ["bloodGlucoseMilligramsPerDeciliter", "bloodGlucoseMilligramsPerDeciliterAvg"])),
       data_quality: { presentTypes: [...new Set(day.map((record) => record.data_type))].sort(), recordCount: day.length },
-      source_freshness: { latestMeasuredAt },
+      source_freshness: { latestMeasuredAt, byType: freshnessByType },
     };
   });
 }

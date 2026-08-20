@@ -15,7 +15,7 @@ export function calculateRecoveryScore(input: RecoveryInput) {
     return {
       score: null,
       status: "limited" as const,
-      drivers: { hrv: null, restingHeartRate: null, sleep: input.sleepScore },
+      drivers: { hrv: null, restingHeartRate: null, sleep: input.sleepScore, coverage: [enoughHrv, enoughRhr, input.sleepScore !== null].filter(Boolean).length / 3 },
       algorithmVersion: "recovery-v1",
     };
   }
@@ -27,7 +27,7 @@ export function calculateRecoveryScore(input: RecoveryInput) {
   return {
     score,
     status: scoreStatus(score),
-    drivers: { hrv: hrvComponent, restingHeartRate: restingHeartRateComponent, sleep: input.sleepScore },
+    drivers: { hrv: hrvComponent, restingHeartRate: restingHeartRateComponent, sleep: input.sleepScore, coverage: 1 },
     algorithmVersion: "recovery-v1",
   };
 }

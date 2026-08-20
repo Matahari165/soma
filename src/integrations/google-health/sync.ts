@@ -1,14 +1,16 @@
-import { decryptSecret, encryptSecret } from "@/lib/crypto";
+import { decryptSecret, encryptSecret, stableHash } from "@/lib/crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { recomputeUserHealth } from "@/services/analysis";
 
 import {
   GOOGLE_HEALTH_DATA_TYPES,
   GOOGLE_HEALTH_DAILY_ROLLUP_TYPES,
+  GoogleHealthRequestError,
   dailyRollUpGoogleHealthData,
   type GoogleHealthDataType,
   listGoogleHealthDataPoints,
   refreshGoogleHealthToken,
+  usesCivilDateWindow,
 } from "./client";
 import { normalizeGoogleHealthDailyRollup, normalizeGoogleHealthPoint } from "./normalize";
 
@@ -16,6 +18,8 @@ type SyncCursor = {
   typeIndex?: number;
   windowStart?: string;
   pageToken?: string;
+  phase?: "materializing";
+  typeErrors?: Record<string, string>;
 };
 
 type SyncJob = {
@@ -29,6 +33,7 @@ type SyncJob = {
   attempts: number;
   progress: number;
   status: string;
+  retry_after?: string | null;
 };
 
 type ProviderConnection = {
@@ -65,15 +70,35 @@ async function getAccessToken(connection: ProviderConnection) {
   return tokens.access_token;
 }
 
-async function upsertRecords(records: ReturnType<typeof normalizeGoogleHealthPoint>[]) {
+async function stageRecords(jobId: string, reconciliationToken: string, records: Array<ReturnType<typeof normalizeGoogleHealthPoint>>) {
   const admin = createSupabaseAdminClient();
   for (let index = 0; index < records.length; index += 500) {
-    const batch = records.slice(index, index + 500);
-    const { error } = await admin.from("health_records").upsert(batch, {
-      onConflict: "user_id,provider,data_type,source_record_id",
+    const batch = records.slice(index, index + 500).map((record) => ({ ...record, job_id: jobId, reconciliation_token: reconciliationToken }));
+    const { error } = await admin.from("google_health_reconciliation_stage").upsert(batch, {
+      onConflict: "job_id,reconciliation_token,source_record_id",
     });
-    if (error) throw new Error(`Health records could not be stored: ${error.message}`);
+    if (error) throw new Error(`Health records could not be staged: ${error.message}`);
   }
+}
+
+async function reconcileWindow(input: {
+  userId: string;
+  dataType: GoogleHealthDataType;
+  start: Date;
+  end: Date;
+  reconciliationToken: string;
+}) {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc("reconcile_google_health_window", {
+    p_user_id: input.userId,
+    p_data_type: input.dataType,
+    p_window_start: input.start.toISOString(),
+    p_window_end: input.end.toISOString(),
+    p_date_based: usesCivilDateWindow(input.dataType),
+    p_reconciliation_token: input.reconciliationToken,
+  });
+  if (error) throw new Error(`Google Health window could not be reconciled: ${error.message}`);
+  return Number(data ?? 0);
 }
 
 function calculateProgress(typeIndex: number, typeCount: number, windowStart: Date, start: Date, end: Date) {
@@ -82,13 +107,14 @@ function calculateProgress(typeIndex: number, typeCount: number, windowStart: Da
   return Math.min(99, Math.floor(((typeIndex + rangeProgress) / typeCount) * 100));
 }
 
-const ANALYTICS_LOOKBACK_DAYS = 120;
-
-export function shouldRefreshAnalytics(importedRecords: number, windowEnd: Date, now = new Date()) {
-  if (importedRecords === 0) return false;
-  const analyticsStart = new Date(now);
-  analyticsStart.setUTCDate(analyticsStart.getUTCDate() - ANALYTICS_LOOKBACK_DAYS);
-  return windowEnd >= analyticsStart;
+export function classifyGoogleHealthSyncError(error: unknown) {
+  if (error instanceof GoogleHealthRequestError) {
+    if (error.status === 401) return { code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" as const };
+    if (error.status === 403) return { code: "GOOGLE_HEALTH_PERMISSION_DENIED", retryable: false, connectionStatus: "connected" as const };
+    if (error.status === 429) return { code: "GOOGLE_HEALTH_RATE_LIMITED", retryable: true, connectionStatus: "connected" as const };
+    if (error.status >= 500) return { code: "GOOGLE_HEALTH_UNAVAILABLE", retryable: true, connectionStatus: "connected" as const };
+  }
+  return { code: "GOOGLE_HEALTH_SYNC_FAILED", retryable: true, connectionStatus: "connected" as const };
 }
 
 export async function processGoogleHealthSyncJob(jobId: string, options: { refreshAnalytics?: boolean } = {}) {
@@ -150,32 +176,43 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       points = response.dataPoints ?? [];
       nextPageToken = response.nextPageToken;
     }
+    const reconciliationToken = stableHash(`${claimedJob.id}:${typeIndex}:${windowStart.toISOString()}`);
     const records = points.map((point) => usesDailyRollup
-      ? normalizeGoogleHealthDailyRollup(claimedJob.user_id, dataType, point)
-      : normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point));
-    await upsertRecords(records);
+        ? normalizeGoogleHealthDailyRollup(claimedJob.user_id, dataType, point)
+        : normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point));
+    await stageRecords(claimedJob.id, reconciliationToken, records);
+    const deletedRecords = nextPageToken ? 0 : await reconcileWindow({
+      userId: claimedJob.user_id,
+      dataType,
+      start: windowStart,
+      end: windowEnd,
+      reconciliationToken,
+    });
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
     if (nextPageToken) {
-      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: nextPageToken };
+      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: nextPageToken, typeErrors: claimedJob.cursor.typeErrors };
     } else if (windowEnd < end) {
-      nextCursor = { typeIndex, windowStart: windowEnd.toISOString() };
+      nextCursor = { typeIndex, windowStart: windowEnd.toISOString(), typeErrors: claimedJob.cursor.typeErrors };
     } else {
       nextTypeIndex = typeIndex + 1;
-      nextCursor = { typeIndex: nextTypeIndex, windowStart: start.toISOString() };
+      nextCursor = { typeIndex: nextTypeIndex, windowStart: start.toISOString(), typeErrors: claimedJob.cursor.typeErrors };
     }
 
     const completed = nextTypeIndex >= dataTypes.length;
     const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
-    const analyticsRefreshed = refreshAnalytics && shouldRefreshAnalytics(records.length, windowEnd);
+    const analyticsRefreshed = refreshAnalytics && completed;
     let analytics = null;
-    if (analyticsRefreshed || (completed && refreshAnalytics)) {
+    if (analyticsRefreshed) {
+      const { error: phaseError } = await admin.from("sync_jobs").update({ cursor: { ...nextCursor, phase: "materializing" }, progress: 99 }).eq("id", claimedJob.id);
+      if (phaseError) throw new Error("Google Health materialization state could not be stored.");
       analytics = await recomputeUserHealth(claimedJob.user_id);
     }
     await admin.from("sync_jobs").update({
       cursor: nextCursor,
       progress,
       attempts: 0,
+      retry_after: null,
       status: completed ? "completed" : "queued",
       completed_at: completed ? new Date().toISOString() : null,
     }).eq("id", claimedJob.id);
@@ -193,21 +230,60 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       jobId: claimedJob.id,
       dataType,
       importedRecords: records.length,
+      deletedRecords,
       progress,
       completed,
-      analyticsRefreshed: analyticsRefreshed || (completed && refreshAnalytics),
+      analyticsRefreshed,
       analytics,
     });
-    return { completed, progress, imported: records.length, dataType, analyticsRefreshed: analyticsRefreshed || (completed && refreshAnalytics), analytics };
+    return { completed, progress, imported: records.length, deleted: deletedRecords, dataType, analyticsRefreshed, analytics };
   } catch (error) {
-    const terminal = claimedJob.attempts >= 3;
+    const classification = classifyGoogleHealthSyncError(error);
+    if (classification.code === "GOOGLE_HEALTH_PERMISSION_DENIED") {
+      const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
+      const typeIndex = claimedJob.cursor.typeIndex ?? 0;
+      const dataType = dataTypes[typeIndex];
+      if (dataType) {
+        const { error: stageCleanupError } = await admin.from("google_health_reconciliation_stage").delete().eq("job_id", claimedJob.id).eq("data_type", dataType);
+        if (stageCleanupError) console.error("[google-health-sync] denied data type staging cleanup failed", { jobId: claimedJob.id, dataType });
+        const nextTypeIndex = typeIndex + 1;
+        const message = error instanceof Error ? error.message : "Google Health denied this data type.";
+        await admin.from("sync_jobs").update({
+          status: "queued",
+          cursor: {
+            typeIndex: nextTypeIndex,
+            windowStart: claimedJob.range_start,
+            typeErrors: { ...(claimedJob.cursor.typeErrors ?? {}), [dataType]: classification.code },
+          },
+          progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)),
+          attempts: 0,
+          retry_after: null,
+          error_code: null,
+          error_message: null,
+          started_at: null,
+        }).eq("id", claimedJob.id);
+        await admin.from("provider_connections").update({ status: "connected", last_error_code: classification.code }).eq("id", claimedJob.connection_id);
+        console.warn("[google-health-sync] data type skipped after permission denial", { jobId: claimedJob.id, dataType, error: message });
+        return { completed: false, progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)), skippedDataType: dataType, analyticsRefreshed: false, analytics: null };
+      }
+    }
+    const terminal = !classification.retryable || claimedJob.attempts >= 3;
     const message = error instanceof Error ? error.message : "Unknown Google Health sync error.";
+    const retryAfter = terminal ? null : new Date(Date.now() + Math.min(15, claimedJob.attempts ** 2) * 60_000).toISOString();
     await admin.from("sync_jobs").update({
       status: terminal ? "failed" : "queued",
-      error_code: "GOOGLE_HEALTH_SYNC_FAILED",
+      error_code: classification.code,
       error_message: message.slice(0, 1000),
+      retry_after: retryAfter,
     }).eq("id", claimedJob.id);
-    await admin.from("provider_connections").update({ status: terminal ? "error" : "connected", last_error_code: "GOOGLE_HEALTH_SYNC_FAILED" }).eq("id", claimedJob.connection_id);
+    await admin.from("provider_connections").update({
+      status: classification.connectionStatus,
+      last_error_code: classification.code,
+    }).eq("id", claimedJob.connection_id);
+    if (terminal) {
+      const { error: stageCleanupError } = await admin.from("google_health_reconciliation_stage").delete().eq("job_id", claimedJob.id);
+      if (stageCleanupError) console.error("[google-health-sync] terminal staging cleanup failed", { jobId: claimedJob.id });
+    }
     console.error("[google-health-sync] batch failed", {
       jobId: claimedJob.id,
       error: message,
@@ -215,4 +291,20 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     });
     throw error;
   }
+}
+
+export async function drainGoogleHealthSyncJob(
+  jobId: string,
+  options: { maxBatches?: number; maxDurationMs?: number } = {},
+) {
+  const maxBatches = options.maxBatches ?? 24;
+  const deadline = Date.now() + (options.maxDurationMs ?? 45_000);
+  let latest: Awaited<ReturnType<typeof processGoogleHealthSyncJob>> | null = null;
+
+  for (let batch = 0; batch < maxBatches && Date.now() < deadline; batch += 1) {
+    latest = await processGoogleHealthSyncJob(jobId);
+    if (latest.completed || latest.skipped) break;
+  }
+
+  return latest;
 }

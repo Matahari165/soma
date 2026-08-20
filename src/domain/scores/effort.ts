@@ -16,6 +16,27 @@ export function calculateEffortScore(input: {
   return { score, status: scoreStatus(score), algorithmVersion: "effort-v1" } as const;
 }
 
+export function calculateEffortScoreFromAvailable(input: {
+  zoneMinutes: number | null;
+  activeEnergyKcal: number | null;
+  exerciseMinutes: number | null;
+  steps: number | null;
+}) {
+  const components = [
+    { value: input.zoneMinutes, target: 75, weight: 50 },
+    { value: input.exerciseMinutes, target: 60, weight: 25 },
+    { value: input.activeEnergyKcal, target: 700, weight: 15 },
+    { value: input.steps, target: 12_000, weight: 10 },
+  ];
+  const available = components.filter((component): component is typeof component & { value: number } => component.value !== null);
+  const coverage = available.length / components.length;
+  if (available.length < 2) return { score: null, status: "limited" as const, coverage, algorithmVersion: "effort-v2" as const };
+  const availableWeight = available.reduce((sum, component) => sum + component.weight, 0);
+  const observedLoad = available.reduce((sum, component) => sum + Math.min(Math.max(component.value, 0) / component.target, 1) * component.weight, 0);
+  const score = clampScore((observedLoad / availableWeight) * 100);
+  return { score, status: scoreStatus(score), coverage, algorithmVersion: "effort-v2" as const };
+}
+
 const goalTargets: Record<FitnessGoal, [number, number]> = {
   build_muscle: [58, 74],
   improve_endurance: [65, 82],

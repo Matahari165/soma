@@ -3,7 +3,7 @@ import { generateEveningBrief, generateMorningBrief, generateWeeklyBrief } from 
 import { spearmanCorrelation, type CorrelationPoint } from "@/domain/correlations/spearman";
 import { generateHealthInsights } from "@/domain/insights/engine";
 import { acuteChronicLoadRatio, activityRegularity, isActiveDay } from "@/domain/metrics/wellness";
-import { calculateEffortScore, calculateEffortTarget, type FitnessGoal } from "@/domain/scores/effort";
+import { calculateEffortScoreFromAvailable, calculateEffortTarget, type FitnessGoal } from "@/domain/scores/effort";
 import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need";
@@ -58,9 +58,11 @@ async function loadAnalysisRecords(userId: string, analysisStart: string) {
   }
 }
 
-function minutesSinceMidnight(value: string) {
-  const date = new Date(value);
-  return date.getHours() * 60 + date.getMinutes();
+export function minutesSinceMidnightIn(value: string, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
 }
 
 function todayIn(timezone: string) {
@@ -77,6 +79,25 @@ function roundedAverage(values: Array<number | null>) {
   return available.length ? Math.round(available.reduce((sum, value) => sum + value, 0) / available.length) : null;
 }
 
+async function deleteStaleDerivedRows(userId: string, analysisStart: string, activeDates: Set<string>) {
+  const admin = createSupabaseAdminClient();
+  const [metrics, scores] = await Promise.all([
+    admin.from("daily_health_metrics").select("metric_date").eq("user_id", userId).gte("metric_date", analysisStart),
+    admin.from("daily_scores").select("score_date").eq("user_id", userId).gte("score_date", analysisStart),
+  ]);
+  if (metrics.error || scores.error) throw new Error("Existing health analysis could not be reconciled.");
+  const staleMetricDates = [...new Set((metrics.data ?? []).map((row) => row.metric_date).filter((date) => !activeDates.has(date)))];
+  const staleScoreDates = [...new Set((scores.data ?? []).map((row) => row.score_date).filter((date) => !activeDates.has(date)))];
+  for (let index = 0; index < staleMetricDates.length; index += 100) {
+    const { error } = await admin.from("daily_health_metrics").delete().eq("user_id", userId).in("metric_date", staleMetricDates.slice(index, index + 100));
+    if (error) throw new Error("Obsolete health metrics could not be removed.");
+  }
+  for (let index = 0; index < staleScoreDates.length; index += 100) {
+    const { error } = await admin.from("daily_scores").delete().eq("user_id", userId).in("score_date", staleScoreDates.slice(index, index + 100));
+    if (error) throw new Error("Obsolete health scores could not be removed.");
+  }
+}
+
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
   const analysisStart = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
@@ -87,23 +108,24 @@ export async function recomputeUserHealth(userId: string) {
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),
   ]);
   if (recordError || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
-  const days = aggregateHealthRecords((records ?? []) as NormalizedHealthRecord[]);
+  const timezone = profile?.timezone ?? "Europe/Paris";
+  const days = aggregateHealthRecords((records ?? []) as NormalizedHealthRecord[], timezone);
   console.info("[health-analysis] source records loaded", {
     recordCount: records?.length ?? 0,
     dayCount: days.length,
     dataTypes: [...new Set((records ?? []).map((record) => record.data_type))].sort(),
   });
   if (!days.length) {
+    await deleteStaleDerivedRows(userId, analysisStart, new Set());
     console.warn("[health-analysis] no dated health records available", { analysisStart });
     return { days: 0, scores: 0, insights: 0 };
   }
 
   const baseSleepTarget = sleepPreferences?.base_target_minutes ?? 480;
-  const timezone = profile?.timezone ?? "Europe/Paris";
   const primaryGoal = (goals?.find((goal) => goal.priority === 1)?.goal_type ?? "general_fitness") as FitnessGoal;
   const scoreRows: Record<string, unknown>[] = [];
   const metricRows: Record<string, unknown>[] = [];
-  const effortByDate = new Map<string, number>();
+  const effortByDate = new Map<string, number | null>();
   const sleepDebtByDate = new Map<string, number | null>();
 
   for (const [index, day] of days.entries()) {
@@ -111,7 +133,7 @@ export async function recomputeUserHealth(userId: string) {
     const recentSleep = history.map((item) => item.sleep_minutes).filter((value): value is number => value !== null);
     const priorEffort = index ? effortByDate.get(days[index - 1].metric_date) ?? null : null;
     const sleepNeed = estimateSleepNeed({ baseTargetMinutes: baseSleepTarget, recentSleepMinutes: recentSleep, priorDayEffort: priorEffort });
-    const regularNights = [...history, day].filter((item) => item.bedtime && item.wake_time).slice(-14).map((item) => ({ bedtimeMinutes: minutesSinceMidnight(item.bedtime as string), wakeMinutes: minutesSinceMidnight(item.wake_time as string) }));
+    const regularNights = [...history, day].filter((item) => item.bedtime && item.wake_time).slice(-14).map((item) => ({ bedtimeMinutes: minutesSinceMidnightIn(item.bedtime as string, timezone), wakeMinutes: minutesSinceMidnightIn(item.wake_time as string, timezone) }));
     const regularity = sleepRegularityScore(regularNights);
     const sleep = day.sleep_minutes !== null && day.sleep_efficiency !== null && regularity !== null
       ? calculateSleepScore({ actualSleepMinutes: day.sleep_minutes, estimatedNeedMinutes: sleepNeed.estimatedNeedMinutes, efficiencyPercent: day.sleep_efficiency, regularityPercent: regularity })
@@ -123,7 +145,7 @@ export async function recomputeUserHealth(userId: string) {
       restingHeartRateBaseline: history.map((item) => item.resting_heart_rate).filter((value): value is number => value !== null).slice(-30),
       sleepScore: sleep?.score ?? null,
     });
-    const effort = calculateEffortScore({ zoneMinutes: day.zone_minutes ?? 0, activeEnergyKcal: day.active_energy_kcal ?? 0, exerciseMinutes: day.exercise_minutes ?? 0, steps: day.steps ?? 0 });
+    const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps });
     effortByDate.set(day.metric_date, effort.score);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
@@ -159,7 +181,7 @@ export async function recomputeUserHealth(userId: string) {
     scoreRows.push(
       { user_id: userId, score_date: day.metric_date, kind: "sleep", score: sleep?.score ?? null, status: sleep ? (sleep.score >= 80 ? "restorative" : sleep.score >= 60 ? "steady" : "building") : "limited", drivers: sleep ? { duration: sleep.durationComponent, efficiency: sleep.efficiencyComponent, regularity: sleep.regularityComponent, bedtimeRecommendationMinutes: bedtimeRecommendation.bedtimeMinutes } : {}, algorithm_version: sleep?.algorithmVersion ?? "sleep-v0.1" },
       { user_id: userId, score_date: day.metric_date, kind: "recovery", score: recovery.score, status: recovery.status, drivers: recovery.drivers, algorithm_version: recovery.algorithmVersion },
-      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { targetMinimum: target.minimum, targetMaximum: target.maximum, weeklyMinimum: target.weeklyMinimum, weeklyMaximum: target.weeklyMaximum }, algorithm_version: effort.algorithmVersion },
+      { user_id: userId, score_date: day.metric_date, kind: "effort", score: effort.score, status: effort.status, drivers: { coverage: effort.coverage, ...(effort.score === null ? {} : { targetMinimum: target.minimum, targetMaximum: target.maximum, weeklyMinimum: target.weeklyMinimum, weeklyMaximum: target.weeklyMaximum }) }, algorithm_version: effort.algorithmVersion },
     );
   }
 
@@ -167,10 +189,11 @@ export async function recomputeUserHealth(userId: string) {
   if (metricError) throw new Error("Daily health metrics could not be stored.");
   const { error: scoreError } = await admin.from("daily_scores").upsert(scoreRows, { onConflict: "user_id,score_date,kind" });
   if (scoreError) throw new Error("Daily scores could not be stored.");
+  await deleteStaleDerivedRows(userId, analysisStart, new Set(days.map((day) => day.metric_date)));
 
   const scorePoints = (kind: string) => scoreRows.filter((row) => row.kind === kind && typeof row.score === "number").map((row) => ({ date: String(row.score_date), value: Number(row.score) }));
   const bedtimePoints = days.filter((day) => day.bedtime).map((day) => {
-    const minutes = minutesSinceMidnight(day.bedtime as string);
+    const minutes = minutesSinceMidnightIn(day.bedtime as string, timezone);
     return { date: day.metric_date, value: minutes < 12 * 60 ? minutes + 1440 : minutes };
   });
   const correlationDefinitions: Array<{ x: string; y: string; first: CorrelationPoint[]; second: CorrelationPoint[]; lag: number }> = [

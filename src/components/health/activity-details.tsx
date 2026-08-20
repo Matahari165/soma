@@ -1,5 +1,6 @@
 import { Footprints } from "lucide-react";
 
+import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
 
@@ -20,7 +21,10 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const score = latestEffort?.score ?? null;
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.find((scoreDay) => scoreDay.score_date === day.metric_date)?.score ?? null })));
   const latestExercise = data.exercises.at(0);
-  return <HealthPageShell kind="activity" title="Activity" description="Movement, training load, and active days." score={score}>
+  const activityMeasurements = latest ? ["steps", "active-zone-minutes", "active-energy-burned", "exercise"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
+  const driverCoverage = Number(latestEffort?.drivers?.coverage);
+  const freshness = calculateSignalFreshness({ measuredAt: activityMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : score === null ? 0 : 1 });
+  return <HealthPageShell kind="activity" title="Activity" description="Movement, training load, and active days." score={score} freshness={freshness} timezone={data.timezone}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest activity summary">
         <article className="health-primary-card health-primary-card--featured"><span>Steps</span><MetricReading value={number(latest.steps)} /><p>{regularity.activeDays} active and {regularity.inactiveDays} inactive measured days in the latest 28.</p></article>
@@ -42,13 +46,14 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="context_only" />
         <MetricTrendCard label="Distance" points={points(activityDays, "distance_km")} unit="km" direction="context_only" />
         <MetricTrendCard label="Sedentary time" points={points(activityDays, "sedentary_minutes")} unit="min" direction="lower_is_better" />
-        <MetricTrendCard label="Active minutes" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" />
-        <MetricTrendCard label="Total energy" points={points(activityDays, "total_energy_kcal")} unit="kcal" direction="context_only" />
-        <MetricTrendCard label="Floors" points={points(activityDays, "floors")} direction="higher_is_better" />
-        <MetricTrendCard label="Elevation gain" points={points(activityDays, "altitude_gain_m")} unit="m" direction="context_only" />
-        <MetricTrendCard label="Weight" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" />
-        <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" />
-      </div></section>
+      </div><details className="health-more-metrics"><summary>Show supporting metrics</summary><div className="metric-trend-grid">
+          <MetricTrendCard label="Active minutes" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" />
+          <MetricTrendCard label="Total energy" points={points(activityDays, "total_energy_kcal")} unit="kcal" direction="context_only" />
+          <MetricTrendCard label="Floors" points={points(activityDays, "floors")} direction="higher_is_better" />
+          <MetricTrendCard label="Elevation gain" points={points(activityDays, "altitude_gain_m")} unit="m" direction="context_only" />
+          <MetricTrendCard label="Weight" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" />
+          <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" />
+        </div></details></section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Google Health exercises</span><h2>Recent sessions</h2></div><span className="quality-pill">{data.exercises.length} sessions</span></div>{data.exercises.length ? <div className="exercise-table-wrap" role="region" aria-label="Recent exercise sessions, horizontally scrollable" tabIndex={0}><table className="exercise-table"><thead><tr><th>Session</th><th>Date</th><th>Duration</th><th>Calories</th><th>Distance</th><th>Avg HR</th><th>Zone min</th></tr></thead><tbody>{data.exercises.map((exercise) => <tr key={exercise.id}><th scope="row"><Footprints size={16} aria-hidden="true" />{exercise.name}<small>{exercise.type.replaceAll("_", " ")}</small></th><td>{exercise.date}</td><td>{exercise.durationMinutes === null ? "—" : `${Math.round(exercise.durationMinutes)} min`}</td><td>{exercise.calories === null ? "—" : `${Math.round(exercise.calories)} kcal`}</td><td>{exercise.distanceKm === null ? "—" : `${exercise.distanceKm.toFixed(2)} km`}</td><td>{exercise.averageHeartRate === null ? "—" : `${Math.round(exercise.averageHeartRate)} bpm`}</td><td>{exercise.zoneMinutes === null ? "—" : Math.round(exercise.zoneMinutes)}</td></tr>)}</tbody></table></div> : <p className="health-empty">No Google Health exercises are available yet.</p>}</section>
       {latestExercise && <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest session detail</span><h2>{latestExercise.name}</h2></div><span className="quality-pill">{latestExercise.type.replaceAll("_", " ")}</span></div><dl className="exercise-detail-grid">

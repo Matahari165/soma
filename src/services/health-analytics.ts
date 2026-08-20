@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type HealthMetricDay = {
@@ -58,7 +59,7 @@ export type HealthMetricDay = {
   activity_consistency_28d: number | null;
   weekly_load: number | null;
   acute_chronic_load_ratio: number | null;
-  source_freshness: { latestMeasuredAt?: string | null };
+  source_freshness: { latestMeasuredAt?: string | null; byType?: Record<string, string | null> };
 };
 
 export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown> };
@@ -68,6 +69,7 @@ export type ExerciseSummary = { id: string; date: string; name: string; type: st
 
 export type HealthAnalytics = {
   timezone: string;
+  importedAt: string | null;
   days: HealthMetricDay[];
   scores: ScoreDay[];
   latestSleepStages: SleepStageSegment[];
@@ -169,6 +171,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
   const lastBedtimeDate = lastBedtime.toISOString().slice(0, 10);
   return {
     timezone: "Europe/Paris",
+    importedAt: now.toISOString(),
     days,
     scores,
     latestSleepStages: [
@@ -188,22 +191,61 @@ export function buildPreviewAnalytics(): HealthAnalytics {
   };
 }
 
-export async function getHealthAnalytics(): Promise<HealthAnalytics> {
+type HealthAnalyticsScope = "all" | "sleep" | "recovery" | "activity" | "trends";
+
+const metricColumns: Record<HealthAnalyticsScope, string> = {
+  all: "*",
+  sleep: "metric_date,sleep_minutes,sleep_need_minutes,sleep_efficiency,sleep_regularity,sleep_latency_minutes,sleep_awake_minutes,sleep_awake_percent,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_deep_percent,sleep_rem_minutes,sleep_rem_percent,sleep_light_minutes,sleep_light_percent,daily_sleep_debt_minutes,cumulative_sleep_debt_minutes,bedtime,wake_time,source_freshness",
+  recovery: "metric_date,hrv_ms,resting_heart_rate,respiratory_rate,oxygen_saturation,oxygen_saturation_lower,oxygen_saturation_upper,skin_temperature_delta,nightly_temperature_celsius,baseline_temperature_celsius,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,vo2_max,core_body_temperature_celsius,source_freshness",
+  activity: "metric_date,steps,active_energy_kcal,total_energy_kcal,zone_minutes,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,active_minutes,sedentary_minutes,exercise_minutes,distance_km,floors,weight_kg,body_fat_percent,altitude_gain_m,active_day,active_day_rate_28d,activity_consistency_28d,weekly_load,acute_chronic_load_ratio,source_freshness",
+  trends: "metric_date,sleep_minutes,hrv_ms,resting_heart_rate,steps,source_freshness",
+};
+
+function civilDateIn(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
-  if (!user) return { timezone: "Europe/Paris", days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
+  if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
   const supabase = await createSupabaseServerClient();
-  const results = await Promise.all([
+  const admin = createSupabaseAdminClient();
+  const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    supabase.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
-    supabase.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false }).limit(273),
-    supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).limit(1),
-    supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").order("measured_at", { ascending: false }).limit(1000),
-    supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).limit(20),
+    supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
+    (() => {
+      const query = supabase.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false });
+      if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(91);
+      return query.limit(273);
+    })(),
+    admin.from("provider_connections").select("last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
   ]);
-  const failed = results.find((result) => result.error);
+  const failed = baseResults.find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
-  const [{ data: profile }, { data: metrics }, { data: scores }, { data: sleeps }, { data: heartRates }, { data: exercises }] = results;
+  const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }] = baseResults;
+  const timezone = profile?.timezone ?? "Europe/Paris";
+  const orderedMetrics = [...((metrics ?? []) as unknown as HealthMetricDay[])].reverse();
+  const latestRecoveryDate = orderedMetrics.findLast((day) => day.hrv_ms !== null || day.resting_heart_rate !== null)?.metric_date;
+  const recoveryStart = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
+  recoveryStart?.setUTCDate(recoveryStart.getUTCDate() - 1);
+  const recoveryEnd = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
+  recoveryEnd?.setUTCDate(recoveryEnd.getUTCDate() + 2);
+  const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
+    scope === "sleep" || scope === "all"
+      ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1)
+      : Promise.resolve({ data: [], error: null }),
+    (scope === "recovery" || scope === "all") && recoveryStart && recoveryEnd
+      ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", recoveryStart.toISOString()).lt("measured_at", recoveryEnd.toISOString()).order("measured_at", { ascending: false }).limit(2000)
+      : Promise.resolve({ data: [], error: null }),
+    scope === "activity" || scope === "all"
+      ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (sleepResult.error || heartRateResult.error || exerciseResult.error) throw new Error("Health detail records are temporarily unavailable.");
+  const sleeps = sleepResult.data;
+  const heartRates = heartRateResult.data;
+  const exercises = exerciseResult.data;
 
   const sleep = findObject(sleeps?.[0]?.payload, "sleep");
   const stages = Array.isArray(sleep?.stages) ? sleep.stages : [];
@@ -214,7 +256,7 @@ export async function getHealthAnalytics(): Promise<HealthAnalytics> {
   });
   const heartRateSamples = (heartRates ?? []).flatMap((record): HeartRateSample[] => {
     const bpm = findNumber(record.payload, ["beatsPerMinute"]);
-    return bpm === null || !record.measured_at ? [] : [{ measuredAt: record.measured_at, bpm }];
+    return bpm === null || !record.measured_at || (latestRecoveryDate && civilDateIn(record.measured_at, timezone) !== latestRecoveryDate) ? [] : [{ measuredAt: record.measured_at, bpm }];
   }).reverse();
   const exerciseSummaries = (exercises ?? []).map((record): ExerciseSummary => {
     const exercise = findObject(record.payload, "exercise") ?? {};
@@ -245,11 +287,18 @@ export async function getHealthAnalytics(): Promise<HealthAnalytics> {
     };
   });
   return {
-    timezone: profile?.timezone ?? "Europe/Paris",
-    days: [...((metrics ?? []) as HealthMetricDay[])].reverse(),
+    timezone,
+    importedAt: connection?.last_synced_at ?? null,
+    days: orderedMetrics,
     scores: [...((scores ?? []) as ScoreDay[])].reverse(),
     latestSleepStages,
     heartRateSamples,
     exercises: exerciseSummaries,
   };
 }
+
+export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
+export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
+export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
+export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
+export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }

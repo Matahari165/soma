@@ -9,5 +9,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const data = await getDashboardSnapshot(user);
   const healthStatus = (await searchParams).health;
-  return <div id="main-page-content"><Dashboard data={data} healthConnected={healthStatus === "connected"} /></div>;
+  const healthConnectionState = healthStatus === "connected" || healthStatus === "connected_partial" ? healthStatus : null;
+  return <div id="main-page-content"><Dashboard data={data} healthConnectionState={healthConnectionState} /></div>;
 }

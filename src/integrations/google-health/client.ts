@@ -49,6 +49,27 @@ export const GOOGLE_HEALTH_DATA_TYPES = [
 
 export type GoogleHealthDataType = (typeof GOOGLE_HEALTH_DATA_TYPES)[number];
 
+export function isGoogleHealthDataType(value: string): value is GoogleHealthDataType {
+  return (GOOGLE_HEALTH_DATA_TYPES as readonly string[]).includes(value);
+}
+
+const ACTIVITY_DATA_TYPES = new Set<GoogleHealthDataType>([
+  "steps", "active-zone-minutes", "active-energy-burned", "time-in-heart-rate-zone", "exercise",
+  "active-minutes", "activity-level", "altitude", "calories-in-heart-rate-zone", "distance", "floors",
+  "run-vo2-max", "sedentary-period", "swim-lengths-data", "total-calories",
+]);
+
+export function scopeForGoogleHealthDataType(dataType: GoogleHealthDataType) {
+  if (dataType === "sleep") return GOOGLE_HEALTH_SCOPES[2];
+  if (ACTIVITY_DATA_TYPES.has(dataType)) return GOOGLE_HEALTH_SCOPES[0];
+  return GOOGLE_HEALTH_SCOPES[1];
+}
+
+export function getGrantedGoogleHealthDataTypes(scopes: readonly string[]) {
+  const granted = new Set(scopes);
+  return GOOGLE_HEALTH_DATA_TYPES.filter((dataType) => granted.has(scopeForGoogleHealthDataType(dataType)));
+}
+
 export const GOOGLE_HEALTH_DASHBOARD_DATA_TYPES = [
   "sleep",
   "daily-heart-rate-variability",
@@ -84,6 +105,13 @@ type IdentityResponse = {
   legacyUserId?: string;
   healthUserId: string;
 };
+
+export class GoogleHealthRequestError extends Error {
+  constructor(public readonly status: number, detail: string) {
+    super(`Google Health request failed (${status}): ${detail.slice(0, 1000)}`);
+    this.name = "GoogleHealthRequestError";
+  }
+}
 
 export type DataPointListResponse = {
   dataPoints?: Record<string, unknown>[];
@@ -135,7 +163,7 @@ async function tokenRequest(body: URLSearchParams) {
   });
 
   if (!response.ok) {
-    throw new Error(`Google OAuth token exchange failed with status ${response.status}.`);
+    throw new GoogleHealthRequestError(response.status, "OAuth token exchange failed.");
   }
 
   return (await response.json()) as TokenResponse;
@@ -175,7 +203,7 @@ async function googleHealthRequest<T>(path: string, accessToken: string, init?: 
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Google Health request failed (${response.status}): ${detail.slice(0, 1000)}`);
+    throw new GoogleHealthRequestError(response.status, detail);
   }
 
   return (await response.json()) as T;
@@ -220,6 +248,10 @@ const filterMetadata: Record<GoogleHealthDataType, { field: string; type: "physi
   "vo2-max": { field: "vo2_max.sample_time.physical_time", type: "physical" },
   weight: { field: "weight.sample_time.physical_time", type: "physical" },
 };
+
+export function usesCivilDateWindow(dataType: GoogleHealthDataType) {
+  return filterMetadata[dataType].type === "date" || GOOGLE_HEALTH_DAILY_ROLLUP_TYPES.includes(dataType as (typeof GOOGLE_HEALTH_DAILY_ROLLUP_TYPES)[number]);
+}
 
 function dateOnly(date: Date) {
   return date.toISOString().slice(0, 10);

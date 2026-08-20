@@ -26,14 +26,15 @@ begin
 end;
 $$;
 
--- Replace the prior cadence instead of creating a duplicate job on reruns.
+-- The worker polls for manual/retry work. The application only creates an
+-- automatic Google Health import once per civil day, at 11:00 profile time.
 select cron.unschedule(jobid)
 from cron.job
-where jobname in ('soma-sync-every-five-minutes', 'soma-sync-every-minute');
+where jobname in ('soma-sync-every-five-minutes', 'soma-sync-every-minute', 'soma-sync-worker');
 
 select cron.schedule(
-  'soma-sync-every-minute',
-  '* * * * *',
+  'soma-sync-worker',
+  '*/5 * * * *',
   $$
   select net.http_get(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'soma_app_url') || '/api/cron/sync',

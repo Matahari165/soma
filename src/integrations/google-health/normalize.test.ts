@@ -20,13 +20,13 @@ describe("Google Health normalization contract", () => {
     expect(revised.civil_date).toBe("2026-08-07");
   });
 
-  it("falls back to the physical end date for sleep without a civil date", () => {
+  it("keeps a physical sleep date unresolved until the profile timezone is applied", () => {
     const result = normalizeGoogleHealthPoint("user-1", "sleep", {
       name: "users/me/dataTypes/sleep/dataPoints/night-1",
       sleep: { interval: { startTime: "2026-08-11T22:15:00Z", endTime: "2026-08-12T06:45:00Z" } },
     });
 
-    expect(result.civil_date).toBe("2026-08-12");
+    expect(result.civil_date).toBeNull();
     expect(result.start_time).toBe("2026-08-11T22:15:00Z");
     expect(result.end_time).toBe("2026-08-12T06:45:00Z");
   });

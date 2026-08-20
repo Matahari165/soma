@@ -6,6 +6,8 @@ const hardening = readFileSync(new URL("../../supabase/migrations/20260808130000
 const serviceRolePrivileges = readFileSync(new URL("../../supabase/migrations/20260808143000_restore_service_role_privileges.sql", import.meta.url), "utf8");
 const atomicProfileUpdates = readFileSync(new URL("../../supabase/migrations/20260819211500_atomic_profile_updates.sql", import.meta.url), "utf8");
 const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_and_coach_writes.sql", import.meta.url), "utf8");
+const googleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260820090000_google_health_reconciliation.sql", import.meta.url), "utf8");
+const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -38,9 +40,11 @@ describe("database security contract", () => {
   it("keeps the background sync setup safe to run after a rotation", () => {
     expect(schedule).toContain("vault.update_secret");
     expect(schedule).toContain("cron.unschedule");
-    expect(schedule).toContain("soma-sync-every-minute");
-    expect(schedule).toContain("'* * * * *'");
+    expect(schedule).toContain("soma-sync-worker");
+    expect(schedule).toContain("'*/5 * * * *'");
     expect(schedule).toContain("vault.decrypted_secrets");
+    expect(dailyGoogleHealthSync).toContain("sync_jobs_one_automatic_per_day_idx");
+    expect(dailyGoogleHealthSync).toMatch(/where sync_trigger = 'automatic'/i);
   });
 
   it("updates profile settings and onboarding atomically through service-only functions", () => {
@@ -61,5 +65,15 @@ describe("database security contract", () => {
       expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
     }
     expect(atomicWorkoutAndCoachWrites).toContain("extensions.digest(");
+  });
+
+  it("keeps Google Health reconciliation atomic and service-only", () => {
+    expect(googleHealthReconciliation).toContain("reconciliation_token");
+    expect(googleHealthReconciliation).toContain("google_health_reconciliation_stage");
+    expect(googleHealthReconciliation).toMatch(/insert into public\.health_records[\s\S]*delete from public\.health_records/i);
+    expect(googleHealthReconciliation).toMatch(/revoke all on table public\.google_health_reconciliation_stage from public, anon, authenticated/i);
+    expect(googleHealthReconciliation).toMatch(/create or replace function public\.reconcile_google_health_window/i);
+    expect(googleHealthReconciliation).toMatch(/revoke all on function public\.reconcile_google_health_window[\s\S]*from public, anon, authenticated/i);
+    expect(googleHealthReconciliation).toMatch(/grant execute on function public\.reconcile_google_health_window[\s\S]*to service_role/i);
   });
 });

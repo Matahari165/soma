@@ -1,5 +1,6 @@
 import { Clock3, MoonStar, Sunrise } from "lucide-react";
 
+import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
 
 import { HealthPageShell } from "./health-page-shell";
@@ -36,7 +37,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const debt = latest?.daily_sleep_debt_minutes ?? null;
   const bedtimeRegularity = timingRegularity(data.days, "bedtime");
   const wakeRegularity = timingRegularity(data.days, "wake_time");
-  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score}>
+  const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
+  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Latest sleep summary">
         <article className="health-primary-card health-primary-card--featured"><span>Total sleep</span><MetricReading value={latest.sleep_minutes === null ? "—" : duration(latest.sleep_minutes)} /><p>{target === null ? "Target is being estimated." : `Target ${duration(target)} · ${debt === null ? "gap unavailable" : debt > 0 ? `${duration(debt)} short` : `${duration(debt)} above target`}`}</p></article>

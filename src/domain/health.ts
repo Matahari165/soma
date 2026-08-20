@@ -2,10 +2,22 @@ export type ScoreKind = "sleep" | "recovery" | "effort";
 
 export type ScoreStatus = "restorative" | "steady" | "building" | "limited";
 
-export type DataFreshness = {
-  measuredAt: string;
-  syncedAt: string;
-  state: "fresh" | "stale" | "partial" | "missing";
+export type SignalFreshness = {
+  measuredAt: string | null;
+  importedAt: string | null;
+  state: "current" | "partial" | "stale" | "missing";
+  coverage: number;
+};
+
+export type SyncPhase = "queued" | "fetching" | "materializing" | "up_to_date" | "partial" | "retrying" | "needs_reconnect" | "failed";
+
+export type SyncStatus = {
+  jobId: string;
+  phase: SyncPhase;
+  progress: number;
+  perType: Record<string, SignalFreshness>;
+  lastError: string | null;
+  retryable: boolean;
 };
 
 export type DailyScore = {
@@ -19,7 +31,7 @@ export type DailyScore = {
   detail: string;
   action: string;
   href: string;
-  freshness: DataFreshness;
+  freshness: SignalFreshness;
   history: number[];
 };
 
@@ -32,6 +44,8 @@ export type Insight = {
 };
 
 export type DashboardSnapshot = {
+  dataDate: string | null;
+  isCurrentDay: boolean;
   dateLabel: string;
   greeting: string;
   greetingName: string;
@@ -42,9 +56,9 @@ export type DashboardSnapshot = {
     current: number;
     targetMin: number;
     targetMax: number;
-    days: { label: string; value: number; today?: boolean }[];
+    days: { label: string; value: number | null; today?: boolean }[];
   };
-  recoveryTrend: { label: string; value: number }[];
+  recoveryTrend: { label: string; value: number | null }[];
   sleepRegularity: {
     bedtime: string;
     wakeTime: string;

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { processGoogleHealthSyncJob } from "@/integrations/google-health/sync";
+import {
+  automaticGoogleHealthDataTypes,
+  automaticGoogleHealthRange,
+  isAutomaticGoogleHealthSyncDue,
+} from "@/integrations/google-health/schedule";
+import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
+import { isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { requireServerEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -12,10 +18,10 @@ function authorized(request: Request) {
 }
 
 function webhookRange(payload: Record<string, unknown>) {
-  const data = payload.data as { intervals?: Array<{ physicalTimeInterval?: { startTime?: string; endTime?: string } }> } | undefined;
+  const data = payload.data as { intervals?: Array<{ physicalTimeInterval?: { startTime?: string; endTime?: string }; civilIso8601TimeInterval?: { startTime?: string; endTime?: string } }> } | undefined;
   const intervals = data?.intervals ?? [];
-  const starts = intervals.map((item) => item.physicalTimeInterval?.startTime).filter((value): value is string => Boolean(value));
-  const ends = intervals.map((item) => item.physicalTimeInterval?.endTime).filter((value): value is string => Boolean(value));
+  const starts = intervals.map((item) => item.physicalTimeInterval?.startTime ?? item.civilIso8601TimeInterval?.startTime).filter((value): value is string => Boolean(value));
+  const ends = intervals.map((item) => item.physicalTimeInterval?.endTime ?? item.civilIso8601TimeInterval?.endTime).filter((value): value is string => Boolean(value));
   const now = new Date();
   const fallbackStart = new Date(now);
   fallbackStart.setUTCDate(fallbackStart.getUTCDate() - 2);
@@ -38,7 +44,7 @@ async function queueWebhookJobs() {
   const candidates: WebhookJobCandidate[] = [];
   for (const event of events ?? []) {
     const connection = connectionByExternalId.get(event.health_user_id);
-    if (!connection || !event.data_type) {
+    if (!connection || !event.data_type || !isGoogleHealthDataType(event.data_type)) {
       const { error } = await admin.from("webhook_events").update({ status: "failed", last_error: "No matching connection." }).eq("id", event.id);
       if (error) throw new Error("Invalid webhook event could not be marked as failed.");
       continue;
@@ -60,6 +66,7 @@ async function queueWebhookJobs() {
       .eq("user_id", job.userId)
       .eq("connection_id", job.connectionId)
       .eq("status", "queued")
+      .eq("sync_trigger", "webhook")
       .contains("data_types", [job.dataType])
       .order("created_at")
       .limit(20);
@@ -85,6 +92,7 @@ async function queueWebhookJobs() {
         range_start: job.rangeStart,
         range_end: job.rangeEnd,
         status: "queued",
+        sync_trigger: "webhook",
       });
       stored = !result.error;
     }
@@ -97,13 +105,75 @@ async function queueWebhookJobs() {
   }
 }
 
+async function queueAutomaticJobs(now = new Date()) {
+  const admin = createSupabaseAdminClient();
+  const { data: connections, error: connectionError } = await admin.from("provider_connections")
+    .select("id,user_id,scopes,last_synced_at")
+    .eq("provider", "google_health")
+    .eq("status", "connected");
+  if (connectionError) throw new Error("Automatic sync connections could not be loaded.");
+  const userIds = [...new Set((connections ?? []).map((connection) => connection.user_id))];
+  const connectionIds = (connections ?? []).map((connection) => connection.id);
+  const [profileResult, openJobsResult] = await Promise.all([
+    userIds.length
+      ? admin.from("profiles").select("user_id,timezone").in("user_id", userIds)
+      : Promise.resolve({ data: [], error: null }),
+    connectionIds.length
+      ? admin.from("sync_jobs").select("connection_id,sync_trigger,scheduled_civil_date").in("connection_id", connectionIds).in("status", ["queued", "running"])
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (profileResult.error) throw new Error("Automatic sync timezones could not be loaded.");
+  if (openJobsResult.error) throw new Error("Open Google Health sync jobs could not be loaded.");
+  const timezoneByUser = new Map((profileResult.data ?? []).map((profile) => [profile.user_id, profile.timezone ?? "Europe/Paris"]));
+  const openJobsByConnection = new Map<string, Array<{ sync_trigger: string; scheduled_civil_date: string | null }>>();
+  for (const job of openJobsResult.data ?? []) {
+    const jobs = openJobsByConnection.get(job.connection_id) ?? [];
+    jobs.push(job);
+    openJobsByConnection.set(job.connection_id, jobs);
+  }
+  let windowOpen = false;
+  let queued = 0;
+
+  for (const connection of connections ?? []) {
+    const timezone = timezoneByUser.get(connection.user_id) ?? "Europe/Paris";
+    const schedule = isAutomaticGoogleHealthSyncDue({ now, timezone, lastSyncedAt: connection.last_synced_at });
+    if (!schedule.due) continue;
+    const openJobs = openJobsByConnection.get(connection.id) ?? [];
+    if (openJobs.length) {
+      if (openJobs.some((job) => job.sync_trigger === "automatic" && job.scheduled_civil_date === schedule.civilDate)) windowOpen = true;
+      continue;
+    }
+    windowOpen = true;
+    const dataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
+    if (!dataTypes.length) continue;
+    const range = automaticGoogleHealthRange(now);
+    const { error } = await admin.from("sync_jobs").insert({
+      user_id: connection.user_id,
+      connection_id: connection.id,
+      import_range: "90_days",
+      data_types: [...dataTypes],
+      range_start: range.start,
+      range_end: range.end,
+      status: "queued",
+      sync_trigger: "automatic",
+      scheduled_civil_date: schedule.civilDate,
+    });
+    if (!error) queued += 1;
+    else if (error.code !== "23505") throw new Error("Automatic Google Health sync could not be queued.");
+  }
+
+  return { queued, windowOpen };
+}
+
 export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  let automatic = { queued: 0, windowOpen: false };
   try {
-    await queueWebhookJobs();
+    automatic = await queueAutomaticJobs();
+    if (automatic.windowOpen) await queueWebhookJobs();
   } catch (error) {
-    console.error("[api/cron/sync] webhook queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
-    return NextResponse.json({ error: "Webhook queue could not be processed." }, { status: 500 });
+    console.error("[api/cron/sync] daily queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
+    return NextResponse.json({ error: "Daily Google Health sync could not be scheduled." }, { status: 500 });
   }
   const admin = createSupabaseAdminClient();
   const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -111,16 +181,18 @@ export async function GET(request: Request) {
     .eq("status", "running").lt("started_at", staleBefore);
   if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 
-  const { data: job, error: jobError } = await admin.from("sync_jobs").select("id").eq("status", "queued").order("created_at").limit(1).maybeSingle();
+  const now = new Date().toISOString();
+  const { data: job, error: jobError } = await admin.from("sync_jobs").select("id").eq("status", "queued")
+    .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
   if (jobError) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-  if (!job) return NextResponse.json({ processed: [] });
+  if (!job) return NextResponse.json({ automatic, processed: [] });
 
   let result;
   try {
-    result = { id: job.id, ...(await processGoogleHealthSyncJob(job.id)) };
+    result = { id: job.id, ...(await drainGoogleHealthSyncJob(job.id, { maxDurationMs: 45_000 })) };
   } catch {
     result = { id: job.id, error: true };
   }
   const results = [result];
-  return NextResponse.json({ processed: results });
+  return NextResponse.json({ automatic, processed: results });
 }

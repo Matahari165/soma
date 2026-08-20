@@ -13,6 +13,11 @@ const record = (overrides: Partial<NormalizedHealthRecord>): NormalizedHealthRec
 });
 
 describe("aggregateHealthRecords", () => {
+  it("assigns physical timestamps to the profile civil day across a DST boundary", () => {
+    const [day] = aggregateHealthRecords([{ ...record({}), civil_date: null, start_time: null, end_time: null, measured_at: "2026-03-29T22:30:00.000Z" }], "Europe/Paris");
+    expect(day.metric_date).toBe("2026-03-30");
+  });
+
   it("aggregates a day without guessing missing metrics", () => {
     const [day] = aggregateHealthRecords([
       record({ payload: { steps: { count: "4200" } } }),
