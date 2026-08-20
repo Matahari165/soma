@@ -316,8 +316,8 @@ export function createDailyRollupRange(start: Date, end: Date, maximumDays = 90)
   return { start: civilDateTime(normalizedStart), end: civilDateTime(normalizedEnd) };
 }
 
-export function dailyRollupPageSize() {
-  return 10_000;
+export function dailyRollupPageSize(dataType: GoogleHealthDataType) {
+  return dailyRollupRangeDays(dataType);
 }
 
 export function dailyRollupRangeDays(dataType: GoogleHealthDataType) {
@@ -339,7 +339,7 @@ export function dailyRollUpGoogleHealthData(input: {
       body: JSON.stringify({
         range: createDailyRollupRange(input.start, input.end, dailyRollupRangeDays(input.dataType)),
         windowSizeDays: 1,
-        pageSize: dailyRollupPageSize(),
+        pageSize: dailyRollupPageSize(input.dataType),
         ...(input.pageToken ? { pageToken: input.pageToken } : {}),
       }),
     },

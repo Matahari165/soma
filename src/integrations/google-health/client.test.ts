@@ -96,7 +96,8 @@ describe("Google Health query contracts", () => {
   });
 
   it("keeps daily rollup pagination inside Google duration limits", () => {
-    expect(dailyRollupPageSize()).toBe(10_000);
+    expect(dailyRollupPageSize("steps")).toBe(90);
+    expect(dailyRollupPageSize("active-minutes")).toBe(14);
     expect(dailyRollupRangeDays("steps")).toBe(90);
     expect(dailyRollupRangeDays("active-minutes")).toBe(14);
     expect(dailyRollupRangeDays("total-calories")).toBe(14);
