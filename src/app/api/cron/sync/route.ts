@@ -115,18 +115,23 @@ async function queueAutomaticJobs(now = new Date()) {
   if (connectionError) throw new Error("Automatic sync connections could not be loaded.");
   const userIds = [...new Set((connections ?? []).map((connection) => connection.user_id))];
   const connectionIds = (connections ?? []).map((connection) => connection.id);
-  const [profileResult, openJobsResult] = await Promise.all([
+  const [profileResult, openJobsResult, historyJobsResult] = await Promise.all([
     userIds.length
       ? admin.from("profiles").select("user_id,timezone").in("user_id", userIds)
       : Promise.resolve({ data: [], error: null }),
     connectionIds.length
-      ? admin.from("sync_jobs").select("connection_id,sync_trigger,scheduled_civil_date").in("connection_id", connectionIds).in("status", ["queued", "running"])
+      ? admin.from("sync_jobs").select("connection_id,sync_trigger,import_range,scheduled_civil_date,scheduled_sync_slot").in("connection_id", connectionIds).in("status", ["queued", "running"])
+      : Promise.resolve({ data: [], error: null }),
+    connectionIds.length
+      ? admin.from("sync_jobs").select("connection_id").in("connection_id", connectionIds).eq("import_range", "all_history").eq("status", "completed")
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (profileResult.error) throw new Error("Automatic sync timezones could not be loaded.");
   if (openJobsResult.error) throw new Error("Open Google Health sync jobs could not be loaded.");
+  if (historyJobsResult.error) throw new Error("Google Health history status could not be loaded.");
   const timezoneByUser = new Map((profileResult.data ?? []).map((profile) => [profile.user_id, profile.timezone ?? "Europe/Paris"]));
-  const openJobsByConnection = new Map<string, Array<{ sync_trigger: string; scheduled_civil_date: string | null }>>();
+  const fullHistoryConnections = new Set((historyJobsResult.data ?? []).map((job) => job.connection_id));
+  const openJobsByConnection = new Map<string, Array<{ sync_trigger: string; import_range: string; scheduled_civil_date: string | null; scheduled_sync_slot: string | null }>>();
   for (const job of openJobsResult.data ?? []) {
     const jobs = openJobsByConnection.get(job.connection_id) ?? [];
     jobs.push(job);
@@ -140,13 +145,26 @@ async function queueAutomaticJobs(now = new Date()) {
     const schedule = isAutomaticGoogleHealthSyncDue({ now, timezone, lastSyncedAt: connection.last_synced_at });
     if (!schedule.due) continue;
     const openJobs = openJobsByConnection.get(connection.id) ?? [];
-    if (openJobs.length) {
-      if (openJobs.some((job) => job.sync_trigger === "automatic" && job.scheduled_civil_date === schedule.civilDate)) windowOpen = true;
-      continue;
-    }
     windowOpen = true;
     const dataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
     if (!dataTypes.length) continue;
+    if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
+    const historyImportOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "all_history");
+    if (!fullHistoryConnections.has(connection.id) && !historyImportOpen) {
+      const { error } = await admin.from("sync_jobs").insert({
+        user_id: connection.user_id,
+        connection_id: connection.id,
+        import_range: "all_history",
+        data_types: [...dataTypes],
+        range_start: "2009-01-01T00:00:00.000Z",
+        range_end: now.toISOString(),
+        status: "queued",
+        sync_trigger: "initial",
+      });
+      if (!error) queued += 1;
+      else throw new Error("Complete Google Health history could not be queued.");
+      continue;
+    }
     const range = automaticGoogleHealthRange(now);
     const { error } = await admin.from("sync_jobs").insert({
       user_id: connection.user_id,
@@ -158,6 +176,7 @@ async function queueAutomaticJobs(now = new Date()) {
       status: "queued",
       sync_trigger: "automatic",
       scheduled_civil_date: schedule.civilDate,
+      scheduled_sync_slot: schedule.slot,
     });
     if (!error) queued += 1;
     else if (error.code !== "23505") throw new Error("Automatic Google Health sync could not be queued.");
@@ -171,10 +190,10 @@ export async function GET(request: Request) {
   let automatic = { queued: 0, windowOpen: false };
   try {
     automatic = await queueAutomaticJobs();
-    if (automatic.windowOpen) await queueWebhookJobs();
+    await queueWebhookJobs();
   } catch (error) {
-    console.error("[api/cron/sync] daily queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
-    return NextResponse.json({ error: "Daily Google Health sync could not be scheduled." }, { status: 500 });
+    console.error("[api/cron/sync] sync queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
+    return NextResponse.json({ error: "Google Health sync could not be scheduled." }, { status: 500 });
   }
   const admin = createSupabaseAdminClient();
   const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -183,9 +202,16 @@ export async function GET(request: Request) {
   if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 
   const now = new Date().toISOString();
-  const { data: job, error: jobError } = await admin.from("sync_jobs").select("id").eq("status", "queued")
-    .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
-  if (jobError) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+  const readyJob = (initial: boolean) => {
+    const query = admin.from("sync_jobs").select("id").eq("status", "queued");
+    return (initial ? query.eq("sync_trigger", "initial") : query.neq("sync_trigger", "initial"))
+      .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
+  };
+  const priorityResult = await readyJob(false);
+  if (priorityResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+  const fallbackResult = priorityResult.data ? { data: null, error: null } : await readyJob(true);
+  if (fallbackResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+  const job = priorityResult.data ?? fallbackResult.data;
   if (!job) {
     const calendarCutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
     const { data: calendarConnection, error: calendarError } = await admin.from("provider_connections").select("user_id,last_synced_at")

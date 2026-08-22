@@ -110,7 +110,10 @@ function civilDateIn(value: string, timeZone: string) {
   return year && month && day ? `${year}-${month}-${day}` : null;
 }
 
-function recordDate(record: NormalizedHealthRecord, timeZone: string) {
+export function healthRecordCivilDate(
+  record: Pick<NormalizedHealthRecord, "civil_date" | "start_time" | "end_time" | "measured_at">,
+  timeZone: string,
+) {
   if (record.civil_date) return record.civil_date;
   const timestamp = record.end_time ?? record.start_time ?? record.measured_at;
   return timestamp ? civilDateIn(timestamp, timeZone) : null;
@@ -214,7 +217,7 @@ function summedNumbers(records: NormalizedHealthRecord[], keys: string[]) {
 export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZone = "UTC"): AggregatedHealthDay[] {
   const groups = new Map<string, NormalizedHealthRecord[]>();
   for (const record of records) {
-    const date = recordDate(record, timeZone);
+    const date = healthRecordCivilDate(record, timeZone);
     if (!date) continue;
     groups.set(date, [...(groups.get(date) ?? []), record]);
   }

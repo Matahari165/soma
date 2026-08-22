@@ -26,8 +26,8 @@ begin
 end;
 $$;
 
--- The worker polls for manual/retry work. The application only creates an
--- automatic Google Health import once per civil day, at 11:00 profile time.
+-- The worker polls for manual/retry work and creates at most one automatic
+-- Google Health import for each hourly slot.
 select cron.unschedule(jobid)
 from cron.job
 where jobname in ('soma-sync-every-five-minutes', 'soma-sync-every-minute', 'soma-sync-worker');

@@ -11,6 +11,7 @@ import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getHealthDataCoverage } from "@/services/health-data-coverage";
 
 export const maxDuration = 50;
 
@@ -33,6 +34,8 @@ function isDashboardRefreshJob(job: Pick<OpenJob, "data_types">, expectedTypes: 
 
 function previewResponse(details = false) {
   const now = new Date().toISOString();
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() - 90);
   const freshness = calculateSignalFreshness({ measuredAt: now, importedAt: now, coverage: 1 });
   const response: Record<string, unknown> = {
     status: toSyncStatus({ id: "preview-sync", status: "completed", progress: 100, cursor: {} }, {
@@ -47,6 +50,7 @@ function previewResponse(details = false) {
     jobs: [{ id: "preview-sync", status: "completed", progress: 100, error_message: null, completed_at: now, created_at: now }],
     importedRecords: { sleep: 91, "daily-heart-rate-variability": 91, "daily-resting-heart-rate": 91, steps: 91 },
     analytics: { datedRecords: 364, metricDays: 91, scoreRows: 273 },
+    coverage: { status: "complete", importedDays: 91, usedDays: 91, importedNights: 91, usedNights: 91, missingDays: 0, missingNights: 0, startDate: start.toISOString().slice(0, 10), endDate: now.slice(0, 10) },
   });
   return response;
 }
@@ -89,16 +93,19 @@ export async function GET(request: Request) {
   };
   if (new URL(request.url).searchParams.get("details") === "1") {
     const diagnosticTypes = ["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"];
-    const [datedRecords, metricDays, scoreRows, ...counts] = await Promise.all([
+    const [datedRecords, metricDays, scoreRows, coverageResult, ...counts] = await Promise.all([
       admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).not("civil_date", "is", null),
       admin.from("daily_health_metrics").select("metric_date", { count: "exact", head: true }).eq("user_id", user.id),
       admin.from("daily_scores").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      getHealthDataCoverage(user.id).then((coverage) => ({ coverage, error: null })).catch(() => ({ coverage: null, error: true })),
       ...diagnosticTypes.map((dataType) => admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("data_type", dataType)),
     ]);
     if (![datedRecords, metricDays, scoreRows, ...counts].some((result) => result.error)) {
       response.importedRecords = Object.fromEntries(diagnosticTypes.map((dataType, index) => [dataType, counts[index].count ?? 0]));
       response.analytics = { datedRecords: datedRecords.count ?? 0, metricDays: metricDays.count ?? 0, scoreRows: scoreRows.count ?? 0 };
     }
+    if (coverageResult.coverage) response.coverage = coverageResult.coverage;
+    if (coverageResult.error) response.coverageError = true;
   }
   return NextResponse.json(response);
 }
@@ -117,8 +124,7 @@ export async function POST() {
     return NextResponse.json({ error: "Reconnect Google Health before syncing.", phase: "needs_reconnect" }, { status: 409 });
   }
 
-  const granted = new Set(getGrantedGoogleHealthDataTypes(connection.scopes ?? []));
-  const dataTypes = GOOGLE_HEALTH_DASHBOARD_DATA_TYPES.filter((dataType) => granted.has(dataType));
+  const dataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
   if (!dataTypes.length) return NextResponse.json({ error: "Grant at least one Soma health permission before syncing." }, { status: 409 });
 
   const { data: openJobs, error: openJobsError } = await admin.from("sync_jobs")
@@ -132,7 +138,7 @@ export async function POST() {
 
   const end = new Date();
   const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 90);
+  start.setUTCDate(start.getUTCDate() - 3);
   const { data: job, error: jobError } = await admin.from("sync_jobs").insert({
     user_id: user.id,
     connection_id: connection.id,

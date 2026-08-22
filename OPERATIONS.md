@@ -42,7 +42,7 @@ Review daily in production:
 - failed or stuck `sync_jobs`;
 - failed `webhook_events`;
 - provider connections in `expired`, `revoked`, or `error` state;
-- Coach 429/503 rates and OpenAI usage;
+- Coach 429/503 rates and xAI usage;
 - database size, especially minute-level heart-rate records;
 - account export and deletion failures.
 
@@ -51,7 +51,7 @@ Do not log raw health payloads, authorization headers, cookies, or OAuth tokens.
 ## Incident procedure
 
 1. Stop the affected integration or temporarily disable the affected route.
-2. Revoke exposed credentials at Google, Supabase, OpenAI, or Vercel.
+2. Revoke exposed credentials at Google, Supabase, xAI, or Vercel.
 3. Preserve sanitized logs and identify affected user IDs and time range.
 4. Restore service with rotated secrets and a reviewed patch.
 5. Inform affected users clearly if their personal data may have been exposed.
@@ -63,7 +63,7 @@ Do not log raw health payloads, authorization headers, cookies, or OAuth tokens.
 - Coach sends daily summaries, not raw provider payloads.
 - Watch Supabase storage before enabling all-history imports for many users.
 - Set provider usage alerts before a public launch.
-- OpenAI is usage-based and is not assumed to be free.
+- xAI is usage-based and is not assumed to be free.
 
 ## Known external limits
 
