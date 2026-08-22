@@ -8,6 +8,7 @@ import {
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
 import { isGoogleHealthDataType } from "@/integrations/google-health/client";
+import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
 import { requireServerEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -185,7 +186,20 @@ export async function GET(request: Request) {
   const { data: job, error: jobError } = await admin.from("sync_jobs").select("id").eq("status", "queued")
     .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
   if (jobError) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-  if (!job) return NextResponse.json({ automatic, processed: [] });
+  if (!job) {
+    const calendarCutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+    const { data: calendarConnection, error: calendarError } = await admin.from("provider_connections").select("user_id,last_synced_at")
+      .eq("provider", "google_calendar").eq("status", "connected").or(`last_synced_at.is.null,last_synced_at.lt.${calendarCutoff}`)
+      .order("last_synced_at", { ascending: true, nullsFirst: true }).limit(1).maybeSingle();
+    if (calendarError) return NextResponse.json({ error: "Calendar sync state could not be loaded." }, { status: 500 });
+    if (!calendarConnection) return NextResponse.json({ automatic, processed: [], calendar: null });
+    try {
+      return NextResponse.json({ automatic, processed: [], calendar: await syncGoogleCalendar(calendarConnection.user_id) });
+    } catch (error) {
+      console.error("[api/cron/sync] calendar update failed", { userId: calendarConnection.user_id, error: error instanceof Error ? error.message : "Unknown error." });
+      return NextResponse.json({ automatic, processed: [], calendar: { error: true } });
+    }
+  }
 
   let result;
   try {

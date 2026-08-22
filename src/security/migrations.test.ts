@@ -8,6 +8,7 @@ const atomicProfileUpdates = readFileSync(new URL("../../supabase/migrations/202
 const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_and_coach_writes.sql", import.meta.url), "utf8");
 const googleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260820090000_google_health_reconciliation.sql", import.meta.url), "utf8");
 const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
+const personalLab = readFileSync(new URL("../../supabase/migrations/20260822120000_personal_lab.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -22,6 +23,14 @@ describe("database security contract", () => {
     for (const table of ["health_records", "daily_health_metrics", "daily_scores", "insights", "correlation_results", "coach_threads", "workout_programs", "workout_sessions"]) {
       expect(schema).toContain(`alter table public.${table} enable row level security;`);
     }
+  });
+
+  it("keeps Calendar content aggregated and daily context owner-scoped", () => {
+    expect(personalLab).toContain("alter table public.daily_calendar_metrics enable row level security;");
+    expect(personalLab).toContain("alter table public.daily_checkins enable row level security;");
+    expect(personalLab).toMatch(/create policy daily_calendar_metrics_read_own[\s\S]*for select to authenticated/i);
+    expect(personalLab).toMatch(/create policy daily_checkins_owner[\s\S]*for all to authenticated/i);
+    expect(personalLab).not.toMatch(/grant (insert|update|delete)[^;]*daily_calendar_metrics[^;]*to authenticated/i);
   });
 
   it("explicitly denies application roles access to service-only resources", () => {
