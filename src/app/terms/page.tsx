@@ -20,7 +20,7 @@ export default function TermsPage() {
         <h2>Coach actions</h2>
         <p>Soma Coach may prepare changes, but write actions always require your explicit confirmation. You remain responsible for reviewing the preview.</p>
         <h2>Availability</h2>
-        <p>Google Health, OpenAI, and hosting services can be interrupted or change their interfaces. Soma shows missing or stale states instead of presenting absent data as current.</p>
+        <p>Google Health, xAI, and hosting services can be interrupted or change their interfaces. Soma shows missing or stale states instead of presenting absent data as current.</p>
         <h2>Account control</h2>
         <p>You can stop using Soma, export your data, or permanently delete your account at any time.</p>
         <Link href="/settings">Return to settings</Link>

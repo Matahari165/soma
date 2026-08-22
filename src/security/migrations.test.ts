@@ -9,6 +9,7 @@ const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrati
 const googleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260820090000_google_health_reconciliation.sql", import.meta.url), "utf8");
 const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
 const personalLab = readFileSync(new URL("../../supabase/migrations/20260822120000_personal_lab.sql", import.meta.url), "utf8");
+const journalAndHourlySync = readFileSync(new URL("../../supabase/migrations/20260822160000_journal_and_hourly_sync.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -54,6 +55,15 @@ describe("database security contract", () => {
     expect(schedule).toContain("vault.decrypted_secrets");
     expect(dailyGoogleHealthSync).toContain("sync_jobs_one_automatic_per_day_idx");
     expect(dailyGoogleHealthSync).toMatch(/where sync_trigger = 'automatic'/i);
+    expect(journalAndHourlySync).toContain("sync_jobs_one_automatic_per_slot_idx");
+    expect(journalAndHourlySync).toContain("scheduled_sync_slot");
+  });
+
+  it("keeps journal values owner-scoped and tied to the owner's variables", () => {
+    expect(journalAndHourlySync).toContain("alter table public.journal_variables enable row level security;");
+    expect(journalAndHourlySync).toContain("alter table public.journal_entries enable row level security;");
+    expect(journalAndHourlySync).toMatch(/foreign key \(user_id, variable_id\) references public\.journal_variables\(user_id, id\)/i);
+    expect(journalAndHourlySync).toMatch(/create policy journal_entries_owner[\s\S]*for all to authenticated/i);
   });
 
   it("updates profile settings and onboarding atomically through service-only functions", () => {

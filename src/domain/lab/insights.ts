@@ -167,7 +167,7 @@ function thresholdDiscovery(rule: ThresholdRule, observations: LabObservation[])
   });
   const high = pairs.filter((pair) => pair.high).map((pair) => pair.value);
   const low = pairs.filter((pair) => !pair.high).map((pair) => pair.value);
-  if (pairs.length < 14 || high.length < 5 || low.length < 5) return null;
+  if (pairs.length < 15 || high.length < 5 || low.length < 5) return null;
   const effect = mean(high) - mean(low);
   const midpoint = Math.floor(pairs.length / 2);
   const halfEffects = [pairs.slice(0, midpoint), pairs.slice(midpoint)].map((half) => {

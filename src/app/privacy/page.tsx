@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h2>Why Soma uses it</h2>
         <p>To show your dashboard, calculate personal wellness trends, generate alerts, answer Coach questions, and run the features you explicitly request.</p>
         <h2>AI processing</h2>
-        <p>Soma sends a limited summary of relevant metrics to OpenAI only when you use Coach. Raw provider payloads and OAuth tokens are not included. Requests use store: false.</p>
+        <p>Soma sends a limited summary of relevant metrics to xAI when you use Coach or request an analysis summary. Raw provider payloads and OAuth tokens are not included. Requests use store: false.</p>
         <h2>Retention and control</h2>
         <p>Soma keeps your history until you delete your account. You can export your data, disconnect Google Health, or permanently delete everything from Settings.</p>
         <h2>Important limit</h2>

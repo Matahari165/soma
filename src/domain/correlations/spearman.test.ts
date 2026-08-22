@@ -8,7 +8,7 @@ const points = (values: number[]) => values.map((value, index) => ({
 }));
 
 describe("spearmanCorrelation", () => {
-  it("requires at least fourteen paired observations", () => {
+  it("keeps only a low technical floor", () => {
     const result = spearmanCorrelation(points([1, 2, 3]), points([3, 2, 1]));
     expect(result.quality).toBe("insufficient");
     expect(result.coefficient).toBeNull();

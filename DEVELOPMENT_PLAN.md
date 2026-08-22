@@ -6,7 +6,7 @@
 
 ## 1. Product vision
 
-Soma is a responsive personal laboratory. It combines physiological data from Google Health with real-life context from Google Calendar and a 30-second daily check-in to find the conditions associated with better Deep Work, focus, energy, sleep, and recovery.
+Soma is a responsive personal laboratory. It combines physiological data from Google Health with real-life context from Google Calendar and a configurable prior-day journal to find the conditions linked with better Deep Work, focus, energy, sleep, and recovery.
 
 The same application must work on desktop and iPhone:
 
@@ -267,7 +267,7 @@ Rules:
 - Test same-day and sensible lagged relationships.
 - Prefer Spearman correlation for non-linear or non-normal personal data.
 - Label strength cautiously.
-- Always state that correlation does not prove causation.
+- Describe only the observed direction, effect size, sample, and measurement window.
 - Never send raw minute-level series to the language model merely to calculate a correlation.
 
 ## 8. Soma Coach
@@ -302,10 +302,10 @@ User request → proposed change → clear preview → explicit confirmation →
 
 ### 8.3 AI platform
 
-- OpenAI Responses API.
-- `gpt-5.6-luna` for cost-sensitive conversational analysis and tool use.
+- xAI Responses API.
+- `grok-4.6` for concise interpretation, anomaly surfacing, and prioritization after deterministic calculations.
 - Structured outputs for explanations and proposed actions.
-- Stable pseudonymous `safety_identifier` per Soma user.
+- Stable pseudonymous user reference in the supplied context.
 - `store: false` for health-related requests.
 - No API key in browser code.
 - Deterministic fallback text if the model is unavailable.
@@ -376,7 +376,7 @@ Google endpoints impose range and rate limits. The importer must paginate, use b
 | Storage | Supabase Storage | Exercise media and compressed historical archives later |
 | Hosting | Vercel | Simplest deployment for Next.js; free Hobby tier for personal non-commercial use |
 | Background jobs | Database-backed jobs + scheduled server route initially | Avoid another paid service before scale requires it |
-| AI | OpenAI Responses API | Structured answers and future tool actions |
+| AI | xAI Responses API | Structured answers and future tool actions |
 | Validation | Zod | Runtime validation at external boundaries |
 | Testing | Vitest + Testing Library + Playwright | Unit, component, and real-browser coverage |
 | Monitoring | Structured logs first; Sentry later | Keep phase 1 free and simple |
@@ -400,10 +400,10 @@ Domain
   normalized metrics, scores, baselines, insights, correlations
 
 Infrastructure
-  Supabase, Google Health, OpenAI, webhooks, scheduled jobs
+  Supabase, Google Health, xAI, webhooks, scheduled jobs
 ```
 
-Domain calculations must not import UI, Supabase, Google, or OpenAI code. This keeps formulas testable and replaceable.
+Domain calculations must not import UI, Supabase, Google, or xAI code. This keeps formulas testable and replaceable.
 
 ## 11. Data model
 
@@ -661,7 +661,7 @@ Deliverables:
 
 - **Unit tests:** score formulas, baselines, correlations, date/time logic, validation.
 - **Database tests:** constraints, idempotency, and row-level security between two users.
-- **Contract tests:** saved Google Health response fixtures and OpenAI structured-output schemas.
+- **Contract tests:** saved Google Health response fixtures and xAI structured-output schemas.
 - **Component tests:** score states, missing data, stale data, and interactions.
 - **End-to-end tests:** onboarding, connection state, dashboard, widget changes, Coach confirmation.
 - **Visual tests:** 375, 768, 1024, and 1440 px; light and dark themes when enabled.
@@ -686,7 +686,7 @@ Database changes are versioned as migrations. Production migrations require back
 - Supabase Free: $0/month within current limits.
 - Vercel Hobby: $0/month for personal, non-commercial use within current limits.
 - GitHub: $0/month for the current repository plan if within GitHub limits.
-- OpenAI API: usage-based and not assumed to be free.
+- xAI API: usage-based and not assumed to be free.
 - Domain: optional and paid separately.
 
 ### Cost controls
@@ -749,9 +749,8 @@ The architecture must also prove, with two accounts, that one user cannot access
 - [Google Health setup](https://developers.google.com/health/setup)
 - [Google Health rate limits](https://developers.google.com/health/rate-limits)
 - [Google Health developer data policy](https://developers.google.com/health/policies/health-api-developer-user-data-policy)
-- [OpenAI GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
-- [OpenAI latest model guidance](https://developers.openai.com/api/docs/guides/latest-model)
-- [OpenAI API data controls](https://developers.openai.com/api/docs/guides/your-data#default-usage-policies-by-endpoint)
+- [xAI Grok 4.6](https://docs.x.ai/developers/models/grok-4-6)
+- [xAI Responses API](https://docs.x.ai/developers/api-reference/responses)
 - [Supabase pricing](https://supabase.com/pricing)
 - [Vercel pricing](https://vercel.com/pricing)
 - [AASM adult sleep duration consensus](https://www.aasm.org/resources/pdf/adultsleepdurationconsensus.pdf)

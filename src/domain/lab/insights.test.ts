@@ -46,7 +46,7 @@ describe("analyzePersonalLab", () => {
     expect(result.discoveries.some((item) => item.id === "sleep-8h-dw")).toBe(false);
   });
 
-  it("never describes a relationship as causal", () => {
+  it("keeps descriptions limited to the observed movement", () => {
     const result = analyzePersonalLab(Array.from({ length: 42 }, (_, index) => observation(index)));
     expect(result.discoveries.every((item) => !/cause|caused|causes/i.test(`${item.title} ${item.description}`))).toBe(true);
   });

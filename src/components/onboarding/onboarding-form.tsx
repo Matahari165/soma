@@ -25,7 +25,7 @@ const defaultForm: OnboardingDraft = {
   secondaryGoal: null,
   baseSleepTargetMinutes: 480,
   usualWakeTime: "07:00",
-  importRange: "90_days",
+  importRange: "all_history",
   timezone: "UTC",
 };
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { askSomaCoach } from "@/integrations/openai/coach";
+import { askSomaCoach } from "@/integrations/xai/coach";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       p_user_message: parsed.data.message,
       p_assistant_message: result.answer,
       p_evidence: result.evidence,
-      p_model: "gpt-5.6-luna",
+      p_model: "grok-4.6",
       p_action_tool_name: result.proposedAction?.type ?? null,
       p_action_arguments: result.proposedAction?.payload ?? null,
       p_action_preview: result.proposedAction ? `${result.proposedAction.title}: ${result.proposedAction.description}` : null,

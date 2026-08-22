@@ -43,7 +43,7 @@ export function spearmanCorrelation(first: CorrelationPoint[], second: Correlati
     const secondValue = secondByDate.get(addDays(point.date, lagDays));
     return secondValue === undefined ? [] : [[point.value, secondValue] as const];
   });
-  if (pairs.length < 14) return { coefficient: null, sampleSize: pairs.length, quality: "insufficient" as const };
+  if (pairs.length < 6) return { coefficient: null, sampleSize: pairs.length, quality: "insufficient" as const };
   const coefficient = pearson(ranks(pairs.map(([value]) => value)), ranks(pairs.map(([, value]) => value)));
   return {
     coefficient: Math.round(coefficient * 1000) / 1000,

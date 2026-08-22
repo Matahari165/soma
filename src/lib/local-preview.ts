@@ -40,7 +40,7 @@ export const previewDashboard: DashboardSnapshot = {
   summary: "Sleep and recovery are both above your recent range. Effort is currently inside today's target, so there is no obvious need to add more load yet.",
   insights: [
     { id: "preview-insight-1", category: "positive", title: "Sleep regularity is strengthening", description: "Your last four complete nights stayed closer to your usual window.", evidence: "Demo · 7 complete nights" },
-    { id: "preview-insight-2", category: "information", title: "Recovery moved with sleep", description: "Both signals improved across the latest complete days.", evidence: "Demo · association, not causation" },
+    { id: "preview-insight-2", category: "information", title: "Recovery moved with sleep", description: "Both signals improved across the latest complete days.", evidence: "Demo · 7 complete nights" },
   ],
   weeklyEffort: { current: 415, targetMin: 360, targetMax: 480, days: [42, 68, 35, 72, 54, 81, 63].map((value, index) => ({ label: ["M", "T", "W", "T", "F", "S", "S"][index], value, today: index === 6 })) },
   recoveryTrend: [64, 68, 61, 73, 76, 78, 82].map((value, index) => ({ label: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index], value })),
@@ -48,7 +48,7 @@ export const previewDashboard: DashboardSnapshot = {
 };
 
 export const previewCorrelations = [
-  { id: "preview-correlation-1", variable_x: "sleep_regularity", variable_y: "recovery_score", coefficient: 0.62, sample_size: 28, quality_status: "moderate_evidence", lag_days: 0, explanation: "More regular sleep has moved with higher recovery in this demo history. This does not prove causation." },
+  { id: "preview-correlation-1", variable_x: "sleep_regularity", variable_y: "recovery_score", coefficient: 0.62, sample_size: 28, quality_status: "moderate_evidence", lag_days: 0, explanation: "More regular sleep has moved with higher recovery in this demo history." },
   { id: "preview-correlation-2", variable_x: "zone_minutes", variable_y: "sleep_score", coefficient: -0.31, sample_size: 24, quality_status: "exploratory", lag_days: 1, explanation: "Higher late-day effort has sometimes moved with lower next-night sleep scores in this demo history." },
 ];
 
@@ -60,4 +60,4 @@ export const previewExercises = [
 
 export const previewPrograms = [{ id: "20000000-0000-4000-8000-000000000001", name: "Full Body A", description: "Balanced strength session", exercises: [{ exercise: previewExercises[0], sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 }] }];
 
-export const previewProfile = { displayName: "Jeremy", dateOfBirth: "1998-06-12", heightCm: 178, weightKg: 74, primaryGoal: "build_muscle", baseSleepTargetMinutes: 480, usualWakeTime: "07:00", importRange: "90_days" as const };
+export const previewProfile = { displayName: "Jeremy", dateOfBirth: "1998-06-12", heightCm: 178, weightKg: 74, primaryGoal: "build_muscle", baseSleepTargetMinutes: 480, usualWakeTime: "07:00", importRange: "all_history" as const };

@@ -16,7 +16,7 @@ Soma handles personal health data as sensitive information.
 
 ## AI boundary
 
-Soma Coach receives only the summarized metrics needed for a question. OpenAI requests use structured output, `store: false`, and a pseudonymous safety identifier. Model output is validated again before use. Any write becomes a server-stored preview and requires explicit user confirmation.
+Soma Coach receives only the summarized metrics needed for a question. xAI requests use structured output, `store: false`, and a pseudonymous user reference. Model output is validated again before use. Any write becomes a server-stored preview and requires explicit user confirmation.
 
 ## Secrets
 

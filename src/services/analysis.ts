@@ -17,12 +17,15 @@ const ANALYSIS_DATA_TYPES = [
   "daily-respiratory-rate",
   "daily-oxygen-saturation",
   "daily-sleep-temperature-derivations",
+  "heart-rate",
+  "heart-rate-variability",
   "steps",
   "active-zone-minutes",
   "active-energy-burned",
   "time-in-heart-rate-zone",
   "exercise",
   "active-minutes",
+  "activity-level",
   "altitude",
   "blood-glucose",
   "body-fat",
@@ -100,7 +103,7 @@ async function deleteStaleDerivedRows(userId: string, analysisStart: string, act
 
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
-  const analysisStart = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
+  const analysisStart = new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10);
   const [{ data: records, error: recordError }, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
     loadAnalysisRecords(userId, analysisStart),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
@@ -205,7 +208,7 @@ export async function recomputeUserHealth(userId: string) {
   const dateEnd = days.at(-1)?.metric_date as string;
   const { error: correlationError } = await admin.from("correlation_results").upsert(correlationDefinitions.map((definition) => {
     const result = spearmanCorrelation(definition.first, definition.second, definition.lag);
-    return { user_id: userId, variable_x: definition.x, variable_y: definition.y, lag_days: definition.lag, coefficient: result.coefficient, sample_size: result.sampleSize, date_start: dateStart, date_end: dateEnd, quality_status: result.quality, explanation: result.coefficient === null ? "At least 14 paired days are needed." : "This is an association, not proof that one metric causes the other.", algorithm_version: "spearman-v1" };
+    return { user_id: userId, variable_x: definition.x, variable_y: definition.y, lag_days: definition.lag, coefficient: result.coefficient, sample_size: result.sampleSize, date_start: dateStart, date_end: dateEnd, quality_status: result.quality, explanation: result.coefficient === null ? "At least 15 paired observations are needed." : `Spearman ρ ${result.coefficient?.toFixed(2)} across ${result.sampleSize} paired observations.`, algorithm_version: "spearman-v2" };
   }), { onConflict: "user_id,variable_x,variable_y,lag_days,date_start,date_end" });
   if (correlationError) throw new Error("Health correlations could not be stored.");
 
