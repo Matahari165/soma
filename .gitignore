@@ -9,6 +9,10 @@ out/
 # Tests
 coverage/
 
+# Personal analysis outputs
+analysis/private/
+__pycache__/
+
 # Local secrets
 .env
 .env.local
@@ -24,3 +28,4 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+.vercel
