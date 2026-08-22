@@ -29,7 +29,7 @@ const navigation = [
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
-  { label: "Discoveries", href: "/trends", icon: BarChart3 },
+  { label: "Analyses", href: "/trends", icon: BarChart3 },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 

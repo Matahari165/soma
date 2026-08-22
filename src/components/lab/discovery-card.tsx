@@ -13,6 +13,6 @@ export function DiscoveryCard({ discovery, featured = false }: { discovery: LabD
     </div>
     <h2>{discovery.title}</h2>
     <p>{discovery.description}</p>
-    <footer><span>{discovery.evidence}</span><span>Association, not cause</span>{!featured && <ArrowUpRight size={16} aria-hidden="true" />}</footer>
+    <footer><span>{discovery.evidence}</span>{!featured && <ArrowUpRight size={16} aria-hidden="true" />}</footer>
   </Tag>;
 }
