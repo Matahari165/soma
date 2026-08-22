@@ -35,11 +35,11 @@ const azeretMono = Azeret_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Soma — Personal Health Atlas",
+    default: "Soma — Personal Lab",
     template: "%s · Soma",
   },
   applicationName: "Soma",
-  description: "A personal atlas for sleep, recovery, movement, and training.",
+  description: "A personal lab for the relationships between health, focus, energy, recovery, and Deep Work.",
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
   },

@@ -1,12 +1,12 @@
 # Soma — Product and Development Plan
 
-> Status: approved foundation, implementation started 7 August 2026
+> Status: Personal Lab pivot implemented on 22 August 2026
 > Product language: English only
 > Initial audience: personal production use, built as a multi-user product from day one
 
 ## 1. Product vision
 
-Soma is a responsive health and fitness web application that turns data from Google Health and Fitbit devices into a clear daily view, useful trends, personalized recommendations, and actionable coaching.
+Soma is a responsive personal laboratory. It combines physiological data from Google Health with real-life context from Google Calendar and a 30-second daily check-in to find the conditions associated with better Deep Work, focus, energy, sleep, and recovery.
 
 The same application must work on desktop and iPhone:
 
@@ -14,7 +14,16 @@ The same application must work on desktop and iPhone:
 - Mobile is optimized for quick checks, alerts, and live workouts.
 - There is no separate mobile product or duplicated feature set.
 
-Soma combines the strongest ideas from WHOOP, Apple Health, and Google Health without copying their visual identity. The product should feel calm, precise, personal, and non-judgmental.
+Unlike conventional health dashboards, the main value is not another readiness score. Soma compares the user's own days across life and health, shows interpretable effect sizes, and exposes sample size, timing, stability, and provenance. The product should feel calm, precise, personal, and non-judgmental.
+
+### August 2026 product pivot
+
+- **Home becomes Personal Lab:** one leading finding, today's context, the quick check-in, and evidence coverage.
+- **Discoveries replace generic trends:** health-to-life and life-to-health associations are ranked by usefulness and evidence quality.
+- **Deep Work comes from Calendar:** timed events explicitly marked `DW` or `Deep Work`; users can correct the daily total.
+- **Privacy is structural:** Calendar event names, descriptions, attendees, and locations are never persisted.
+- **No false certainty:** at least 14 paired days, at least 5 days per comparison group, split-history direction checks, and association-only language.
+- Detailed Sleep, Recovery, and Activity pages remain available as the physiological atlas beneath the Lab.
 
 ## 2. Product principles
 
@@ -34,9 +43,9 @@ Soma combines the strongest ideas from WHOOP, Apple Health, and Google Health wi
 
 1. Google sign-in and onboarding.
 2. Google Health connection and historical import.
-3. Dashboard with Sleep, Recovery, and Effort cards.
+3. Personal Lab home with a leading discovery, daily context, evidence coverage, and quick check-in.
 4. Dedicated Sleep, Recovery, and Activity pages.
-5. Trends, alerts, correlations, and morning/evening summaries.
+5. Discoveries across health, focus, energy, mood, Deep Work, and recorded behaviors.
 6. Read-only Soma AI coach with side panel and full conversation history.
 7. Customizable dashboard widgets.
 
@@ -64,18 +73,18 @@ Soma combines the strongest ideas from WHOOP, Apple Health, and Google Health wi
 
 Desktop navigation:
 
-- Today
+- Lab
 - Sleep
 - Recovery
 - Activity
-- Trends
+- Discoveries
 - Coach
 - Workouts, shown as “Coming later” until its phase begins
 - Settings
 
 Mobile navigation:
 
-- Today
+- Lab
 - Sleep
 - Recovery
 - Activity
@@ -83,18 +92,18 @@ Mobile navigation:
 
 The Coach opens as a side panel on desktop and a full-screen view on mobile. A dedicated Coach page contains the complete conversation history.
 
-### 4.2 Today dashboard
+### 4.2 Personal Lab home
 
 The first screen follows this order:
 
-1. Date, greeting, sync status, and data freshness.
-2. Three fixed primary cards: Sleep, Recovery, and Effort.
-3. A short “Soma summary” explaining the day in two or three sentences.
-4. Important insights and alerts.
-5. Customizable supporting widgets.
-6. Quick access to the Soma Coach.
+1. The strongest current within-person finding, with effect size and evidence quality.
+2. A compact row for Sleep, Recovery, Deep Work, and today's check-in.
+3. A 30-second check-in for energy, focus, stress, mood, caffeine, alcohol, late meals, and illness.
+4. Evidence coverage and connection provenance.
+5. Additional discoveries that cleared the display threshold.
+6. Links to detailed physiological pages and the Soma Coach.
 
-The three primary cards always remain at the top. Supporting widgets can later be reordered, hidden, or resized.
+Detailed health measures remain in Sleep, Recovery, and Activity instead of being repeated on the home screen.
 
 Every primary card shows:
 

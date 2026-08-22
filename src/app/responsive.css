@@ -283,3 +283,35 @@
   .auth-intro { min-height: 100vh; }
   .live-workout-content { grid-template-columns: .65fr 1fr; padding-block: 20px; }
 }
+
+@media (max-width: 980px) {
+  .lab-header { grid-template-columns: 1fr; align-items: start; gap: 24px; }
+  .lab-header > p { max-width: 48ch; }
+  .lab-workspace { grid-template-columns: 1fr; }
+  .coverage-card { border-top: 1px solid var(--ink); border-left: 0; }
+  .checkin-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page, .discoveries-page { padding: 22px 16px 92px; }
+  .lab-header { padding-bottom: 32px; }
+  .lab-header h1 { font-size: clamp(3.5rem, 18vw, 5.2rem); }
+  .lab-question { grid-template-columns: 1fr; align-items: start; }
+  .lab-question dl { width: 100%; }
+  .lab-question dl > div { flex: 1; }
+  .lab-featured { min-height: 340px; padding: 30px 22px; }
+  .lab-featured h2 { font-size: clamp(2.45rem, 12vw, 4rem); }
+  .lab-featured::after { right: -38%; width: 90vw; }
+  .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-signals a { min-height: 126px; border-bottom: 1px solid var(--line); }
+  .lab-signals a:nth-child(2n) { border-right: 0; }
+  .lab-signals a:nth-child(n+3) { border-bottom: 0; }
+  .rating-grid { grid-template-columns: 1fr; }
+  .checkin-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-discoveries > header { align-items: start; flex-direction: column; }
+  .lab-discoveries > div, .discoveries-grid { grid-template-columns: 1fr; }
+  .discovery-card { min-height: 240px; border-right: 0; }
+  .discoveries-hero { grid-template-columns: 1fr; }
+  .discoveries-hero dl { width: 100%; }
+  .discoveries-hero dl > div { flex: 1; }
+}

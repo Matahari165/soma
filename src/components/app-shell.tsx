@@ -6,8 +6,8 @@ import {
   BedDouble,
   ChevronRight,
   Dumbbell,
+  FlaskConical,
   HeartPulse,
-  LayoutDashboard,
   Menu,
   MessageCircle,
   Settings,
@@ -25,11 +25,11 @@ import type { SomaUser } from "@/lib/auth";
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
 
 const navigation = [
-  { label: "Today", href: "/", icon: LayoutDashboard },
+  { label: "Lab", href: "/", icon: FlaskConical },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
-  { label: "Trends", href: "/trends", icon: BarChart3 },
+  { label: "Discoveries", href: "/trends", icon: BarChart3 },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
