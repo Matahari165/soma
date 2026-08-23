@@ -54,6 +54,14 @@ export function usesDirectGoogleHealthUpsert(dataType: GoogleHealthDataType) {
   return DIRECT_UPSERT_DATA_TYPES.has(dataType);
 }
 
+type NormalizedGoogleHealthRecord = ReturnType<typeof normalizeGoogleHealthPoint>;
+
+export function deduplicateGoogleHealthRecords(records: NormalizedGoogleHealthRecord[]) {
+  const bySourceRecordId = new Map<string, NormalizedGoogleHealthRecord>();
+  for (const record of records) bySourceRecordId.set(record.source_record_id, record);
+  return [...bySourceRecordId.values()];
+}
+
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
@@ -81,10 +89,11 @@ async function getAccessToken(connection: ProviderConnection) {
   return tokens.access_token;
 }
 
-async function stageRecords(jobId: string, reconciliationToken: string, records: Array<ReturnType<typeof normalizeGoogleHealthPoint>>) {
+async function stageRecords(jobId: string, reconciliationToken: string, records: NormalizedGoogleHealthRecord[]) {
   const admin = createSupabaseAdminClient();
-  for (let index = 0; index < records.length; index += 500) {
-    const batch = records.slice(index, index + 500).map((record) => ({ ...record, job_id: jobId, reconciliation_token: reconciliationToken }));
+  const uniqueRecords = deduplicateGoogleHealthRecords(records);
+  for (let index = 0; index < uniqueRecords.length; index += 500) {
+    const batch = uniqueRecords.slice(index, index + 500).map((record) => ({ ...record, job_id: jobId, reconciliation_token: reconciliationToken }));
     const { error } = await admin.from("google_health_reconciliation_stage").upsert(batch, {
       onConflict: "job_id,reconciliation_token,source_record_id",
     });
@@ -92,10 +101,11 @@ async function stageRecords(jobId: string, reconciliationToken: string, records:
   }
 }
 
-async function publishRecords(records: Array<ReturnType<typeof normalizeGoogleHealthPoint>>) {
+async function publishRecords(records: NormalizedGoogleHealthRecord[]) {
   const admin = createSupabaseAdminClient();
-  for (let index = 0; index < records.length; index += 1000) {
-    const { error } = await admin.from("health_records").upsert(records.slice(index, index + 1000), {
+  const uniqueRecords = deduplicateGoogleHealthRecords(records);
+  for (let index = 0; index < uniqueRecords.length; index += 1000) {
+    const { error } = await admin.from("health_records").upsert(uniqueRecords.slice(index, index + 1000), {
       onConflict: "user_id,provider,data_type,source_record_id",
     });
     if (error) throw new Error(`Health records could not be published: ${error.message}`);

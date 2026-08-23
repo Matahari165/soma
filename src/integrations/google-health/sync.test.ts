@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
-import { classifyGoogleHealthSyncError, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
+import { normalizeGoogleHealthPoint } from "./normalize";
+import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -27,5 +28,12 @@ describe("Google Health sync failures", () => {
     expect(usesDirectGoogleHealthUpsert("activity-level")).toBe(true);
     expect(usesDirectGoogleHealthUpsert("sleep")).toBe(false);
     expect(usesDirectGoogleHealthUpsert("daily-resting-heart-rate")).toBe(false);
+  });
+
+  it("keeps one record when Google returns the same source record twice", () => {
+    const first = normalizeGoogleHealthPoint("user-1", "sleep", { name: "sleep-record-1", sleepSession: { revision: 1 } });
+    const revised = normalizeGoogleHealthPoint("user-1", "sleep", { name: "sleep-record-1", sleepSession: { revision: 2 } });
+
+    expect(deduplicateGoogleHealthRecords([first, revised])).toEqual([revised]);
   });
 });
