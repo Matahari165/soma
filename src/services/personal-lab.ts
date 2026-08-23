@@ -1,7 +1,7 @@
 import { analyzePersonalLab, type LabObservation, type LabDiscovery } from "@/domain/lab/insights";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
-import { aggregateWeekly, weekStart } from "@/domain/lab/weekly";
+import { aggregatePairedWeekly, aggregateWeekly, weekStart } from "@/domain/lab/weekly";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -53,7 +53,14 @@ type HealthDay = {
 };
 
 type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null };
-export type LabMatrixRow = { id: string; label: string; grain: "day" | "week"; lagLabel: string; relations: MatrixRelation[] };
+export type LabMatrixRow = { id: string; label: string; grain: "day" | "week"; timeScale: "acute" | "chronic"; lagLabel: string; relations: MatrixRelation[] };
+export type LabMetricCoverage = {
+  id: string;
+  label: string;
+  recordedDays: number;
+  requiredDays: number;
+  sources: Array<{ source: string; days: number }>;
+};
 
 export type PersonalLabSnapshot = {
   todayDate: string;
@@ -84,6 +91,10 @@ export type PersonalLabSnapshot = {
     outcomes: Array<{ id: string; label: string; unit: string }>;
     rows: LabMatrixRow[];
     topRelations: MatrixRelation[];
+    acuteHighlights: MatrixRelation[];
+    chronicHighlights: MatrixRelation[];
+    coverageByMetric: LabMetricCoverage[];
+    collectionProgress: LabMetricCoverage[];
   };
   coverage: {
     healthDays: number;
@@ -123,10 +134,6 @@ function minutesInTimezone(value: string, timeZone: string) {
   return result < 12 * 60 ? result + 24 * 60 : result;
 }
 
-function shiftSeriesDates(series: MatrixSeries, days: number): MatrixSeries {
-  return { ...series, points: series.points.map((point) => ({ ...point, date: addDays(point.date, days) })) };
-}
-
 function healthSeries(health: HealthDay[], id: string, label: string, unit: string, key: keyof HealthDay): MatrixSeries {
   return {
     id,
@@ -153,6 +160,60 @@ function combinedHealthSeries(health: HealthDay[], id: string, label: string, un
   };
 }
 
+function median(values: number[]) {
+  const ordered = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
+function deviationFromSourceMedian(series: MatrixSeries, id: string, label: string): MatrixSeries {
+  const medians = new Map<string, number>();
+  for (const source of new Set(series.points.map((point) => point.segment ?? "All data"))) {
+    medians.set(source, median(series.points.filter((point) => (point.segment ?? "All data") === source).map((point) => point.value)));
+  }
+  return {
+    ...series,
+    id,
+    label,
+    unit: "min",
+    points: series.points.map((point) => ({ ...point, value: Math.abs(point.value - (medians.get(point.segment ?? "All data") ?? point.value)) })),
+  };
+}
+
+function rollingSeries(series: MatrixSeries, id: string, label: string, shortWindow: number, longWindow?: number): MatrixSeries {
+  const byDate = new Map(series.points.map((point) => [point.date, point]));
+  return {
+    ...series,
+    id,
+    label,
+    unit: longWindow ? "ratio" : series.unit,
+    points: series.points.flatMap((point) => {
+      const collect = (window: number) => Array.from({ length: window }, (_, index) => byDate.get(addDays(point.date, -index)))
+        .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate) && (candidate?.segment ?? "All data") === (point.segment ?? "All data"));
+      const recent = collect(shortWindow);
+      if (recent.length < Math.ceil(shortWindow / 2)) return [];
+      const recentMean = recent.reduce((sum, candidate) => sum + candidate.value, 0) / recent.length;
+      if (!longWindow) return [{ ...point, value: recent.reduce((sum, candidate) => sum + candidate.value, 0) }];
+      const baseline = collect(longWindow);
+      if (baseline.length < Math.ceil(longWindow / 2)) return [];
+      const baselineMean = baseline.reduce((sum, candidate) => sum + candidate.value, 0) / baseline.length;
+      return baselineMean > 0 ? [{ ...point, value: recentMean / baselineMean }] : [];
+    }),
+  };
+}
+
+function coverageForSeries(series: MatrixSeries): LabMetricCoverage {
+  const sources = new Map<string, number>();
+  for (const point of series.points) sources.set(point.segment ?? "Journal / calendar", (sources.get(point.segment ?? "Journal / calendar") ?? 0) + 1);
+  return {
+    id: series.id,
+    label: series.label,
+    recordedDays: new Set(series.points.map((point) => point.date)).size,
+    requiredDays: 15,
+    sources: [...sources].map(([source, days]) => ({ source, days })).sort((first, second) => second.days - first.days),
+  };
+}
+
 function buildCorrelationMatrix(input: {
   health: HealthDay[];
   observations: LabObservation[];
@@ -171,31 +232,35 @@ function buildCorrelationMatrix(input: {
     healthSeries(health, "respiratory", "Breathing rate", "/min", "respiratory_rate"),
     healthSeries(health, "spo2", "SpO₂", "%", "oxygen_saturation"),
   ];
+  const bedtime = { id: "bedtime", label: "Bedtime", unit: "min", kind: "numeric" as const, points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) };
+  const intense = combinedHealthSeries(health, "intense_minutes", "Intense-zone effort", "min", ["vigorous_zone_minutes", "peak_zone_minutes"]);
+  const exercise = healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes");
   const deepWorkSeries: MatrixSeries = { id: "calendar_deep_work", label: "Deep Work (Calendar)", unit: "min", kind: "numeric", points: input.observations.flatMap((day) => day.deepWorkMinutes === null ? [] : [{ date: day.date, value: day.deepWorkMinutes }]) };
-  const automaticRows: Array<{ series: MatrixSeries; lagDays: number; label: string }> = [
-    {
-      series: { id: "bedtime", label: "Bedtime", unit: "h", kind: "numeric", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) },
-      lagDays: 0,
-      label: "same night",
-    },
-    { series: healthSeries(health, "sleep_duration_driver", "Sleep duration", "min", "sleep_minutes"), lagDays: 0, label: "same day" },
-    { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), lagDays: 0, label: "same day" },
-    { series: healthSeries(health, "steps", "Steps", "steps", "steps"), lagDays: 1, label: "next day" },
-    { series: healthSeries(health, "zone_minutes", "Zone minutes", "min", "zone_minutes"), lagDays: 1, label: "next day" },
-    { series: combinedHealthSeries(health, "intense_minutes", "Intense-zone effort", "min", ["vigorous_zone_minutes", "peak_zone_minutes"]), lagDays: 1, label: "next day" },
-    { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), lagDays: 1, label: "next day" },
-    { series: healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes"), lagDays: 1, label: "next day" },
-    { series: deepWorkSeries, lagDays: 1, label: "next day" },
+
+  type RowSpec = { series: MatrixSeries; acuteLags: number[]; chronic: boolean; journal: boolean };
+  const automaticRows: RowSpec[] = [
+    { series: deviationFromSourceMedian(bedtime, "bedtime_deviation", "Bedtime deviation"), acuteLags: [0], chronic: true, journal: false },
+    { series: healthSeries(health, "sleep_regularity", "Sleep regularity", "%", "sleep_regularity"), acuteLags: [0], chronic: true, journal: false },
+    { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), acuteLags: [0], chronic: true, journal: false },
+    { series: healthSeries(health, "steps", "Steps", "steps", "steps"), acuteLags: [1, 2], chronic: true, journal: false },
+    { series: healthSeries(health, "zone_minutes", "Zone minutes", "min", "zone_minutes"), acuteLags: [1, 2], chronic: true, journal: false },
+    { series: intense, acuteLags: [1, 2], chronic: true, journal: false },
+    { series: exercise, acuteLags: [1, 2], chronic: true, journal: false },
+    { series: rollingSeries(intense, "intense_load_7d", "Intense load · 7 days", 7), acuteLags: [], chronic: true, journal: false },
+    { series: rollingSeries(intense, "load_ratio_7_28", "Load ratio · 7/28 days", 7, 28), acuteLags: [], chronic: true, journal: false },
+    { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), acuteLags: [1, 2], chronic: true, journal: false },
+    { series: deepWorkSeries, acuteLags: [1, 2], chronic: true, journal: false },
   ];
 
   const entriesByVariable = new Map<string, JournalEntry[]>();
   for (const entry of input.entries) entriesByVariable.set(entry.variableId, [...(entriesByVariable.get(entry.variableId) ?? []), entry]);
-  const journalRows = input.variables.filter((variable) => variable.isActive).flatMap((variable) => {
+  const journalRows: RowSpec[] = input.variables.filter((variable) => variable.isActive).flatMap((variable) => {
     const recorded = new Map((entriesByVariable.get(variable.id) ?? []).map((entry) => [entry.entryDate, entry.value]));
     if (variable.variableType === "category") return variable.options.map((option) => ({
       series: { id: `journal:${variable.id}:${option}`, label: `${variable.name} · ${option}`, unit: "", kind: "binary" as const, points: [...recorded].flatMap(([date, value]) => typeof value === "string" ? [{ date, value: value === option ? 1 : 0 }] : []) },
-      lagDays: 1,
-      label: "next day",
+      acuteLags: [1, 2],
+      chronic: true,
+      journal: true,
     }));
     const kind = variable.variableType === "boolean" ? "binary" as const : "numeric" as const;
     return [{
@@ -203,16 +268,12 @@ function buildCorrelationMatrix(input: {
         const number = journalValueAsNumber(variable, value);
         return number === null ? [] : [{ date, value: number }];
       }) },
-      lagDays: 1,
-      label: "next day",
+      acuteLags: [1, 2],
+      chronic: true,
+      journal: true,
     }];
   });
 
-  const redundant = (predictorId: string, outcomeId: string) => (
-    predictorId === "sleep_duration_driver" && ["sleep_minutes", "deep_sleep", "rem_sleep"].includes(outcomeId)
-  ) || (
-    predictorId === "sleep_debt" && ["sleep_minutes", "deep_sleep", "rem_sleep"].includes(outcomeId)
-  );
   const minimumVisibleEffect: Record<string, number> = {
     sleep_minutes: 10,
     sleep_efficiency: 1,
@@ -223,68 +284,89 @@ function buildCorrelationMatrix(input: {
     respiratory: .1,
     spo2: .2,
   };
-  const removeNegligibleEffect = (relation: MatrixRelation) => relation.effect !== null
-    && Math.abs(relation.effect) < (minimumVisibleEffect[relation.outcomeId] ?? 0)
-    ? { ...relation, strength: "hidden" as const, stable: false }
+  const excludeDerivedOutcome = (relation: MatrixRelation) => relation.predictorId === "sleep_debt" && ["sleep_minutes", "deep_sleep", "rem_sleep"].includes(relation.outcomeId)
+    ? {
+      ...relation,
+      coefficient: null,
+      effect: null,
+      effectConfidenceLow: null,
+      effectConfidenceHigh: null,
+      evidence: "insufficient" as const,
+      strength: "hidden" as const,
+      stable: false,
+      featureEligible: false,
+      excluded: true,
+      exclusionReasons: ["Outcome is directly used to derive this predictor"],
+    }
     : relation;
-  const deprioritizeObviousRelation = (relation: MatrixRelation) => relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"
-    ? { ...relation, relevance: 0 }
-    : relation;
-  const dailyRows: LabMatrixRow[] = [...journalRows, ...automaticRows].map((row) => ({
-    id: row.series.id,
+  const allSpecs = [...journalRows, ...automaticRows];
+  const dailyRows: LabMatrixRow[] = allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({
+    id: `${row.series.id}:lag-${lagDays}`,
     label: row.series.label,
-    grain: "day",
-    lagLabel: row.label,
+    grain: "day" as const,
+    timeScale: "acute" as const,
+    lagLabel: lagDays === 0 ? "same night" : lagDays === 1 ? "next day" : "two days later",
+    relations: dailyOutcomes.map((outcome) => excludeDerivedOutcome(calculateMatrixRelation(row.series, outcome, lagDays, {
+      grain: "day",
+      timeScale: "acute",
+      family: row.journal ? "journal-acute" : "automatic-acute",
+      minimumMeaningfulEffect: minimumVisibleEffect[outcome.id],
+    }))),
+  })));
+
+  const weeklyRows: LabMatrixRow[] = allSpecs.filter((row) => row.chronic).map((row) => ({
+    id: `${row.series.id}:chronic`,
+    label: row.series.label,
+    grain: "week" as const,
+    timeScale: "chronic" as const,
+    lagLabel: "matched days · same week",
     relations: dailyOutcomes.map((outcome) => {
-      const relation = calculateMatrixRelation(row.series, outcome, row.lagDays);
-      const dailyRelation = { ...relation, grain: "day" as const };
-      return redundant(row.series.id, outcome.id) ? { ...dailyRelation, coefficient: null, effect: null, strength: "hidden" as const, stable: false, excluded: true } : removeNegligibleEffect(dailyRelation);
+      const paired = aggregatePairedWeekly(row.series.points, outcome.points, 0, 4);
+      const outcomeWeeks = new Set(outcome.points.map((point) => weekStart(point.date)));
+      const fullWeeklyOutcome = aggregateWeekly(outcome.points, "mean", outcomeWeeks, 4);
+      const outcomeByWeek = new Map(fullWeeklyOutcome.map((point) => [point.date, point]));
+      for (const point of paired.outcome) outcomeByWeek.set(point.date, point);
+      return excludeDerivedOutcome(calculateMatrixRelation(
+        { ...row.series, kind: "numeric", points: paired.predictor },
+        { ...outcome, points: [...outcomeByWeek.values()].sort((first, second) => first.date.localeCompare(second.date)) },
+        0,
+        {
+          grain: "week",
+          timeScale: "chronic",
+          family: row.journal ? "journal-chronic" : "automatic-chronic",
+          minimumMeaningfulEffect: minimumVisibleEffect[outcome.id],
+        },
+      ));
     }),
   }));
 
-  const datesByWeek = new Map<string, Set<string>>();
-  for (const day of health) {
-    const week = weekStart(day.metric_date);
-    datesByWeek.set(week, new Set([...(datesByWeek.get(week) ?? []), day.metric_date]));
-  }
-  const healthWeeks = [...datesByWeek].filter(([, dates]) => dates.size === 7).map(([week]) => week).sort();
-  const completeHealthWeeks = new Set(healthWeeks);
-  const weeklyRows: LabMatrixRow[] = [...journalRows, ...automaticRows].map((row) => {
-    const minimumPredictorDays = row.series.id.startsWith("journal:") || row.series.id === "calendar_deep_work" ? 2 : 4;
-    const weeklyPredictor: MatrixSeries = {
-      ...row.series,
-      kind: "numeric",
-      points: aggregateWeekly(row.series.points, "mean", completeHealthWeeks, minimumPredictorDays),
-    };
-    return {
-      id: row.series.id,
-      label: row.series.label,
-      grain: "week",
-      lagLabel: row.lagDays === 0 ? "week avg · same-day" : "week avg · next-day",
-      relations: dailyOutcomes.map((outcome) => {
-        const alignedOutcome = shiftSeriesDates(outcome, -row.lagDays);
-        const weeklyOutcome = { ...alignedOutcome, points: aggregateWeekly(alignedOutcome.points, "mean", completeHealthWeeks, 4) };
-        const relation = { ...calculateMatrixRelation(weeklyPredictor, weeklyOutcome), lagDays: row.lagDays, grain: "week" as const };
-        return redundant(row.series.id, outcome.id) ? { ...relation, coefficient: null, effect: null, strength: "hidden" as const, stable: false, excluded: true } : removeNegligibleEffect(relation);
-      }),
-    };
-  });
   const rows = [...dailyRows, ...weeklyRows];
-  const adjustedRelations = adjustMatrixRelations(rows.flatMap((row) => row.relations));
-  let relationIndex = 0;
-  const adjustedRows = rows.map((row) => ({
-    ...row,
-    relations: row.relations.map(() => deprioritizeObviousRelation(removeNegligibleEffect(adjustedRelations[relationIndex++]))),
-  }));
-  const rankedRelations = (grain: "day" | "week") => adjustedRows.filter((row) => row.grain === grain).flatMap((row) => row.relations).filter((relation) => !relation.excluded && relation.coefficient !== null && relation.strength !== "hidden")
-    .sort((a, b) => b.relevance - a.relevance || Math.abs(b.coefficient ?? 0) - Math.abs(a.coefficient ?? 0) || b.effectiveSampleSize - a.effectiveSampleSize)
+  const adjusted = new Map<MatrixRelation, MatrixRelation>();
+  for (const family of ["automatic-acute", "automatic-chronic", "journal-acute", "journal-chronic"] as const) {
+    const relations = rows.flatMap((row) => row.relations).filter((relation) => relation.family === family);
+    const familyAdjusted = adjustMatrixRelations(relations);
+    relations.forEach((relation, index) => adjusted.set(relation, familyAdjusted[index]));
+  }
+  const adjustedRows = rows.map((row) => ({ ...row, relations: row.relations.map((relation) => adjusted.get(relation) ?? relation) }));
+  const visibleRows = adjustedRows.filter((row) => row.relations.some((relation) => relation.coefficient !== null));
+  const visiblePredictors = new Set(visibleRows.flatMap((row) => row.relations.map((relation) => relation.predictorId)));
+  const coverageByMetric = [...new Map(allSpecs.map((row) => [row.series.id, coverageForSeries(row.series)])).values()];
+  const collectionProgress = coverageByMetric.filter((coverage) => !visiblePredictors.has(coverage.id));
+  const rank = (relations: MatrixRelation[]) => relations
+    .filter((relation) => relation.featureEligible && relation.qValue <= 0.1)
+    .sort((first, second) => first.qValue - second.qValue || Math.abs(second.coefficient ?? 0) - Math.abs(first.coefficient ?? 0) || second.sampleSize - first.sampleSize)
     .slice(0, 8);
-  const weeklyTopRelations = rankedRelations("week");
-  const topRelations = weeklyTopRelations.length ? weeklyTopRelations : rankedRelations("day");
+  const acuteHighlights = rank(visibleRows.filter((row) => row.timeScale === "acute").flatMap((row) => row.relations));
+  const chronicHighlights = rank(visibleRows.filter((row) => row.timeScale === "chronic").flatMap((row) => row.relations));
+  const topRelations = [...acuteHighlights, ...chronicHighlights].sort((first, second) => first.qValue - second.qValue).slice(0, 12);
   return {
     outcomes: dailyOutcomes.map(({ id, label, unit }) => ({ id, label, unit })),
-    rows: adjustedRows,
+    rows: visibleRows,
     topRelations,
+    acuteHighlights,
+    chronicHighlights,
+    coverageByMetric,
+    collectionProgress,
   };
 }
 
@@ -344,7 +426,7 @@ function previewData() {
     const vigorous = 4 + (index % 4) * 5;
     const previousVigorous = 4 + ((index + 3) % 4) * 5;
     const previewWeek = Math.floor(index / 7) % 3;
-    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 44 + previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 64 - previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
+    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 50 - previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 60 + previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },
@@ -401,7 +483,8 @@ function buildSnapshot(input: {
   const narrativeMatchesLead = Boolean(lead && sourceLead
     && sourceLead.predictor === lead.predictorLabel
     && sourceLead.outcome === lead.outcomeLabel
-    && sourceLead.effect === lead.effect);
+    && sourceLead.effect === lead.effect
+    && sourceLead.timeScale === lead.timeScale);
   const aiNarrative = input.narrative && narrativeMatchesLead ? { headline: input.narrative.headline, summary: input.narrative.summary, highlights, model: input.narrative.model, generatedAt: input.narrative.generated_at } : null;
   const connection = (provider: string) => input.connections.find((item) => item.provider === provider);
   const healthConnection = connection("google_health");

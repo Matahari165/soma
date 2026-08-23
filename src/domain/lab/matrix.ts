@@ -1,264 +1,240 @@
-export const MINIMUM_COMPUTABLE_OBSERVATIONS = 6;
+export const MINIMUM_DAILY_OBSERVATIONS = 15;
+export const MINIMUM_WEEKLY_OBSERVATIONS = 8;
+export const MINIMUM_DAILY_HIGHLIGHT = 30;
+export const MINIMUM_WEEKLY_HIGHLIGHT = 20;
+export const MINIMUM_BINARY_GROUP = 5;
 
 export type MatrixPoint = { date: string; value: number; segment?: string };
-export type MatrixSeries = {
-  id: string;
-  label: string;
-  unit: string;
-  kind: "numeric" | "binary";
-  points: MatrixPoint[];
+export type MatrixSeries = { id: string; label: string; unit: string; kind: "numeric" | "binary"; points: MatrixPoint[] };
+export type MatrixSourceEstimate = { source: string; sampleSize: number; effect: number; effectConfidenceLow: number; effectConfidenceHigh: number; coefficient: number; pValue: number };
+export type MatrixSourceCoverage = { source: string; pairedDays: number; pairedWeeks: number };
+export type MatrixStability = {
+  chronologicalBlocks: number;
+  directionHeldInBlocks: boolean;
+  trendAdjustedDirectionHeld: boolean;
+  outlierAdjustedDirectionHeld: boolean;
 };
-
 export type MatrixRelation = {
-  predictorId: string;
-  predictorLabel: string;
-  outcomeId: string;
-  outcomeLabel: string;
-  outcomeUnit: string;
-  coefficient: number | null;
-  effect: number | null;
-  sampleSize: number;
-  effectiveSampleSize: number;
-  pValue: number;
-  qValue: number;
-  confidenceLow: number;
-  confidenceHigh: number;
-  relevance: number;
-  lagDays: number;
-  grain?: "day" | "week";
-  method: "spearman" | "rank-biserial";
-  evidence: "collecting" | "early" | "growing" | "established";
-  stable: boolean;
-  strength: "hidden" | "light" | "clear" | "strong";
-  excluded: boolean;
+  predictorId: string; predictorLabel: string; outcomeId: string; outcomeLabel: string; outcomeUnit: string;
+  coefficient: number | null; effect: number | null; effectConfidenceLow: number | null; effectConfidenceHigh: number | null;
+  sampleSize: number; effectiveSampleSize: number; pValue: number; qValue: number; confidenceLow: number; confidenceHigh: number;
+  relevance: number; lagDays: number; grain: "day" | "week"; timeScale: "acute" | "chronic";
+  family: "automatic-acute" | "automatic-chronic" | "journal-acute" | "journal-chronic";
+  method: "adjusted-dynamic-regression";
+  evidence: "insufficient" | "exploratory" | "promising" | "established";
+  stable: boolean; stability: MatrixStability; strength: "hidden" | "light" | "clear" | "strong";
+  coverageBySource: MatrixSourceCoverage[]; sourceEstimates: MatrixSourceEstimate[];
+  featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
+};
+export type MatrixRelationOptions = {
+  grain?: "day" | "week"; timeScale?: "acute" | "chronic"; family?: MatrixRelation["family"]; minimumMeaningfulEffect?: number;
 };
 
-type Pair = { date: string; predictor: number; outcome: number; segment: string };
+type Pair = { date: string; predictor: number; outcome: number; previousOutcome: number; segment: string };
+type ModelEstimate = MatrixSourceEstimate & { standardError: number };
 
 function addDays(date: string, days: number) {
   const result = new Date(`${date}T12:00:00Z`);
   result.setUTCDate(result.getUTCDate() + days);
   return result.toISOString().slice(0, 10);
 }
-
-function mean(values: number[]) {
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
+function mean(values: number[]) { return values.reduce((sum, value) => sum + value, 0) / values.length; }
+function standardDeviation(values: number[]) {
+  if (values.length < 2) return 0;
+  const average = mean(values);
+  return Math.sqrt(values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1));
 }
-
-function ranks(values: number[]) {
-  const ordered = values.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
-  const result = new Array<number>(values.length);
-  for (let start = 0; start < ordered.length;) {
-    let end = start;
-    while (end + 1 < ordered.length && ordered[end + 1].value === ordered[start].value) end += 1;
-    const rank = (start + end + 2) / 2;
-    for (let index = start; index <= end; index += 1) result[ordered[index].index] = rank;
-    start = end + 1;
-  }
-  return result;
+function quantile(values: number[], probability: number) {
+  const ordered = [...values].sort((a, b) => a - b);
+  if (!ordered.length) return 0;
+  const position = (ordered.length - 1) * probability;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  return lower === upper ? ordered[lower] : ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower);
 }
+function round(value: number, digits = 3) { const factor = 10 ** digits; return Math.round(value * factor) / factor; }
 
-function pairedPoints(predictor: MatrixSeries, outcome: MatrixSeries, lagDays: number) {
+function pairedPoints(predictor: MatrixSeries, outcome: MatrixSeries, lagDays: number, grain: "day" | "week") {
   const outcomes = new Map(outcome.points.map((point) => [point.date, point]));
+  const previousOffset = grain === "week" ? 7 : 1;
   return predictor.points.flatMap((point) => {
-    const outcomePoint = outcomes.get(addDays(point.date, lagDays));
-    if (!outcomePoint || (point.segment && outcomePoint.segment && point.segment !== outcomePoint.segment)) return [];
-    return [{ date: point.date, predictor: point.value, outcome: outcomePoint.value, segment: point.segment ?? outcomePoint.segment ?? "all" }];
+    const outcomeDate = addDays(point.date, lagDays);
+    const outcomePoint = outcomes.get(outcomeDate);
+    const previousOutcome = outcomes.get(addDays(outcomeDate, -previousOffset));
+    if (!outcomePoint || !previousOutcome) return [];
+    if (point.segment && outcomePoint.segment && point.segment !== outcomePoint.segment) return [];
+    if (outcomePoint.segment && previousOutcome.segment && outcomePoint.segment !== previousOutcome.segment) return [];
+    return [{
+      date: point.date, predictor: point.value, outcome: outcomePoint.value, previousOutcome: previousOutcome.value,
+      segment: point.segment ?? outcomePoint.segment ?? previousOutcome.segment ?? "All data",
+    }];
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function rawCoverage(predictor: MatrixSeries, outcome: MatrixSeries, lagDays: number, grain: "day" | "week") {
+  const outcomes = new Map(outcome.points.map((point) => [point.date, point]));
+  const grouped = new Map<string, number>();
+  for (const point of predictor.points) {
+    const outcomePoint = outcomes.get(addDays(point.date, lagDays));
+    if (!outcomePoint || (point.segment && outcomePoint.segment && point.segment !== outcomePoint.segment)) continue;
+    const source = point.segment ?? outcomePoint.segment ?? "All data";
+    grouped.set(source, (grouped.get(source) ?? 0) + 1);
+  }
+  return [...grouped].map(([source, count]) => ({ source, pairedDays: grain === "day" ? count : 0, pairedWeeks: grain === "week" ? count : 0 }));
+}
 function groupedPairs(pairs: Pair[]) {
   const grouped = new Map<string, Pair[]>();
   for (const pair of pairs) grouped.set(pair.segment, [...(grouped.get(pair.segment) ?? []), pair]);
-  return [...grouped.values()];
+  return [...grouped.entries()].sort(([first], [second]) => first.localeCompare(second));
 }
 
-function stratifiedRanks(pairs: Pair[], key: "predictor" | "outcome") {
-  const ranked = new Map<Pair, number>();
-  for (const group of groupedPairs(pairs)) {
-    const groupRanks = ranks(group.map((pair) => pair[key]));
-    group.forEach((pair, index) => ranked.set(pair, (groupRanks[index] - 0.5) / group.length));
-  }
-  return pairs.map((pair) => ranked.get(pair) as number);
-}
-
-function pearson(first: number[], second: number[]) {
-  if (first.length !== second.length || first.length < 2) return null;
-  const firstMean = mean(first);
-  const secondMean = mean(second);
-  let numerator = 0;
-  let firstSquared = 0;
-  let secondSquared = 0;
-  for (let index = 0; index < first.length; index += 1) {
-    const firstDelta = first[index] - firstMean;
-    const secondDelta = second[index] - secondMean;
-    numerator += firstDelta * secondDelta;
-    firstSquared += firstDelta * firstDelta;
-    secondSquared += secondDelta * secondDelta;
-  }
-  const denominator = Math.sqrt(firstSquared * secondSquared);
-  return denominator === 0 ? null : numerator / denominator;
-}
-
-function effectiveSampleSize(pairs: Pair[]) {
-  if (pairs.length < 5) return pairs.length;
-  const predictorRanks = stratifiedRanks(pairs, "predictor");
-  const outcomeRanks = stratifiedRanks(pairs, "outcome");
-  const predictorAutocorrelation = pearson(predictorRanks.slice(0, -1), predictorRanks.slice(1));
-  const outcomeAutocorrelation = pearson(outcomeRanks.slice(0, -1), outcomeRanks.slice(1));
-  if (predictorAutocorrelation === null || outcomeAutocorrelation === null) return pairs.length;
-  const product = predictorAutocorrelation * outcomeAutocorrelation;
-  const estimate = 1 + product <= 0 ? pairs.length : pairs.length * (1 - product) / (1 + product);
-  return Math.min(pairs.length, Math.max(4, estimate));
-}
-
-function rankBiserial(groups: Pair[]) {
-  const exposed = groups.filter((point) => point.predictor === 1);
-  const unexposed = groups.filter((point) => point.predictor === 0);
-  if (exposed.length < 2 || unexposed.length < 2) return null;
-  const rankedOutcomes = ranks(groups.map((point) => point.outcome));
-  const exposedRankSum = groups.reduce((sum, point, index) => sum + (point.predictor === 1 ? rankedOutcomes[index] : 0), 0);
-  const u = exposedRankSum - exposed.length * (exposed.length + 1) / 2;
-  return 2 * u / (exposed.length * unexposed.length) - 1;
-}
-
-function coefficientFor(predictor: MatrixSeries, pairs: Pair[]) {
-  if (predictor.kind === "binary") return rankBiserial(pairs);
-  return pearson(stratifiedRanks(pairs, "predictor"), stratifiedRanks(pairs, "outcome"));
-}
-
-function effectFor(predictor: MatrixSeries, pairs: Pair[]) {
-  const effects = groupedPairs(pairs).flatMap((group) => {
-    if (predictor.kind === "binary") {
-      const exposed = group.filter((point) => point.predictor === 1).map((point) => point.outcome);
-      const unexposed = group.filter((point) => point.predictor === 0).map((point) => point.outcome);
-      return exposed.length >= 2 && unexposed.length >= 2 ? [{ value: mean(exposed) - mean(unexposed), weight: group.length }] : [];
+function invert(matrix: number[][]) {
+  const size = matrix.length;
+  const augmented = matrix.map((row, rowIndex) => [...row, ...Array.from({ length: size }, (_, columnIndex) => rowIndex === columnIndex ? 1 : 0)]);
+  for (let column = 0; column < size; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < size; row += 1) if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+    if (Math.abs(augmented[pivot][column]) < 1e-10) return null;
+    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+    const divisor = augmented[column][column];
+    augmented[column] = augmented[column].map((value) => value / divisor);
+    for (let row = 0; row < size; row += 1) {
+      if (row === column) continue;
+      const factor = augmented[row][column];
+      augmented[row] = augmented[row].map((value, index) => value - factor * augmented[column][index]);
     }
-    if (group.length < MINIMUM_COMPUTABLE_OBSERVATIONS) return [];
-    const ordered = [...group].sort((a, b) => a.predictor - b.predictor);
-    const groupSize = Math.max(2, Math.floor(ordered.length / 3));
-    return [{ value: mean(ordered.slice(-groupSize).map((point) => point.outcome)) - mean(ordered.slice(0, groupSize).map((point) => point.outcome)), weight: group.length }];
-  });
-  const totalWeight = effects.reduce((sum, effect) => sum + effect.weight, 0);
-  return totalWeight ? effects.reduce((sum, effect) => sum + effect.value * effect.weight, 0) / totalWeight : null;
-}
-
-function logGamma(value: number): number {
-  const coefficients = [
-    676.5203681218851,
-    -1259.1392167224028,
-    771.3234287776531,
-    -176.6150291621406,
-    12.507343278686905,
-    -0.13857109526572012,
-    9.984369578019572e-6,
-    1.5056327351493116e-7,
-  ];
-  if (value < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * value)) - logGamma(1 - value);
-  const adjusted = value - 1;
-  let sum = 0.9999999999998099;
-  for (let index = 0; index < coefficients.length; index += 1) sum += coefficients[index] / (adjusted + index + 1);
-  const base = adjusted + coefficients.length - 0.5;
-  return 0.5 * Math.log(2 * Math.PI) + (adjusted + 0.5) * Math.log(base) - base + Math.log(sum);
-}
-
-function betaFraction(x: number, first: number, second: number) {
-  const maxIterations = 200;
-  const epsilon = 3e-12;
-  const minimum = 1e-30;
-  const total = first + second;
-  let c = 1;
-  let d = 1 - total * x / (first + 1);
-  if (Math.abs(d) < minimum) d = minimum;
-  d = 1 / d;
-  let result = d;
-  for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
-    const twice = iteration * 2;
-    let factor = iteration * (second - iteration) * x / ((first + twice - 1) * (first + twice));
-    d = 1 + factor * d;
-    if (Math.abs(d) < minimum) d = minimum;
-    c = 1 + factor / c;
-    if (Math.abs(c) < minimum) c = minimum;
-    d = 1 / d;
-    result *= d * c;
-    factor = -(first + iteration) * (total + iteration) * x / ((first + twice) * (first + twice + 1));
-    d = 1 + factor * d;
-    if (Math.abs(d) < minimum) d = minimum;
-    c = 1 + factor / c;
-    if (Math.abs(c) < minimum) c = minimum;
-    d = 1 / d;
-    const delta = d * c;
-    result *= delta;
-    if (Math.abs(delta - 1) < epsilon) break;
   }
-  return result;
+  return augmented.map((row) => row.slice(size));
+}
+function residualize(values: number[], controls: number[][]) {
+  const columns = controls[0]?.length ?? 0;
+  const cross = Array.from({ length: columns }, () => Array(columns).fill(0));
+  const target = Array(columns).fill(0);
+  for (let row = 0; row < controls.length; row += 1) for (let first = 0; first < columns; first += 1) {
+    target[first] += controls[row][first] * values[row];
+    for (let second = 0; second < columns; second += 1) cross[first][second] += controls[row][first] * controls[row][second];
+  }
+  for (let index = 1; index < columns; index += 1) cross[index][index] += 1e-8;
+  const inverse = invert(cross);
+  if (!inverse) return null;
+  const beta = inverse.map((row) => row.reduce((sum, value, index) => sum + value * target[index], 0));
+  return values.map((value, row) => value - controls[row].reduce((sum, control, column) => sum + control * beta[column], 0));
+}
+function erf(value: number) {
+  const sign = value < 0 ? -1 : 1;
+  const x = Math.abs(value);
+  const t = 1 / (1 + 0.3275911 * x);
+  return sign * (1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x));
+}
+function normalPValue(statistic: number) { const cdf = 0.5 * (1 + erf(Math.abs(statistic) / Math.SQRT2)); return Math.max(0, Math.min(1, 2 * (1 - cdf))); }
+function modelControls(pairs: Pair[], grain: "day" | "week") {
+  const previous = pairs.map((pair) => pair.previousOutcome);
+  const previousMean = mean(previous);
+  const previousScale = standardDeviation(previous) || 1;
+  const firstTime = new Date(`${pairs[0].date}T12:00:00Z`).getTime();
+  const lastTime = new Date(`${pairs.at(-1)?.date}T12:00:00Z`).getTime();
+  const timeSpan = Math.max(86_400_000, lastTime - firstTime);
+  const deviceIndicators = [...new Set(pairs.map((pair) => pair.segment))].sort().slice(1);
+  return pairs.map((pair, index) => {
+    const time = 2 * (new Date(`${pair.date}T12:00:00Z`).getTime() - firstTime) / timeSpan - 1;
+    const weekday = new Date(`${pair.date}T12:00:00Z`).getUTCDay();
+    const longitudinalControls = grain === "day"
+      ? [1, (previous[index] - previousMean) / previousScale, Math.sin(2 * Math.PI * weekday / 7), Math.cos(2 * Math.PI * weekday / 7), time, time * time]
+      : [1, (previous[index] - previousMean) / previousScale, time, time * time];
+    return [...longitudinalControls, ...deviceIndicators.map((device) => pair.segment === device ? 1 : 0)];
+  });
+}
+function winsorize(values: number[]) {
+  const low = quantile(values, 0.025);
+  const high = quantile(values, 0.975);
+  return values.map((value) => Math.max(low, Math.min(high, value)));
 }
 
-function regularizedBeta(x: number, first: number, second: number) {
-  if (x <= 0) return 0;
-  if (x >= 1) return 1;
-  const factor = Math.exp(
-    logGamma(first + second) - logGamma(first) - logGamma(second)
-    + first * Math.log(x) + second * Math.log(1 - x),
-  );
-  return x < (first + 1) / (first + second + 2)
-    ? factor * betaFraction(x, first, second) / first
-    : 1 - factor * betaFraction(1 - x, second, first) / second;
-}
-
-function pValueFor(coefficient: number, sampleSize: number) {
-  if (Math.abs(coefficient) >= 1) return 0;
-  if (sampleSize <= 2) return 1;
-  const degrees = sampleSize - 2;
-  const statisticSquared = coefficient * coefficient * degrees / Math.max(1e-12, 1 - coefficient * coefficient);
-  return regularizedBeta(degrees / (degrees + statisticSquared), degrees / 2, 0.5);
-}
-
-function confidenceInterval(coefficient: number, sampleSize: number) {
-  if (Math.abs(coefficient) >= 0.999999) return [coefficient, coefficient] as const;
-  if (sampleSize <= 3) return [-1, 1] as const;
-  const z = Math.atanh(Math.max(-0.999999, Math.min(0.999999, coefficient)));
-  const margin = 1.959963984540054 / Math.sqrt(sampleSize - 3);
-  return [Math.tanh(z - margin), Math.tanh(z + margin)] as const;
-}
-
-function round(value: number, digits = 3) {
-  const factor = 10 ** digits;
-  return Math.round(value * factor) / factor;
-}
-
-function finalizeRelation(relation: MatrixRelation, qValue: number) {
-  if (relation.coefficient === null) return relation;
-  const intervalWidth = relation.confidenceHigh - relation.confidenceLow;
-  const precision = Math.max(0, Math.min(1, 1 - intervalWidth / 2));
-  const sampleWeight = Math.min(1, Math.log1p(relation.effectiveSampleSize) / Math.log(31));
-  const relevance = Math.abs(relation.coefficient) * precision * sampleWeight * (1 - Math.min(1, qValue));
-  const stable = relation.confidenceLow > 0 || relation.confidenceHigh < 0;
-  const evidence: MatrixRelation["evidence"] = stable && qValue <= 0.05
-    ? "established"
-    : stable && qValue <= 0.2
-      ? "growing"
-      : "early";
-  const strength: MatrixRelation["strength"] = relevance < 0.015
-    ? "hidden"
-    : relevance < 0.06
-      ? "light"
-      : relevance < 0.15
-        ? "clear"
-        : "strong";
+function fitAdjustedModel(source: string, pairs: Pair[], kind: MatrixSeries["kind"], grain: "day" | "week", limitOutliers = false): ModelEstimate | null {
+  const minimum = grain === "day" ? MINIMUM_DAILY_OBSERVATIONS : MINIMUM_WEEKLY_OBSERVATIONS;
+  // The first observation of each device segment conditions the lagged-outcome model.
+  if (pairs.length < minimum - 1) return null;
+  if (kind === "binary" && (pairs.filter((pair) => pair.predictor === 1).length < MINIMUM_BINARY_GROUP || pairs.filter((pair) => pair.predictor === 0).length < MINIMUM_BINARY_GROUP)) return null;
+  const rawPredictors = limitOutliers ? winsorize(pairs.map((pair) => pair.predictor)) : pairs.map((pair) => pair.predictor);
+  const rawOutcomes = limitOutliers ? winsorize(pairs.map((pair) => pair.outcome)) : pairs.map((pair) => pair.outcome);
+  const lower = kind === "binary" ? 0 : quantile(rawPredictors, 0.25);
+  const upper = kind === "binary" ? 1 : quantile(rawPredictors, 0.75);
+  const contrast = upper - lower;
+  if (Math.abs(contrast) < 1e-9 || standardDeviation(rawOutcomes) < 1e-9) return null;
+  const predictors = rawPredictors.map((value) => (value - lower) / contrast);
+  const controls = modelControls(pairs, grain);
+  const residualPredictors = residualize(predictors, controls);
+  const residualOutcomes = residualize(rawOutcomes, controls);
+  if (!residualPredictors || !residualOutcomes) return null;
+  const predictorSquared = residualPredictors.reduce((sum, value) => sum + value * value, 0);
+  if (predictorSquared < 1e-8) return null;
+  const effect = residualPredictors.reduce((sum, value, index) => sum + value * residualOutcomes[index], 0) / predictorSquared;
+  const residuals = residualOutcomes.map((value, index) => value - effect * residualPredictors[index]);
+  const scores = residualPredictors.map((value, index) => value * residuals[index]);
+  const maximumLag = grain === "day" ? Math.min(7, Math.floor(pairs.length / 4)) : Math.min(2, Math.floor(pairs.length / 4));
+  let meat = scores.reduce((sum, value) => sum + value * value, 0);
+  for (let lag = 1; lag <= maximumLag; lag += 1) {
+    const weight = 1 - lag / (maximumLag + 1);
+    let covariance = 0;
+    for (let index = lag; index < scores.length; index += 1) covariance += scores[index] * scores[index - lag];
+    meat += 2 * weight * covariance;
+  }
+  const correction = pairs.length / Math.max(1, pairs.length - controls[0].length - 1);
+  const standardError = Math.sqrt(Math.max(0, correction * meat / (predictorSquared * predictorSquared)));
+  if (!Number.isFinite(standardError)) return null;
+  const pValue = standardError < 1e-12 ? (Math.abs(effect) < 1e-12 ? 1 : 0) : normalPValue(effect / standardError);
   return {
-    ...relation,
-    qValue,
-    relevance: round(relevance, 4),
-    evidence,
-    stable,
+    source, sampleSize: pairs.length, effect, standardError, pValue,
+    effectConfidenceLow: effect - 1.959963984540054 * standardError,
+    effectConfidenceHigh: effect + 1.959963984540054 * standardError,
+    coefficient: effect / (standardDeviation(rawOutcomes) || 1),
+  };
+}
+
+function sourceCenteredDirection(pairs: Pair[]) {
+  let covariance = 0;
+  for (const [, group] of groupedPairs(pairs)) {
+    const predictorMean = mean(group.map((pair) => pair.predictor));
+    const outcomeMean = mean(group.map((pair) => pair.outcome));
+    covariance += group.reduce((sum, pair) => sum + (pair.predictor - predictorMean) * (pair.outcome - outcomeMean), 0);
+  }
+  return Math.sign(covariance);
+}
+function chronologicalStability(pairs: Pair[], direction: number) {
+  if (!direction || pairs.length < 12) return { held: false, blocks: 0 };
+  const matches = Array.from({ length: 4 }, (_, block) => {
+    const start = Math.floor(block * pairs.length / 4);
+    const end = Math.floor((block + 1) * pairs.length / 4);
+    return sourceCenteredDirection(pairs.slice(start, end)) === direction;
+  }).filter(Boolean).length;
+  return { held: matches >= 3, blocks: matches };
+}
+function finalizeRelation(relation: MatrixRelation, qValue: number): MatrixRelation {
+  if (relation.coefficient === null) return { ...relation, qValue: 1 };
+  const highlightMinimum = relation.grain === "day" ? MINIMUM_DAILY_HIGHLIGHT : MINIMUM_WEEKLY_HIGHLIGHT;
+  const featureEligible = relation.sampleSize >= highlightMinimum
+    && qValue <= 0.1
+    && relation.stability.directionHeldInBlocks
+    && relation.stability.trendAdjustedDirectionHeld
+    && relation.stability.outlierAdjustedDirectionHeld
+    && !relation.exclusionReasons.includes("Effect smaller than the practical threshold");
+  const evidence: MatrixRelation["evidence"] = !featureEligible ? "exploratory" : qValue <= 0.05 ? "established" : qValue <= 0.1 ? "promising" : "exploratory";
+  const strength: MatrixRelation["strength"] = evidence === "established" ? "strong" : evidence === "promising" ? "clear" : "light";
+  const exclusionReasons = [...relation.exclusionReasons];
+  if (qValue > 0.1) exclusionReasons.push("q value above the 0.10 highlight threshold");
+  if (relation.sampleSize < highlightMinimum) exclusionReasons.push(`${highlightMinimum} paired ${relation.grain === "day" ? "days" : "weeks"} required for a highlight`);
+  if (!relation.stability.directionHeldInBlocks) exclusionReasons.push("Direction not preserved in at least 3 of 4 time blocks");
+  if (!relation.stability.outlierAdjustedDirectionHeld) exclusionReasons.push("Direction changes after limiting extreme values");
+  return {
+    ...relation, qValue, featureEligible, evidence, stable: featureEligible,
     strength,
+    relevance: evidence === "established" ? 4 : evidence === "promising" ? 3 : 1,
+    exclusionReasons: [...new Set(exclusionReasons)],
   };
 }
 
 export function adjustMatrixRelations(relations: MatrixRelation[]) {
-  const calculable = relations
-    .map((relation, index) => ({ relation, index }))
+  const calculable = relations.map((relation, index) => ({ relation, index }))
     .filter(({ relation }) => !relation.excluded && relation.coefficient !== null)
     .sort((first, second) => first.relation.pValue - second.relation.pValue);
   const qValues = new Map<number, number>();
@@ -272,40 +248,59 @@ export function adjustMatrixRelations(relations: MatrixRelation[]) {
   return relations.map((relation, index) => finalizeRelation(relation, qValues.get(index) ?? relation.qValue));
 }
 
-export function calculateMatrixRelation(predictor: MatrixSeries, outcome: MatrixSeries, lagDays = 0): MatrixRelation {
-  const pairs = pairedPoints(predictor, outcome, lagDays);
-  const enoughPairs = pairs.length >= MINIMUM_COMPUTABLE_OBSERVATIONS;
-  const coefficient = enoughPairs ? coefficientFor(predictor, pairs) : null;
-  const effective = coefficient === null ? pairs.length : effectiveSampleSize(pairs);
-  const interval = coefficient === null ? [-1, 1] as const : confidenceInterval(coefficient, effective);
-  const pValue = coefficient === null ? 1 : pValueFor(coefficient, effective);
+export function calculateMatrixRelation(predictor: MatrixSeries, outcome: MatrixSeries, lagDays = 0, options: MatrixRelationOptions = {}): MatrixRelation {
+  const grain = options.grain ?? "day";
+  const timeScale = options.timeScale ?? (grain === "day" ? "acute" : "chronic");
+  const family = options.family ?? (timeScale === "acute" ? "automatic-acute" : "automatic-chronic");
+  const pairs = pairedPoints(predictor, outcome, lagDays, grain);
+  const coverageBySource = rawCoverage(predictor, outcome, lagDays, grain);
+  const pooledSource = coverageBySource.map((coverage) => coverage.source).join(" + ") || "All data";
+  const combined = fitAdjustedModel(pooledSource, pairs, predictor.kind, grain);
+  const estimates = combined ? [combined] : [];
+  const direction = Math.sign(combined?.effect ?? 0);
+  const blockStability = chronologicalStability(pairs, direction);
+  const winsorized = fitAdjustedModel(pooledSource, pairs, predictor.kind, grain, true);
+  const minimum = grain === "day" ? MINIMUM_DAILY_OBSERVATIONS : MINIMUM_WEEKLY_OBSERVATIONS;
+  const exclusionReasons: string[] = [];
+  if (!combined) exclusionReasons.push(`At least ${minimum} adjusted pairs are required across the full history`);
+  if (predictor.kind === "binary" && (pairs.filter((pair) => pair.predictor === 1).length < MINIMUM_BINARY_GROUP || pairs.filter((pair) => pair.predictor === 0).length < MINIMUM_BINARY_GROUP)) exclusionReasons.push(`At least ${MINIMUM_BINARY_GROUP} yes and ${MINIMUM_BINARY_GROUP} no observations are required across the full history`);
+  if (combined && Math.abs(combined.effect) < (options.minimumMeaningfulEffect ?? 0)) exclusionReasons.push("Effect smaller than the practical threshold");
+  const intervalScale = combined ? standardDeviation(pairs.map((pair) => pair.outcome)) || 1 : 1;
   const relation: MatrixRelation = {
-    predictorId: predictor.id,
-    predictorLabel: predictor.label,
-    outcomeId: outcome.id,
-    outcomeLabel: outcome.label,
-    outcomeUnit: outcome.unit,
-    coefficient,
-    effect: coefficient === null ? null : round(effectFor(predictor, pairs) ?? 0, 1),
-    sampleSize: pairs.length,
-    effectiveSampleSize: round(effective, 1),
-    pValue,
-    qValue: pValue,
-    confidenceLow: interval[0],
-    confidenceHigh: interval[1],
-    relevance: 0,
-    lagDays,
-    method: predictor.kind === "binary" ? "rank-biserial" : "spearman",
-    evidence: coefficient === null ? "collecting" : "early",
-    stable: false,
-    strength: "hidden",
-    excluded: false,
+    predictorId: predictor.id, predictorLabel: predictor.label, outcomeId: outcome.id, outcomeLabel: outcome.label, outcomeUnit: outcome.unit,
+    coefficient: combined ? round(combined.coefficient, 3) : null,
+    effect: combined ? round(combined.effect, 1) : null,
+    effectConfidenceLow: combined ? round(combined.effectConfidenceLow, 1) : null,
+    effectConfidenceHigh: combined ? round(combined.effectConfidenceHigh, 1) : null,
+    sampleSize: coverageBySource.reduce((sum, coverage) => sum + (grain === "day" ? coverage.pairedDays : coverage.pairedWeeks), 0),
+    effectiveSampleSize: pairs.length,
+    pValue: combined?.pValue ?? 1, qValue: combined?.pValue ?? 1,
+    confidenceLow: combined ? combined.effectConfidenceLow / intervalScale : -1,
+    confidenceHigh: combined ? combined.effectConfidenceHigh / intervalScale : 1,
+    relevance: 0, lagDays, grain, timeScale, family, method: "adjusted-dynamic-regression",
+    evidence: combined ? "exploratory" : "insufficient", stable: false,
+    stability: {
+      chronologicalBlocks: blockStability.blocks,
+      directionHeldInBlocks: blockStability.held,
+      trendAdjustedDirectionHeld: Boolean(direction && sourceCenteredDirection(pairs) === direction),
+      outlierAdjustedDirectionHeld: Boolean(direction && Math.sign(winsorized?.effect ?? 0) === direction),
+    },
+    strength: combined ? "light" : "hidden",
+    coverageBySource,
+    sourceEstimates: estimates.map((estimate) => ({
+      source: estimate.source,
+      sampleSize: estimate.sampleSize,
+      effect: round(estimate.effect, 1),
+      effectConfidenceLow: round(estimate.effectConfidenceLow, 1),
+      effectConfidenceHigh: round(estimate.effectConfidenceHigh, 1),
+      coefficient: round(estimate.coefficient, 3),
+      pValue: estimate.pValue,
+    })),
+    featureEligible: false, exclusionReasons, excluded: false,
   };
-  return finalizeRelation(relation, pValue);
+  return finalizeRelation(relation, relation.pValue);
 }
 
 export function calculateCorrelationMatrix(predictors: MatrixSeries[], outcomes: MatrixSeries[], lagDays = 0) {
-  return adjustMatrixRelations(predictors.flatMap((predictor) => outcomes
-    .filter((outcome) => outcome.id !== predictor.id)
-    .map((outcome) => calculateMatrixRelation(predictor, outcome, lagDays))));
+  return adjustMatrixRelations(predictors.flatMap((predictor) => outcomes.filter((outcome) => outcome.id !== predictor.id).map((outcome) => calculateMatrixRelation(predictor, outcome, lagDays))));
 }

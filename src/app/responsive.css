@@ -318,6 +318,16 @@
   .lab-overview .lab-signals a > strong { margin-top: 5px; font-size: 1.45rem; }
   .lab-overview .lab-signals a:nth-child(2n) { border-right: 0; }
   .lab-overview .lab-signals a:nth-child(n+3) { border-bottom: 0; }
+  .lab-timescale__heading { align-items: start; flex-direction: column; gap: 5px; }
+  .lab-timescale__grid { grid-template-columns: 1fr; }
+  .lab-timescale-card { border-right: 0; border-bottom: 1px solid var(--ink); }
+  .lab-timescale-card:last-child { border-bottom: 0; }
+  .lab-timescale-card dl { grid-template-columns: 1fr 1fr; }
+  .lab-timescale-card dl > div:last-child { grid-column: 1 / -1; }
+  .lab-timescale__narrative { grid-template-columns: 1fr; gap: 8px; }
+  .matrix-collection { grid-template-columns: 1fr; gap: 9px; }
+  .matrix-collection ul { display: grid; }
+  .matrix-collection li { justify-content: space-between; }
   .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lab-signals a { min-height: 126px; border-bottom: 1px solid var(--line); }
   .lab-signals a:nth-child(2n) { border-right: 0; }

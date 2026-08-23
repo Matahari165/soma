@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
-import { CorrelationMatrix, LeadMatrixFinding } from "./correlation-matrix";
+import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
 import { DailyJournal } from "./daily-journal";
 import { NarrativeRefresh } from "./narrative-refresh";
 
@@ -22,7 +22,6 @@ function TodaySignals({ data }: { data: PersonalLabSnapshot }) {
 }
 
 export function PersonalLab({ data, connectionNotice = null }: { data: PersonalLabSnapshot; connectionNotice?: "health" | "calendar" | null }) {
-  const lead = data.matrix.topRelations[0] ?? null;
   return <div className="personal-lab-page">
     <NarrativeRefresh enabled={data.needsNarrativeRefresh} />
     {connectionNotice && <div className="lab-notice" role="status">{connectionNotice === "calendar" ? "Google Calendar connected." : "Google Health connected. Import in progress."}</div>}
@@ -30,10 +29,9 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
       <div><span className="page-date">{data.dateLabel}</span><h1>Personal Lab</h1></div>
     </header>
 
-    <div className="lab-overview">
-      {lead ? <LeadMatrixFinding relation={lead} narrative={data.aiNarrative} /> : <section className="lab-empty"><h2>Not enough paired data yet.</h2></section>}
-      <TodaySignals data={data} />
-    </div>
+    <TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} />
+
+    <div className="lab-overview lab-overview--signals"><TodaySignals data={data} /></div>
 
     <div className="lab-workspace">
       <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} entryDate={data.journal.entryDate} /></div>

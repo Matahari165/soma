@@ -28,7 +28,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     ["exercise_minutes", 8],
   ]);
   const usableRelations = input.relations
-    .filter((relation) => !relation.excluded && relation.effect !== null && relation.coefficient !== null)
+    .filter((relation) => !relation.excluded && relation.featureEligible && relation.qValue <= 0.1 && relation.effect !== null && relation.coefficient !== null)
     // Keep the mechanically obvious bedtime → total sleep pair out of the
     // model context even if a caller passes a raw, unsorted relation list.
     .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"))
@@ -37,9 +37,14 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     predictor: relation.predictorLabel,
     outcome: relation.outcomeLabel,
     effect: relation.effect,
+    interval95: [relation.effectConfidenceLow, relation.effectConfidenceHigh],
     unit: relation.outcomeUnit,
-    period: relation.grain === "week" ? "weekly averages" : "daily values",
+    timeScale: relation.timeScale,
+    period: relation.grain === "week" ? "matched non-overlapping weeks" : "daily values",
     timing: relation.lagDays === 0 ? "same day" : relation.lagDays === 1 ? "the next day" : `${relation.lagDays} days later`,
+    sources: relation.sourceEstimates.map((estimate) => estimate.source),
+    pairedObservations: relation.sampleSize,
+    qValue: relation.qValue,
   }));
   const response = await fetch("https://api.x.ai/v1/responses", {
     method: "POST",
@@ -55,7 +60,8 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Write in clear, natural English.",
         "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
         "Each bullet must state exactly one observed relationship, name the input and outcome, and preserve the supplied effect and unit.",
-        "When period is weekly averages, describe a contrast between weeks and do not present it as a one-day change.",
+        "Keep acute and chronic findings separate. When period is matched non-overlapping weeks, describe a contrast between weeks and never present it as a one-day change.",
+        "A short-term decrease after intense exercise may coexist with a flat or beneficial long-term trend; state that distinction when both scales are supplied.",
         "Use simple wording. Never mention rankings, statistical methods, technical metadata, data counts, uncertainty ranges, or how the result was computed.",
         "Never mention or explain the distinction between correlation and causation, and do not add a generic statistical caveat.",
         "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",

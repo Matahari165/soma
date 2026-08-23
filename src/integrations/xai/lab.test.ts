@@ -27,6 +27,8 @@ describe("Grok Personal Lab output", () => {
       outcomeUnit: "bpm",
       coefficient: -0.4,
       effect: -3,
+      effectConfidenceLow: -4.5,
+      effectConfidenceHigh: -1.5,
       sampleSize: 60,
       effectiveSampleSize: 42,
       pValue: 0.01,
@@ -35,19 +37,27 @@ describe("Grok Personal Lab output", () => {
       confidenceHigh: -0.2,
       relevance: 0.8,
       lagDays: 1,
-      method: "spearman",
+      grain: "day",
+      timeScale: "acute",
+      family: "automatic-acute",
+      method: "adjusted-dynamic-regression",
       evidence: "established",
       stable: true,
+      stability: { chronologicalBlocks: 4, directionHeldInBlocks: true, trendAdjustedDirectionHeld: true, outlierAdjustedDirectionHeld: true },
       strength: "clear",
+      coverageBySource: [{ source: "Fitbit", pairedDays: 60, pairedWeeks: 0 }],
+      sourceEstimates: [{ source: "Fitbit", sampleSize: 60, effect: -3, effectConfidenceLow: -4.5, effectConfidenceHigh: -1.5, coefficient: -0.4, pValue: 0.01 }],
+      featureEligible: true,
+      exclusionReasons: [],
       excluded: false,
     }] });
 
     const request = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(request?.body)) as { reasoning?: { effort?: string }; max_output_tokens?: number; store?: boolean; input?: string; instructions?: string };
     expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 1200, store: false });
-    expect(body.input).not.toContain("qValue");
-    expect(body.input).not.toContain("confidenceLow");
-    expect(body.input).not.toContain("sampleSize");
+    expect(body.input).toContain("qValue");
+    expect(body.input).toContain("interval95");
+    expect(body.input).toContain("pairedObservations");
     expect(body.input).not.toContain("method");
     expect(body.instructions).toContain("clear, natural English");
     expect(body.instructions).toContain("1 to 4 short effect bullets");
