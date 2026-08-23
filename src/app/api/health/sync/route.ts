@@ -33,6 +33,19 @@ function isDashboardRefreshJob(job: Pick<OpenJob, "data_types">, expectedTypes: 
   return job.data_types?.length === expected.size && job.data_types.every((dataType) => expected.has(dataType));
 }
 
+function continueHealthSync(jobId: string) {
+  after(async () => {
+    try {
+      await drainGoogleHealthSyncJob(jobId, { maxDurationMs: 45_000 });
+    } catch (error) {
+      console.error("[api/health/sync] manual background update failed", {
+        jobId,
+        error: error instanceof Error ? error.message : "Unknown sync error.",
+      });
+    }
+  });
+}
+
 function previewResponse(details = false) {
   const now = new Date().toISOString();
   const start = new Date();
@@ -134,6 +147,7 @@ export async function POST() {
   if (openJobsError) return NextResponse.json({ error: "Sync queue could not be checked." }, { status: 500 });
   const existing = ((openJobs ?? []) as OpenJob[]).find((job) => isDashboardRefreshJob(job, dataTypes));
   if (existing) {
+    continueHealthSync(existing.id);
     return NextResponse.json({ status: toSyncStatus(existing, {}), message: "Google Health is already updating in the background." }, { status: 202 });
   }
 
@@ -152,16 +166,7 @@ export async function POST() {
   }).select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at").single();
   if (jobError || !job) return NextResponse.json({ error: "Sync job could not be created." }, { status: 500 });
 
-  after(async () => {
-    try {
-      await drainGoogleHealthSyncJob(job.id, { maxDurationMs: 45_000 });
-    } catch (error) {
-      console.error("[api/health/sync] manual background update failed", {
-        jobId: job.id,
-        error: error instanceof Error ? error.message : "Unknown sync error.",
-      });
-    }
-  });
+  continueHealthSync(job.id);
 
   return NextResponse.json({
     status: toSyncStatus(job as OpenJob, {}),
