@@ -43,6 +43,8 @@ describe("wearable data window", () => {
       record("sleep", "2025-05-12", null, { payload: whoopMirror }),
       record("sleep", "2025-05-12", "WHOOP", { provider: "whoop_export" }),
       record("daily-heart-rate-variability", "2025-05-12", "WHOOP", { provider: "whoop_export" }),
+      record("daily-exercise-summary", "2025-05-12", "WHOOP", { provider: "whoop_export" }),
+      record("time-in-heart-rate-zone", "2025-05-12", "WHOOP", { provider: "whoop_export" }),
       record("steps", "2026-05-28", null),
       record("daily-resting-heart-rate", "2026-05-29", "Google Fitbit Air"),
       record("steps", "2026-05-29", null),
@@ -52,9 +54,11 @@ describe("wearable data window", () => {
     expect(recordsInsideWearableWindow(records, "Europe/Paris").records).toEqual([
       records[2],
       records[3],
+      records[4],
       records[5],
-      records[6],
       records[7],
+      records[8],
+      records[9],
     ]);
   });
 

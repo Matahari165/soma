@@ -291,8 +291,9 @@
   .lab-header { grid-template-columns: 1fr; align-items: start; gap: 24px; }
   .lab-header > p { max-width: 48ch; }
   .lab-overview { grid-template-columns: 1fr; }
+  .lab-overview:has(.lab-featured--brief) { grid-template-columns: 1fr; }
   .lab-overview .lab-signals { grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 0; border-left: 1px solid var(--ink); }
-  .lab-overview .lab-signals a { min-height: 92px; border-right: 1px solid var(--line); border-bottom: 0; }
+  .lab-overview .lab-signals a { min-height: 76px; border-right: 1px solid var(--line); border-bottom: 0; }
   .lab-overview .lab-signals a:nth-child(2n) { border-right: 1px solid var(--line); }
   .lab-overview .lab-signals a:last-child { border-right: 0; }
   .lab-workspace { grid-template-columns: 1fr; }
@@ -302,16 +303,19 @@
 }
 
 @media (max-width: 700px) {
-  .personal-lab-page, .discoveries-page { padding: 22px 16px 92px; }
-  .lab-header { padding-bottom: 32px; }
-  .lab-header h1 { font-size: clamp(3.5rem, 18vw, 5.2rem); }
+  .personal-lab-page, .discoveries-page { padding: 14px 14px 84px; }
+  .lab-header { padding-bottom: 18px; }
+  .lab-header h1 { font-size: clamp(2.8rem, 14vw, 4.2rem); }
   .lab-question { grid-template-columns: 1fr; align-items: start; }
   .lab-question dl { width: 100%; }
   .lab-question dl > div { flex: 1; }
-  .lab-featured { min-height: 340px; padding: 30px 22px; }
-  .lab-featured h2 { font-size: clamp(2.45rem, 12vw, 4rem); }
+  .lab-featured { min-height: 240px; padding: 24px 18px; }
+  .lab-featured h2 { font-size: clamp(2.15rem, 10vw, 3.3rem); }
+  .lab-overview .lab-featured { min-height: 0; padding: 20px 18px; }
+  .lab-overview .lab-featured h2 { font-size: clamp(1.8rem, 8vw, 2.55rem); }
   .lab-overview .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lab-overview .lab-signals a { min-height: 100px; border-bottom: 1px solid var(--line); }
+  .lab-overview .lab-signals a { min-height: 70px; border-bottom: 1px solid var(--line); }
+  .lab-overview .lab-signals a > strong { margin-top: 5px; font-size: 1.45rem; }
   .lab-overview .lab-signals a:nth-child(2n) { border-right: 0; }
   .lab-overview .lab-signals a:nth-child(n+3) { border-bottom: 0; }
   .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -333,7 +337,7 @@
   .journal-variable-edit,
   .journal-new-variable { grid-template-columns: 1fr; }
   .journal-actions .primary-button { width: 100%; justify-content: center; }
-  .matrix-header { align-items: start; flex-direction: column; }
+  .matrix-header { align-items: start; flex-direction: column; gap: 14px; padding-bottom: 12px; }
   .matrix-grain { width: 100%; }
   .matrix-grain button { flex: 1; justify-content: center; }
   .matrix-scroll { display: none; }

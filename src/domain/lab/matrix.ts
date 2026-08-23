@@ -25,6 +25,7 @@ export type MatrixRelation = {
   confidenceHigh: number;
   relevance: number;
   lagDays: number;
+  grain?: "day" | "week";
   method: "spearman" | "rank-biserial";
   evidence: "collecting" | "early" | "growing" | "established";
   stable: boolean;

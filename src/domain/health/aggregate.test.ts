@@ -54,6 +54,9 @@ describe("aggregateHealthRecords", () => {
       record({ provider: "whoop_export", data_type: "daily-respiratory-rate", payload: { dailyRespiratoryRate: { averageBreathsPerMinute: 17.7 } } }),
       record({ provider: "whoop_export", data_type: "daily-oxygen-saturation", payload: { dailyOxygenSaturation: { averagePercentage: 96.5 } } }),
       record({ provider: "whoop_export", data_type: "daily-sleep-temperature-derivations", payload: { dailySleepTemperatureDerivations: { nightlyTemperatureCelsius: 34.39, baselineTemperatureCelsius: 34.1 } } }),
+      record({ provider: "whoop_export", data_type: "exercise", start_time: "2026-08-07T10:00:00Z", end_time: "2026-08-07T11:00:00Z", payload: { exercise: { exerciseType: "RUNNING" } } }),
+      record({ provider: "whoop_export", data_type: "daily-exercise-summary", payload: { dailyExerciseSummary: { minutes: 60 } } }),
+      record({ provider: "whoop_export", data_type: "time-in-heart-rate-zone", payload: { timeInHeartRateZone: { timeInHeartRateZones: [{ heartRateZone: "VIGOROUS", durationMinutes: 28 }, { heartRateZone: "PEAK", durationMinutes: 5 }] } } }),
     ]);
 
     expect(day.sleep_minutes).toBe(415);
@@ -65,6 +68,9 @@ describe("aggregateHealthRecords", () => {
     expect(day.respiratory_rate).toBe(17.7);
     expect(day.oxygen_saturation).toBe(96.5);
     expect(day.skin_temperature_delta).toBeCloseTo(0.29);
+    expect(day.exercise_minutes).toBe(60);
+    expect(day.vigorous_zone_minutes).toBe(28);
+    expect(day.peak_zone_minutes).toBe(5);
   });
 
   it("sums activity levels and uses measured heart-rate-zone intervals", () => {

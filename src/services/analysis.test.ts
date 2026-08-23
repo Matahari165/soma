@@ -18,5 +18,6 @@ describe("civil-time health analysis", () => {
     expect(ANALYSIS_DATA_TYPES).not.toContain("heart-rate-variability");
     expect(ANALYSIS_DATA_TYPES).toContain("daily-heart-rate-variability");
     expect(ANALYSIS_DATA_TYPES).toContain("daily-resting-heart-rate");
+    expect(ANALYSIS_DATA_TYPES).toContain("daily-exercise-summary");
   });
 });

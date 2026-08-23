@@ -23,6 +23,7 @@ export const ANALYSIS_DATA_TYPES = [
   "active-energy-burned",
   "time-in-heart-rate-zone",
   "exercise",
+  "daily-exercise-summary",
   "active-minutes",
   "altitude",
   "blood-glucose",

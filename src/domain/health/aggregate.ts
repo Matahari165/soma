@@ -245,6 +245,7 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
     const wakeTime = sleep.map((record) => record.end_time).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
     const values = (type: string, keys: string[]) => byType(type).map((record) => findNumber(record.payload, keys)).filter((value): value is number => value !== null);
     const exerciseMinutes = byType("exercise").map((record) => minutesBetween(record.start_time, record.end_time)).filter((value): value is number => value !== null);
+    const exerciseSummaryMinutes = total(values("daily-exercise-summary", ["minutes"]));
     const sedentaryMinutes = byType("sedentary-period").map((record) => minutesBetween(record.start_time, record.end_time)
       ?? durationMinutes(findStrings(record.payload, "durationSum").at(0))).filter((value): value is number => value !== null);
     const activeMinutes = byType("active-minutes").map((record) => total(findNumbers(record.payload, ["activeMinutes", "activeMinutesSum"]))).filter((value): value is number => value !== null);
@@ -307,7 +308,7 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
       peak_zone_minutes: peakZone,
       active_minutes: total(activeMinutes),
       sedentary_minutes: total(sedentaryMinutes),
-      exercise_minutes: total(exerciseMinutes),
+      exercise_minutes: exerciseSummaryMinutes ?? total(exerciseMinutes),
       distance_km: (() => { const millimeters = total(values("distance", ["millimeters", "millimetersSum", "distanceMillimeters"])); return millimeters === null ? null : Math.round((millimeters / 1_000_000) * 100) / 100; })(),
       floors: total(values("floors", ["count", "countSum"])),
       weight_kg: (() => { const grams = average(values("weight", ["weightGrams", "weightGramsAvg"])); return grams === null ? null : Math.round((grams / 1000) * 100) / 100; })(),

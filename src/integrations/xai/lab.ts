@@ -38,6 +38,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     outcome: relation.outcomeLabel,
     effect: relation.effect,
     unit: relation.outcomeUnit,
+    period: relation.grain === "week" ? "weekly averages" : "daily values",
     timing: relation.lagDays === 0 ? "same day" : relation.lagDays === 1 ? "the next day" : `${relation.lagDays} days later`,
   }));
   const response = await fetch("https://api.x.ai/v1/responses", {
@@ -54,6 +55,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Write in clear, natural English.",
         "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
         "Each bullet must state exactly one observed relationship, name the input and outcome, and preserve the supplied effect and unit.",
+        "When period is weekly averages, describe a contrast between weeks and do not present it as a one-day change.",
         "Use simple wording. Never mention rankings, statistical methods, technical metadata, data counts, uncertainty ranges, or how the result was computed.",
         "Never mention or explain the distinction between correlation and causation, and do not add a generic statistical caveat.",
         "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",

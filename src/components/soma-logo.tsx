@@ -16,13 +16,9 @@ export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProp
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      <path className="soma-symbol__line soma-symbol__axis" d="M10 38h28" vectorEffect="non-scaling-stroke" strokeWidth="1.35" opacity=".44" />
-      <path className="soma-symbol__line soma-symbol__signal" d="M10 31.5 18 23l6 5 13-14" vectorEffect="non-scaling-stroke" strokeWidth="1.9" />
-      <path className="soma-symbol__line soma-symbol__measure" d="M10 10v28" vectorEffect="non-scaling-stroke" strokeWidth="1.35" opacity=".44" />
-      <circle className="soma-symbol__node" cx="10" cy="31.5" r="2.4" fill="currentColor" stroke="none" />
-      <circle className="soma-symbol__node" cx="18" cy="23" r="2.4" fill="currentColor" stroke="none" />
-      <circle className="soma-symbol__node" cx="24" cy="28" r="2.4" fill="currentColor" stroke="none" />
-      <circle className="soma-symbol__node" cx="37" cy="14" r="2.4" fill="currentColor" stroke="none" />
+      <circle className="soma-symbol__dish" cx="24" cy="24" r="15.5" vectorEffect="non-scaling-stroke" strokeWidth="1.7" />
+      <path className="soma-symbol__measure" d="M8.5 24h31" vectorEffect="non-scaling-stroke" strokeWidth="1.35" opacity=".46" />
+      <circle className="soma-symbol__sample" cx="29.5" cy="24" r="3.25" fill="currentColor" stroke="none" />
     </svg>
   );
 }

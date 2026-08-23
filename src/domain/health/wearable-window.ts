@@ -13,6 +13,9 @@ const whoopComparableTypes = new Set([
   "daily-respiratory-rate",
   "daily-oxygen-saturation",
   "daily-sleep-temperature-derivations",
+  "exercise",
+  "daily-exercise-summary",
+  "time-in-heart-rate-zone",
 ]);
 
 export type WearableDatedRecord = {

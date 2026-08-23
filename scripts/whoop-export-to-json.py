@@ -6,7 +6,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from datetime import date
+import re
+from datetime import date, datetime
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -53,11 +54,12 @@ def record(
     start_time: str | None = None,
     end_time: str | None = None,
     recording_method: str = "DERIVED",
+    source_key: str | None = None,
 ) -> dict[str, Any]:
     return {
         "provider": "whoop_export",
         "data_type": data_type,
-        "source_record_id": f"whoop-export:v1:{data_type}:{metric_date}",
+        "source_record_id": f"whoop-export:v1:{data_type}:{source_key or metric_date}",
         "start_time": start_time,
         "end_time": end_time,
         "civil_date": metric_date,
@@ -68,9 +70,15 @@ def record(
     }
 
 
+def exercise_type(value: str) -> str:
+    normalized = re.sub(r"[^A-Z0-9]+", "_", value.strip().upper()).strip("_")
+    return normalized or "OTHER"
+
+
 def normalize(export_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     physiology = read_csv(export_dir / "physiological_cycles.csv")
     sleeps = [row for row in read_csv(export_dir / "sleeps.csv") if row["Nap"].lower() == "false"]
+    workouts = read_csv(export_dir / "workouts.csv")
 
     sleep_by_date: dict[str, dict[str, str]] = {}
     for row in sleeps:
@@ -187,6 +195,96 @@ def normalize(export_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         }))
         temperatures.append(temperature)
 
+    workout_days: set[str] = set()
+    exercise_minutes_by_date = {metric_date: 0.0 for metric_date in dates}
+    zone_minutes_by_date: dict[str, dict[str, float]] = {}
+    latest_workout_end: dict[str, str] = {}
+    imported_workouts = 0
+    for workout in workouts:
+        timezone = workout["Cycle timezone"]
+        start_time = iso_timestamp(workout["Workout start time"], timezone)
+        end_time = iso_timestamp(workout["Workout end time"], timezone)
+        metric_date = start_time[:10]
+        if metric_date not in dates:
+            continue
+
+        duration = number(workout["Duration (min)"])
+        if duration is None:
+            raise ValueError(f"Missing workout duration on {metric_date}")
+        measured_duration = (datetime.fromisoformat(end_time) - datetime.fromisoformat(start_time)).total_seconds() / 60
+        assert_range("workout duration", duration, 1, 1440, metric_date)
+        if abs(measured_duration - duration) > 1.1:
+            raise ValueError(f"Inconsistent workout duration on {metric_date}")
+
+        zone_percentages = [number(workout[f"HR Zone {index} %"]) or 0 for index in range(1, 6)]
+        for index, percentage in enumerate(zone_percentages, start=1):
+            assert_range(f"heart-rate zone {index} percentage", percentage, 0, 100, metric_date)
+        if sum(zone_percentages) > 100.1:
+            raise ValueError(f"Heart-rate zone percentages exceed 100 on {metric_date}")
+
+        activity_name = workout["Activity name"].strip() or "Other"
+        average_heart_rate = number(workout["Average HR (bpm)"])
+        maximum_heart_rate = number(workout["Max HR (bpm)"])
+        exercise_payload: dict[str, Any] = {
+            "exerciseType": exercise_type(activity_name),
+            "title": activity_name,
+        }
+        if average_heart_rate is not None:
+            exercise_payload["averageHeartRate"] = compact_number(average_heart_rate)
+        if maximum_heart_rate is not None:
+            exercise_payload["maximumHeartRate"] = compact_number(maximum_heart_rate)
+        output.append(record(
+            "exercise",
+            metric_date,
+            end_time,
+            {
+                "exercise": exercise_payload,
+            },
+            start_time=start_time,
+            end_time=end_time,
+            recording_method="PASSIVELY_MEASURED",
+            source_key=start_time,
+        ))
+        imported_workouts += 1
+        workout_days.add(metric_date)
+        exercise_minutes_by_date[metric_date] += duration
+        latest_workout_end[metric_date] = max(latest_workout_end.get(metric_date, end_time), end_time)
+
+        mapped_minutes = {
+            "LIGHT": duration * zone_percentages[0] / 100,
+            "MODERATE": duration * zone_percentages[1] / 100,
+            "VIGOROUS": duration * (zone_percentages[2] + zone_percentages[3]) / 100,
+            "PEAK": duration * zone_percentages[4] / 100,
+        }
+        daily_zones = zone_minutes_by_date.setdefault(metric_date, {zone: 0 for zone in mapped_minutes})
+        for zone, minutes in mapped_minutes.items():
+            daily_zones[zone] += minutes
+
+    active_zone_days = sum(1 for zones in zone_minutes_by_date.values() if any(minutes > 0 for minutes in zones.values()))
+    for metric_date in dates:
+        fallback_measured_at = iso_timestamp(sleep_by_date[metric_date]["Wake onset"], sleep_by_date[metric_date]["Cycle timezone"])
+        measured_at = latest_workout_end.get(metric_date, fallback_measured_at)
+        output.append(record(
+            "daily-exercise-summary",
+            metric_date,
+            measured_at,
+            {"dailyExerciseSummary": {"minutes": round(exercise_minutes_by_date[metric_date], 2)}},
+        ))
+        zones = zone_minutes_by_date.get(metric_date, {"LIGHT": 0, "MODERATE": 0, "VIGOROUS": 0, "PEAK": 0})
+        output.append(record(
+            "time-in-heart-rate-zone",
+            metric_date,
+            measured_at,
+            {
+                "timeInHeartRateZone": {
+                    "timeInHeartRateZones": [
+                        {"heartRateZone": zone, "durationMinutes": round(minutes, 2)}
+                        for zone, minutes in zones.items()
+                    ],
+                },
+            },
+        ))
+
     source_ids = {item["source_record_id"] for item in output}
     if len(source_ids) != len(output):
         raise ValueError("Duplicate normalized WHOOP source identifiers")
@@ -198,6 +296,10 @@ def normalize(export_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         "gapDays": gap_days,
         "records": len(output),
         "missingOxygenDays": missing_oxygen_days,
+        "workouts": imported_workouts,
+        "workoutDays": len(workout_days),
+        "heartRateZoneDays": len(dates),
+        "activeHeartRateZoneDays": active_zone_days,
         "temperatureBaselineDays": sum(
             1 for item in output
             if item["data_type"] == "daily-sleep-temperature-derivations"

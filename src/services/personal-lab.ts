@@ -1,6 +1,7 @@
 import { analyzePersonalLab, type LabObservation, type LabDiscovery } from "@/domain/lab/insights";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
+import { aggregateWeekly, weekStart } from "@/domain/lab/weekly";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -45,13 +46,13 @@ type HealthDay = {
   oxygen_saturation: number | null;
   skin_temperature_delta: number | null;
   vigorous_zone_minutes: number | null;
+  peak_zone_minutes: number | null;
   active_minutes: number | null;
   exercise_minutes: number | null;
   data_quality?: { primaryWearable?: string | null };
 };
 
 type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null };
-type ExerciseRecord = { civil_date: string | null; payload: unknown };
 export type LabMatrixRow = { id: string; label: string; grain: "day" | "week"; lagLabel: string; relations: MatrixRelation[] };
 
 export type PersonalLabSnapshot = {
@@ -122,19 +123,8 @@ function minutesInTimezone(value: string, timeZone: string) {
   return result < 12 * 60 ? result + 24 * 60 : result;
 }
 
-function weekStart(date: string) {
-  const value = new Date(`${date}T12:00:00Z`);
-  value.setUTCDate(value.getUTCDate() - ((value.getUTCDay() + 6) % 7));
-  return value.toISOString().slice(0, 10);
-}
-
-function aggregateWeekly(points: MatrixSeries["points"], mode: "sum" | "mean", allowedWeeks: Set<string>, minimumDays: number) {
-  const grouped = new Map<string, MatrixSeries["points"]>();
-  for (const point of points) grouped.set(weekStart(point.date), [...(grouped.get(weekStart(point.date)) ?? []), point]);
-  return [...grouped]
-    .filter(([date, values]) => allowedWeeks.has(date) && values.length >= minimumDays && new Set(values.map((point) => point.segment).filter(Boolean)).size <= 1)
-    .map(([date, values]) => ({ date, value: mode === "sum" ? values.reduce((sum, point) => sum + point.value, 0) : values.reduce((sum, point) => sum + point.value, 0) / values.length, segment: values.find((point) => point.segment)?.segment }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+function shiftSeriesDates(series: MatrixSeries, days: number): MatrixSeries {
+  return { ...series, points: series.points.map((point) => ({ ...point, date: addDays(point.date, days) })) };
 }
 
 function healthSeries(health: HealthDay[], id: string, label: string, unit: string, key: keyof HealthDay): MatrixSeries {
@@ -150,16 +140,17 @@ function healthSeries(health: HealthDay[], id: string, label: string, unit: stri
   };
 }
 
-function exerciseType(payload: unknown): string | null {
-  if (Array.isArray(payload)) {
-    for (const item of payload) { const found = exerciseType(item); if (found) return found; }
-    return null;
-  }
-  if (typeof payload !== "object" || payload === null) return null;
-  const object = payload as Record<string, unknown>;
-  if (typeof object.exerciseType === "string") return object.exerciseType;
-  for (const value of Object.values(object)) { const found = exerciseType(value); if (found) return found; }
-  return null;
+function combinedHealthSeries(health: HealthDay[], id: string, label: string, unit: string, keys: Array<keyof HealthDay>): MatrixSeries {
+  return {
+    id,
+    label,
+    unit,
+    kind: "numeric",
+    points: health.flatMap((day) => {
+      const values = keys.map((key) => toNumber(day[key])).filter((value): value is number => value !== null);
+      return values.length ? [{ date: day.metric_date, value: values.reduce((sum, value) => sum + value, 0), segment: day.data_quality?.primaryWearable ?? undefined }] : [];
+    }),
+  };
 }
 
 function buildCorrelationMatrix(input: {
@@ -167,7 +158,6 @@ function buildCorrelationMatrix(input: {
   observations: LabObservation[];
   variables: JournalVariable[];
   entries: JournalEntry[];
-  exercises: ExerciseRecord[];
   timeZone: string;
 }) {
   const health = [...input.health].sort((a, b) => a.metric_date.localeCompare(b.metric_date));
@@ -180,7 +170,6 @@ function buildCorrelationMatrix(input: {
     healthSeries(health, "rhr", "Resting HR", "bpm", "resting_heart_rate"),
     healthSeries(health, "respiratory", "Breathing rate", "/min", "respiratory_rate"),
     healthSeries(health, "spo2", "SpO₂", "%", "oxygen_saturation"),
-    healthSeries(health, "temperature", "Temperature", "°C", "skin_temperature_delta"),
   ];
   const deepWorkSeries: MatrixSeries = { id: "calendar_deep_work", label: "Deep Work (Calendar)", unit: "min", kind: "numeric", points: input.observations.flatMap((day) => day.deepWorkMinutes === null ? [] : [{ date: day.date, value: day.deepWorkMinutes }]) };
   const automaticRows: Array<{ series: MatrixSeries; lagDays: number; label: string }> = [
@@ -193,7 +182,7 @@ function buildCorrelationMatrix(input: {
     { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), lagDays: 0, label: "same day" },
     { series: healthSeries(health, "steps", "Steps", "steps", "steps"), lagDays: 1, label: "next day" },
     { series: healthSeries(health, "zone_minutes", "Zone minutes", "min", "zone_minutes"), lagDays: 1, label: "next day" },
-    { series: healthSeries(health, "vigorous_minutes", "Vigorous effort", "min", "vigorous_zone_minutes"), lagDays: 1, label: "next day" },
+    { series: combinedHealthSeries(health, "intense_minutes", "Intense-zone effort", "min", ["vigorous_zone_minutes", "peak_zone_minutes"]), lagDays: 1, label: "next day" },
     { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), lagDays: 1, label: "next day" },
     { series: healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes"), lagDays: 1, label: "next day" },
     { series: deepWorkSeries, lagDays: 1, label: "next day" },
@@ -233,7 +222,6 @@ function buildCorrelationMatrix(input: {
     rhr: .5,
     respiratory: .1,
     spo2: .2,
-    temperature: .1,
   };
   const removeNegligibleEffect = (relation: MatrixRelation) => relation.effect !== null
     && Math.abs(relation.effect) < (minimumVisibleEffect[relation.outcomeId] ?? 0)
@@ -249,7 +237,8 @@ function buildCorrelationMatrix(input: {
     lagLabel: row.label,
     relations: dailyOutcomes.map((outcome) => {
       const relation = calculateMatrixRelation(row.series, outcome, row.lagDays);
-      return redundant(row.series.id, outcome.id) ? { ...relation, coefficient: null, effect: null, strength: "hidden" as const, stable: false, excluded: true } : removeNegligibleEffect(relation);
+      const dailyRelation = { ...relation, grain: "day" as const };
+      return redundant(row.series.id, outcome.id) ? { ...dailyRelation, coefficient: null, effect: null, strength: "hidden" as const, stable: false, excluded: true } : removeNegligibleEffect(dailyRelation);
     }),
   }));
 
@@ -260,29 +249,26 @@ function buildCorrelationMatrix(input: {
   }
   const healthWeeks = [...datesByWeek].filter(([, dates]) => dates.size === 7).map(([week]) => week).sort();
   const completeHealthWeeks = new Set(healthWeeks);
-  const weeklyOutcomes = dailyOutcomes.map((series) => ({ ...series, points: aggregateWeekly(series.points, "mean", completeHealthWeeks, 4) }));
-  const runsByWeek = new Map<string, number>();
-  for (const exercise of input.exercises) {
-    if (!exercise.civil_date || !exerciseType(exercise.payload)?.toUpperCase().includes("RUN")) continue;
-    const week = weekStart(exercise.civil_date);
-    runsByWeek.set(week, (runsByWeek.get(week) ?? 0) + 1);
-  }
-  const weeklyPredictors: MatrixSeries[] = [
-    { id: "runs_week", label: "Runs per week", unit: "runs", kind: "numeric", points: healthWeeks.map((date) => ({ date, value: runsByWeek.get(date) ?? 0 })) },
-    ...[
-      healthSeries(health, "vigorous_week", "Vigorous effort per week", "min", "vigorous_zone_minutes"),
-      healthSeries(health, "active_week", "Active time per week", "min", "active_minutes"),
-      healthSeries(health, "exercise_week", "Exercise per week", "min", "exercise_minutes"),
-      healthSeries(health, "zone_week", "Cardio zones per week", "min", "zone_minutes"),
-    ].map((series) => ({ ...series, points: aggregateWeekly(series.points, "sum", completeHealthWeeks, 7) })),
-  ];
-  const weeklyRows: LabMatrixRow[] = weeklyPredictors.map((series) => ({
-    id: series.id,
-    label: series.label,
-    grain: "week",
-    lagLabel: "same week",
-    relations: weeklyOutcomes.map((outcome) => removeNegligibleEffect(calculateMatrixRelation(series, outcome))),
-  }));
+  const weeklyRows: LabMatrixRow[] = [...journalRows, ...automaticRows].map((row) => {
+    const minimumPredictorDays = row.series.id.startsWith("journal:") || row.series.id === "calendar_deep_work" ? 2 : 4;
+    const weeklyPredictor: MatrixSeries = {
+      ...row.series,
+      kind: "numeric",
+      points: aggregateWeekly(row.series.points, "mean", completeHealthWeeks, minimumPredictorDays),
+    };
+    return {
+      id: row.series.id,
+      label: row.series.label,
+      grain: "week",
+      lagLabel: row.lagDays === 0 ? "week avg · same-day" : "week avg · next-day",
+      relations: dailyOutcomes.map((outcome) => {
+        const alignedOutcome = shiftSeriesDates(outcome, -row.lagDays);
+        const weeklyOutcome = { ...alignedOutcome, points: aggregateWeekly(alignedOutcome.points, "mean", completeHealthWeeks, 4) };
+        const relation = { ...calculateMatrixRelation(weeklyPredictor, weeklyOutcome), lagDays: row.lagDays, grain: "week" as const };
+        return redundant(row.series.id, outcome.id) ? { ...relation, coefficient: null, effect: null, strength: "hidden" as const, stable: false, excluded: true } : removeNegligibleEffect(relation);
+      }),
+    };
+  });
   const rows = [...dailyRows, ...weeklyRows];
   const adjustedRelations = adjustMatrixRelations(rows.flatMap((row) => row.relations));
   let relationIndex = 0;
@@ -290,9 +276,11 @@ function buildCorrelationMatrix(input: {
     ...row,
     relations: row.relations.map(() => deprioritizeObviousRelation(removeNegligibleEffect(adjustedRelations[relationIndex++]))),
   }));
-  const topRelations = adjustedRows.flatMap((row) => row.relations).filter((relation) => !relation.excluded && relation.coefficient !== null && relation.strength !== "hidden")
+  const rankedRelations = (grain: "day" | "week") => adjustedRows.filter((row) => row.grain === grain).flatMap((row) => row.relations).filter((relation) => !relation.excluded && relation.coefficient !== null && relation.strength !== "hidden")
     .sort((a, b) => b.relevance - a.relevance || Math.abs(b.coefficient ?? 0) - Math.abs(a.coefficient ?? 0) || b.effectiveSampleSize - a.effectiveSampleSize)
     .slice(0, 8);
+  const weeklyTopRelations = rankedRelations("week");
+  const topRelations = weeklyTopRelations.length ? weeklyTopRelations : rankedRelations("day");
   return {
     outcomes: dailyOutcomes.map(({ id, label, unit }) => ({ id, label, unit })),
     rows: adjustedRows,
@@ -344,7 +332,6 @@ function previewData() {
   const scores: ScoreDay[] = [];
   const calendars: CalendarDay[] = [];
   const checkins: DailyCheckin[] = [];
-  const exercises: ExerciseRecord[] = [];
   for (let index = 0; index < 210; index += 1) {
     const date = new Date(today);
     date.setDate(date.getDate() - (209 - index));
@@ -357,8 +344,7 @@ function previewData() {
     const vigorous = 4 + (index % 4) * 5;
     const previousVigorous = 4 + ((index + 3) % 4) * 5;
     const previewWeek = Math.floor(index / 7) % 3;
-    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 44 + previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 64 - previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
-    if (index % 7 === 1 || (previewWeek > 0 && index % 7 === 5) || (previewWeek === 2 && index % 7 === 3)) exercises.push({ civil_date: dateString, payload: { exercise: { exerciseType: "RUNNING" } } });
+    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 44 + previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 64 - previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },
@@ -384,7 +370,7 @@ function previewData() {
   const yesterday = addDays(dateInTimezone("Europe/Paris"), -1);
   const entry = (name: string, value: JournalEntry["value"]): JournalEntry => ({ variableId: variables.find((variable) => variable.name === name)?.id as string, entryDate: yesterday, value });
   const journal = { variables, entries: [entry("Alcohol", 0), entry("Deep Work", 165), entry("Bedtime", "22:35")] };
-  return { health, scores, calendars, checkins, exercises, journal };
+  return { health, scores, calendars, checkins, journal };
 }
 
 function buildSnapshot(input: {
@@ -394,7 +380,6 @@ function buildSnapshot(input: {
   scores: ScoreDay[];
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
-  exercises: ExerciseRecord[];
   journal: { variables: JournalVariable[]; entries: JournalEntry[] };
   narrative: { headline: string; summary: string; highlights: unknown; source_facts: unknown; model: string; generated_at: string } | null;
   allowNarrativeRefresh?: boolean;
@@ -407,7 +392,7 @@ function buildSnapshot(input: {
   const todayObservation = observations.find((day) => day.date === todayDate);
   const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
   const checkin = input.checkins.find((day) => day.checkin_date === entryDate) ?? null;
-  const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, exercises: input.exercises, timeZone: input.timeZone });
+  const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, timeZone: input.timeZone });
   const highlights = Array.isArray(input.narrative?.highlights) ? input.narrative.highlights.filter((value): value is string => typeof value === "string") : [];
   const lead = matrix.topRelations[0];
   const sourceLead = Array.isArray(input.narrative?.source_facts) && typeof input.narrative.source_facts[0] === "object" && input.narrative.source_facts[0] !== null
@@ -470,17 +455,16 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
   const { data: profile, error: profileError } = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
   if (profileError) throw new Error("Your Personal Lab profile could not be loaded.");
   const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
-  const [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, exerciseResult, narrativeResult, journal] = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,active_minutes,exercise_minutes,data_quality").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
+  const [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, journal] = await Promise.all([
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,peak_zone_minutes,active_minutes,exercise_minutes,data_quality").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(2190),
     admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
     admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).gte("checkin_date", analysisStart).order("checkin_date", { ascending: false }).limit(730),
     admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
-    admin.from("health_records").select("civil_date,payload").eq("user_id", user.id).eq("data_type", "exercise").gte("civil_date", analysisStart).order("civil_date", { ascending: false }).limit(1000),
     admin.from("lab_narratives").select("headline,summary,highlights,source_facts,model,generated_at").eq("user_id", user.id).maybeSingle(),
     loadJournalData(user.id, { from: analysisStart }),
   ]);
-  const failed = [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, exerciseResult, narrativeResult].find((result) => result.error);
+  const failed = [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult].find((result) => result.error);
   if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
   return buildSnapshot({
     user,
@@ -489,7 +473,6 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
     scores: (scoresResult.data ?? []) as ScoreDay[],
     calendars: (calendarResult.data ?? []) as CalendarDay[],
     checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
-    exercises: (exerciseResult.data ?? []) as ExerciseRecord[],
     journal,
     narrative: narrativeResult.data,
     connections: connectionResult.data ?? [],
