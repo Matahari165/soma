@@ -117,6 +117,10 @@ export function classifyGoogleHealthSyncError(error: unknown) {
   return { code: "GOOGLE_HEALTH_SYNC_FAILED", retryable: true, connectionStatus: "connected" as const };
 }
 
+export function shouldRefreshAnalyticsForTrigger(trigger: string) {
+  return trigger !== "webhook";
+}
+
 export async function processGoogleHealthSyncJob(jobId: string, options: { refreshAnalytics?: boolean } = {}) {
   const refreshAnalytics = options.refreshAnalytics ?? true;
   const admin = createSupabaseAdminClient();
@@ -200,14 +204,22 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     }
 
     const completed = nextTypeIndex >= dataTypes.length;
-    const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
-    const analyticsRefreshed = refreshAnalytics && completed;
-    let analytics = null;
-    if (analyticsRefreshed) {
-      const { error: phaseError } = await admin.from("sync_jobs").update({ cursor: { ...nextCursor, phase: "materializing" }, progress: 99 }).eq("id", claimedJob.id);
+    if (completed && refreshAnalytics) {
+      const { error: phaseError } = await admin.from("sync_jobs").update({
+        cursor: { ...nextCursor, phase: "materializing" },
+        progress: 99,
+        attempts: 0,
+        retry_after: null,
+        status: "queued",
+        started_at: null,
+      }).eq("id", claimedJob.id);
       if (phaseError) throw new Error("Google Health materialization state could not be stored.");
-      analytics = await recomputeUserHealth(claimedJob.user_id);
+      console.info("[google-health-sync] data import completed; analytics queued", { jobId: claimedJob.id });
+      return { completed: false, progress: 99, materializing: true, analyticsRefreshed: false, analytics: null };
     }
+    const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
+    const analyticsRefreshed = false;
+    const analytics = null;
     await admin.from("sync_jobs").update({
       cursor: nextCursor,
       progress,
@@ -295,15 +307,15 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
 
 export async function drainGoogleHealthSyncJob(
   jobId: string,
-  options: { maxBatches?: number; maxDurationMs?: number } = {},
+  options: { maxBatches?: number; maxDurationMs?: number; refreshAnalytics?: boolean } = {},
 ) {
   const maxBatches = options.maxBatches ?? 24;
   const deadline = Date.now() + (options.maxDurationMs ?? 45_000);
   let latest: Awaited<ReturnType<typeof processGoogleHealthSyncJob>> | null = null;
 
   for (let batch = 0; batch < maxBatches && Date.now() < deadline; batch += 1) {
-    latest = await processGoogleHealthSyncJob(jobId);
-    if (latest.completed || latest.skipped) break;
+    latest = await processGoogleHealthSyncJob(jobId, { refreshAnalytics: options.refreshAnalytics });
+    if (latest.completed || latest.skipped || "materializing" in latest) break;
   }
 
   return latest;

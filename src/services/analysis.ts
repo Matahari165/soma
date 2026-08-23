@@ -10,22 +10,19 @@ import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need"
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const ANALYSIS_DATA_TYPES = [
+export const ANALYSIS_DATA_TYPES = [
   "sleep",
   "daily-heart-rate-variability",
   "daily-resting-heart-rate",
   "daily-respiratory-rate",
   "daily-oxygen-saturation",
   "daily-sleep-temperature-derivations",
-  "heart-rate",
-  "heart-rate-variability",
   "steps",
   "active-zone-minutes",
   "active-energy-burned",
   "time-in-heart-rate-zone",
   "exercise",
   "active-minutes",
-  "activity-level",
   "altitude",
   "blood-glucose",
   "body-fat",

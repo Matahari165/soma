@@ -5,7 +5,7 @@ import {
   automaticGoogleHealthRange,
   isAutomaticGoogleHealthSyncDue,
 } from "@/integrations/google-health/schedule";
-import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
+import { drainGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger } from "@/integrations/google-health/sync";
 import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
 import { isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
@@ -203,36 +203,42 @@ export async function GET(request: Request) {
 
   const now = new Date().toISOString();
   const readyJob = (initial: boolean) => {
-    const query = admin.from("sync_jobs").select("id").eq("status", "queued");
+    const query = admin.from("sync_jobs").select("id,sync_trigger").eq("status", "queued");
     return (initial ? query.eq("sync_trigger", "initial") : query.neq("sync_trigger", "initial"))
       .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
   };
-  const priorityResult = await readyJob(false);
-  if (priorityResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-  const fallbackResult = priorityResult.data ? { data: null, error: null } : await readyJob(true);
-  if (fallbackResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-  const job = priorityResult.data ?? fallbackResult.data;
-  if (!job) {
-    const calendarCutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
-    const { data: calendarConnection, error: calendarError } = await admin.from("provider_connections").select("user_id,last_synced_at")
-      .eq("provider", "google_calendar").eq("status", "connected").or(`last_synced_at.is.null,last_synced_at.lt.${calendarCutoff}`)
-      .order("last_synced_at", { ascending: true, nullsFirst: true }).limit(1).maybeSingle();
-    if (calendarError) return NextResponse.json({ error: "Calendar sync state could not be loaded." }, { status: 500 });
-    if (!calendarConnection) return NextResponse.json({ automatic, processed: [], calendar: null });
+  const deadline = Date.now() + 45_000;
+  const results: Array<Record<string, unknown>> = [];
+  for (let jobIndex = 0; jobIndex < 12 && Date.now() < deadline - 2_000; jobIndex += 1) {
+    const priorityResult = await readyJob(false);
+    if (priorityResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+    const fallbackResult = priorityResult.data ? { data: null, error: null } : await readyJob(true);
+    if (fallbackResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+    const job = priorityResult.data ?? fallbackResult.data;
+    if (!job) break;
     try {
-      return NextResponse.json({ automatic, processed: [], calendar: await syncGoogleCalendar(calendarConnection.user_id) });
-    } catch (error) {
-      console.error("[api/cron/sync] calendar update failed", { userId: calendarConnection.user_id, error: error instanceof Error ? error.message : "Unknown error." });
-      return NextResponse.json({ automatic, processed: [], calendar: { error: true } });
+      const result = await drainGoogleHealthSyncJob(job.id, {
+        maxDurationMs: Math.max(1_000, deadline - Date.now() - 1_500),
+        refreshAnalytics: shouldRefreshAnalyticsForTrigger(job.sync_trigger),
+      });
+      results.push({ id: job.id, ...result });
+      if (result && "materializing" in result) break;
+    } catch {
+      results.push({ id: job.id, error: true });
     }
   }
+  if (results.length) return NextResponse.json({ automatic, processed: results });
 
-  let result;
+  const calendarCutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+  const { data: calendarConnection, error: calendarError } = await admin.from("provider_connections").select("user_id,last_synced_at")
+    .eq("provider", "google_calendar").eq("status", "connected").or(`last_synced_at.is.null,last_synced_at.lt.${calendarCutoff}`)
+    .order("last_synced_at", { ascending: true, nullsFirst: true }).limit(1).maybeSingle();
+  if (calendarError) return NextResponse.json({ error: "Calendar sync state could not be loaded." }, { status: 500 });
+  if (!calendarConnection) return NextResponse.json({ automatic, processed: [], calendar: null });
   try {
-    result = { id: job.id, ...(await drainGoogleHealthSyncJob(job.id, { maxDurationMs: 45_000 })) };
-  } catch {
-    result = { id: job.id, error: true };
+    return NextResponse.json({ automatic, processed: [], calendar: await syncGoogleCalendar(calendarConnection.user_id) });
+  } catch (error) {
+    console.error("[api/cron/sync] calendar update failed", { userId: calendarConnection.user_id, error: error instanceof Error ? error.message : "Unknown error." });
+    return NextResponse.json({ automatic, processed: [], calendar: { error: true } });
   }
-  const results = [result];
-  return NextResponse.json({ automatic, processed: results });
 }

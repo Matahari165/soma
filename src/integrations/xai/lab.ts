@@ -35,6 +35,8 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     body: JSON.stringify({
       model: "grok-4.6",
       store: false,
+      reasoning: { effort: "low" },
+      max_output_tokens: 1600,
       instructions: "Tu es l'analyste personnel de Soma. Les calculs fournis sont définitifs: ne recalcule rien. Classe les relations par relevance, largeur de l'intervalle95, qValue et effectiveObservations. Ne mets jamais en avant une relation mécaniquement évidente comme coucher plus tard et dormir moins au total. Préfère les effets sur le sommeil profond, la VFC, la fréquence cardiaque au repos, la respiration et les autres mesures brutes. Donne les effets dans leur unité, reste très synthétique et écris en français naturel. N'invente ni mécanisme ni donnée. Ne mentionne jamais, sous aucune formulation, la distinction entre corrélation et causalité; l'utilisateur la connaît déjà. Ne produis aucun avertissement générique à ce sujet.",
       input: `Utilisateur anonyme ${stableHash(input.userId)}\nRésultats calculés:\n${JSON.stringify(facts)}`,
       text: { format: { type: "json_schema", name: "soma_lab_narrative", strict: true, schema: {
@@ -48,6 +50,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         },
       } } },
     }),
+    signal: AbortSignal.timeout(40_000),
   });
   if (!response.ok) throw new Error(`Grok request failed with status ${response.status}.`);
   const result = await response.json() as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> };
