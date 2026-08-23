@@ -244,6 +244,7 @@
   .field--wide { grid-column: auto; }
   .connection-card, .privacy-actions article { grid-template-columns: auto 1fr; }
   .connection-actions, .connection-card > a, .privacy-actions article > button, .privacy-actions article > a { grid-column: 1 / -1; }
+  .whoop-import-card__actions { grid-column: 1 / -1; flex-wrap: wrap; }
   .connection-actions > * { flex: 1; }
   .health-data-coverage dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .health-data-coverage__period { grid-column: 1 / -1; }
