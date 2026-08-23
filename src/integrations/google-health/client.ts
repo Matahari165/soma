@@ -227,7 +227,7 @@ const filterMetadata: Record<GoogleHealthDataType, { field: string; type: "physi
   "active-zone-minutes": { field: "active_zone_minutes.interval.start_time", type: "physical" },
   "active-energy-burned": { field: "active_energy_burned.interval.start_time", type: "physical" },
   "time-in-heart-rate-zone": { field: "time_in_heart_rate_zone.interval.start_time", type: "physical" },
-  exercise: { field: "exercise.interval.start_time", type: "physical" },
+  exercise: { field: "exercise.interval.civil_start_time", type: "date" },
   "active-minutes": { field: "active_minutes.interval.start_time", type: "physical" },
   "activity-level": { field: "activity_level.interval.start_time", type: "physical" },
   altitude: { field: "altitude.interval.start_time", type: "physical" },
