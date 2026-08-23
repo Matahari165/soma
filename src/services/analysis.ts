@@ -1,4 +1,5 @@
 import { aggregateHealthRecords, type NormalizedHealthRecord } from "@/domain/health/aggregate";
+import { recordsInsideWearableWindow } from "@/domain/health/wearable-window";
 import { generateEveningBrief, generateMorningBrief, generateWeeklyBrief } from "@/domain/briefs/generate";
 import { spearmanCorrelation, type CorrelationPoint } from "@/domain/correlations/spearman";
 import { generateHealthInsights } from "@/domain/insights/engine";
@@ -46,7 +47,7 @@ async function loadAnalysisRecords(userId: string, analysisStart: string) {
   const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
   for (let from = 0; ; from += 1000) {
     const { data, error } = await admin.from("health_records")
-      .select("id,data_type,civil_date,start_time,end_time,measured_at,payload")
+      .select("id,provider,data_type,civil_date,start_time,end_time,measured_at,source_device,recording_method,payload")
       .eq("user_id", userId)
       .in("data_type", [...ANALYSIS_DATA_TYPES])
       .or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStartTime},start_time.gte.${analysisStartTime},measured_at.gte.${analysisStartTime}`)
@@ -100,7 +101,7 @@ async function deleteStaleDerivedRows(userId: string, analysisStart: string, act
 
 export async function recomputeUserHealth(userId: string) {
   const admin = createSupabaseAdminClient();
-  const analysisStart = new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10);
+  const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const [{ data: records, error: recordError }, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
     loadAnalysisRecords(userId, analysisStart),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
@@ -109,11 +110,13 @@ export async function recomputeUserHealth(userId: string) {
   ]);
   if (recordError || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
   const timezone = profile?.timezone ?? "Europe/Paris";
-  const days = aggregateHealthRecords((records ?? []) as NormalizedHealthRecord[], timezone);
+  const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
+  const days = aggregateHealthRecords(wearableWindow.records, timezone);
   console.info("[health-analysis] source records loaded", {
-    recordCount: records?.length ?? 0,
+    recordCount: wearableWindow.records.length,
     dayCount: days.length,
-    dataTypes: [...new Set((records ?? []).map((record) => record.data_type))].sort(),
+    dataTypes: [...new Set(wearableWindow.records.map((record) => record.data_type))].sort(),
+    wearableWindowStart: wearableWindow.startDate,
   });
   if (!days.length) {
     await deleteStaleDerivedRows(userId, analysisStart, new Set());
@@ -130,6 +133,9 @@ export async function recomputeUserHealth(userId: string) {
 
   for (const [index, day] of days.entries()) {
     const history = days.slice(Math.max(0, index - 30), index);
+    const recoveryHistory = day.data_quality.primaryWearable
+      ? history.filter((item) => item.data_quality.primaryWearable === day.data_quality.primaryWearable)
+      : history;
     const recentSleep = history.map((item) => item.sleep_minutes).filter((value): value is number => value !== null);
     const priorEffort = index ? effortByDate.get(days[index - 1].metric_date) ?? null : null;
     const sleepNeed = estimateSleepNeed({ baseTargetMinutes: baseSleepTarget, recentSleepMinutes: recentSleep, priorDayEffort: priorEffort });
@@ -140,9 +146,9 @@ export async function recomputeUserHealth(userId: string) {
       : null;
     const recovery = calculateRecoveryScore({
       currentHrv: day.hrv_ms,
-      hrvBaseline: history.map((item) => item.hrv_ms).filter((value): value is number => value !== null).slice(-30),
+      hrvBaseline: recoveryHistory.map((item) => item.hrv_ms).filter((value): value is number => value !== null).slice(-30),
       currentRestingHeartRate: day.resting_heart_rate,
-      restingHeartRateBaseline: history.map((item) => item.resting_heart_rate).filter((value): value is number => value !== null).slice(-30),
+      restingHeartRateBaseline: recoveryHistory.map((item) => item.resting_heart_rate).filter((value): value is number => value !== null).slice(-30),
       sleepScore: sleep?.score ?? null,
     });
     const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps });

@@ -36,8 +36,8 @@ export function HealthDataCoverageIndicator({ coverage, phase, error = false }: 
       <span className={`health-data-coverage__status health-data-coverage__status--${status.tone}`}>{status.label}</span>
     </header>
     <dl>
-      <div><dt>Days used / imported</dt><dd>{days}</dd></div>
-      <div><dt>Nights used / imported</dt><dd>{nights}</dd></div>
+      <div><dt>Wearable days used / available</dt><dd>{days}</dd></div>
+      <div><dt>Wearable nights used / available</dt><dd>{nights}</dd></div>
       <div className="health-data-coverage__period"><dt>Period</dt><dd>{period}</dd></div>
     </dl>
     {coverage && (coverage.missingDays > 0 || coverage.missingNights > 0) ? <p role="status">

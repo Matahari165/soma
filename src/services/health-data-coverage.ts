@@ -13,7 +13,7 @@ async function loadImportedDates(admin: AdminClient, userId: string) {
   const rows: ImportedHealthDate[] = [];
   for (let from = 0; from < MAX_IMPORTED_ROWS; from += PAGE_SIZE) {
     const { data, error } = await admin.from("health_records")
-      .select("data_type,civil_date,start_time,end_time,measured_at,source_record_id")
+      .select("provider,data_type,civil_date,start_time,end_time,measured_at,source_device,source_record_id,payload")
       .eq("user_id", userId)
       .in("data_type", [...GOOGLE_HEALTH_DASHBOARD_DATA_TYPES])
       .order("civil_date", { ascending: true, nullsFirst: false })

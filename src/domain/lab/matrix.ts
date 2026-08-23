@@ -1,8 +1,6 @@
-import { spearmanCorrelation } from "@/domain/correlations/spearman";
-
 export const MINIMUM_COMPUTABLE_OBSERVATIONS = 6;
 
-export type MatrixPoint = { date: string; value: number };
+export type MatrixPoint = { date: string; value: number; segment?: string };
 export type MatrixSeries = {
   id: string;
   label: string;
@@ -34,7 +32,7 @@ export type MatrixRelation = {
   excluded: boolean;
 };
 
-type Pair = { date: string; predictor: number; outcome: number };
+type Pair = { date: string; predictor: number; outcome: number; segment: string };
 
 function addDays(date: string, days: number) {
   const result = new Date(`${date}T12:00:00Z`);
@@ -60,11 +58,27 @@ function ranks(values: number[]) {
 }
 
 function pairedPoints(predictor: MatrixSeries, outcome: MatrixSeries, lagDays: number) {
-  const outcomes = new Map(outcome.points.map((point) => [point.date, point.value]));
+  const outcomes = new Map(outcome.points.map((point) => [point.date, point]));
   return predictor.points.flatMap((point) => {
-    const outcomeValue = outcomes.get(addDays(point.date, lagDays));
-    return outcomeValue === undefined ? [] : [{ date: point.date, predictor: point.value, outcome: outcomeValue }];
+    const outcomePoint = outcomes.get(addDays(point.date, lagDays));
+    if (!outcomePoint || (point.segment && outcomePoint.segment && point.segment !== outcomePoint.segment)) return [];
+    return [{ date: point.date, predictor: point.value, outcome: outcomePoint.value, segment: point.segment ?? outcomePoint.segment ?? "all" }];
   }).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function groupedPairs(pairs: Pair[]) {
+  const grouped = new Map<string, Pair[]>();
+  for (const pair of pairs) grouped.set(pair.segment, [...(grouped.get(pair.segment) ?? []), pair]);
+  return [...grouped.values()];
+}
+
+function stratifiedRanks(pairs: Pair[], key: "predictor" | "outcome") {
+  const ranked = new Map<Pair, number>();
+  for (const group of groupedPairs(pairs)) {
+    const groupRanks = ranks(group.map((pair) => pair[key]));
+    group.forEach((pair, index) => ranked.set(pair, (groupRanks[index] - 0.5) / group.length));
+  }
+  return pairs.map((pair) => ranked.get(pair) as number);
 }
 
 function pearson(first: number[], second: number[]) {
@@ -87,8 +101,8 @@ function pearson(first: number[], second: number[]) {
 
 function effectiveSampleSize(pairs: Pair[]) {
   if (pairs.length < 5) return pairs.length;
-  const predictorRanks = ranks(pairs.map((point) => point.predictor));
-  const outcomeRanks = ranks(pairs.map((point) => point.outcome));
+  const predictorRanks = stratifiedRanks(pairs, "predictor");
+  const outcomeRanks = stratifiedRanks(pairs, "outcome");
   const predictorAutocorrelation = pearson(predictorRanks.slice(0, -1), predictorRanks.slice(1));
   const outcomeAutocorrelation = pearson(outcomeRanks.slice(0, -1), outcomeRanks.slice(1));
   if (predictorAutocorrelation === null || outcomeAutocorrelation === null) return pairs.length;
@@ -109,21 +123,23 @@ function rankBiserial(groups: Pair[]) {
 
 function coefficientFor(predictor: MatrixSeries, pairs: Pair[]) {
   if (predictor.kind === "binary") return rankBiserial(pairs);
-  return spearmanCorrelation(
-    pairs.map((point) => ({ date: point.date, value: point.predictor })),
-    pairs.map((point) => ({ date: point.date, value: point.outcome })),
-  ).coefficient;
+  return pearson(stratifiedRanks(pairs, "predictor"), stratifiedRanks(pairs, "outcome"));
 }
 
 function effectFor(predictor: MatrixSeries, pairs: Pair[]) {
-  if (predictor.kind === "binary") {
-    const exposed = pairs.filter((point) => point.predictor === 1).map((point) => point.outcome);
-    const unexposed = pairs.filter((point) => point.predictor === 0).map((point) => point.outcome);
-    return exposed.length >= 2 && unexposed.length >= 2 ? mean(exposed) - mean(unexposed) : null;
-  }
-  const ordered = [...pairs].sort((a, b) => a.predictor - b.predictor);
-  const groupSize = Math.max(2, Math.floor(ordered.length / 3));
-  return mean(ordered.slice(-groupSize).map((point) => point.outcome)) - mean(ordered.slice(0, groupSize).map((point) => point.outcome));
+  const effects = groupedPairs(pairs).flatMap((group) => {
+    if (predictor.kind === "binary") {
+      const exposed = group.filter((point) => point.predictor === 1).map((point) => point.outcome);
+      const unexposed = group.filter((point) => point.predictor === 0).map((point) => point.outcome);
+      return exposed.length >= 2 && unexposed.length >= 2 ? [{ value: mean(exposed) - mean(unexposed), weight: group.length }] : [];
+    }
+    if (group.length < MINIMUM_COMPUTABLE_OBSERVATIONS) return [];
+    const ordered = [...group].sort((a, b) => a.predictor - b.predictor);
+    const groupSize = Math.max(2, Math.floor(ordered.length / 3));
+    return [{ value: mean(ordered.slice(-groupSize).map((point) => point.outcome)) - mean(ordered.slice(0, groupSize).map((point) => point.outcome)), weight: group.length }];
+  });
+  const totalWeight = effects.reduce((sum, effect) => sum + effect.weight, 0);
+  return totalWeight ? effects.reduce((sum, effect) => sum + effect.value * effect.weight, 0) / totalWeight : null;
 }
 
 function logGamma(value: number): number {

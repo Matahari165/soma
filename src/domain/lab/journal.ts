@@ -77,10 +77,17 @@ export function journalValueAsNumber(variable: JournalVariable, value: JournalEn
 
 export const defaultJournalVariables = [
   { name: "Alcohol", variableType: "count", unit: "drinks", options: [] },
-  { name: "Caffeine", variableType: "count", unit: "servings", options: [] },
+  { name: "Caffeine", variableType: "count", unit: "mg", options: [] },
   { name: "Deep Work", variableType: "duration", unit: "min", options: [] },
   { name: "Bedtime", variableType: "time", unit: null, options: [] },
   { name: "Vacation", variableType: "boolean", unit: null, options: [] },
-  { name: "Energy", variableType: "scale", unit: "/5", options: [] },
-  { name: "Focus", variableType: "scale", unit: "/5", options: [] },
+] as const satisfies ReadonlyArray<{ name: string; variableType: JournalVariableType; unit: string | null; options: readonly string[] }>;
+
+export const journalVariableSuggestions = [
+  ...defaultJournalVariables,
+  { name: "Late meal", variableType: "boolean", unit: null, options: [] },
+  { name: "Illness", variableType: "boolean", unit: null, options: [] },
+  { name: "Nap", variableType: "duration", unit: "min", options: [] },
+  { name: "Meditation", variableType: "duration", unit: "min", options: [] },
+  { name: "Travel", variableType: "boolean", unit: null, options: [] },
 ] as const satisfies ReadonlyArray<{ name: string; variableType: JournalVariableType; unit: string | null; options: readonly string[] }>;

@@ -1,11 +1,15 @@
 import { healthRecordCivilDate } from "./aggregate";
+import { recordsInsideWearableWindow } from "./wearable-window";
 
 export type ImportedHealthDate = {
+  provider?: string;
   data_type: string;
   civil_date: string | null;
   start_time: string | null;
   end_time: string | null;
   measured_at: string | null;
+  source_device: string | null;
+  payload?: unknown;
 };
 
 export type UsedHealthDate = {
@@ -31,9 +35,10 @@ export function calculateHealthDataCoverage(input: {
   timeZone: string;
   limited?: boolean;
 }): HealthDataCoverage {
+  const wearableWindow = recordsInsideWearableWindow(input.imported, input.timeZone);
   const importedDays = new Set<string>();
   const importedNights = new Set<string>();
-  for (const record of input.imported) {
+  for (const record of wearableWindow.records) {
     const date = healthRecordCivilDate(record, input.timeZone);
     if (!date) continue;
     importedDays.add(date);

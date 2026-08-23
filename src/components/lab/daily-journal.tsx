@@ -4,7 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import type { JournalEntry, JournalEntryValue, JournalVariable, JournalVariableType } from "@/domain/lab/journal";
+import { journalVariableSuggestions, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 
 type DraftValue = JournalEntryValue | null;
 type NewVariable = { name: string; variableType: JournalVariableType; unit: string; options: string };
@@ -27,6 +27,15 @@ function formatEntryDate(date: string) {
 
 function splitOptions(value: string) {
   return value.split(",").map((option) => option.trim()).filter(Boolean);
+}
+
+function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]): NewVariable {
+  return {
+    name: suggestion.name,
+    variableType: suggestion.variableType,
+    unit: suggestion.unit ?? "",
+    options: suggestion.options.join(", "),
+  };
 }
 
 function Field({ variable, value, onChange }: { variable: JournalVariable; value: DraftValue; onChange: (value: DraftValue) => void }) {
@@ -102,6 +111,8 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
   const [draft, setDraft] = useState<NewVariable>({ name: "", variableType: "boolean", unit: "", options: "" });
   const [error, setError] = useState<string | null>(null);
   const activeVariables = variables.filter((variable) => variable.isActive);
+  const activeNames = new Set(activeVariables.map((variable) => variable.name.toLocaleLowerCase("en")));
+  const suggestions = journalVariableSuggestions.filter((suggestion) => !activeNames.has(suggestion.name.toLocaleLowerCase("en")));
 
   async function request(method: "POST" | "PATCH", body: unknown, busy: string) {
     setBusyId(busy);
@@ -155,6 +166,13 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
     </div>
 
     <div className="journal-manager__body">
+      {!creating && suggestions.length > 0 && <div className="journal-suggestions" aria-label="Suggested measures">
+        {suggestions.map((suggestion) => <button type="button" key={suggestion.name} onClick={() => {
+          setDraft(suggestionDraft(suggestion));
+          setCreating(true);
+          setError(null);
+        }}><strong>{suggestion.name}</strong><span>{suggestion.unit ?? typeLabels[suggestion.variableType]}</span></button>)}
+      </div>}
       <div className="journal-variable-list" aria-live="polite">
         {activeVariables.length === 0 && <p className="journal-manager__empty">No measures yet.</p>}
         {activeVariables.map((variable) => editingId === variable.id ? <VariableEditor key={variable.id} variable={variable} name={editName} unit={editUnit} options={editOptions} busy={busyId === variable.id} onNameChange={setEditName} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} /> : <div className="journal-variable-row" key={variable.id}>
@@ -168,7 +186,7 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
         <div className="journal-new-variable__heading"><h4>Add a tracked measure</h4><p>Leave it blank on any day you do not want to record; it will stay missing.</p></div>
         <label><span>Name</span><input placeholder="e.g. Alcohol, Vacation, Deep work" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
         <label><span>Measure type</span><select aria-label="Measure type" value={draft.variableType} onChange={(event) => setDraft((current) => ({ ...current, variableType: event.target.value as JournalVariableType }))}>{Object.entries(typeLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-        {numericTypes.has(draft.variableType) && <label><span>Unit <em>(optional)</em></span><input placeholder="e.g. glasses, minutes" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} /></label>}
+        {numericTypes.has(draft.variableType) && <label><span>Unit <em>(optional)</em></span><input placeholder="e.g. mg, min, drinks" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} /></label>}
         {draft.variableType === "category" && <label><span>Choices <em>(at least two)</em></span><input placeholder="e.g. Home, Office, Vacation" value={draft.options} onChange={(event) => setDraft((current) => ({ ...current, options: event.target.value }))} /></label>}
         {draft.variableType === "category" && categoryOptions.length < 2 && <p className="journal-manager__hint">Add at least two comma-separated choices.</p>}
         <div className="journal-new-variable__actions"><button className="primary-button" type="button" disabled={!canCreate || busyId === "new"} onClick={() => void create()}>{busyId === "new" ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Add measure</button><button className="text-link" type="button" onClick={() => setCreating(false)}>Cancel</button></div>

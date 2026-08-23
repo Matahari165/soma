@@ -46,6 +46,27 @@ describe("aggregateHealthRecords", () => {
     expect(day.skin_temperature_delta).toBeCloseTo(0.3);
   });
 
+  it("keeps normalized WHOOP records compatible with the same daily metrics", () => {
+    const [day] = aggregateHealthRecords([
+      record({ provider: "whoop_export", data_type: "sleep", start_time: "2026-05-27T23:36:13+02:00", end_time: "2026-05-28T06:46:45+02:00", payload: { sleep: { metadata: { mainSleep: true }, summary: { minutesAsleep: 415, minutesInSleepPeriod: 430, minutesAwake: 15, stagesSummary: [{ type: "LIGHT", minutes: 200 }, { type: "DEEP", minutes: 149 }, { type: "REM", minutes: 66 }, { type: "AWAKE", minutes: 15 }] } } } }),
+      record({ provider: "whoop_export", data_type: "daily-resting-heart-rate", payload: { dailyRestingHeartRate: { beatsPerMinute: 57 } } }),
+      record({ provider: "whoop_export", data_type: "daily-heart-rate-variability", payload: { dailyHeartRateVariability: { averageHeartRateVariabilityMilliseconds: 50 } } }),
+      record({ provider: "whoop_export", data_type: "daily-respiratory-rate", payload: { dailyRespiratoryRate: { averageBreathsPerMinute: 17.7 } } }),
+      record({ provider: "whoop_export", data_type: "daily-oxygen-saturation", payload: { dailyOxygenSaturation: { averagePercentage: 96.5 } } }),
+      record({ provider: "whoop_export", data_type: "daily-sleep-temperature-derivations", payload: { dailySleepTemperatureDerivations: { nightlyTemperatureCelsius: 34.39, baselineTemperatureCelsius: 34.1 } } }),
+    ]);
+
+    expect(day.sleep_minutes).toBe(415);
+    expect(day.sleep_efficiency).toBe(96.5);
+    expect(day.sleep_deep_minutes).toBe(149);
+    expect(day.sleep_rem_minutes).toBe(66);
+    expect(day.resting_heart_rate).toBe(57);
+    expect(day.hrv_ms).toBe(50);
+    expect(day.respiratory_rate).toBe(17.7);
+    expect(day.oxygen_saturation).toBe(96.5);
+    expect(day.skin_temperature_delta).toBeCloseTo(0.29);
+  });
+
   it("sums activity levels and uses measured heart-rate-zone intervals", () => {
     const [day] = aggregateHealthRecords([
       record({ data_type: "active-minutes", payload: { activeMinutes: { activeMinutesByActivityLevel: [{ activityLevel: "LIGHT", activeMinutes: "18" }, { activityLevel: "MODERATE", activeMinutes: "12" }, { activityLevel: "VIGOROUS", activeMinutes: "7" }] } } }),

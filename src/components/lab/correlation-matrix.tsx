@@ -58,23 +58,30 @@ function fallbackFinding(relation: MatrixRelation) {
   return `${predictor} is linked to ${formatEffect(relation)} in ${outcome} ${timing}.`;
 }
 
-function RelationCell({ relation }: { relation: MatrixRelation }) {
+function RelationCell({ relation, cellKey, expanded, onToggle }: {
+  relation: MatrixRelation;
+  cellKey: string;
+  expanded: boolean;
+  onToggle: (key: string) => void;
+}) {
   if (relation.excluded) {
-    return <td className="matrix-cell matrix-cell--excluded" title="Overlapping measures."><strong>—</strong></td>;
+    return <td className="matrix-cell matrix-cell--excluded"><strong>—</strong></td>;
   }
-  if (relation.coefficient === null) {
-    return <td className="matrix-cell matrix-cell--hidden" title={`${relation.sampleSize} paired observations`}><strong>—</strong><small>n={relation.sampleSize}</small></td>;
-  }
-  const title = `${relation.method === "spearman" ? "Spearman" : "Rank-biserial"} ${signed(relation.coefficient, 2)} · effect ${formatEffect(relation)} · 95% interval [${signed(relation.confidenceLow, 2)}, ${signed(relation.confidenceHigh, 2)}] · n=${relation.sampleSize}, effective n=${relation.effectiveSampleSize} · q=${relation.qValue.toFixed(3)}`;
-  return <td className={`matrix-cell matrix-cell--${relation.strength} ${relation.coefficient < 0 ? "matrix-cell--inverse" : "matrix-cell--direct"}`} title={title}>
-    <strong>{formatEffect(relation)}</strong>
-    <span>ρ {signed(relation.coefficient, 2)}</span>
-    <small>n={relation.sampleSize}</small>
+  const direction = relation.coefficient === null ? "" : relation.coefficient < 0 ? "matrix-cell--inverse" : "matrix-cell--direct";
+  return <td className={`matrix-cell matrix-cell--${relation.coefficient === null ? "hidden" : relation.strength} ${direction}`}>
+    <button type="button" className="matrix-cell__trigger" aria-expanded={expanded} aria-label={`${relation.predictorLabel} to ${relation.outcomeLabel}: ${formatEffect(relation)}. ${expanded ? "Hide" : "Show"} statistical details.`} onClick={() => onToggle(cellKey)}>
+      <strong>{formatEffect(relation)}</strong>
+    </button>
+    {expanded && <div className="matrix-cell__detail">
+      <span>ρ {relation.coefficient === null ? "—" : signed(relation.coefficient, 2)}</span>
+      <small>n {relation.sampleSize} · effective {relation.effectiveSampleSize}</small>
+    </div>}
   </td>;
 }
 
 export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["matrix"] }) {
   const [grain, setGrain] = useState<"day" | "week">("day");
+  const [openRelation, setOpenRelation] = useState<string | null>(null);
   const rows = useMemo(() => matrix.rows.filter((row) => row.grain === grain), [grain, matrix.rows]);
   const top = useMemo(() => rows.flatMap((row) => row.relations)
     .filter((relation) => !relation.excluded && relation.coefficient !== null && relation.relevance > 0)
@@ -85,20 +92,27 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     <header className="matrix-header">
       <h2 id="matrix-title">Relationships</h2>
       <div className="matrix-grain" role="group" aria-label="Analysis period">
-        <button type="button" aria-pressed={grain === "day"} onClick={() => setGrain("day")}>Days</button>
-        <button type="button" aria-pressed={grain === "week"} onClick={() => setGrain("week")}>Weeks</button>
+        <button type="button" aria-pressed={grain === "day"} onClick={() => { setGrain("day"); setOpenRelation(null); }}>Days</button>
+        <button type="button" aria-pressed={grain === "week"} onClick={() => { setGrain("week"); setOpenRelation(null); }}>Weeks</button>
       </div>
     </header>
     <div className="matrix-scroll" role="region" aria-label={`Relationships by ${grain === "day" ? "day" : "week"}`} tabIndex={0}>
       <table>
         <thead><tr><th scope="col">Variable</th>{matrix.outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{metricLabel(outcome.id, outcome.label)}</span><small>{outcome.unit}</small></th>)}</tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{metricLabel(row.id, row.label)}</strong><small>{row.lagLabel === "lendemain" ? "next day" : row.lagLabel === "même jour" ? "same day" : row.lagLabel === "même semaine" ? "same week" : row.lagLabel}</small></th>{row.relations.map((relation) => <RelationCell relation={relation} key={relation.outcomeId} />)}</tr>)}</tbody>
+        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{metricLabel(row.id, row.label)}</strong><small>{row.lagLabel === "lendemain" ? "next day" : row.lagLabel === "même jour" ? "same day" : row.lagLabel === "même semaine" ? "same week" : row.lagLabel}</small></th>{row.relations.map((relation) => {
+          const cellKey = `${grain}:${relation.predictorId}:${relation.outcomeId}`;
+          return <RelationCell relation={relation} cellKey={cellKey} expanded={openRelation === cellKey} onToggle={(key) => setOpenRelation((current) => current === key ? null : key)} key={relation.outcomeId} />;
+        })}</tr>)}</tbody>
       </table>
     </div>
     <div className="matrix-mobile-list" aria-label="Top relationships">
-      {top.length ? top.map((relation) => <article key={`${relation.predictorId}-${relation.outcomeId}`}>
-        <div><strong>{metricLabel(relation.predictorId, relation.predictorLabel)} → {metricLabel(relation.outcomeId, relation.outcomeLabel)}</strong><p>{formatEffect(relation)}</p><small>ρ {signed(relation.coefficient ?? 0, 2)} · n={relation.sampleSize}</small></div>
-      </article>) : <p>Not enough paired data yet.</p>}
+      {top.length ? top.map((relation) => {
+        const cellKey = `mobile:${grain}:${relation.predictorId}:${relation.outcomeId}`;
+        return <article key={`${relation.predictorId}-${relation.outcomeId}`}>
+          <button type="button" className="matrix-mobile-list__trigger" aria-expanded={openRelation === cellKey} onClick={() => setOpenRelation((current) => current === cellKey ? null : cellKey)}><strong>{metricLabel(relation.predictorId, relation.predictorLabel)} → {metricLabel(relation.outcomeId, relation.outcomeLabel)}</strong><span>{formatEffect(relation)}</span></button>
+          {openRelation === cellKey && <small>ρ {signed(relation.coefficient ?? 0, 2)} · n {relation.sampleSize} · effective {relation.effectiveSampleSize}</small>}
+        </article>;
+      }) : <p>Not enough paired data yet.</p>}
     </div>
     <details className="matrix-method">
       <summary>How to read</summary>

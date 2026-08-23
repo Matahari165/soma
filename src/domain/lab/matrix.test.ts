@@ -61,4 +61,15 @@ describe("personal correlation matrix", () => {
     outcome.points = outcome.points.slice(5);
     expect(calculateMatrixRelation(predictor, outcome).sampleSize).toBe(15);
   });
+
+  it("does not mistake a wearable level shift for a reversed relationship", () => {
+    const predictor = series("sleep", [1, 2, 3, 4, 5, 6, 101, 102, 103, 104, 105, 106]);
+    const outcome = series("hrv", [101, 102, 103, 104, 105, 106, 1, 2, 3, 4, 5, 6]);
+    predictor.points.forEach((point, index) => { point.segment = index < 6 ? "WHOOP" : "Fitbit"; });
+    outcome.points.forEach((point, index) => { point.segment = index < 6 ? "WHOOP" : "Fitbit"; });
+
+    const relation = calculateMatrixRelation(predictor, outcome);
+    expect(relation.coefficient).toBe(1);
+    expect(relation.effect).toBe(4);
+  });
 });

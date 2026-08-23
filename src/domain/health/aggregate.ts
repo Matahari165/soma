@@ -1,9 +1,12 @@
 export type NormalizedHealthRecord = {
+  provider?: string;
   data_type: string;
   civil_date: string | null;
   start_time: string | null;
   end_time: string | null;
   measured_at: string | null;
+  source_device?: string | null;
+  recording_method?: string | null;
   payload: unknown;
 };
 
@@ -53,7 +56,7 @@ export type AggregatedHealthDay = {
   height_cm: number | null;
   core_body_temperature_celsius: number | null;
   blood_glucose_mg_dl: number | null;
-  data_quality: { presentTypes: string[]; recordCount: number };
+  data_quality: { presentTypes: string[]; recordCount: number; sourceDevices: string[]; providers: string[]; primaryWearable: string | null };
   source_freshness: { latestMeasuredAt: string | null; byType: Record<string, string | null> };
 };
 
@@ -261,6 +264,12 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
     const measuredAt = (record: NormalizedHealthRecord) => record.measured_at ?? (record.civil_date ? `${record.civil_date}T12:00:00.000Z` : null);
     const latestMeasuredAt = day.map(measuredAt).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
     const freshnessByType = Object.fromEntries([...new Set(day.map((record) => record.data_type))].map((type) => [type, byType(type).map(measuredAt).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null]));
+    const sourceDevices = [...new Set(day.map((record) => record.source_device?.trim()).filter((value): value is string => Boolean(value)))].sort();
+    const providers = [...new Set(day.map((record) => record.provider).filter((value): value is string => Boolean(value)))].sort();
+    const primaryWearable = day
+      .filter((record) => ["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate"].includes(record.data_type))
+      .map((record) => record.source_device?.trim())
+      .find((value): value is string => Boolean(value)) ?? null;
 
     return {
       metric_date: date,
@@ -312,7 +321,7 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
       height_cm: (() => { const millimeters = average(values("height", ["heightMillimeters", "heightMillimetersAvg"])); return millimeters === null ? null : Math.round((millimeters / 10) * 10) / 10; })(),
       core_body_temperature_celsius: average(values("core-body-temperature", ["temperatureCelsius", "temperatureCelsiusAvg"])),
       blood_glucose_mg_dl: average(values("blood-glucose", ["bloodGlucoseMilligramsPerDeciliter", "bloodGlucoseMilligramsPerDeciliterAvg"])),
-      data_quality: { presentTypes: [...new Set(day.map((record) => record.data_type))].sort(), recordCount: day.length },
+      data_quality: { presentTypes: [...new Set(day.map((record) => record.data_type))].sort(), recordCount: day.length, sourceDevices, providers, primaryWearable },
       source_freshness: { latestMeasuredAt, byType: freshnessByType },
     };
   });

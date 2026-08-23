@@ -47,6 +47,7 @@ type HealthDay = {
   vigorous_zone_minutes: number | null;
   active_minutes: number | null;
   exercise_minutes: number | null;
+  data_quality?: { primaryWearable?: string | null };
 };
 
 type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null };
@@ -128,11 +129,11 @@ function weekStart(date: string) {
 }
 
 function aggregateWeekly(points: MatrixSeries["points"], mode: "sum" | "mean", allowedWeeks: Set<string>, minimumDays: number) {
-  const grouped = new Map<string, number[]>();
-  for (const point of points) grouped.set(weekStart(point.date), [...(grouped.get(weekStart(point.date)) ?? []), point.value]);
+  const grouped = new Map<string, MatrixSeries["points"]>();
+  for (const point of points) grouped.set(weekStart(point.date), [...(grouped.get(weekStart(point.date)) ?? []), point]);
   return [...grouped]
-    .filter(([date, values]) => allowedWeeks.has(date) && values.length >= minimumDays)
-    .map(([date, values]) => ({ date, value: mode === "sum" ? values.reduce((sum, value) => sum + value, 0) : values.reduce((sum, value) => sum + value, 0) / values.length }))
+    .filter(([date, values]) => allowedWeeks.has(date) && values.length >= minimumDays && new Set(values.map((point) => point.segment).filter(Boolean)).size <= 1)
+    .map(([date, values]) => ({ date, value: mode === "sum" ? values.reduce((sum, point) => sum + point.value, 0) : values.reduce((sum, point) => sum + point.value, 0) / values.length, segment: values.find((point) => point.segment)?.segment }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -144,7 +145,7 @@ function healthSeries(health: HealthDay[], id: string, label: string, unit: stri
     kind: "numeric",
     points: health.flatMap((day) => {
       const value = toNumber(day[key]);
-      return value === null ? [] : [{ date: day.metric_date, value }];
+      return value === null ? [] : [{ date: day.metric_date, value, segment: day.data_quality?.primaryWearable ?? undefined }];
     }),
   };
 }
@@ -184,7 +185,7 @@ function buildCorrelationMatrix(input: {
   const deepWorkSeries: MatrixSeries = { id: "calendar_deep_work", label: "Deep Work (Calendar)", unit: "min", kind: "numeric", points: input.observations.flatMap((day) => day.deepWorkMinutes === null ? [] : [{ date: day.date, value: day.deepWorkMinutes }]) };
   const automaticRows: Array<{ series: MatrixSeries; lagDays: number; label: string }> = [
     {
-      series: { id: "bedtime", label: "Bedtime", unit: "h", kind: "numeric", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone) }] : []) },
+      series: { id: "bedtime", label: "Bedtime", unit: "h", kind: "numeric", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) },
       lagDays: 0,
       label: "same night",
     },
@@ -382,7 +383,7 @@ function previewData() {
   const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: index, isActive: true }));
   const yesterday = addDays(dateInTimezone("Europe/Paris"), -1);
   const entry = (name: string, value: JournalEntry["value"]): JournalEntry => ({ variableId: variables.find((variable) => variable.name === name)?.id as string, entryDate: yesterday, value });
-  const journal = { variables, entries: [entry("Alcohol", 0), entry("Deep Work", 165), entry("Bedtime", "22:35"), entry("Energy", 4), entry("Focus", 4)] };
+  const journal = { variables, entries: [entry("Alcohol", 0), entry("Deep Work", 165), entry("Bedtime", "22:35")] };
   return { health, scores, calendars, checkins, exercises, journal };
 }
 
@@ -468,12 +469,12 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
   const admin = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
   if (profileError) throw new Error("Your Personal Lab profile could not be loaded.");
-  const analysisStart = new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10);
+  const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, exerciseResult, narrativeResult, journal] = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,active_minutes,exercise_minutes").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(400),
-    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(1200),
-    admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(400),
-    admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).gte("checkin_date", analysisStart).order("checkin_date", { ascending: false }).limit(400),
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,active_minutes,exercise_minutes,data_quality").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
+    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(2190),
+    admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
+    admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).gte("checkin_date", analysisStart).order("checkin_date", { ascending: false }).limit(730),
     admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
     admin.from("health_records").select("civil_date,payload").eq("user_id", user.id).eq("data_type", "exercise").gte("civil_date", analysisStart).order("civil_date", { ascending: false }).limit(1000),
     admin.from("lab_narratives").select("headline,summary,highlights,source_facts,model,generated_at").eq("user_id", user.id).maybeSingle(),

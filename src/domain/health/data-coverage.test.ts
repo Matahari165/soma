@@ -9,6 +9,7 @@ function record(dataType: string, date: string | null, timestamps: Partial<Impor
     start_time: null,
     end_time: null,
     measured_at: null,
+    source_device: null,
     ...timestamps,
   };
 }
@@ -64,5 +65,32 @@ describe("health data coverage", () => {
     });
 
     expect(coverage.status).toBe("limited");
+  });
+
+  it("excludes dates before the first device-attributed wearable measurement", () => {
+    const coverage = calculateHealthDataCoverage({
+      imported: [
+        record("steps", "2026-01-09"),
+        record("sleep", "2026-02-25"),
+        record("daily-resting-heart-rate", "2026-05-29", { source_device: "Google Fitbit Air" }),
+        record("sleep", "2026-05-30", { source_device: "Google Fitbit Air" }),
+      ],
+      used: [
+        { metric_date: "2026-01-09", sleep_minutes: null },
+        { metric_date: "2026-02-25", sleep_minutes: 460 },
+        { metric_date: "2026-05-29", sleep_minutes: null },
+        { metric_date: "2026-05-30", sleep_minutes: 480 },
+      ],
+      timeZone: "Europe/Paris",
+    });
+
+    expect(coverage).toMatchObject({
+      importedDays: 2,
+      usedDays: 2,
+      importedNights: 1,
+      usedNights: 1,
+      startDate: "2026-05-29",
+      endDate: "2026-05-30",
+    });
   });
 });
