@@ -207,7 +207,7 @@ export async function GET(request: Request) {
     return (initial ? query.eq("sync_trigger", "initial") : query.neq("sync_trigger", "initial"))
       .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
   };
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + 35_000;
   const results: Array<Record<string, unknown>> = [];
   for (let jobIndex = 0; jobIndex < 12 && Date.now() < deadline - 2_000; jobIndex += 1) {
     const priorityResult = await readyJob(false);

@@ -93,8 +93,8 @@ async function stageRecords(jobId: string, reconciliationToken: string, records:
 
 async function publishRecords(records: Array<ReturnType<typeof normalizeGoogleHealthPoint>>) {
   const admin = createSupabaseAdminClient();
-  for (let index = 0; index < records.length; index += 500) {
-    const { error } = await admin.from("health_records").upsert(records.slice(index, index + 500), {
+  for (let index = 0; index < records.length; index += 1000) {
+    const { error } = await admin.from("health_records").upsert(records.slice(index, index + 1000), {
       onConflict: "user_id,provider,data_type,source_record_id",
     });
     if (error) throw new Error(`Health records could not be published: ${error.message}`);
