@@ -13,7 +13,16 @@ export async function GET() {
   const { data, error } = await admin.from("provider_connections")
     .select("provider,status,scopes,last_synced_at,last_error_code,metadata,created_at")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
-  if (error) return NextResponse.json({ error: "Connection status could not be loaded." }, { status: 500 });
+  if (error) {
+    console.error("[api/health/connection] load failed", {
+      userId: user.id,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json({ error: "Connection status could not be loaded." }, { status: 500 });
+  }
   return NextResponse.json({ connection: data });
 }
 

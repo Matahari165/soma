@@ -19,7 +19,16 @@ export async function GET() {
     admin.from("health_goals").select("goal_type").eq("user_id", user.id).eq("priority", 1).is("ended_on", null).maybeSingle(),
   ]);
   const failed = results.find((result) => result.error);
-  if (failed?.error) return NextResponse.json({ error: "Your profile could not be loaded." }, { status: 500 });
+  if (failed?.error) {
+    console.error("[api/profile] load failed", {
+      userId: user.id,
+      code: failed.error.code,
+      message: failed.error.message,
+      details: failed.error.details,
+      hint: failed.error.hint,
+    });
+    return NextResponse.json({ error: "Your profile could not be loaded." }, { status: 500 });
+  }
   const [{ data: profile }, { data: sleep }, { data: goal }] = results;
   return NextResponse.json({ displayName: profile?.display_name ?? user.displayName, dateOfBirth: profile?.date_of_birth ?? "", heightCm: Number(profile?.height_cm ?? 175), weightKg: Number(profile?.weight_kg ?? 70), importRange: profile?.import_range ?? "90_days", primaryGoal: goal?.goal_type ?? "general_fitness", baseSleepTargetMinutes: sleep?.base_target_minutes ?? 480, usualWakeTime: String(sleep?.usual_wake_time ?? "07:00").slice(0, 5) });
 }
