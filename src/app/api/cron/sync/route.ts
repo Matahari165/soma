@@ -7,7 +7,7 @@ import {
 } from "@/integrations/google-health/schedule";
 import { drainGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger } from "@/integrations/google-health/sync";
 import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
-import { isGoogleHealthDataType } from "@/integrations/google-health/client";
+import { getGrantedGoogleHealthDataTypes, isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
 import { requireServerEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -109,7 +109,7 @@ async function queueWebhookJobs() {
 async function queueAutomaticJobs(now = new Date()) {
   const admin = createSupabaseAdminClient();
   const { data: connections, error: connectionError } = await admin.from("provider_connections")
-    .select("id,user_id,scopes,last_synced_at")
+    .select("id,user_id,scopes,last_lab_synced_at")
     .eq("provider", "google_health")
     .eq("status", "connected");
   if (connectionError) throw new Error("Automatic sync connections could not be loaded.");
@@ -142,20 +142,25 @@ async function queueAutomaticJobs(now = new Date()) {
 
   for (const connection of connections ?? []) {
     const timezone = timezoneByUser.get(connection.user_id) ?? "Europe/Paris";
-    const schedule = isAutomaticGoogleHealthSyncDue({ now, timezone, lastSyncedAt: connection.last_synced_at });
+    const schedule = isAutomaticGoogleHealthSyncDue({
+      now,
+      timezone,
+      lastLabSyncedAt: connection.last_lab_synced_at,
+    });
     if (!schedule.due) continue;
     const openJobs = openJobsByConnection.get(connection.id) ?? [];
     windowOpen = true;
-    const dataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
-    if (!dataTypes.length) continue;
+    const hourlyDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
+    if (!hourlyDataTypes.length) continue;
     if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
     const historyImportOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "all_history");
     if (!fullHistoryConnections.has(connection.id) && !historyImportOpen) {
+      const historyDataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
       const { error } = await admin.from("sync_jobs").insert({
         user_id: connection.user_id,
         connection_id: connection.id,
         import_range: "all_history",
-        data_types: [...dataTypes],
+        data_types: [...historyDataTypes],
         range_start: "2009-01-01T00:00:00.000Z",
         range_end: now.toISOString(),
         status: "queued",
@@ -170,7 +175,7 @@ async function queueAutomaticJobs(now = new Date()) {
       user_id: connection.user_id,
       connection_id: connection.id,
       import_range: "90_days",
-      data_types: [...dataTypes],
+      data_types: [...hourlyDataTypes],
       range_start: range.start,
       range_end: range.end,
       status: "queued",

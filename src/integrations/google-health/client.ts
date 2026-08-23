@@ -78,6 +78,19 @@ export const GOOGLE_HEALTH_DASHBOARD_DATA_TYPES = [
   "active-zone-minutes",
 ] as const satisfies readonly GoogleHealthDataType[];
 
+// High-volume raw streams arrive through Google Health webhooks and the initial
+// history import. Keeping them out of the hourly reconciliation prevents a raw
+// heart-rate backlog from delaying sleep, recovery, and effort metrics.
+const GOOGLE_HEALTH_WEBHOOK_STREAM_TYPES = new Set<GoogleHealthDataType>([
+  "heart-rate",
+  "heart-rate-variability",
+  "activity-level",
+]);
+
+export const GOOGLE_HEALTH_HOURLY_DATA_TYPES = GOOGLE_HEALTH_DATA_TYPES.filter(
+  (dataType) => !GOOGLE_HEALTH_WEBHOOK_STREAM_TYPES.has(dataType),
+);
+
 export const GOOGLE_HEALTH_DAILY_ROLLUP_TYPES = [
   "steps",
   "active-zone-minutes",

@@ -1,4 +1,7 @@
-import { getGrantedGoogleHealthDataTypes } from "./client";
+import {
+  GOOGLE_HEALTH_HOURLY_DATA_TYPES,
+  getGrantedGoogleHealthDataTypes,
+} from "./client";
 
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES = 60;
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS = 3;
@@ -6,7 +9,7 @@ export const GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS = 3;
 type AutomaticSyncInput = {
   now: Date;
   timezone: string;
-  lastSyncedAt: string | null;
+  lastLabSyncedAt: string | null;
 };
 
 type ZonedClock = {
@@ -32,12 +35,12 @@ export function zonedClock(date: Date, timezone: string): ZonedClock {
   return { civilDate: `${year}-${month}-${day}`, hour };
 }
 
-export function isAutomaticGoogleHealthSyncDue({ now, timezone, lastSyncedAt }: AutomaticSyncInput) {
+export function isAutomaticGoogleHealthSyncDue({ now, timezone, lastLabSyncedAt }: AutomaticSyncInput) {
   const current = zonedClock(now, timezone);
   const slot = new Date(now);
   slot.setUTCMinutes(0, 0, 0);
-  if (!lastSyncedAt) return { due: true, civilDate: current.civilDate, slot: slot.toISOString() };
-  return { due: new Date(lastSyncedAt) < slot, civilDate: current.civilDate, slot: slot.toISOString() };
+  if (!lastLabSyncedAt) return { due: true, civilDate: current.civilDate, slot: slot.toISOString() };
+  return { due: new Date(lastLabSyncedAt) < slot, civilDate: current.civilDate, slot: slot.toISOString() };
 }
 
 export function automaticGoogleHealthRange(now: Date) {
@@ -48,5 +51,6 @@ export function automaticGoogleHealthRange(now: Date) {
 }
 
 export function automaticGoogleHealthDataTypes(scopes: readonly string[]) {
-  return getGrantedGoogleHealthDataTypes(scopes);
+  const hourly = new Set(GOOGLE_HEALTH_HOURLY_DATA_TYPES);
+  return getGrantedGoogleHealthDataTypes(scopes).filter((dataType) => hourly.has(dataType));
 }

@@ -2,14 +2,13 @@
 
 import {
   Activity,
-  BarChart3,
   BedDouble,
-  ChevronRight,
-  Dumbbell,
   FlaskConical,
   HeartPulse,
   Menu,
   MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   X,
 } from "lucide-react";
@@ -29,7 +28,6 @@ const navigation = [
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
-  { label: "Analyses", href: "/trends", icon: BarChart3 },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
@@ -57,6 +55,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const pathname = usePathname();
   const [coachOpen, setCoachOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const coachPanelRef = useRef<HTMLElement>(null);
   const mobileMenuRef = useRef<HTMLElement>(null);
   const closeCoach = useCallback(() => setCoachOpen(false), []);
@@ -83,11 +82,24 @@ export function AppShell({ children, user, localPreview = false }: { children: R
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <div className={localPreview ? "app-shell app-shell--preview" : "app-shell"}>
-      <aside className="sidebar" aria-label="Primary navigation">
-        <Link className="brand" href="/" aria-label="Soma home">
-          <SomaLogo />
-        </Link>
+    <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed"].filter(Boolean).join(" ")}>
+      <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
+        <div className="sidebar__header">
+          <Link className="brand" href="/" aria-label="Soma home">
+            <SomaLogo compact={sidebarCollapsed} />
+          </Link>
+          <button
+            className="icon-button sidebar-toggle"
+            type="button"
+            onClick={() => setSidebarCollapsed((value) => !value)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-controls="primary-sidebar"
+            aria-pressed={sidebarCollapsed}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           {navigation.map(({ label, href, icon: Icon }) => (
@@ -96,31 +108,24 @@ export function AppShell({ children, user, localPreview = false }: { children: R
               href={href}
               key={href}
               aria-current={isActive(href) ? "page" : undefined}
+              title={sidebarCollapsed ? label : undefined}
             >
-              <Icon size={19} strokeWidth={1.8} />
+              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
               <span>{label}</span>
             </Link>
           ))}
         </nav>
 
         <div className="sidebar-secondary">
-          <Link className={isActive("/workouts") ? "nav-link nav-link--active" : "nav-link"} href="/workouts" aria-current={isActive("/workouts") ? "page" : undefined}>
-            <Dumbbell size={19} strokeWidth={1.8} />
-            <span>Workouts</span>
-          </Link>
-          <Link className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} href="/settings" aria-current={isActive("/settings") ? "page" : undefined}>
-            <Settings size={19} strokeWidth={1.8} />
-            <span>Settings</span>
+          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
+            <span className="avatar">{initials}</span>
+            <span>
+              <strong>{displayName}</strong>
+              <small>Settings</small>
+            </span>
+            <Settings size={17} aria-hidden="true" />
           </Link>
         </div>
-
-        <Link className="profile-card" href="/settings" aria-label={`Open settings for ${displayName}`}>
-          <span className="avatar">{initials}</span>
-          <span>
-            <strong>{displayName}</strong>
-          </span>
-          <ChevronRight size={17} />
-        </Link>
       </aside>
 
       <header className="mobile-header">
@@ -132,7 +137,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
           </button>}
           <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -141,12 +146,11 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         <><button className="mobile-menu-backdrop" type="button" onClick={closeMobileMenu} aria-label="Dismiss menu" /><nav ref={mobileMenuRef} id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation" role="dialog" aria-modal="true">
           {navigation.slice(4).map(({ label, href, icon: Icon }) => (
             <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={closeMobileMenu}>
-              <Icon size={19} />
+              <Icon size={19} aria-hidden="true" />
               {label}
             </Link>
           ))}
-          <Link href="/workouts" className={isActive("/workouts") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/workouts") ? "page" : undefined} onClick={closeMobileMenu}><Dumbbell size={19} />Workouts</Link>
-          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} />Settings</Link>
+          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} aria-hidden="true" />Settings</Link>
         </nav></>
       )}
 
@@ -161,12 +165,12 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             aria-current={isActive(href) ? "page" : undefined}
             onClick={closeMobileMenu}
           >
-            <Icon size={20} strokeWidth={1.8} />
+            <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
             <span>{label}</span>
           </Link>
         ))}
-        <button type="button" className={mobileMenuOpen || isActive("/trends") || isActive("/coach") || isActive("/workouts") || isActive("/settings") ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
-          <Menu size={20} />
+        <button type="button" className={mobileMenuOpen || isActive("/coach") || isActive("/settings") ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
+          <Menu size={20} aria-hidden="true" />
           <span>More</span>
         </button>
       </nav>

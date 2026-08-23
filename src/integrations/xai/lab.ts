@@ -6,28 +6,39 @@ import { requireServerEnv } from "@/lib/env";
 
 export const labNarrativeSchema = z.object({
   headline: z.string().min(1).max(220),
-  summary: z.string().min(1).max(1200),
-  highlights: z.array(z.string().min(1).max(260)).min(1).max(3),
+  // Kept for storage/backwards compatibility. The dashboard presents the
+  // headline and highlights as the user-facing synthesis.
+  summary: z.string().min(1).max(360),
+  highlights: z.array(z.string().min(1).max(260)).min(1).max(4),
 });
 
 export type LabNarrative = z.infer<typeof labNarrativeSchema>;
 
 export async function generateLabNarrative(input: { userId: string; relations: MatrixRelation[] }) {
   const apiKey = requireServerEnv("XAI_API_KEY");
-  const facts = input.relations.slice(0, 12).map((relation) => ({
+  const preferredOutcomes = new Map([
+    ["deep_sleep", 0],
+    ["rem_sleep", 1],
+    ["hrv", 2],
+    ["rhr", 3],
+    ["respiratory", 4],
+    ["vigorous_minutes", 5],
+    ["zone_minutes", 6],
+    ["active_minutes", 7],
+    ["exercise_minutes", 8],
+  ]);
+  const usableRelations = input.relations
+    .filter((relation) => !relation.excluded && relation.effect !== null && relation.coefficient !== null)
+    // Keep the mechanically obvious bedtime → total sleep pair out of the
+    // model context even if a caller passes a raw, unsorted relation list.
+    .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"))
+    .sort((first, second) => (preferredOutcomes.get(first.outcomeId) ?? 50) - (preferredOutcomes.get(second.outcomeId) ?? 50));
+  const facts = usableRelations.slice(0, 12).map((relation) => ({
     predictor: relation.predictorLabel,
     outcome: relation.outcomeLabel,
-    coefficient: relation.coefficient,
     effect: relation.effect,
     unit: relation.outcomeUnit,
-    observations: relation.sampleSize,
-    effectiveObservations: relation.effectiveSampleSize,
-    interval95: [relation.confidenceLow, relation.confidenceHigh],
-    qValue: relation.qValue,
-    relevance: relation.relevance,
-    method: relation.method,
-    stable: relation.stable,
-    lagDays: relation.lagDays,
+    timing: relation.lagDays === 0 ? "same day" : relation.lagDays === 1 ? "the next day" : `${relation.lagDays} days later`,
   }));
   const response = await fetch("https://api.x.ai/v1/responses", {
     method: "POST",
@@ -36,17 +47,27 @@ export async function generateLabNarrative(input: { userId: string; relations: M
       model: "grok-4.6",
       store: false,
       reasoning: { effort: "low" },
-      max_output_tokens: 1600,
-      instructions: "Tu es l'analyste personnel de Soma. Les calculs fournis sont définitifs: ne recalcule rien. Classe les relations par relevance, largeur de l'intervalle95, qValue et effectiveObservations. Ne mets jamais en avant une relation mécaniquement évidente comme coucher plus tard et dormir moins au total. Préfère les effets sur le sommeil profond, la VFC, la fréquence cardiaque au repos, la respiration et les autres mesures brutes. Donne les effets dans leur unité, reste très synthétique et écris en français naturel. N'invente ni mécanisme ni donnée. Ne mentionne jamais, sous aucune formulation, la distinction entre corrélation et causalité; l'utilisateur la connaît déjà. Ne produis aucun avertissement générique à ce sujet.",
-      input: `Utilisateur anonyme ${stableHash(input.userId)}\nRésultats calculés:\n${JSON.stringify(facts)}`,
+      max_output_tokens: 1200,
+      instructions: [
+        "You are Soma's personal health analyst.",
+        "The supplied calculations are final: do not recalculate them or infer values that are not supplied.",
+        "Write in clear, natural English.",
+        "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
+        "Each bullet must state exactly one observed relationship, name the input and outcome, and preserve the supplied effect and unit.",
+        "Use simple wording. Never mention rankings, statistical methods, technical metadata, data counts, uncertainty ranges, or how the result was computed.",
+        "Never mention or explain the distinction between correlation and causation, and do not add a generic statistical caveat.",
+        "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",
+        "Do not invent mechanisms, context, or data.",
+      ].join(" "),
+      input: `Anonymous user ${stableHash(input.userId)}\nCalculated findings:\n${JSON.stringify(facts)}`,
       text: { format: { type: "json_schema", name: "soma_lab_narrative", strict: true, schema: {
         type: "object",
         additionalProperties: false,
         required: ["headline", "summary", "highlights"],
         properties: {
           headline: { type: "string", maxLength: 220 },
-          summary: { type: "string", maxLength: 1200 },
-          highlights: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", maxLength: 260 } },
+          summary: { type: "string", maxLength: 360 },
+          highlights: { type: "array", minItems: 1, maxItems: 4, items: { type: "string", maxLength: 260 } },
         },
       } } },
     }),

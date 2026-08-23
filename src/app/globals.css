@@ -189,7 +189,9 @@ textarea:focus-visible,
   min-height: 100vh;
   margin-left: var(--sidebar-width);
   padding-top: 0;
+  transition: margin-left var(--normal) var(--ease);
 }
+.app-shell--sidebar-collapsed .main-content { margin-left: 76px; }
 .app-shell--preview .main-content { padding-top: 28px; }
 
 .sidebar {
@@ -202,7 +204,13 @@ textarea:focus-visible,
   padding: 24px 18px 18px;
   border-right: 1px solid var(--line);
   background: var(--paper);
+  transition: width var(--normal) var(--ease), padding var(--normal) var(--ease);
 }
+.sidebar__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.sidebar-toggle { width: 36px; min-width: 36px; min-height: 36px; }
+.sidebar--collapsed { width: 76px; padding-inline: 12px; }
+.sidebar--collapsed .sidebar__header { grid-template-columns: 1fr; justify-items: center; }
+.sidebar--collapsed .sidebar-toggle { margin-top: 8px; }
 .brand {
   display: inline-flex;
   min-height: 48px;
@@ -210,20 +218,10 @@ textarea:focus-visible,
   gap: 10px;
 }
 .brand-symbol { width: 44px; height: 44px; }
-.soma-symbol__outer,
-.soma-symbol__middle,
-.soma-symbol__core {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-.soma-symbol__outer { stroke-width: 1.1; opacity: .4; }
-.soma-symbol__middle { stroke-width: 1.45; opacity: .7; }
-.soma-symbol__core { stroke-width: 1.9; }
 .soma-wordmark { display: grid; line-height: 1; }
 .soma-wordmark strong { font-size: 1.02rem; letter-spacing: .16em; }
 .soma-logo { display: inline-flex; align-items: center; gap: 9px; }
+.soma-logo--compact .soma-wordmark { display: none; }
 
 .sidebar-nav { display: grid; gap: 2px; margin-top: 30px; }
 .nav-link {
@@ -242,6 +240,9 @@ textarea:focus-visible,
 .nav-link:hover { border-color: var(--line); background: var(--paper-strong); color: var(--ink); }
 .nav-link--active { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
 .nav-link--active svg { color: inherit; }
+.sidebar--collapsed .sidebar-nav { width: 100%; }
+.sidebar--collapsed .nav-link { justify-content: center; padding-inline: 0; }
+.sidebar--collapsed .nav-link span { display: none; }
 .sidebar-secondary { display: grid; gap: 2px; margin-top: auto; }
 
 .profile-card {
@@ -266,6 +267,12 @@ textarea:focus-visible,
 }
 .profile-card > span:nth-child(2) { min-width: 0; display: grid; }
 .profile-card strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.profile-card small { color: var(--muted); font-size: .66rem; }
+.profile-card--active { color: var(--moss-dark); }
+.sidebar--collapsed .sidebar-secondary { justify-items: center; }
+.sidebar--collapsed .profile-card { display: flex; width: 44px; min-height: 56px; justify-content: center; padding-top: 12px; }
+.sidebar--collapsed .profile-card > span:nth-child(2),
+.sidebar--collapsed .profile-card > svg { display: none; }
 
 .mobile-header, .bottom-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
 

@@ -33,6 +33,7 @@ type SyncJob = {
   attempts: number;
   progress: number;
   status: string;
+  sync_trigger: string;
   retry_after?: string | null;
 };
 
@@ -177,7 +178,12 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     if (!dataType) {
       const analytics = refreshAnalytics ? await recomputeUserHealth(claimedJob.user_id) : null;
       await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", claimedJob.id);
-      await admin.from("provider_connections").update({ last_synced_at: new Date().toISOString(), status: "connected" }).eq("id", claimedJob.connection_id);
+      const completedAt = new Date().toISOString();
+      await admin.from("provider_connections").update({
+        last_synced_at: completedAt,
+        ...(shouldRefreshAnalyticsForTrigger(claimedJob.sync_trigger) ? { last_lab_synced_at: completedAt } : {}),
+        status: "connected",
+      }).eq("id", claimedJob.connection_id);
       console.info("[google-health-sync] completed pending analytics", { jobId: claimedJob.id, analytics });
       return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics };
     }
@@ -252,8 +258,10 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     }).eq("id", claimedJob.id);
 
     if (completed) {
+      const completedAt = new Date().toISOString();
       const { error: freshnessError } = await admin.from("provider_connections").update({
-        last_synced_at: new Date().toISOString(),
+        last_synced_at: completedAt,
+        ...(shouldRefreshAnalyticsForTrigger(claimedJob.sync_trigger) ? { last_lab_synced_at: completedAt } : {}),
         status: "connected",
         last_error_code: null,
       }).eq("id", claimedJob.connection_id);

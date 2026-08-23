@@ -7,6 +7,7 @@ import {
   GOOGLE_HEALTH_SCOPES,
 } from "@/integrations/google-health/client";
 import { toSyncStatus } from "@/integrations/google-health/status";
+import { automaticGoogleHealthDataTypes } from "@/integrations/google-health/schedule";
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -124,7 +125,7 @@ export async function POST() {
     return NextResponse.json({ error: "Reconnect Google Health before syncing.", phase: "needs_reconnect" }, { status: 409 });
   }
 
-  const dataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
+  const dataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
   if (!dataTypes.length) return NextResponse.json({ error: "Grant at least one Soma health permission before syncing." }, { status: 409 });
 
   const { data: openJobs, error: openJobsError } = await admin.from("sync_jobs")

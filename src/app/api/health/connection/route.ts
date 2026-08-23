@@ -6,12 +6,15 @@ import { decryptSecret } from "@/lib/crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
-  if (isLocalPreviewMode()) return NextResponse.json({ connection: { provider: "google_health", status: "connected", scopes: ["activity.readonly", "health.readonly", "sleep.readonly"], last_synced_at: new Date().toISOString(), metadata: { preview: true, consent_complete: true } } });
+  if (isLocalPreviewMode()) {
+    const now = new Date().toISOString();
+    return NextResponse.json({ connection: { provider: "google_health", status: "connected", scopes: ["activity.readonly", "health.readonly", "sleep.readonly"], last_synced_at: now, last_lab_synced_at: now, metadata: { preview: true, consent_complete: true } } });
+  }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.from("provider_connections")
-    .select("provider,status,scopes,last_synced_at,last_error_code,metadata,created_at")
+    .select("provider,status,scopes,last_synced_at,last_lab_synced_at,last_error_code,metadata,created_at")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
   if (error) {
     console.error("[api/health/connection] load failed", {
@@ -23,7 +26,12 @@ export async function GET() {
     });
     return NextResponse.json({ error: "Connection status could not be loaded." }, { status: 500 });
   }
-  return NextResponse.json({ connection: data });
+  return NextResponse.json({
+    connection: data ? {
+      ...data,
+      last_synced_at: data.last_lab_synced_at ?? data.last_synced_at,
+    } : data,
+  });
 }
 
 export async function DELETE() {

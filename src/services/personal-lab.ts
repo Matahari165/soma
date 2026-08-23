@@ -171,31 +171,31 @@ function buildCorrelationMatrix(input: {
 }) {
   const health = [...input.health].sort((a, b) => a.metric_date.localeCompare(b.metric_date));
   const dailyOutcomes = [
-    healthSeries(health, "sleep_minutes", "Sommeil", "min", "sleep_minutes"),
-    healthSeries(health, "sleep_efficiency", "Efficacité", "%", "sleep_efficiency"),
-    healthSeries(health, "deep_sleep", "Sommeil profond", "min", "sleep_deep_minutes"),
-    healthSeries(health, "rem_sleep", "Sommeil paradoxal", "min", "sleep_rem_minutes"),
-    healthSeries(health, "hrv", "VFC", "ms", "hrv_ms"),
-    healthSeries(health, "rhr", "FC repos", "bpm", "resting_heart_rate"),
-    healthSeries(health, "respiratory", "Respiration", "/min", "respiratory_rate"),
+    healthSeries(health, "sleep_minutes", "Sleep", "min", "sleep_minutes"),
+    healthSeries(health, "sleep_efficiency", "Efficiency", "%", "sleep_efficiency"),
+    healthSeries(health, "deep_sleep", "Deep sleep", "min", "sleep_deep_minutes"),
+    healthSeries(health, "rem_sleep", "REM sleep", "min", "sleep_rem_minutes"),
+    healthSeries(health, "hrv", "HRV", "ms", "hrv_ms"),
+    healthSeries(health, "rhr", "Resting HR", "bpm", "resting_heart_rate"),
+    healthSeries(health, "respiratory", "Breathing rate", "/min", "respiratory_rate"),
     healthSeries(health, "spo2", "SpO₂", "%", "oxygen_saturation"),
-    healthSeries(health, "temperature", "Température", "°C", "skin_temperature_delta"),
+    healthSeries(health, "temperature", "Temperature", "°C", "skin_temperature_delta"),
   ];
   const deepWorkSeries: MatrixSeries = { id: "calendar_deep_work", label: "Deep Work (Calendar)", unit: "min", kind: "numeric", points: input.observations.flatMap((day) => day.deepWorkMinutes === null ? [] : [{ date: day.date, value: day.deepWorkMinutes }]) };
   const automaticRows: Array<{ series: MatrixSeries; lagDays: number; label: string }> = [
     {
-      series: { id: "bedtime", label: "Heure du coucher", unit: "h", kind: "numeric", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone) }] : []) },
+      series: { id: "bedtime", label: "Bedtime", unit: "h", kind: "numeric", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone) }] : []) },
       lagDays: 0,
-      label: "même nuit",
+      label: "same night",
     },
-    { series: healthSeries(health, "sleep_duration_driver", "Durée du sommeil", "min", "sleep_minutes"), lagDays: 0, label: "même jour" },
-    { series: healthSeries(health, "sleep_debt", "Dette de sommeil", "min", "cumulative_sleep_debt_minutes"), lagDays: 0, label: "même jour" },
-    { series: healthSeries(health, "steps", "Pas", "pas", "steps"), lagDays: 1, label: "lendemain" },
-    { series: healthSeries(health, "zone_minutes", "Minutes en zone", "min", "zone_minutes"), lagDays: 1, label: "lendemain" },
-    { series: healthSeries(health, "vigorous_minutes", "Effort intense", "min", "vigorous_zone_minutes"), lagDays: 1, label: "lendemain" },
-    { series: healthSeries(health, "active_minutes", "Temps actif", "min", "active_minutes"), lagDays: 1, label: "lendemain" },
-    { series: healthSeries(health, "exercise_minutes", "Temps d’exercice", "min", "exercise_minutes"), lagDays: 1, label: "lendemain" },
-    { series: deepWorkSeries, lagDays: 1, label: "lendemain" },
+    { series: healthSeries(health, "sleep_duration_driver", "Sleep duration", "min", "sleep_minutes"), lagDays: 0, label: "same day" },
+    { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), lagDays: 0, label: "same day" },
+    { series: healthSeries(health, "steps", "Steps", "steps", "steps"), lagDays: 1, label: "next day" },
+    { series: healthSeries(health, "zone_minutes", "Zone minutes", "min", "zone_minutes"), lagDays: 1, label: "next day" },
+    { series: healthSeries(health, "vigorous_minutes", "Vigorous effort", "min", "vigorous_zone_minutes"), lagDays: 1, label: "next day" },
+    { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), lagDays: 1, label: "next day" },
+    { series: healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes"), lagDays: 1, label: "next day" },
+    { series: deepWorkSeries, lagDays: 1, label: "next day" },
   ];
 
   const entriesByVariable = new Map<string, JournalEntry[]>();
@@ -205,7 +205,7 @@ function buildCorrelationMatrix(input: {
     if (variable.variableType === "category") return variable.options.map((option) => ({
       series: { id: `journal:${variable.id}:${option}`, label: `${variable.name} · ${option}`, unit: "", kind: "binary" as const, points: [...recorded].flatMap(([date, value]) => typeof value === "string" ? [{ date, value: value === option ? 1 : 0 }] : []) },
       lagDays: 1,
-      label: "lendemain",
+      label: "next day",
     }));
     const kind = variable.variableType === "boolean" ? "binary" as const : "numeric" as const;
     return [{
@@ -214,7 +214,7 @@ function buildCorrelationMatrix(input: {
         return number === null ? [] : [{ date, value: number }];
       }) },
       lagDays: 1,
-      label: "lendemain",
+      label: "next day",
     }];
   });
 
@@ -267,19 +267,19 @@ function buildCorrelationMatrix(input: {
     runsByWeek.set(week, (runsByWeek.get(week) ?? 0) + 1);
   }
   const weeklyPredictors: MatrixSeries[] = [
-    { id: "runs_week", label: "Courses par semaine", unit: "courses", kind: "numeric", points: healthWeeks.map((date) => ({ date, value: runsByWeek.get(date) ?? 0 })) },
+    { id: "runs_week", label: "Runs per week", unit: "runs", kind: "numeric", points: healthWeeks.map((date) => ({ date, value: runsByWeek.get(date) ?? 0 })) },
     ...[
-      healthSeries(health, "vigorous_week", "Effort intense par semaine", "min", "vigorous_zone_minutes"),
-      healthSeries(health, "active_week", "Temps actif par semaine", "min", "active_minutes"),
-      healthSeries(health, "exercise_week", "Exercice par semaine", "min", "exercise_minutes"),
-      healthSeries(health, "zone_week", "Zones cardio par semaine", "min", "zone_minutes"),
+      healthSeries(health, "vigorous_week", "Vigorous effort per week", "min", "vigorous_zone_minutes"),
+      healthSeries(health, "active_week", "Active time per week", "min", "active_minutes"),
+      healthSeries(health, "exercise_week", "Exercise per week", "min", "exercise_minutes"),
+      healthSeries(health, "zone_week", "Cardio zones per week", "min", "zone_minutes"),
     ].map((series) => ({ ...series, points: aggregateWeekly(series.points, "sum", completeHealthWeeks, 7) })),
   ];
   const weeklyRows: LabMatrixRow[] = weeklyPredictors.map((series) => ({
     id: series.id,
     label: series.label,
     grain: "week",
-    lagLabel: "même semaine",
+    lagLabel: "same week",
     relations: weeklyOutcomes.map((outcome) => removeNegligibleEffect(calculateMatrixRelation(series, outcome))),
   }));
   const rows = [...dailyRows, ...weeklyRows];
@@ -382,7 +382,7 @@ function previewData() {
   const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: index, isActive: true }));
   const yesterday = addDays(dateInTimezone("Europe/Paris"), -1);
   const entry = (name: string, value: JournalEntry["value"]): JournalEntry => ({ variableId: variables.find((variable) => variable.name === name)?.id as string, entryDate: yesterday, value });
-  const journal = { variables, entries: [entry("Alcool", 0), entry("Deep Work", 165), entry("Heure du coucher", "22:35"), entry("Énergie", 4), entry("Concentration", 4)] };
+  const journal = { variables, entries: [entry("Alcohol", 0), entry("Deep Work", 165), entry("Bedtime", "22:35"), entry("Energy", 4), entry("Focus", 4)] };
   return { health, scores, calendars, checkins, exercises, journal };
 }
 
@@ -415,8 +415,7 @@ function buildSnapshot(input: {
   const narrativeMatchesLead = Boolean(lead && sourceLead
     && sourceLead.predictor === lead.predictorLabel
     && sourceLead.outcome === lead.outcomeLabel
-    && sourceLead.effect === lead.effect
-    && sourceLead.observations === lead.sampleSize);
+    && sourceLead.effect === lead.effect);
   const aiNarrative = input.narrative && narrativeMatchesLead ? { headline: input.narrative.headline, summary: input.narrative.summary, highlights, model: input.narrative.model, generatedAt: input.narrative.generated_at } : null;
   const connection = (provider: string) => input.connections.find((item) => item.provider === provider);
   const healthConnection = connection("google_health");

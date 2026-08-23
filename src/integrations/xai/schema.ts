@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const coachActionSchema = z.object({
-  type: z.enum(["create_workout_program", "update_sleep_target", "update_primary_goal", "customize_dashboard"]),
+  type: z.enum(["update_sleep_target", "update_primary_goal", "customize_dashboard"]),
   title: z.string().min(1).max(160),
   description: z.string().min(1).max(1000),
   payload: z.object({

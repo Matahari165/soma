@@ -24,9 +24,9 @@ Production is ready only after these checks use a deployed URL and a real accoun
 
 ## Background synchronization
 
-Supabase Cron calls `/api/cron/sync` every five minutes as a lightweight worker. This polling does not contact Google by itself. Soma creates at most one automatic import per connection and civil day, during the 11:00 hour in the profile timezone. Webhook corrections are deferred to that daily window; a user-requested manual import starts immediately after the API response and the worker provides retry/recovery.
+Supabase Cron calls `/api/cron/sync` every five minutes as a lightweight worker. This polling does not contact Google by itself. Soma creates at most one automatic Lab refresh per connection and completed UTC hour. High-volume raw streams are handled by Google Health webhooks and the initial history import; the hourly reconciliation prioritizes sleep, recovery, effort, and the other user-facing metrics. A user-requested manual import starts immediately after the API response and the worker provides retry/recovery.
 
-Apply `supabase/setup/schedule_sync.sql` after every application URL or `CRON_SECRET` rotation. The database uniqueness constraint in `20260820110000_daily_google_health_sync.sql` is the final guard against duplicate automatic imports.
+Apply `supabase/setup/schedule_sync.sql` after every application URL or `CRON_SECRET` rotation. The per-slot database uniqueness constraint in `20260822160000_journal_and_hourly_sync.sql` is the final guard against duplicate automatic imports.
 
 ## Backups and recovery
 

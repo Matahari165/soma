@@ -16,14 +16,56 @@ function formatEffect(relation: MatrixRelation) {
   return `${signed(relation.effect, digits)}${relation.outcomeUnit ? ` ${relation.outcomeUnit}` : ""}`;
 }
 
+const englishMetricLabels: Record<string, string> = {
+  bedtime: "Bedtime",
+  sleep_minutes: "Total sleep",
+  sleep_efficiency: "Sleep efficiency",
+  deep_sleep: "Deep sleep",
+  rem_sleep: "REM sleep",
+  hrv: "HRV",
+  rhr: "Resting heart rate",
+  respiratory: "Respiratory rate",
+  spo2: "Oxygen saturation",
+  temperature: "Skin temperature",
+  steps: "Steps",
+  zone_minutes: "Zone minutes",
+  vigorous_minutes: "Vigorous-zone minutes",
+  active_minutes: "Active minutes",
+  exercise_minutes: "Exercise minutes",
+  sleep_duration_driver: "Sleep duration",
+  sleep_debt: "Sleep debt",
+  calendar_deep_work: "Deep work",
+  runs_week: "Runs per week",
+  vigorous_week: "Vigorous-zone minutes per week",
+  active_week: "Active minutes per week",
+  exercise_week: "Exercise minutes per week",
+  zone_week: "Zone minutes per week",
+};
+
+function metricLabel(id: string, label: string) {
+  return englishMetricLabels[id] ?? label;
+}
+
+function isTechnicalOrNonEnglish(value: string) {
+  return /(?:qvalue|relevance|interval|confidence|observation|sample|method|spearman|rank|classement|pertinence|intervalle|observation|semaine[s]? compar[ée]e[s]?)/i.test(value)
+    || /[àâäçéèêëîïôöùûüÿœ]/i.test(value);
+}
+
+function fallbackFinding(relation: MatrixRelation) {
+  const predictor = metricLabel(relation.predictorId, relation.predictorLabel);
+  const outcome = metricLabel(relation.outcomeId, relation.outcomeLabel);
+  const timing = relation.lagDays === 0 ? "that day" : relation.lagDays === 1 ? "the next day" : `${relation.lagDays} days later`;
+  return `${predictor} is linked to ${formatEffect(relation)} in ${outcome} ${timing}.`;
+}
+
 function RelationCell({ relation }: { relation: MatrixRelation }) {
   if (relation.excluded) {
-    return <td className="matrix-cell matrix-cell--excluded" title="Mesures qui se recouvrent."><strong>—</strong></td>;
+    return <td className="matrix-cell matrix-cell--excluded" title="Overlapping measures."><strong>—</strong></td>;
   }
   if (relation.coefficient === null) {
-    return <td className="matrix-cell matrix-cell--hidden" title={`${relation.sampleSize} observations appariées`}><strong>—</strong><small>n={relation.sampleSize}</small></td>;
+    return <td className="matrix-cell matrix-cell--hidden" title={`${relation.sampleSize} paired observations`}><strong>—</strong><small>n={relation.sampleSize}</small></td>;
   }
-  const title = `${relation.method === "spearman" ? "Spearman" : "Rang bisérial"} ${signed(relation.coefficient, 2)} · effet ${formatEffect(relation)} · intervalle 95 % [${signed(relation.confidenceLow, 2)}, ${signed(relation.confidenceHigh, 2)}] · n=${relation.sampleSize}, n effectif=${relation.effectiveSampleSize} · q=${relation.qValue.toFixed(3)}`;
+  const title = `${relation.method === "spearman" ? "Spearman" : "Rank-biserial"} ${signed(relation.coefficient, 2)} · effect ${formatEffect(relation)} · 95% interval [${signed(relation.confidenceLow, 2)}, ${signed(relation.confidenceHigh, 2)}] · n=${relation.sampleSize}, effective n=${relation.effectiveSampleSize} · q=${relation.qValue.toFixed(3)}`;
   return <td className={`matrix-cell matrix-cell--${relation.strength} ${relation.coefficient < 0 ? "matrix-cell--inverse" : "matrix-cell--direct"}`} title={title}>
     <strong>{formatEffect(relation)}</strong>
     <span>ρ {signed(relation.coefficient, 2)}</span>
@@ -39,36 +81,39 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     .sort((a, b) => b.relevance - a.relevance || b.effectiveSampleSize - a.effectiveSampleSize)
     .slice(0, 6), [rows]);
 
-  return <section className="matrix-section" aria-labelledby="matrix-title">
+  return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
-      <h2 id="matrix-title">Relations</h2>
-      <div className="matrix-grain" role="group" aria-label="Période d’analyse">
-        <button type="button" aria-pressed={grain === "day"} onClick={() => setGrain("day")}>Jours</button>
-        <button type="button" aria-pressed={grain === "week"} onClick={() => setGrain("week")}>Semaines</button>
+      <h2 id="matrix-title">Relationships</h2>
+      <div className="matrix-grain" role="group" aria-label="Analysis period">
+        <button type="button" aria-pressed={grain === "day"} onClick={() => setGrain("day")}>Days</button>
+        <button type="button" aria-pressed={grain === "week"} onClick={() => setGrain("week")}>Weeks</button>
       </div>
     </header>
-    <div className="matrix-scroll" role="region" aria-label={`Relations par ${grain === "day" ? "jour" : "semaine"}`} tabIndex={0}>
+    <div className="matrix-scroll" role="region" aria-label={`Relationships by ${grain === "day" ? "day" : "week"}`} tabIndex={0}>
       <table>
-        <thead><tr><th scope="col">Variable</th>{matrix.outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{row.label}</strong><small>{row.lagLabel}</small></th>{row.relations.map((relation) => <RelationCell relation={relation} key={relation.outcomeId} />)}</tr>)}</tbody>
+        <thead><tr><th scope="col">Variable</th>{matrix.outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{metricLabel(outcome.id, outcome.label)}</span><small>{outcome.unit}</small></th>)}</tr></thead>
+        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{metricLabel(row.id, row.label)}</strong><small>{row.lagLabel === "lendemain" ? "next day" : row.lagLabel === "même jour" ? "same day" : row.lagLabel === "même semaine" ? "same week" : row.lagLabel}</small></th>{row.relations.map((relation) => <RelationCell relation={relation} key={relation.outcomeId} />)}</tr>)}</tbody>
       </table>
     </div>
-    <div className="matrix-mobile-list" aria-label="Relations principales">
+    <div className="matrix-mobile-list" aria-label="Top relationships">
       {top.length ? top.map((relation) => <article key={`${relation.predictorId}-${relation.outcomeId}`}>
-        <div><strong>{relation.predictorLabel} → {relation.outcomeLabel}</strong><p>{formatEffect(relation)}</p><small>ρ {signed(relation.coefficient ?? 0, 2)} · n={relation.sampleSize}</small></div>
-      </article>) : <p>Pas encore assez de données appariées.</p>}
+        <div><strong>{metricLabel(relation.predictorId, relation.predictorLabel)} → {metricLabel(relation.outcomeId, relation.outcomeLabel)}</strong><p>{formatEffect(relation)}</p><small>ρ {signed(relation.coefficient ?? 0, 2)} · n={relation.sampleSize}</small></div>
+      </article>) : <p>Not enough paired data yet.</p>}
     </div>
     <details className="matrix-method">
-      <summary>Méthode</summary>
-      <p>Spearman classe les valeurs avant de les comparer. La taille effective, l’intervalle à 95 % et la correction des comparaisons multiples déterminent la précision affichée. Les champs vides sont exclus.</p>
+      <summary>How to read</summary>
+      <p>Cells show direction and effect size. Empty cells mean the pair is not ready to use. Missing journal days are left out.</p>
     </details>
   </section>;
 }
 
 export function LeadMatrixFinding({ relation, narrative = null }: { relation: MatrixRelation; narrative?: PersonalLabSnapshot["aiNarrative"] }) {
+  const headline = narrative?.headline && !isTechnicalOrNonEnglish(narrative.headline)
+    ? narrative.headline
+    : `${metricLabel(relation.predictorId, relation.predictorLabel)} and ${metricLabel(relation.outcomeId, relation.outcomeLabel)}`;
+  const highlights = narrative?.highlights?.filter((highlight) => !isTechnicalOrNonEnglish(highlight)).slice(0, 4) ?? [];
   return <section className="lab-featured lab-featured--matrix">
-    <h2>{narrative?.headline ?? `${relation.predictorLabel} : ${formatEffect(relation)} sur ${relation.outcomeLabel}.`}</h2>
-    {narrative?.summary ? <p>{narrative.summary}</p> : null}
-    <footer><span>ρ {signed(relation.coefficient ?? 0, 2)} · n={relation.sampleSize} · IC 95 % [{signed(relation.confidenceLow, 2)}, {signed(relation.confidenceHigh, 2)}]</span></footer>
+    <h2>{headline}</h2>
+    <ul className="lab-featured__effects">{(highlights.length ? highlights : [fallbackFinding(relation)]).map((highlight, index) => <li key={`${highlight}-${index}`}>{highlight}</li>)}</ul>
   </section>;
 }

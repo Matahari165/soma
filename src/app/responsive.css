@@ -18,6 +18,7 @@
   body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-top: calc(64px + env(safe-area-inset-top)); }
+  .app-shell--sidebar-collapsed .main-content { margin-left: 0; }
   .app-shell--preview .main-content { padding-top: calc(92px + env(safe-area-inset-top)); }
   .preview-banner { top: calc(64px + env(safe-area-inset-top)); left: 0; }
 

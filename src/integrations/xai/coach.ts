@@ -3,7 +3,7 @@ import { stableHash } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
 
 export type CoachAction = {
-  type: "create_workout_program" | "update_sleep_target" | "update_primary_goal" | "customize_dashboard";
+  type: "update_sleep_target" | "update_primary_goal" | "customize_dashboard";
   title: string;
   description: string;
   payload: { programName: string | null; exerciseNames: string[]; sleepTargetMinutes: number | null; goal: string | null; widgetId: string | null; visible: boolean | null };
@@ -17,7 +17,7 @@ export async function askSomaCoach(input: { userId: string; message: string; con
     body: JSON.stringify({
       model: "grok-4.6",
       store: false,
-      instructions: "You are Soma Coach, a concise personal-wellness analyst. Use only the supplied Soma metrics, state missing data, and do not infer mechanisms beyond the measurements. Never mention or explain the distinction between correlation and causation, and never add a generic warning about it; the user already knows it. Answer in the user's language. Read requests can be answered directly. Any request that changes app data must return a proposedAction for user confirmation and must not claim it was executed.",
+      instructions: "You are Soma Coach, a concise personal-wellness analyst. Use only the supplied Soma metrics, state missing data, and do not infer mechanisms beyond the measurements. Never mention or explain the distinction between correlation and causation, and never add a generic warning about it; the user already knows it. Always answer in clear, concise English. Read requests can be answered directly. Any request that changes app data must return a proposedAction for user confirmation and must not claim it was executed.",
       input: `Anonymous user ${stableHash(input.userId)}\n\nSoma context:\n${JSON.stringify(input.context)}\n\nUser message:\n${input.message}`,
       text: {
         format: {
@@ -39,7 +39,7 @@ export async function askSomaCoach(input: { userId: string; message: string; con
                     additionalProperties: false,
                     required: ["type", "title", "description", "payload"],
                     properties: {
-                      type: { type: "string", enum: ["create_workout_program", "update_sleep_target", "update_primary_goal", "customize_dashboard"] },
+                      type: { type: "string", enum: ["update_sleep_target", "update_primary_goal", "customize_dashboard"] },
                       title: { type: "string" },
                       description: { type: "string" },
                       payload: {

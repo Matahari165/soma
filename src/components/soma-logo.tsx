@@ -9,20 +9,34 @@ export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProp
       className={className}
       viewBox="0 0 48 48"
       fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      <path className="soma-symbol__outer" d="M7 14.5C13 7.5 21 5 28.5 6.2 36 7.4 41.7 12.5 42 18.2 42.4 25.2 34.8 28.5 24.2 29.6 13.8 30.7 7 33.1 7.7 39.8" />
-      <path className="soma-symbol__middle" d="M10.5 11.2C16.2 16.8 22.5 19 30.2 18.5 36.2 18.1 40.3 20 40.4 24.2 40.6 29.6 34.7 33 25.4 33.8 17.2 34.6 12.5 37.1 12.9 42" />
-      <path className="soma-symbol__core" d="M8.2 24C13.8 21 19.8 20.7 27.1 22.2 34.7 23.8 39.8 27.3 39 32.3 38.1 38.2 30.2 41.7 20.8 41.6" />
+      <path className="soma-symbol__line soma-symbol__axis" d="M10 38h28" vectorEffect="non-scaling-stroke" strokeWidth="1.35" opacity=".44" />
+      <path className="soma-symbol__line soma-symbol__signal" d="M10 31.5 18 23l6 5 13-14" vectorEffect="non-scaling-stroke" strokeWidth="1.9" />
+      <path className="soma-symbol__line soma-symbol__measure" d="M10 10v28" vectorEffect="non-scaling-stroke" strokeWidth="1.35" opacity=".44" />
+      <circle className="soma-symbol__node" cx="10" cy="31.5" r="2.4" fill="currentColor" stroke="none" />
+      <circle className="soma-symbol__node" cx="18" cy="23" r="2.4" fill="currentColor" stroke="none" />
+      <circle className="soma-symbol__node" cx="24" cy="28" r="2.4" fill="currentColor" stroke="none" />
+      <circle className="soma-symbol__node" cx="37" cy="14" r="2.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-export function SomaLogo() {
+type SomaLogoProps = {
+  className?: string;
+  compact?: boolean;
+};
+
+export function SomaLogo({ className, compact = false }: SomaLogoProps) {
+  const logoClassName = ["soma-logo", compact && "soma-logo--compact", className].filter(Boolean).join(" ");
+
   return (
-    <span className="soma-logo">
+    <span className={logoClassName}>
       <SomaSymbol />
       <span className="soma-wordmark">
         <strong>SOMA</strong>

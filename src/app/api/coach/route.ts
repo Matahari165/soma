@@ -65,9 +65,9 @@ export async function POST(request: Request) {
   if (isLocalPreviewMode()) return NextResponse.json({
     answer: `In this local preview, “${parsed.data.message.slice(0, 120)}” can be explored using the demo signals. Sleep is 86, recovery is 82, and effort is 63. No external AI was contacted.`,
     evidence: ["Demo Sleep · 86/100", "Demo Recovery · 82/100", "Demo Effort · 63/100"],
-    proposedAction: parsed.data.message.toLowerCase().includes("program") ? { type: "create_workout_program", title: "Create a demo strength program", description: "Preview a three-exercise program. Confirmation remains required.", payload: { programName: "Coach Strength A", exerciseNames: ["Back squat", "Bench press", "Romanian deadlift"] } } : null,
+    proposedAction: null,
     threadId: parsed.data.threadId ?? "30000000-0000-4000-8000-000000000002",
-    proposalId: parsed.data.message.toLowerCase().includes("program") ? "40000000-0000-4000-8000-000000000001" : null,
+    proposalId: null,
   });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
