@@ -7,6 +7,7 @@ const serviceRolePrivileges = readFileSync(new URL("../../supabase/migrations/20
 const atomicProfileUpdates = readFileSync(new URL("../../supabase/migrations/20260819211500_atomic_profile_updates.sql", import.meta.url), "utf8");
 const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_and_coach_writes.sql", import.meta.url), "utf8");
 const googleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260820090000_google_health_reconciliation.sql", import.meta.url), "utf8");
+const optimizedGoogleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260823093000_optimize_google_health_reconciliation.sql", import.meta.url), "utf8");
 const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
 const personalLab = readFileSync(new URL("../../supabase/migrations/20260822120000_personal_lab.sql", import.meta.url), "utf8");
 const journalAndHourlySync = readFileSync(new URL("../../supabase/migrations/20260822160000_journal_and_hourly_sync.sql", import.meta.url), "utf8");
@@ -94,5 +95,9 @@ describe("database security contract", () => {
     expect(googleHealthReconciliation).toMatch(/create or replace function public\.reconcile_google_health_window/i);
     expect(googleHealthReconciliation).toMatch(/revoke all on function public\.reconcile_google_health_window[\s\S]*from public, anon, authenticated/i);
     expect(googleHealthReconciliation).toMatch(/grant execute on function public\.reconcile_google_health_window[\s\S]*to service_role/i);
+    expect(optimizedGoogleHealthReconciliation).toContain("google_health_reconciliation_stage_record_lookup_idx");
+    expect(optimizedGoogleHealthReconciliation).toMatch(/if p_date_based then[\s\S]*else[\s\S]*end if/i);
+    expect(optimizedGoogleHealthReconciliation).toMatch(/revoke all on function public\.reconcile_google_health_window[\s\S]*from public, anon, authenticated/i);
+    expect(optimizedGoogleHealthReconciliation).toMatch(/grant execute on function public\.reconcile_google_health_window[\s\S]*to service_role/i);
   });
 });

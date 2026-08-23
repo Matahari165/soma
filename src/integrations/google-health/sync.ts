@@ -43,6 +43,16 @@ type ProviderConnection = {
   token_expires_at: string | null;
 };
 
+const DIRECT_UPSERT_DATA_TYPES = new Set<GoogleHealthDataType>([
+  "heart-rate",
+  "heart-rate-variability",
+  "activity-level",
+]);
+
+export function usesDirectGoogleHealthUpsert(dataType: GoogleHealthDataType) {
+  return DIRECT_UPSERT_DATA_TYPES.has(dataType);
+}
+
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
@@ -78,6 +88,16 @@ async function stageRecords(jobId: string, reconciliationToken: string, records:
       onConflict: "job_id,reconciliation_token,source_record_id",
     });
     if (error) throw new Error(`Health records could not be staged: ${error.message}`);
+  }
+}
+
+async function publishRecords(records: Array<ReturnType<typeof normalizeGoogleHealthPoint>>) {
+  const admin = createSupabaseAdminClient();
+  for (let index = 0; index < records.length; index += 500) {
+    const { error } = await admin.from("health_records").upsert(records.slice(index, index + 500), {
+      onConflict: "user_id,provider,data_type,source_record_id",
+    });
+    if (error) throw new Error(`Health records could not be published: ${error.message}`);
   }
 }
 
@@ -184,14 +204,16 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     const records = points.map((point) => usesDailyRollup
         ? normalizeGoogleHealthDailyRollup(claimedJob.user_id, dataType, point)
         : normalizeGoogleHealthPoint(claimedJob.user_id, dataType, point));
-    await stageRecords(claimedJob.id, reconciliationToken, records);
-    const deletedRecords = nextPageToken ? 0 : await reconcileWindow({
-      userId: claimedJob.user_id,
-      dataType,
-      start: windowStart,
-      end: windowEnd,
-      reconciliationToken,
-    });
+    const directUpsert = usesDirectGoogleHealthUpsert(dataType);
+    if (directUpsert) await publishRecords(records);
+    else await stageRecords(claimedJob.id, reconciliationToken, records);
+    const deletedRecords = nextPageToken || directUpsert ? 0 : await reconcileWindow({
+        userId: claimedJob.user_id,
+        dataType,
+        start: windowStart,
+        end: windowEnd,
+        reconciliationToken,
+      });
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
     if (nextPageToken) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
-import { classifyGoogleHealthSyncError, shouldRefreshAnalyticsForTrigger } from "./sync";
+import { classifyGoogleHealthSyncError, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -19,5 +19,13 @@ describe("Google Health sync failures", () => {
     expect(shouldRefreshAnalyticsForTrigger("automatic")).toBe(true);
     expect(shouldRefreshAnalyticsForTrigger("initial")).toBe(true);
     expect(shouldRefreshAnalyticsForTrigger("manual")).toBe(true);
+  });
+
+  it("publishes high-frequency series page by page", () => {
+    expect(usesDirectGoogleHealthUpsert("heart-rate")).toBe(true);
+    expect(usesDirectGoogleHealthUpsert("heart-rate-variability")).toBe(true);
+    expect(usesDirectGoogleHealthUpsert("activity-level")).toBe(true);
+    expect(usesDirectGoogleHealthUpsert("sleep")).toBe(false);
+    expect(usesDirectGoogleHealthUpsert("daily-resting-heart-rate")).toBe(false);
   });
 });
