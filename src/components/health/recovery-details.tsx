@@ -10,13 +10,14 @@ const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const latest = data.days.findLast((day) => (day.hrv_ms !== null && day.hrv_ms > 0) || (day.resting_heart_rate !== null && day.resting_heart_rate > 0));
-  const score = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date)?.score ?? null;
+  const recoveryScore = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date);
+  const score = recoveryScore?.score ?? null;
   const heartRates = data.heartRateSamples.map((sample) => sample.bpm);
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
   const heartAverage = heartRates.length ? heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length : null;
   const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
-  const driverCoverage = Number(data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date)?.drivers?.coverage);
+  const driverCoverage = Number(recoveryScore?.drivers?.coverage);
   const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate].filter((value) => value !== null).length / 3 : 0 });
   return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} freshness={freshness} timezone={data.timezone}>
     {latest ? <>
@@ -28,6 +29,12 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <article className="health-primary-card"><span>Temperature delta</span><MetricReading value={latest.skin_temperature_delta === null ? "—" : `${latest.skin_temperature_delta > 0 ? "+" : ""}${latest.skin_temperature_delta.toFixed(2)}`} unit={latest.skin_temperature_delta === null ? undefined : "°C"} /><p>Nightly temperature minus your 30-day baseline.</p></article>
         <article className="health-primary-card"><span>Heart-rate range</span><MetricReading value={heartMinimum === null || heartMaximum === null ? "—" : `${heartMinimum}–${heartMaximum}`} unit={heartMinimum === null || heartMaximum === null ? undefined : "bpm"} /><p>{heartAverage === null ? "Samples unavailable." : `${Math.round(heartAverage)} bpm average across recent samples.`}</p></article>
       </section>
+
+      <section className="health-panel recovery-formula" aria-labelledby="recovery-formula-title"><div className="health-section-heading"><div><span className="eyebrow">Score inputs</span><h2 id="recovery-formula-title">Recovery calculation</h2></div><span className="quality-pill">{score === null ? "Limited data" : "Personal baseline"}</span></div><dl>
+        <div><dt>HRV vs baseline</dt><dd>{typeof recoveryScore?.drivers?.hrv === "number" ? Math.round(recoveryScore.drivers.hrv) : "—"}</dd><small>40%</small></div>
+        <div><dt>Resting heart rate vs baseline</dt><dd>{typeof recoveryScore?.drivers?.restingHeartRate === "number" ? Math.round(recoveryScore.drivers.restingHeartRate) : "—"}</dd><small>30%</small></div>
+        <div><dt>Sleep score</dt><dd>{typeof recoveryScore?.drivers?.sleep === "number" ? Math.round(recoveryScore.drivers.sleep) : "—"}</dd><small>30%</small></div>
+      </dl></section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Recent samples</span><h2>Heart rate through the day</h2></div><span className="quality-pill">{data.heartRateSamples.length} samples</span></div><HeartRateCurve samples={data.heartRateSamples} /></section>
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest complete day</span><h2>Time in heart-rate zones</h2></div></div><ZoneDistribution zones={[

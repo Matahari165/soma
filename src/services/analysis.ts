@@ -125,7 +125,7 @@ export async function recomputeUserHealth(userId: string) {
     return { days: 0, scores: 0, insights: 0 };
   }
 
-  const baseSleepTarget = sleepPreferences?.base_target_minutes ?? 480;
+  const baseSleepTarget = 510;
   const primaryGoal = (goals?.find((goal) => goal.priority === 1)?.goal_type ?? "general_fitness") as FitnessGoal;
   const scoreRows: Record<string, unknown>[] = [];
   const metricRows: Record<string, unknown>[] = [];

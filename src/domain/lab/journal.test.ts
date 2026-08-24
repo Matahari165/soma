@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultJournalVariables, journalDayPeriod, journalFieldHint, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalFieldHint, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -10,12 +10,24 @@ const variable = (variableType: JournalVariable["variableType"], options: string
   options,
   position: 0,
   isActive: true,
+  emoji: "🧪",
+  defaultValue: null,
+  dayPeriod: "day",
 });
 
 describe("journal values", () => {
   it("keeps zero and false as explicit observations", () => {
     expect(normalizeJournalValue(variable("count"), 0)).toBe(0);
     expect(normalizeJournalValue(variable("boolean"), false)).toBe(false);
+  });
+
+  it("rejects negative starter quantities", () => {
+    expect(normalizeJournalValue({ ...variable("number"), name: "Caffeine", unit: "mg" }, -20)).toBeNull();
+  });
+
+  it("rejects a custom default that does not match its type", () => {
+    expect(createJournalVariableSchema.safeParse({ name: "Supplement", variableType: "boolean", options: [], defaultValue: 0 }).success).toBe(false);
+    expect(createJournalVariableSchema.safeParse({ name: "Scale", variableType: "scale", options: [], defaultValue: 0 }).success).toBe(false);
   });
 
   it("turns blank input into an absent observation", () => {
@@ -31,18 +43,18 @@ describe("journal values", () => {
   it("uses objective starter measures and milligrams for caffeine", () => {
     expect(defaultJournalVariables.map((item) => item.name)).toEqual([
       "Vacation",
+      "Illness",
       "Breakfast",
-      "WHM rounds",
+      "WHM",
       "Caffeine",
-      "Deep Work",
-      "Added-sugar servings",
+      "Added sugar",
+      "Masturbation",
       "Alcohol",
       "Dinner end time",
       "Magnesium",
-      "Breathing before sleep",
-      "Reading before sleep",
-      "Masturbation",
-      "Dark bedroom",
+      "Breathing exercise",
+      "Reading for 30 minutes",
+      "Dark room",
     ]);
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.unit).toBe("mg");
     expect(defaultJournalVariables.map((item) => String(item.name))).not.toContain("Bedtime");
@@ -52,12 +64,12 @@ describe("journal values", () => {
   it("groups starter fields in chronological day periods", () => {
     expect(journalDayPeriod(defaultJournalVariables.find((item) => item.name === "Breakfast")?.position ?? -1)).toBe("morning");
     expect(journalDayPeriod(defaultJournalVariables.find((item) => item.name === "Dinner end time")?.position ?? -1)).toBe("evening");
-    expect(journalDayPeriod(defaultJournalVariables.find((item) => item.name === "Dark bedroom")?.position ?? -1)).toBe("sleep");
+    expect(defaultJournalVariables.find((item) => item.name === "Dark room")?.dayPeriod).toBe("sleep");
   });
 
-  it("defines added sugar as low-friction servings", () => {
-    const sugar = defaultJournalVariables.find((item) => item.name === "Added-sugar servings");
-    expect(sugar?.unit).toBe("servings");
-    expect(journalFieldHint({ name: sugar?.name ?? "", variableType: sugar?.variableType ?? "count", unit: sugar?.unit ?? null })).toContain("sweet breakfast");
+  it("defines added sugar in approximate grams", () => {
+    const sugar = defaultJournalVariables.find((item) => item.name === "Added sugar");
+    expect(sugar?.unit).toBe("g");
+    expect(journalFieldHint({ name: sugar?.name ?? "", variableType: sugar?.variableType ?? "number", unit: sugar?.unit ?? null })).toBe("g");
   });
 });

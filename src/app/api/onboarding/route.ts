@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     p_weight_kg: input.weightKg,
     p_sex_for_health_calculations: input.sexForHealthCalculations,
     p_import_range: input.importRange,
-    p_base_sleep_target_minutes: input.baseSleepTargetMinutes,
+    p_base_sleep_target_minutes: 510,
     p_usual_wake_time: input.usualWakeTime,
     p_primary_goal: input.primaryGoal,
     p_secondary_goal: input.secondaryGoal,

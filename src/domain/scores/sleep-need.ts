@@ -5,22 +5,11 @@ export type SleepNeedInput = {
 };
 
 export function estimateSleepNeed(input: SleepNeedInput) {
-  const recentDeficits = input.recentSleepMinutes.slice(-7).map((minutes) =>
-    Math.max(input.baseTargetMinutes - minutes, 0),
-  );
-  const averageDeficit = recentDeficits.length
-    ? recentDeficits.reduce((sum, value) => sum + value, 0) / recentDeficits.length
-    : 0;
-  const sleepDebtAdjustment = Math.min(Math.round(averageDeficit * 0.3), 60);
-  const effortAdjustment = input.priorDayEffort === null
-    ? 0
-    : Math.min(Math.max(Math.round((input.priorDayEffort - 60) * 0.75), 0), 30);
-
   return {
-    estimatedNeedMinutes: input.baseTargetMinutes + sleepDebtAdjustment + effortAdjustment,
-    sleepDebtAdjustment,
-    effortAdjustment,
-    algorithmVersion: "sleep-need-v1",
+    estimatedNeedMinutes: input.baseTargetMinutes,
+    sleepDebtAdjustment: 0,
+    effortAdjustment: 0,
+    algorithmVersion: "sleep-target-v2",
   } as const;
 }
 

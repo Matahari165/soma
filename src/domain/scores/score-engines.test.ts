@@ -6,11 +6,11 @@ import { circularMean, sleepRegularityScore } from "./regularity";
 import { estimateSleepNeed, recommendBedtime } from "./sleep-need";
 
 describe("score engines", () => {
-  it("raises sleep need within bounded adjustments", () => {
-    const result = estimateSleepNeed({ baseTargetMinutes: 480, recentSleepMinutes: [360, 390, 420, 430, 440, 450, 460], priorDayEffort: 90 });
-    expect(result.estimatedNeedMinutes).toBeGreaterThan(480);
-    expect(result.sleepDebtAdjustment).toBeLessThanOrEqual(60);
-    expect(result.effortAdjustment).toBeLessThanOrEqual(30);
+  it("keeps the personal sleep target fixed across debt and effort contexts", () => {
+    const result = estimateSleepNeed({ baseTargetMinutes: 510, recentSleepMinutes: [360, 390, 420, 430, 440, 450, 460], priorDayEffort: 90 });
+    expect(result.estimatedNeedMinutes).toBe(510);
+    expect(result.sleepDebtAdjustment).toBe(0);
+    expect(result.effortAdjustment).toBe(0);
   });
 
   it("handles bedtimes around midnight as adjacent times", () => {

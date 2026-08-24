@@ -13,6 +13,48 @@
   .exercise-detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+@media (max-width: 1024px) {
+  .journal-grid { grid-template-columns: 1fr; }
+  .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
+  .lab-insight-panel > header { padding: 15px 14px; }
+  .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
+  .lab-insight-actions { width: 100%; }
+  .lab-insight-actions button { flex: 1; justify-content: center; }
+  .lab-insight-panel > p { padding-inline: 14px; }
+  .lab-insight-panel > ol li { grid-template-columns: 40px 1fr; }
+  .lab-insight-history article { grid-template-columns: 1fr; gap: 3px; }
+  .lab-overview--signals .lab-signals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lab-overview--signals .lab-signals a { min-height: 70px; padding: 9px; border-right: 1px solid var(--line); border-bottom: 0; }
+  .lab-overview--signals .lab-signals a > span { font-size: .62rem; }
+  .lab-overview--signals .lab-signals a > strong { font-size: 1.15rem; letter-spacing: -.06em; }
+  .journal-card > header { align-items: center; flex-direction: row; padding: 14px; }
+  .journal-date-strip { overflow-x: auto; grid-template-columns: repeat(5, minmax(78px, 1fr)); }
+  .journal-period { grid-template-columns: 1fr; }
+  .journal-period > h3 { padding: 9px 11px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .journal-field { grid-template-columns: 30px minmax(0, 1fr); }
+  .journal-field > :last-child { grid-column: 1 / -1; }
+  .journal-field__emoji { align-self: center; }
+  .journal-new-variable { padding: 12px; }
+  .matrix-controls { align-items: stretch; flex-direction: column; }
+  .matrix-periods { width: 100%; }
+  .matrix-periods button { flex: 1; min-width: 0; }
+  .matrix-toggle span { justify-content: center; }
+  .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overscroll-behavior-inline: contain; }
+  .matrix-mobile-list { display: none; }
+  .matrix-scroll table { width: max-content; min-width: 1320px; }
+  .matrix-scroll thead th:first-child, .matrix-scroll tbody th { width: 176px; }
+  .matrix-scroll th, .matrix-scroll td { width: 104px; }
+  .relation-detail__plot > div { grid-template-columns: 1fr; gap: 5px; }
+  .relation-detail dl { grid-template-columns: 1fr 1fr; }
+  .metric-registry { overflow: hidden; }
+  .metric-registry__table { overflow-x: auto; }
+  .metric-registry__table > div { width: 620px; grid-template-columns: 300px 100px 220px; }
+}
+
 @media (max-width: 900px) {
   :root { --sidebar-width: 0px; }
   body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
@@ -358,4 +400,21 @@
   .matrix-mobile-list__trigger { display: grid; gap: 4px; width: 100%; padding: 15px; border: 0; background: transparent; text-align: left; }
   .matrix-mobile-list__trigger span { color: var(--ink-soft); font-size: .76rem; }
   .matrix-mobile-list article > small { display: block; padding: 0 15px 13px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .55rem; }
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
+  .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
+  .lab-overview--signals .lab-signals, .lab-overview .lab-signals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lab-overview--signals .lab-signals a, .lab-overview .lab-signals a { min-height: 70px; padding: 9px; border-right: 1px solid var(--line); border-bottom: 0; }
+  .lab-overview--signals .lab-signals a:nth-child(2n), .lab-overview .lab-signals a:nth-child(2n) { border-right: 1px solid var(--line); }
+  .journal-card > header { align-items: center; flex-direction: row; }
+  .journal-period { grid-template-columns: 1fr; }
+  .journal-field { grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+  .journal-field > :last-child { grid-column: 1 / -1; }
+  .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overflow: auto; }
+  .matrix-mobile-list { display: none; }
+  .recovery-formula dl { grid-template-columns: 1fr; }
+  .recovery-formula dl > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .recovery-formula dl > div:last-child { border-bottom: 0; }
 }

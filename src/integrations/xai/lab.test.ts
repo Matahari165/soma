@@ -9,14 +9,14 @@ afterEach(() => {
 
 describe("Grok Personal Lab output", () => {
   it("accepts a concise grounded summary", () => {
-    const result = labNarrativeSchema.parse({ headline: "More activity is linked to a lower resting heart rate.", summary: "The clearest signal is in the recovery metrics.", highlights: ["More activity is linked to -2 bpm in resting heart rate.", "More activity is linked to +4 ms in HRV."] });
+    const result = labNarrativeSchema.parse({ headline: "More activity is linked to a lower resting heart rate.", summary: "The clearest signal is in the recovery metrics.", highlights: [{ text: "More activity is linked to -2 bpm in resting heart rate.", factIndex: 0 }, { text: "More activity is linked to +4 ms in HRV.", factIndex: 1 }] });
     expect(result.highlights).toHaveLength(2);
   });
 
   it("uses bounded low-latency reasoning for the dashboard synthesis", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
-      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Signal", summary: "A clear signal appears in recovery.", highlights: ["More steps are linked to -3 bpm in resting heart rate.", "More steps are linked to +4 ms in HRV."] }) }] }],
+      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Signal", summary: "A clear signal appears in recovery.", highlights: [{ text: "More steps are linked to -3 bpm in resting heart rate.", factIndex: 0 }] }) }] }],
     }), { status: 200 }));
 
     await generateLabNarrative({ userId: "user-1", relations: [{
@@ -35,6 +35,12 @@ describe("Grok Personal Lab output", () => {
       effect: -3,
       effectConfidenceLow: -4.5,
       effectConfidenceHigh: -1.5,
+      percentEffect: -5,
+      baselineMean: 60,
+      comparisonMean: 57,
+      baselineCount: 30,
+      comparisonCount: 30,
+      comparisonLabel: "+3000 steps",
       sampleSize: 60,
       effectiveSampleSize: 42,
       pValue: 0.01,
@@ -45,8 +51,9 @@ describe("Grok Personal Lab output", () => {
       lagDays: 1,
       grain: "day",
       timeScale: "acute",
+      period: 30,
       family: "automatic-acute",
-      method: "adjusted-dynamic-regression",
+      method: "raw-within-person-hac",
       evidence: "established",
       stable: true,
       stability: { chronologicalBlocks: 4, directionHeldInBlocks: true, trendAdjustedDirectionHeld: true, outlierAdjustedDirectionHeld: true },
@@ -64,6 +71,8 @@ describe("Grok Personal Lab output", () => {
     expect(body.input).toContain("qValue");
     expect(body.input).toContain("interval95");
     expect(body.input).toContain("pairedObservations");
+    expect(body.input).toContain("analysisPeriod");
+    expect(body.input).toContain("lagDays");
     expect(body.input).not.toContain("method");
     expect(body.instructions).toContain("clear, natural English");
     expect(body.instructions).toContain("1 to 4 short effect bullets");

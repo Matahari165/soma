@@ -60,4 +60,4 @@ export const previewExercises = [
 
 export const previewPrograms = [{ id: "20000000-0000-4000-8000-000000000001", name: "Full Body A", description: "Balanced strength session", exercises: [{ exercise: previewExercises[0], sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 }] }];
 
-export const previewProfile = { displayName: "Jeremy", dateOfBirth: "1998-06-12", heightCm: 178, weightKg: 74, primaryGoal: "build_muscle", baseSleepTargetMinutes: 480, usualWakeTime: "07:00", importRange: "all_history" as const };
+export const previewProfile = { displayName: "Jeremy", dateOfBirth: "1998-06-12", heightCm: 178, weightKg: 74, primaryGoal: "build_muscle", baseSleepTargetMinutes: 510, usualWakeTime: "07:00", importRange: "all_history" as const };

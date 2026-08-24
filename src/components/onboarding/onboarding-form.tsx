@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { SomaLogo } from "@/components/soma-logo";
 import { goalLabels, type OnboardingInput } from "@/domain/profile";
@@ -23,7 +23,7 @@ const defaultForm: OnboardingDraft = {
   sexForHealthCalculations: "prefer_not_to_say",
   primaryGoal: "build_muscle",
   secondaryGoal: null,
-  baseSleepTargetMinutes: 480,
+  baseSleepTargetMinutes: 510,
   usualWakeTime: "07:00",
   importRange: "all_history",
   timezone: "UTC",
@@ -43,8 +43,6 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-
-  const sleepHours = useMemo(() => form.baseSleepTargetMinutes / 60, [form.baseSleepTargetMinutes]);
 
   function update<K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -168,12 +166,11 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
           {step === 2 && (
             <fieldset>
               <legend tabIndex={-1}>Set your sleep foundation</legend>
-              <p className="form-intro">Eight hours is the starting point. Soma may recommend slightly more when sleep debt or effort increases your need.</p>
+              <p className="form-intro">Your sleep target is fixed across weekdays, weekends, and vacations.</p>
               <div className="sleep-target-control">
-                <span>Base sleep target</span>
-                <strong>{sleepHours.toFixed(sleepHours % 1 ? 1 : 0)} hours</strong>
-                <input aria-label="Base sleep target" aria-valuetext={`${sleepHours.toFixed(sleepHours % 1 ? 1 : 0)} hours`} type="range" min="360" max="600" step="15" value={form.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))} />
-                <div><small>6h</small><small>10h</small></div>
+                <span>Sleep target</span>
+                <strong>8.5 hours</strong>
+                <small>Acceptable range: 8 hr 20 min–8 hr 40 min</small>
               </div>
               <label className="field field--wake">Usual wake time<input type="time" required value={form.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /><small>This anchors your first bedtime recommendation.</small></label>
             </fieldset>

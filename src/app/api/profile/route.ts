@@ -30,7 +30,7 @@ export async function GET() {
     return NextResponse.json({ error: "Your profile could not be loaded." }, { status: 500 });
   }
   const [{ data: profile }, { data: sleep }, { data: goal }] = results;
-  return NextResponse.json({ displayName: profile?.display_name ?? user.displayName, dateOfBirth: profile?.date_of_birth ?? "", heightCm: Number(profile?.height_cm ?? 175), weightKg: Number(profile?.weight_kg ?? 70), importRange: profile?.import_range ?? "90_days", primaryGoal: goal?.goal_type ?? "general_fitness", baseSleepTargetMinutes: sleep?.base_target_minutes ?? 480, usualWakeTime: String(sleep?.usual_wake_time ?? "07:00").slice(0, 5) });
+  return NextResponse.json({ displayName: profile?.display_name ?? user.displayName, dateOfBirth: profile?.date_of_birth ?? "", heightCm: Number(profile?.height_cm ?? 175), weightKg: Number(profile?.weight_kg ?? 70), importRange: profile?.import_range ?? "90_days", primaryGoal: goal?.goal_type ?? "general_fitness", baseSleepTargetMinutes: 510, usualWakeTime: String(sleep?.usual_wake_time ?? "07:00").slice(0, 5) });
 }
 
 export async function PUT(request: Request) {
@@ -48,10 +48,10 @@ export async function PUT(request: Request) {
     p_height_cm: value.heightCm,
     p_weight_kg: value.weightKg,
     p_import_range: value.importRange,
-    p_base_sleep_target_minutes: value.baseSleepTargetMinutes,
+    p_base_sleep_target_minutes: 510,
     p_usual_wake_time: value.usualWakeTime,
     p_primary_goal: value.primaryGoal,
   });
   if (error) return NextResponse.json({ error: "Profile could not be saved." }, { status: 500 });
-  return NextResponse.json(parsed.data);
+  return NextResponse.json({ ...parsed.data, baseSleepTargetMinutes: 510 });
 }

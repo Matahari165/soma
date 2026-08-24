@@ -4,6 +4,7 @@ import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
 import { DailyJournal } from "./daily-journal";
+import { MetricRegistry } from "./metric-registry";
 import { NarrativeRefresh } from "./narrative-refresh";
 
 function duration(minutes: number | null) {
@@ -13,10 +14,9 @@ function duration(minutes: number | null) {
 
 function TodaySignals({ data }: { data: PersonalLabSnapshot }) {
   const signals = [
-    { label: "Sleep", value: duration(data.today.sleepMinutes), href: "/sleep" },
+    { label: "Sleep duration", value: duration(data.today.sleepMinutes), href: "/sleep" },
     { label: "Recovery", value: data.today.recoveryScore === null ? "—" : String(Math.round(data.today.recoveryScore)), href: "/recovery" },
-    { label: "Deep Work", value: duration(data.today.deepWorkMinutes), href: data.connections.calendar.connected ? "#relations" : "/settings?calendar=setup" },
-    { label: "Journal", value: data.journal.entries.length ? String(data.journal.entries.length) : "—", href: "#daily-journal" },
+    { label: "Effort", value: data.today.effortScore === null ? "—" : String(Math.round(data.today.effortScore)), href: "/effort" },
   ];
   return <section className="lab-signals" aria-label="Today">{signals.map(({ label, value, href }) => <Link href={href} key={label}><span>{label}</span><strong>{value}</strong></Link>)}</section>;
 }
@@ -34,9 +34,10 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
     <div className="lab-overview lab-overview--signals"><TodaySignals data={data} /></div>
 
     <div className="lab-workspace">
-      <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} entryDate={data.journal.entryDate} /></div>
+      <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} todayDate={data.todayDate} /></div>
     </div>
 
     <CorrelationMatrix matrix={data.matrix} />
+    <MetricRegistry metrics={data.metricRegistry} />
   </div>;
 }
