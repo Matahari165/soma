@@ -768,7 +768,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
   margin-inline: auto;
   padding: clamp(20px, 3.2vw, 48px);
 }
-.personal-lab-page { display: grid; gap: 0; }
+.personal-lab-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .lab-notice { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid var(--moss); background: var(--moss-soft); font-size: .82rem; }
 .lab-header { display: grid; grid-template-columns: 1fr; padding: 2px 0 clamp(20px, 2.8vw, 36px); }
 .lab-header h1 { margin-top: 5px; font-size: clamp(3.2rem, 6.2vw, 6.5rem); }

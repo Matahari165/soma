@@ -38,6 +38,7 @@
   .journal-field { grid-template-columns: 30px minmax(0, 1fr); }
   .journal-field > :last-child { grid-column: 1 / -1; }
   .journal-field__emoji { align-self: center; }
+  .journal-choice button, .journal-field input, .journal-field select { min-height: 44px; }
   .journal-new-variable { padding: 12px; }
   .matrix-controls { align-items: stretch; flex-direction: column; }
   .matrix-periods { width: 100%; }
@@ -50,7 +51,7 @@
   .matrix-scroll th, .matrix-scroll td { width: 104px; }
   .relation-detail__plot > div { grid-template-columns: 1fr; gap: 5px; }
   .relation-detail dl { grid-template-columns: 1fr 1fr; }
-  .metric-registry { overflow: hidden; }
+  .metric-registry { width: 100%; min-width: 0; overflow: hidden; }
   .metric-registry__table { overflow-x: auto; }
   .metric-registry__table > div { width: 620px; grid-template-columns: 300px 100px 220px; }
 }
@@ -338,7 +339,8 @@
   .lab-overview .lab-signals a { min-height: 76px; border-right: 1px solid var(--line); border-bottom: 0; }
   .lab-overview .lab-signals a:nth-child(2n) { border-right: 1px solid var(--line); }
   .lab-overview .lab-signals a:last-child { border-right: 0; }
-  .lab-workspace { grid-template-columns: 1fr; }
+  .lab-workspace { grid-template-columns: minmax(0, 1fr); }
+  .lab-workspace > * { min-width: 0; }
   .checkin-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .journal-grid { grid-template-columns: 1fr; }
   .journal-new-variable { grid-template-columns: repeat(2, minmax(0, 1fr)); }
