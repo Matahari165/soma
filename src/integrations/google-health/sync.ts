@@ -72,6 +72,17 @@ function earlierDate(first: Date, second: Date) {
   return first < second ? first : second;
 }
 
+function laterDate(first: Date, second: Date) {
+  return first > second ? first : second;
+}
+
+export const GOOGLE_HEALTH_RAW_HEART_RATE_LIVE_DAYS = 7;
+
+export function googleHealthSyncRangeStart(dataType: GoogleHealthDataType, requestedStart: Date, rangeEnd: Date) {
+  if (dataType !== "heart-rate") return requestedStart;
+  return laterDate(requestedStart, addDays(rangeEnd, -GOOGLE_HEALTH_RAW_HEART_RATE_LIVE_DAYS));
+}
+
 async function getAccessToken(connection: ProviderConnection) {
   const expiresAt = connection.token_expires_at ? new Date(connection.token_expires_at).getTime() : 0;
   if (expiresAt > Date.now() + 60_000) return decryptSecret(connection.access_token_ciphertext);
@@ -198,9 +209,9 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics };
     }
 
-    const start = new Date(claimedJob.range_start);
     const end = new Date(claimedJob.range_end);
-    const windowStart = new Date(claimedJob.cursor.windowStart ?? claimedJob.range_start);
+    const start = googleHealthSyncRangeStart(dataType, new Date(claimedJob.range_start), end);
+    const windowStart = laterDate(new Date(claimedJob.cursor.windowStart ?? claimedJob.range_start), start);
     const windowDays = dataType === "heart-rate" || dataType === "active-minutes" || dataType === "total-calories" || dataType === "calories-in-heart-rate-zone" ? 14 : 90;
     const windowEnd = earlierDate(addDays(windowStart, windowDays), end);
     const accessToken = await getAccessToken(rawConnection as ProviderConnection);

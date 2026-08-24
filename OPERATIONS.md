@@ -35,6 +35,15 @@ Apply `supabase/setup/schedule_sync.sql` after every application URL or `CRON_SE
 - Test a restore into a non-production project before relying on it.
 - User export is not an operational database backup.
 
+## Lossless raw health archives
+
+- Keep the latest 7 days of minute-level heart-rate records online; daily metrics and all other historical series remain in PostgreSQL.
+- Archive older heart-rate records by closed-open UTC day as private, lossless `jsonl+gzip` objects in the Cloudflare R2 `soma-health-record-archives` bucket.
+- The daily Vercel cron migrates one legacy Supabase Storage archive and archives one eligible live day. Supabase objects remain as safety copies until a separate verified cleanup.
+- Run `archive`, then `verify`, then `reclaim` with `scripts/archive-heart-rate.mjs`; never skip the full verification pass.
+- Each manifest records the row count, date bounds, compressed and logical SHA-256 hashes, and reclamation time.
+- After reclamation, run `VACUUM (FULL, ANALYZE)` on `health_records` during maintenance and verify a representative archive can still be decoded.
+
 ## Monitoring
 
 Review daily in production:

@@ -11,6 +11,8 @@ const optimizedGoogleHealthReconciliation = readFileSync(new URL("../../supabase
 const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
 const personalLab = readFileSync(new URL("../../supabase/migrations/20260822120000_personal_lab.sql", import.meta.url), "utf8");
 const journalAndHourlySync = readFileSync(new URL("../../supabase/migrations/20260822160000_journal_and_hourly_sync.sql", import.meta.url), "utf8");
+const healthRecordArchives = readFileSync(new URL("../../supabase/migrations/20260824090000_lossless_health_record_archives.sql", import.meta.url), "utf8");
+const cloudflareR2Archives = readFileSync(new URL("../../supabase/migrations/20260824120000_cloudflare_r2_archives.sql", import.meta.url), "utf8");
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
@@ -99,5 +101,21 @@ describe("database security contract", () => {
     expect(optimizedGoogleHealthReconciliation).toMatch(/if p_date_based then[\s\S]*else[\s\S]*end if/i);
     expect(optimizedGoogleHealthReconciliation).toMatch(/revoke all on function public\.reconcile_google_health_window[\s\S]*from public, anon, authenticated/i);
     expect(optimizedGoogleHealthReconciliation).toMatch(/grant execute on function public\.reconcile_google_health_window[\s\S]*to service_role/i);
+  });
+
+  it("keeps lossless health archives private and reclaims rows only after verification", () => {
+    expect(healthRecordArchives).toContain("alter table public.health_record_archives enable row level security;");
+    expect(healthRecordArchives).toMatch(/create policy health_record_archives_read_own[\s\S]*auth\.uid\(\) = user_id/i);
+    expect(healthRecordArchives).toMatch(/'health-record-archives'[\s\S]*false/i);
+    expect(healthRecordArchives).toMatch(/if v_archive\.verified_at is null[\s\S]*raise exception/i);
+    expect(healthRecordArchives).toMatch(/if v_live_count <> v_archive\.row_count[\s\S]*raise exception/i);
+    expect(healthRecordArchives).toMatch(/revoke all on function public\.reclaim_verified_health_archive\(uuid\) from public, anon, authenticated/i);
+    expect(healthRecordArchives).toMatch(/grant execute on function public\.reclaim_verified_health_archive\(uuid\) to service_role/i);
+  });
+
+  it("tracks private health archives moved from Supabase Storage to R2", () => {
+    expect(cloudflareR2Archives).toMatch(/storage_backend text not null default 'supabase'/i);
+    expect(cloudflareR2Archives).toMatch(/storage_backend in \('supabase', 'r2'\)/i);
+    expect(cloudflareR2Archives).toContain("health_record_archives_storage_backend_idx");
   });
 });

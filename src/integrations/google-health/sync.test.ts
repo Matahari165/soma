@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
 import { normalizeGoogleHealthPoint } from "./normalize";
-import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
+import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -35,5 +35,13 @@ describe("Google Health sync failures", () => {
     const revised = normalizeGoogleHealthPoint("user-1", "sleep", { name: "sleep-record-1", sleepSession: { revision: 2 } });
 
     expect(deduplicateGoogleHealthRecords([first, revised])).toEqual([revised]);
+  });
+
+  it("keeps raw heart-rate online for 7 days without shortening other history", () => {
+    const requestedStart = new Date("2026-01-01T00:00:00.000Z");
+    const rangeEnd = new Date("2026-08-24T00:00:00.000Z");
+
+    expect(googleHealthSyncRangeStart("heart-rate", requestedStart, rangeEnd).toISOString()).toBe("2026-08-17T00:00:00.000Z");
+    expect(googleHealthSyncRangeStart("daily-heart-rate-variability", requestedStart, rangeEnd)).toBe(requestedStart);
   });
 });
