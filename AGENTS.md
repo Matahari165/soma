@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Soma product source of truth
+
+Before changing Personal Lab behavior, metrics, journal fields, statistics, Grok synthesis,
+or the main Lab interface, read `PERSONAL_LAB.md`. It is the canonical approved product
+contract and supersedes older planning documents when they disagree.

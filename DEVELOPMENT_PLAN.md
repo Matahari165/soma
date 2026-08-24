@@ -1,5 +1,8 @@
 # Soma — Product and Development Plan
 
+> Historical implementation plan. The current approved Personal Lab behavior is defined in
+> `PERSONAL_LAB.md`, which supersedes this file whenever the two disagree.
+
 > Status: Personal Lab pivot implemented on 22 August 2026
 > Product language: English only
 > Initial audience: personal production use, built as a multi-user product from day one
