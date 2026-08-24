@@ -28,6 +28,14 @@ describe("production-only application contract", () => {
     expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("createServerClient(url, anonKey"));
   });
 
+  it("lets secret-authenticated machine routes reach their own authorization checks", () => {
+    expect(proxySource).toContain('"/api/health/webhook"');
+    expect(proxySource).toContain('"/api/cron/sync"');
+    expect(proxySource).toContain('"/api/cron/archive-health"');
+    expect(proxySource).toContain("const publicMachineRoute = publicMachinePaths.some");
+    expect(proxySource).toContain("...publicMachinePaths");
+  });
+
   it("keeps authenticated server data canonical across dashboard and workouts", () => {
     const dashboard = readFileSync(`${sourceRoot}/components/dashboard/dashboard.tsx`, "utf8");
     const workouts = readFileSync(`${sourceRoot}/components/workout-studio.tsx`, "utf8");

@@ -3,12 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isLocalPreviewMode } from "@/lib/env";
 
+const publicMachinePaths = [
+  "/api/health/webhook",
+  "/api/cron/sync",
+  "/api/cron/archive-health",
+];
+
 const publicPaths = [
   "/login",
   "/auth/callback",
-  "/api/health/webhook",
   "/api/health/google/callback",
-  "/api/cron/sync",
+  ...publicMachinePaths,
   "/privacy",
   "/terms",
 ];
@@ -41,7 +46,7 @@ export async function proxy(request: NextRequest) {
     if (!request.nextUrl.pathname.startsWith("/privacy") && !request.nextUrl.pathname.startsWith("/terms")) response.headers.set("Cache-Control", "private, no-store");
     return response;
   };
-  const publicMachineRoute = request.nextUrl.pathname.startsWith("/api/health/webhook") || request.nextUrl.pathname.startsWith("/api/cron/sync");
+  const publicMachineRoute = publicMachinePaths.some((path) => request.nextUrl.pathname.startsWith(path));
   const unsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
   if (unsafeMethod && !publicMachineRoute) {
     const origin = request.headers.get("origin");
