@@ -7,8 +7,17 @@ import { hasSupabaseConfig } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default function LoginPage() {
+const authErrors: Record<string, string> = {
+  auth_service: "Google sign-in is temporarily unavailable. Try again in a moment.",
+  oauth_start: "Google sign-in could not start. Try again.",
+  missing_code: "Google did not return a sign-in code. Try again.",
+  oauth_callback: "Google sign-in could not be completed. Try again.",
+};
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const configured = hasSupabaseConfig();
+  const errorCode = (await searchParams).error;
+  const errorMessage = errorCode ? authErrors[errorCode] ?? "Google sign-in could not be completed." : null;
 
   return (
     <main className="auth-page" id="main-page-content">
@@ -29,6 +38,7 @@ export default function LoginPage() {
           ) : (
             <p className="configuration-note" role="alert">Google sign-in is not configured. Add the Supabase project values before using Soma.</p>
           )}
+          {errorMessage && <p className="form-error auth-error" role="alert">{errorMessage}</p>}
           <div className="auth-consent-note">
             Health access is requested separately and can be removed at any time.
           </div>

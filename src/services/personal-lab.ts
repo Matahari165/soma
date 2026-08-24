@@ -40,6 +40,7 @@ type HealthDay = {
   steps: number | null;
   zone_minutes: number | null;
   bedtime: string | null;
+  wake_time: string | null;
   sleep_deep_minutes: number | null;
   sleep_rem_minutes: number | null;
   respiratory_rate: number | null;
@@ -160,26 +161,6 @@ function combinedHealthSeries(health: HealthDay[], id: string, label: string, un
   };
 }
 
-function median(values: number[]) {
-  const ordered = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(ordered.length / 2);
-  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
-}
-
-function deviationFromSourceMedian(series: MatrixSeries, id: string, label: string): MatrixSeries {
-  const medians = new Map<string, number>();
-  for (const source of new Set(series.points.map((point) => point.segment ?? "All data"))) {
-    medians.set(source, median(series.points.filter((point) => (point.segment ?? "All data") === source).map((point) => point.value)));
-  }
-  return {
-    ...series,
-    id,
-    label,
-    unit: "min",
-    points: series.points.map((point) => ({ ...point, value: Math.abs(point.value - (medians.get(point.segment ?? "All data") ?? point.value)) })),
-  };
-}
-
 function rollingSeries(series: MatrixSeries, id: string, label: string, shortWindow: number, longWindow?: number): MatrixSeries {
   const byDate = new Map(series.points.map((point) => [point.date, point]));
   return {
@@ -232,14 +213,16 @@ function buildCorrelationMatrix(input: {
     healthSeries(health, "respiratory", "Breathing rate", "/min", "respiratory_rate"),
     healthSeries(health, "spo2", "SpO₂", "%", "oxygen_saturation"),
   ];
-  const bedtime = { id: "bedtime", label: "Bedtime", unit: "min", kind: "numeric" as const, points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) };
+  const bedtime: MatrixSeries = { id: "bedtime", label: "Bedtime", unit: "min", kind: "numeric", presentation: "clock-time", points: health.flatMap((day) => day.bedtime ? [{ date: day.metric_date, value: minutesInTimezone(day.bedtime, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) };
+  const wakeTime: MatrixSeries = { id: "wake_time", label: "Wake time", unit: "min", kind: "numeric", presentation: "clock-time", points: health.flatMap((day) => day.wake_time ? [{ date: day.metric_date, value: minutesInTimezone(day.wake_time, input.timeZone), segment: day.data_quality?.primaryWearable ?? undefined }] : []) };
   const intense = combinedHealthSeries(health, "intense_minutes", "Intense-zone effort", "min", ["vigorous_zone_minutes", "peak_zone_minutes"]);
   const exercise = healthSeries(health, "exercise_minutes", "Exercise time", "min", "exercise_minutes");
   const deepWorkSeries: MatrixSeries = { id: "calendar_deep_work", label: "Deep Work (Calendar)", unit: "min", kind: "numeric", points: input.observations.flatMap((day) => day.deepWorkMinutes === null ? [] : [{ date: day.date, value: day.deepWorkMinutes }]) };
 
   type RowSpec = { series: MatrixSeries; acuteLags: number[]; chronic: boolean; journal: boolean };
   const automaticRows: RowSpec[] = [
-    { series: deviationFromSourceMedian(bedtime, "bedtime_deviation", "Bedtime deviation"), acuteLags: [0], chronic: true, journal: false },
+    { series: bedtime, acuteLags: [0], chronic: true, journal: false },
+    { series: wakeTime, acuteLags: [0], chronic: true, journal: false },
     { series: healthSeries(health, "sleep_regularity", "Sleep regularity", "%", "sleep_regularity"), acuteLags: [0], chronic: true, journal: false },
     { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), acuteLags: [0], chronic: true, journal: false },
     { series: healthSeries(health, "steps", "Steps", "steps", "steps"), acuteLags: [1, 2], chronic: true, journal: false },
@@ -254,7 +237,7 @@ function buildCorrelationMatrix(input: {
 
   const entriesByVariable = new Map<string, JournalEntry[]>();
   for (const entry of input.entries) entriesByVariable.set(entry.variableId, [...(entriesByVariable.get(entry.variableId) ?? []), entry]);
-  const journalRows: RowSpec[] = input.variables.filter((variable) => variable.isActive).flatMap((variable) => {
+  const journalRows: RowSpec[] = input.variables.filter((variable) => variable.isActive).flatMap((variable): RowSpec[] => {
     const recorded = new Map((entriesByVariable.get(variable.id) ?? []).map((entry) => [entry.entryDate, entry.value]));
     if (variable.variableType === "category") return variable.options.map((option) => ({
       series: { id: `journal:${variable.id}:${option}`, label: `${variable.name} · ${option}`, unit: "", kind: "binary" as const, points: [...recorded].flatMap(([date, value]) => typeof value === "string" ? [{ date, value: value === option ? 1 : 0 }] : []) },
@@ -264,7 +247,7 @@ function buildCorrelationMatrix(input: {
     }));
     const kind = variable.variableType === "boolean" ? "binary" as const : "numeric" as const;
     return [{
-      series: { id: `journal:${variable.id}`, label: variable.name, unit: variable.unit ?? "", kind, points: [...recorded].flatMap(([date, value]) => {
+      series: { id: `journal:${variable.id}`, label: variable.name, unit: variable.variableType === "time" ? "min" : variable.unit ?? "", kind, presentation: variable.variableType === "time" ? "clock-time" as const : "amount" as const, points: [...recorded].flatMap(([date, value]) => {
         const number = journalValueAsNumber(variable, value);
         return number === null ? [] : [{ date, value: number }];
       }) },
@@ -426,7 +409,7 @@ function previewData() {
     const vigorous = 4 + (index % 4) * 5;
     const previousVigorous = 4 + ((index + 3) % 4) * 5;
     const previewWeek = Math.floor(index / 7) % 3;
-    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 50 - previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 60 + previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
+    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 50 - previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 60 + previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), wake_time: new Date(`${dateString}T07:${String(2 + index % 28).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },
@@ -448,10 +431,10 @@ function previewData() {
       deep_work_minutes_override: null,
     });
   }
-  const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: index, isActive: true }));
+  const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: variable.position, isActive: true }));
   const yesterday = addDays(dateInTimezone("Europe/Paris"), -1);
   const entry = (name: string, value: JournalEntry["value"]): JournalEntry => ({ variableId: variables.find((variable) => variable.name === name)?.id as string, entryDate: yesterday, value });
-  const journal = { variables, entries: [entry("Alcohol", 0), entry("Deep Work", 165), entry("Bedtime", "22:35")] };
+  const journal = { variables, entries: [entry("Breakfast", true), entry("Added-sugar servings", 1), entry("Alcohol", 0), entry("Deep Work", 165), entry("Dark bedroom", true)] };
   return { health, scores, calendars, checkins, journal };
 }
 
@@ -539,7 +522,7 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
   if (profileError) throw new Error("Your Personal Lab profile could not be loaded.");
   const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, journal] = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,peak_zone_minutes,active_minutes,exercise_minutes,data_quality").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_efficiency,sleep_regularity,cumulative_sleep_debt_minutes,hrv_ms,resting_heart_rate,steps,zone_minutes,bedtime,wake_time,sleep_deep_minutes,sleep_rem_minutes,respiratory_rate,oxygen_saturation,skin_temperature_delta,vigorous_zone_minutes,peak_zone_minutes,active_minutes,exercise_minutes,data_quality").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(2190),
     admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
     admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).gte("checkin_date", analysisStart).order("checkin_date", { ascending: false }).limit(730),

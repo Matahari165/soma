@@ -565,6 +565,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .auth-card h2 { font-size: clamp(2.2rem, 4vw, 4rem); }
 .auth-card > p { margin: 14px 0 30px; color: var(--ink-soft); }
 .auth-card .google-button { width: 100%; }
+.auth-card > .auth-error { margin: 14px 0 0; color: var(--danger); }
 .auth-consent-note { margin-top: 18px; color: var(--muted); font-size: .72rem; text-align: center; }
 .legal-copy { margin-top: 26px !important; color: var(--muted) !important; font-size: .68rem; text-align: center; }
 .legal-copy a { display: inline-flex; min-height: 44px; align-items: center; border-bottom: 1px solid currentColor; }
@@ -908,10 +909,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 
 /* Personal journal */
 .journal-card > header p { max-width: 60ch; margin-top: 10px; color: var(--muted); font-size: .76rem; }
-.journal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 30px; border-top: 1px solid var(--line-strong); border-left: 1px solid var(--line-strong); }
+.journal-sections { display: grid; gap: 24px; margin-top: 30px; }
+.journal-period > h3 { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .58rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.journal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; border-top: 1px solid var(--line-strong); border-left: 1px solid var(--line-strong); }
 .journal-field { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(150px, 1.1fr); min-height: 76px; align-items: center; gap: 14px; padding: 12px; border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); }
 .journal-field__label { display: grid; color: var(--ink-soft); font-size: .78rem; }
-.journal-field__label small { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .55rem; letter-spacing: .04em; text-transform: uppercase; }
+.journal-field__label small { margin-top: 3px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .55rem; line-height: 1.35; }
 .journal-field input,
 .journal-field select,
 .journal-variable-edit input,
@@ -928,7 +931,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .journal-choice button.is-selected { background: var(--ink); color: var(--canvas); }
 .journal-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
 .journal-manager { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line-strong); }
+.journal-manager--closed { display: flex; justify-content: flex-end; }
 .journal-manager__header { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.journal-manager__header-actions { display: flex; align-items: center; gap: 12px; }
 .journal-manager__header h3 { font-size: 1rem; }
 .journal-manager__header p,
 .journal-new-variable__heading p { max-width: 58ch; margin-top: 5px; color: var(--muted); font-size: .72rem; }
@@ -971,8 +976,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-scroll { width: 100%; min-width: 0; max-width: 100%; overflow: auto; border: 1px solid var(--ink); border-top: 0; background: var(--paper); scrollbar-color: var(--line-strong) var(--paper); }
 .matrix-scroll table { width: max(100%, 760px); border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .matrix-scroll th,
-.matrix-scroll td { width: 74px; height: 50px; padding: 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-.matrix-scroll th { width: 74px; height: 50px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.matrix-scroll td { width: 82px; height: 58px; padding: 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.matrix-scroll th { width: 82px; height: 58px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .matrix-scroll thead th { position: sticky; top: 0; z-index: 2; height: 50px; background: var(--ink); color: var(--canvas); }
 .matrix-scroll thead th:first-child,
 .matrix-scroll tbody th { position: sticky; left: 0; z-index: 3; width: 152px; background: var(--paper); }
@@ -992,8 +997,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-cell--early { background: var(--paper); color: var(--muted); }
 .matrix-cell--early .matrix-cell__trigger strong { opacity: .62; }
 .matrix-cell--excluded { padding: 6px !important; }
-.matrix-cell__trigger { width: 100%; height: 100%; padding: 5px; border: 0; background: transparent; text-align: left; }
+.matrix-cell__trigger { display: grid; width: 100%; height: 100%; align-content: center; gap: 3px; padding: 5px; border: 0; background: transparent; text-align: left; }
 .matrix-cell__trigger strong { display: block; font-family: var(--font-soma-mono), monospace; font-size: .68rem; font-variant-numeric: tabular-nums; }
+.matrix-cell__trigger > small { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .45rem; line-height: 1.15; }
 .matrix-cell__detail { position: absolute; inset: 2px; z-index: 5; display: grid; align-content: center; gap: 2px; padding: 4px; background: var(--ink); color: var(--canvas); pointer-events: none; }
 .matrix-cell__detail span { font-family: var(--font-soma-mono), monospace; font-size: .5rem; font-variant-numeric: tabular-nums; text-transform: uppercase; }
 .matrix-cell__detail small { color: color-mix(in srgb, var(--canvas) 72%, transparent); font-size: .43rem; line-height: 1.15; }

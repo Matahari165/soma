@@ -12,9 +12,9 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Check this variable." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const admin = createSupabaseAdminClient();
-  const { count, error: countError } = await admin.from("journal_variables").select("id", { count: "exact", head: true }).eq("user_id", user.id);
+  const { data: existing, error: countError } = await admin.from("journal_variables").select("position").eq("user_id", user.id);
   if (countError) return NextResponse.json({ error: "Your journal could not be checked." }, { status: 500 });
-  if ((count ?? 0) >= 50) return NextResponse.json({ error: "Your journal already has 50 variables." }, { status: 409 });
+  if ((existing?.length ?? 0) >= 50) return NextResponse.json({ error: "Your journal already has 50 variables." }, { status: 409 });
   const input = parsed.data;
   const { data, error } = await admin.from("journal_variables").insert({
     user_id: user.id,
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     variable_type: input.variableType,
     unit: input.unit || null,
     options: input.options,
-    position: count ?? 0,
+    position: Math.max(190, ...(existing ?? []).map((variable) => Number(variable.position) || 0)) + 10,
   }).select("id").single();
   if (error) return NextResponse.json({ error: error.code === "23505" ? "A variable with this name already exists." : "This variable could not be created." }, { status: error.code === "23505" ? 409 : 500 });
   return NextResponse.json({ ok: true, id: data.id });

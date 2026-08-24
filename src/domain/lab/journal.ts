@@ -16,6 +16,36 @@ export type JournalVariable = {
 export type JournalEntryValue = boolean | number | string;
 export type JournalEntry = { variableId: string; entryDate: string; value: JournalEntryValue };
 
+export type JournalDayPeriod = "context" | "morning" | "day" | "evening" | "sleep" | "other";
+
+export const journalDayPeriods: ReadonlyArray<{ id: JournalDayPeriod; label: string }> = [
+  { id: "context", label: "Day context" },
+  { id: "morning", label: "Morning" },
+  { id: "day", label: "Day" },
+  { id: "evening", label: "Evening" },
+  { id: "sleep", label: "Before sleep" },
+  { id: "other", label: "Other" },
+];
+
+export function journalDayPeriod(position: number): JournalDayPeriod {
+  if (position < 10) return "context";
+  if (position < 40) return "morning";
+  if (position < 60) return "day";
+  if (position < 90) return "evening";
+  if (position < 140) return "sleep";
+  return "other";
+}
+
+export function journalFieldHint(variable: Pick<JournalVariable, "name" | "variableType" | "unit">) {
+  if (variable.name === "Added-sugar servings") return "1 = sweet breakfast, dessert, or sugary processed product";
+  if (variable.name === "WHM rounds") return "Rounds";
+  if (variable.unit) return variable.unit;
+  if (variable.variableType === "boolean") return "Yes / no";
+  if (variable.variableType === "time") return "Time";
+  if (variable.variableType === "scale") return "Scale 1–5";
+  return null;
+}
+
 const name = z.string().trim().min(1).max(80);
 const options = z.array(z.string().trim().min(1).max(60)).max(20).default([])
   .transform((values) => [...new Set(values)]);
@@ -76,15 +106,22 @@ export function journalValueAsNumber(variable: JournalVariable, value: JournalEn
 }
 
 export const defaultJournalVariables = [
-  { name: "Alcohol", variableType: "count", unit: "drinks", options: [] },
-  { name: "Caffeine", variableType: "count", unit: "mg", options: [] },
-  { name: "Deep Work", variableType: "duration", unit: "min", options: [] },
-  { name: "Bedtime", variableType: "time", unit: null, options: [] },
-  { name: "Vacation", variableType: "boolean", unit: null, options: [] },
-] as const satisfies ReadonlyArray<{ name: string; variableType: JournalVariableType; unit: string | null; options: readonly string[] }>;
+  { name: "Vacation", variableType: "boolean", unit: null, options: [], position: 0 },
+  { name: "Breakfast", variableType: "boolean", unit: null, options: [], position: 10 },
+  { name: "WHM rounds", variableType: "count", unit: "rounds", options: [], position: 20 },
+  { name: "Caffeine", variableType: "count", unit: "mg", options: [], position: 30 },
+  { name: "Deep Work", variableType: "duration", unit: "min", options: [], position: 40 },
+  { name: "Added-sugar servings", variableType: "count", unit: "servings", options: [], position: 50 },
+  { name: "Alcohol", variableType: "count", unit: "drinks", options: [], position: 60 },
+  { name: "Dinner end time", variableType: "time", unit: null, options: [], position: 70 },
+  { name: "Magnesium", variableType: "count", unit: "mg", options: [], position: 80 },
+  { name: "Breathing before sleep", variableType: "boolean", unit: null, options: [], position: 90 },
+  { name: "Reading before sleep", variableType: "boolean", unit: null, options: [], position: 100 },
+  { name: "Masturbation", variableType: "boolean", unit: null, options: [], position: 110 },
+  { name: "Dark bedroom", variableType: "boolean", unit: null, options: [], position: 120 },
+] as const satisfies ReadonlyArray<{ name: string; variableType: JournalVariableType; unit: string | null; options: readonly string[]; position: number }>;
 
 export const journalVariableSuggestions = [
-  ...defaultJournalVariables,
   { name: "Late meal", variableType: "boolean", unit: null, options: [] },
   { name: "Illness", variableType: "boolean", unit: null, options: [] },
   { name: "Nap", variableType: "duration", unit: "min", options: [] },

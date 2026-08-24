@@ -22,6 +22,12 @@ describe("Grok Personal Lab output", () => {
     await generateLabNarrative({ userId: "user-1", relations: [{
       predictorId: "steps",
       predictorLabel: "Pas",
+      predictorUnit: "steps",
+      predictorKind: "numeric",
+      predictorPresentation: "amount",
+      predictorLow: 6_000,
+      predictorHigh: 9_000,
+      predictorDelta: 3_000,
       outcomeId: "resting-heart-rate",
       outcomeLabel: "FC repos",
       outcomeUnit: "bpm",

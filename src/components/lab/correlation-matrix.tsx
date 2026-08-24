@@ -39,7 +39,8 @@ function evidenceLabel(relation: MatrixRelation) {
 }
 
 const englishMetricLabels: Record<string, string> = {
-  bedtime_deviation: "Bedtime deviation",
+  bedtime: "Bedtime",
+  wake_time: "Wake time",
   sleep_regularity: "Sleep regularity",
   sleep_minutes: "Total sleep",
   sleep_efficiency: "Sleep efficiency",
@@ -77,11 +78,40 @@ function coverageText(relation: MatrixRelation) {
   }).join(" · ");
 }
 
-function findingSentence(relation: MatrixRelation) {
+function predictorDelta(relation: MatrixRelation) {
+  if (relation.predictorDelta === null) return "observed contrast";
+  const absolute = Math.abs(relation.predictorDelta);
+  const wholeNumberUnit = ["min", "mg", "steps", "rounds", "drinks", "servings"].includes(relation.predictorUnit);
+  const digits = wholeNumberUnit || absolute >= 10 ? 0 : absolute >= 1 ? 1 : absolute >= 0.1 ? 2 : 3;
+  const value = absolute.toFixed(digits);
+  if (relation.predictorPresentation === "clock-time") return `${value} min later`;
+  return `+${value}${relation.predictorUnit ? ` ${relation.predictorUnit}` : ""}`;
+}
+
+function predictorComparison(relation: MatrixRelation) {
   const predictor = metricLabel(relation.predictorId, relation.predictorLabel);
+  if (relation.predictorKind === "binary") return `${predictor}: yes vs no`;
+  const delta = predictorDelta(relation);
+  if (relation.predictorId === "bedtime") return `Going to bed ${delta}`;
+  if (relation.predictorId === "wake_time") return `Waking ${delta}`;
+  if (/dinner end time/i.test(predictor)) return `Ending dinner ${delta}`;
+  return `${predictor} ${delta}`;
+}
+
+function outcomeChange(relation: MatrixRelation) {
+  if (relation.effect === null) return "not estimated";
+  const magnitude = Math.abs(relation.effect);
+  const digits = effectDigits(relation);
+  const amount = `${magnitude.toFixed(digits)}${relation.outcomeUnit ? ` ${relation.outcomeUnit}` : ""}`;
+  if (relation.effect < 0) return `${amount} lower`;
+  if (relation.effect > 0) return `${amount} higher`;
+  return "unchanged";
+}
+
+function findingSentence(relation: MatrixRelation) {
   const outcome = metricLabel(relation.outcomeId, relation.outcomeLabel);
   const timing = relation.timeScale === "chronic" ? "across matched weeks" : relation.lagDays === 0 ? "that night" : relation.lagDays === 1 ? "the next day" : "two days later";
-  return `${predictor} → ${outcome}: ${formatEffect(relation)} ${timing}.`;
+  return `${predictorComparison(relation)} → ${outcome} ${outcomeChange(relation)} ${timing}.`;
 }
 
 function SummaryPanel({ title, eyebrow, relations, empty }: { title: string; eyebrow: string; relations: MatrixRelation[]; empty: string }) {
@@ -109,7 +139,7 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
       <SummaryPanel title="Next day" eyebrow="Acute · J+1 / J+2" relations={matrix.acuteHighlights} empty="No acute result has passed every stability check yet." />
       <SummaryPanel title="Across weeks" eyebrow="Chronic · matched weeks" relations={matrix.chronicHighlights} empty="No chronic result has passed every stability check yet." />
     </div>
-    {acuteIntense && <p className="lab-timescale__interpretation">Intense exercise is linked to {formatEffect(acuteIntense)} in HRV {acuteIntense.lagDays === 1 ? "the next day" : "two days later"}{chronicIntense ? `, versus ${formatEffect(chronicIntense)} across matched weeks` : ""}. Short-term recovery and the long-term trend are estimated separately.</p>}
+    {acuteIntense && <p className="lab-timescale__interpretation">{findingSentence(acuteIntense)}{chronicIntense ? ` ${findingSentence(chronicIntense)}` : ""} Short-term recovery and the long-term trend are estimated separately.</p>}
     {narrative && <div className="lab-timescale__narrative"><span>Validated synthesis</span><p>{narrative.summary}</p><ul>{narrative.highlights.slice(0, 3).map((highlight) => <li key={highlight}>{highlight}</li>)}</ul></div>}
   </section>;
 }
@@ -119,8 +149,9 @@ function RelationCell({ relation, cellKey, expanded, onToggle }: { relation: Mat
   const direction = relation.coefficient === null ? "" : relation.coefficient < 0 ? "matrix-cell--inverse" : "matrix-cell--direct";
   const evidenceClass = relation.coefficient === null || relation.evidence === "exploratory" ? "matrix-cell--early" : "matrix-cell--ready";
   return <td className={`matrix-cell matrix-cell--${relation.coefficient === null ? "hidden" : relation.strength} ${direction} ${evidenceClass}`}>
-    <button type="button" className="matrix-cell__trigger" aria-expanded={expanded} aria-label={`${relation.predictorLabel} to ${relation.outcomeLabel}: ${formatEffect(relation)}. ${evidenceLabel(relation)}. ${expanded ? "Hide" : "Show"} statistical details.`} onClick={() => onToggle(cellKey)}>
+    <button type="button" className="matrix-cell__trigger" aria-expanded={expanded} aria-label={`${findingSentence(relation)} ${evidenceLabel(relation)}. ${expanded ? "Hide" : "Show"} statistical details.`} onClick={() => onToggle(cellKey)}>
       <strong>{formatEffect(relation)}</strong>
+      {relation.coefficient !== null && <small>{relation.predictorKind === "binary" ? "yes vs no" : predictorDelta(relation)}</small>}
     </button>
     {expanded && <div className="matrix-cell__detail">
       <span>{evidenceLabel(relation)}</span>
@@ -142,7 +173,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
 
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
-      <div><span className="section-kicker">All estimates</span><h2 id="matrix-title">Relationships</h2><p>Weeks remain the default view. Every weekly cell uses at least four dates shared by both measures.</p></div>
+      <div><span className="section-kicker">All estimates</span><h2 id="matrix-title">Relationships</h2><p>Each cell compares your typical lower and higher days. Weeks remain the default view.</p></div>
       <div className="matrix-grain" role="group" aria-label="Analysis period">
         <button type="button" aria-pressed={grain === "day"} onClick={() => { setGrain("day"); setOpenRelation(null); }}>Days · acute</button>
         <button type="button" aria-pressed={grain === "week"} onClick={() => { setGrain("week"); setOpenRelation(null); }}>Weeks · chronic</button>
@@ -161,7 +192,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       {top.length ? top.map((relation) => {
         const cellKey = `mobile:${grain}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`;
         return <article key={cellKey}>
-          <button type="button" className="matrix-mobile-list__trigger" aria-expanded={openRelation === cellKey} onClick={() => setOpenRelation((current) => current === cellKey ? null : cellKey)}><strong>{metricLabel(relation.predictorId, relation.predictorLabel)} → {metricLabel(relation.outcomeId, relation.outcomeLabel)}</strong><span>{formatEffect(relation)} · {evidenceLabel(relation)}</span></button>
+          <button type="button" className="matrix-mobile-list__trigger" aria-expanded={openRelation === cellKey} onClick={() => setOpenRelation((current) => current === cellKey ? null : cellKey)}><strong>{metricLabel(relation.predictorId, relation.predictorLabel)} → {metricLabel(relation.outcomeId, relation.outcomeLabel)}</strong><span>{findingSentence(relation)} · {evidenceLabel(relation)}</span></button>
           {openRelation === cellKey && <small>95% CI {formatInterval(relation)} · q {formatProbability(relation.qValue)} · {coverageText(relation)} · {relation.exclusionReasons[0] ?? `${relation.stability.chronologicalBlocks}/4 stable blocks`}</small>}
         </article>;
       }) : <p>Not enough paired data yet.</p>}

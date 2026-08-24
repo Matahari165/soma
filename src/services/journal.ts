@@ -16,6 +16,7 @@ type JournalVariableRow = {
 type JournalEntryRow = { variable_id: string; entry_date: string; value: unknown };
 
 function variableFromRow(row: JournalVariableRow): JournalVariable {
+  const isAutomaticSleepMeasure = ["bedtime", "heure du coucher"].includes(row.name.toLocaleLowerCase("en"));
   return {
     id: row.id,
     name: row.name,
@@ -23,7 +24,7 @@ function variableFromRow(row: JournalVariableRow): JournalVariable {
     unit: row.unit,
     options: Array.isArray(row.options) ? row.options.filter((value): value is string => typeof value === "string") : [],
     position: row.position,
-    isActive: row.is_active,
+    isActive: row.is_active && !isAutomaticSleepMeasure,
   };
 }
 
@@ -34,16 +35,18 @@ function entryFromRow(row: JournalEntryRow): JournalEntry | null {
 
 export async function ensureJournalVariables(userId: string) {
   const admin = createSupabaseAdminClient();
-  const { data: existing, error } = await admin.from("journal_variables").select("id").eq("user_id", userId).limit(1);
+  const { data: existing, error } = await admin.from("journal_variables").select("name").eq("user_id", userId);
   if (error) throw new Error("Your journal variables could not be loaded.");
-  if (existing?.length) return;
-  const { error: insertError } = await admin.from("journal_variables").insert(defaultJournalVariables.map((variable, position) => ({
+  const existingNames = new Set((existing ?? []).map((variable) => variable.name.toLocaleLowerCase("en")));
+  const missing = defaultJournalVariables.filter((variable) => !existingNames.has(variable.name.toLocaleLowerCase("en")));
+  if (!missing.length) return;
+  const { error: insertError } = await admin.from("journal_variables").insert(missing.map((variable) => ({
     user_id: userId,
     name: variable.name,
     variable_type: variable.variableType,
     unit: variable.unit,
     options: [...variable.options],
-    position,
+    position: variable.position,
   })));
   if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
 }

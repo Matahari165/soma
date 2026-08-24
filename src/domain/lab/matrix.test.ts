@@ -39,6 +39,8 @@ describe("Personal Lab dynamic models", () => {
     const outcome = exposure.map((value, index) => 61 - 5 * value + Math.sin(index / 3));
     const relation = calculateMatrixRelation(series("ran", exposure, "binary"), series("hrv", outcome));
     expect(relation.method).toBe("adjusted-dynamic-regression");
+    expect(relation.predictorDelta).toBe(1);
+    expect(relation.predictorKind).toBe("binary");
     expect(relation.effect).toBeCloseTo(-5, 0);
     expect(relation.effectConfidenceHigh).toBeLessThan(0);
   });
@@ -57,6 +59,7 @@ describe("Personal Lab dynamic models", () => {
     const nextDay = calculateMatrixRelation(series("intense", exposure), series("hrv", outcome), 1);
     const twoDays = calculateMatrixRelation(series("intense", exposure), series("hrv", outcome), 2);
     expect(nextDay.effect).toBeLessThan(-4);
+    expect(nextDay.predictorDelta).toBeGreaterThan(8);
     expect(nextDay.pValue).toBeLessThan(0.05);
     expect(Math.abs(nextDay.effect ?? 0)).toBeGreaterThan(Math.abs(twoDays.effect ?? 0));
   });

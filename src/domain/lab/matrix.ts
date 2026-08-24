@@ -5,7 +5,14 @@ export const MINIMUM_WEEKLY_HIGHLIGHT = 20;
 export const MINIMUM_BINARY_GROUP = 5;
 
 export type MatrixPoint = { date: string; value: number; segment?: string };
-export type MatrixSeries = { id: string; label: string; unit: string; kind: "numeric" | "binary"; points: MatrixPoint[] };
+export type MatrixSeries = {
+  id: string;
+  label: string;
+  unit: string;
+  kind: "numeric" | "binary";
+  presentation?: "amount" | "clock-time";
+  points: MatrixPoint[];
+};
 export type MatrixSourceEstimate = { source: string; sampleSize: number; effect: number; effectConfidenceLow: number; effectConfidenceHigh: number; coefficient: number; pValue: number };
 export type MatrixSourceCoverage = { source: string; pairedDays: number; pairedWeeks: number };
 export type MatrixStability = {
@@ -15,7 +22,9 @@ export type MatrixStability = {
   outlierAdjustedDirectionHeld: boolean;
 };
 export type MatrixRelation = {
-  predictorId: string; predictorLabel: string; outcomeId: string; outcomeLabel: string; outcomeUnit: string;
+  predictorId: string; predictorLabel: string; predictorUnit: string; predictorKind: MatrixSeries["kind"];
+  predictorPresentation: NonNullable<MatrixSeries["presentation"]>; predictorLow: number | null; predictorHigh: number | null; predictorDelta: number | null;
+  outcomeId: string; outcomeLabel: string; outcomeUnit: string;
   coefficient: number | null; effect: number | null; effectConfidenceLow: number | null; effectConfidenceHigh: number | null;
   sampleSize: number; effectiveSampleSize: number; pValue: number; qValue: number; confidenceLow: number; confidenceHigh: number;
   relevance: number; lagDays: number; grain: "day" | "week"; timeScale: "acute" | "chronic";
@@ -31,7 +40,7 @@ export type MatrixRelationOptions = {
 };
 
 type Pair = { date: string; predictor: number; outcome: number; previousOutcome: number; segment: string };
-type ModelEstimate = MatrixSourceEstimate & { standardError: number };
+type ModelEstimate = MatrixSourceEstimate & { standardError: number; predictorLow: number; predictorHigh: number; predictorDelta: number };
 
 function addDays(date: string, days: number) {
   const result = new Date(`${date}T12:00:00Z`);
@@ -185,6 +194,9 @@ function fitAdjustedModel(source: string, pairs: Pair[], kind: MatrixSeries["kin
   const pValue = standardError < 1e-12 ? (Math.abs(effect) < 1e-12 ? 1 : 0) : normalPValue(effect / standardError);
   return {
     source, sampleSize: pairs.length, effect, standardError, pValue,
+    predictorLow: lower,
+    predictorHigh: upper,
+    predictorDelta: contrast,
     effectConfidenceLow: effect - 1.959963984540054 * standardError,
     effectConfidenceHigh: effect + 1.959963984540054 * standardError,
     coefficient: effect / (standardDeviation(rawOutcomes) || 1),
@@ -267,7 +279,12 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
   if (combined && Math.abs(combined.effect) < (options.minimumMeaningfulEffect ?? 0)) exclusionReasons.push("Effect smaller than the practical threshold");
   const intervalScale = combined ? standardDeviation(pairs.map((pair) => pair.outcome)) || 1 : 1;
   const relation: MatrixRelation = {
-    predictorId: predictor.id, predictorLabel: predictor.label, outcomeId: outcome.id, outcomeLabel: outcome.label, outcomeUnit: outcome.unit,
+    predictorId: predictor.id, predictorLabel: predictor.label, predictorUnit: predictor.unit, predictorKind: predictor.kind,
+    predictorPresentation: predictor.presentation ?? "amount",
+    predictorLow: combined ? round(combined.predictorLow, 3) : null,
+    predictorHigh: combined ? round(combined.predictorHigh, 3) : null,
+    predictorDelta: combined ? round(combined.predictorDelta, 3) : null,
+    outcomeId: outcome.id, outcomeLabel: outcome.label, outcomeUnit: outcome.unit,
     coefficient: combined ? round(combined.coefficient, 3) : null,
     effect: combined ? round(combined.effect, 1) : null,
     effectConfidenceLow: combined ? round(combined.effectConfidenceLow, 1) : null,

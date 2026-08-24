@@ -1,51 +1,17 @@
-"use client";
-
-import { LoaderCircle } from "lucide-react";
-import { useState } from "react";
-
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-
 export function GoogleSignInButton() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function signIn() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: "openid email profile",
-        },
-      });
-
-      if (authError) {
-        throw authError;
-      }
-    } catch (caughtError) {
-      setLoading(false);
-      setError(caughtError instanceof Error ? caughtError.message : "Google sign-in could not start.");
-    }
-  }
-
   return (
     <div className="auth-action">
-      <button className="google-button" type="button" onClick={signIn} disabled={loading}>
-        {loading ? <LoaderCircle className="spin" size={20} /> : <GoogleMark />}
-        {loading ? "Connecting…" : "Continue with Google"}
-      </button>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <a className="google-button" href="/auth/google">
+        <GoogleMark />
+        Continue with Google
+      </a>
     </div>
   );
 }
 
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" role="img" aria-label="Google">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.91h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.4Z" />
       <path fill="#34A853" d="M12 22c2.7 0 4.98-.9 6.63-2.43l-3.24-2.53c-.9.6-2.05.96-3.39.96-2.61 0-4.82-1.77-5.61-4.14H3.04v2.62A10 10 0 0 0 12 22Z" />
       <path fill="#FBBC05" d="M6.39 13.86a6.02 6.02 0 0 1 0-3.72V7.52H3.04a10 10 0 0 0 0 8.96l3.35-2.62Z" />

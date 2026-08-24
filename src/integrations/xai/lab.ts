@@ -35,6 +35,14 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     .sort((first, second) => (preferredOutcomes.get(first.outcomeId) ?? 50) - (preferredOutcomes.get(second.outcomeId) ?? 50));
   const facts = usableRelations.slice(0, 12).map((relation) => ({
     predictor: relation.predictorLabel,
+    predictorContrast: {
+      low: relation.predictorLow,
+      high: relation.predictorHigh,
+      delta: relation.predictorDelta,
+      unit: relation.predictorUnit,
+      kind: relation.predictorKind,
+      presentation: relation.predictorPresentation,
+    },
     outcome: relation.outcomeLabel,
     effect: relation.effect,
     interval95: [relation.effectConfidenceLow, relation.effectConfidenceHigh],
@@ -59,7 +67,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "The supplied calculations are final: do not recalculate them or infer values that are not supplied.",
         "Write in clear, natural English.",
         "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
-        "Each bullet must state exactly one observed relationship, name the input and outcome, and preserve the supplied effect and unit.",
+        "Each bullet must state exactly one observed relationship, name the input and outcome, preserve the supplied effect and unit, and explain the supplied predictor contrast in plain language.",
         "Keep acute and chronic findings separate. When period is matched non-overlapping weeks, describe a contrast between weeks and never present it as a one-day change.",
         "A short-term decrease after intense exercise may coexist with a flat or beneficial long-term trend; state that distinction when both scales are supplied.",
         "Use simple wording. Never mention rankings, statistical methods, technical metadata, data counts, uncertainty ranges, or how the result was computed.",

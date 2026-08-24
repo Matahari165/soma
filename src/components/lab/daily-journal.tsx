@@ -4,7 +4,16 @@ import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { journalVariableSuggestions, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
+import {
+  journalDayPeriod,
+  journalDayPeriods,
+  journalFieldHint,
+  journalVariableSuggestions,
+  type JournalEntry,
+  type JournalEntryValue,
+  type JournalVariable,
+  type JournalVariableType,
+} from "@/domain/lab/journal";
 
 type DraftValue = JournalEntryValue | null;
 type NewVariable = { name: string; variableType: JournalVariableType; unit: string; options: string };
@@ -102,6 +111,7 @@ function VariableEditor({ variable, name, unit, options, busy, onNameChange, onU
 
 function VariableManager({ variables }: { variables: JournalVariable[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -156,13 +166,20 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
   const categoryOptions = splitOptions(draft.options);
   const canCreate = draft.name.trim().length > 0 && (draft.variableType !== "category" || categoryOptions.length >= 2);
 
+  if (!open) {
+    return <div className="journal-manager journal-manager--closed"><button className="text-link" type="button" onClick={() => setOpen(true)}>Manage journal fields</button></div>;
+  }
+
   return <section className="journal-manager" aria-labelledby="journal-manager-title">
     <div className="journal-manager__header">
       <div>
-        <h3 id="journal-manager-title">Tracked measures</h3>
+        <h3 id="journal-manager-title">Journal fields</h3>
         <p>Add the habits or context you want to compare with your health data.</p>
       </div>
-      {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Add a measure</button>}
+      <div className="journal-manager__header-actions">
+        {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Add a measure</button>}
+        <button className="text-link" type="button" onClick={() => { setOpen(false); setCreating(false); setEditingId(null); }}>Done</button>
+      </div>
     </div>
 
     <div className="journal-manager__body">
@@ -197,9 +214,24 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
   </section>;
 }
 
+function JournalFieldRow({ variable, value, onChange }: { variable: JournalVariable; value: DraftValue; onChange: (value: DraftValue) => void }) {
+  const hint = journalFieldHint(variable);
+  const label = <>{variable.name}{hint && <small>{hint}</small>}</>;
+  return <div className="journal-field">
+    {variable.variableType === "boolean" || variable.variableType === "scale"
+      ? <span className="journal-field__label">{label}</span>
+      : <label className="journal-field__label" htmlFor={`journal-${variable.id}`}>{label}</label>}
+    <Field variable={variable} value={value} onChange={onChange} />
+  </div>;
+}
+
 export function DailyJournal({ variables, entries, entryDate }: { variables: JournalVariable[]; entries: JournalEntry[]; entryDate: string }) {
   const router = useRouter();
-  const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive), [variables]);
+  const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
+  const sections = useMemo(() => journalDayPeriods.map((period) => ({
+    ...period,
+    variables: activeVariables.filter((variable) => journalDayPeriod(variable.position) === period.id),
+  })).filter((period) => period.variables.length > 0), [activeVariables]);
   const initial = useMemo(() => Object.fromEntries(activeVariables.map((variable) => [variable.id, entries.find((entry) => entry.variableId === variable.id)?.value ?? null])), [activeVariables, entries]);
   const [values, setValues] = useState<Record<string, DraftValue>>(initial);
   const [saving, setSaving] = useState(false);
@@ -223,7 +255,10 @@ export function DailyJournal({ variables, entries, entryDate }: { variables: Jou
   }
 
   return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><div><span className="eyebrow">Daily journal</span><h2 id="journal-title">{formatEntryDate(entryDate)}</h2><p>Record yesterday’s habits and context. Empty fields are left out of analysis.</p></div><span className={saved ? "checkin-state checkin-state--saved" : "checkin-state"}>{saved ? "Saved" : "To fill in"}</span></header>
-    {activeVariables.length > 0 ? <div className="journal-grid">{activeVariables.map((variable) => <div className="journal-field" key={variable.id}>{variable.variableType === "boolean" || variable.variableType === "scale" ? <span className="journal-field__label">{variable.name}<small>{typeLabels[variable.variableType]}{variable.unit ? ` · ${variable.unit}` : ""}</small></span> : <label className="journal-field__label" htmlFor={`journal-${variable.id}`}>{variable.name}<small>{typeLabels[variable.variableType]}{variable.unit ? ` · ${variable.unit}` : ""}</small></label>}<Field variable={variable} value={values[variable.id] ?? null} onChange={(value) => { setValues((current) => ({ ...current, [variable.id]: value })); setSaved(false); }} /></div>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
+    {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
+      <h3 id={`journal-${section.id}-title`}>{section.label}</h3>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} onChange={(value) => { setValues((current) => ({ ...current, [variable.id]: value })); setSaved(false); }} key={variable.id} />)}</div>
+    </section>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="journal-actions"><button className="primary-button" type="button" onClick={() => void save()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Save journal"}</button></div>
     <VariableManager variables={variables} />
