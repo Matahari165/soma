@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANALYSIS_DATA_TYPES, healthRecordCoverageDates, minutesSinceMidnightIn, rollingAnalysisStart } from "./analysis";
+import { ANALYSIS_DATA_TYPES, changedDerivedRows, healthRecordCoverageDates, minutesSinceMidnightIn, rollingAnalysisStart } from "./analysis";
 
 describe("civil-time health analysis", () => {
   it("uses the profile timezone instead of the server timezone", () => {
@@ -32,5 +32,17 @@ describe("civil-time health analysis", () => {
       end_time: "2026-07-20T06:00:00.000Z",
       measured_at: null,
     }])).toEqual(new Set(["2026-07-20", "2026-07-18", "2026-07-19", "2026-07-21"]));
+  });
+
+  it("does not rewrite identical derived days just because storage timestamps differ", () => {
+    const existing = [{ id: "row-1", user_id: "user-1", metric_date: "2026-08-25", sleep_minutes: 480, updated_at: "old" }];
+    const incoming = [{ user_id: "user-1", metric_date: "2026-08-25", sleep_minutes: 480, updated_at: "new" }];
+    expect(changedDerivedRows(existing, incoming, (row) => String(row.metric_date))).toEqual([]);
+  });
+
+  it("rewrites a derived day when a statistical value changes", () => {
+    const existing = [{ user_id: "user-1", metric_date: "2026-08-25", sleep_minutes: 480 }];
+    const incoming = [{ user_id: "user-1", metric_date: "2026-08-25", sleep_minutes: 481 }];
+    expect(changedDerivedRows(existing, incoming, (row) => String(row.metric_date))).toEqual(incoming);
   });
 });

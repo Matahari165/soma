@@ -19,6 +19,19 @@ export async function getR2ArchiveObject(key: string) {
   return Buffer.from(await object.arrayBuffer());
 }
 
+export async function putR2JsonObject(key: string, value: unknown, cacheType: string) {
+  await cloudflareArchives().put(key, JSON.stringify(value), {
+    httpMetadata: { contentType: "application/json" },
+    customMetadata: { "soma-cache": cacheType },
+  });
+}
+
+export async function getR2JsonObject(key: string) {
+  const object = await cloudflareArchives().get(key);
+  if (!object) return null;
+  return JSON.parse(Buffer.from(await object.arrayBuffer()).toString("utf8")) as unknown;
+}
+
 export function createR2ArchiveDownloadUrl(key: string) {
   const url = new URL("/api/account/archive", getSiteUrl());
   url.searchParams.set("key", key);

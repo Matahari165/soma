@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { cloudflareArchives, createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
+import { deleteLabMatrixCache } from "@/lib/lab-matrix-cache";
 
 const schema = z.object({ confirmation: z.literal("DELETE MY SOMA DATA") });
 
@@ -18,7 +19,10 @@ export async function DELETE(request: Request) {
   const { data: archiveRows, error: archiveError } = await admin.from("health_record_archives").select("object_path").eq("user_id", user.id);
   if (archiveError) return NextResponse.json({ error: "Account archives could not be listed." }, { status: 500 });
   try {
-    await Promise.all((archiveRows ?? []).map((row) => cloudflareArchives().delete(String(row.object_path))));
+    await Promise.all([
+      ...(archiveRows ?? []).map((row) => cloudflareArchives().delete(String(row.object_path))),
+      deleteLabMatrixCache(user.id),
+    ]);
   } catch {
     return NextResponse.json({ error: "Account archives could not be deleted." }, { status: 500 });
   }

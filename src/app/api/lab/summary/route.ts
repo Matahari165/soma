@@ -13,7 +13,7 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const admin = createCloudflareAdminClient();
-  const snapshot = await getPersonalLabSnapshot(user);
+  const snapshot = await getPersonalLabSnapshot(user, { periods: [30, 90] });
   if (snapshot.aiNarrative?.isCurrent) return NextResponse.json({ ok: true, fresh: true });
   if (!snapshot.needsNarrativeRefresh || !snapshot.matrix.topRelations.length) return NextResponse.json({ error: "Reliable overnight data is not available yet." }, { status: 409 });
   const lockKey = `lab-narrative:${user.id}:${snapshot.todayDate}`;

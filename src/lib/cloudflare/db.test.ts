@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCloudflareReadPlan } from "@/lib/cloudflare/db";
+import { buildCloudflareReadPlan, serializeLabMatrixRevision } from "@/lib/cloudflare/db";
 
 describe("Cloudflare D1 read planning", () => {
   it("pushes simple filters, ordering, and pagination into D1", () => {
@@ -67,5 +67,21 @@ describe("Cloudflare D1 read planning", () => {
 
     expect(plan.sql).not.toContain("OR 1=1");
     expect(plan.paginationPushed).toBe(false);
+  });
+});
+
+describe("Personal Lab matrix revision", () => {
+  it("is deterministic regardless of D1 group ordering", () => {
+    const rows = [
+      { table_name: "journal_days", row_count: 4, latest_update: "2026-08-25T10:00:00.000Z" },
+      { table_name: "daily_health_metrics", row_count: 471, latest_update: "2026-08-25T09:00:00.000Z" },
+    ];
+    expect(serializeLabMatrixRevision(rows)).toBe(serializeLabMatrixRevision([...rows].reverse()));
+  });
+
+  it("changes when validated statistical inputs change", () => {
+    const previous = serializeLabMatrixRevision([{ table_name: "validated_journal_days", row_count: 12, latest_update: "2026-08-24T10:00:00.000Z" }]);
+    const next = serializeLabMatrixRevision([{ table_name: "validated_journal_days", row_count: 13, latest_update: "2026-08-25T10:00:00.000Z" }]);
+    expect(next).not.toBe(previous);
   });
 });

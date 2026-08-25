@@ -4,7 +4,8 @@ import { adjustMatrixRelations, calculateMatrixRelation, type AnalysisPeriod, ty
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
+import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-matrix-cache";
 import { loadJournalData } from "@/services/journal";
 
 export type DailyCheckin = {
@@ -127,6 +128,34 @@ export type PersonalLabSnapshot = {
 };
 
 export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "recoveryScore" | "effortScore"> & { overnightFingerprint: string | null };
+
+const MAX_RELATION_LAG_DAYS = 2;
+
+export function labMatrixCacheKey(periods: AnalysisPeriod[] | undefined) {
+  return periods?.length === 1 ? String(periods[0]) : null;
+}
+
+function isCachedMatrix(value: unknown): value is PersonalLabSnapshot["matrix"] {
+  if (!value || typeof value !== "object") return false;
+  const matrix = value as Partial<PersonalLabSnapshot["matrix"]>;
+  return Array.isArray(matrix.outcomes)
+    && Array.isArray(matrix.rows)
+    && Array.isArray(matrix.periods)
+    && Array.isArray(matrix.topRelations)
+    && Array.isArray(matrix.acuteHighlights)
+    && Array.isArray(matrix.chronicHighlights)
+    && Array.isArray(matrix.coverageByMetric)
+    && Array.isArray(matrix.collectionProgress);
+}
+
+export function analysisWindowForPeriods(periods: AnalysisPeriod[] | undefined, now: Date = new Date()) {
+  if (!periods?.length || periods.includes("all")) return null;
+  const longestPeriod = Math.max(...periods.filter((period): period is Exclude<AnalysisPeriod, "all"> => period !== "all"));
+  const days = longestPeriod + MAX_RELATION_LAG_DAYS;
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  return { start: start.toISOString().slice(0, 10), days };
+}
 
 function dateInTimezone(timeZone: string, value: string | Date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
@@ -526,8 +555,10 @@ function buildSnapshot(input: {
   allowNarrativeRefresh?: boolean;
   connections: Array<{ provider: string; status: string; last_synced_at: string | null }>;
   requestedPeriods?: AnalysisPeriod[];
+  cachedMatrix?: PersonalLabSnapshot["matrix"];
 }) {
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
+  const healthByDate = new Map(input.health.map((day) => [day.metric_date, day]));
   const metricPreferences = new Map((input.metricPreferences ?? []).map((item) => [item.metric_id, item.role]));
   const metricDefinitions = metricDefinitionsForHealth(input.health as unknown as Array<Record<string, unknown>>);
   const todayDate = dateInTimezone(input.timeZone);
@@ -535,13 +566,13 @@ function buildSnapshot(input: {
   const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
-  const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
+  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
   const metricRegistry = metricDefinitions.map((metric) => {
     const sourceDays = new Map<string, number>();
     const recordedDays = metric.id === "recovery" || metric.id === "effort"
       ? input.scores.filter((score) => {
         if (score.kind !== metric.id || score.score === null) return false;
-        const source = input.health.find((day) => day.metric_date === score.score_date)?.data_quality?.primaryWearable ?? "Soma";
+        const source = healthByDate.get(score.score_date)?.data_quality?.primaryWearable ?? "Soma";
         sourceDays.set(source, (sourceDays.get(source) ?? 0) + 1);
         return true;
       }).length
@@ -677,18 +708,45 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     ] });
   }
   const admin = createCloudflareAdminClient();
+  const analysisWindow = analysisWindowForPeriods(options.periods);
+  const matrixCacheKey = labMatrixCacheKey(options.periods);
+  const matrixCachePromise = matrixCacheKey ? (async () => {
+    try {
+      const inputRevision = await labMatrixInputRevision(user.id);
+      const cache = await getLabMatrixCacheObject(user.id, matrixCacheKey) as Record<string, unknown> | null;
+      const cachedMatrix = cache?.inputRevision === inputRevision
+        && cache.algorithmVersion === LAB_MATRIX_CACHE_VERSION
+        && isCachedMatrix(cache.matrix)
+        ? cache.matrix
+        : null;
+      return { inputRevision, cachedMatrix };
+    } catch {
+      return null;
+    }
+  })() : Promise.resolve(null);
   const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal] = await Promise.all([
+  let healthQuery = admin.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false });
+  let scoresQuery = admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false });
+  let calendarQuery = admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).order("metric_date", { ascending: false });
+  let checkinQuery = admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false });
+  if (analysisWindow) {
+    healthQuery = healthQuery.gte("metric_date", analysisWindow.start).limit(analysisWindow.days);
+    scoresQuery = scoresQuery.gte("score_date", analysisWindow.start).limit(analysisWindow.days * 3);
+    calendarQuery = calendarQuery.gte("metric_date", analysisWindow.start).limit(analysisWindow.days);
+    checkinQuery = checkinQuery.gte("checkin_date", analysisWindow.start).limit(analysisWindow.days);
+  }
+  const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal, matrixCache] = await Promise.all([
     admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    admin.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false }),
-    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false }),
-    admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).order("metric_date", { ascending: false }),
-    admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false }),
+    healthQuery,
+    scoresQuery,
+    calendarQuery,
+    checkinQuery,
     admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
     admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
     admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
-    loadJournalData(user.id),
+    loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {}),
+    matrixCachePromise,
   ]);
   const queryCompletedAt = Date.now();
   const failed = [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
@@ -706,13 +764,26 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     metricPreferences: (metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
     connections: connectionResult.data ?? [],
     requestedPeriods: options.periods,
+    cachedMatrix: matrixCache?.cachedMatrix ?? undefined,
   });
+  if (matrixCacheKey && matrixCache && !matrixCache.cachedMatrix) {
+    // Bump LAB_MATRIX_CACHE_VERSION whenever a statistical formula or matrix
+    // serialization contract changes so an old result can never be reused.
+    await putLabMatrixCacheObject(user.id, matrixCacheKey, {
+      inputRevision: matrixCache.inputRevision,
+      algorithmVersion: LAB_MATRIX_CACHE_VERSION,
+      matrix: snapshot.matrix,
+      calculatedAt: new Date().toISOString(),
+    }).catch(() => console.warn("[personal-lab] matrix cache write failed", { period: matrixCacheKey }));
+  }
   console.info("[personal-lab] snapshot ready", {
     periods: options.periods ?? [15, 30, 90, "all"],
     queryMs: queryCompletedAt - startedAt,
     calculationMs: Date.now() - queryCompletedAt,
     totalMs: Date.now() - startedAt,
     healthDays: healthResult.data?.length ?? 0,
+    analysisStart: analysisWindow?.start ?? "all",
+    matrixCache: matrixCache?.cachedMatrix ? "hit" : matrixCacheKey ? "miss" : "bypass",
   });
   return snapshot;
 }

@@ -197,6 +197,51 @@ export async function healthRecordsForAnalysis(userId: string, dataTypes: readon
   return (result.results ?? []).map((row) => JSON.parse(row.json_data) as Row);
 }
 
+const labMatrixRevisionTables = [
+  "profiles",
+  "daily_health_metrics",
+  "daily_scores",
+  "daily_calendar_metrics",
+  "daily_checkins",
+  "journal_variables",
+  "lab_metric_preferences",
+] as const;
+
+export type LabMatrixRevisionRow = { table_name: string; row_count: number; latest_update: string | null };
+
+export function serializeLabMatrixRevision(rows: readonly LabMatrixRevisionRow[]) {
+  return [...rows]
+    .sort((first, second) => first.table_name.localeCompare(second.table_name))
+    .map((row) => `${row.table_name}:${Number(row.row_count)}:${row.latest_update ?? ""}`)
+    .join("|");
+}
+
+export async function labMatrixInputRevision(userId: string) {
+  const db = cloudflareDb();
+  const placeholders = labMatrixRevisionTables.map(() => "?").join(", ");
+  const [baseResult, validatedJournalResult] = await Promise.all([
+    db.prepare(`
+      SELECT table_name, COUNT(*) AS row_count, MAX(COALESCE(updated_at, created_at, '')) AS latest_update
+      FROM soma_rows
+      WHERE user_id = ? AND table_name IN (${placeholders})
+      GROUP BY table_name
+    `).bind(userId, ...labMatrixRevisionTables).all<LabMatrixRevisionRow>(),
+    db.prepare(`
+      SELECT
+        'validated_journal_days' AS table_name,
+        COUNT(*) AS row_count,
+        MAX(COALESCE(updated_at, created_at, '')) AS latest_update
+      FROM soma_rows
+      WHERE table_name = 'journal_days'
+        AND user_id = ?
+        AND json_extract(json_data, '$.status') = 'validated'
+    `).bind(userId).all<LabMatrixRevisionRow>(),
+  ]);
+  if (!baseResult.success) throw new Error(baseResult.error ?? "Lab matrix revision could not be loaded from D1.");
+  if (!validatedJournalResult.success) throw new Error(validatedJournalResult.error ?? "Validated journal revision could not be loaded from D1.");
+  return serializeLabMatrixRevision([...(baseResult.results ?? []), ...(validatedJournalResult.results ?? [])]);
+}
+
 function stableIdentity(table: string, row: Row, explicitConflict?: string) {
   const keys = explicitConflict?.split(",").map((key) => key.trim()).filter(Boolean)
     ?? conflictKeys[table]

@@ -46,6 +46,24 @@ export function rollingAnalysisStart(now: Date, days = 45) {
   return new Date(now.getTime() - days * 86_400_000).toISOString().slice(0, 10);
 }
 
+function canonicalDerivedValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalDerivedValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+    .filter(([key]) => !["id", "created_at", "updated_at"].includes(key))
+    .sort(([first], [second]) => first.localeCompare(second))
+    .map(([key, item]) => [key, canonicalDerivedValue(item)]));
+}
+
+export function changedDerivedRows(
+  existingRows: Array<Record<string, unknown>>,
+  incomingRows: Array<Record<string, unknown>>,
+  identity: (row: Record<string, unknown>) => string,
+) {
+  const existing = new Map(existingRows.map((row) => [identity(row), JSON.stringify(canonicalDerivedValue(row))]));
+  return incomingRows.filter((row) => existing.get(identity(row)) !== JSON.stringify(canonicalDerivedValue(row)));
+}
+
 export function healthRecordCoverageDates(records: Array<Pick<NormalizedHealthRecord, "civil_date" | "start_time" | "end_time" | "measured_at">>) {
   const dates = new Set<string>();
   for (const record of records) {
@@ -108,15 +126,17 @@ export async function recomputeUserHealth(userId: string) {
   // preserves older derived history while keeping each Cloudflare Free job
   // within its CPU budget after new wearable data arrives.
   const analysisStart = rollingAnalysisStart(new Date());
-  const [recordsResult, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
+  const [recordsResult, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }, currentMetrics, currentScores] = await Promise.all([
     healthRecordsForAnalysis(userId, ANALYSIS_DATA_TYPES, analysisStart)
       .then((data) => ({ data: data as NormalizedHealthRecord[], error: null }))
       .catch((error: unknown) => ({ data: null, error })),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", userId).single(),
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),
+    admin.from("daily_health_metrics").select("*").eq("user_id", userId).gte("metric_date", analysisStart),
+    admin.from("daily_scores").select("*").eq("user_id", userId).gte("score_date", analysisStart),
   ]);
-  if (recordsResult.error || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
+  if (recordsResult.error || profileError || sleepPreferencesError || goalsError || currentMetrics.error || currentScores.error) throw new Error("Health inputs could not be read for analysis.");
   const records = recordsResult.data;
   const timezone = profile?.timezone ?? "Europe/Paris";
   const sourceCoverageDates = healthRecordCoverageDates(records ?? []);
@@ -201,10 +221,16 @@ export async function recomputeUserHealth(userId: string) {
     );
   }
 
-  const { error: metricError } = await admin.from("daily_health_metrics").upsert(metricRows, { onConflict: "user_id,metric_date" });
-  if (metricError) throw new Error("Daily health metrics could not be stored.");
-  const { error: scoreError } = await admin.from("daily_scores").upsert(scoreRows, { onConflict: "user_id,score_date,kind" });
-  if (scoreError) throw new Error("Daily scores could not be stored.");
+  const changedMetricRows = changedDerivedRows(currentMetrics.data ?? [], metricRows, (row) => String(row.metric_date));
+  const changedScoreRows = changedDerivedRows(currentScores.data ?? [], scoreRows, (row) => `${row.score_date}:${row.kind}`);
+  if (changedMetricRows.length) {
+    const { error: metricError } = await admin.from("daily_health_metrics").upsert(changedMetricRows, { onConflict: "user_id,metric_date" });
+    if (metricError) throw new Error("Daily health metrics could not be stored.");
+  }
+  if (changedScoreRows.length) {
+    const { error: scoreError } = await admin.from("daily_scores").upsert(changedScoreRows, { onConflict: "user_id,score_date,kind" });
+    if (scoreError) throw new Error("Daily health scores could not be stored.");
+  }
   await deleteStaleDerivedRows(userId, analysisStart, sourceCoverageDates);
 
   const scorePoints = (kind: string) => scoreRows.filter((row) => row.kind === kind && typeof row.score === "number").map((row) => ({ date: String(row.score_date), value: Number(row.score) }));
