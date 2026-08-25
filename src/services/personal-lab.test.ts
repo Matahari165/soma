@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analysisWindowForPeriods, hasReliableOvernightData, labMatrixCacheKey, overnightFingerprint } from "./personal-lab";
+import { analysisWindowForPeriods, hasReliableOvernightData, labMatrixCacheKey, latestLabDate, overnightFingerprint } from "./personal-lab";
 
 describe("Personal Lab analysis window", () => {
   const now = new Date("2026-08-25T12:00:00.000Z");
@@ -20,6 +20,12 @@ describe("Personal Lab analysis window", () => {
     expect(labMatrixCacheKey(["all"])).toBe("all");
     expect(labMatrixCacheKey([30, 90])).toBeNull();
     expect(labMatrixCacheKey(undefined)).toBeNull();
+  });
+
+  it("anchors periods to the latest available date regardless of query ordering", () => {
+    expect(latestLabDate(["2026-08-25", "2026-08-24", "2026-07-25"], [], "2026-01-01")).toBe("2026-08-25");
+    expect(latestLabDate(["2026-07-25", "2026-08-24", "2026-08-25"], [], "2026-01-01")).toBe("2026-08-25");
+    expect(latestLabDate([], ["2026-08-23", "2026-08-25"], "2026-01-01")).toBe("2026-08-25");
   });
 });
 

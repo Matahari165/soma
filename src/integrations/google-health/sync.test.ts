@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
 import { normalizeGoogleHealthPoint } from "./normalize";
-import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, googleHealthSyncRuntimeState, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
+import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, googleHealthSyncRuntimeState, selectNextGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -48,5 +48,22 @@ describe("Google Health sync failures", () => {
   it("initializes missing D1 cursor and attempt values", () => {
     expect(googleHealthSyncRuntimeState({ cursor: null, attempts: null })).toEqual({ cursor: {}, attempts: 0 });
     expect(googleHealthSyncRuntimeState({ cursor: { typeIndex: 2 }, attempts: 1 })).toEqual({ cursor: { typeIndex: 2 }, attempts: 1 });
+  });
+
+  it("finishes the initial recent import before recurring refresh jobs", () => {
+    const jobs = [
+      { id: "automatic", sync_trigger: "automatic", import_range: "90_days", created_at: "2026-08-25T07:00:00.000Z" },
+      { id: "history", sync_trigger: "initial", import_range: "all_history", created_at: "2026-08-25T06:00:00.000Z" },
+      { id: "recent", sync_trigger: "initial", import_range: "90_days", created_at: "2026-08-25T06:00:00.000Z" },
+    ];
+    expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("recent");
+  });
+
+  it("keeps recurring refreshes ahead of the older full-history backfill", () => {
+    const jobs = [
+      { id: "history", sync_trigger: "initial", import_range: "all_history", created_at: "2026-08-25T06:00:00.000Z" },
+      { id: "automatic", sync_trigger: "automatic", import_range: "90_days", created_at: "2026-08-25T07:00:00.000Z" },
+    ];
+    expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("automatic");
   });
 });

@@ -3,7 +3,7 @@ import "server-only";
 import { cloudflareArchives } from "@/lib/cloudflare/db";
 import { getR2JsonObject, putR2JsonObject } from "@/lib/r2";
 
-export const LAB_MATRIX_CACHE_VERSION = "matrix-v1";
+export const LAB_MATRIX_CACHE_VERSION = "matrix-v2";
 const LAB_MATRIX_PERIOD_KEYS = ["15", "30", "90", "all"] as const;
 
 export function labMatrixCacheObjectKey(userId: string, periodKey: string) {
@@ -19,7 +19,7 @@ export async function getLabMatrixCacheObject(userId: string, periodKey: string)
 }
 
 export async function putLabMatrixCacheObject(userId: string, periodKey: string, value: unknown) {
-  await putR2JsonObject(labMatrixCacheObjectKey(userId, periodKey), value, "personal-lab-matrix-v1");
+  await putR2JsonObject(labMatrixCacheObjectKey(userId, periodKey), value, `personal-lab-${LAB_MATRIX_CACHE_VERSION}`);
 }
 
 export async function deleteLabMatrixCache(userId: string) {

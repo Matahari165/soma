@@ -44,6 +44,26 @@ type ProviderConnection = {
   token_expires_at: string | null;
 };
 
+export type GoogleHealthSyncQueueCandidate = {
+  id: string;
+  sync_trigger: string;
+  import_range: string;
+  created_at: string;
+};
+
+function googleHealthSyncJobPriority(job: GoogleHealthSyncQueueCandidate) {
+  if (job.sync_trigger === "initial" && job.import_range === "90_days") return 0;
+  if (job.sync_trigger !== "initial") return 1;
+  return 2;
+}
+
+export function selectNextGoogleHealthSyncJob<T extends GoogleHealthSyncQueueCandidate>(jobs: readonly T[]) {
+  return [...jobs].sort((first, second) =>
+    googleHealthSyncJobPriority(first) - googleHealthSyncJobPriority(second)
+    || first.created_at.localeCompare(second.created_at)
+    || first.id.localeCompare(second.id))[0] ?? null;
+}
+
 const DIRECT_UPSERT_DATA_TYPES = new Set<GoogleHealthDataType>([
   "heart-rate",
   "heart-rate-variability",

@@ -157,6 +157,11 @@ export function analysisWindowForPeriods(periods: AnalysisPeriod[] | undefined, 
   return { start: start.toISOString().slice(0, 10), days };
 }
 
+export function latestLabDate(healthDates: readonly string[], journalDates: readonly string[], fallback: string) {
+  const dates = [...healthDates, ...journalDates];
+  return dates.reduce((latest, date) => date > latest ? date : latest, dates[0] ?? fallback);
+}
+
 function dateInTimezone(timeZone: string, value: string | Date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
@@ -388,7 +393,11 @@ function buildCorrelationMatrix(input: {
   const allSpecs = [...journalRows, ...[...automaticRows, ...genericAutomaticRows].filter((row) => ["influence", "both"].includes(metricRoleFor(row.series.id, input.metricPreferences)))];
   const periods: AnalysisPeriod[] = [15, 30, 90, "all"];
   const calculatedPeriods = input.requestedPeriods ?? periods;
-  const latestDate = health.at(-1)?.metric_date ?? input.entries.at(-1)?.entryDate ?? dateInTimezone(input.timeZone);
+  const latestDate = latestLabDate(
+    health.map((day) => day.metric_date),
+    input.entries.map((entry) => entry.entryDate),
+    dateInTimezone(input.timeZone),
+  );
   const filterPeriod = (series: MatrixSeries, period: AnalysisPeriod): MatrixSeries => period === "all" ? series : {
     ...series,
     points: series.points.filter((point) => point.date >= addDays(latestDate, -(period - 1))),

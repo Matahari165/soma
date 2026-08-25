@@ -5,7 +5,7 @@ import {
   automaticGoogleHealthRange,
   isAutomaticGoogleHealthSyncDue,
 } from "@/integrations/google-health/schedule";
-import { drainGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger } from "@/integrations/google-health/sync";
+import { drainGoogleHealthSyncJob, selectNextGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger, type GoogleHealthSyncQueueCandidate } from "@/integrations/google-health/sync";
 import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from "@/integrations/google-health/webhook-jobs";
 import { getGrantedGoogleHealthDataTypes, isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
@@ -207,19 +207,17 @@ export async function GET(request: Request) {
   if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 
   const now = new Date().toISOString();
-  const readyJob = (initial: boolean) => {
-    const query = admin.from("sync_jobs").select("id,sync_trigger").eq("status", "queued");
-    return (initial ? query.eq("sync_trigger", "initial") : query.neq("sync_trigger", "initial"))
-      .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
-  };
   const deadline = Date.now() + 8_000;
   const results: Array<Record<string, unknown>> = [];
   for (let jobIndex = 0; jobIndex < 1 && Date.now() < deadline - 2_000; jobIndex += 1) {
-    const priorityResult = await readyJob(false);
-    if (priorityResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-    const fallbackResult = priorityResult.data ? { data: null, error: null } : await readyJob(true);
-    if (fallbackResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
-    const job = priorityResult.data ?? fallbackResult.data;
+    const readyJobsResult = await admin.from("sync_jobs")
+      .select("id,sync_trigger,import_range,created_at")
+      .eq("status", "queued")
+      .or(`retry_after.is.null,retry_after.lte.${now}`)
+      .order("created_at")
+      .limit(100);
+    if (readyJobsResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
+    const job = selectNextGoogleHealthSyncJob((readyJobsResult.data ?? []) as GoogleHealthSyncQueueCandidate[]);
     if (!job) break;
     try {
       const result = await drainGoogleHealthSyncJob(job.id, {
