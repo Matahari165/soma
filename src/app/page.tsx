@@ -7,7 +7,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const user = await getCurrentUser();
   if (!user) return <PublicHome />;
 
-  const data = await getPersonalLabSnapshot(user);
+  const data = await getPersonalLabSnapshot(user, { periods: [30] });
   const params = await searchParams;
   const connectionNotice = params.calendar === "connected" ? "calendar" : params.health === "connected" || params.health === "connected_partial" ? "health" : null;
   return <div id="main-page-content"><PersonalLab data={data} connectionNotice={connectionNotice} /></div>;

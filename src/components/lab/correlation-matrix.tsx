@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, History, ThumbsUp, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
@@ -126,33 +126,63 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
 
 export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["matrix"] }) {
   const [period, setPeriod] = useState<AnalysisPeriod>(30);
+  const [rowsByPeriod, setRowsByPeriod] = useState<Partial<Record<AnalysisPeriod, PersonalLabSnapshot["matrix"]["rows"]>>>(() => ({ 30: matrix.rows }));
+  const [loadingPeriod, setLoadingPeriod] = useState<AnalysisPeriod | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [showNonSignificant, setShowNonSignificant] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation | null>(null);
   const outcomes = matrix.outcomes;
-  const rows = useMemo(() => matrix.rows.filter((row) => row.period === period)
+  const rows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period)
     .filter((row) => showNonSignificant
       ? row.relations.some((relation) => !relation.excluded)
-      : row.relations.some((relation) => relation.featureEligible && relation.qValue < .05)), [matrix.rows, period, showNonSignificant]);
+      : row.relations.some((relation) => relation.featureEligible && relation.qValue < .05)), [rowsByPeriod, period, showNonSignificant]);
+
+  const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod) => {
+    const cached = rowsByPeriod[nextPeriod];
+    if (cached) return cached;
+    setLoadingPeriod(nextPeriod);
+    try {
+      const response = await fetch(`/api/lab/matrix?period=${nextPeriod}`);
+      if (!response.ok) throw new Error("Matrix request failed");
+      const result = await response.json() as { rows: PersonalLabSnapshot["matrix"]["rows"] };
+      setRowsByPeriod((current) => ({ ...current, [nextPeriod]: result.rows }));
+      return result.rows;
+    } catch {
+      setLoadError(true);
+      return [];
+    } finally {
+      setLoadingPeriod(null);
+    }
+  }, [rowsByPeriod]);
+
+  async function selectPeriod(nextPeriod: AnalysisPeriod) {
+    setPeriod(nextPeriod);
+    setSelected(null);
+    setLoadError(false);
+    await loadPeriod(nextPeriod);
+  }
 
   useEffect(() => {
     const listener = (event: Event) => {
       const locator = (event as CustomEvent<RelationLocator>).detail;
-      const relation = matrix.rows
-        .filter((row) => row.period === locator.period)
-        .flatMap((row) => row.relations)
-        .find((candidate) => candidate.predictorLabel === locator.predictor && candidate.outcomeLabel === locator.outcome && candidate.lagDays === locator.lagDays);
       setPeriod(locator.period);
-      setSelected(relation ?? null);
+      setSelected(null);
+      setLoadError(false);
+      void loadPeriod(locator.period).then((loadedRows) => {
+        const relation = loadedRows.flatMap((row) => row.relations)
+          .find((candidate) => candidate.predictorLabel === locator.predictor && candidate.outcomeLabel === locator.outcome && candidate.lagDays === locator.lagDays);
+        setSelected(relation ?? null);
+      });
     };
     window.addEventListener("soma:open-relation", listener);
     return () => window.removeEventListener("soma:open-relation", listener);
-  }, [matrix.rows]);
+  }, [loadPeriod]);
 
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
       <div><span className="section-kicker">Influence × outcome</span><h2 id="matrix-title">Relationship matrix</h2></div>
       <div className="matrix-controls">
-        <div className="matrix-periods" role="group" aria-label="Analysis period">{matrix.periods.map((value) => <button type="button" aria-pressed={period === value} onClick={() => { setPeriod(value); setSelected(null); }} key={value}>{periodLabel(value)}</button>)}</div>
+        <div className="matrix-periods" role="group" aria-label="Analysis period">{matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}</div>
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
@@ -171,7 +201,9 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
           </td>;
         })}</tr>)}</tbody>
       </table>
-      {!rows.length && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
+      {loadingPeriod === period && <p className="matrix-no-results" role="status">Loading relationships…</p>}
+      {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}
+      {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
     {selected && <RelationDetail relation={selected} direction={outcomes.find((outcome) => outcome.id === selected.outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} />}
     <details className="matrix-method"><summary>Method</summary><p>Each cell is a raw within-person comparison over the selected rolling window. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction across the visible analysis family. The default table keeps only q &lt; 0.05.</p></details>

@@ -196,6 +196,7 @@ function buildCorrelationMatrix(input: {
   metricPreferences: ReadonlyMap<string, MetricRole>;
   metricDefinitions: readonly LabMetricDefinition[];
   timeZone: string;
+  requestedPeriods?: AnalysisPeriod[];
 }) {
   const health = [...input.health].sort((a, b) => a.metric_date.localeCompare(b.metric_date));
   const wearableSourceByDate = new Map(health.map((day) => [day.metric_date, day.data_quality?.primaryWearable ?? undefined]));
@@ -332,13 +333,14 @@ function buildCorrelationMatrix(input: {
     });
   const allSpecs = [...journalRows, ...[...automaticRows, ...genericAutomaticRows].filter((row) => ["influence", "both"].includes(metricRoleFor(row.series.id, input.metricPreferences)))];
   const periods: AnalysisPeriod[] = [15, 30, 90, "all"];
+  const calculatedPeriods = input.requestedPeriods ?? periods;
   const latestDate = health.at(-1)?.metric_date ?? input.entries.at(-1)?.entryDate ?? dateInTimezone(input.timeZone);
   const filterPeriod = (series: MatrixSeries, period: AnalysisPeriod): MatrixSeries => period === "all" ? series : {
     ...series,
     points: series.points.filter((point) => point.date >= addDays(latestDate, -(period - 1))),
   };
   const emojiByVariable = new Map(input.variables.map((variable) => [`journal:${variable.id}`, variable.emoji]));
-  const rows: LabMatrixRow[] = periods.flatMap((period) => allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({
+  const rows: LabMatrixRow[] = calculatedPeriods.flatMap((period) => allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({
     id: `${period}:${row.series.id}:lag-${lagDays}`,
     label: row.series.label,
     emoji: [...emojiByVariable.entries()].find(([id]) => row.series.id.startsWith(id))?.[1] ?? null,
@@ -362,7 +364,7 @@ function buildCorrelationMatrix(input: {
     )), row.journal)),
   }))));
   const adjusted = new Map<MatrixRelation, MatrixRelation>();
-  for (const period of periods) {
+  for (const period of calculatedPeriods) {
     const relations = rows.filter((row) => row.period === period).flatMap((row) => row.relations);
     const periodAdjusted = adjustMatrixRelations(relations);
     relations.forEach((relation, index) => adjusted.set(relation, periodAdjusted[index]));
@@ -498,6 +500,7 @@ function buildSnapshot(input: {
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
   allowNarrativeRefresh?: boolean;
   connections: Array<{ provider: string; status: string; last_synced_at: string | null }>;
+  requestedPeriods?: AnalysisPeriod[];
 }) {
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
   const metricPreferences = new Map((input.metricPreferences ?? []).map((item) => [item.metric_id, item.role]));
@@ -507,7 +510,7 @@ function buildSnapshot(input: {
   const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
-  const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone });
+  const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
   const metricRegistry = metricDefinitions.map((metric) => {
     const recordedDays = metric.id === "recovery" || metric.id === "effort"
       ? input.scores.filter((score) => score.kind === metric.id && score.score !== null).length
@@ -600,10 +603,10 @@ function buildSnapshot(input: {
   } satisfies PersonalLabSnapshot;
 }
 
-export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLabSnapshot> {
+export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): Promise<PersonalLabSnapshot> {
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    return buildSnapshot({ user, timeZone: "Europe/Paris", ...preview, narrative: null, allowNarrativeRefresh: false, connections: [
+    return buildSnapshot({ user, timeZone: "Europe/Paris", ...preview, requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] });
@@ -638,5 +641,6 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
     narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts })),
     metricPreferences: (metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
     connections: connectionResult.data ?? [],
+    requestedPeriods: options.periods,
   });
 }

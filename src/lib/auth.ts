@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { getSessionUser } from "@/lib/cloudflare/session";
 import { hasCloudflareConfig, isLocalPreviewMode } from "@/lib/env";
@@ -10,13 +11,13 @@ export type SomaUser = {
   displayName: string;
 };
 
-export async function getCurrentUser(): Promise<SomaUser | null> {
+export const getCurrentUser = cache(async (): Promise<SomaUser | null> => {
   if (isLocalPreviewMode()) return previewUser;
   if (!hasCloudflareConfig()) {
     return null;
   }
   return getSessionUser();
-}
+});
 
 export async function requireCurrentUser() {
   const user = await getCurrentUser();
