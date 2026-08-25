@@ -69,7 +69,8 @@ matrix, and insight experience.
 - `Validate day` finalizes the entry without a missing-field warning or confirmation step.
 - Only validated days enter relationship analysis.
 - Empty fields remain missing for that variable; they are never converted to zero or false.
-- A validated day is locked and cannot be edited.
+- A validated day remains validated but can always be edited. Changes save immediately,
+  stay eligible for relationship analysis, and refresh the derived relationships.
 - Unvalidated drafts remain available for today and the previous four calendar days.
 - Soma sends no journal notification.
 

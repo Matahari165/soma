@@ -57,8 +57,8 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
     }
 
     if (name === "save_personal_lab_journal_day") {
-      const { data: day } = await client.from("journal_days").select("status").eq("user_id", input.p_user_id).eq("entry_date", input.p_entry_date).maybeSingle();
-      if (day?.status === "validated") throw new Error("journal_day_locked");
+      const { data: day } = await client.from("journal_days").select("status,validated_at").eq("user_id", input.p_user_id).eq("entry_date", input.p_entry_date).maybeSingle();
+      const wasValidated = day?.status === "validated";
       const entries = Array.isArray(input.p_entries) ? input.p_entries : [];
       for (const entry of entries) {
         if (entry.value === null) {
@@ -70,8 +70,8 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
       await client.from("journal_days").upsert({
         user_id: input.p_user_id,
         entry_date: input.p_entry_date,
-        status: input.p_validate ? "validated" : "draft",
-        validated_at: input.p_validate ? new Date().toISOString() : null,
+        status: input.p_validate || wasValidated ? "validated" : "draft",
+        validated_at: input.p_validate || wasValidated ? day?.validated_at ?? new Date().toISOString() : null,
         omitted_variables: entries.filter((entry: Row) => entry.value === null).map((entry: Row) => entry.variable_id),
       }, { onConflict: "user_id,entry_date" });
       return { data: null, error: null };

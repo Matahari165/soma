@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, History, ThumbsUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
@@ -64,9 +64,9 @@ function openRelation(locator: RelationLocator | undefined) {
   if (locator) window.dispatchEvent(new CustomEvent<RelationLocator>("soma:open-relation", { detail: locator }));
 }
 
-function RelationDetail({ relation, direction, onClose }: { relation: MatrixRelation; direction: "higher" | "lower" | "target"; onClose: () => void }) {
+function RelationDetail({ relation, direction, onClose, detailRef }: { relation: MatrixRelation; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
   const maximum = Math.max(Math.abs(relation.baselineMean ?? 0), Math.abs(relation.comparisonMean ?? 0), 1);
-  return <aside className="relation-detail" aria-labelledby="relation-detail-title">
+  return <aside ref={detailRef} className="relation-detail" tabIndex={-1} aria-labelledby="relation-detail-title">
     <header>
       <div><span className="section-kicker">Relation detail</span><h3 id="relation-detail-title">{relation.predictorLabel} × {relation.outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation detail" onClick={onClose}><X size={17} /></button>
@@ -136,6 +136,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
   const [loadError, setLoadError] = useState(false);
   const [showNonSignificant, setShowNonSignificant] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation | null>(null);
+  const relationDetailRef = useRef<HTMLElement | null>(null);
   const outcomes = matrix.outcomes;
   const rows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period)
     .filter((row) => showNonSignificant
@@ -183,9 +184,14 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     return () => window.removeEventListener("soma:open-relation", listener);
   }, [loadPeriod]);
 
+  useEffect(() => {
+    if (!selected) return;
+    window.requestAnimationFrame(() => relationDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [selected]);
+
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
-      <div><span className="section-kicker">Influence × outcome</span><h2 id="matrix-title">Relationship matrix</h2></div>
+      <div><h2 id="matrix-title">Relationship matrix</h2></div>
       <div className="matrix-controls">
         <div className="matrix-periods" role="group" aria-label="Analysis period">{matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}</div>
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
@@ -210,7 +216,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}
       {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
-    {selected && <RelationDetail relation={selected} direction={outcomes.find((outcome) => outcome.id === selected.outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} />}
+    {selected && <RelationDetail relation={selected} direction={outcomes.find((outcome) => outcome.id === selected.outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
     <details className="matrix-method"><summary>Method</summary><p>Each cell is a raw within-person comparison over the selected rolling window. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction across the visible analysis family. The default table keeps only q &lt; 0.05.</p></details>
   </section>;
 }

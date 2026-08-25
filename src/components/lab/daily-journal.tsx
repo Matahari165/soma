@@ -286,7 +286,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState<string | null>(null);
   const day = days.find((candidate) => candidate.entryDate === entryDate);
-  const locked = day?.status === "validated";
+  const validated = day?.status === "validated";
 
   async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>) {
     const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: activeVariables.map((variable) => ({ variableId: variable.id, value: draftValues[variable.id] ?? null })) }) });
@@ -300,7 +300,12 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     saveQueue.current = saveQueue.current
       .catch(() => undefined)
       .then(() => persist(date, "draft", draftValues))
-      .then(() => { if (date === selectedDate.current) setState("saved"); })
+      .then(() => {
+        if (date === selectedDate.current) {
+          setState("saved");
+          if (days.find((candidate) => candidate.entryDate === date)?.status === "validated") router.refresh();
+        }
+      })
       .catch((saveError) => {
         if (date === selectedDate.current) {
           setState("idle");
@@ -343,14 +348,14 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     queueDraft(entryDate, next);
   }
 
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><div><span className="eyebrow">Journal</span><h2 id="journal-title">{formatEntryDate(entryDate)}</h2></div><span className={locked || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{locked ? "Validated" : state === "saving" ? "Saving" : state === "saved" ? "Draft saved" : "Draft"}</span></header>
+  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><div><span className="eyebrow">Journal</span><h2 id="journal-title">{formatEntryDate(entryDate)}</h2></div><span className={validated || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{state === "saving" ? "Saving" : validated ? "Validated" : state === "saved" ? "Draft saved" : "Draft"}</span></header>
     <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
       <h3 id={`journal-${section.id}-title`}>{section.label}</h3>
-      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} disabled={locked} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
-    {!locked && <div className="journal-actions"><button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button></div>}
+    {validated ? <p className="journal-save-note" role="status">Changes save automatically and remain included in your relationships.</p> : <div className="journal-actions"><button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button></div>}
     <VariableManager variables={variables} />
   </section>;
 }

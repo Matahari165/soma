@@ -1061,13 +1061,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .journal-period:last-child { border-bottom: 0; }
 .journal-period > h3 { padding: 14px 12px; border-right: 1px solid var(--ink); }
 .journal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; border: 0; }
-.journal-field { grid-template-columns: 30px minmax(110px, 1fr) minmax(140px, .8fr); min-height: 62px; gap: 9px; padding: 9px 11px; border-color: var(--line); }
-.journal-field__emoji { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--line); font-family: var(--font-soma-mono), monospace; font-size: .83rem; }
+.journal-field { grid-template-columns: 34px minmax(110px, 1fr) minmax(140px, .8fr); min-height: 62px; gap: 9px; padding: 9px 11px; border-color: var(--line); }
+.journal-field__emoji { display: grid; width: 34px; height: 34px; place-items: center; font-size: 1.05rem; line-height: 1; }
 .journal-field__label { font-size: .73rem; }
 .journal-field input, .journal-field select { min-height: 38px; }
 .journal-choice button { min-height: 36px; }
 .journal-choice button:disabled, .journal-field input:disabled, .journal-field select:disabled { cursor: default; opacity: .68; }
 .journal-actions { margin-top: 0; padding: 14px 16px; border-top: 1px solid var(--ink); }
+.journal-save-note { margin: 0; padding: 14px 16px; border-top: 1px solid var(--ink); color: var(--muted); font-size: .68rem; }
 .journal-manager { margin: 0; padding: 14px 16px; border-top: 1px solid var(--line); }
 .journal-manager--closed { justify-content: start; }
 .journal-variable-row { grid-template-columns: minmax(0, 1fr) repeat(4, auto); }
@@ -1089,24 +1090,27 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-toggle input:not(:checked) + span svg { opacity: 0; }
 .matrix-scroll { max-height: min(72vh, 820px); border-top: 1px solid var(--ink); }
 .matrix-scroll table { width: max(100%, 1420px); table-layout: fixed; }
-.matrix-scroll th, .matrix-scroll td { width: 112px; height: 66px; padding: 0; }
-.matrix-scroll thead th { height: 60px; padding: 8px; background: var(--ink); }
+.matrix-scroll th, .matrix-scroll td { width: 112px; height: 52px; padding: 0; }
+.matrix-scroll thead th { height: 58px; padding: 6px 7px; background: var(--ink); }
+.matrix-scroll thead th > span { font-size: .73rem; line-height: 1.1; }
+.matrix-scroll thead th small { margin-top: 4px; font-size: .58rem; }
 .matrix-scroll thead th:first-child, .matrix-scroll tbody th { width: 210px; }
-.matrix-scroll tbody th { padding: 8px 10px; box-shadow: 2px 0 0 var(--line); }
-.matrix-scroll tbody th strong { font-size: .69rem; }
-.matrix-scroll tbody th strong > span { display: inline-block; min-width: 23px; margin-right: 6px; text-align: center; }
-.matrix-scroll td > button { position: relative; display: grid; width: 100%; height: 100%; align-content: center; gap: 3px; padding: 7px; border: 0; background: transparent; text-align: left; }
-.matrix-scroll td > button strong { font-family: var(--font-soma-mono), monospace; font-size: .72rem; font-variant-numeric: tabular-nums; }
-.matrix-scroll td > button small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .5rem; }
-.matrix-scroll td > button em { position: absolute; top: 4px; right: 5px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .46rem; font-style: normal; text-transform: uppercase; }
+.matrix-scroll tbody th { padding: 5px 9px; box-shadow: 2px 0 0 var(--line); }
+.matrix-scroll tbody th strong { font-size: .76rem; line-height: 1.1; }
+.matrix-scroll tbody th small { margin-top: 4px; font-size: .58rem; line-height: 1.1; }
+.matrix-scroll tbody th strong > span { display: inline-grid; width: 24px; min-width: 24px; margin-right: 5px; place-items: center; font-size: .95rem; line-height: 1; text-align: center; vertical-align: -0.1em; }
+.matrix-scroll td > button { position: relative; display: grid; width: 100%; height: 100%; align-content: center; gap: 2px; padding: 5px; border: 0; background: transparent; text-align: left; }
+.matrix-scroll td > button strong { font-family: var(--font-soma-mono), monospace; font-size: .8rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.matrix-scroll td > button small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .57rem; line-height: 1.05; }
+.matrix-scroll td > button em { position: absolute; top: 3px; right: 4px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .5rem; font-style: normal; text-transform: uppercase; }
 .matrix-scroll td.is-positive { background: color-mix(in srgb, var(--moss-soft) 72%, var(--paper)); box-shadow: inset 0 3px var(--moss); }
 .matrix-scroll td.is-negative { background: color-mix(in srgb, var(--clay-soft) 74%, var(--paper)); box-shadow: inset 0 3px var(--clay); }
 .matrix-scroll td.is-neutral { background: color-mix(in srgb, var(--cobalt-soft) 58%, var(--paper)); box-shadow: inset 0 3px var(--cobalt); }
 .matrix-scroll td.is-non-significant { background: var(--paper); color: var(--muted); }
 .matrix-scroll td.is-non-significant button { opacity: .56; }
-.matrix-empty { display: grid; height: 100%; place-items: center; color: var(--faint); font-family: var(--font-soma-mono), monospace; }
+.matrix-empty { display: grid; height: 100%; place-items: center; color: var(--faint); font-family: var(--font-soma-mono), monospace; font-size: .78rem; }
 .matrix-no-results { padding: 28px 16px; color: var(--muted); font-size: .76rem; }
-.relation-detail { border: 1px solid var(--ink); border-top: 0; background: var(--paper); }
+.relation-detail { scroll-margin-top: 24px; border: 1px solid var(--ink); border-top: 0; background: var(--paper); }
 .relation-detail > header { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--ink); }
 .relation-detail h3 { margin-top: 4px; font-family: var(--font-soma-sans), sans-serif; font-size: 1.2rem; }
 .relation-detail__finding { max-width: 80ch; padding: 16px 18px; font-size: .82rem; }

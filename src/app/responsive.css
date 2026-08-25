@@ -35,7 +35,7 @@
   .journal-date-strip { overflow-x: auto; grid-template-columns: repeat(5, minmax(78px, 1fr)); }
   .journal-period { grid-template-columns: 1fr; }
   .journal-period > h3 { padding: 9px 11px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .journal-field { grid-template-columns: 30px minmax(0, 1fr); }
+  .journal-field { grid-template-columns: 34px minmax(0, 1fr); }
   .journal-field > :last-child { grid-column: 1 / -1; }
   .journal-field__emoji { align-self: center; }
   .journal-choice button, .journal-field input, .journal-field select { min-height: 44px; }
@@ -420,7 +420,7 @@
   .lab-overview--signals .lab-signals a:nth-child(2n), .lab-overview .lab-signals a:nth-child(2n) { border-right: 1px solid var(--line); }
   .journal-card > header { align-items: center; flex-direction: row; }
   .journal-period { grid-template-columns: 1fr; }
-  .journal-field { grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+  .journal-field { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
   .journal-field > :last-child { grid-column: 1 / -1; }
   .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overflow: auto; }
   .matrix-mobile-list { display: none; }

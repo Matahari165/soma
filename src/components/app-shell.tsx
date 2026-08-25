@@ -55,7 +55,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const pathname = usePathname();
   const [coachOpen, setCoachOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const coachPanelRef = useRef<HTMLElement>(null);
   const mobileMenuRef = useRef<HTMLElement>(null);
   const closeCoach = useCallback(() => setCoachOpen(false), []);

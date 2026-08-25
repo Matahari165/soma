@@ -68,9 +68,9 @@ describe("journal values", () => {
     expect(defaultJournalVariables.find((item) => item.name === "Dark room")?.dayPeriod).toBe("sleep");
   });
 
-  it("defines added sugar in approximate grams", () => {
+  it("does not repeat a numeric unit in the field hint", () => {
     const sugar = defaultJournalVariables.find((item) => item.name === "Added sugar");
     expect(sugar?.unit).toBe("g");
-    expect(journalFieldHint({ name: sugar?.name ?? "", variableType: sugar?.variableType ?? "number", unit: sugar?.unit ?? null })).toBe("g");
+    expect(journalFieldHint({ name: sugar?.name ?? "", variableType: sugar?.variableType ?? "number", unit: sugar?.unit ?? null })).toBeNull();
   });
 });

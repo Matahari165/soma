@@ -402,11 +402,24 @@ function buildCorrelationMatrix(input: {
     ...series,
     points: series.points.filter((point) => point.date >= addDays(latestDate, -(period - 1))),
   };
+  const automaticEmojiByMetric: Record<string, string> = {
+    bedtime: "🌙",
+    wake_time: "🌅",
+    sleep_regularity: "📐",
+    sleep_debt: "💤",
+    steps: "👣",
+    zone_minutes: "❤️‍🔥",
+    intense_minutes: "🔥",
+    exercise_minutes: "🏋️",
+    active_minutes: "⚡",
+    skin_temperature: "🌡️",
+    effort: "💪",
+  };
   const emojiByVariable = new Map(input.variables.map((variable) => [`journal:${variable.id}`, variable.emoji]));
   const rows: LabMatrixRow[] = calculatedPeriods.flatMap((period) => allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({
     id: `${period}:${row.series.id}:lag-${lagDays}`,
     label: row.series.label,
-    emoji: [...emojiByVariable.entries()].find(([id]) => row.series.id.startsWith(id))?.[1] ?? null,
+    emoji: [...emojiByVariable.entries()].find(([id]) => row.series.id.startsWith(id))?.[1] ?? automaticEmojiByMetric[row.series.id] ?? null,
     grain: "day" as const,
     timeScale: "acute" as const,
     period,
