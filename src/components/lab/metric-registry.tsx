@@ -34,7 +34,7 @@ export function MetricRegistry({ metrics }: { metrics: PersonalLabSnapshot["metr
     <div className="metric-registry__table">
       <div className="metric-registry__head"><span>Metric</span><span>Coverage</span><span>Role</span></div>
       {[...metrics].sort((first, second) => Number(second.received) - Number(first.received) || first.label.localeCompare(second.label)).map((metric) => <div className={metric.received ? "" : "is-unreceived"} key={metric.id}>
-        <span><strong>{metric.label}</strong><small>{metric.source} · {metric.unit}</small></span>
+        <span><strong>{metric.label}</strong><small>{metric.sources.length ? metric.sources.map((source) => `${source.source} ${source.days}d`).join(" · ") : metric.source}{metric.unit ? ` · ${metric.unit}` : ""}</small></span>
         <span>{metric.recordedDays ? `${metric.recordedDays}d` : "—"}</span>
         <label><span className="sr-only">{metric.label} role</span><select value={metric.role} disabled={busy === metric.id} onChange={(event) => void update(metric.id, event.target.value as MetricRole)}>{Object.entries(roleLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{busy === metric.id && <LoaderCircle className="spin" size={14} aria-hidden="true" />}</label>
       </div>)}

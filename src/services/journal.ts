@@ -3,14 +3,14 @@ import "server-only";
 import { defaultJournalVariables, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
-type JournalVariableRow = {
+export type JournalVariableRow = {
   id: string;
   name: string;
   variable_type: JournalVariableType;
   unit: string | null;
   options: unknown;
   position: number;
-  is_active: boolean;
+  is_active: boolean | null | undefined;
   emoji: string;
   default_value: unknown;
   day_period: JournalVariable["dayPeriod"];
@@ -18,7 +18,7 @@ type JournalVariableRow = {
 
 type JournalEntryRow = { variable_id: string; entry_date: string; value: unknown };
 
-function variableFromRow(row: JournalVariableRow): JournalVariable {
+export function variableFromRow(row: JournalVariableRow): JournalVariable {
   const isAutomaticSleepMeasure = ["bedtime", "heure du coucher"].includes(row.name.toLocaleLowerCase("en"));
   return {
     id: row.id,
@@ -27,7 +27,9 @@ function variableFromRow(row: JournalVariableRow): JournalVariable {
     unit: row.unit,
     options: Array.isArray(row.options) ? row.options.filter((value): value is string => typeof value === "string") : [],
     position: row.position,
-    isActive: row.is_active && !isAutomaticSleepMeasure,
+    // Legacy D1 rows predate the explicit flag. Database defaults are not
+    // applied to sparse JSON, so only an explicit false means archived.
+    isActive: row.is_active !== false && !isAutomaticSleepMeasure,
     emoji: row.emoji || "🧪",
     defaultValue: typeof row.default_value === "string" || typeof row.default_value === "number" || typeof row.default_value === "boolean" ? row.default_value : null,
     dayPeriod: row.day_period,
@@ -56,6 +58,7 @@ export async function ensureJournalVariables(userId: string) {
     emoji: variable.emoji,
     default_value: variable.defaultValue,
     day_period: variable.dayPeriod,
+    is_active: true,
   })));
   if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
 }

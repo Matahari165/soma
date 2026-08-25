@@ -66,6 +66,7 @@ const conflictKeys: Record<string, string[]> = {
   journal_variables: ["user_id", "name"],
   journal_entries: ["user_id", "variable_id", "entry_date"],
   lab_narratives: ["user_id"],
+  lab_narrative_history: ["user_id", "analysis_date"],
   journal_days: ["user_id", "entry_date"],
   lab_metric_preferences: ["user_id", "metric_id"],
   daily_calendar_metrics: ["user_id", "metric_date"],
@@ -87,6 +88,24 @@ export function cloudflareArchives() {
   const bucket = cloudflareEnv().SOMA_ARCHIVES;
   if (!bucket) throw new Error("The SOMA_ARCHIVES binding is not configured.");
   return bucket;
+}
+
+export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs = 60_000) {
+  const db = cloudflareDb();
+  const now = Date.now();
+  await db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND CAST(json_extract(json_data, '$.expires_at_ms') AS INTEGER) < ?")
+    .bind("operation_locks", lockKey, now).run();
+  const row = { user_id: userId, expires_at_ms: now + ttlMs };
+  const result = await db.prepare("INSERT OR IGNORE INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind("operation_locks", lockKey, userId, JSON.stringify(row), new Date(now).toISOString(), new Date(now).toISOString()).run();
+  if (!result.success) throw new Error(result.error ?? "The operation lock could not be acquired.");
+  return Number(result.meta?.changes ?? 0) > 0;
+}
+
+export async function releaseCloudflareLock(lockKey: string, userId: string) {
+  const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ?")
+    .bind("operation_locks", lockKey, userId).run();
+  if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
 }
 
 export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {

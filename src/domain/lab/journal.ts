@@ -140,7 +140,7 @@ export const defaultJournalVariables = [
   { name: "Illness", emoji: "🤒", variableType: "boolean", unit: null, options: [], position: 5, dayPeriod: "context", defaultValue: false },
   { name: "Breakfast", emoji: "🍳", variableType: "boolean", unit: null, options: [], position: 10, dayPeriod: "morning", defaultValue: false },
   { name: "WHM", emoji: "🫁", variableType: "count", unit: "rounds", options: [], position: 20, dayPeriod: "morning", defaultValue: 0 },
-  { name: "Caffeine", emoji: "☕", variableType: "number", unit: "mg", options: [], position: 30, dayPeriod: "morning", defaultValue: 0 },
+  { name: "Caffeine", emoji: "☕", variableType: "number", unit: "mg", options: [], position: 30, dayPeriod: "day", defaultValue: 0 },
   { name: "Added sugar", emoji: "🍬", variableType: "number", unit: "g", options: [], position: 40, dayPeriod: "day", defaultValue: 0 },
   { name: "Masturbation", emoji: "✋", variableType: "boolean", unit: null, options: [], position: 50, dayPeriod: "day", defaultValue: false },
   { name: "Alcohol", emoji: "🍷", variableType: "count", unit: "drinks", options: [], position: 60, dayPeriod: "evening", defaultValue: 0 },

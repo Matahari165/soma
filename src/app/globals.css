@@ -84,7 +84,7 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--canvas); scroll-behavior: smooth; }
+html { min-width: 0; background: var(--canvas); scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   margin: 0;

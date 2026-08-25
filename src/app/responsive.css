@@ -39,6 +39,13 @@
   .journal-field > :last-child { grid-column: 1 / -1; }
   .journal-field__emoji { align-self: center; }
   .journal-choice button, .journal-field input, .journal-field select { min-height: 44px; }
+  .journal-suggestions button,
+  .journal-variable-row button,
+  .journal-variable-edit button,
+  .journal-variable-edit input,
+  .journal-variable-edit select,
+  .journal-new-variable input,
+  .journal-new-variable select { min-height: 44px; }
   .journal-new-variable { padding: 12px; }
   .matrix-controls { align-items: stretch; flex-direction: column; }
   .matrix-periods { width: 100%; }
@@ -56,7 +63,7 @@
   .metric-registry__table > div { width: 620px; grid-template-columns: 300px 100px 220px; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   :root { --sidebar-width: 0px; }
   body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .sidebar { display: none; }
@@ -80,6 +87,7 @@
   .mobile-header .brand { min-height: 48px; }
   .mobile-header .brand-symbol { width: 36px; height: 36px; }
   .mobile-header__actions { display: flex; gap: 3px; }
+  .mobile-header .icon-button { width: 44px; min-width: 44px; min-height: 44px; }
 
   .bottom-nav {
     position: fixed;

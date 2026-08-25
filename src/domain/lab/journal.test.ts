@@ -57,6 +57,7 @@ describe("journal values", () => {
       "Dark room",
     ]);
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.unit).toBe("mg");
+    expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.dayPeriod).toBe("day");
     expect(defaultJournalVariables.map((item) => String(item.name))).not.toContain("Bedtime");
     expect(journalVariableSuggestions.map((item) => item.name)).toContain("Late meal");
   });

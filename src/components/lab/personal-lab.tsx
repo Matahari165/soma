@@ -1,25 +1,10 @@
-import Link from "next/link";
-
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
 import { DailyJournal } from "./daily-journal";
 import { MetricRegistry } from "./metric-registry";
 import { NarrativeRefresh } from "./narrative-refresh";
-
-function duration(minutes: number | null) {
-  if (minutes === null) return "—";
-  return `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60).toString().padStart(2, "0")}`;
-}
-
-function TodaySignals({ data }: { data: PersonalLabSnapshot }) {
-  const signals = [
-    { label: "Sleep duration", value: duration(data.today.sleepMinutes), href: "/sleep" },
-    { label: "Recovery", value: data.today.recoveryScore === null ? "—" : String(Math.round(data.today.recoveryScore)), href: "/recovery" },
-    { label: "Effort", value: data.today.effortScore === null ? "—" : String(Math.round(data.today.effortScore)), href: "/effort" },
-  ];
-  return <section className="lab-signals" aria-label="Today">{signals.map(({ label, value, href }) => <Link href={href} prefetch={false} key={label}><span>{label}</span><strong>{value}</strong></Link>)}</section>;
-}
+import { TodaySignals } from "./today-signals";
 
 export function PersonalLab({ data, connectionNotice = null }: { data: PersonalLabSnapshot; connectionNotice?: "health" | "calendar" | null }) {
   return <div className="personal-lab-page">
@@ -31,7 +16,7 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
 
     <TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} />
 
-    <div className="lab-overview lab-overview--signals"><TodaySignals data={data} /></div>
+    <div className="lab-overview lab-overview--signals"><TodaySignals key={data.overnightFingerprint ?? "pending"} initial={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} /></div>
 
     <div className="lab-workspace">
       <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} todayDate={data.todayDate} /></div>

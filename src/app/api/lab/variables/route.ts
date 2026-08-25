@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     emoji: input.emoji,
     default_value: input.defaultValue ?? null,
     day_period: input.dayPeriod,
+    is_active: true,
     position: Math.max(190, ...(existing ?? []).map((variable) => Number(variable.position) || 0)) + 10,
   }).select("id").single();
   if (error) return NextResponse.json({ error: error.code === "23505" ? "A variable with this name already exists." : "This variable could not be created." }, { status: error.code === "23505" ? 409 : 500 });

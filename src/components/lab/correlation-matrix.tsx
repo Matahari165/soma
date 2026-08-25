@@ -119,7 +119,12 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
       </div>
     </header>
     {lines.length > 0 && <ol>{lines.slice(0, 4).map((line, index) => <li key={line}><span>{String(index + 1).padStart(2, "0")}</span><button type="button" className="lab-insight-link" onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
-    {historyOpen && narrative?.history && <div className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-link" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></article>)}</div>}
+    {historyOpen && narrative?.history && <div className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
+      <header><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
+      <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>
+      {item.summary && <p>{item.summary}</p>}
+      {item.highlights.length > 0 && <ol>{item.highlights.map((highlight, index) => <li key={`${item.id}-${index}`}><button type="button" className="lab-insight-link" onClick={() => openRelation(item.sourceFacts[index])}>{highlight}</button></li>)}</ol>}
+    </article>)}</div>}
     {!narrative && matrix.topRelations.length === 0 && <span className="sr-only">No significant relation is available yet.</span>}
   </section>;
 }

@@ -69,6 +69,7 @@ export type LabMetricCoverage = {
 
 export type PersonalLabSnapshot = {
   todayDate: string;
+  overnightFingerprint: string | null;
   dateLabel: string;
   greetingName: string;
   checkin: DailyCheckin | null;
@@ -97,10 +98,10 @@ export type PersonalLabSnapshot = {
     generatedAt: string;
     liked: boolean;
     sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }>;
-    history: Array<{ id: string; headline: string; generatedAt: string; liked: boolean; sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }> }>;
+    history: Array<{ id: string; headline: string; summary: string; highlights: string[]; generatedAt: string; liked: boolean; sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }> }>;
   } | null;
   needsNarrativeRefresh: boolean;
-  metricRegistry: Array<LabMetricDefinition & { role: MetricRole; recordedDays: number; received: boolean }>;
+  metricRegistry: Array<LabMetricDefinition & { role: MetricRole; recordedDays: number; received: boolean; sources: Array<{ source: string; days: number }> }>;
   matrix: {
     outcomes: Array<{ id: string; label: string; unit: string; direction: "higher" | "lower" | "target" }>;
     rows: LabMatrixRow[];
@@ -125,8 +126,32 @@ export type PersonalLabSnapshot = {
   };
 };
 
+export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "recoveryScore" | "effortScore"> & { overnightFingerprint: string | null };
+
 function dateInTimezone(timeZone: string, value: string | Date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+export function hasReliableOvernightData(day: Partial<HealthDay> | undefined) {
+  if (!day || toNumber(day.sleep_minutes) === null || !day.bedtime || !day.wake_time) return false;
+  return [day.sleep_efficiency, day.sleep_deep_minutes, day.sleep_rem_minutes, day.hrv_ms, day.resting_heart_rate]
+    .some((value) => toNumber(value) !== null);
+}
+
+export function overnightFingerprint(day: Partial<HealthDay> | undefined) {
+  if (!hasReliableOvernightData(day)) return null;
+  const value = JSON.stringify([
+    day?.sleep_minutes, day?.bedtime, day?.wake_time, day?.sleep_efficiency,
+    day?.sleep_latency_minutes, day?.sleep_awake_minutes, day?.sleep_awakenings,
+    day?.sleep_fragmentation, day?.sleep_deep_minutes, day?.sleep_rem_minutes,
+    day?.hrv_ms, day?.resting_heart_rate, day?.respiratory_rate,
+  ]);
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function toNumber(value: unknown) {
@@ -495,8 +520,8 @@ function buildSnapshot(input: {
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
   journal: { variables: JournalVariable[]; entries: JournalEntry[]; days: import("@/domain/lab/journal").JournalDay[] };
-  narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; model: string; generated_at: string; liked?: boolean } | null;
-  narrativeHistory?: Array<{ id: string; headline: string; generated_at: string; liked: boolean; source_facts: unknown }>;
+  narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
+  narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown }>;
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
   allowNarrativeRefresh?: boolean;
   connections: Array<{ provider: string; status: string; last_synced_at: string | null }>;
@@ -512,13 +537,28 @@ function buildSnapshot(input: {
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const matrix = buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
   const metricRegistry = metricDefinitions.map((metric) => {
+    const sourceDays = new Map<string, number>();
     const recordedDays = metric.id === "recovery" || metric.id === "effort"
-      ? input.scores.filter((score) => score.kind === metric.id && score.score !== null).length
+      ? input.scores.filter((score) => {
+        if (score.kind !== metric.id || score.score === null) return false;
+        const source = input.health.find((day) => day.metric_date === score.score_date)?.data_quality?.primaryWearable ?? "Soma";
+        sourceDays.set(source, (sourceDays.get(source) ?? 0) + 1);
+        return true;
+      }).length
       : input.health.filter((day) => {
         const value = (day as unknown as Record<string, unknown>)[metric.field];
-        return value !== null && value !== undefined;
+        if (value === null || value === undefined) return false;
+        const source = day.data_quality?.primaryWearable ?? metric.source;
+        sourceDays.set(source, (sourceDays.get(source) ?? 0) + 1);
+        return true;
       }).length;
-    return { ...metric, role: metricRoleFor(metric.id, metricPreferences), recordedDays, received: recordedDays > 0 };
+    return {
+      ...metric,
+      role: metricRoleFor(metric.id, metricPreferences),
+      recordedDays,
+      received: recordedDays > 0,
+      sources: [...sourceDays].map(([source, days]) => ({ source, days })).sort((first, second) => second.days - first.days),
+    };
   });
   const parseSourceFacts = (value: unknown) => Array.isArray(value) ? value.flatMap((item) => {
     if (typeof item !== "object" || item === null) return [];
@@ -527,15 +567,22 @@ function buildSnapshot(input: {
     if (typeof fact.predictor !== "string" || typeof fact.outcome !== "string" || (period !== 15 && period !== 30 && period !== 90 && period !== "all")) return [];
     return [{ predictor: fact.predictor, outcome: fact.outcome, period: period as AnalysisPeriod, lagDays: typeof fact.lagDays === "number" ? fact.lagDays : 0 }];
   }) : [];
-  const facts = parseSourceFacts(input.narrative?.source_facts);
-  const highlights = Array.isArray(input.narrative?.highlights) ? input.narrative.highlights.flatMap((value, index) => {
-    if (typeof value === "string") return [{ text: value, factIndex: index }];
-    if (typeof value !== "object" || value === null) return [];
-    const item = value as Record<string, unknown>;
-    return typeof item.text === "string" && Number.isInteger(item.factIndex) ? [{ text: item.text, factIndex: Number(item.factIndex) }] : [];
+  const parseHighlights = (value: unknown) => Array.isArray(value) ? value.flatMap((item, index) => {
+    if (typeof item === "string") return [{ text: item, factIndex: index }];
+    if (typeof item !== "object" || item === null) return [];
+    const record = item as Record<string, unknown>;
+    return typeof record.text === "string" && Number.isInteger(record.factIndex) ? [{ text: record.text, factIndex: Number(record.factIndex) }] : [];
   }) : [];
+  const facts = parseSourceFacts(input.narrative?.source_facts);
+  const highlights = parseHighlights(input.narrative?.highlights);
   const availableRelations = matrix.rows.flatMap((row) => row.relations);
-  const factsStillAvailable = Array.isArray(input.narrative?.source_facts) && input.narrative.source_facts.some((item) => {
+  const sourceFacts = Array.isArray(input.narrative?.source_facts) ? input.narrative.source_facts : [];
+  const requestedPeriods = new Set(input.requestedPeriods ?? [15, 30, 90, "all"]);
+  const verifiableFacts = sourceFacts.filter((item) => {
+    if (typeof item !== "object" || item === null) return false;
+    return requestedPeriods.has((item as Record<string, unknown>).analysisPeriod as AnalysisPeriod);
+  });
+  const factsStillAvailable = sourceFacts.length > 0 && (verifiableFacts.length === 0 || verifiableFacts.every((item) => {
     if (typeof item !== "object" || item === null) return false;
     const fact = item as Record<string, unknown>;
     return availableRelations.some((relation) => relation.featureEligible
@@ -544,11 +591,28 @@ function buildSnapshot(input: {
       && relation.period === fact.analysisPeriod
       && relation.lagDays === fact.lagDays
       && relation.effect === fact.effect);
-  });
+  }));
+  const todayHealth = input.health.find((day) => day.metric_date === todayDate);
+  const currentOvernightFingerprint = overnightFingerprint(todayHealth);
+  const overnightSnapshotStable = !input.narrative?.overnight_fingerprint
+    || input.narrative.overnight_fingerprint === currentOvernightFingerprint;
   const narrativeIsCurrent = Boolean(input.narrative
     && dateInTimezone(input.timeZone, input.narrative.generated_at) === todayDate
-    && factsStillAvailable);
-  const history = (input.narrativeHistory ?? []).map((item) => ({ id: item.id, headline: item.headline, generatedAt: item.generated_at, liked: item.liked, sourceFacts: parseSourceFacts(item.source_facts) }));
+    && factsStillAvailable
+    && overnightSnapshotStable);
+  const history = (input.narrativeHistory ?? []).map((item) => {
+    const itemFacts = parseSourceFacts(item.source_facts);
+    const itemHighlights = parseHighlights(item.highlights);
+    return {
+      id: item.id,
+      headline: item.headline,
+      summary: item.summary,
+      highlights: itemHighlights.map((highlight) => highlight.text),
+      generatedAt: item.generated_at,
+      liked: item.liked,
+      sourceFacts: itemHighlights.map((highlight) => itemFacts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)),
+    };
+  });
   const aiNarrative = input.narrative || history.length ? {
     isCurrent: narrativeIsCurrent,
     id: narrativeIsCurrent ? input.narrative?.id ?? null : null,
@@ -566,6 +630,7 @@ function buildSnapshot(input: {
   const calendarConnection = connection("google_calendar");
   return {
     todayDate,
+    overnightFingerprint: currentOvernightFingerprint,
     dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: input.timeZone, weekday: "long", month: "long", day: "numeric" }).format(new Date()),
     greetingName: input.user.displayName,
     checkin,
@@ -582,8 +647,7 @@ function buildSnapshot(input: {
     },
     aiNarrative,
     needsNarrativeRefresh: Boolean(input.allowNarrativeRefresh !== false
-      && todayObservation?.sleepMinutes !== null
-      && todayObservation?.sleepMinutes !== undefined
+      && hasReliableOvernightData(todayHealth)
       && matrix.topRelations.length
       && !narrativeIsCurrent),
     metricRegistry,
@@ -613,19 +677,18 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     ] });
   }
   const admin = createCloudflareAdminClient();
-  const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal] = await Promise.all([
     admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    admin.from("daily_health_metrics").select("*").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
-    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(2190),
-    admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
-    admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).gte("checkin_date", analysisStart).order("checkin_date", { ascending: false }).limit(730),
+    admin.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false }),
+    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false }),
+    admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).order("metric_date", { ascending: false }),
+    admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false }),
     admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
-    admin.from("lab_narratives").select("headline,summary,highlights,source_facts,model,generated_at").eq("user_id", user.id).maybeSingle(),
-    admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,model,liked,generated_at").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
+    admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
+    admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
-    loadJournalData(user.id, { from: analysisStart }),
+    loadJournalData(user.id),
   ]);
   const queryCompletedAt = Date.now();
   const failed = [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
@@ -639,7 +702,7 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
     journal,
     narrative: narrativeHistoryResult.data?.[0] ?? narrativeResult.data,
-    narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts })),
+    narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts })),
     metricPreferences: (metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
     connections: connectionResult.data ?? [],
     requestedPeriods: options.periods,
@@ -652,4 +715,34 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     healthDays: healthResult.data?.length ?? 0,
   });
   return snapshot;
+}
+
+export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabToday> {
+  if (isLocalPreviewMode()) {
+    const preview = previewData();
+    const todayDate = dateInTimezone("Europe/Paris");
+    const health = preview.health.find((day) => day.metric_date === todayDate);
+    const scores = preview.scores.filter((score) => score.score_date === todayDate);
+    return {
+      sleepMinutes: toNumber(health?.sleep_minutes),
+      recoveryScore: toNumber(scores.find((score) => score.kind === "recovery")?.score),
+      effortScore: toNumber(scores.find((score) => score.kind === "effort")?.score),
+      overnightFingerprint: overnightFingerprint(health),
+    };
+  }
+  const admin = createCloudflareAdminClient();
+  const profileResult = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
+  if (profileResult.error) throw new Error("Today's signals could not be loaded.");
+  const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
+  const [healthResult, scoresResult] = await Promise.all([
+    admin.from("daily_health_metrics").select("sleep_minutes,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).eq("metric_date", todayDate).maybeSingle(),
+    admin.from("daily_scores").select("kind,score").eq("user_id", user.id).eq("score_date", todayDate),
+  ]);
+  if (healthResult.error || scoresResult.error) throw new Error("Today's signals could not be loaded.");
+  return {
+    sleepMinutes: toNumber(healthResult.data?.sleep_minutes),
+    recoveryScore: toNumber(scoresResult.data?.find((score) => score.kind === "recovery")?.score),
+    effortScore: toNumber(scoresResult.data?.find((score) => score.kind === "effort")?.score),
+    overnightFingerprint: overnightFingerprint(healthResult.data as Partial<HealthDay> | undefined),
+  };
 }
