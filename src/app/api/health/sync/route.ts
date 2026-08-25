@@ -11,7 +11,7 @@ import { automaticGoogleHealthDataTypes } from "@/integrations/google-health/sch
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, healthSyncDiagnostics, latestHealthRecordsByType } from "@/lib/cloudflare/db";
 import { getHealthDataCoverage } from "@/services/health-data-coverage";
 
 export const maxDuration = 50;
@@ -36,7 +36,7 @@ function isDashboardRefreshJob(job: Pick<OpenJob, "data_types">, expectedTypes: 
 function continueHealthSync(jobId: string) {
   after(async () => {
     try {
-      await drainGoogleHealthSyncJob(jobId, { maxDurationMs: 45_000 });
+      await drainGoogleHealthSyncJob(jobId, { maxBatches: 1, maxDurationMs: 8_000 });
     } catch (error) {
       console.error("[api/health/sync] manual background update failed", {
         jobId,
@@ -88,12 +88,15 @@ export async function GET(request: Request) {
   const grantedDataTypes = getGrantedGoogleHealthDataTypes(scopes);
   const partialConsent = !GOOGLE_HEALTH_SCOPES.every((scope) => scopes.includes(scope));
   const statusTypes = GOOGLE_HEALTH_DASHBOARD_DATA_TYPES.filter((dataType) => grantedDataTypes.includes(dataType));
-  const recordResults = await Promise.all(statusTypes.map((dataType) => admin.from("health_records")
-    .select("civil_date,measured_at").eq("user_id", user.id).eq("data_type", dataType)
-    .order("civil_date", { ascending: false, nullsFirst: false }).order("measured_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle()));
-  if (recordResults.some((result) => result.error)) return NextResponse.json({ error: "Sync freshness could not be loaded." }, { status: 500 });
-  const perType = Object.fromEntries(statusTypes.map((dataType, index) => {
-    const record = recordResults[index].data;
+  let latestRecords: Awaited<ReturnType<typeof latestHealthRecordsByType>>;
+  try {
+    latestRecords = await latestHealthRecordsByType(user.id, statusTypes);
+  } catch {
+    return NextResponse.json({ error: "Sync freshness could not be loaded." }, { status: 500 });
+  }
+  const recordsByType = new Map(latestRecords.map((record) => [record.data_type, record]));
+  const perType = Object.fromEntries(statusTypes.map((dataType) => {
+    const record = recordsByType.get(dataType);
     const measuredAt = record?.measured_at ?? (record?.civil_date ? `${record.civil_date}T12:00:00.000Z` : null);
     return [dataType, calculateSignalFreshness({ measuredAt, importedAt: connection?.last_synced_at ?? null, coverage: record ? 1 : 0 })];
   }));
@@ -107,17 +110,17 @@ export async function GET(request: Request) {
   };
   if (new URL(request.url).searchParams.get("details") === "1") {
     const diagnosticTypes = ["sleep", "daily-heart-rate-variability", "daily-resting-heart-rate", "steps"];
-    const [datedRecords, metricDays, scoreRows, coverageResult, ...counts] = await Promise.all([
-      admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).not("civil_date", "is", null),
-      admin.from("daily_health_metrics").select("metric_date", { count: "exact", head: true }).eq("user_id", user.id),
-      admin.from("daily_scores").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    const [diagnosticsResult, coverageResult] = await Promise.all([
+      healthSyncDiagnostics(user.id, diagnosticTypes)
+        .then((diagnostics) => ({ diagnostics, error: false }))
+        .catch(() => ({ diagnostics: null, error: true })),
       getHealthDataCoverage(user.id).then((coverage) => ({ coverage, error: null })).catch(() => ({ coverage: null, error: true })),
-      ...diagnosticTypes.map((dataType) => admin.from("health_records").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("data_type", dataType)),
     ]);
-    if (![datedRecords, metricDays, scoreRows, ...counts].some((result) => result.error)) {
-      response.importedRecords = Object.fromEntries(diagnosticTypes.map((dataType, index) => [dataType, counts[index].count ?? 0]));
-      response.analytics = { datedRecords: datedRecords.count ?? 0, metricDays: metricDays.count ?? 0, scoreRows: scoreRows.count ?? 0 };
+    if (diagnosticsResult.diagnostics) {
+      response.importedRecords = diagnosticsResult.diagnostics.importedRecords;
+      response.analytics = diagnosticsResult.diagnostics.analytics;
     }
+    if (diagnosticsResult.error) response.diagnosticsError = true;
     if (coverageResult.coverage) response.coverage = coverageResult.coverage;
     if (coverageResult.error) response.coverageError = true;
   }

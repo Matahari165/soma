@@ -24,7 +24,7 @@ Production is ready only after these checks use a deployed URL and a real accoun
 
 ## Background synchronization
 
-The custom Cloudflare Worker calls `/api/cron/sync` every five minutes. This polling does not contact Google by itself. Soma creates at most one automatic Lab refresh per connection and completed UTC hour. Google Health webhooks can trigger faster targeted imports, and a user-requested manual import starts immediately after the API response.
+The custom Cloudflare Worker calls `/api/cron/sync` every minute. This polling does not contact Google by itself. Soma creates at most one automatic Lab refresh per connection and completed UTC hour. Google Health webhooks can trigger faster targeted imports, and a user-requested manual import starts immediately after the API response.
 
 After changing the application URL or `CRON_SECRET`, redeploy the Worker and trigger `/cdn-cgi/handler/scheduled` in a non-production environment to verify the scheduled handler.
 

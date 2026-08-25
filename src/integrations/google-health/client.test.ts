@@ -5,6 +5,7 @@ import {
   buildGoogleHealthAuthorizationUrl,
   createDailyRollupRange,
   createTimeFilter,
+  googleHealthDataPointPageSize,
   dailyRollupPageSize,
   dailyRollupRangeDays,
   getGrantedGoogleHealthDataTypes,
@@ -50,6 +51,12 @@ describe("Google Health OAuth configuration", () => {
 });
 
 describe("Google Health query contracts", () => {
+  it("keeps raw pages small enough for the Cloudflare free CPU budget", () => {
+    expect(googleHealthDataPointPageSize("sleep")).toBe(25);
+    expect(googleHealthDataPointPageSize("exercise")).toBe(25);
+    expect(googleHealthDataPointPageSize("oxygen-saturation")).toBe(100);
+  });
+
   it("uses reconciled daily rollups for additive activity totals", () => {
     expect(GOOGLE_HEALTH_DAILY_ROLLUP_TYPES).toEqual(expect.arrayContaining([
       "steps",

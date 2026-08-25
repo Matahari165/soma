@@ -9,7 +9,7 @@ import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need";
 import { calculateSleepScore } from "@/domain/scores/sleep";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, healthRecordsForAnalysis } from "@/lib/cloudflare/db";
 
 export const ANALYSIS_DATA_TYPES = [
   "sleep",
@@ -42,22 +42,24 @@ export const ANALYSIS_DATA_TYPES = [
   "weight",
 ] as const;
 
-async function loadAnalysisRecords(userId: string, analysisStart: string) {
-  const admin = createCloudflareAdminClient();
-  const rows: NormalizedHealthRecord[] = [];
-  const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await admin.from("health_records")
-      .select("id,provider,data_type,civil_date,start_time,end_time,measured_at,source_device,recording_method,payload")
-      .eq("user_id", userId)
-      .in("data_type", [...ANALYSIS_DATA_TYPES])
-      .or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStartTime},start_time.gte.${analysisStartTime},measured_at.gte.${analysisStartTime}`)
-      .order("id", { ascending: true })
-      .range(from, from + 999);
-    if (error) return { data: null, error };
-    rows.push(...((data ?? []) as NormalizedHealthRecord[]));
-    if (!data || data.length < 1000) return { data: rows, error: null };
+export function rollingAnalysisStart(now: Date, days = 45) {
+  return new Date(now.getTime() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+export function healthRecordCoverageDates(records: Array<Pick<NormalizedHealthRecord, "civil_date" | "start_time" | "end_time" | "measured_at">>) {
+  const dates = new Set<string>();
+  for (const record of records) {
+    if (record.civil_date) dates.add(record.civil_date);
+    for (const value of [record.start_time, record.end_time, record.measured_at]) {
+      if (!value) continue;
+      const time = new Date(value).getTime();
+      if (!Number.isFinite(time)) continue;
+      // Preserve the neighboring civil dates too: a UTC timestamp can belong
+      // to the previous or next profile day depending on the user's timezone.
+      for (const offset of [-1, 0, 1]) dates.add(new Date(time + offset * 86_400_000).toISOString().slice(0, 10));
+    }
   }
+  return dates;
 }
 
 export function minutesSinceMidnightIn(value: string, timeZone: string) {
@@ -102,15 +104,22 @@ async function deleteStaleDerivedRows(userId: string, analysisStart: string, act
 
 export async function recomputeUserHealth(userId: string) {
   const admin = createCloudflareAdminClient();
-  const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
-  const [{ data: records, error: recordError }, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
-    loadAnalysisRecords(userId, analysisStart),
+  // Recent scores need a 30-day baseline. Recomputing a bounded 45-day window
+  // preserves older derived history while keeping each Cloudflare Free job
+  // within its CPU budget after new wearable data arrives.
+  const analysisStart = rollingAnalysisStart(new Date());
+  const [recordsResult, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
+    healthRecordsForAnalysis(userId, ANALYSIS_DATA_TYPES, analysisStart)
+      .then((data) => ({ data: data as NormalizedHealthRecord[], error: null }))
+      .catch((error: unknown) => ({ data: null, error })),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", userId).single(),
     admin.from("health_goals").select("goal_type,priority").eq("user_id", userId).is("ended_on", null).order("priority"),
   ]);
-  if (recordError || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
+  if (recordsResult.error || profileError || sleepPreferencesError || goalsError) throw new Error("Health inputs could not be read for analysis.");
+  const records = recordsResult.data;
   const timezone = profile?.timezone ?? "Europe/Paris";
+  const sourceCoverageDates = healthRecordCoverageDates(records ?? []);
   const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
   const days = aggregateHealthRecords(wearableWindow.records, timezone);
   console.info("[health-analysis] source records loaded", {
@@ -120,7 +129,7 @@ export async function recomputeUserHealth(userId: string) {
     wearableWindowStart: wearableWindow.startDate,
   });
   if (!days.length) {
-    await deleteStaleDerivedRows(userId, analysisStart, new Set());
+    await deleteStaleDerivedRows(userId, analysisStart, sourceCoverageDates);
     console.warn("[health-analysis] no dated health records available", { analysisStart });
     return { days: 0, scores: 0, insights: 0 };
   }
@@ -196,7 +205,7 @@ export async function recomputeUserHealth(userId: string) {
   if (metricError) throw new Error("Daily health metrics could not be stored.");
   const { error: scoreError } = await admin.from("daily_scores").upsert(scoreRows, { onConflict: "user_id,score_date,kind" });
   if (scoreError) throw new Error("Daily scores could not be stored.");
-  await deleteStaleDerivedRows(userId, analysisStart, new Set(days.map((day) => day.metric_date)));
+  await deleteStaleDerivedRows(userId, analysisStart, sourceCoverageDates);
 
   const scorePoints = (kind: string) => scoreRows.filter((row) => row.kind === kind && typeof row.score === "number").map((row) => ({ date: String(row.score_date), value: Number(row.score) }));
   const bedtimePoints = days.filter((day) => day.bedtime).map((day) => {

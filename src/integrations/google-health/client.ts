@@ -284,6 +284,10 @@ export function createTimeFilter(dataType: GoogleHealthDataType, start: Date, en
   return `${metadata.field} >= "${startValue}" AND ${metadata.field} < "${endValue}"`;
 }
 
+export function googleHealthDataPointPageSize(dataType: GoogleHealthDataType) {
+  return dataType === "sleep" || dataType === "exercise" ? 25 : 100;
+}
+
 export function listGoogleHealthDataPoints(input: {
   accessToken: string;
   dataType: GoogleHealthDataType;
@@ -292,7 +296,7 @@ export function listGoogleHealthDataPoints(input: {
   pageToken?: string;
 }) {
   const query = new URLSearchParams({
-    pageSize: input.dataType === "sleep" || input.dataType === "exercise" ? "25" : "10000",
+    pageSize: String(googleHealthDataPointPageSize(input.dataType)),
     filter: createTimeFilter(input.dataType, input.start, input.end),
   });
   if (input.pageToken) query.set("pageToken", input.pageToken);

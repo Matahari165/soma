@@ -87,6 +87,95 @@ export function cloudflareArchives() {
   return bucket;
 }
 
+export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {
+  if (!dataTypes.length) return [] as Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>;
+  const placeholders = dataTypes.map(() => "?").join(", ");
+  const statement = cloudflareDb().prepare(`
+    WITH ranked AS (
+      SELECT
+        json_extract(json_data, '$.data_type') AS data_type,
+        json_extract(json_data, '$.civil_date') AS civil_date,
+        json_extract(json_data, '$.measured_at') AS measured_at,
+        ROW_NUMBER() OVER (
+          PARTITION BY json_extract(json_data, '$.data_type')
+          ORDER BY
+            json_extract(json_data, '$.civil_date') IS NULL,
+            json_extract(json_data, '$.civil_date') DESC,
+            json_extract(json_data, '$.measured_at') IS NULL,
+            json_extract(json_data, '$.measured_at') DESC
+        ) AS position
+      FROM soma_rows
+      WHERE table_name = 'health_records'
+        AND user_id = ?
+        AND json_extract(json_data, '$.data_type') IN (${placeholders})
+    )
+    SELECT data_type, civil_date, measured_at
+    FROM ranked
+    WHERE position = 1
+  `).bind(userId, ...dataTypes);
+  const result = await statement.all<{ data_type: string; civil_date: string | null; measured_at: string | null }>();
+  if (!result.success) throw new Error(result.error ?? "Latest health records could not be loaded from D1.");
+  return result.results ?? [];
+}
+
+export async function healthSyncDiagnostics(userId: string, dataTypes: readonly string[]) {
+  const healthResult = await cloudflareDb().prepare(`
+    SELECT
+      json_extract(json_data, '$.data_type') AS data_type,
+      COUNT(*) AS record_count,
+      SUM(CASE WHEN json_extract(json_data, '$.civil_date') IS NOT NULL THEN 1 ELSE 0 END) AS dated_count
+    FROM soma_rows
+    WHERE table_name = 'health_records'
+      AND user_id = ?
+    GROUP BY json_extract(json_data, '$.data_type')
+  `).bind(userId).all<{ data_type: string; record_count: number; dated_count: number }>();
+  if (!healthResult.success) throw new Error(healthResult.error ?? "Health record diagnostics could not be loaded from D1.");
+
+  const analyticsResult = await cloudflareDb().prepare(`
+    SELECT table_name, COUNT(*) AS row_count
+    FROM soma_rows
+    WHERE user_id = ?
+      AND table_name IN ('daily_health_metrics', 'daily_scores')
+    GROUP BY table_name
+  `).bind(userId).all<{ table_name: string; row_count: number }>();
+  if (!analyticsResult.success) throw new Error(analyticsResult.error ?? "Health analytics diagnostics could not be loaded from D1.");
+
+  const healthRows = healthResult.results ?? [];
+  const analyticsRows = new Map((analyticsResult.results ?? []).map((row) => [row.table_name, Number(row.row_count)]));
+  const recordCounts = new Map(healthRows.map((row) => [row.data_type, Number(row.record_count)]));
+  return {
+    importedRecords: Object.fromEntries(dataTypes.map((dataType) => [dataType, recordCounts.get(dataType) ?? 0])),
+    analytics: {
+      datedRecords: healthRows.reduce((total, row) => total + Number(row.dated_count), 0),
+      metricDays: analyticsRows.get("daily_health_metrics") ?? 0,
+      scoreRows: analyticsRows.get("daily_scores") ?? 0,
+    },
+  };
+}
+
+export async function healthRecordsForAnalysis(userId: string, dataTypes: readonly string[], analysisStart: string) {
+  if (!dataTypes.length) return [];
+  const placeholders = dataTypes.map(() => "?").join(", ");
+  const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
+  const result = await cloudflareDb().prepare(`
+    SELECT json_data
+    FROM soma_rows
+    WHERE table_name = 'health_records'
+      AND user_id = ?
+      AND json_extract(json_data, '$.data_type') IN (${placeholders})
+      AND (
+        json_extract(json_data, '$.civil_date') >= ?
+        OR json_extract(json_data, '$.end_time') >= ?
+        OR json_extract(json_data, '$.start_time') >= ?
+        OR json_extract(json_data, '$.measured_at') >= ?
+      )
+    ORDER BY json_extract(json_data, '$.id')
+  `).bind(userId, ...dataTypes, analysisStart, analysisStartTime, analysisStartTime, analysisStartTime)
+    .all<{ json_data: string }>();
+  if (!result.success) throw new Error(result.error ?? "Health analysis records could not be loaded from D1.");
+  return (result.results ?? []).map((row) => JSON.parse(row.json_data) as Row);
+}
+
 function stableIdentity(table: string, row: Row, explicitConflict?: string) {
   const keys = explicitConflict?.split(",").map((key) => key.trim()).filter(Boolean)
     ?? conflictKeys[table]

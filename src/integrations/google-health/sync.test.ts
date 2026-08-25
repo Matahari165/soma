@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
 import { normalizeGoogleHealthPoint } from "./normalize";
-import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
+import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, googleHealthSyncRuntimeState, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -43,5 +43,10 @@ describe("Google Health sync failures", () => {
 
     expect(googleHealthSyncRangeStart("heart-rate", requestedStart, rangeEnd).toISOString()).toBe("2026-08-17T00:00:00.000Z");
     expect(googleHealthSyncRangeStart("daily-heart-rate-variability", requestedStart, rangeEnd)).toBe(requestedStart);
+  });
+
+  it("initializes missing D1 cursor and attempt values", () => {
+    expect(googleHealthSyncRuntimeState({ cursor: null, attempts: null })).toEqual({ cursor: {}, attempts: 0 });
+    expect(googleHealthSyncRuntimeState({ cursor: { typeIndex: 2 }, attempts: 1 })).toEqual({ cursor: { typeIndex: 2 }, attempts: 1 });
   });
 });

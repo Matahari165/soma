@@ -30,6 +30,6 @@
     "SOMA_LOCAL_PREVIEW": "false"
   },
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["* * * * *"]
   }
 }

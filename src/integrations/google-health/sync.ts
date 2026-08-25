@@ -29,8 +29,8 @@ type SyncJob = {
   data_types: string[];
   range_start: string;
   range_end: string;
-  cursor: SyncCursor;
-  attempts: number;
+  cursor?: SyncCursor | null;
+  attempts?: number | null;
   progress: number;
   status: string;
   sync_trigger: string;
@@ -163,6 +163,13 @@ export function shouldRefreshAnalyticsForTrigger(trigger: string) {
   return trigger !== "webhook";
 }
 
+export function googleHealthSyncRuntimeState(input: Pick<SyncJob, "cursor" | "attempts">) {
+  return {
+    cursor: input.cursor ?? {},
+    attempts: typeof input.attempts === "number" && Number.isFinite(input.attempts) ? input.attempts : 0,
+  };
+}
+
 export async function processGoogleHealthSyncJob(jobId: string, options: { refreshAnalytics?: boolean } = {}) {
   const refreshAnalytics = options.refreshAnalytics ?? true;
   const admin = createCloudflareAdminClient();
@@ -174,16 +181,20 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     return { completed: job.status === "completed", progress: job.progress ?? 0, skipped: true, analyticsRefreshed: false, analytics: null };
   }
 
+  const initialState = googleHealthSyncRuntimeState(job);
+
   const { data: rawClaimedJob, error: claimError } = await admin.from("sync_jobs").update({
     status: "running",
     started_at: new Date().toISOString(),
-    attempts: job.attempts + 1,
+    attempts: initialState.attempts + 1,
     error_code: null,
     error_message: null,
   }).eq("id", job.id).eq("status", "queued").select("*").maybeSingle();
   if (claimError) throw new Error("Sync job could not be claimed.");
   if (!rawClaimedJob) return { completed: false, progress: job.progress ?? 0, skipped: true, analyticsRefreshed: false, analytics: null };
   const claimedJob = rawClaimedJob as SyncJob;
+  const claimedState = googleHealthSyncRuntimeState(claimedJob);
+  const cursor = claimedState.cursor;
 
   try {
     const { data: rawConnection, error: connectionError } = await admin
@@ -194,7 +205,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     if (connectionError || !rawConnection) throw new Error("Google Health connection was not found.");
 
     const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
-    const typeIndex = claimedJob.cursor.typeIndex ?? 0;
+    const typeIndex = cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
       const analytics = refreshAnalytics ? await recomputeUserHealth(claimedJob.user_id) : null;
@@ -211,7 +222,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
 
     const end = new Date(claimedJob.range_end);
     const start = googleHealthSyncRangeStart(dataType, new Date(claimedJob.range_start), end);
-    const windowStart = laterDate(new Date(claimedJob.cursor.windowStart ?? claimedJob.range_start), start);
+    const windowStart = laterDate(new Date(cursor.windowStart ?? claimedJob.range_start), start);
     const windowDays = dataType === "heart-rate" || dataType === "active-minutes" || dataType === "total-calories" || dataType === "calories-in-heart-rate-zone" ? 14 : 90;
     const windowEnd = earlierDate(addDays(windowStart, windowDays), end);
     const accessToken = await getAccessToken(rawConnection as ProviderConnection);
@@ -219,11 +230,11 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     let nextPageToken: string | undefined;
     let points: Record<string, unknown>[];
     if (usesDailyRollup) {
-      const response = await dailyRollUpGoogleHealthData({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: claimedJob.cursor.pageToken });
+      const response = await dailyRollUpGoogleHealthData({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: cursor.pageToken });
       points = response.rollupDataPoints ?? [];
       nextPageToken = response.nextPageToken;
     } else {
-      const response = await listGoogleHealthDataPoints({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: claimedJob.cursor.pageToken });
+      const response = await listGoogleHealthDataPoints({ accessToken, dataType, start: windowStart, end: windowEnd, pageToken: cursor.pageToken });
       points = response.dataPoints ?? [];
       nextPageToken = response.nextPageToken;
     }
@@ -244,12 +255,12 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     let nextCursor: SyncCursor;
     let nextTypeIndex = typeIndex;
     if (nextPageToken) {
-      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: nextPageToken, typeErrors: claimedJob.cursor.typeErrors };
+      nextCursor = { typeIndex, windowStart: windowStart.toISOString(), pageToken: nextPageToken, typeErrors: cursor.typeErrors };
     } else if (windowEnd < end) {
-      nextCursor = { typeIndex, windowStart: windowEnd.toISOString(), typeErrors: claimedJob.cursor.typeErrors };
+      nextCursor = { typeIndex, windowStart: windowEnd.toISOString(), typeErrors: cursor.typeErrors };
     } else {
       nextTypeIndex = typeIndex + 1;
-      nextCursor = { typeIndex: nextTypeIndex, windowStart: start.toISOString(), typeErrors: claimedJob.cursor.typeErrors };
+      nextCursor = { typeIndex: nextTypeIndex, windowStart: start.toISOString(), typeErrors: cursor.typeErrors };
     }
 
     const completed = nextTypeIndex >= dataTypes.length;
@@ -304,7 +315,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     const classification = classifyGoogleHealthSyncError(error);
     if (classification.code === "GOOGLE_HEALTH_PERMISSION_DENIED") {
       const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
-      const typeIndex = claimedJob.cursor.typeIndex ?? 0;
+      const typeIndex = cursor.typeIndex ?? 0;
       const dataType = dataTypes[typeIndex];
       if (dataType) {
         const { error: stageCleanupError } = await admin.from("google_health_reconciliation_stage").delete().eq("job_id", claimedJob.id).eq("data_type", dataType);
@@ -316,7 +327,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
           cursor: {
             typeIndex: nextTypeIndex,
             windowStart: claimedJob.range_start,
-            typeErrors: { ...(claimedJob.cursor.typeErrors ?? {}), [dataType]: classification.code },
+            typeErrors: { ...(cursor.typeErrors ?? {}), [dataType]: classification.code },
           },
           progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)),
           attempts: 0,
@@ -330,9 +341,9 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
         return { completed: false, progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)), skippedDataType: dataType, analyticsRefreshed: false, analytics: null };
       }
     }
-    const terminal = !classification.retryable || claimedJob.attempts >= 3;
+    const terminal = !classification.retryable || claimedState.attempts >= 3;
     const message = error instanceof Error ? error.message : "Unknown Google Health sync error.";
-    const retryAfter = terminal ? null : new Date(Date.now() + Math.min(15, claimedJob.attempts ** 2) * 60_000).toISOString();
+    const retryAfter = terminal ? null : new Date(Date.now() + Math.min(15, claimedState.attempts ** 2) * 60_000).toISOString();
     await admin.from("sync_jobs").update({
       status: terminal ? "failed" : "queued",
       error_code: classification.code,

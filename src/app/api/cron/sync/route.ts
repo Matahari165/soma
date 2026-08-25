@@ -212,9 +212,9 @@ export async function GET(request: Request) {
     return (initial ? query.eq("sync_trigger", "initial") : query.neq("sync_trigger", "initial"))
       .or(`retry_after.is.null,retry_after.lte.${now}`).order("created_at").limit(1).maybeSingle();
   };
-  const deadline = Date.now() + 35_000;
+  const deadline = Date.now() + 8_000;
   const results: Array<Record<string, unknown>> = [];
-  for (let jobIndex = 0; jobIndex < 12 && Date.now() < deadline - 2_000; jobIndex += 1) {
+  for (let jobIndex = 0; jobIndex < 1 && Date.now() < deadline - 2_000; jobIndex += 1) {
     const priorityResult = await readyJob(false);
     if (priorityResult.error) return NextResponse.json({ error: "Next sync job could not be loaded." }, { status: 500 });
     const fallbackResult = priorityResult.data ? { data: null, error: null } : await readyJob(true);
@@ -223,6 +223,7 @@ export async function GET(request: Request) {
     if (!job) break;
     try {
       const result = await drainGoogleHealthSyncJob(job.id, {
+        maxBatches: 1,
         maxDurationMs: Math.max(1_000, deadline - Date.now() - 1_500),
         refreshAnalytics: shouldRefreshAnalyticsForTrigger(job.sync_trigger),
       });
