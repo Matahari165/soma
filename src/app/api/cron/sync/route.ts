@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import {
   automaticGoogleHealthDataTypes,
   automaticGoogleHealthRange,
+  clampGoogleHealthRangeToConnection,
+  googleHealthHistorySeededFromTakeout,
   isAutomaticGoogleHealthSyncDue,
 } from "@/integrations/google-health/schedule";
 import { drainGoogleHealthSyncJob, selectNextGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger, type GoogleHealthSyncQueueCandidate } from "@/integrations/google-health/sync";
@@ -38,7 +40,7 @@ async function queueWebhookJobs() {
   if (eventsError) throw new Error("Queued webhook events could not be loaded.");
   const healthUserIds = [...new Set((events ?? []).map((event) => event.health_user_id).filter((value): value is string => Boolean(value)))];
   const connectionResult = healthUserIds.length
-    ? await admin.from("provider_connections").select("id,user_id,external_user_id").eq("provider", "google_health").in("external_user_id", healthUserIds)
+    ? await admin.from("provider_connections").select("id,user_id,external_user_id,metadata,scopes").eq("provider", "google_health").in("external_user_id", healthUserIds)
     : { data: [], error: null };
   if (connectionResult.error) throw new Error("Webhook provider connections could not be loaded.");
   const connectionByExternalId = new Map((connectionResult.data ?? []).map((connection) => [connection.external_user_id, connection]));
@@ -50,14 +52,25 @@ async function queueWebhookJobs() {
       if (error) throw new Error("Invalid webhook event could not be marked as failed.");
       continue;
     }
-    const range = webhookRange(event.payload as Record<string, unknown>);
+    if (!automaticGoogleHealthDataTypes(connection.scopes ?? []).includes(event.data_type)) {
+      const { error } = await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", event.id);
+      if (error) throw new Error("Unused raw-stream webhook could not be completed.");
+      continue;
+    }
+    const rawRange = webhookRange(event.payload as Record<string, unknown>);
+    const range = clampGoogleHealthRangeToConnection({ start: rawRange.start.toISOString(), end: rawRange.end.toISOString() }, connection.metadata);
+    if (range.start >= range.end) {
+      const { error } = await admin.from("webhook_events").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", event.id);
+      if (error) throw new Error("Out-of-range webhook event could not be completed.");
+      continue;
+    }
     candidates.push({
       eventId: event.id,
       userId: connection.user_id,
       connectionId: connection.id,
       dataType: event.data_type,
-      rangeStart: range.start.toISOString(),
-      rangeEnd: range.end.toISOString(),
+      rangeStart: range.start,
+      rangeEnd: range.end,
     });
   }
 
@@ -109,7 +122,7 @@ async function queueWebhookJobs() {
 async function queueAutomaticJobs(now = new Date()) {
   const admin = createCloudflareAdminClient();
   const { data: connections, error: connectionError } = await admin.from("provider_connections")
-    .select("id,user_id,scopes,last_lab_synced_at")
+    .select("id,user_id,scopes,last_lab_synced_at,metadata")
     .eq("provider", "google_health")
     .eq("status", "connected");
   if (connectionError) throw new Error("Automatic sync connections could not be loaded.");
@@ -154,7 +167,8 @@ async function queueAutomaticJobs(now = new Date()) {
     if (!hourlyDataTypes.length) continue;
     if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
     const historyImportOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "all_history");
-    if (!fullHistoryConnections.has(connection.id) && !historyImportOpen) {
+    const historySeeded = googleHealthHistorySeededFromTakeout(connection.metadata);
+    if (!historySeeded && !fullHistoryConnections.has(connection.id) && !historyImportOpen) {
       const historyDataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
       const { error } = await admin.from("sync_jobs").insert({
         user_id: connection.user_id,
@@ -170,7 +184,7 @@ async function queueAutomaticJobs(now = new Date()) {
       else throw new Error("Complete Google Health history could not be queued.");
       continue;
     }
-    const range = automaticGoogleHealthRange(now);
+    const range = clampGoogleHealthRangeToConnection(automaticGoogleHealthRange(now), connection.metadata);
     const { error } = await admin.from("sync_jobs").insert({
       user_id: connection.user_id,
       connection_id: connection.id,
@@ -207,7 +221,7 @@ export async function GET(request: Request) {
   if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 
   const now = new Date().toISOString();
-  const deadline = Date.now() + 8_000;
+  const deadline = Date.now() + 25_000;
   const results: Array<Record<string, unknown>> = [];
   for (let jobIndex = 0; jobIndex < 1 && Date.now() < deadline - 2_000; jobIndex += 1) {
     const readyJobsResult = await admin.from("sync_jobs")
@@ -221,7 +235,7 @@ export async function GET(request: Request) {
     if (!job) break;
     try {
       const result = await drainGoogleHealthSyncJob(job.id, {
-        maxBatches: 1,
+        maxBatches: 6,
         maxDurationMs: Math.max(1_000, deadline - Date.now() - 1_500),
         refreshAnalytics: shouldRefreshAnalyticsForTrigger(job.sync_trigger),
       });

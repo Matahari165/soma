@@ -25,6 +25,9 @@
   "observability": {
     "enabled": true
   },
+  "limits": {
+    "cpu_ms": 30000
+  },
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://soma.hthv4f94vw.workers.dev",
     "SOMA_LOCAL_PREVIEW": "false"

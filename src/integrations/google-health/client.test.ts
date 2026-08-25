@@ -51,10 +51,11 @@ describe("Google Health OAuth configuration", () => {
 });
 
 describe("Google Health query contracts", () => {
-  it("keeps raw pages small enough for the Cloudflare free CPU budget", () => {
+  it("uses larger raw pages while respecting Google's session limits", () => {
     expect(googleHealthDataPointPageSize("sleep")).toBe(25);
     expect(googleHealthDataPointPageSize("exercise")).toBe(25);
-    expect(googleHealthDataPointPageSize("oxygen-saturation")).toBe(100);
+    expect(googleHealthDataPointPageSize("oxygen-saturation")).toBe(1_000);
+    expect(googleHealthDataPointPageSize("heart-rate")).toBe(1_000);
   });
 
   it("uses reconciled daily rollups for additive activity totals", () => {

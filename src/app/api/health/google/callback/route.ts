@@ -7,6 +7,7 @@ import {
   getGoogleHealthIdentity,
   GOOGLE_HEALTH_SCOPES,
 } from "@/integrations/google-health/client";
+import { automaticGoogleHealthDataTypes, clampGoogleHealthRangeToConnection, googleHealthHistorySeededFromTakeout } from "@/integrations/google-health/schedule";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
     }
     const consentComplete = GOOGLE_HEALTH_SCOPES.every((scope) => grantedScopes.includes(scope));
     const admin = createCloudflareAdminClient();
-    const { data: existing, error: existingError } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
+    const { data: existing, error: existingError } = await admin.from("provider_connections").select("refresh_token_ciphertext,metadata").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
     if (existingError) throw new Error("Existing Google Health connection could not be loaded.");
     const { data: connection, error } = await admin.from("provider_connections").upsert({
       user_id: user.id,
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
       scopes: grantedScopes,
       status: "connected",
       last_error_code: null,
-      metadata: { consent_complete: consentComplete, granted_data_type_count: grantedDataTypes.length },
+      metadata: { ...(existing?.metadata ?? {}), consent_complete: consentComplete, granted_data_type_count: grantedDataTypes.length },
     }, { onConflict: "user_id,provider" }).select("id").single();
     if (error || !connection) throw new Error("Google Health connection could not be stored.");
 
@@ -79,17 +80,19 @@ export async function GET(request: Request) {
     if (profileError) throw new Error("Import preferences could not be loaded.");
     const now = new Date();
     const recentStart = daysAgo(90);
+    const takeoutSeeded = googleHealthHistorySeededFromTakeout(existing?.metadata);
+    const initialRange = clampGoogleHealthRangeToConnection({ start: recentStart.toISOString(), end: now.toISOString() }, existing?.metadata);
     const jobs = [{
       user_id: user.id,
       connection_id: connection.id,
       import_range: "90_days",
-      data_types: [...grantedDataTypes],
-      range_start: recentStart.toISOString(),
-      range_end: now.toISOString(),
+      data_types: [...(takeoutSeeded ? automaticGoogleHealthDataTypes(grantedScopes) : grantedDataTypes)],
+      range_start: initialRange.start,
+      range_end: initialRange.end,
       status: "queued",
       sync_trigger: "initial",
     }];
-    if (profile?.import_range === "all_history") {
+    if (profile?.import_range === "all_history" && !takeoutSeeded) {
       jobs.push({
         user_id: user.id,
         connection_id: connection.id,

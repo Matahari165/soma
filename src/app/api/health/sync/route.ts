@@ -7,7 +7,7 @@ import {
   GOOGLE_HEALTH_SCOPES,
 } from "@/integrations/google-health/client";
 import { toSyncStatus } from "@/integrations/google-health/status";
-import { automaticGoogleHealthDataTypes } from "@/integrations/google-health/schedule";
+import { automaticGoogleHealthDataTypes, clampGoogleHealthRangeToConnection } from "@/integrations/google-health/schedule";
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -134,7 +134,7 @@ export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createCloudflareAdminClient();
-  const { data: connection, error: connectionError } = await admin.from("provider_connections").select("id,status,scopes")
+  const { data: connection, error: connectionError } = await admin.from("provider_connections").select("id,status,scopes,metadata")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
   if (connectionError) return NextResponse.json({ error: "Google Health connection could not be checked." }, { status: 500 });
   if (!connection || ["expired", "revoked"].includes(connection.status)) {
@@ -157,13 +157,14 @@ export async function POST() {
   const end = new Date();
   const start = new Date(end);
   start.setUTCDate(start.getUTCDate() - 3);
+  const range = clampGoogleHealthRangeToConnection({ start: start.toISOString(), end: end.toISOString() }, connection.metadata);
   const { data: job, error: jobError } = await admin.from("sync_jobs").insert({
     user_id: user.id,
     connection_id: connection.id,
     import_range: "90_days",
     data_types: [...dataTypes],
-    range_start: start.toISOString(),
-    range_end: end.toISOString(),
+    range_start: range.start,
+    range_end: range.end,
     status: "queued",
     sync_trigger: "manual",
   }).select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at").single();

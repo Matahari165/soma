@@ -287,7 +287,9 @@ export function createTimeFilter(dataType: GoogleHealthDataType, start: Date, en
 }
 
 export function googleHealthDataPointPageSize(dataType: GoogleHealthDataType) {
-  return dataType === "sleep" || dataType === "exercise" ? 25 : 100;
+  // Google caps session-based types at 25. Other types use one bounded page
+  // matching the existing 1,000-record persistence chunk.
+  return dataType === "sleep" || dataType === "exercise" ? 25 : 1_000;
 }
 
 export function listGoogleHealthDataPoints(input: {

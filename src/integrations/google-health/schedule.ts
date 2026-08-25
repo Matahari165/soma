@@ -6,6 +6,31 @@ import {
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES = 60;
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS = 3;
 
+type GoogleHealthConnectionMetadata = {
+  api_sync_start?: unknown;
+  takeout_imported_through?: unknown;
+};
+
+function metadataObject(value: unknown): GoogleHealthConnectionMetadata {
+  return typeof value === "object" && value !== null ? value as GoogleHealthConnectionMetadata : {};
+}
+
+function validIsoDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)) ? null : value;
+}
+
+export function googleHealthHistorySeededFromTakeout(metadata: unknown) {
+  return validIsoDate(metadataObject(metadata).takeout_imported_through) !== null;
+}
+
+export function clampGoogleHealthRangeToConnection<T extends { start: string; end: string }>(range: T, metadata: unknown): T {
+  const configured = validIsoDate(metadataObject(metadata).api_sync_start);
+  if (!configured) return range;
+  const floor = `${configured}T00:00:00.000Z`;
+  return { ...range, start: range.start < floor ? floor : range.start };
+}
+
 type AutomaticSyncInput = {
   now: Date;
   timezone: string;

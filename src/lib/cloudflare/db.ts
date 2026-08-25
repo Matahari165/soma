@@ -57,6 +57,7 @@ const conflictKeys: Record<string, string[]> = {
   webhook_events: ["deduplication_key"],
   ingestion_checkpoints: ["user_id", "provider", "data_type"],
   health_records: ["user_id", "provider", "data_type", "source_record_id"],
+  google_health_reconciliation_stage: ["job_id", "reconciliation_token", "source_record_id"],
   daily_health_metrics: ["user_id", "metric_date"],
   daily_scores: ["user_id", "score_date", "kind"],
   insights: ["user_id", "deduplication_key"],
