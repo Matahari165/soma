@@ -10,7 +10,7 @@ import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from
 import { getGrantedGoogleHealthDataTypes, isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
 import { requireServerEnv } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 export const maxDuration = 50;
 
@@ -33,7 +33,7 @@ function webhookRange(payload: Record<string, unknown>) {
 }
 
 async function queueWebhookJobs() {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: events, error: eventsError } = await admin.from("webhook_events").select("*").eq("status", "queued").order("received_at").limit(100);
   if (eventsError) throw new Error("Queued webhook events could not be loaded.");
   const healthUserIds = [...new Set((events ?? []).map((event) => event.health_user_id).filter((value): value is string => Boolean(value)))];
@@ -107,7 +107,7 @@ async function queueWebhookJobs() {
 }
 
 async function queueAutomaticJobs(now = new Date()) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: connections, error: connectionError } = await admin.from("provider_connections")
     .select("id,user_id,scopes,last_lab_synced_at")
     .eq("provider", "google_health")
@@ -200,7 +200,7 @@ export async function GET(request: Request) {
     console.error("[api/cron/sync] sync queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
     return NextResponse.json({ error: "Google Health sync could not be scheduled." }, { status: 500 });
   }
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { error: staleJobError } = await admin.from("sync_jobs").update({ status: "queued", started_at: null })
     .eq("status", "running").lt("started_at", staleBefore);

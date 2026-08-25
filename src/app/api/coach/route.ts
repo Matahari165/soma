@@ -4,7 +4,7 @@ import { z } from "zod";
 import { askSomaCoach } from "@/integrations/xai/coach";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), threadId: z.string().uuid().nullable().optional() });
 const threadIdSchema = z.string().uuid();
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   if (requestedThreadId && !threadIdSchema.safeParse(requestedThreadId).success) {
     return NextResponse.json({ error: "Invalid conversation." }, { status: 400 });
   }
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: threads, error: threadError } = await admin.from("coach_threads")
     .select("id,title,updated_at")
     .eq("user_id", user.id)
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       id: item.id,
       role: item.role,
       content: item.content,
-      evidence: Array.isArray(item.evidence_refs) ? item.evidence_refs.filter((value): value is string => typeof value === "string") : [],
+      evidence: Array.isArray(item.evidence_refs) ? item.evidence_refs.filter((value: unknown): value is string => typeof value === "string") : [],
       createdAt: item.created_at,
     }));
   }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
   const { count, error: countError } = await admin.from("coach_messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "user").gte("created_at", oneMinuteAgo);
   if (countError) return NextResponse.json({ error: "Coach availability could not be checked." }, { status: 500 });

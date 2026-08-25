@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { stableHash } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { verifyGoogleHealthWebhookSignature } from "@/integrations/google-health/webhook-signature";
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const rows = notifications.filter((notification) => notification.data?.healthUserId).map((notification) => ({
     deduplication_key: stableHash(JSON.stringify(notification)),
     health_user_id: notification.data?.healthUserId,

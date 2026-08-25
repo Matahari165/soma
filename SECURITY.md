@@ -4,8 +4,9 @@
 
 Soma handles personal health data as sensitive information.
 
-- Authentication is Google-only through Supabase Auth.
-- Every user table has row-level security and resource ownership checks.
+- Authentication is Google-only through a direct OAuth Authorization Code + PKCE flow.
+- Session tokens are random, stored only as SHA-256 hashes in D1, and sent in `HttpOnly`, `Secure`, `SameSite=Lax` cookies.
+- D1 and R2 are private Worker bindings; every user resource is protected by server-side ownership checks.
 - Google Health access and refresh tokens are encrypted with AES-256-GCM.
 - OAuth token tables and executable Coach proposals are inaccessible through the authenticated browser client.
 - Route inputs use runtime schemas and strict size limits.

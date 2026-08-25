@@ -1,5 +1,5 @@
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 import { aggregateCalendarEvents } from "./aggregate";
 import { GoogleCalendarRequestError, listPrimaryCalendarEvents, refreshGoogleCalendarToken } from "./client";
@@ -16,7 +16,7 @@ async function accessToken(connection: CalendarConnection) {
   if (expiresAt > Date.now() + 60_000) return decryptSecret(connection.access_token_ciphertext);
   if (!connection.refresh_token_ciphertext) throw new Error("Google Calendar refresh token is missing.");
   const tokens = await refreshGoogleCalendarToken(decryptSecret(connection.refresh_token_ciphertext));
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { error } = await admin.from("provider_connections").update({
     access_token_ciphertext: encryptSecret(tokens.access_token),
     token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
@@ -39,7 +39,7 @@ function datesBetween(start: Date, end: Date) {
 }
 
 export async function syncGoogleCalendar(userId: string, days = 120) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const [{ data: connection, error: connectionError }, { data: profile, error: profileError }] = await Promise.all([
     admin.from("provider_connections").select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at").eq("user_id", userId).eq("provider", "google_calendar").maybeSingle(),
     admin.from("profiles").select("timezone").eq("user_id", userId).maybeSingle(),

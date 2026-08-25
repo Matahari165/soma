@@ -1,10 +1,10 @@
 import { getCurrentUser, type SomaUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createCloudflareServerClient } from "@/lib/cloudflare/server";
 import type { DashboardSnapshot, DailyScore, ScoreKind } from "@/domain/health";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewDashboard } from "@/lib/local-preview";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 type ScoreRow = { score_date: string; kind: ScoreKind; score: number | null; status: DailyScore["status"]; drivers: Record<string, unknown>; calculated_at: string };
 type MetricRow = { metric_date: string; sleep_minutes: number | null; sleep_need_minutes: number | null; sleep_efficiency: number | null; sleep_regularity: number | null; bedtime: string | null; wake_time: string | null; hrv_ms: number | null; resting_heart_rate: number | null; steps: number | null; zone_minutes: number | null; source_freshness: { latestMeasuredAt?: string | null; byType?: Record<string, string | null> }; data_quality: { presentTypes?: string[] } };
@@ -110,8 +110,8 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
       sleepRegularity: { bedtime: "—", wakeTime: "—", consistency: null },
     };
   }
-  const supabase = await createSupabaseServerClient();
-  const admin = createSupabaseAdminClient();
+  const supabase = await createCloudflareServerClient();
+  const admin = createCloudflareAdminClient();
   const results = await Promise.all([
     supabase.from("profiles").select("display_name,timezone").eq("user_id", user.id).single(),
     supabase.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_need_minutes,sleep_efficiency,sleep_regularity,bedtime,wake_time,hrv_ms,resting_heart_rate,steps,zone_minutes,source_freshness,data_quality").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(30),

@@ -1,47 +1,30 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createPkcePair } from "@/lib/crypto";
+import { getSiteUrl, requireServerEnv } from "@/lib/env";
 
-function loginError(origin: string, code: "auth_service" | "oauth_start") {
-  return NextResponse.redirect(new URL(`/login?error=${code}`, origin));
+function safeNextPath(value: string | null) {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/onboarding";
 }
-
-function safeGoogleRedirect(value: unknown) {
-  if (typeof value !== "string") return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname === "accounts.google.com" ? url : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin;
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-      scopes: "openid email profile",
-      skipBrowserRedirect: true,
-    },
-  });
+  const requestUrl = new URL(request.url);
+  const state = crypto.randomUUID();
+  const { verifier, challenge } = createPkcePair();
+  const cookieStore = await cookies();
+  const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: 10 * 60 };
+  cookieStore.set("soma_oauth_state", state, cookieOptions);
+  cookieStore.set("soma_oauth_verifier", verifier, cookieOptions);
+  cookieStore.set("soma_oauth_next", safeNextPath(requestUrl.searchParams.get("next")), cookieOptions);
 
-  if (error || !data.url) return loginError(origin, "oauth_start");
-
-  try {
-    const upstream = await fetch(data.url, {
-      cache: "no-store",
-      redirect: "manual",
-      headers: { Accept: "application/json" },
-    });
-    const location = upstream.headers.get("location");
-    const json = location || !upstream.ok ? null : await upstream.json().catch(() => null) as { url?: unknown } | null;
-    const destination = safeGoogleRedirect(location ?? json?.url);
-    if (!destination) return loginError(origin, "auth_service");
-    return NextResponse.redirect(destination);
-  } catch {
-    return loginError(origin, "auth_service");
-  }
+  const authorization = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authorization.searchParams.set("client_id", process.env.GOOGLE_AUTH_CLIENT_ID ?? requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"));
+  authorization.searchParams.set("redirect_uri", `${getSiteUrl()}/auth/callback`);
+  authorization.searchParams.set("response_type", "code");
+  authorization.searchParams.set("scope", "openid email profile");
+  authorization.searchParams.set("state", state);
+  authorization.searchParams.set("code_challenge", challenge);
+  authorization.searchParams.set("code_challenge_method", "S256");
+  authorization.searchParams.set("prompt", "select_account");
+  return NextResponse.redirect(authorization);
 }

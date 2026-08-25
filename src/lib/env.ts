@@ -1,8 +1,5 @@
-export function hasSupabaseConfig() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+export function hasCloudflareConfig() {
+  return Boolean(process.env.NEXT_PUBLIC_SITE_URL);
 }
 
 export function isLocalPreviewMode() {

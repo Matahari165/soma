@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { onboardingSchema } from "@/domain/profile";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
 
 export async function POST(request: Request) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
 
   const input = parsed.data;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { error } = await admin.rpc("complete_soma_onboarding", {
     p_user_id: user.id,
     p_display_name: input.displayName,

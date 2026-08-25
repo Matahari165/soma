@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createJournalVariableSchema, updateJournalVariableSchema } from "@/domain/lab/journal";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const parsed = createJournalVariableSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Check this variable." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: existing, error: countError } = await admin.from("journal_variables").select("position").eq("user_id", user.id);
   if (countError) return NextResponse.json({ error: "Your journal could not be checked." }, { status: 500 });
   if ((existing?.length ?? 0) >= 50) return NextResponse.json({ error: "Your journal already has 50 variables." }, { status: 409 });
@@ -38,7 +38,7 @@ export async function PATCH(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Check this variable." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const { id, name, variableType, unit, options, position, isActive, emoji, defaultValue, dayPeriod } = parsed.data;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   if (variableType !== undefined) {
     const { count, error: countError } = await admin.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("variable_id", id);
     if (countError) return NextResponse.json({ error: "This measure could not be checked." }, { status: 500 });
@@ -67,7 +67,7 @@ export async function DELETE(request: Request) {
   const parsed = updateJournalVariableSchema.pick({ id: true }).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid variable." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data, error } = await admin.from("journal_variables").update({ is_active: false }).eq("id", parsed.data.id).eq("user_id", user.id).select("id").maybeSingle();
   if (error) return NextResponse.json({ error: "This variable could not be archived." }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Variable not found." }, { status: 404 });

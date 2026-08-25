@@ -1,8 +1,8 @@
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareServerClient } from "@/lib/cloudflare/server";
 
 export type HealthMetricDay = {
   metric_date: string;
@@ -209,8 +209,8 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
-  const supabase = await createSupabaseServerClient();
-  const admin = createSupabaseAdminClient();
+  const supabase = await createCloudflareServerClient();
+  const admin = createCloudflareAdminClient();
   const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),

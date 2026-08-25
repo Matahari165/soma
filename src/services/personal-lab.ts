@@ -4,7 +4,7 @@ import { adjustMatrixRelations, calculateMatrixRelation, type AnalysisPeriod, ty
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadJournalData } from "@/services/journal";
 
 export type DailyCheckin = {
@@ -608,7 +608,7 @@ export async function getPersonalLabSnapshot(user: SomaUser): Promise<PersonalLa
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] });
   }
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: profile, error: profileError } = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
   if (profileError) throw new Error("Your Personal Lab profile could not be loaded.");
   const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { decryptSecret } from "@/lib/crypto";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 export async function GET() {
   if (isLocalPreviewMode()) {
@@ -12,7 +12,7 @@ export async function GET() {
   }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data, error } = await admin.from("provider_connections")
     .select("provider,status,scopes,last_synced_at,last_lab_synced_at,last_error_code,metadata,created_at")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
@@ -38,7 +38,7 @@ export async function DELETE() {
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: connection, error: connectionError } = await admin.from("provider_connections").select("access_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
   if (connectionError) return NextResponse.json({ error: "Google Health connection could not be loaded." }, { status: 500 });
   if (connection?.access_token_ciphertext) {

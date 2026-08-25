@@ -1,47 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 
 import { GET } from "./route";
 
-vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }));
+vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 
-const signInWithOAuth = vi.fn();
+const setCookie = vi.fn();
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  signInWithOAuth.mockReset();
-  vi.mocked(createSupabaseServerClient).mockResolvedValue({ auth: { signInWithOAuth } } as never);
-  signInWithOAuth.mockResolvedValue({ data: { url: "https://project.supabase.co/auth/v1/authorize?provider=google" }, error: null });
+  setCookie.mockReset();
+  vi.mocked(cookies).mockResolvedValue({ set: setCookie } as never);
+  process.env.NEXT_PUBLIC_SITE_URL = "https://soma.example";
+  process.env.GOOGLE_HEALTH_CLIENT_ID = "google-client-id";
 });
 
 describe("Google OAuth start route", () => {
-  it("keeps a Supabase failure inside the Soma login experience", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ message: "upstream failure" }), { status: 500 }));
-
+  it("redirects directly to Google's official OAuth endpoint", async () => {
     const response = await GET(new Request("https://soma.example/auth/google"));
-
-    expect(response.headers.get("location")).toBe("https://soma.example/login?error=auth_service");
+    const location = new URL(response.headers.get("location") as string);
+    expect(location.origin).toBe("https://accounts.google.com");
+    expect(location.pathname).toBe("/o/oauth2/v2/auth");
+    expect(location.searchParams.get("client_id")).toBe("google-client-id");
+    expect(location.searchParams.get("redirect_uri")).toBe("https://soma.example/auth/callback");
+    expect(location.searchParams.get("scope")).toBe("openid email profile");
   });
 
-  it("continues only to the Google Accounts OAuth host", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ url: "https://accounts.google.com/o/oauth2/v2/auth?state=test" }));
-
-    const response = await GET(new Request("https://soma.example/auth/google"));
-
-    expect(response.headers.get("location")).toBe("https://accounts.google.com/o/oauth2/v2/auth?state=test");
-    expect(signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({
-      provider: "google",
-      options: expect.objectContaining({ redirectTo: "https://soma.example/auth/callback", skipBrowserRedirect: true }),
-    }));
+  it("stores short-lived state and PKCE cookies", async () => {
+    const response = await GET(new Request("https://soma.example/auth/google?next=/lab"));
+    const location = new URL(response.headers.get("location") as string);
+    expect(setCookie).toHaveBeenCalledWith("soma_oauth_state", location.searchParams.get("state"), expect.objectContaining({ httpOnly: true, sameSite: "lax", maxAge: 600 }));
+    expect(setCookie).toHaveBeenCalledWith("soma_oauth_verifier", expect.any(String), expect.any(Object));
+    expect(setCookie).toHaveBeenCalledWith("soma_oauth_next", "/lab", expect.any(Object));
+    expect(location.searchParams.get("code_challenge_method")).toBe("S256");
   });
 
-  it("rejects an unexpected redirect host", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ url: "https://example.com/pretend-google" }));
-
-    const response = await GET(new Request("https://soma.example/auth/google"));
-
-    expect(response.headers.get("location")).toBe("https://soma.example/login?error=auth_service");
+  it("rejects an external post-login destination", async () => {
+    await GET(new Request("https://soma.example/auth/google?next=https://evil.example"));
+    expect(setCookie).toHaveBeenCalledWith("soma_oauth_next", "/onboarding", expect.any(Object));
   });
 });
 

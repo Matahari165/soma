@@ -11,7 +11,7 @@ import { automaticGoogleHealthDataTypes } from "@/integrations/google-health/sch
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { getHealthDataCoverage } from "@/services/health-data-coverage";
 
 export const maxDuration = 50;
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   if (isLocalPreviewMode()) return NextResponse.json(previewResponse(new URL(request.url).searchParams.get("details") === "1"));
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const [jobsResult, connectionResult] = await Promise.all([
     admin.from("sync_jobs").select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
@@ -130,7 +130,7 @@ export async function POST() {
   }
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: connection, error: connectionError } = await admin.from("provider_connections").select("id,status,scopes")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
   if (connectionError) return NextResponse.json({ error: "Google Health connection could not be checked." }, { status: 500 });

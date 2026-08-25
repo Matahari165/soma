@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isLocalPreviewMode } from "@/lib/env";
@@ -11,6 +10,7 @@ const publicMachinePaths = [
 
 const publicPaths = [
   "/login",
+  "/auth/google",
   "/auth/callback",
   "/api/health/google/callback",
   ...publicMachinePaths,
@@ -18,7 +18,7 @@ const publicPaths = [
   "/terms",
 ];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const development = process.env.NODE_ENV !== "production";
   const contentSecurityPolicy = [
@@ -27,7 +27,7 @@ export async function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co",
+    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://www.googleapis.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -59,9 +59,7 @@ export async function proxy(request: NextRequest) {
     if (contentLength > 64 * 1024) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
   }
 
-  let response = createResponse();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const response = createResponse();
   const isPublicPath = request.nextUrl.pathname === "/" || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
 
   if (isLocalPreviewMode()) {
@@ -69,32 +67,19 @@ export async function proxy(request: NextRequest) {
     return secureResponse(response);
   }
 
-  if (!url || !anonKey) {
+  if (!process.env.NEXT_PUBLIC_SITE_URL) {
     if (isPublicPath) return secureResponse(response);
     return NextResponse.redirect(new URL("/login?error=configuration", request.url));
   }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll: (cookiesToSet) => {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = createResponse();
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
-      },
-    },
-  });
-
-  const { data } = await supabase.auth.getUser();
-  if (!data.user && !isPublicPath) {
+  const hasSessionCookie = Boolean(request.cookies.get("soma_session")?.value);
+  if (!hasSessionCookie && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (data.user && request.nextUrl.pathname === "/login") {
+  if (hasSessionCookie && request.nextUrl.pathname === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -104,3 +89,5 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
+
+export const runtime = "experimental-edge";

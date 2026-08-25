@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const decisionSchema = z.object({ decision: z.enum(["confirm", "reject"]) });
 
@@ -14,7 +14,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!parsed.success) return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ status: parsed.data.decision === "confirm" ? "executed in local preview" : "rejected" });
   const { id } = await context.params;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   if (parsed.data.decision === "reject") {
     const { data: rejected, error } = await admin.from("agent_action_proposals").update({ status: "rejected" }).eq("id", id).eq("user_id", user.id).eq("status", "proposed").select("id").maybeSingle();
     if (error) return NextResponse.json({ error: "The action could not be rejected." }, { status: 500 });

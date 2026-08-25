@@ -9,7 +9,7 @@ import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need";
 import { calculateSleepScore } from "@/domain/scores/sleep";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 export const ANALYSIS_DATA_TYPES = [
   "sleep",
@@ -43,7 +43,7 @@ export const ANALYSIS_DATA_TYPES = [
 ] as const;
 
 async function loadAnalysisRecords(userId: string, analysisStart: string) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const rows: NormalizedHealthRecord[] = [];
   const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
   for (let from = 0; ; from += 1000) {
@@ -82,7 +82,7 @@ function roundedAverage(values: Array<number | null>) {
 }
 
 async function deleteStaleDerivedRows(userId: string, analysisStart: string, activeDates: Set<string>) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const [metrics, scores] = await Promise.all([
     admin.from("daily_health_metrics").select("metric_date").eq("user_id", userId).gte("metric_date", analysisStart),
     admin.from("daily_scores").select("score_date").eq("user_id", userId).gte("score_date", analysisStart),
@@ -101,7 +101,7 @@ async function deleteStaleDerivedRows(userId: string, analysisStart: string, act
 }
 
 export async function recomputeUserHealth(userId: string) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const [{ data: records, error: recordError }, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, { data: goals, error: goalsError }] = await Promise.all([
     loadAnalysisRecords(userId, analysisStart),

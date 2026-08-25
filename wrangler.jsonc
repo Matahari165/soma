@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "soma",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-08-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "SOMA_DB",
+      "database_name": "soma-core",
+      "database_id": "4a53e74b-d533-44cd-a786-b022a73d627b",
+      "migrations_dir": "cloudflare/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SOMA_ARCHIVES",
+      "bucket_name": "soma-health-record-archives"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://soma.hthv4f94vw.workers.dev",
+    "SOMA_LOCAL_PREVIEW": "false"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}

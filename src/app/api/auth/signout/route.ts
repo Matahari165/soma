@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { deleteCurrentSession } from "@/lib/cloudflare/session";
 import { isLocalPreviewMode } from "@/lib/env";
 
 export async function POST() {
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
+  await deleteCurrentSession();
   return NextResponse.json({ ok: true });
 }

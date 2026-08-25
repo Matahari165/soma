@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewProfile } from "@/lib/local-preview";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const profileSchema = z.object({ displayName: z.string().trim().min(1).max(80), dateOfBirth: z.iso.date(), heightCm: z.number().min(50).max(260), weightKg: z.number().min(20).max(400), primaryGoal: z.enum(["build_muscle", "improve_endurance", "improve_cardio", "general_fitness", "maintain_health", "other"]), baseSleepTargetMinutes: z.number().int().min(240).max(720), usualWakeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), importRange: z.enum(["90_days", "all_history"]) });
 
@@ -12,7 +12,7 @@ export async function GET() {
   if (isLocalPreviewMode()) return NextResponse.json(previewProfile);
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const results = await Promise.all([
     admin.from("profiles").select("display_name,date_of_birth,height_cm,weight_kg,import_range").eq("user_id", user.id).single(),
     admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time").eq("user_id", user.id).single(),
@@ -39,7 +39,7 @@ export async function PUT(request: Request) {
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check every profile value." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json(parsed.data);
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const value = parsed.data;
   const { error } = await admin.rpc("update_soma_profile", {
     p_user_id: user.id,

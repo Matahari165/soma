@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { generateLabNarrative } from "@/integrations/xai/lab";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { getPersonalLabSnapshot } from "@/services/personal-lab";
 
 export const maxDuration = 50;
@@ -16,7 +16,7 @@ export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const [recentResult, profileResult] = await Promise.all([
     admin.from("lab_narrative_history").select("generated_at").eq("user_id", user.id).order("generated_at", { ascending: false }).limit(1).maybeSingle(),
     admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewDashboard, previewProfile } from "@/lib/local-preview";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createR2ArchiveDownloadUrl } from "@/lib/r2";
 
 const userTables = ["profiles", "health_goals", "sleep_preferences", "dashboard_layouts", "sync_jobs", "health_records", "health_record_archives", "daily_health_metrics", "daily_calendar_metrics", "daily_checkins", "journal_variables", "journal_entries", "lab_narratives", "daily_scores", "insights", "correlation_results", "briefs", "coach_threads", "coach_messages", "agent_action_proposals", "workout_programs", "workout_program_exercises", "workout_sessions", "workout_session_sets", "consent_events", "audit_events"];
@@ -12,7 +12,7 @@ export async function GET() {
   if (isLocalPreviewMode()) return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), preview: true, profile: previewProfile, dashboard: previewDashboard }, null, 2), { headers: { "Content-Type": "application/json", "Content-Disposition": "attachment; filename=soma-local-preview.json" } });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const exported: Record<string, unknown[]> = {};
   for (const table of userTables) {
     const rows: unknown[] = [];
@@ -27,14 +27,8 @@ export async function GET() {
   const archiveManifests = (exported.health_record_archives ?? []) as Array<{ object_path?: unknown; storage_backend?: unknown; storage_bucket?: unknown }>;
   const archiveDownloads = await Promise.all(archiveManifests.flatMap((manifest) => {
     if (typeof manifest.object_path !== "string") return [];
-    if (manifest.storage_backend === "r2") {
-      return [createR2ArchiveDownloadUrl(manifest.object_path).then((signedUrl) => ({ path: manifest.object_path, signedUrl }))];
-    }
-    const bucket = typeof manifest.storage_bucket === "string" ? manifest.storage_bucket : "health-record-archives";
-    return [admin.storage.from(bucket).createSignedUrl(manifest.object_path, 60 * 60).then(({ data, error }) => {
-      if (error || !data) throw new Error("Supabase archive URL could not be created.");
-      return { path: manifest.object_path, signedUrl: data.signedUrl };
-    })];
+    if (manifest.storage_backend !== "r2") return [];
+    return [Promise.resolve({ path: manifest.object_path, signedUrl: createR2ArchiveDownloadUrl(manifest.object_path) })];
   })).catch(() => null);
   if (!archiveDownloads) return NextResponse.json({ error: "Archived health records could not be added to the export." }, { status: 500 });
   return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), account: { id: user.id, email: user.email }, data: exported, archiveDownloads }, null, 2), { headers: { "Content-Type": "application/json", "Content-Disposition": `attachment; filename=soma-export-${new Date().toISOString().slice(0, 10)}.json`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });

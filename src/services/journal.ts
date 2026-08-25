@@ -1,7 +1,7 @@
 import "server-only";
 
 import { defaultJournalVariables, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 type JournalVariableRow = {
   id: string;
@@ -40,7 +40,7 @@ function entryFromRow(row: JournalEntryRow): JournalEntry | null {
 }
 
 export async function ensureJournalVariables(userId: string) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: existing, error } = await admin.from("journal_variables").select("name").eq("user_id", userId);
   if (error) throw new Error("Your journal variables could not be loaded.");
   const existingNames = new Set((existing ?? []).map((variable) => variable.name.toLocaleLowerCase("en")));
@@ -62,7 +62,7 @@ export async function ensureJournalVariables(userId: string) {
 
 export async function loadJournalData(userId: string, options: { from?: string; to?: string } = {}) {
   await ensureJournalVariables(userId);
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   let entryQuery = admin.from("journal_entries").select("variable_id,entry_date,value").eq("user_id", userId).order("entry_date", { ascending: true });
   if (options.from) entryQuery = entryQuery.gte("entry_date", options.from);
   if (options.to) entryQuery = entryQuery.lte("entry_date", options.to);
@@ -85,7 +85,7 @@ export async function loadJournalData(userId: string, options: { from?: string; 
       entryDate: row.entry_date,
       status: row.status === "validated" ? "validated" : "draft",
       validatedAt: row.validated_at,
-      omittedVariableIds: Array.isArray(row.omitted_variables) ? row.omitted_variables.filter((value): value is string => typeof value === "string") : [],
+      omittedVariableIds: Array.isArray(row.omitted_variables) ? row.omitted_variables.filter((value: unknown): value is string => typeof value === "string") : [],
     })),
   };
 }

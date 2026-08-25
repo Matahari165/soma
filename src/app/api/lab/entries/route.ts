@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { normalizeJournalValue, saveJournalEntriesSchema } from "@/domain/lab/journal";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadJournalData } from "@/services/journal";
 
 function dateInTimezone(timeZone: string) {
@@ -22,7 +22,7 @@ export async function PUT(request: Request) {
   const parsed = saveJournalEntriesSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check the journal values." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: profile } = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
   const today = dateInTimezone(profile?.timezone ?? "Europe/Paris");
   if (parsed.data.entryDate > today || parsed.data.entryDate < addDays(today, -4)) {

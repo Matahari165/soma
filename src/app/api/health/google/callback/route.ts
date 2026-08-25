@@ -9,8 +9,8 @@ import {
 } from "@/integrations/google-health/client";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareServerClient } from "@/lib/cloudflare/server";
 
 function daysAgo(days: number) {
   const date = new Date();
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       return clearOAuthCookies(NextResponse.redirect(new URL("/settings?health=permission_denied", url.origin)));
     }
     const consentComplete = GOOGLE_HEALTH_SCOPES.every((scope) => grantedScopes.includes(scope));
-    const admin = createSupabaseAdminClient();
+    const admin = createCloudflareAdminClient();
     const { data: existing, error: existingError } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
     if (existingError) throw new Error("Existing Google Health connection could not be loaded.");
     const { data: connection, error } = await admin.from("provider_connections").upsert({
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     }, { onConflict: "user_id,provider" }).select("id").single();
     if (error || !connection) throw new Error("Google Health connection could not be stored.");
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = await createCloudflareServerClient();
     const { data: profile, error: profileError } = await supabase.from("profiles").select("import_range").eq("user_id", user.id).single();
     if (profileError) throw new Error("Import preferences could not be loaded.");
     const now = new Date();

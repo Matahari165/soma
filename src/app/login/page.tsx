@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { SomaLogo } from "@/components/soma-logo";
-import { hasSupabaseConfig } from "@/lib/env";
+import { hasCloudflareConfig } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -15,7 +15,7 @@ const authErrors: Record<string, string> = {
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const configured = hasSupabaseConfig();
+  const configured = hasCloudflareConfig();
   const errorCode = (await searchParams).error;
   const errorMessage = errorCode ? authErrors[errorCode] ?? "Google sign-in could not be completed." : null;
 
@@ -36,7 +36,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {configured ? (
             <GoogleSignInButton />
           ) : (
-            <p className="configuration-note" role="alert">Google sign-in is not configured. Add the Supabase project values before using Soma.</p>
+            <p className="configuration-note" role="alert">Google sign-in is not configured yet.</p>
           )}
           {errorMessage && <p className="form-error auth-error" role="alert">{errorMessage}</p>}
           <div className="auth-consent-note">

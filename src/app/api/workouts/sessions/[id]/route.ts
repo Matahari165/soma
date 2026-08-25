@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const schema = z.discriminatedUnion("action", [
   z.object({ action: z.enum(["pause", "resume"]) }),
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Session update is invalid." }, { status: 400 });
   const { id } = await context.params;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   if (parsed.data.action === "complete_set") {
     const { data, error } = await admin.from("workout_session_sets").update({ completed_reps: parsed.data.completedReps, weight_kg: parsed.data.weightKg, completed_at: new Date().toISOString() }).eq("session_id", id).eq("user_id", user.id).eq("exercise_position", parsed.data.exercisePosition).eq("set_index", parsed.data.setIndex).select("id").maybeSingle();
     if (error) return NextResponse.json({ error: "Set could not be saved." }, { status: 500 });

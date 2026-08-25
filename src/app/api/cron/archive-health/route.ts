@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { archiveNextEligibleHeartRateDay, migrateNextSupabaseArchiveToR2 } from "@/services/health-archive";
+import { archiveNextEligibleHeartRateDay } from "@/services/health-archive";
 import { requireServerEnv } from "@/lib/env";
 
 export const maxDuration = 50;
@@ -12,7 +12,6 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
-    const migrated = await migrateNextSupabaseArchiveToR2();
     const archived = [];
     // Do not start another day late in the request: a dense day can take tens of seconds.
     const deadline = Date.now() + 15_000;
@@ -21,7 +20,7 @@ export async function GET(request: Request) {
       if (!result) break;
       archived.push(result);
     }
-    return NextResponse.json({ migrated, archived });
+    return NextResponse.json({ archived });
   } catch (error) {
     console.error("[api/cron/archive-health] archive failed", { error: error instanceof Error ? error.message : "Unknown archive error." });
     return NextResponse.json({ error: "Health records could not be archived." }, { status: 500 });

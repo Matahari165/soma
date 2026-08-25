@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// The operational script is plain ESM so it can run without a production dependency.
-// @ts-expect-error The script intentionally has no TypeScript declaration file.
-import { decodeArchive, encodeArchive, sha256, utcDayRange } from "../../../scripts/archive-heart-rate.mjs";
+import { decodeHealthArchive, encodeHealthArchive, sha256, utcDayRange } from "./archive-codec";
 
 describe("lossless health record archives", () => {
   it("round-trips every field and verifies both compressed and logical content", async () => {
@@ -10,7 +8,7 @@ describe("lossless health record archives", () => {
       { id: "a", source_record_id: "source-a", measured_at: "2026-02-27T10:00:00.000Z", payload: { heartRate: { beatsPerMinute: 61 } } },
       { id: "b", source_record_id: "source-b", measured_at: "2026-02-27T10:01:00.000Z", payload: { heartRate: { beatsPerMinute: 62 } } },
     ];
-    const archive = await encodeArchive({
+    const archive = await encodeHealthArchive({
       userId: "user-1",
       provider: "google_health",
       dataType: "heart-rate",
@@ -18,7 +16,7 @@ describe("lossless health record archives", () => {
       rangeEnd: "2026-02-28T00:00:00.000Z",
       rows,
     });
-    const restored = await decodeArchive(archive.object);
+    const restored = await decodeHealthArchive(archive.object);
 
     expect(restored.rows).toEqual(rows);
     expect(restored.header.rowCount).toBe(2);

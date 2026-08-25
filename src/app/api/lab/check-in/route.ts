@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const rating = z.number().int().min(1).max(5).nullable();
 const checkinSchema = z.object({
@@ -27,7 +27,7 @@ export async function PUT(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Check every daily entry." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true, checkin: parsed.data });
   const input = parsed.data;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data, error } = await admin.from("daily_checkins").upsert({
     user_id: user.id,
     checkin_date: input.checkinDate,

@@ -2,12 +2,12 @@ import "server-only";
 
 import { calculateHealthDataCoverage, type ImportedHealthDate, type UsedHealthDate } from "@/domain/health/data-coverage";
 import { GOOGLE_HEALTH_DASHBOARD_DATA_TYPES } from "@/integrations/google-health/client";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const PAGE_SIZE = 1_000;
 const MAX_IMPORTED_ROWS = 50_000;
 const MAX_METRIC_ROWS = 20_000;
-type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
+type AdminClient = ReturnType<typeof createCloudflareAdminClient>;
 
 async function loadImportedDates(admin: AdminClient, userId: string) {
   const rows: ImportedHealthDate[] = [];
@@ -43,7 +43,7 @@ async function loadUsedDates(admin: AdminClient, userId: string) {
 }
 
 export async function getHealthDataCoverage(userId: string) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const [imported, used, profile] = await Promise.all([
     loadImportedDates(admin, userId),
     loadUsedDates(admin, userId),

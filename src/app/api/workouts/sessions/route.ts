@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const schema = z.object({ programId: z.string().uuid(), name: z.string().min(1).max(120) });
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Session is invalid." }, { status: 400 });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: id, error } = await admin.rpc("start_soma_workout_session", {
     p_user_id: user.id,
     p_program_id: parsed.data.programId,

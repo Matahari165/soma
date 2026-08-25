@@ -1,5 +1,5 @@
 import { decryptSecret, encryptSecret, stableHash } from "@/lib/crypto";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { recomputeUserHealth } from "@/services/analysis";
 
 import {
@@ -89,7 +89,7 @@ async function getAccessToken(connection: ProviderConnection) {
   if (!connection.refresh_token_ciphertext) throw new Error("Google Health refresh token is missing.");
 
   const tokens = await refreshGoogleHealthToken(decryptSecret(connection.refresh_token_ciphertext));
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { error } = await admin.from("provider_connections").update({
     access_token_ciphertext: encryptSecret(tokens.access_token),
     token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
@@ -101,7 +101,7 @@ async function getAccessToken(connection: ProviderConnection) {
 }
 
 async function stageRecords(jobId: string, reconciliationToken: string, records: NormalizedGoogleHealthRecord[]) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const uniqueRecords = deduplicateGoogleHealthRecords(records);
   for (let index = 0; index < uniqueRecords.length; index += 500) {
     const batch = uniqueRecords.slice(index, index + 500).map((record) => ({ ...record, job_id: jobId, reconciliation_token: reconciliationToken }));
@@ -113,7 +113,7 @@ async function stageRecords(jobId: string, reconciliationToken: string, records:
 }
 
 async function publishRecords(records: NormalizedGoogleHealthRecord[]) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const uniqueRecords = deduplicateGoogleHealthRecords(records);
   for (let index = 0; index < uniqueRecords.length; index += 1000) {
     const { error } = await admin.from("health_records").upsert(uniqueRecords.slice(index, index + 1000), {
@@ -130,7 +130,7 @@ async function reconcileWindow(input: {
   end: Date;
   reconciliationToken: string;
 }) {
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data, error } = await admin.rpc("reconcile_google_health_window", {
     p_user_id: input.userId,
     p_data_type: input.dataType,
@@ -165,7 +165,7 @@ export function shouldRefreshAnalyticsForTrigger(trigger: string) {
 
 export async function processGoogleHealthSyncJob(jobId: string, options: { refreshAnalytics?: boolean } = {}) {
   const refreshAnalytics = options.refreshAnalytics ?? true;
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data: rawJob, error: jobError } = await admin.from("sync_jobs").select("*").eq("id", jobId).single();
   if (jobError || !rawJob) throw new Error("Sync job was not found.");
   const job = rawJob as SyncJob;

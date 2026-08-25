@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const schema = z.object({ id: z.string().uuid(), liked: z.boolean() });
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid insight." }, { status: 400 });
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-  const admin = createSupabaseAdminClient();
+  const admin = createCloudflareAdminClient();
   const { data, error } = await admin.from("lab_narrative_history")
     .update({ liked: parsed.data.liked })
     .eq("id", parsed.data.id)

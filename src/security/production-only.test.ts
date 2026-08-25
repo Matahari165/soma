@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = fileURLToPath(new URL("../", import.meta.url));
-const proxySource = readFileSync(`${sourceRoot}/proxy.ts`, "utf8");
+const proxySource = readFileSync(`${sourceRoot}/middleware.ts`, "utf8");
 
 function applicationSources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -25,7 +25,7 @@ describe("production-only application contract", () => {
 
   it("keeps the product home and sign-in page reachable when local auth is not configured", () => {
     expect(proxySource).toContain('request.nextUrl.pathname === "/"');
-    expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("createServerClient(url, anonKey"));
+    expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("const hasSessionCookie"));
   });
 
   it("lets secret-authenticated machine routes reach their own authorization checks", () => {

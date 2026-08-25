@@ -5,7 +5,7 @@ import { exchangeGoogleCalendarCode, GOOGLE_CALENDAR_SCOPE } from "@/integration
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 function clearCookies(response: NextResponse) {
   response.cookies.delete("soma_calendar_oauth_state");
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const tokens = await exchangeGoogleCalendarCode(code, verifier);
     const scopes = tokens.scope?.split(" ").filter(Boolean) ?? [];
     if (!scopes.includes(GOOGLE_CALENDAR_SCOPE)) return clearCookies(NextResponse.redirect(new URL("/settings?calendar=permission_denied", url.origin)));
-    const admin = createSupabaseAdminClient();
+    const admin = createCloudflareAdminClient();
     const { data: existing } = await admin.from("provider_connections").select("refresh_token_ciphertext").eq("user_id", user.id).eq("provider", "google_calendar").maybeSingle();
     const { error } = await admin.from("provider_connections").upsert({
       user_id: user.id,
