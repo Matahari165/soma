@@ -19,7 +19,7 @@ export function PublicHome() {
         <div className="auth-card">
           <h2>Your signals. One view.</h2>
           <p>Useful patterns emerge as your history grows.</p>
-          <Link className="google-button" href="/login"><LogIn size={19} /> Sign in to Soma</Link>
+          <a className="google-button" href="/login"><LogIn size={19} /> Sign in to Soma</a>
           <div className="auth-consent-note">Google Health is optional, read-only, and reversible.</div>
           <p className="legal-copy"><Link href="/privacy">Privacy Policy</Link> · <Link href="/terms">Terms of Service</Link></p>
         </div>

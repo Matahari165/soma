@@ -18,7 +18,7 @@ function TodaySignals({ data }: { data: PersonalLabSnapshot }) {
     { label: "Recovery", value: data.today.recoveryScore === null ? "—" : String(Math.round(data.today.recoveryScore)), href: "/recovery" },
     { label: "Effort", value: data.today.effortScore === null ? "—" : String(Math.round(data.today.effortScore)), href: "/effort" },
   ];
-  return <section className="lab-signals" aria-label="Today">{signals.map(({ label, value, href }) => <Link href={href} key={label}><span>{label}</span><strong>{value}</strong></Link>)}</section>;
+  return <section className="lab-signals" aria-label="Today">{signals.map(({ label, value, href }) => <Link href={href} prefetch={false} key={label}><span>{label}</span><strong>{value}</strong></Link>)}</section>;
 }
 
 export function PersonalLab({ data, connectionNotice = null }: { data: PersonalLabSnapshot; connectionNotice?: "health" | "calendar" | null }) {

@@ -28,6 +28,13 @@ describe("production-only application contract", () => {
     expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("const hasSessionCookie"));
   });
 
+  it("does not trust an unverified session cookie to bypass the sign-in page", () => {
+    const loginPage = readFileSync(`${sourceRoot}/app/login/page.tsx`, "utf8");
+    expect(proxySource).not.toContain('hasSessionCookie && request.nextUrl.pathname === "/login"');
+    expect(loginPage).toContain("await Promise.all([searchParams, getCurrentUser()])");
+    expect(loginPage).toContain('if (user) redirect("/")');
+  });
+
   it("lets secret-authenticated machine routes reach their own authorization checks", () => {
     expect(proxySource).toContain('"/api/health/webhook"');
     expect(proxySource).toContain('"/api/cron/sync"');

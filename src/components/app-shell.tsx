@@ -85,7 +85,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
     <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed"].filter(Boolean).join(" ")}>
       <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
         <div className="sidebar__header">
-          <Link className="brand" href="/" aria-label="Soma home">
+          <Link className="brand" href="/" prefetch={false} aria-label="Soma home">
             <SomaLogo compact={sidebarCollapsed} />
           </Link>
           <button
@@ -106,6 +106,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
               href={href}
+              prefetch={false}
               key={href}
               aria-current={isActive(href) ? "page" : undefined}
               title={sidebarCollapsed ? label : undefined}
@@ -117,7 +118,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
 
         <div className="sidebar-secondary">
-          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
+          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" prefetch={false} aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
             <span className="avatar">{initials}</span>
             <span>
               <strong>{displayName}</strong>
@@ -129,7 +130,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       </aside>
 
       <header className="mobile-header">
-        <Link className="brand" href="/" aria-label="Soma home">
+        <Link className="brand" href="/" prefetch={false} aria-label="Soma home">
           <SomaLogo />
         </Link>
         <div className="mobile-header__actions">
@@ -145,12 +146,12 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       {mobileMenuOpen && (
         <><button className="mobile-menu-backdrop" type="button" onClick={closeMobileMenu} aria-label="Dismiss menu" /><nav ref={mobileMenuRef} id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation" role="dialog" aria-modal="true">
           {navigation.slice(4).map(({ label, href, icon: Icon }) => (
-            <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={closeMobileMenu}>
+            <Link href={href} prefetch={false} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={closeMobileMenu}>
               <Icon size={19} aria-hidden="true" />
               {label}
             </Link>
           ))}
-          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} aria-hidden="true" />Settings</Link>
+          <Link href="/settings" prefetch={false} className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} aria-hidden="true" />Settings</Link>
         </nav></>
       )}
 
@@ -160,6 +161,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         {mobileNavigation.map(({ label, href, icon: Icon }) => (
           <Link
             href={href}
+            prefetch={false}
             key={href}
             className={isActive(href) ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"}
             aria-current={isActive(href) ? "page" : undefined}

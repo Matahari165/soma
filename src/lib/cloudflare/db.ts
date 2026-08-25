@@ -22,6 +22,8 @@ type Mutation =
   | { kind: "update"; values: Row }
   | { kind: "delete" };
 
+type ReadPlan = { sql: string; bindings: unknown[]; paginationPushed: boolean };
+
 type D1PreparedStatement = {
   bind(...values: unknown[]): D1PreparedStatement;
   all<T = Row>(): Promise<{ results?: T[]; success: boolean; error?: string }>;
@@ -254,6 +256,95 @@ function matchesOr(row: Row, expressions: ReturnType<typeof parseOrExpression>) 
   });
 }
 
+function safeJsonPath(field: string) {
+  return /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$/.test(field) ? `$.${field}` : null;
+}
+
+function d1Value(value: any) {
+  return typeof value === "boolean" ? Number(value) : value;
+}
+
+export function buildCloudflareReadPlan({
+  table,
+  filters,
+  orFilterCount,
+  sorts,
+  fromIndex,
+  toIndex,
+  maxRows,
+}: {
+  table: string;
+  filters: Filter[];
+  orFilterCount: number;
+  sorts: Sort[];
+  fromIndex: number;
+  toIndex?: number;
+  maxRows?: number;
+}): ReadPlan {
+  const where = ["table_name = ?"];
+  const bindings: unknown[] = [table];
+  let allFiltersPushed = true;
+
+  for (const filter of filters) {
+    const isUserId = filter.field === "user_id";
+    const path = safeJsonPath(filter.field);
+    const expression = isUserId ? "user_id" : path ? `json_extract(json_data, '${path}')` : null;
+    if (!expression || filter.operator === "contains" || filter.operator === "not" || filter.operator === "neq") {
+      allFiltersPushed = false;
+      continue;
+    }
+    if (filter.value === null && filter.operator !== "is") {
+      allFiltersPushed = false;
+      continue;
+    }
+    if (filter.operator === "is" && filter.value === null) {
+      where.push(`${expression} IS NULL`);
+      continue;
+    }
+    if (filter.operator === "in") {
+      if (!Array.isArray(filter.value) || filter.value.length === 0) {
+        where.push("0 = 1");
+        continue;
+      }
+      where.push(`${expression} IN (${filter.value.map(() => "?").join(", ")})`);
+      bindings.push(...filter.value.map(d1Value));
+      continue;
+    }
+    const operator = { eq: "=", neq: "!=", is: "IS", gte: ">=", gt: ">", lte: "<=", lt: "<" }[filter.operator];
+    if (!operator) {
+      allFiltersPushed = false;
+      continue;
+    }
+    where.push(`${expression} ${operator} ?`);
+    bindings.push(d1Value(filter.value));
+  }
+
+  let sql = `SELECT json_data FROM soma_rows WHERE ${where.join(" AND ")}`;
+  const order = sorts.flatMap((sort) => {
+    const path = safeJsonPath(sort.field);
+    if (!path) return [];
+    const expression = `json_extract(json_data, '${path}')`;
+    return [`${expression} IS NULL ${sort.ascending ? "ASC" : "DESC"}`, `${expression} ${sort.ascending ? "ASC" : "DESC"}`];
+  });
+  const allSortsPushed = order.length === sorts.length * 2;
+  if (allSortsPushed && order.length) sql += ` ORDER BY ${order.join(", ")}`;
+
+  const paginationPushed = allFiltersPushed && allSortsPushed && orFilterCount === 0;
+  if (paginationPushed) {
+    const rangeSize = toIndex === undefined ? undefined : Math.max(0, toIndex - fromIndex + 1);
+    const limit = rangeSize === undefined ? maxRows : maxRows === undefined ? rangeSize : Math.min(rangeSize, maxRows);
+    if (limit !== undefined) {
+      sql += " LIMIT ? OFFSET ?";
+      bindings.push(Math.max(0, limit), Math.max(0, fromIndex));
+    } else if (fromIndex > 0) {
+      sql += " LIMIT -1 OFFSET ?";
+      bindings.push(fromIndex);
+    }
+  }
+
+  return { sql, bindings, paginationPushed };
+}
+
 function cleanRow(row: Row) {
   return JSON.parse(JSON.stringify(row)) as Row;
 }
@@ -321,10 +412,16 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
 
   private async readRows() {
     const db = cloudflareDb();
-    const userFilter = this.filters.find((filter) => filter.field === "user_id" && filter.operator === "eq");
-    const query = userFilter
-      ? db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND user_id = ?").bind(this.table, userFilter.value)
-      : db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ?").bind(this.table);
+    const plan = buildCloudflareReadPlan({
+      table: this.table,
+      filters: this.filters,
+      orFilterCount: this.orFilters.length,
+      sorts: this.sorts,
+      fromIndex: this.fromIndex,
+      toIndex: this.toIndex,
+      maxRows: this.maxRows,
+    });
+    const query = db.prepare(plan.sql).bind(...plan.bindings);
     const result = await query.all<{ json_data: string }>();
     if (!result.success) throw new Error(result.error ?? "D1 read failed.");
     let rows = (result.results ?? []).map((item) => JSON.parse(item.json_data) as Row);
@@ -338,9 +435,11 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
         return sort.ascending ? compared : -compared;
       });
     }
-    if (this.toIndex !== undefined) rows = rows.slice(this.fromIndex, this.toIndex + 1);
-    else if (this.fromIndex) rows = rows.slice(this.fromIndex);
-    if (this.maxRows !== undefined) rows = rows.slice(0, this.maxRows);
+    if (!plan.paginationPushed) {
+      if (this.toIndex !== undefined) rows = rows.slice(this.fromIndex, this.toIndex + 1);
+      else if (this.fromIndex) rows = rows.slice(this.fromIndex);
+      if (this.maxRows !== undefined) rows = rows.slice(0, this.maxRows);
+    }
     if (this.table === "workout_programs" && this.selector?.includes("workout_program_exercises(")) {
       const [exerciseRows, libraryRows] = await Promise.all([
         db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ?").bind("workout_program_exercises").all<{ json_data: string }>(),

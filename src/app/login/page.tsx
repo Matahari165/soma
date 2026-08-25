@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { SomaLogo } from "@/components/soma-logo";
+import { getCurrentUser } from "@/lib/auth";
 import { hasCloudflareConfig } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -15,8 +17,10 @@ const authErrors: Record<string, string> = {
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const [params, user] = await Promise.all([searchParams, getCurrentUser()]);
+  if (user) redirect("/");
   const configured = hasCloudflareConfig();
-  const errorCode = (await searchParams).error;
+  const errorCode = params.error;
   const errorMessage = errorCode ? authErrors[errorCode] ?? "Google sign-in could not be completed." : null;
 
   return (
