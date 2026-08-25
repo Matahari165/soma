@@ -18,6 +18,7 @@ beforeEach(() => {
 
 describe("Google OAuth start route", () => {
   it("redirects directly to Google's official OAuth endpoint", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
     const response = await GET(new Request("https://soma.example/auth/google"));
     const location = new URL(response.headers.get("location") as string);
     expect(location.origin).toBe("https://accounts.google.com");
@@ -41,4 +42,3 @@ describe("Google OAuth start route", () => {
     expect(setCookie).toHaveBeenCalledWith("soma_oauth_next", "/onboarding", expect.any(Object));
   });
 });
-

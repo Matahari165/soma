@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const tokens = await exchangeGoogleHealthCode(code, verifier);
+    const tokens = await exchangeGoogleHealthCode(code, verifier, url.origin);
     const identity = await getGoogleHealthIdentity(tokens.access_token);
     const grantedScopes = tokens.scope?.split(" ").filter(Boolean) ?? [];
     const grantedDataTypes = getGrantedGoogleHealthDataTypes(grantedScopes);

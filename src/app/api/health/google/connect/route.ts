@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const { verifier, challenge } = createPkcePair();
   let response: NextResponse;
   try {
-    response = NextResponse.redirect(buildGoogleHealthAuthorizationUrl(state, challenge));
+    response = NextResponse.redirect(buildGoogleHealthAuthorizationUrl(state, challenge, new URL(request.url).origin));
   } catch (error) {
     console.error("Google Health OAuth configuration is invalid.", error instanceof Error ? error.message : "Unknown configuration error.");
     return NextResponse.redirect(new URL(`/settings?health=unavailable&source=${source}`, request.url));

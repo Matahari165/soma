@@ -40,18 +40,18 @@ function calendarClientSecret() {
   return process.env.GOOGLE_CALENDAR_CLIENT_SECRET || requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET");
 }
 
-export function getGoogleCalendarRedirectUri() {
-  const siteUrl = new URL(getSiteUrl());
+export function getGoogleCalendarRedirectUri(siteUrlValue = getSiteUrl()) {
+  const siteUrl = new URL(siteUrlValue);
   if (siteUrl.protocol !== "https:" && siteUrl.hostname !== "localhost") {
     throw new Error("NEXT_PUBLIC_SITE_URL must use HTTPS outside localhost.");
   }
   return new URL("/api/calendar/google/callback", siteUrl.origin).toString();
 }
 
-export function buildGoogleCalendarAuthorizationUrl(state: string, challenge: string) {
+export function buildGoogleCalendarAuthorizationUrl(state: string, challenge: string, siteUrl = getSiteUrl()) {
   const url = new URL(AUTH_URL);
   url.searchParams.set("client_id", calendarClientId());
-  url.searchParams.set("redirect_uri", getGoogleCalendarRedirectUri());
+  url.searchParams.set("redirect_uri", getGoogleCalendarRedirectUri(siteUrl));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
@@ -74,14 +74,14 @@ async function tokenRequest(body: URLSearchParams) {
   return (await response.json()) as TokenResponse;
 }
 
-export function exchangeGoogleCalendarCode(code: string, verifier: string) {
+export function exchangeGoogleCalendarCode(code: string, verifier: string, siteUrl = getSiteUrl()) {
   return tokenRequest(new URLSearchParams({
     client_id: calendarClientId(),
     client_secret: calendarClientSecret(),
     code,
     code_verifier: verifier,
     grant_type: "authorization_code",
-    redirect_uri: getGoogleCalendarRedirectUri(),
+    redirect_uri: getGoogleCalendarRedirectUri(siteUrl),
   }));
 }
 

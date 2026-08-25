@@ -144,18 +144,18 @@ export function getGoogleHealthClientId() {
   return clientId;
 }
 
-export function getGoogleHealthRedirectUri() {
-  const siteUrl = new URL(getSiteUrl());
+export function getGoogleHealthRedirectUri(siteUrlValue = getSiteUrl()) {
+  const siteUrl = new URL(siteUrlValue);
   if (siteUrl.protocol !== "https:" && siteUrl.hostname !== "localhost") {
     throw new Error("NEXT_PUBLIC_SITE_URL must use HTTPS outside localhost.");
   }
   return new URL("/api/health/google/callback", siteUrl.origin).toString();
 }
 
-export function buildGoogleHealthAuthorizationUrl(state: string, challenge: string) {
+export function buildGoogleHealthAuthorizationUrl(state: string, challenge: string, siteUrl = getSiteUrl()) {
   const url = new URL(AUTH_URL);
   url.searchParams.set("client_id", getGoogleHealthClientId());
-  url.searchParams.set("redirect_uri", getGoogleHealthRedirectUri());
+  url.searchParams.set("redirect_uri", getGoogleHealthRedirectUri(siteUrl));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
@@ -182,14 +182,14 @@ async function tokenRequest(body: URLSearchParams) {
   return (await response.json()) as TokenResponse;
 }
 
-export function exchangeGoogleHealthCode(code: string, verifier: string) {
+export function exchangeGoogleHealthCode(code: string, verifier: string, siteUrl = getSiteUrl()) {
   return tokenRequest(new URLSearchParams({
     client_id: getGoogleHealthClientId(),
     client_secret: requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET"),
     code,
     code_verifier: verifier,
     grant_type: "authorization_code",
-    redirect_uri: getGoogleHealthRedirectUri(),
+    redirect_uri: getGoogleHealthRedirectUri(siteUrl),
   }));
 }
 

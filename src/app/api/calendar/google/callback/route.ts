@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     return clearCookies(NextResponse.redirect(new URL("/settings?calendar=invalid_state", url.origin)));
   }
   try {
-    const tokens = await exchangeGoogleCalendarCode(code, verifier);
+    const tokens = await exchangeGoogleCalendarCode(code, verifier, url.origin);
     const scopes = tokens.scope?.split(" ").filter(Boolean) ?? [];
     if (!scopes.includes(GOOGLE_CALENDAR_SCOPE)) return clearCookies(NextResponse.redirect(new URL("/settings?calendar=permission_denied", url.origin)));
     const admin = createCloudflareAdminClient();

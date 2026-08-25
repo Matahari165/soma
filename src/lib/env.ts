@@ -1,5 +1,20 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
+type CloudflareRuntimeEnv = { NEXT_PUBLIC_SITE_URL?: unknown };
+
+function getCloudflareSiteUrl() {
+  if (process.env.NODE_ENV !== "production") return undefined;
+
+  try {
+    const value = (getCloudflareContext().env as CloudflareRuntimeEnv).NEXT_PUBLIC_SITE_URL;
+    return typeof value === "string" && value ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function hasCloudflareConfig() {
-  return Boolean(process.env.NEXT_PUBLIC_SITE_URL);
+  return Boolean(process.env.NEXT_PUBLIC_SITE_URL ?? getCloudflareSiteUrl());
 }
 
 export function isLocalPreviewMode() {
@@ -17,5 +32,5 @@ export function requireServerEnv(name: string) {
 }
 
 export function getSiteUrl() {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return (getCloudflareSiteUrl() ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }

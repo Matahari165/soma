@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const { verifier, challenge } = createPkcePair();
   let response: NextResponse;
   try {
-    response = NextResponse.redirect(buildGoogleCalendarAuthorizationUrl(state, challenge));
+    response = NextResponse.redirect(buildGoogleCalendarAuthorizationUrl(state, challenge, new URL(request.url).origin));
   } catch (error) {
     console.error("Google Calendar OAuth configuration is invalid.", error instanceof Error ? error.message : "Unknown error.");
     return NextResponse.redirect(new URL("/settings?calendar=unavailable", request.url));

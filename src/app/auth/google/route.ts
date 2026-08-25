@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { createPkcePair } from "@/lib/crypto";
-import { getSiteUrl, requireServerEnv } from "@/lib/env";
+import { requireServerEnv } from "@/lib/env";
 
 function safeNextPath(value: string | null) {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : "/onboarding";
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
   const authorization = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorization.searchParams.set("client_id", process.env.GOOGLE_AUTH_CLIENT_ID ?? requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"));
-  authorization.searchParams.set("redirect_uri", `${getSiteUrl()}/auth/callback`);
+  authorization.searchParams.set("redirect_uri", new URL("/auth/callback", requestUrl.origin).toString());
   authorization.searchParams.set("response_type", "code");
   authorization.searchParams.set("scope", "openid email profile");
   authorization.searchParams.set("state", state);

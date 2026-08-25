@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { createSession, upsertGoogleUser } from "@/lib/cloudflare/session";
-import { getSiteUrl, requireServerEnv } from "@/lib/env";
+import { requireServerEnv } from "@/lib/env";
 
 type GoogleProfile = { sub?: unknown; email?: unknown; name?: unknown; picture?: unknown };
 
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         code,
         client_id: process.env.GOOGLE_AUTH_CLIENT_ID ?? requireServerEnv("GOOGLE_HEALTH_CLIENT_ID"),
         client_secret: process.env.GOOGLE_AUTH_CLIENT_SECRET ?? requireServerEnv("GOOGLE_HEALTH_CLIENT_SECRET"),
-        redirect_uri: `${getSiteUrl()}/auth/callback`,
+        redirect_uri: new URL("/auth/callback", url.origin).toString(),
         grant_type: "authorization_code",
         code_verifier: verifier,
       }),
