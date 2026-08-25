@@ -17,6 +17,7 @@ Production is ready only after these checks use a deployed URL and a real accoun
 ## Deployment
 
 - Use Cloudflare Workers, D1, and R2 for the personal production application.
+- Keep the legacy Vercel project as a redirect-only compatibility endpoint. It must never execute Soma application routes, OAuth callbacks, or scheduled jobs.
 - Keep directly analyzed rows in D1 and complete immutable source exports in private R2.
 - Preview deployments must use isolated D1/R2 resources or remain unavailable to users.
 - Apply `cloudflare/migrations` before deploying application code that depends on them.

@@ -173,6 +173,7 @@ async function tokenRequest(body: URLSearchParams) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
@@ -212,6 +213,7 @@ async function googleHealthRequest<T>(path: string, accessToken: string, init?: 
       ...init?.headers,
     },
     cache: "no-store",
+    signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {

@@ -604,6 +604,7 @@ function buildSnapshot(input: {
 }
 
 export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): Promise<PersonalLabSnapshot> {
+  const startedAt = Date.now();
   if (isLocalPreviewMode()) {
     const preview = previewData();
     return buildSnapshot({ user, timeZone: "Europe/Paris", ...preview, requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
@@ -612,11 +613,10 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     ] });
   }
   const admin = createCloudflareAdminClient();
-  const { data: profile, error: profileError } = await admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
-  if (profileError) throw new Error("Your Personal Lab profile could not be loaded.");
   const analysisStart = new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10);
   const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  const [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal] = await Promise.all([
+  const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal] = await Promise.all([
+    admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     admin.from("daily_health_metrics").select("*").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", analysisStart).order("score_date", { ascending: false }).limit(2190),
     admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).gte("metric_date", analysisStart).order("metric_date", { ascending: false }).limit(730),
@@ -627,11 +627,12 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
     loadJournalData(user.id, { from: analysisStart }),
   ]);
-  const failed = [healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
+  const queryCompletedAt = Date.now();
+  const failed = [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
   if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-  return buildSnapshot({
+  const snapshot = buildSnapshot({
     user,
-    timeZone: profile?.timezone ?? "Europe/Paris",
+    timeZone: profileResult.data?.timezone ?? "Europe/Paris",
     health: (healthResult.data ?? []) as HealthDay[],
     scores: (scoresResult.data ?? []) as ScoreDay[],
     calendars: (calendarResult.data ?? []) as CalendarDay[],
@@ -643,4 +644,12 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     connections: connectionResult.data ?? [],
     requestedPeriods: options.periods,
   });
+  console.info("[personal-lab] snapshot ready", {
+    periods: options.periods ?? [15, 30, 90, "all"],
+    queryMs: queryCompletedAt - startedAt,
+    calculationMs: Date.now() - queryCompletedAt,
+    totalMs: Date.now() - startedAt,
+    healthDays: healthResult.data?.length ?? 0,
+  });
+  return snapshot;
 }

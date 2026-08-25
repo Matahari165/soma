@@ -35,6 +35,8 @@ This runs linting, TypeScript checks, unit tests, and a production build.
 
 ## Production setup
 
+The canonical production host is `https://soma.hthv4f94vw.workers.dev`. The legacy Vercel project only redirects old links to this Cloudflare host; it must not run application routes or cron jobs.
+
 1. Create the Cloudflare D1 database `soma-core` and the private R2 bucket `soma-health-record-archives`, then replace the D1 identifier in `wrangler.jsonc`.
 2. Run `pnpm db:migrate:remote` to create the D1 schema.
 3. Add the secrets from `.env.example` with Wrangler; generate `TOKEN_ENCRYPTION_KEY` as a base64-encoded 32-byte key and `CRON_SECRET` as a random value of at least 16 characters. Keep `NEXT_PUBLIC_SITE_URL` as a normal Worker variable.

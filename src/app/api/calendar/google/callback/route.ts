@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { exchangeGoogleCalendarCode, GOOGLE_CALENDAR_SCOPE } from "@/integrations/google-calendar/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
@@ -44,12 +44,17 @@ export async function GET(request: Request) {
       metadata: { calendar: "primary", stored_content: false, deep_work_markers: ["DW", "Deep Work"] },
     }, { onConflict: "user_id,provider" });
     if (error) throw new Error("Google Calendar connection could not be stored.");
-    try {
-      await syncGoogleCalendar(user.id);
-      return clearCookies(NextResponse.redirect(new URL("/?calendar=connected", url.origin)));
-    } catch {
-      return clearCookies(NextResponse.redirect(new URL("/settings?calendar=connected_sync_failed", url.origin)));
-    }
+    after(async () => {
+      try {
+        await syncGoogleCalendar(user.id);
+      } catch (error) {
+        console.error("[google-calendar] initial background sync failed", {
+          userId: user.id,
+          error: error instanceof Error ? error.message : "Unknown error.",
+        });
+      }
+    });
+    return clearCookies(NextResponse.redirect(new URL("/?calendar=connected", url.origin)));
   } catch {
     return clearCookies(NextResponse.redirect(new URL("/settings?calendar=connection_failed", url.origin)));
   }

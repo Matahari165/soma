@@ -37,12 +37,14 @@ export async function GET(request: Request) {
         code_verifier: verifier,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
     });
     const tokenPayload = await tokens.json().catch(() => null) as { access_token?: unknown } | null;
     if (!tokens.ok || typeof tokenPayload?.access_token !== "string") return loginError(url.origin, "oauth_callback");
     const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
     });
     const profile = await response.json().catch(() => null) as GoogleProfile | null;
     if (!response.ok || typeof profile?.sub !== "string") return loginError(url.origin, "oauth_profile");

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const sourceRoot = fileURLToPath(new URL("../", import.meta.url));
 const proxySource = readFileSync(`${sourceRoot}/middleware.ts`, "utf8");
+const vercelConfig = readFileSync(`${sourceRoot}/../vercel.json`, "utf8");
 
 function applicationSources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -16,6 +17,11 @@ function applicationSources(directory: string): string[] {
 }
 
 describe("production-only application contract", () => {
+  it("keeps the legacy Vercel host redirect-only", () => {
+    expect(vercelConfig).toContain('"destination": "https://soma.hthv4f94vw.workers.dev/:path*"');
+    expect(vercelConfig).not.toContain('"crons"');
+  });
+
   it("does not ship a fallback account or fabricated user data mode", () => {
     const source = applicationSources(sourceRoot).map((path) => readFileSync(path, "utf8")).join("\n");
 
@@ -33,6 +39,23 @@ describe("production-only application contract", () => {
     expect(proxySource).not.toContain('hasSessionCookie && request.nextUrl.pathname === "/login"');
     expect(loginPage).toContain("await Promise.all([searchParams, getCurrentUser()])");
     expect(loginPage).toContain('if (user) redirect("/")');
+  });
+
+  it("streams the authenticated Lab shell before expensive statistics finish", () => {
+    const page = readFileSync(`${sourceRoot}/app/page.tsx`, "utf8");
+    expect(page).toContain("<Suspense fallback={<Loading />}");
+    expect(page).toContain("async function AuthenticatedLab");
+  });
+
+  it("bounds Google network waits and defers the first Calendar sync", () => {
+    const authCallback = readFileSync(`${sourceRoot}/app/auth/callback/route.ts`, "utf8");
+    const healthClient = readFileSync(`${sourceRoot}/integrations/google-health/client.ts`, "utf8");
+    const calendarClient = readFileSync(`${sourceRoot}/integrations/google-calendar/client.ts`, "utf8");
+    const calendarCallback = readFileSync(`${sourceRoot}/app/api/calendar/google/callback/route.ts`, "utf8");
+    expect(authCallback).toContain("AbortSignal.timeout(8_000)");
+    expect(healthClient).toContain("AbortSignal.timeout(10_000)");
+    expect(calendarClient).toContain("AbortSignal.timeout(10_000)");
+    expect(calendarCallback).toContain("after(async () =>");
   });
 
   it("lets secret-authenticated machine routes reach their own authorization checks", () => {

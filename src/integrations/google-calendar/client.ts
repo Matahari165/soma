@@ -69,6 +69,7 @@ async function tokenRequest(body: URLSearchParams) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new GoogleCalendarRequestError(response.status);
   return (await response.json()) as TokenResponse;
@@ -115,6 +116,7 @@ export async function listPrimaryCalendarEvents(input: {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${input.accessToken}`, Accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new GoogleCalendarRequestError(response.status);
     const body = await response.json() as { items?: GoogleCalendarEvent[]; nextPageToken?: string };

@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
+  "redirects": [
     {
-      "path": "/api/cron/archive-health",
-      "schedule": "20 3 * * *"
+      "source": "/:path*",
+      "destination": "https://soma.hthv4f94vw.workers.dev/:path*",
+      "permanent": true
     }
   ]
 }
