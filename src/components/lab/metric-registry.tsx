@@ -4,7 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { MetricRole } from "@/domain/lab/metrics";
+import { isResultOnlyMetric, type MetricRole } from "@/domain/lab/metrics";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 const roleLabels: Record<MetricRole, string> = {
@@ -36,7 +36,7 @@ export function MetricRegistry({ metrics }: { metrics: PersonalLabSnapshot["metr
       {[...metrics].sort((first, second) => Number(second.received) - Number(first.received) || first.label.localeCompare(second.label)).map((metric) => <div className={metric.received ? "" : "is-unreceived"} key={metric.id}>
         <span><strong>{metric.label}</strong><small>{metric.sources.length ? metric.sources.map((source) => `${source.source} ${source.days}d`).join(" · ") : metric.source}{metric.unit ? ` · ${metric.unit}` : ""}</small></span>
         <span>{metric.recordedDays ? `${metric.recordedDays}d` : "—"}</span>
-        <label><span className="sr-only">{metric.label} role</span><select value={metric.role} disabled={busy === metric.id} onChange={(event) => void update(metric.id, event.target.value as MetricRole)}>{Object.entries(roleLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{busy === metric.id && <LoaderCircle className="spin" size={14} aria-hidden="true" />}</label>
+        <label><span className="sr-only">{metric.label} role</span><select value={metric.role} disabled={busy === metric.id || isResultOnlyMetric(metric.id)} onChange={(event) => void update(metric.id, event.target.value as MetricRole)}>{(isResultOnlyMetric(metric.id) ? [["result", roleLabels.result]] : Object.entries(roleLabels)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{busy === metric.id && <LoaderCircle className="spin" size={14} aria-hidden="true" />}</label>
       </div>)}
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}

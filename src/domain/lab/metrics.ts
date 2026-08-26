@@ -1,6 +1,8 @@
 export const metricRoles = ["influence", "result", "both", "disabled"] as const;
 export type MetricRole = (typeof metricRoles)[number];
 
+const resultOnlyMetricIds = new Set(["sleep_minutes"]);
+
 export type LabMetricDefinition = {
   id: string;
   label: string;
@@ -12,7 +14,7 @@ export type LabMetricDefinition = {
 };
 
 export const healthMetricRegistry: readonly LabMetricDefinition[] = [
-  { id: "sleep_minutes", label: "Sleep duration", unit: "min", field: "sleep_minutes", defaultRole: "both", direction: "target", source: "Google Health" },
+  { id: "sleep_minutes", label: "Sleep duration", unit: "min", field: "sleep_minutes", defaultRole: "result", direction: "target", source: "Google Health" },
   { id: "sleep_need", label: "Estimated sleep need", unit: "min", field: "sleep_need_minutes", defaultRole: "disabled", direction: "target", source: "Soma" },
   { id: "sleep_efficiency", label: "Sleep efficiency", unit: "%", field: "sleep_efficiency", defaultRole: "result", direction: "higher", source: "Google Health" },
   { id: "sleep_latency", label: "Sleep latency", unit: "min", field: "sleep_latency_minutes", defaultRole: "result", direction: "lower", source: "Google Health" },
@@ -71,7 +73,12 @@ export const healthMetricRegistry: readonly LabMetricDefinition[] = [
 ] as const;
 
 export function metricRoleFor(id: string, preferences: ReadonlyMap<string, MetricRole>) {
+  if (resultOnlyMetricIds.has(id)) return "result" as const;
   return preferences.get(id) ?? healthMetricRegistry.find((metric) => metric.id === id)?.defaultRole ?? "disabled";
+}
+
+export function isResultOnlyMetric(id: string) {
+  return resultOnlyMetricIds.has(id);
 }
 
 const administrativeFields = new Set(["user_id", "metric_date", "data_quality", "source_freshness", "algorithm_input_version", "created_at", "updated_at"]);

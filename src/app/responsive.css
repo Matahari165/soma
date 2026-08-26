@@ -47,12 +47,15 @@
   .strongest-effects__axis { grid-column: 1; width: 100%; margin-top: 5px; }
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
-  .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overscroll-behavior-inline: contain; }
+  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overscroll-behavior: contain; }
   .matrix-mobile-list { display: none; }
   .matrix-scroll table { width: max-content; min-width: 1320px; }
-  .matrix-scroll thead th:first-child, .matrix-scroll tbody th { width: 160px; }
+  .matrix-scroll .matrix-theme-row > th:first-child, .matrix-scroll tbody th { width: 160px; }
   .matrix-effect-line > strong { font-size: .68rem !important; }
   .matrix-scroll th, .matrix-scroll td { width: 104px; }
+  .influence-detail > dl { grid-template-columns: 1fr; }
+  .influence-detail > dl > div { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .influence-detail > dl > div:last-child { border-bottom: 0; }
   .relation-detail__plot > div { grid-template-columns: 1fr; gap: 5px; }
   .relation-detail dl { grid-template-columns: 1fr 1fr; }
   .metric-registry { width: 100%; min-width: 0; overflow: hidden; }
@@ -305,8 +308,8 @@
   .matrix-header { align-items: start; flex-direction: column; gap: 14px; padding-bottom: 12px; }
   .matrix-grain { width: 100%; }
   .matrix-grain button { flex: 1; justify-content: center; }
-  .matrix-scroll { display: none; }
-  .matrix-mobile-list { display: grid; border: 1px solid var(--ink); border-bottom: 0; }
+  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overflow: auto; overscroll-behavior: contain; }
+  .matrix-mobile-list { display: none; border: 1px solid var(--ink); border-bottom: 0; }
   .matrix-mobile-list article { display: grid; border-bottom: 1px solid var(--line); background: var(--paper); }
   .matrix-mobile-list > p { padding: 22px; border-bottom: 1px solid var(--ink); background: var(--paper); color: var(--muted); }
   .matrix-mobile-list strong { font-size: .82rem; }
@@ -322,7 +325,7 @@
   .journal-period { grid-template-columns: 1fr; }
   .journal-field { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
   .journal-field > :last-child { grid-column: 1 / -1; }
-  .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overflow: auto; }
+  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overflow: auto; }
   .matrix-mobile-list { display: none; }
   .recovery-formula dl { grid-template-columns: 1fr; }
   .recovery-formula dl > div { border-right: 0; border-bottom: 1px solid var(--line); }

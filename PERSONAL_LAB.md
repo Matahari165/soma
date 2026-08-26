@@ -157,7 +157,6 @@ role.
 
 ### Default automatic influences
 
-- Sleep duration
 - Bedtime
 - Wake time
 - Steps
@@ -196,20 +195,20 @@ Additional received metrics are visible in settings and can be enabled by the us
 
 ### Cell summary
 
-Lead with concrete real-unit effects and keep percentages unambiguous.
+Lead with the relative outcome variation. Matrix cells show only a signed percentage, or
+signed percentage points when the outcome itself is a percentage. Real-unit effects remain
+available in relation detail.
 
 Example:
 
 ```text
-−6% · −32 min
-118 mg avg vs 0
+−6%
 ```
 
 For a continuous predictor:
 
 ```text
-+30 min later
-Recovery −4 pts
++4%
 ```
 
 Bedtime always uses a fixed, readable 30-minute contrast. Other continuous predictors use
@@ -217,9 +216,9 @@ a rounded contrast derived from the user's observed spread. Relation detail also
 effect for one habitual personal variation and names its size. When periods are compared,
 effects are first converted to one shared predictor contrast.
 
-Predictor emoji belongs in the row label. Favorable and unfavorable effects use semantic
-green/red plus a directional symbol or text; color is never the only cue. Color semantics
-follow the outcome definition, not the raw coefficient sign.
+Predictor emoji belongs in the row label. Positive relations use semantic green and
+negative relations use semantic red. The signed percentage remains visible so color is
+never the only cue.
 
 For one predictor-outcome pair, prefer the next-day relation. A two-days-later relation
 replaces it only when its practical-effect ratio is at least 20% larger. Extremely large

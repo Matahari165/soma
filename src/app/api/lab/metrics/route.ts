@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { metricRoles } from "@/domain/lab/metrics";
+import { isResultOnlyMetric, metricRoles } from "@/domain/lab/metrics";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
@@ -17,6 +17,9 @@ export async function PATCH(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid metric preference." }, { status: 400 });
+  }
+  if (isResultOnlyMetric(parsed.data.metricId) && parsed.data.role !== "result") {
+    return NextResponse.json({ error: "Sleep duration can only be used as a result." }, { status: 400 });
   }
   if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
   const admin = createCloudflareAdminClient();

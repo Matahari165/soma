@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowRight, Check, ThumbsUp } from "lucide-react";
+import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, RefObject } from "react";
 
 import { PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
@@ -36,9 +36,148 @@ function effectDirection(relation: MatrixRelation, direction: "higher" | "lower"
 }
 
 function matrixCellEffectText(relation: MatrixRelation) {
-  const percentage = percentText(relation);
-  const equivalent = effectText(relation);
-  return percentage && equivalent !== "—" ? `${percentage} (${equivalent})` : percentage ?? equivalent;
+  return relation.outcomeUnit === "%" ? effectText(relation) : percentText(relation) ?? "—";
+}
+
+function matrixRelationTone(relation: MatrixRelation) {
+  const value = relation.outcomeUnit === "%" ? relation.effect : relation.percentEffect;
+  if (value === null || value === 0) return "is-neutral";
+  return value > 0 ? "is-positive" : "is-negative";
+}
+
+/** Matrix cells only expose delayed timing when it exists; same-day timing needs no badge. */
+export function matrixTimingLabel(lagDays: number) {
+  return lagDays > 0 ? `J+${lagDays}` : null;
+}
+
+export type InfluenceExplanation = {
+  definition: string;
+  calculation: string;
+  source: "Google Health" | "Journal" | "Soma";
+  sourceDetail: string;
+};
+
+const influenceExplanations: Record<string, Omit<InfluenceExplanation, "sourceDetail"> & { sourceDetail?: string }> = {
+  bedtime: {
+    definition: "The local clock time when the sleep episode starts.",
+    calculation: "Soma converts the clock time to minutes and uses a fixed 30-minute contrast when comparing relationships.",
+    source: "Google Health",
+    sourceDetail: "Recorded by your connected wearable and imported through Google Health.",
+  },
+  wake_time: {
+    definition: "The local clock time when the sleep episode ends.",
+    calculation: "Soma converts the clock time to minutes and compares the observed personal range across eligible days.",
+    source: "Google Health",
+    sourceDetail: "Recorded by your connected wearable and imported through Google Health.",
+  },
+  sleep_regularity: {
+    definition: "How closely tonight's bedtime and wake time follow your recent sleep schedule.",
+    calculation: "Soma compares both times with the circular average of the previous 13 recorded nights and expresses the result as a percentage.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from bedtime and wake-time episodes imported through Google Health.",
+  },
+  sleep_debt: {
+    definition: "Accumulated sleep shortfall across the recent sleep window.",
+    calculation: "Soma adds each day's gap between estimated sleep need and actual sleep, keeping only positive shortfalls from the recent window.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from sleep duration and estimated sleep need based on Google Health data.",
+  },
+  steps: {
+    definition: "The total number of steps recorded during the day.",
+    calculation: "The daily total is used as received; Soma does not turn it into a separate score before the relationship analysis.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  zone_minutes: {
+    definition: "Time spent in the wearable's heart-rate activity zones during the day.",
+    calculation: "The daily minutes are summed from the zone records supplied by Google Health.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  intense_minutes: {
+    definition: "Time spent in the vigorous and peak heart-rate zones.",
+    calculation: "Soma combines vigorous-zone minutes and peak-zone minutes into one daily indicator.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from heart-rate zones imported through Google Health.",
+  },
+  active_minutes: {
+    definition: "The total time classified as active by the wearable.",
+    calculation: "The daily active-minute total is used as received in the relationship analysis.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  exercise_minutes: {
+    definition: "The total duration of recorded exercise during the day.",
+    calculation: "The daily exercise-minute total is used as received in the relationship analysis.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  effort: {
+    definition: "Soma's daily estimate of accomplished activity load.",
+    calculation: "Soma combines available zone minutes, exercise minutes, active energy, and steps with diminishing returns, then normalizes the result to a 0–100 score.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from available activity measures imported through Google Health.",
+  },
+};
+
+export function influenceExplanation(predictorId: string, label: string): InfluenceExplanation {
+  const known = influenceExplanations[predictorId];
+  if (known) return { ...known, sourceDetail: known.sourceDetail ?? `Provided by ${known.source}.` };
+  if (predictorId.startsWith("journal:")) {
+    return {
+      definition: `${label} is a personal measure that you record in the daily Journal.`,
+      calculation: "Soma uses the value from each validated day; numeric measures use an observed personal contrast and yes/no measures compare their recorded groups.",
+      source: "Journal",
+      sourceDetail: "Recorded by you in the Journal. Blank values remain missing and are not treated as zero.",
+    };
+  }
+  return {
+    definition: `${label} is a daily measure available as a possible influence on the selected outcomes.`,
+    calculation: "Soma uses the daily value as recorded and tests its eligible same-day, next-day, and two-days-later relationships.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  };
+}
+
+function InfluenceDetail({ explanation, label, onClose, detailRef }: { explanation: InfluenceExplanation; label: string; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
+  return <aside id="influence-detail" ref={detailRef} className="influence-detail" tabIndex={-1} aria-labelledby="influence-detail-title">
+    <header>
+      <div><span className="influence-detail__eyebrow">Influence</span><h3 id="influence-detail-title">{label}</h3></div>
+      <button type="button" className="icon-button" aria-label={`Close ${label} explanation`} onClick={onClose}><X size={17} /></button>
+    </header>
+    <dl>
+      <div><dt>What it measures</dt><dd>{explanation.definition}</dd></div>
+      <div><dt>How it is calculated</dt><dd>{explanation.calculation}</dd></div>
+      <div><dt>Where it comes from</dt><dd><strong>{explanation.source}</strong><span>{explanation.sourceDetail}</span></dd></div>
+    </dl>
+  </aside>;
+}
+
+const outcomeThemeById: Record<string, string> = {
+  sleep_minutes: "Sleep",
+  sleep_efficiency: "Sleep",
+  sleep_latency: "Sleep",
+  sleep_awake: "Sleep",
+  sleep_awakenings: "Sleep",
+  sleep_fragmentation: "Sleep",
+  deep_sleep: "Sleep",
+  rem_sleep: "Sleep",
+  hrv: "Cardio & recovery",
+  rhr: "Cardio & recovery",
+  recovery: "Cardio & recovery",
+  respiratory: "Breathing & oxygen",
+  spo2: "Breathing & oxygen",
+};
+const outcomeThemeOrder = ["Sleep", "Cardio & recovery", "Breathing & oxygen", "Other"];
+
+export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outcomes"]) {
+  return outcomes.reduce<Array<{ label: string; count: number }>>((groups, outcome) => {
+    const label = outcomeThemeById[outcome.id] ?? "Other";
+    const previous = groups.at(-1);
+    if (previous?.label === label) previous.count += 1;
+    else groups.push({ label, count: 1 });
+    return groups;
+  }, []);
 }
 
 function StrongestEffects({ relations, outcomes, onSelect }: {
@@ -171,9 +310,16 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
   const [loadError, setLoadError] = useState(false);
   const [showNonSignificant, setShowNonSignificant] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
+  const [selectedInfluence, setSelectedInfluence] = useState<{ id: string; label: string } | null>(null);
   const [periodAnimationSequence, setPeriodAnimationSequence] = useState(0);
   const relationDetailRef = useRef<HTMLElement | null>(null);
-  const outcomes = matrix.outcomes;
+  const influenceDetailRef = useRef<HTMLElement | null>(null);
+  const outcomes = useMemo(() => [...matrix.outcomes].sort((left, right) => {
+    const leftTheme = outcomeThemeById[left.id] ?? "Other";
+    const rightTheme = outcomeThemeById[right.id] ?? "Other";
+    return outcomeThemeOrder.indexOf(leftTheme) - outcomeThemeOrder.indexOf(rightTheme);
+  }), [matrix.outcomes]);
+  const outcomeThemes = useMemo(() => groupOutcomeThemes(outcomes), [outcomes]);
   const periodRows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period), [rowsByPeriod, period]);
   const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id), showNonSignificant), [outcomes, periodRows, showNonSignificant]);
 
@@ -199,6 +345,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     setPeriod(nextPeriod);
     setPeriodAnimationSequence((current) => current + 1);
     setSelected(null);
+    setSelectedInfluence(null);
     setLoadError(false);
     await loadPeriod(nextPeriod);
   }
@@ -209,6 +356,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       setPeriod(locator.period);
       setPeriodAnimationSequence((current) => current + 1);
       setSelected(null);
+      setSelectedInfluence(null);
       setLoadError(false);
       void loadPeriod(locator.period).then((loadedRows) => {
         const relation = loadedRows.flatMap((row) => row.relations)
@@ -229,6 +377,19 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     });
   }, [selected]);
 
+  useEffect(() => {
+    if (!selectedInfluence) return;
+    window.requestAnimationFrame(() => {
+      influenceDetailRef.current?.focus();
+      scrollToMatrixElement(influenceDetailRef.current);
+    });
+  }, [selectedInfluence]);
+
+  function selectInfluence(row: { id: string; label: string }) {
+    setSelected(null);
+    setSelectedInfluence((current) => current?.id === row.id ? null : row);
+  }
+
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
       <div><h2 id="matrix-title">Relationship matrix</h2></div>
@@ -244,21 +405,24 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
-    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)))} key={periodAnimationSequence} />
+    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => { setSelectedInfluence(null); setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId))); }} key={periodAnimationSequence} />
     <div className="matrix-scroll" role="region" aria-label="Scrollable relationship matrix" tabIndex={0}>
       <table>
-        <thead><tr><th scope="col">Influence</th>{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></th>{row.relationsByOutcome.map((relations, index) => {
+        <thead>
+          <tr className="matrix-theme-row"><th scope="col" rowSpan={2}>Influence</th>{outcomeThemes.map((theme, index) => <th scope="colgroup" colSpan={theme.count} key={`${theme.label}-${index}`}>{theme.label}</th>)}</tr>
+          <tr className="matrix-outcome-row">{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr>
+        </thead>
+        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><button type="button" className="matrix-influence-trigger" aria-expanded={selectedInfluence?.id === row.id} aria-controls={selectedInfluence?.id === row.id ? "influence-detail" : undefined} onClick={() => selectInfluence(row)}><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></button></th>{row.relationsByOutcome.map((relations, index) => {
           const calculable = calculableRelations(relations);
           const significant = significantRelations(relations);
           const displayed = showNonSignificant ? calculable : significant;
           const outcome = outcomes[index];
-          const tones = new Set(significant.map((relation) => relationTone(relation, outcome.direction)));
+          const tones = new Set(significant.map(matrixRelationTone));
           const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
           const maximumSample = Math.max(0, ...relations.map((relation) => relation.sampleSize));
           return <td className={tone} key={outcome.id}>
-            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => setSelected(calculable)} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
-              {displayed.map((relation) => <span className="matrix-effect-line" key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong></span>)}
+            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => { setSelectedInfluence(null); setSelected(calculable); }} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
+              {displayed.map((relation) => <span className={`matrix-effect-line ${matrixRelationTone(relation)}`} key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong>{matrixTimingLabel(relation.lagDays) && <small>{matrixTimingLabel(relation.lagDays)}</small>}</span>)}
             </button>}
           </td>;
         })}</tr>)}</tbody>
@@ -267,6 +431,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}
       {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
+    {selectedInfluence && <InfluenceDetail explanation={influenceExplanation(selectedInfluence.id, selectedInfluence.label)} label={selectedInfluence.label} onClose={() => setSelectedInfluence(null)} detailRef={influenceDetailRef} />}
     {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
     <details className="matrix-method"><summary>Method</summary><p>Each variable appears once. Its cells group same-day, next-day and two-days-later results when those timings are possible. Daytime behavior is never paired with an overnight outcome that happened earlier. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. With at least 30 paired days, every numeric relation also tests a threshold, plateau and middle zone against a straight line, retaining a non-linear shape only when it improves the fit materially. Amounts use every recorded day, including zero-amount days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction. The default table keeps only q &lt; 0.05.</p></details>
   </section>;

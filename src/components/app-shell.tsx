@@ -88,17 +88,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <Link className="brand" href="/" prefetch={false} aria-label="Soma home">
             <SomaLogo compact={sidebarCollapsed} />
           </Link>
-          <button
-            className="icon-button sidebar-toggle"
-            type="button"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-controls="primary-sidebar"
-            aria-pressed={sidebarCollapsed}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -118,6 +107,17 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
 
         <div className="sidebar-secondary">
+          <button
+            className="icon-button sidebar-toggle"
+            type="button"
+            onClick={() => setSidebarCollapsed((value) => !value)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-controls="primary-sidebar"
+            aria-pressed={sidebarCollapsed}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          </button>
           <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" prefetch={false} aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
             <span className="avatar">{initials}</span>
             <span>

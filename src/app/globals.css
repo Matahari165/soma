@@ -212,7 +212,6 @@ textarea:focus-visible,
 .sidebar-toggle { width: 36px; min-width: 36px; min-height: 36px; }
 .sidebar--collapsed { width: 76px; padding-inline: 12px; }
 .sidebar--collapsed .sidebar__header { grid-template-columns: 1fr; justify-items: center; }
-.sidebar--collapsed .sidebar-toggle { margin-top: 8px; }
 .brand {
   display: inline-flex;
   min-height: 48px;
@@ -271,6 +270,7 @@ textarea:focus-visible,
 .profile-card strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .profile-card small { color: var(--muted); font-size: .66rem; }
 .profile-card--active { color: var(--moss-dark); }
+.sidebar-secondary > .sidebar-toggle { display: grid; margin: 0 auto 8px; }
 .sidebar--collapsed .sidebar-secondary { justify-items: center; }
 .sidebar--collapsed .profile-card { display: flex; width: 44px; min-height: 56px; justify-content: center; padding-top: 12px; }
 .sidebar--collapsed .profile-card > span:nth-child(2),

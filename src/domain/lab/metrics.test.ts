@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { healthMetricRegistry, metricDefinitionsForHealth, metricRoleFor } from "./metrics";
+import { healthMetricRegistry, isResultOnlyMetric, metricDefinitionsForHealth, metricRoleFor } from "./metrics";
 
 describe("Personal Lab metric registry", () => {
   it("keeps the approved core roles", () => {
     const roles = new Map(healthMetricRegistry.map((metric) => [metric.id, metric.defaultRole]));
-    expect(roles.get("sleep_minutes")).toBe("both");
+    expect(roles.get("sleep_minutes")).toBe("result");
     expect(roles.get("recovery")).toBe("result");
     expect(roles.get("bedtime")).toBe("influence");
     expect(roles.get("effort")).toBe("influence");
@@ -21,7 +21,10 @@ describe("Personal Lab metric registry", () => {
   });
 
   it("lets a user preference override the default role", () => {
-    expect(metricRoleFor("sleep_minutes", new Map([["sleep_minutes", "both"]]))).toBe("both");
+    expect(metricRoleFor("sleep_minutes", new Map([["sleep_minutes", "both"]]))).toBe("result");
+    expect(metricRoleFor("sleep_minutes", new Map([["sleep_minutes", "disabled"]]))).toBe("result");
+    expect(isResultOnlyMetric("sleep_minutes")).toBe(true);
+    expect(isResultOnlyMetric("bedtime")).toBe(false);
     expect(metricRoleFor("future_metric", new Map())).toBe("disabled");
   });
 });
