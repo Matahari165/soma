@@ -1,0 +1,101 @@
+/*
+ * Motion for the relationship matrix. This file is intentionally scoped to
+ * matrix-specific hooks so the base workbench styles remain unchanged.
+ */
+
+.matrix-periods {
+  --matrix-period-count: 4;
+  --matrix-period-index: 0;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.matrix-periods::before {
+  position: absolute;
+  z-index: 0;
+  inset-block: 0;
+  left: 0;
+  width: calc(100% / var(--matrix-period-count));
+  background: var(--ink);
+  content: "";
+  pointer-events: none;
+  transform: translate3d(calc(var(--matrix-period-index) * 100%), 0, 0);
+  transition: transform 240ms cubic-bezier(.22, .8, .26, 1);
+}
+
+.matrix-periods button {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  background: transparent;
+  transition: color 180ms ease;
+}
+
+.matrix-periods button[aria-pressed="true"] {
+  background: transparent !important;
+  color: var(--canvas);
+}
+
+.strongest-effects__row {
+  opacity: 0;
+  transform: translate3d(0, 5px, 0);
+  transition: opacity 220ms ease, transform 360ms cubic-bezier(.22, .8, .26, 1);
+  transition-delay: var(--matrix-row-delay, 0ms);
+}
+
+.strongest-effects__row.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.strongest-effects__interval {
+  transform: scaleX(0);
+  transform-origin: var(--matrix-interval-origin, center);
+  transition: transform 460ms cubic-bezier(.22, .8, .26, 1), opacity 180ms ease;
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 70ms);
+}
+
+.strongest-effects__row.is-visible .strongest-effects__interval {
+  transform: scaleX(1);
+}
+
+.strongest-effects__point {
+  opacity: 0;
+  transform: translateX(-50%) scale(.45);
+  transition: opacity 180ms ease, transform 300ms cubic-bezier(.22, .8, .26, 1);
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 230ms);
+}
+
+.strongest-effects__row.is-visible .strongest-effects__point {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-periods::before,
+  .matrix-periods button,
+  .strongest-effects__row,
+  .strongest-effects__interval,
+  .strongest-effects__point {
+    transition-duration: .01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .strongest-effects__row,
+  .strongest-effects__row.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .strongest-effects__interval,
+  .strongest-effects__row.is-visible .strongest-effects__interval {
+    transform: scaleX(1);
+  }
+
+  .strongest-effects__point,
+  .strongest-effects__row.is-visible .strongest-effects__point {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}

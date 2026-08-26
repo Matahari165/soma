@@ -10,6 +10,9 @@ import { isLocalPreviewMode } from "@/lib/env";
 import "./globals.css";
 import "./components.css";
 import "./responsive.css";
+import "./motion-entry.css";
+import "./motion-journal.css";
+import "./motion-matrix.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],

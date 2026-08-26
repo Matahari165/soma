@@ -17,5 +17,9 @@ describe("Today signals", () => {
     expect(html).toContain("Regularity · 84%");
     expect(html).toContain("lab-signal__value--above");
     expect(html).toContain("lab-signal__value--below");
+    expect(html).toContain('aria-label="Sleep duration: 8h 30"');
+    expect(html).toContain('aria-label="Recovery: 72"');
+    expect(html).toContain('aria-label="Effort: 63"');
+    expect(html).not.toContain('aria-live="polite" aria-busy');
   });
 });

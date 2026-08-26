@@ -1,0 +1,135 @@
+/*
+ * Journal motion layer.
+ *
+ * The journal already owns the layout and color system. This file only adds
+ * short, state-based feedback: nothing here continuously moves or changes
+ * the size of a row, so saving never shifts the form under the user's hand.
+ */
+
+.journal-card .journal-save-status {
+  display: inline-flex;
+  min-width: 7.75rem;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.journal-save-status__icon {
+  flex: 0 0 14px;
+}
+
+.journal-save-status__icon--success {
+  animation: journal-status-check 320ms var(--ease) both;
+}
+
+.journal-save-status__icon--error {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .56rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.journal-save-status.checkin-state--error {
+  color: var(--danger);
+}
+
+.journal-choice button,
+.journal-date-strip button,
+.journal-field input,
+.journal-field select {
+  transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+
+.journal-choice button,
+.journal-field input,
+.journal-field select {
+  min-height: 44px;
+}
+
+.journal-choice button:active,
+.journal-date-strip button:active {
+  transform: scale(.985);
+}
+
+.journal-choice button.is-selected {
+  border-color: var(--ink);
+}
+
+.journal-field {
+  position: relative;
+}
+
+.journal-field__feedback {
+  position: absolute;
+  z-index: 1;
+  inset: 4px;
+  border: 1px solid var(--moss);
+  border-radius: var(--radius-xs);
+  pointer-events: none;
+  animation: journal-field-feedback 520ms var(--ease) both;
+}
+
+@keyframes journal-field-feedback {
+  0% {
+    opacity: .55;
+    transform: scale(.985);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+}
+
+@keyframes journal-status-check {
+  0% {
+    opacity: 0;
+    transform: scale(.72) rotate(-8deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.1) rotate(2deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-choice button,
+  .journal-date-strip button,
+  .journal-field input,
+  .journal-field select {
+    transition: none;
+  }
+
+  .journal-choice button:active,
+  .journal-date-strip button:active {
+    transform: none;
+  }
+
+  .journal-field__feedback,
+  .journal-save-status__icon--success {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .journal-card .journal-card__actions .journal-save-status {
+    display: inline-flex;
+    min-width: 5.5rem;
+    min-height: 44px;
+    font-size: .55rem;
+  }
+}

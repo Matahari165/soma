@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, ThumbsUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 
 import { PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
@@ -9,14 +10,24 @@ import type { PersonalLabSnapshot } from "@/services/personal-lab";
 import { effectText, percentText, RelationDetail, relationTone, shortTimingText } from "./relation-detail";
 import { calculableRelations, groupMatrixRows, significantRelations } from "./relationship-groups";
 
-function periodLabel(period: AnalysisPeriod) {
+export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "All" : `${period}d`;
+}
+
+/** Keep programmatic scrolling consistent with the user's motion preference. */
+export function matrixScrollBehavior(): ScrollBehavior {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "auto";
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
+function scrollToMatrixElement(element: Element | null) {
+  element?.scrollIntoView({ behavior: matrixScrollBehavior(), block: "start" });
 }
 
 type RelationLocator = { predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number };
 
 function openRelation(locator: RelationLocator | undefined) {
-  document.querySelector("#relations")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  scrollToMatrixElement(document.querySelector("#relations"));
   if (locator) window.dispatchEvent(new CustomEvent<RelationLocator>("soma:open-relation", { detail: locator }));
 }
 
@@ -36,13 +47,51 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
   onSelect: (relation: MatrixRelation) => void;
 }) {
   const meaningful = useMemo(() => selectMeaningfulRelations(relations, 8), [relations]);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const [visibleRows, setVisibleRows] = useState<Set<string>>(() => new Set());
+  const setRowRef = useCallback((key: string, node: HTMLLIElement | null) => {
+    if (node) rowRefs.current.set(key, node);
+    else rowRefs.current.delete(key);
+  }, []);
+  useEffect(() => {
+    const rows = meaningful.map((relation) => `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`);
+    if (!rows.length) return;
+
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    if (reduceMotion || typeof IntersectionObserver === "undefined") {
+      rowRefs.current.forEach((node) => node.classList.add("is-visible"));
+      return;
+    }
+
+    const rowKeys = new Set(rows);
+    const observer = new IntersectionObserver((entries) => {
+      const entered = entries.filter((entry) => entry.isIntersecting)
+        .map((entry) => entry.target.getAttribute("data-matrix-effect-key"))
+        .filter((key): key is string => key !== null && rowKeys.has(key));
+      if (!entered.length) return;
+
+      setVisibleRows((current) => {
+        const next = new Set(current);
+        entered.forEach((key) => next.add(key));
+        return next;
+      });
+      entries.filter((entry) => entry.isIntersecting).forEach((entry) => observer.unobserve(entry.target));
+    }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+
+    rowRefs.current.forEach((node, key) => {
+      if (rowKeys.has(key)) observer.observe(node);
+    });
+
+    return () => observer.disconnect();
+  }, [meaningful]);
+
   return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
       <div><h3 id="strongest-effects-title">Strongest effects</h3><p>Only q &lt; 0.05 effects above a practical threshold.</p></div>
       <div className="strongest-effects__axis" aria-hidden="true"><span>Less favourable</span><span>More favourable</span></div>
     </header>
     {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : <ol>
-      {meaningful.map((relation) => {
+      {meaningful.map((relation, index) => {
         const direction = outcomes.find((outcome) => outcome.id === relation.outcomeId)?.direction ?? "target";
         const sign = effectDirection(relation, direction);
         const point = Math.max(-1, Math.min(1, sign * relation.practicalRatio / 4));
@@ -54,12 +103,26 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
             : Math.max(Math.abs(relation.effect - relation.effectConfidenceLow), Math.abs(relation.effectConfidenceHigh - relation.effect)) / relation.practicalThreshold / 4;
         const low = Math.max(-1, point - uncertainty);
         const high = Math.min(1, point + uncertainty);
-        return <li key={`${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
+        const rowKey = `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`;
+        const intervalOrigin = low >= 0 ? "left" : high <= 0 ? "right" : "center";
+        const rowStyle = { "--matrix-row-delay": `${index * 56}ms` } as CSSProperties;
+        const intervalStyle = {
+          left: `${50 + low * 46}%`,
+          width: `${Math.max(1, (high - low) * 46)}%`,
+          "--matrix-interval-origin": intervalOrigin,
+        } as CSSProperties;
+        return <li
+          className={visibleRows.has(rowKey) ? "strongest-effects__row is-visible" : "strongest-effects__row"}
+          data-matrix-effect-key={rowKey}
+          key={rowKey}
+          ref={(node) => setRowRef(rowKey, node)}
+          style={rowStyle}
+        >
           <button type="button" onClick={() => onSelect(relation)} aria-label={`Open ${relation.predictorLabel} and ${relation.outcomeLabel}: ${effectText(relation)}, ${shortTimingText(relation)}`}>
             <span className="strongest-effects__relation"><strong>{relation.predictorLabel}</strong><small>{relation.comparisonLabel} · {shortTimingText(relation)}</small></span>
             <span className="strongest-effects__plot" aria-hidden="true">
               <i className="strongest-effects__zero" />
-              <i className="strongest-effects__interval" style={{ left: `${50 + low * 46}%`, width: `${Math.max(1, (high - low) * 46)}%` }} />
+              <i className="strongest-effects__interval" style={intervalStyle} />
               <i className="strongest-effects__point" style={{ left: `${50 + point * 46}%` }} />
             </span>
             <span className="strongest-effects__outcome"><strong>{relation.outcomeLabel}</strong><small>{effectText(relation)}</small></span>
@@ -108,6 +171,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
   const [loadError, setLoadError] = useState(false);
   const [showNonSignificant, setShowNonSignificant] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
+  const [periodAnimationSequence, setPeriodAnimationSequence] = useState(0);
   const relationDetailRef = useRef<HTMLElement | null>(null);
   const outcomes = matrix.outcomes;
   const periodRows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period), [rowsByPeriod, period]);
@@ -133,6 +197,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
 
   async function selectPeriod(nextPeriod: AnalysisPeriod) {
     setPeriod(nextPeriod);
+    setPeriodAnimationSequence((current) => current + 1);
     setSelected(null);
     setLoadError(false);
     await loadPeriod(nextPeriod);
@@ -142,6 +207,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     const listener = (event: Event) => {
       const locator = (event as CustomEvent<RelationLocator>).detail;
       setPeriod(locator.period);
+      setPeriodAnimationSequence((current) => current + 1);
       setSelected(null);
       setLoadError(false);
       void loadPeriod(locator.period).then((loadedRows) => {
@@ -159,7 +225,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     if (!selected) return;
     window.requestAnimationFrame(() => {
       relationDetailRef.current?.focus();
-      relationDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToMatrixElement(relationDetailRef.current);
     });
   }, [selected]);
 
@@ -167,11 +233,18 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     <header className="matrix-header">
       <div><h2 id="matrix-title">Relationship matrix</h2></div>
       <div className="matrix-controls">
-        <div className="matrix-periods" role="group" aria-label="Analysis period">{matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}</div>
+        <div
+          className="matrix-periods"
+          role="group"
+          aria-label="Analysis period"
+          style={{ "--matrix-period-index": Math.max(0, matrix.periods.indexOf(period)), "--matrix-period-count": Math.max(1, matrix.periods.length) } as CSSProperties}
+        >
+          {matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}
+        </div>
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
-    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)))} />
+    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)))} key={periodAnimationSequence} />
     <div className="matrix-scroll" role="region" aria-label="Scrollable relationship matrix" tabIndex={0}>
       <table>
         <thead><tr><th scope="col">Influence</th>{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr></thead>
