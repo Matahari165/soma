@@ -16,6 +16,7 @@
   --line-strong: #aaa697;
   --moss: #506b52;
   --moss-dark: #344b38;
+  --moss-signal: #2d7541;
   --moss-soft: #dfe6d8;
   --cobalt: #45627e;
   --cobalt-soft: #dce5e9;
@@ -81,6 +82,7 @@
   --zone-moderate: #6f866a;
   --zone-vigorous: #b28648;
   --zone-peak: #a8563f;
+  --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -93,7 +95,7 @@ body {
     linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), color-mix(in srgb, var(--line) 26%, transparent) calc(100% - 1px)) 0 0 / 64px 64px,
     var(--canvas);
   color: var(--ink);
-  font-family: var(--font-soma-sans), system-ui, sans-serif;
+  font-family: var(--font-soma-ui);
   font-size: 16px;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
@@ -120,7 +122,7 @@ svg { flex: 0 0 auto; }
 
 h1, h2, h3, p { margin-block: 0; }
 h1, h2 {
-  font-family: var(--font-soma-serif), Georgia, serif;
+  font-family: var(--font-soma-ui);
   font-weight: 500;
   letter-spacing: -.035em;
 }
@@ -281,7 +283,7 @@ textarea:focus-visible,
 .quality-pill,
 .analytics-source {
   color: var(--muted);
-  font-family: var(--font-soma-mono), monospace;
+  font-family: var(--font-soma-ui);
   font-size: .67rem;
   font-weight: 500;
   letter-spacing: .08em;

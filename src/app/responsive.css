@@ -16,14 +16,13 @@
 @media (max-width: 1024px) {
   .journal-grid { grid-template-columns: 1fr; }
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .relation-detail__explanation { white-space: normal; }
 }
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
   .lab-insight-panel > header { padding: 15px 14px; }
   .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
-  .lab-insight-actions { width: 100%; }
-  .lab-insight-actions button { flex: 1; justify-content: center; }
   .lab-insight-panel > p { padding-inline: 14px; }
   .lab-insight-panel > ol li { grid-template-columns: 40px 1fr; }
   .lab-insight-history article { grid-template-columns: 1fr; gap: 3px; }

@@ -43,15 +43,45 @@ describe("Personal Lab raw within-person relations", () => {
     expect(relation.percentEffect).toBeLessThan(0);
   });
 
-  it("adds a readable dose response among non-zero caffeine days", () => {
+  it("adds a readable dose response across caffeine and zero-caffeine days", () => {
     const caffeine = Array.from({ length: 120 }, (_, index) => index % 3 === 0 ? 0 : 80 + index % 5 * 40);
     const rhr = caffeine.map((value, index) => 52 + value * .025 + Math.sin(index * 1.7));
     const predictor = { ...series("caffeine", caffeine), unit: "mg" };
     const relation = calculateMatrixRelation(predictor, { ...series("rhr", rhr), unit: "bpm" });
     expect(relation.comparisonLabel).toContain("avg vs 0");
-    expect(relation.doseResponse?.comparisonLabel).toMatch(/^\+\d+ mg among consumption days$/);
+    expect(relation.doseResponse?.comparisonLabel).toMatch(/^\+\d+ mg across all recorded days$/);
+    expect(relation.doseResponse?.modelType).toBe("linear");
+    expect(relation.doseResponse?.nonlinearTested).toBe(true);
     expect(relation.doseResponse?.effect).toBeGreaterThan(0);
-    expect(relation.doseResponse?.sampleSize).toBe(80);
+    expect(relation.doseResponse?.sampleSize).toBe(120);
+  });
+
+  it("includes zero days in the gradual dose estimate", () => {
+    const caffeine = Array.from({ length: 60 }, (_, index) => index < 30 ? 0 : index < 50 ? 100 : 200);
+    const rhr = caffeine.map((value, index) => 50 + value * .02 + Math.sin(index) * .1);
+    const relation = calculateMatrixRelation(
+      { ...series("caffeine", caffeine), unit: "mg" },
+      { ...series("rhr", rhr), unit: "bpm" },
+    );
+    expect(relation.doseResponse?.sampleSize).toBe(caffeine.length);
+    expect(relation.doseResponse?.comparisonLabel).toContain("across all recorded days");
+    expect(relation.doseResponse?.effect).toBeCloseTo(2, 0);
+  });
+
+  it("detects a non-linear caffeine threshold while keeping zero versus exposure", () => {
+    const caffeine = Array.from({ length: 120 }, (_, index) => index % 4 * 100);
+    const rhr = caffeine.map((value, index) => 52 + (value >= 300 ? 10 : 0) + Math.sin(index * 1.3) * .2);
+    const relation = calculateMatrixRelation(
+      { ...series("caffeine", caffeine), unit: "mg" },
+      { ...series("rhr", rhr), unit: "bpm" },
+      0,
+      { outcomeDirection: "lower", minimumMeaningfulEffect: 1 },
+    );
+    expect(relation.modelType).toBe("binary");
+    expect(relation.comparisonLabel).toContain("avg vs 0");
+    expect(relation.doseResponse?.modelType).toBe("threshold");
+    expect(relation.doseResponse?.comparisonLabel).toContain("threshold above");
+    expect(relation.doseResponse?.sampleSize).toBe(120);
   });
 
   it("only reports relative percentages for outcomes with a meaningful zero", () => {
@@ -67,6 +97,7 @@ describe("Personal Lab raw within-person relations", () => {
     const relation = calculateMatrixRelation(series("bedtime", bedtime, "numeric", "clock-time"), series("recovery", recovery));
     expect(relation.predictorDelta).toBe(30);
     expect(relation.comparisonLabel).toBe("30 min later");
+    expect(relation.modelType).toBe("linear");
     expect(relation.effect).toBeCloseTo(-3, 0);
   });
 
@@ -79,8 +110,66 @@ describe("Personal Lab raw within-person relations", () => {
       0,
       { outcomeDirection: "higher", minimumMeaningfulEffect: 1 },
     );
-    expect(relation.comparisonLabel).toMatch(/^best zone \d{2}:\d{2}–\d{2}:\d{2}$/);
+    expect(relation.comparisonLabel).toMatch(/^optimal zone \d{2}:\d{2}–\d{2}:\d{2}$/);
+    expect(relation.modelType).toBe("optimal-zone");
+    expect(relation.modelImprovement).toBeGreaterThan(.1);
     expect(relation.comparisonMean).toBeGreaterThan(relation.baselineMean ?? 0);
+  });
+
+  it("detects a high threshold instead of presenting it as one linear slope", () => {
+    const input = Array.from({ length: 90 }, (_, index) => index);
+    const outcome = input.map((value, index) => 50 + (value > 59 ? 12 : 0) + Math.sin(index * 1.7) * .2);
+    const relation = calculateMatrixRelation(
+      series("load", input, "numeric", undefined),
+      series("hrv", outcome),
+      0,
+      { outcomeDirection: "higher", minimumMeaningfulEffect: 1 },
+    );
+    expect(relation.modelType).toBe("threshold");
+    expect(relation.comparisonLabel).toMatch(/^threshold above /);
+    expect(relation.effect).toBeGreaterThan(10);
+  });
+
+  it("detects a plateau after an initial increase", () => {
+    const input = Array.from({ length: 90 }, (_, index) => index);
+    const outcome = input.map((value, index) => 50 + Math.min(value, 30) * .4 + Math.sin(index * 1.7) * .2);
+    const relation = calculateMatrixRelation(
+      series("exercise", input, "numeric", undefined),
+      series("hrv", outcome),
+      0,
+      { outcomeDirection: "higher", minimumMeaningfulEffect: 1 },
+    );
+    expect(relation.modelType).toBe("plateau");
+    expect(relation.comparisonLabel).toMatch(/^plateau after /);
+  });
+
+  it("detects an adverse middle zone", () => {
+    const input = Array.from({ length: 90 }, (_, index) => index);
+    const outcome = input.map((value, index) => 60 - (value > 29 && value <= 59 ? 10 : 0) + Math.sin(index * 1.7) * .2);
+    const relation = calculateMatrixRelation(
+      series("caffeine", input, "numeric", undefined),
+      series("hrv", outcome),
+      0,
+      { outcomeDirection: "higher", minimumMeaningfulEffect: 1 },
+    );
+    expect(relation.modelType).toBe("adverse-zone");
+    expect(relation.comparisonLabel).toMatch(/^adverse zone /);
+  });
+
+  it("keeps an actually linear relation linear", () => {
+    const input = Array.from({ length: 90 }, (_, index) => index);
+    const outcome = input.map((value, index) => 50 + value * .2 + Math.sin(index * 1.7) * .2);
+    const relation = calculateMatrixRelation(series("load", input, "numeric", undefined), series("hrv", outcome));
+    expect(relation.modelType).toBe("linear");
+    expect(relation.modelImprovement).toBe(0);
+    expect(relation.nonlinearTested).toBe(true);
+  });
+
+  it("does not claim a non-linear check when the window is too short", () => {
+    const input = Array.from({ length: 20 }, (_, index) => index);
+    const relation = calculateMatrixRelation(series("load", input, "numeric", undefined), series("hrv", input.map((value) => 50 + value)));
+    expect(relation.modelType).toBe("linear");
+    expect(relation.nonlinearTested).toBe(false);
   });
 
   it("keeps source coverage transparent and rejects cross-device pairs", () => {

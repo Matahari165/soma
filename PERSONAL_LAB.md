@@ -264,18 +264,28 @@ mean when that percentage is meaningful.
 
 For an amount such as caffeine, the main cell reports the average non-zero dose and the
 exposed-versus-zero outcome difference. The detail view may additionally show the
-quantity-response relation among exposed days.
+quantity-response relation across all recorded days, including zero-amount days.
 
 The quantity-response contrast uses a readable observed step, such as `+100 mg`, and always
-states that it applies among consumption days. A percentage always describes the displayed
+states that zero-amount days are included. A percentage always describes the displayed
 predictor contrast and the outcome change; it never means an effect per one predictor unit.
 
 ### Continuous measures
 
 Use a robust monotonic association test and translate it to a meaningful observed contrast,
-such as 30 minutes later bedtime. If the observed shape is materially non-linear and has
-enough support, describe a best zone or threshold instead of forcing one linear effect.
-This non-linear check applies to supported numeric measures, not only clock times.
+such as 30 minutes later bedtime. Every numeric relation also passes a deterministic
+non-linearity check. With at least 30 paired observations and at least eight observations
+in each low, middle, and high range, compare the straight-line fit with simple interpretable
+alternatives: a threshold, a plateau, an optimal middle zone, or an adverse middle zone.
+
+Keep the non-linear form only when it reduces unexplained variation by at least 10% versus
+the straight line and the observed outcome difference is practically material. Correct the
+selected non-linear test for the three searched shapes. Otherwise retain and label the
+linear relation. Boolean measures remain Yes/No comparisons and do not receive a shape test.
+
+Show the selected shape, observed boundaries, and improvement over a straight line in the
+relation detail. This check applies to quantity-response analyses across zero and non-zero
+days as well as other supported numeric measures, including clock times.
 
 ### Significance
 

@@ -3,6 +3,11 @@ export const MINIMUM_WEEKLY_OBSERVATIONS = 10;
 export const MINIMUM_DAILY_HIGHLIGHT = 10;
 export const MINIMUM_WEEKLY_HIGHLIGHT = 10;
 export const MINIMUM_BINARY_GROUP = 5;
+const MINIMUM_NONLINEAR_OBSERVATIONS = 30;
+const MINIMUM_NONLINEAR_GROUP = 8;
+const MINIMUM_NONLINEAR_IMPROVEMENT = .1;
+const MINIMUM_SHAPE_EFFECT_STANDARD_DEVIATIONS = .15;
+const SEARCHED_NONLINEAR_SHAPES = 3;
 
 export type AnalysisPeriod = 15 | 30 | 90 | "all";
 export type MatrixPoint = { date: string; value: number; segment?: string };
@@ -22,6 +27,7 @@ export type MatrixStability = {
   trendAdjustedDirectionHeld: boolean;
   outlierAdjustedDirectionHeld: boolean;
 };
+export type MatrixModelType = "binary" | "linear" | "threshold" | "plateau" | "optimal-zone" | "adverse-zone" | "middle-zone";
 export type MatrixDoseResponse = {
   comparisonLabel: string;
   effect: number;
@@ -32,6 +38,9 @@ export type MatrixDoseResponse = {
   comparisonMean: number;
   sampleSize: number;
   pValue: number;
+  modelType: Exclude<MatrixModelType, "binary">;
+  modelImprovement: number;
+  nonlinearTested: boolean;
 };
 export type MatrixRelation = {
   predictorId: string; predictorLabel: string; predictorUnit: string; predictorKind: MatrixSeries["kind"];
@@ -40,6 +49,7 @@ export type MatrixRelation = {
   coefficient: number | null; effect: number | null; effectConfidenceLow: number | null; effectConfidenceHigh: number | null;
   percentEffect: number | null; baselineMean: number | null; comparisonMean: number | null;
   baselineCount: number; comparisonCount: number; comparisonLabel: string;
+  modelType: MatrixModelType; modelImprovement: number; nonlinearTested: boolean;
   sampleSize: number; effectiveSampleSize: number; pValue: number; qValue: number; confidenceLow: number; confidenceHigh: number;
   relevance: number; lagDays: number; grain: "day" | "week"; timeScale: "acute" | "chronic"; period: AnalysisPeriod;
   family: "automatic-acute" | "automatic-chronic" | "journal-acute" | "journal-chronic";
@@ -65,6 +75,7 @@ type Estimate = {
   effect: number; standardError: number; pValue: number; coefficient: number;
   predictorLow: number; predictorHigh: number; predictorDelta: number;
   baselineMean: number; comparisonMean: number; baselineCount: number; comparisonCount: number; comparisonLabel: string;
+  modelType: MatrixModelType; modelImprovement: number;
 };
 
 function addDays(date: string, days: number) {
@@ -179,64 +190,142 @@ function hacStandardError(pairs: Pair[], centeredPredictor: number[], residuals:
   return Math.sqrt(Math.max(0, meat / (denominator * denominator)));
 }
 
-function fitBestZoneEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelationOptions): Estimate | null {
-  if (series.kind !== "numeric" || pairs.length < 30) return null;
-  const direction = options.outcomeDirection;
-  if (!direction || (direction === "target" && options.outcomeTarget === undefined)) return null;
-  const predictors = pairs.map((pair) => pair.predictor);
-  const lowerBoundary = quantile(predictors, 1 / 3);
-  const upperBoundary = quantile(predictors, 2 / 3);
-  if (upperBoundary - lowerBoundary < (series.presentation === "clock-time" ? 15 : 1e-9)) return null;
-  const groups = [
-    pairs.filter((pair) => pair.predictor <= lowerBoundary),
-    pairs.filter((pair) => pair.predictor > lowerBoundary && pair.predictor <= upperBoundary),
-    pairs.filter((pair) => pair.predictor > upperBoundary),
-  ];
-  if (groups.some((group) => group.length < 8)) return null;
-  const sourceCenteredOutcomes = centerWithinSources(pairs.map((pair) => pair.outcome), pairs);
-  const globalOutcomeMean = mean(pairs.map((pair) => pair.outcome));
-  const adjustedOutcomeByDate = new Map(pairs.map((pair, index) => [pair.date, sourceCenteredOutcomes[index] + globalOutcomeMean]));
-  const groupMeans = groups.map((group) => mean(group.map((pair) => adjustedOutcomeByDate.get(pair.date) ?? pair.outcome)));
-  const outcomeSpread = standardDeviation(pairs.map((pair) => pair.outcome));
-  const materialDifference = Math.max(options.minimumMeaningfulEffect ?? 0, outcomeSpread * .15);
-  const middleIsBetter = direction === "higher"
-    ? groupMeans[1] - groupMeans[0] >= materialDifference && groupMeans[1] - groupMeans[2] >= materialDifference
-    : direction === "lower"
-      ? groupMeans[0] - groupMeans[1] >= materialDifference && groupMeans[2] - groupMeans[1] >= materialDifference
-      : Math.abs(groupMeans[0] - (options.outcomeTarget as number)) - Math.abs(groupMeans[1] - (options.outcomeTarget as number)) >= materialDifference
-        && Math.abs(groupMeans[2] - (options.outcomeTarget as number)) - Math.abs(groupMeans[1] - (options.outcomeTarget as number)) >= materialDifference;
-  if (!middleIsBetter) return null;
-  const indicator = pairs.map((pair) => pair.predictor > lowerBoundary && pair.predictor <= upperBoundary ? 1 : 0);
-  const centered = centerWithinSources(indicator, pairs);
-  const centeredOutcomes = centerWithinSources(pairs.map((pair) => pair.outcome), pairs);
+function predictorValue(value: number, series: MatrixSeries) {
+  if (series.presentation === "clock-time") return clockTime(value);
+  return `${round(value, Math.abs(value) >= 10 ? 0 : 1)}${series.unit ? ` ${series.unit}` : ""}`;
+}
+
+function desirability(value: number, options: MatrixRelationOptions) {
+  if (options.outcomeDirection === "lower") return -value;
+  if (options.outcomeDirection === "target" && options.outcomeTarget !== undefined) return -Math.abs(value - options.outcomeTarget);
+  return value;
+}
+
+function fitIndicatorEstimate(input: {
+  pairs: Pair[];
+  indicator: number[];
+  outcomeSpread: number;
+  predictorLow: number;
+  predictorHigh: number;
+  comparisonLabel: string;
+  modelType: Exclude<MatrixModelType, "binary" | "linear">;
+  modelImprovement: number;
+}): Estimate | null {
+  const centered = centerWithinSources(input.indicator, input.pairs);
+  const centeredOutcomes = centerWithinSources(input.pairs.map((pair) => pair.outcome), input.pairs);
   const denominator = centered.reduce((sum, value) => sum + value * value, 0);
   if (denominator < 1e-10) return null;
   const effect = centered.reduce((sum, value, index) => sum + value * centeredOutcomes[index], 0) / denominator;
   const residuals = centeredOutcomes.map((outcome, index) => outcome - effect * centered[index]);
-  const standardError = hacStandardError(pairs, centered, residuals);
-  const baselineMean = mean(pairs.map((pair) => pair.outcome)) - effect * mean(indicator);
-  const comparisonMean = baselineMean + effect;
+  const standardError = hacStandardError(input.pairs, centered, residuals);
+  const baselineMean = mean(input.pairs.map((pair) => pair.outcome)) - effect * mean(input.indicator);
   return {
     effect,
     standardError,
-    pValue: Math.min(1, 3 * (standardError < 1e-12 ? (Math.abs(effect) < 1e-12 ? 1 : 0) : normalPValue(effect / standardError))),
-    coefficient: effect / (outcomeSpread || 1),
-    predictorLow: lowerBoundary,
-    predictorHigh: upperBoundary,
-    predictorDelta: upperBoundary - lowerBoundary,
+    pValue: Math.min(1, SEARCHED_NONLINEAR_SHAPES * (standardError < 1e-12 ? (Math.abs(effect) < 1e-12 ? 1 : 0) : normalPValue(effect / standardError))),
+    coefficient: effect / (input.outcomeSpread || 1),
+    predictorLow: input.predictorLow,
+    predictorHigh: input.predictorHigh,
+    predictorDelta: input.predictorHigh - input.predictorLow,
     baselineMean,
-    comparisonMean,
-    baselineCount: groups[0].length + groups[2].length,
-    comparisonCount: groups[1].length,
-    comparisonLabel: series.presentation === "clock-time"
-      ? `best zone ${clockTime(lowerBoundary)}–${clockTime(upperBoundary)}`
-      : `best zone ${round(lowerBoundary, 1)}–${round(upperBoundary, 1)}${series.unit ? ` ${series.unit}` : ""}`,
+    comparisonMean: baselineMean + effect,
+    baselineCount: input.indicator.filter((value) => value === 0).length,
+    comparisonCount: input.indicator.filter((value) => value === 1).length,
+    comparisonLabel: input.comparisonLabel,
+    modelType: input.modelType,
+    modelImprovement: input.modelImprovement,
   };
+}
+
+function nonlinearTestEligible(pairs: Pair[], series: MatrixSeries) {
+  if (series.kind !== "numeric" || pairs.length < MINIMUM_NONLINEAR_OBSERVATIONS) return false;
+  const predictors = pairs.map((pair) => pair.predictor);
+  const lowerBoundary = quantile(predictors, 1 / 3);
+  const upperBoundary = quantile(predictors, 2 / 3);
+  if (upperBoundary - lowerBoundary < (series.presentation === "clock-time" ? 15 : 1e-9)) return false;
+  const counts = [0, 1, 2].map((group) => predictors.filter((value) => (value <= lowerBoundary ? 0 : value <= upperBoundary ? 1 : 2) === group).length);
+  return counts.every((count) => count >= MINIMUM_NONLINEAR_GROUP);
+}
+
+function fitNonlinearEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelationOptions): Estimate | null {
+  if (!nonlinearTestEligible(pairs, series)) return null;
+  const predictors = pairs.map((pair) => pair.predictor);
+  const lowerBoundary = quantile(predictors, 1 / 3);
+  const upperBoundary = quantile(predictors, 2 / 3);
+  const groupIndexes = predictors.map((value) => value <= lowerBoundary ? 0 : value <= upperBoundary ? 1 : 2);
+
+  const rawOutcomes = pairs.map((pair) => pair.outcome);
+  const centeredOutcomes = centerWithinSources(rawOutcomes, pairs);
+  const adjustedOutcomes = centeredOutcomes.map((value) => value + mean(rawOutcomes));
+  const groupMeans = [0, 1, 2].map((group) => mean(adjustedOutcomes.filter((_, index) => groupIndexes[index] === group)));
+  const outcomeSpread = standardDeviation(rawOutcomes);
+  const materialDifference = Math.max(options.minimumMeaningfulEffect ?? 0, outcomeSpread * MINIMUM_SHAPE_EFFECT_STANDARD_DEVIATIONS);
+
+  const centeredPredictors = centerWithinSources(winsorize(predictors), pairs);
+  const linearDenominator = centeredPredictors.reduce((sum, value) => sum + value * value, 0);
+  if (linearDenominator < 1e-10) return null;
+  const linearSlope = centeredPredictors.reduce((sum, value, index) => sum + value * centeredOutcomes[index], 0) / linearDenominator;
+  const linearSse = centeredOutcomes.reduce((sum, value, index) => sum + (value - linearSlope * centeredPredictors[index]) ** 2, 0);
+  if (linearSse < 1e-10) return null;
+
+  const candidates: Array<{ indicator: number[]; valid: boolean; label: string; modelType: Exclude<MatrixModelType, "binary" | "linear">; low: number; high: number }> = [];
+  const highDifference = groupMeans[2] - (groupMeans[0] + groupMeans[1]) / 2;
+  candidates.push({
+    indicator: groupIndexes.map((group) => group === 2 ? 1 : 0),
+    valid: Math.abs(highDifference) >= materialDifference && Math.abs(groupMeans[1] - groupMeans[0]) <= Math.max(materialDifference, Math.abs(highDifference) * .5),
+    label: `threshold above ${predictorValue(upperBoundary, series)}`,
+    modelType: "threshold",
+    low: upperBoundary,
+    high: Math.max(...predictors),
+  });
+  const plateauDifference = (groupMeans[1] + groupMeans[2]) / 2 - groupMeans[0];
+  candidates.push({
+    indicator: groupIndexes.map((group) => group === 0 ? 0 : 1),
+    valid: Math.abs(plateauDifference) >= materialDifference && Math.abs(groupMeans[2] - groupMeans[1]) <= Math.max(materialDifference, Math.abs(plateauDifference) * .5),
+    label: `plateau after ${predictorValue(lowerBoundary, series)}`,
+    modelType: "plateau",
+    low: lowerBoundary,
+    high: Math.max(...predictors),
+  });
+  const middleDiffers = Math.sign(groupMeans[1] - groupMeans[0]) === Math.sign(groupMeans[1] - groupMeans[2])
+    && Math.min(Math.abs(groupMeans[1] - groupMeans[0]), Math.abs(groupMeans[1] - groupMeans[2])) >= materialDifference;
+  const middleBetter = desirability(groupMeans[1], options) > desirability((groupMeans[0] + groupMeans[2]) / 2, options);
+  const zoneType: "optimal-zone" | "adverse-zone" | "middle-zone" = options.outcomeDirection ? (middleBetter ? "optimal-zone" : "adverse-zone") : "middle-zone";
+  candidates.push({
+    indicator: groupIndexes.map((group) => group === 1 ? 1 : 0),
+    valid: middleDiffers,
+    label: `${zoneType.replace("-", " ")} ${predictorValue(lowerBoundary, series)}–${predictorValue(upperBoundary, series)}`,
+    modelType: zoneType,
+    low: lowerBoundary,
+    high: upperBoundary,
+  });
+
+  const estimates = candidates.flatMap((candidate): Estimate[] => {
+    if (!candidate.valid) return [];
+    const centeredIndicator = centerWithinSources(candidate.indicator, pairs);
+    const denominator = centeredIndicator.reduce((sum, value) => sum + value * value, 0);
+    if (denominator < 1e-10) return [];
+    const effect = centeredIndicator.reduce((sum, value, index) => sum + value * centeredOutcomes[index], 0) / denominator;
+    const residualSse = centeredOutcomes.reduce((sum, value, index) => sum + (value - effect * centeredIndicator[index]) ** 2, 0);
+    const improvement = Math.max(0, 1 - residualSse / linearSse);
+    if (improvement < MINIMUM_NONLINEAR_IMPROVEMENT) return [];
+    const estimate = fitIndicatorEstimate({
+      pairs,
+      indicator: candidate.indicator,
+      outcomeSpread,
+      predictorLow: candidate.low,
+      predictorHigh: candidate.high,
+      comparisonLabel: candidate.label,
+      modelType: candidate.modelType,
+      modelImprovement: improvement,
+    });
+    return estimate ? [estimate] : [];
+  });
+  return estimates.sort((first, second) => second.modelImprovement - first.modelImprovement)[0] ?? null;
 }
 
 function fitEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelationOptions): Estimate | null {
   if (pairs.length < MINIMUM_DAILY_OBSERVATIONS || standardDeviation(pairs.map((pair) => pair.outcome)) < 1e-10) return null;
-  const values = pairs.map((pair) => pair.predictor);
   const zeros = pairs.filter((pair) => pair.predictor === 0);
   const positives = pairs.filter((pair) => pair.predictor > 0);
   const exposedComparison = series.kind === "binary" || (series.presentation === "amount" && zeros.length >= MINIMUM_BINARY_GROUP && positives.length >= MINIMUM_BINARY_GROUP);
@@ -262,10 +351,18 @@ function fitEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelatio
       predictorLow: 0, predictorHigh: averagePositive, predictorDelta: averagePositive,
       baselineMean, comparisonMean, baselineCount: baseline.length, comparisonCount: comparison.length,
       comparisonLabel: series.kind === "binary" ? "yes vs no" : `${round(averagePositive, 1)} ${series.unit} avg vs 0`,
+      modelType: "binary",
+      modelImprovement: 0,
     };
   }
-  const bestZone = fitBestZoneEstimate(pairs, series, options);
-  if (bestZone) return bestZone;
+  const nonlinear = fitNonlinearEstimate(pairs, series, options);
+  if (nonlinear) return nonlinear;
+  return fitLinearEstimate(pairs, series);
+}
+
+function fitLinearEstimate(pairs: Pair[], series: MatrixSeries): Estimate | null {
+  if (pairs.length < MINIMUM_DAILY_OBSERVATIONS || standardDeviation(pairs.map((pair) => pair.outcome)) < 1e-10) return null;
+  const values = pairs.map((pair) => pair.predictor);
   const robustPredictors = winsorize(values);
   const robustOutcomes = winsorize(pairs.map((pair) => pair.outcome));
   const predictorMean = mean(robustPredictors);
@@ -301,6 +398,8 @@ function fitEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelatio
     comparisonMean: outcomeMean + slope * (high - predictorMean),
     baselineCount: pairs.length, comparisonCount: pairs.length,
     comparisonLabel: series.presentation === "clock-time" ? "30 min later" : `+${round(contrast, contrast >= 10 ? 0 : 1)}${series.unit ? ` ${series.unit}` : ""}`,
+    modelType: "linear",
+    modelImprovement: 0,
   };
 }
 
@@ -308,21 +407,24 @@ function calculateDoseResponse(pairs: Pair[], series: MatrixSeries, options: Mat
   if (series.kind !== "numeric" || series.presentation !== "amount") return null;
   const zeros = pairs.filter((pair) => pair.predictor === 0);
   const positives = pairs.filter((pair) => pair.predictor > 0);
-  if (zeros.length < MINIMUM_BINARY_GROUP || positives.length < MINIMUM_DAILY_OBSERVATIONS || standardDeviation(positives.map((pair) => pair.predictor)) < 1e-10) return null;
-  const estimate = fitEstimate(positives, series, options);
+  if (zeros.length < MINIMUM_BINARY_GROUP || positives.length < MINIMUM_BINARY_GROUP || standardDeviation(pairs.map((pair) => pair.predictor)) < 1e-10) return null;
+  const estimate = fitNonlinearEstimate(pairs, series, options) ?? fitLinearEstimate(pairs, series);
   if (!estimate) return null;
   const confidenceLow = estimate.effect - 1.959963984540054 * estimate.standardError;
   const confidenceHigh = estimate.effect + 1.959963984540054 * estimate.standardError;
   return {
-    comparisonLabel: `${estimate.comparisonLabel} among consumption days`,
+    comparisonLabel: `${estimate.comparisonLabel} across all recorded days`,
     effect: round(estimate.effect, 1),
     effectConfidenceLow: round(confidenceLow, 1),
     effectConfidenceHigh: round(confidenceHigh, 1),
     percentEffect: relativePercent(estimate.effect, estimate.baselineMean, outcomeUnit),
     baselineMean: round(estimate.baselineMean, 2),
     comparisonMean: round(estimate.comparisonMean, 2),
-    sampleSize: positives.length,
+    sampleSize: pairs.length,
     pValue: estimate.pValue,
+    modelType: estimate.modelType === "binary" ? "linear" : estimate.modelType,
+    modelImprovement: round(estimate.modelImprovement, 3),
+    nonlinearTested: nonlinearTestEligible(pairs, series),
   };
 }
 
@@ -397,6 +499,8 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
     percentEffect: estimate ? relativePercent(estimate.effect, estimate.baselineMean, outcome.unit) : null,
     baselineMean: estimate ? round(estimate.baselineMean, 2) : null, comparisonMean: estimate ? round(estimate.comparisonMean, 2) : null,
     baselineCount: estimate?.baselineCount ?? 0, comparisonCount: estimate?.comparisonCount ?? 0, comparisonLabel: estimate?.comparisonLabel ?? "not enough data",
+    modelType: estimate?.modelType ?? (predictor.kind === "binary" ? "binary" : "linear"), modelImprovement: round(estimate?.modelImprovement ?? 0, 3),
+    nonlinearTested: estimate?.modelType !== "binary" && nonlinearTestEligible(pairs, predictor),
     sampleSize: pairs.length, effectiveSampleSize: pairs.length, pValue: estimate?.pValue ?? 1, qValue: estimate?.pValue ?? 1,
     confidenceLow: confidenceLow === null ? -1 : confidenceLow / outcomeScale, confidenceHigh: confidenceHigh === null ? 1 : confidenceHigh / outcomeScale,
     relevance: 0, lagDays, grain, timeScale, period, family, method: "raw-within-person-hac",

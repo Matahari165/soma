@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, History, ThumbsUp } from "lucide-react";
+import { ArrowRight, Check, ThumbsUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
@@ -21,19 +21,11 @@ function openRelation(locator: RelationLocator | undefined) {
 }
 
 export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {
-  const [liked, setLiked] = useState(Boolean(narrative?.isCurrent && narrative.liked));
   const [historyLikes, setHistoryLikes] = useState<Record<string, boolean>>(() => Object.fromEntries((narrative?.history ?? []).map((item) => [item.id, item.liked])));
   const [historyOpen, setHistoryOpen] = useState(false);
   const lines = narrative?.highlights ?? [];
   async function saveLike(id: string, next: boolean) {
     return fetch("/api/lab/insights/like", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, liked: next }) });
-  }
-  async function likeCurrent() {
-    if (!narrative?.id) return;
-    const next = !liked;
-    setLiked(next);
-    const response = await saveLike(narrative.id, next);
-    if (!response.ok) setLiked(!next);
   }
   async function likeHistory(id: string) {
     const previous = historyLikes[id] ?? false;
@@ -41,15 +33,14 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
     const response = await saveLike(id, !previous);
     if (!response.ok) setHistoryLikes((current) => ({ ...current, [id]: previous }));
   }
+  const hasHistory = (narrative?.history?.length ?? 0) > 0;
+  const insightTitle = narrative?.isCurrent ? narrative.headline : "Waiting for overnight data.";
   return <section className="lab-insight-panel" aria-labelledby="lab-insight-title">
-    <header><div><h2 id="lab-insight-title">{narrative?.isCurrent ? narrative.headline : "Waiting for overnight data."}</h2></div>
-      <div className="lab-insight-actions">
-        {narrative?.isCurrent && narrative.id && <button type="button" aria-pressed={liked} onClick={() => void likeCurrent()}><ThumbsUp size={15} fill={liked ? "currentColor" : "none"} /> Like</button>}
-        {(narrative?.history?.length ?? 0) > 0 && <button type="button" aria-expanded={historyOpen} onClick={() => setHistoryOpen((current) => !current)}><History size={15} /> History</button>}
-      </div>
+    <header>
+      <h2 id="lab-insight-title">{hasHistory ? <button type="button" className="lab-insight-header-trigger" aria-expanded={historyOpen} aria-controls="lab-insight-history" onClick={() => setHistoryOpen((current) => !current)}>{insightTitle}</button> : insightTitle}</h2>
     </header>
     {lines.length > 0 && <ol aria-label="Recommendations">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open recommendation ${index + 1}: ${line}`} onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
-    {historyOpen && narrative?.history && <div className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
+    {historyOpen && narrative?.history && <div id="lab-insight-history" className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
       <header><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
       <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>
       {item.summary && <p>{item.summary}</p>}
@@ -115,7 +106,10 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
 
   useEffect(() => {
     if (!selected) return;
-    window.requestAnimationFrame(() => relationDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    window.requestAnimationFrame(() => {
+      relationDetailRef.current?.focus();
+      relationDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }, [selected]);
 
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
@@ -150,6 +144,6 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
     {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
-    <details className="matrix-method"><summary>Method</summary><p>Each variable appears once. Its cells group same-day, next-day and two-days-later results when those timings are possible. Daytime behavior is never paired with an overnight outcome that happened earlier. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. Amounts can also show a dose response among non-zero days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction. The default table keeps only q &lt; 0.05.</p></details>
+    <details className="matrix-method"><summary>Method</summary><p>Each variable appears once. Its cells group same-day, next-day and two-days-later results when those timings are possible. Daytime behavior is never paired with an overnight outcome that happened earlier. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. With at least 30 paired days, every numeric relation also tests a threshold, plateau and middle zone against a straight line, retaining a non-linear shape only when it improves the fit materially. Amounts use every recorded day, including zero-amount days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction. The default table keeps only q &lt; 0.05.</p></details>
   </section>;
 }

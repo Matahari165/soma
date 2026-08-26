@@ -183,7 +183,7 @@
 .daily-focus__signal span { display: block; width: 100%; height: 34%; background: color-mix(in srgb, var(--canvas) 35%, transparent); }
 .daily-focus__copy { padding-block: 16px; }
 .daily-focus__copy .eyebrow { color: color-mix(in srgb, var(--canvas) 70%, transparent); }
-.daily-focus h2 { margin-top: 5px; font-family: var(--font-soma-serif), serif; font-size: clamp(1.25rem, 2.3vw, 2rem); font-weight: 500; line-height: 1.05; text-wrap: balance; }
+.daily-focus h2 { margin-top: 5px; font-family: var(--font-soma-ui); font-size: clamp(1.25rem, 2.3vw, 2rem); font-weight: 500; line-height: 1.05; text-wrap: balance; }
 .daily-focus p { max-width: 92ch; margin-top: 7px; color: color-mix(in srgb, var(--canvas) 76%, transparent); font-size: .88rem; line-height: 1.45; text-wrap: pretty; }
 .daily-focus__actions { display: flex; align-items: center; gap: 12px; }
 .daily-focus .summary-button { border-color: currentColor; color: inherit; }
@@ -220,7 +220,7 @@
 .insight--information::before { background: var(--cobalt); }
 .insight--sleep::before { background: var(--cobalt); }
 .insight--activity::before { background: var(--clay); }
-.insight h3 { margin-bottom: 14px; font-family: var(--font-soma-serif), serif; font-size: 1.35rem; font-weight: 500; }
+.insight h3 { margin-bottom: 14px; font-family: var(--font-soma-ui); font-size: 1.35rem; font-weight: 500; }
 .insight p { color: var(--ink-soft); }
 .insight small { display: block; margin-top: 22px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .62rem; }
 .insight__open { align-self: end; color: var(--muted); transition: color var(--fast), transform var(--fast); }
@@ -234,7 +234,7 @@
 .widget--clickable { transition: background var(--fast); }
 .widget--clickable:hover { background: var(--paper-strong); }
 .widget-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
-.widget-header h3 { margin-top: 6px; font-family: var(--font-soma-serif), serif; font-size: 1.5rem; font-weight: 500; }
+.widget-header h3 { margin-top: 6px; font-family: var(--font-soma-ui); font-size: 1.5rem; font-weight: 500; }
 .widget-open { color: var(--muted); transition: color var(--fast), transform var(--fast); }
 .widget--clickable:hover .widget-open { color: var(--ink); transform: translate(2px, -2px); }
 .weekly-number { display: flex; align-items: end; gap: 9px; margin: auto 0 24px; }
@@ -499,7 +499,7 @@
 .correlation-card header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
 .correlation-value { font-family: var(--font-soma-mono), monospace; font-size: 2.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .correlation-strength { width: fit-content; margin-top: 18px; color: var(--moss-dark); font-size: .7rem; }
-.correlation-card h3 { max-width: 24ch; margin-top: 8px; font-family: var(--font-soma-serif), serif; font-size: 1.55rem; font-weight: 500; line-height: 1.05; text-wrap: balance; }
+.correlation-card h3 { max-width: 24ch; margin-top: 8px; font-family: var(--font-soma-ui); font-size: 1.55rem; font-weight: 500; line-height: 1.05; text-wrap: balance; }
 .correlation-card p { max-width: 58ch; margin-top: 12px; color: var(--ink-soft); font-size: .86rem; line-height: 1.5; }
 .correlation-card footer { display: flex; gap: 14px; margin-top: auto; padding-top: 18px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .63rem; }
 .analytics-unavailable { padding: 40px; border: 1px dashed var(--line-strong); color: var(--muted); text-align: center; }
@@ -583,7 +583,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .onboarding-progress > span { display: block; height: 100%; background: var(--moss); transition: width var(--normal) var(--ease); }
 .onboarding-card { width: min(100%, 760px); padding: clamp(24px, 4vw, 48px); border: 1px solid var(--ink); background: var(--paper); }
 .onboarding-card fieldset { padding: 0; border: 0; }
-.onboarding-card legend { margin: 12px 0; font-family: var(--font-soma-serif), serif; font-size: clamp(2rem, 4vw, 3.8rem); line-height: 1; }
+.onboarding-card legend { margin: 12px 0; font-family: var(--font-soma-ui); font-size: clamp(2rem, 4vw, 3.8rem); line-height: 1; }
 .choice-grid, .import-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .choice-card, .import-card { display: grid; min-height: 120px; align-content: space-between; padding: 16px; border: 1px solid var(--line); background: var(--paper-strong); cursor: pointer; }
 .choice-card:has(input:checked), .choice-card.is-selected, .import-card.is-selected { border-color: var(--ink); background: var(--moss-soft); }
@@ -646,7 +646,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .workout-summary { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--ink); }
 .workout-summary > * { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 18px; border-right: 1px solid var(--line); }
 .workout-summary > *:last-child { border-right: 0; }
-.workout-summary strong { font-family: var(--font-soma-serif), serif; font-size: 1.55rem; font-weight: 500; }
+.workout-summary strong { font-family: var(--font-soma-ui); font-size: 1.55rem; font-weight: 500; }
 .program-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
 .program-card { min-height: 260px; padding: 20px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
 .program-icon { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); }
@@ -772,7 +772,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .lab-notice { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid var(--moss); background: var(--moss-soft); font-size: .82rem; }
 .lab-header { display: grid; grid-template-columns: 1fr; padding: 2px 0 clamp(20px, 2.8vw, 36px); }
 .lab-header h1 { margin-top: 5px; font-size: clamp(3.2rem, 6.2vw, 6.5rem); }
-.lab-header > p { max-width: 36ch; padding-left: 18px; border-left: 2px solid var(--moss); color: var(--ink-soft); font-family: var(--font-soma-serif), serif; font-size: clamp(1.15rem, 1.8vw, 1.6rem); line-height: 1.25; }
+.lab-header > p { max-width: 36ch; padding-left: 18px; border-left: 2px solid var(--moss); color: var(--ink-soft); font-family: var(--font-soma-ui); font-size: clamp(1.15rem, 1.8vw, 1.6rem); line-height: 1.25; }
 .lab-question { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; padding: 19px 22px; border: 1px solid var(--ink); border-bottom: 0; background: var(--paper); }
 .lab-question h2 { margin-top: 6px; font-size: clamp(1.6rem, 3vw, 2.7rem); }
 .lab-question dl,
@@ -1022,10 +1022,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .lab-insight-panel { margin-top: 18px; border: 1px solid var(--ink); background: var(--paper); }
 .lab-insight-panel > header { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 1px solid var(--ink); }
 .lab-insight-panel h2 { max-width: 28ch; margin-top: 5px; font-family: var(--font-soma-sans), sans-serif; font-size: clamp(1.45rem, 2.4vw, 2.4rem); font-weight: 620; letter-spacing: -.035em; line-height: 1.03; }
+.lab-insight-header-trigger { display: block; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+.lab-insight-header-trigger:hover { color: var(--ink-soft); }
 .lab-insight-panel > p { max-width: 74ch; padding: 14px 20px 0; color: var(--ink-soft); font-size: .82rem; }
-.lab-insight-actions { display: flex; gap: 6px; }
-.lab-insight-actions button { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-soft); font-size: .68rem; }
-.lab-insight-actions button:hover, .lab-insight-actions button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
 .lab-insight-panel > ol { display: grid; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
 .lab-insight-panel > ol li { display: grid; grid-template-columns: 50px 1fr; min-height: 48px; align-items: center; border-bottom: 1px solid var(--line); }
 .lab-insight-panel > ol li:last-child { border-bottom: 0; }
@@ -1047,7 +1046,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .lab-overview--signals .lab-signals a { min-height: 72px; padding: 11px 14px; }
 .lab-overview--signals .lab-signals a > strong { margin-top: 6px; font-size: clamp(1.3rem, 2vw, 1.85rem); }
 
-.lab-workspace { margin-top: 28px; }
+.lab-workspace { margin-top: 28px; border: 0; }
 .checkin-card.journal-card { padding: 0; }
 .journal-card > header { min-height: 86px; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--ink); }
 .journal-card h2 { font-family: var(--font-soma-sans), sans-serif; font-size: clamp(1.4rem, 2.2vw, 2rem); font-weight: 610; letter-spacing: -.03em; }
@@ -1116,9 +1115,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-empty { display: grid; height: 100%; place-items: center; color: var(--faint); font-family: var(--font-soma-mono), monospace; font-size: .78rem; }
 .matrix-no-results { padding: 28px 16px; color: var(--muted); font-size: .76rem; }
 .relation-detail { scroll-margin-top: 24px; border: 1px solid var(--ink); border-top: 0; background: var(--paper); }
-.relation-detail > header { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--ink); }
-.relation-detail h3 { margin-top: 4px; font-family: var(--font-soma-sans), sans-serif; font-size: 1.2rem; }
-.relation-detail__explanation { max-width: 92ch; padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: .72rem; line-height: 1.5; }
+.relation-detail > header { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--ink); }
+.relation-detail h3 { margin-top: 0; font-family: var(--font-soma-sans), sans-serif; font-size: 1.2rem; line-height: 1.15; }
+.relation-detail__explanation { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: .72rem; line-height: 1.35; white-space: nowrap; }
 .relation-evidence { border-bottom: 1px solid var(--ink); }
 .relation-evidence > header { display: flex; min-height: 38px; align-items: center; justify-content: space-between; padding: 7px 18px; background: var(--canvas); font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
 .relation-evidence > header strong { font-weight: 560; }
@@ -1158,6 +1157,21 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .metric-registry__table select { width: 100%; min-height: 44px; border: 1px solid var(--line-strong); background: var(--paper-strong); font-size: .65rem; }
 
 /* Personal Lab compact pass: hierarchy through rhythm, not extra rules. */
+.score-link__status > span,
+.health-data-coverage__status,
+.checkin-state,
+.journal-period > h3,
+.journal-field__label small,
+.stability-label,
+.lab-timescale__heading > span,
+.lab-timescale-card header span,
+.matrix-collection > span,
+.relation-evidence > header,
+.relation-detail dt,
+.relation-dose h5,
+.metric-registry > summary span,
+.metric-registry__head { font-family: var(--font-soma-ui); }
+
 .personal-lab-page .lab-header__row { display: grid; grid-template-columns: minmax(210px, max-content) minmax(0, 1fr); align-items: center; gap: clamp(20px, 4vw, 58px); }
 .personal-lab-page .lab-header__row h1 { min-width: 0; margin-top: 0; }
 .personal-lab-page .lab-header__signals { min-width: 0; }
@@ -1167,13 +1181,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .personal-lab-page .lab-header__signals .lab-signals a > span { align-items: center; justify-content: center; gap: 2px; text-align: center; }
 .lab-signals a > span small { display: block; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .53rem; font-weight: 400; letter-spacing: .01em; line-height: 1.15; white-space: nowrap; }
 .lab-signals a > strong.lab-signal__value { margin-top: 5px; }
-.lab-signals a > strong.lab-signal__value--above { color: var(--moss-dark); }
+.lab-signals a > strong.lab-signal__value--above { color: var(--moss-signal); }
 .lab-signals a > strong.lab-signal__value--below { color: var(--clay); }
 .lab-insight-panel > header { align-items: center; }
 .lab-insight-panel > header { min-height: 64px; padding: 12px 16px; gap: 14px; }
 .lab-insight-panel > header > div:first-child { min-width: 0; flex: 1; }
 .lab-insight-panel h2 { max-width: none; }
 .lab-insight-panel h2, .journal-card h2, .matrix-header h2 { margin-top: 0; font-size: clamp(1.15rem, 1.8vw, 1.75rem); line-height: 1.08; }
+.lab-insight-panel > header h2 { width: 100%; }
 .lab-insight-panel > ol { margin-top: 0; }
 .lab-insight-panel > ol li { grid-template-columns: 48px minmax(0, 1fr); }
 .lab-insight-panel > ol span { border-right: 0; justify-items: start; justify-content: start; padding-left: 14px; color: var(--moss-dark); }
@@ -1182,7 +1197,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .lab-overview--signals .lab-signals a { min-height: 60px; align-content: center; justify-items: center; padding: 8px 14px; text-align: center; }
 .lab-overview--signals .lab-signals a > strong { margin-top: 4px; line-height: 1; }
 
-.journal-card > header { min-height: 68px; gap: 12px; padding: 12px 16px; }
+.journal-card > header { min-height: 64px; gap: 12px; padding: 0 0 10px; }
 .journal-card > header > div:first-child { min-width: 0; }
 .journal-card__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .journal-card__actions .primary-button { min-height: 40px; }
@@ -1200,6 +1215,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .journal-manager { border-top: 0; }
 .matrix-section { margin-top: 26px; }
 .matrix-header { padding-bottom: 10px; }
+
+@media (min-width: 1101px) {
+  .personal-lab-page { padding-top: clamp(12px, 2vw, 28px); }
+}
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }

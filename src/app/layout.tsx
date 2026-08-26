@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Azeret_Mono, Newsreader, Schibsted_Grotesk } from "next/font/google";
+import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
@@ -16,14 +16,6 @@ const schibsted = Schibsted_Grotesk({
   weight: "variable",
   display: "swap",
   variable: "--font-soma-sans",
-});
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-soma-serif",
 });
 
 const azeretMono = Azeret_Mono({
@@ -64,7 +56,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${schibsted.variable} ${newsreader.variable} ${azeretMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo Data · Nothing is sent or saved</span></div>}

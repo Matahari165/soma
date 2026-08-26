@@ -32,6 +32,24 @@ function probability(value: number) {
   return value < .001 ? "<.001" : value.toFixed(3);
 }
 
+function modelText(modelType: MatrixRelation["modelType"]) {
+  if (modelType === "binary") return "Exposure comparison";
+  if (modelType === "linear") return "Linear relation retained";
+  if (modelType === "threshold") return "Threshold detected";
+  if (modelType === "plateau") return "Plateau detected";
+  if (modelType === "optimal-zone") return "Optimal zone detected";
+  if (modelType === "adverse-zone") return "Adverse zone detected";
+  return "Middle zone detected";
+}
+
+function modelEvidence(modelType: MatrixRelation["modelType"], improvement: number, nonlinearTested: boolean) {
+  return modelType === "binary"
+    ? modelText(modelType)
+    : modelType === "linear"
+      ? nonlinearTested ? "Linear relation retained after the non-linear check" : "Linear estimate · non-linear check needs 30 varied paired days"
+    : `${modelText(modelType)} · ${Math.round(improvement * 100)}% less unexplained variation than a straight line`;
+}
+
 function overnightOutcome(relation: MatrixRelation) {
   return ["sleep_minutes", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_awakenings", "sleep_fragmentation", "deep_sleep", "rem_sleep", "light_sleep", "hrv", "rhr", "respiratory", "spo2", "recovery"].some((id) => relation.outcomeId.startsWith(id));
 }
@@ -86,12 +104,14 @@ function RelationEvidence({ relation, direction }: { relation: MatrixRelation; d
       <div><dt>Outcome change</dt><dd>{percentText(relation) ? `${percentText(relation)} of baseline · ` : ""}{effectText(relation)}</dd></div>
       <div><dt>95% interval</dt><dd>{relation.effectConfidenceLow === null ? "—" : `${signed(relation.effectConfidenceLow, effectDigits(relation.effect, relation.outcomeUnit))} to ${signed(relation.effectConfidenceHigh ?? 0, effectDigits(relation.effect, relation.outcomeUnit))} ${effectUnit(relation.outcomeUnit)}`}</dd></div>
       <div><dt>Compared days</dt><dd>{relation.baselineCount} baseline · {relation.comparisonCount} comparison</dd></div>
+      <div><dt>Detected shape</dt><dd>{modelEvidence(relation.modelType, relation.modelImprovement, relation.nonlinearTested)}</dd></div>
       <div><dt>Tests</dt><dd>p {probability(relation.pValue)} · q {probability(relation.qValue)}</dd></div>
     </dl>
     {relation.doseResponse && <section className="relation-dose">
       <h5>Dose response</h5>
-      <p><strong>{relation.doseResponse.comparisonLabel}</strong> is associated with {doseEffectText(relation.doseResponse, relation.outcomeUnit)}{relation.doseResponse.percentEffect === null ? "" : ` (${signed(relation.doseResponse.percentEffect, 1)}% of baseline)`}. This uses only the {relation.doseResponse.sampleSize} days with a non-zero amount.</p>
-      <small>Exploratory dose estimate · raw p {probability(relation.doseResponse.pValue)} · not used to qualify the main relation · 95% interval {signed(relation.doseResponse.effectConfidenceLow, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} to {signed(relation.doseResponse.effectConfidenceHigh, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} {effectUnit(relation.outcomeUnit)}</small>
+      <p><strong>{relation.doseResponse.comparisonLabel}</strong> is associated with {doseEffectText(relation.doseResponse, relation.outcomeUnit)}{relation.doseResponse.percentEffect === null ? "" : ` (${signed(relation.doseResponse.percentEffect, 1)}% of baseline)`}. This uses all {relation.doseResponse.sampleSize} recorded days, including zero-amount days.</p>
+      <p><small>{modelEvidence(relation.doseResponse.modelType, relation.doseResponse.modelImprovement, relation.doseResponse.nonlinearTested)}.</small></p>
+      <small>Exploratory quantity estimate · {relation.doseResponse.modelType === "linear" ? "raw" : "shape-search adjusted"} p {probability(relation.doseResponse.pValue)} · not used to qualify the main exposure relation · 95% interval {signed(relation.doseResponse.effectConfidenceLow, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} to {signed(relation.doseResponse.effectConfidenceHigh, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} {effectUnit(relation.outcomeUnit)}</small>
     </section>}
   </article>;
 }
@@ -101,7 +121,7 @@ export function RelationDetail({ relations, direction, onClose, detailRef }: { r
   if (!first) return null;
   return <aside ref={detailRef} className="relation-detail" tabIndex={-1} aria-labelledby="relation-detail-title">
     <header>
-      <div><span className="section-kicker">Relation detail</span><h3 id="relation-detail-title">{first.predictorLabel} × {first.outcomeLabel}</h3></div>
+      <div><h3 id="relation-detail-title">{first.predictorLabel} × {first.outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation detail" onClick={onClose}><X size={17} /></button>
     </header>
     <p className="relation-detail__explanation">Each percentage below is the relative change in the <strong>outcome</strong> for the predictor contrast written beside it. It is never an effect per one unit unless that exact unit is stated.</p>
