@@ -5,7 +5,7 @@ import { healthMetricRegistry, metricDefinitionsForHealth, metricRoleFor } from 
 describe("Personal Lab metric registry", () => {
   it("keeps the approved core roles", () => {
     const roles = new Map(healthMetricRegistry.map((metric) => [metric.id, metric.defaultRole]));
-    expect(roles.get("sleep_minutes")).toBe("result");
+    expect(roles.get("sleep_minutes")).toBe("both");
     expect(roles.get("recovery")).toBe("result");
     expect(roles.get("bedtime")).toBe("influence");
     expect(roles.get("effort")).toBe("influence");

@@ -6,9 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 
 export type TodaySignalValues = {
   sleepMinutes: number | null;
+  sleepRegularity: number | null;
   recoveryScore: number | null;
   effortScore: number | null;
   averageSleepMinutes?: number | null;
+  averageSleepRegularity?: number | null;
   averageRecoveryScore?: number | null;
   averageEffortScore?: number | null;
   overnightFingerprint: string | null;
@@ -55,12 +57,12 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [refresh]);
 
   const signals = [
-    { label: "Sleep duration", value: duration(values.sleepMinutes), average: duration(values.averageSleepMinutes ?? null), trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
+    { label: "Sleep duration", value: duration(values.sleepMinutes), average: `Regularity · ${values.sleepRegularity === null ? "—" : `${Math.round(values.sleepRegularity)}%`}`, trend: comparison(values.sleepRegularity, values.averageSleepRegularity ?? null), href: "/sleep" },
     { label: "Recovery", value: values.recoveryScore === null ? "—" : String(Math.round(values.recoveryScore)), average: values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : String(Math.round(values.averageRecoveryScore)), trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
     { label: "Effort", value: values.effortScore === null ? "—" : String(Math.round(values.effortScore)), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
   ];
   return <section className="lab-signals" aria-label="Today" aria-busy={refreshing} aria-live="polite">{signals.map(({ label, value, average, trend, href }) => <Link href={href} prefetch={false} key={label}>
-    <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">30-day avg · {average}</small></span>
+    <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">{label === "Sleep duration" ? average : `30-day avg · ${average}`}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`}>{value}</strong>
   </Link>)}</section>;
 }

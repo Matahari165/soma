@@ -6,22 +6,18 @@ import type { DashboardSnapshot } from "@/domain/health";
 export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"] }) {
   const max = 80;
   const hasActivity = data.days.some((day) => day.value !== null);
-  const hasTarget = data.targetMin > 0 && data.targetMax >= data.targetMin;
-  const remaining = Math.max(0, data.targetMin - data.current);
-  const todayIndex = data.days.findIndex((day) => day.today);
-  const activeDaysRemaining = todayIndex >= 0 ? data.days.slice(todayIndex + 1).length : 0;
   return (
     <Link className="widget widget--clickable" href="/activity" aria-label="Open activity details">
       <div className="widget-header">
         <div>
-          <h3>Effort range</h3>
+          <h3>Weekly load</h3>
         </div>
         <ArrowUpRight className="widget-open" size={18} aria-hidden="true" />
       </div>
       {hasActivity ? <>
         <div className="weekly-number">
           <strong>{data.current}</strong>
-          <span>{hasTarget ? `of ${data.targetMin}–${data.targetMax}` : "target building"}</span>
+          <span>accumulated points</span>
         </div>
         <div className="effort-bars" aria-label="Daily effort this week">
           {data.days.map((day, index) => (
@@ -36,7 +32,7 @@ export function WeeklyEffort({ data }: { data: DashboardSnapshot["weeklyEffort"]
             </div>
           ))}
         </div>
-        <p className="widget-note">{hasTarget ? remaining ? `${remaining} points left · ${activeDaysRemaining} days` : "Weekly range reached" : "Target building"}</p>
+        <p className="widget-note">Sum of measured daily load. Recovery remains a separate signal.</p>
       </> : <WidgetEmpty title="No activity data yet" description="Sync Google Health to build your weekly effort view." />}
     </Link>
   );

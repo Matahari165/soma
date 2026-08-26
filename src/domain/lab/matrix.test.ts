@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adjustMatrixRelations, calculateMatrixRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
 
 function date(index: number) {
   const value = new Date("2025-01-01T12:00:00Z");
@@ -191,6 +191,14 @@ describe("Personal Lab raw within-person relations", () => {
     expect(relation.featureEligible).toBe(false);
   });
 
+  it("preserves legitimate high-activity days while limiting obvious import errors", () => {
+    const activity = [...Array.from({ length: 97 }, (_, index) => 5_000 + index % 14 * 1_000), 25_000, 30_000, 980_000];
+    const protectedValues = protectAgainstExtremeImportErrors(activity);
+    expect(protectedValues.at(-3)).toBe(25_000);
+    expect(protectedValues.at(-2)).toBe(30_000);
+    expect(protectedValues.at(-1)).toBeLessThan(100_000);
+  });
+
   it("applies Benjamini-Hochberg and features only q below .05", () => {
     const x = Array.from({ length: 100 }, (_, index) => Math.sin(index * 1.27) * 10 + index % 4);
     const relations = [1.2, .4, 0].map((slope, relationIndex) => calculateMatrixRelation(
@@ -228,14 +236,25 @@ describe("Personal Lab raw within-person relations", () => {
     expect(relation.practicalRatio).toBeCloseTo(Math.abs(relation.effect ?? 0) / outcomeSpread / .2, 1);
   });
 
-  it("deduplicates lags by ratio, then q value, then sample size", () => {
+  it("prefers the next day unless J+2 is at least twenty percent stronger", () => {
     const base = calculateMatrixRelation(series("load", Array.from({ length: 80 }, (_, index) => index)), series("hrv", Array.from({ length: 80 }, (_, index) => 40 + index)));
     const relation = (lagDays: number, practicalRatio: number, qValue: number, sampleSize: number) => ({ ...base, lagDays, practicalRatio, qValue, sampleSize, practicallyMeaningful: true, featureEligible: true });
     expect(selectMeaningfulRelations([
       relation(0, 2, .01, 80),
-      relation(1, 3, .04, 60),
-      relation(2, 3, .02, 40),
+      relation(1, 2, .04, 60),
+      relation(2, 2.39, .02, 40),
+    ])[0]?.lagDays).toBe(1);
+    expect(selectMeaningfulRelations([
+      relation(1, 2, .01, 80),
+      relation(2, 2.4, .04, 60),
     ])[0]?.lagDays).toBe(2);
+  });
+
+  it("reports the effect for the observed habitual predictor variation", () => {
+    const input = Array.from({ length: 80 }, (_, index) => 5_000 + index % 20 * 500);
+    const relation = calculateMatrixRelation(series("steps", input), series("hrv", input.map((value) => 40 + value * .001)));
+    expect(relation.habitualPredictorDelta).toBeGreaterThan(4_000);
+    expect(relation.habitualEffect).toBeGreaterThan(4);
   });
 
   it("keeps target outcomes eligible when their real-unit effect clears the threshold", () => {

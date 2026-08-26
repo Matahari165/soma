@@ -82,9 +82,11 @@ export type PersonalLabSnapshot = {
   };
   today: {
     sleepMinutes: number | null;
+    sleepRegularity: number | null;
     recoveryScore: number | null;
     effortScore: number | null;
     averageSleepMinutes: number | null;
+    averageSleepRegularity: number | null;
     averageRecoveryScore: number | null;
     averageEffortScore: number | null;
     deepWorkMinutes: number | null;
@@ -133,10 +135,13 @@ export type PersonalLabSnapshot = {
   };
 };
 
-export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
+export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
 
 const MAX_RELATION_LAG_DAYS = 2;
 const OVERNIGHT_OUTCOME_IDS = new Set(["sleep_minutes", "sleep_need", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_awake_percent", "sleep_awakenings", "sleep_fragmentation", "deep_sleep", "deep_sleep_percent", "rem_sleep", "rem_sleep_percent", "light_sleep", "light_sleep_percent", "hrv", "rhr", "respiratory", "spo2", "spo2_low", "spo2_high", "bedtime", "wake_time", "sleep_regularity", "sleep_debt", "daily_sleep_debt", "skin_temperature", "night_temperature", "baseline_temperature", "recovery"]);
+const EFFORT_INPUT_IDS = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
+const RECOVERY_INPUT_IDS = new Set(["hrv", "rhr", "sleep_minutes", "sleep_efficiency"]);
+const SLEEP_DEBT_INPUT_IDS = new Set(["sleep_minutes", "sleep_need", "daily_sleep_debt"]);
 
 export function timingForAutomaticMetric(metricId: string): "overnight" | "daytime" {
   return OVERNIGHT_OUTCOME_IDS.has(metricId) ? "overnight" : "daytime";
@@ -144,6 +149,16 @@ export function timingForAutomaticMetric(metricId: string): "overnight" | "dayti
 
 export function isImpossibleSameDayTiming(timing: "overnight" | "daytime" | "journal" | "unknown", outcomeId: string, lagDays: number) {
   return lagDays === 0 && OVERNIGHT_OUTCOME_IDS.has(outcomeId) && (timing === "journal" || timing === "daytime");
+}
+
+export function isMechanicalRelation(predictorId: string, outcomeId: string) {
+  if (predictorId === outcomeId) return true;
+  if ((predictorId === "effort" && EFFORT_INPUT_IDS.has(outcomeId)) || (outcomeId === "effort" && EFFORT_INPUT_IDS.has(predictorId))) return true;
+  if ((predictorId === "recovery" && RECOVERY_INPUT_IDS.has(outcomeId)) || (outcomeId === "recovery" && RECOVERY_INPUT_IDS.has(predictorId))) return true;
+  return (predictorId === "sleep_debt" && SLEEP_DEBT_INPUT_IDS.has(outcomeId))
+    || (outcomeId === "sleep_debt" && SLEEP_DEBT_INPUT_IDS.has(predictorId))
+    || (predictorId === "daily_sleep_debt" && outcomeId === "sleep_minutes")
+    || (outcomeId === "daily_sleep_debt" && predictorId === "sleep_minutes");
 }
 
 export function labMatrixCacheKey(periods: AnalysisPeriod[] | undefined) {
@@ -225,6 +240,7 @@ export function recentAverages(observations: LabObservation[], todayDate: string
   const recent = observations.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
   return {
     averageSleepMinutes: average(recent.map((day) => day.sleepMinutes)),
+    averageSleepRegularity: average(recent.map((day) => day.sleepRegularity)),
     averageRecoveryScore: average(recent.map((day) => day.recoveryScore)),
     averageEffortScore: average(recent.map((day) => day.effortScore)),
   };
@@ -379,16 +395,7 @@ function buildCorrelationMatrix(input: {
     spo2: .3,
     recovery: 3,
   };
-  const sleepComponents = new Set(["sleep_minutes", "sleep_efficiency", "sleep_awake", "deep_sleep", "rem_sleep", "light_sleep", "sleep_debt", "daily_sleep_debt"]);
-  const effortInputs = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
-  const recoveryInputs = new Set(["hrv", "rhr", "sleep_minutes", "sleep_efficiency"]);
-  const mechanicalPair = (relation: MatrixRelation) => {
-    if (relation.predictorId === relation.outcomeId) return true;
-    if (sleepComponents.has(relation.predictorId) && sleepComponents.has(relation.outcomeId)) return true;
-    if ((relation.predictorId === "effort" && effortInputs.has(relation.outcomeId)) || (relation.outcomeId === "effort" && effortInputs.has(relation.predictorId))) return true;
-    return (relation.predictorId === "recovery" && recoveryInputs.has(relation.outcomeId)) || (relation.outcomeId === "recovery" && recoveryInputs.has(relation.predictorId));
-  };
-  const excludeDerivedOutcome = (relation: MatrixRelation) => mechanicalPair(relation)
+  const excludeDerivedOutcome = (relation: MatrixRelation) => isMechanicalRelation(relation.predictorId, relation.outcomeId)
     ? {
       ...relation,
       coefficient: null,
@@ -719,6 +726,7 @@ function buildSnapshot(input: {
     journal: { variables: input.journal.variables, entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -4) && entry.entryDate <= todayDate), days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -4) && day.entryDate <= todayDate) },
     today: {
       sleepMinutes: todayObservation?.sleepMinutes ?? null,
+      sleepRegularity: todayObservation?.sleepRegularity ?? null,
       recoveryScore: todayObservation?.recoveryScore ?? null,
       effortScore: todayObservation?.effortScore ?? null,
       ...recentAverages(observations, todayDate),
@@ -848,6 +856,7 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
     const today = observations.find((day) => day.date === todayDate);
     return {
       sleepMinutes: today?.sleepMinutes ?? null,
+      sleepRegularity: today?.sleepRegularity ?? null,
       recoveryScore: today?.recoveryScore ?? null,
       effortScore: today?.effortScore ?? null,
       ...recentAverages(observations, todayDate),
@@ -860,19 +869,21 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
   const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
   const startDate = addDays(todayDate, -29);
   const [healthResult, scoresResult] = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
   ]);
   if (healthResult.error || scoresResult.error) throw new Error("Today's signals could not be loaded.");
-  const healthRows = (healthResult.data ?? []) as Array<Pick<HealthDay, "metric_date" | "sleep_minutes" | "bedtime" | "wake_time" | "sleep_efficiency" | "sleep_latency_minutes" | "sleep_awake_minutes" | "sleep_awakenings" | "sleep_fragmentation" | "sleep_deep_minutes" | "sleep_rem_minutes" | "hrv_ms" | "resting_heart_rate" | "respiratory_rate">>;
+  const healthRows = (healthResult.data ?? []) as Array<Pick<HealthDay, "metric_date" | "sleep_minutes" | "sleep_regularity" | "bedtime" | "wake_time" | "sleep_efficiency" | "sleep_latency_minutes" | "sleep_awake_minutes" | "sleep_awakenings" | "sleep_fragmentation" | "sleep_deep_minutes" | "sleep_rem_minutes" | "hrv_ms" | "resting_heart_rate" | "respiratory_rate">>;
   const scoreRows = scoresResult.data ?? [];
   const todayHealth = healthRows.find((day) => day.metric_date === todayDate);
   const todayScores = scoreRows.filter((score) => score.score_date === todayDate);
   return {
     sleepMinutes: toNumber(todayHealth?.sleep_minutes),
+    sleepRegularity: toNumber(todayHealth?.sleep_regularity),
     recoveryScore: toNumber(todayScores.find((score) => score.kind === "recovery")?.score),
     effortScore: toNumber(todayScores.find((score) => score.kind === "effort")?.score),
     averageSleepMinutes: average(healthRows.map((day) => toNumber(day.sleep_minutes))),
+    averageSleepRegularity: average(healthRows.map((day) => toNumber(day.sleep_regularity))),
     averageRecoveryScore: average(scoreRows.filter((score) => score.kind === "recovery").map((score) => toNumber(score.score))),
     averageEffortScore: average(scoreRows.filter((score) => score.kind === "effort").map((score) => toNumber(score.score))),
     overnightFingerprint: overnightFingerprint(todayHealth),

@@ -144,7 +144,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
   const scores = days.flatMap((day, index): ScoreDay[] => [
     { score_date: day.metric_date, kind: "sleep", score: Math.round(76 + Math.sin(index / 5) * 7 + index * 0.05), drivers: {} },
     { score_date: day.metric_date, kind: "recovery", score: Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07), drivers: {} },
-    { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { targetMinimum: 55, targetMaximum: 75 } },
+    { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
   ]);
   const canonicalDays = days.slice(-previewScoreHistory.sleep.length);
   canonicalDays.forEach((day, index) => {

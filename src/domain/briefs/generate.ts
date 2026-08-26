@@ -2,7 +2,6 @@ export type BriefInput = {
   sleepScore: number | null;
   recoveryScore: number | null;
   effortScore: number | null;
-  effortTarget: [number, number] | null;
   bedtime: string | null;
   insightTitles: string[];
 };
@@ -11,7 +10,6 @@ export type WeeklyBriefInput = {
   averageSleepScore: number | null;
   averageRecoveryScore: number | null;
   weeklyEffort: number | null;
-  weeklyEffortTarget: [number, number] | null;
   insightTitles: string[];
 };
 
@@ -28,26 +26,18 @@ export function generateMorningBrief(input: BriefInput) {
 }
 
 export function generateEveningBrief(input: BriefInput) {
-  const effort = input.effortScore === null || !input.effortTarget
-    ? "Today's effort target is not available yet."
-    : input.effortScore < input.effortTarget[0]
-      ? `Today's effort is ${input.effortScore}/100, below the target zone.`
-      : input.effortScore > input.effortTarget[1]
-        ? `Today's effort is ${input.effortScore}/100, above the target zone.`
-        : `Today's effort is within the target zone at ${input.effortScore}/100.`;
+  const effort = input.effortScore === null
+    ? "Today's accomplished load is not available yet."
+    : `Today's accomplished load is ${input.effortScore}/100.`;
   const bedtime = input.bedtime ? `Aim to start winding down for a ${input.bedtime} bedtime.` : "A bedtime recommendation needs more sleep data.";
   return `${effort} ${bedtime}`;
 }
 
 export function generateWeeklyBrief(input: WeeklyBriefInput) {
   const scores = [scorePhrase("Average sleep", input.averageSleepScore), scorePhrase("average recovery", input.averageRecoveryScore)].join(" and ");
-  const effort = input.weeklyEffort === null || !input.weeklyEffortTarget
-    ? "Weekly effort is still being calculated."
-    : input.weeklyEffort < input.weeklyEffortTarget[0]
-      ? `Weekly effort is ${input.weeklyEffort}, below the ${input.weeklyEffortTarget[0]}–${input.weeklyEffortTarget[1]} target.`
-      : input.weeklyEffort > input.weeklyEffortTarget[1]
-        ? `Weekly effort is ${input.weeklyEffort}, above the ${input.weeklyEffortTarget[0]}–${input.weeklyEffortTarget[1]} target.`
-        : `Weekly effort is within the ${input.weeklyEffortTarget[0]}–${input.weeklyEffortTarget[1]} target at ${input.weeklyEffort}.`;
+  const effort = input.weeklyEffort === null
+    ? "Weekly accumulated load is still being calculated."
+    : `Weekly accumulated load is ${input.weeklyEffort}.`;
   const pattern = input.insightTitles[0] ? ` Main pattern: ${input.insightTitles[0].toLowerCase()}.` : "";
   return `${scores}. ${effort}${pattern}`;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateEffortScore, calculateEffortScoreFromAvailable, calculateEffortTarget } from "./effort";
+import { calculateEffortScore, calculateEffortScoreFromAvailable, diminishingLoad } from "./effort";
 import { calculateRecoveryScore } from "./recovery";
 import { circularMean, sleepRegularityScore } from "./regularity";
 import { estimateSleepNeed, recommendBedtime } from "./sleep-need";
@@ -36,11 +36,10 @@ describe("score engines", () => {
     expect(result.score).toBeGreaterThan(70);
   });
 
-  it("keeps raw effort separate from the goal target", () => {
+  it("calculates accomplished load without a prescriptive target", () => {
     const effort = calculateEffortScore({ zoneMinutes: 45, activeEnergyKcal: 400, exerciseMinutes: 50, steps: 8000 });
-    const target = calculateEffortTarget({ goal: "build_muscle", recoveryScore: 72, weeklyEffortSoFar: 240, daysRemainingIncludingToday: 3 });
     expect(effort.score).toBeGreaterThan(0);
-    expect(target.minimum).toBeLessThan(target.maximum);
+    expect(effort.algorithmVersion).toBe("effort-v3");
   });
 
   it("does not convert missing activity into a zero effort score", () => {
@@ -56,6 +55,16 @@ describe("score engines", () => {
   });
 
   it("normalizes a sufficiently covered score without turning absent components into zero", () => {
-    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: 12_000 })).toMatchObject({ score: 100, coverage: 0.5 });
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: 12_000 })).toMatchObject({ score: 50, coverage: 0.5 });
+  });
+
+  it("keeps adding accomplished load above each reference with diminishing returns", () => {
+    expect(diminishingLoad(12_000, 12_000)).toBeCloseTo(.5);
+    expect(diminishingLoad(24_000, 12_000)).toBeCloseTo(.75);
+    expect(diminishingLoad(36_000, 12_000)).toBeCloseTo(.875);
+    const reference = calculateEffortScore({ zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: 12_000 });
+    const doubled = calculateEffortScore({ zoneMinutes: 150, activeEnergyKcal: 1_400, exerciseMinutes: 120, steps: 24_000 });
+    expect(reference).toMatchObject({ score: 50, algorithmVersion: "effort-v3" });
+    expect(doubled.score).toBe(75);
   });
 });

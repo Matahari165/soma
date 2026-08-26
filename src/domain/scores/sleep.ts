@@ -10,7 +10,7 @@ export type SleepScoreResult = {
   durationComponent: number;
   efficiencyComponent: number;
   regularityComponent: number;
-  algorithmVersion: "sleep-v0.1";
+  algorithmVersion: "sleep-v0.2";
 };
 
 const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
@@ -29,8 +29,8 @@ export function calculateSleepScore(input: SleepScoreInput): SleepScoreResult {
   const score = Math.round(
     100 *
       (0.7 * durationComponent +
-        0.15 * efficiencyComponent +
-        0.15 * regularityComponent),
+        0.1 * efficiencyComponent +
+        0.2 * regularityComponent),
   );
 
   return {
@@ -38,6 +38,6 @@ export function calculateSleepScore(input: SleepScoreInput): SleepScoreResult {
     durationComponent,
     efficiencyComponent,
     regularityComponent,
-    algorithmVersion: "sleep-v0.1",
+    algorithmVersion: "sleep-v0.2",
   };
 }

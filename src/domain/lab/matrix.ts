@@ -8,6 +8,8 @@ const MINIMUM_NONLINEAR_GROUP = 8;
 const MINIMUM_NONLINEAR_IMPROVEMENT = .1;
 const MINIMUM_SHAPE_EFFECT_STANDARD_DEVIATIONS = .15;
 const SEARCHED_NONLINEAR_SHAPES = 3;
+const EXTREME_IMPORT_FENCE_MULTIPLIER = 6;
+const J2_HIGHLIGHT_ADVANTAGE = 1.2;
 
 export type AnalysisPeriod = 15 | 30 | 90 | "all";
 export type MatrixPoint = { date: string; value: number; segment?: string };
@@ -58,6 +60,7 @@ export type MatrixRelation = {
   stable: boolean; stability: MatrixStability; strength: "hidden" | "light" | "clear" | "strong";
   coverageBySource: MatrixSourceCoverage[]; sourceEstimates: MatrixSourceEstimate[];
   doseResponse: MatrixDoseResponse | null;
+  habitualPredictorDelta: number | null; habitualEffect: number | null;
   practicallyMeaningful: boolean; practicalThreshold: number; practicalRatio: number;
   featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
 };
@@ -77,6 +80,7 @@ type Estimate = {
   predictorLow: number; predictorHigh: number; predictorDelta: number;
   baselineMean: number; comparisonMean: number; baselineCount: number; comparisonCount: number; comparisonLabel: string;
   modelType: MatrixModelType; modelImprovement: number;
+  habitualPredictorDelta: number | null; habitualEffect: number | null;
 };
 
 function addDays(date: string, days: number) {
@@ -111,9 +115,13 @@ function ranks(values: number[]) {
   }
   return result;
 }
-function winsorize(values: number[]) {
-  const low = quantile(values, .025);
-  const high = quantile(values, .975);
+export function protectAgainstExtremeImportErrors(values: number[]) {
+  const lowerQuartile = quantile(values, .25);
+  const upperQuartile = quantile(values, .75);
+  const spread = upperQuartile - lowerQuartile;
+  if (spread <= 0) return [...values];
+  const low = lowerQuartile - EXTREME_IMPORT_FENCE_MULTIPLIER * spread;
+  const high = upperQuartile + EXTREME_IMPORT_FENCE_MULTIPLIER * spread;
   return values.map((value) => Math.max(low, Math.min(high, value)));
 }
 function centerWithinSources(values: number[], pairs: Pair[]) {
@@ -235,6 +243,8 @@ function fitIndicatorEstimate(input: {
     comparisonLabel: input.comparisonLabel,
     modelType: input.modelType,
     modelImprovement: input.modelImprovement,
+    habitualPredictorDelta: null,
+    habitualEffect: null,
   };
 }
 
@@ -262,7 +272,7 @@ function fitNonlinearEstimate(pairs: Pair[], series: MatrixSeries, options: Matr
   const outcomeSpread = standardDeviation(rawOutcomes);
   const materialDifference = Math.max(options.minimumMeaningfulEffect ?? 0, outcomeSpread * MINIMUM_SHAPE_EFFECT_STANDARD_DEVIATIONS);
 
-  const centeredPredictors = centerWithinSources(winsorize(predictors), pairs);
+  const centeredPredictors = centerWithinSources(protectAgainstExtremeImportErrors(predictors), pairs);
   const linearDenominator = centeredPredictors.reduce((sum, value) => sum + value * value, 0);
   if (linearDenominator < 1e-10) return null;
   const linearSlope = centeredPredictors.reduce((sum, value, index) => sum + value * centeredOutcomes[index], 0) / linearDenominator;
@@ -354,6 +364,8 @@ function fitEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelatio
       comparisonLabel: series.kind === "binary" ? "yes vs no" : `${round(averagePositive, 1)} ${series.unit} avg vs 0`,
       modelType: "binary",
       modelImprovement: 0,
+      habitualPredictorDelta: null,
+      habitualEffect: null,
     };
   }
   const nonlinear = fitNonlinearEstimate(pairs, series, options);
@@ -364,8 +376,8 @@ function fitEstimate(pairs: Pair[], series: MatrixSeries, options: MatrixRelatio
 function fitLinearEstimate(pairs: Pair[], series: MatrixSeries): Estimate | null {
   if (pairs.length < MINIMUM_DAILY_OBSERVATIONS || standardDeviation(pairs.map((pair) => pair.outcome)) < 1e-10) return null;
   const values = pairs.map((pair) => pair.predictor);
-  const robustPredictors = winsorize(values);
-  const robustOutcomes = winsorize(pairs.map((pair) => pair.outcome));
+  const robustPredictors = protectAgainstExtremeImportErrors(values);
+  const robustOutcomes = protectAgainstExtremeImportErrors(pairs.map((pair) => pair.outcome));
   const predictorMean = mean(robustPredictors);
   const centered = centerWithinSources(robustPredictors, pairs);
   const denominator = centered.reduce((sum, value) => sum + value * value, 0);
@@ -401,6 +413,8 @@ function fitLinearEstimate(pairs: Pair[], series: MatrixSeries): Estimate | null
     comparisonLabel: series.presentation === "clock-time" ? "30 min later" : `+${round(contrast, contrast >= 10 ? 0 : 1)}${series.unit ? ` ${series.unit}` : ""}`,
     modelType: "linear",
     modelImprovement: 0,
+    habitualPredictorDelta: observedSpread,
+    habitualEffect: slope * observedSpread,
   };
 }
 
@@ -476,7 +490,7 @@ export const PRACTICAL_EFFECT_THRESHOLDS: Readonly<Record<string, number>> = {
 };
 
 export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8) {
-  const bestByPair = new Map<string, MatrixRelation>();
+  const eligibleByPair = new Map<string, MatrixRelation[]>();
   const stronger = (first: MatrixRelation, second: MatrixRelation) =>
     second.practicalRatio - first.practicalRatio
     || first.qValue - second.qValue
@@ -484,10 +498,15 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
   for (const relation of relations) {
     if (relation.excluded || relation.qValue >= .05 || !relation.practicallyMeaningful) continue;
     const key = `${relation.period}:${relation.predictorId}:${relation.outcomeId}`;
-    const current = bestByPair.get(key);
-    if (!current || stronger(relation, current) < 0) bestByPair.set(key, relation);
+    eligibleByPair.set(key, [...(eligibleByPair.get(key) ?? []), relation]);
   }
-  return [...bestByPair.values()].sort(stronger).slice(0, limit);
+  const selected = [...eligibleByPair.values()].map((candidates) => {
+    const nextDay = candidates.filter((relation) => relation.lagDays === 1).sort(stronger)[0];
+    if (!nextDay) return [...candidates].sort(stronger)[0];
+    const twoDaysLater = candidates.filter((relation) => relation.lagDays === 2).sort(stronger)[0];
+    return twoDaysLater && twoDaysLater.practicalRatio >= nextDay.practicalRatio * J2_HIGHLIGHT_ADVANTAGE ? twoDaysLater : nextDay;
+  });
+  return selected.sort(stronger).slice(0, limit);
 }
 
 export function adjustMatrixRelations(relations: MatrixRelation[]) {
@@ -547,6 +566,8 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
     strength: estimate ? "light" : "hidden", coverageBySource,
     sourceEstimates: estimate ? [{ source: sourceName, sampleSize: pairs.length, effect: round(estimate.effect, 1), effectConfidenceLow: round(confidenceLow ?? estimate.effect, 1), effectConfidenceHigh: round(confidenceHigh ?? estimate.effect, 1), coefficient: round(estimate.coefficient, 3), pValue: estimate.pValue }] : [],
     doseResponse,
+    habitualPredictorDelta: estimate?.habitualPredictorDelta === null || estimate?.habitualPredictorDelta === undefined ? null : round(estimate.habitualPredictorDelta, 2),
+    habitualEffect: estimate?.habitualEffect === null || estimate?.habitualEffect === undefined ? null : round(estimate.habitualEffect, 1),
     practicallyMeaningful: false, practicalThreshold, practicalRatio: round(practicalRatio, 3),
     featureEligible: false, exclusionReasons, excluded: false,
   };

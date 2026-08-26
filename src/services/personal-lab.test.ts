@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/insights";
 
 describe("Personal Lab analysis window", () => {
@@ -67,6 +67,16 @@ describe("Personal Lab timing", () => {
   });
 });
 
+describe("Personal Lab mechanical exclusions", () => {
+  it("keeps informative sleep-component relationships while excluding direct score inputs", () => {
+    expect(isMechanicalRelation("sleep_minutes", "deep_sleep")).toBe(false);
+    expect(isMechanicalRelation("sleep_efficiency", "rem_sleep")).toBe(false);
+    expect(isMechanicalRelation("sleep_minutes", "sleep_debt")).toBe(true);
+    expect(isMechanicalRelation("steps", "effort")).toBe(true);
+    expect(isMechanicalRelation("hrv", "recovery")).toBe(true);
+  });
+});
+
 describe("Personal Lab 30-day signal averages", () => {
   const observation = (date: string, values: Partial<LabObservation>): LabObservation => ({
     date,
@@ -98,6 +108,6 @@ describe("Personal Lab 30-day signal averages", () => {
       observation("2026-07-26", { sleepMinutes: 100, recoveryScore: 10, effortScore: 1 }),
       observation("2026-07-27", { sleepMinutes: 400, recoveryScore: 40, effortScore: 4 }),
       observation("2026-08-25", { sleepMinutes: 500, recoveryScore: 60, effortScore: 6 }),
-    ], "2026-08-25")).toEqual({ averageSleepMinutes: 450, averageRecoveryScore: 50, averageEffortScore: 5 });
+    ], "2026-08-25")).toEqual({ averageSleepMinutes: 450, averageSleepRegularity: null, averageRecoveryScore: 50, averageEffortScore: 5 });
   });
 });

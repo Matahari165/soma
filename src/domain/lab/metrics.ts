@@ -12,7 +12,7 @@ export type LabMetricDefinition = {
 };
 
 export const healthMetricRegistry: readonly LabMetricDefinition[] = [
-  { id: "sleep_minutes", label: "Sleep duration", unit: "min", field: "sleep_minutes", defaultRole: "result", direction: "target", source: "Google Health" },
+  { id: "sleep_minutes", label: "Sleep duration", unit: "min", field: "sleep_minutes", defaultRole: "both", direction: "target", source: "Google Health" },
   { id: "sleep_need", label: "Estimated sleep need", unit: "min", field: "sleep_need_minutes", defaultRole: "disabled", direction: "target", source: "Soma" },
   { id: "sleep_efficiency", label: "Sleep efficiency", unit: "%", field: "sleep_efficiency", defaultRole: "result", direction: "higher", source: "Google Health" },
   { id: "sleep_latency", label: "Sleep latency", unit: "min", field: "sleep_latency_minutes", defaultRole: "result", direction: "lower", source: "Google Health" },

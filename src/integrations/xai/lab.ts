@@ -38,8 +38,27 @@ export type LabEvidenceCandidate = {
   qValue: number;
   practicalThreshold: number;
   practicalRatio: number;
+  habitualVariation: { delta: number; effect: number; unit: string } | null;
+  sharedPeriodContrast: { delta: number; effect: number; unit: string } | null;
   previouslyHighlighted: boolean;
 };
+
+function sharedContrastFor(relation: MatrixRelation, relations: MatrixRelation[]) {
+  if (relation.modelType !== "linear" || relation.predictorDelta === null || relation.predictorDelta === 0 || relation.effect === null) return null;
+  const comparable = relations.filter((candidate) => candidate.predictorId === relation.predictorId
+    && candidate.outcomeId === relation.outcomeId
+    && candidate.lagDays === relation.lagDays
+    && candidate.modelType === "linear"
+    && candidate.predictorDelta !== null
+    && candidate.predictorDelta > 0);
+  const reference = comparable.find((candidate) => candidate.period === 30) ?? comparable[0];
+  if (!reference?.predictorDelta) return null;
+  return {
+    delta: reference.predictorDelta,
+    effect: relation.effect * reference.predictorDelta / relation.predictorDelta,
+    unit: relation.predictorUnit,
+  };
+}
 
 export async function generateLabNarrative(input: { userId: string; relations: MatrixRelation[]; likedRelations?: EditorialRelation[]; previousRelations?: EditorialRelation[] }) {
   const apiKey = requireServerEnv("XAI_API_KEY");
@@ -95,6 +114,8 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     qValue: relation.qValue,
     practicalThreshold: relation.practicalThreshold,
     practicalRatio: relation.practicalRatio,
+    habitualVariation: relation.habitualPredictorDelta === null || relation.habitualEffect === null ? null : { delta: relation.habitualPredictorDelta, effect: relation.habitualEffect, unit: relation.predictorUnit },
+    sharedPeriodContrast: sharedContrastFor(relation, usableRelations),
     previouslyHighlighted: input.previousRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ?? false,
   }));
   const response = await fetch("https://api.x.ai/v1/responses", {
@@ -112,7 +133,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
         "Each bullet must state exactly one observed relationship, name the input and outcome, preserve the supplied effect and unit, explain the supplied predictor contrast in plain language, and include the zero-based factIndex of that exact supplied finding.",
         "When detectedShape is non-linear, preserve the supplied threshold, plateau, or zone wording instead of describing a linear increase or decrease.",
-        "Compare the 30-day and 90-day windows when the same relationship is supplied in both, and mention a change only when the supplied effects support it.",
+        "Compare the 30-day and 90-day windows only with sharedPeriodContrast, which puts both estimates on the same predictor change. Never compare their raw effects when their raw predictor contrasts differ.",
         "Explain why an effect matters in its real unit and offer one cautious implication only when it follows directly from the supplied observation.",
         "A short-window decrease may coexist with a flat or beneficial long-window trend; state that distinction when both scales are supplied.",
         "Repetition is allowed, but prefer a newly available relationship over an equally useful previouslyHighlighted finding.",

@@ -55,9 +55,14 @@ Show exactly these primary values:
 - Recovery
 - Effort
 
-The strip refreshes as wearable data changes during the day. Do not use habit emoji in
-this strip. Recovery remains a transparent Soma score and is finalized after the journal,
-matrix, and insight experience.
+The strip refreshes as wearable data changes during the day. The Sleep item also exposes
+the current regularity percentage. Do not use habit emoji in this strip. Recovery remains
+a transparent Soma score and is finalized after the journal, matrix, and insight experience.
+
+The sleep score uses a fixed 8 h 30 need and combines 70% duration, 10% efficiency, and
+20% regularity. Duration above the need does not add bonus points beyond its component.
+Effort represents accomplished load, not a daily prescription: every additional activity
+still counts, with diminishing returns and no hard activity-input ceiling.
 
 ## Daily journal
 
@@ -152,6 +157,7 @@ role.
 
 ### Default automatic influences
 
+- Sleep duration
 - Bedtime
 - Wake time
 - Steps
@@ -206,9 +212,19 @@ For a continuous predictor:
 Recovery −4 pts
 ```
 
+Bedtime always uses a fixed, readable 30-minute contrast. Other continuous predictors use
+a rounded contrast derived from the user's observed spread. Relation detail also shows the
+effect for one habitual personal variation and names its size. When periods are compared,
+effects are first converted to one shared predictor contrast.
+
 Predictor emoji belongs in the row label. Favorable and unfavorable effects use semantic
 green/red plus a directional symbol or text; color is never the only cue. Color semantics
 follow the outcome definition, not the raw coefficient sign.
+
+For one predictor-outcome pair, prefer the next-day relation. A two-days-later relation
+replaces it only when its practical-effect ratio is at least 20% larger. Extremely large
+values are limited only when they fall beyond a wide six-IQR import-error fence; ordinary
+high-activity days remain unchanged.
 
 ### Relation detail
 

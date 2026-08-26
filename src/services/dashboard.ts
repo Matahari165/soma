@@ -86,9 +86,7 @@ function metricScore(kind: ScoreKind, row: ScoreRow | undefined, metrics: Metric
   if (kind === "recovery") {
     return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Recovery", value: missing ? "Building your baseline" : "Compared with your baseline", target: `HRV ${metrics?.hrv_ms ? `${Math.round(metrics.hrv_ms)} ms` : "—"} · RHR ${metrics?.resting_heart_rate ? `${Math.round(metrics.resting_heart_rate)} bpm` : "—"}`, delta: "Uses your own recent range", detail: missing ? "At least seven HRV and resting-heart-rate readings plus sleep are required." : "HRV, resting heart rate, and sleep support today's score.", action: safeAction(missing ? "Keep wearing your device overnight to complete the baseline." : "Use this signal alongside how you feel today."), href: "/recovery", freshness, history: histories };
   }
-  const minimum = Number(row?.drivers?.targetMinimum ?? 0);
-  const maximum = Number(row?.drivers?.targetMaximum ?? 0);
-  return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Effort", value: missing ? "Not calculated" : `${row?.score} of ${minimum}–${maximum}`, target: "Today's target zone", delta: `${metrics?.steps?.toLocaleString("en-US") ?? "—"} steps · ${metrics?.zone_minutes === null || metrics?.zone_minutes === undefined ? "—" : Math.round(metrics.zone_minutes)} zone min`, detail: "Today's completed effort stays separate from the goal-aware target.", action: safeAction(missing ? "Sync activity data to calculate effort." : row.score! < minimum ? "You still have room to move toward today's target." : row.score! > maximum ? "You are above today's target; recovery can take priority." : "Keep today's effort in this range; no extra load is needed."), href: "/activity", freshness, history: histories };
+  return { kind, score: row?.score ?? null, status: row?.status ?? "limited", label: "Effort", value: missing ? "Not calculated" : `${row?.score}/100 accomplished`, target: "Today's accumulated load", delta: `${metrics?.steps?.toLocaleString("en-US") ?? "—"} steps · ${metrics?.zone_minutes === null || metrics?.zone_minutes === undefined ? "—" : Math.round(metrics.zone_minutes)} zone min`, detail: "Every additional activity adds load, with progressively smaller gains.", action: safeAction(missing ? "Sync activity data to calculate effort." : "Interpret this accomplished load alongside your recovery."), href: "/activity", freshness, history: histories };
 }
 
 export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<DashboardSnapshot> {
@@ -105,7 +103,7 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
       scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, undefined, undefined, [], null)),
       summary: "Sign in to connect your health data and build your first summary.",
       insights: [],
-      weeklyEffort: { current: 0, targetMin: 0, targetMax: 0, days: [] },
+      weeklyEffort: { current: 0, days: [] },
       recoveryTrend: [],
       sleepRegularity: { bedtime: "—", wakeTime: "—", consistency: null },
     };
@@ -137,7 +135,6 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
   const isCurrentDay = latestDate === today;
   const weekStart = mondayFor(today);
   const effortRows = scoreRowsFor("effort", scores).filter((row) => row.score_date >= weekStart && row.score_date <= today);
-  const effortLatest = effortRows.at(-1) ?? latestFor("effort");
   const effortCurrent = effortRows.reduce((sum, row) => sum + (row.score ?? 0), 0);
 
   return {
@@ -149,7 +146,7 @@ export async function getDashboardSnapshot(currentUser?: SomaUser): Promise<Dash
     scores: (["sleep", "recovery", "effort"] as ScoreKind[]).map((kind) => metricScore(kind, latestFor(kind), metricFor(kind), historyFor(kind), connection?.last_synced_at ?? null)),
     summary: brief?.generated_text ?? "Soma is still building your first evidence-based summary.",
     insights: (rawInsights ?? []).map((insight) => ({ id: insight.id, category: insight.category, title: insight.title, description: insight.description, evidence: `Confidence ${Math.round(Number((insight.evidence as Record<string, unknown>)?.sampleSize ?? 0))} baseline days` })),
-    weeklyEffort: { current: effortCurrent, targetMin: Number(effortLatest?.drivers?.weeklyMinimum ?? 0), targetMax: Number(effortLatest?.drivers?.weeklyMaximum ?? 0), days: effortRows.map((row) => ({ label: new Date(`${row.score_date}T12:00:00`).toLocaleDateString("en-US", { weekday: "narrow" }), value: row.score, today: row.score_date === today })) },
+    weeklyEffort: { current: effortCurrent, days: effortRows.map((row) => ({ label: new Date(`${row.score_date}T12:00:00`).toLocaleDateString("en-US", { weekday: "narrow" }), value: row.score, today: row.score_date === today })) },
     recoveryTrend: scoreRowsFor("recovery", scores).slice(-7).map((row) => ({ label: new Date(`${row.score_date}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" }), value: row.score })),
     sleepRegularity: { bedtime: sleepMetric?.bedtime ? new Date(sleepMetric.bedtime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", wakeTime: sleepMetric?.wake_time ? new Date(sleepMetric.wake_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", consistency: sleepMetric?.sleep_regularity === null || sleepMetric?.sleep_regularity === undefined ? null : Math.round(sleepMetric.sleep_regularity) },
   };

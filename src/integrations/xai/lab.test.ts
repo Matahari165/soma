@@ -29,6 +29,8 @@ describe("Grok Personal Lab output", () => {
       predictorLow: 6_000,
       predictorHigh: 9_000,
       predictorDelta: 3_000,
+      habitualPredictorDelta: 2_000,
+      habitualEffect: -2,
       outcomeId: "resting-heart-rate",
       outcomeLabel: "FC repos",
       outcomeUnit: "bpm",
@@ -81,6 +83,8 @@ describe("Grok Personal Lab output", () => {
     expect(body.input).toContain("pairedObservations");
     expect(body.input).toContain("analysisPeriod");
     expect(body.input).toContain("lagDays");
+    expect(body.input).toContain("habitualVariation");
+    expect(body.input).toContain("sharedPeriodContrast");
     expect(body.input).not.toContain("method");
     expect(body.instructions).toContain("clear, natural English");
     expect(body.instructions).toContain("1 to 4 short effect bullets");

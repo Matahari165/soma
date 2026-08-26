@@ -6,7 +6,7 @@ import { RecoveryTrend, SleepRegularity, WeeklyEffort } from "./widgets";
 
 describe("dashboard widget empty and partial states", () => {
   it("renders useful empty states for a new account", () => {
-    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 0, targetMin: 0, targetMax: 0, days: [] } }));
+    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 0, days: [] } }));
     const recovery = renderToStaticMarkup(createElement(RecoveryTrend, { data: [] }));
     const regularity = renderToStaticMarkup(createElement(SleepRegularity, { data: { bedtime: "—", wakeTime: "—", consistency: null } }));
 
@@ -32,17 +32,18 @@ describe("dashboard widget empty and partial states", () => {
   });
 
   it("does not invent a weekly target or sleep regularity score", () => {
-    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 18, targetMin: 0, targetMax: 0, days: [{ label: "F", value: 18, today: true }] } }));
+    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 18, days: [{ label: "F", value: 18, today: true }] } }));
     const regularity = renderToStaticMarkup(createElement(SleepRegularity, { data: { bedtime: "10:42 PM", wakeTime: "6:48 AM", consistency: null } }));
 
-    expect(effort).toContain("target building");
+    expect(effort).toContain("accumulated points");
+    expect(effort).not.toContain("target building");
     expect(effort).not.toContain("of 0–0");
     expect(regularity).toContain("At least three complete nights");
     expect(regularity).not.toContain("0%");
   });
 
   it("uses the full widget as the single path to its detail page", () => {
-    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 18, targetMin: 12, targetMax: 24, days: [{ label: "F", value: 18, today: true }] } }));
+    const effort = renderToStaticMarkup(createElement(WeeklyEffort, { data: { current: 18, days: [{ label: "F", value: 18, today: true }] } }));
     const recovery = renderToStaticMarkup(createElement(RecoveryTrend, { data: [{ label: "Thu", value: 60 }, { label: "Fri", value: 67 }] }));
     const regularity = renderToStaticMarkup(createElement(SleepRegularity, { data: { bedtime: "10:42 PM", wakeTime: "6:48 AM", consistency: 82 } }));
 

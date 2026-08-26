@@ -11,8 +11,8 @@ describe("calculateSleepScore", () => {
       regularityPercent: 80,
     });
 
-    expect(result.score).toBe(89);
-    expect(result.algorithmVersion).toBe("sleep-v0.1");
+    expect(result.score).toBe(88);
+    expect(result.algorithmVersion).toBe("sleep-v0.2");
   });
 
   it("caps each component at one", () => {

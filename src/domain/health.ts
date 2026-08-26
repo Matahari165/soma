@@ -54,8 +54,6 @@ export type DashboardSnapshot = {
   insights: Insight[];
   weeklyEffort: {
     current: number;
-    targetMin: number;
-    targetMax: number;
     days: { label: string; value: number | null; today?: boolean }[];
   };
   recoveryTrend: { label: string; value: number | null }[];

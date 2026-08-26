@@ -18,6 +18,14 @@ function effectUnit(unit: string) {
   return unit === "%" ? "pp" : unit;
 }
 
+function predictorDeltaText(relation: MatrixRelation) {
+  if (relation.habitualPredictorDelta === null) return null;
+  const value = relation.predictorUnit === "steps"
+    ? Math.round(relation.habitualPredictorDelta).toLocaleString("en-US")
+    : Number(relation.habitualPredictorDelta.toFixed(1)).toString();
+  return `${value}${relation.predictorUnit ? ` ${relation.predictorUnit}` : ""}`;
+}
+
 export function effectText(relation: Pick<MatrixRelation, "effect" | "outcomeUnit">) {
   if (relation.effect === null) return "—";
   const unit = effectUnit(relation.outcomeUnit);
@@ -102,6 +110,7 @@ function RelationEvidence({ relation, direction }: { relation: MatrixRelation; d
     </div>
     <dl>
       <div><dt>Outcome change</dt><dd>{percentText(relation) ? `${percentText(relation)} of baseline · ` : ""}{effectText(relation)}</dd></div>
+      {relation.habitualEffect !== null && <div><dt>Your habitual variation</dt><dd>{predictorDeltaText(relation)} → {effectText({ effect: relation.habitualEffect, outcomeUnit: relation.outcomeUnit })}</dd></div>}
       <div><dt>95% interval</dt><dd>{relation.effectConfidenceLow === null ? "—" : `${signed(relation.effectConfidenceLow, effectDigits(relation.effect, relation.outcomeUnit))} to ${signed(relation.effectConfidenceHigh ?? 0, effectDigits(relation.effect, relation.outcomeUnit))} ${effectUnit(relation.outcomeUnit)}`}</dd></div>
       <div><dt>Compared days</dt><dd>{relation.baselineCount} baseline · {relation.comparisonCount} comparison</dd></div>
       <div><dt>Detected shape</dt><dd>{modelEvidence(relation.modelType, relation.modelImprovement, relation.nonlinearTested)}</dd></div>
