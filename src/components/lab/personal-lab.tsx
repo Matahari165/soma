@@ -11,7 +11,10 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
     <NarrativeRefresh enabled={data.needsNarrativeRefresh} />
     {connectionNotice && <div className="lab-notice" role="status">{connectionNotice === "calendar" ? "Google Calendar connected." : "Google Health connected. Import in progress."}</div>}
     <header className="lab-header">
-      <div><span className="page-date">{data.dateLabel}</span><h1>Personal Lab</h1></div>
+      <div className="lab-header__row">
+        <h1>Personal Lab</h1>
+        <time className="page-date" dateTime={data.todayDate}>{data.dateLabel}</time>
+      </div>
     </header>
 
     <TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} />

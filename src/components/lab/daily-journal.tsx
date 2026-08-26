@@ -125,9 +125,8 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
   </div>;
 }
 
-function VariableManager({ variables }: { variables: JournalVariable[] }) {
+function VariableManager({ variables, open, onClose }: { variables: JournalVariable[]; open: boolean; onClose: () => void }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -192,9 +191,7 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
   const categoryOptions = splitOptions(draft.options);
   const canCreate = draft.name.trim().length > 0 && (draft.variableType !== "category" || categoryOptions.length >= 2);
 
-  if (!open) {
-    return <div className="journal-manager journal-manager--closed"><button className="text-link" type="button" onClick={() => setOpen(true)}>Manage journal fields</button></div>;
-  }
+  if (!open) return null;
 
   return <section className="journal-manager" aria-labelledby="journal-manager-title">
     <div className="journal-manager__header">
@@ -204,7 +201,7 @@ function VariableManager({ variables }: { variables: JournalVariable[] }) {
       </div>
       <div className="journal-manager__header-actions">
         {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Add a measure</button>}
-        <button className="text-link" type="button" onClick={() => { setOpen(false); setCreating(false); setEditingId(null); }}>Done</button>
+        <button className="text-link" type="button" onClick={() => { onClose(); setCreating(false); setEditingId(null); }}>Done</button>
       </div>
     </div>
 
@@ -285,6 +282,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
   const day = days.find((candidate) => candidate.entryDate === entryDate);
   const validated = day?.status === "validated";
 
@@ -348,14 +346,18 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     queueDraft(entryDate, next);
   }
 
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><div><span className="eyebrow">Journal</span><h2 id="journal-title">{formatEntryDate(entryDate)}</h2></div><span className={validated || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{state === "saving" ? "Saving" : validated ? "Validated" : state === "saved" ? "Draft saved" : "Draft"}</span></header>
+  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal <span aria-hidden="true">·</span> {formatEntryDate(entryDate)}</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
+    <span className={validated || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{state === "saving" ? "Saving" : validated ? "Validated" : state === "saved" ? "Draft saved" : "Draft"}</span>
+    {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button>}
+    {!managerOpen && <button className="text-link" type="button" onClick={() => setManagerOpen(true)}>Manage journal fields</button>}
+  </div></header>
     <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
       <h3 id={`journal-${section.id}-title`}>{section.label}</h3>
       <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
-    {validated ? <p className="journal-save-note" role="status">Changes save automatically and remain included in your relationships.</p> : <div className="journal-actions"><button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button></div>}
-    <VariableManager variables={variables} />
+    {validated && <p className="journal-save-note" role="status">Changes save automatically and remain included in your relationships.</p>}
+    <VariableManager variables={variables} open={managerOpen} onClose={() => setManagerOpen(false)} />
   </section>;
 }

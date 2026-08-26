@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, History, ThumbsUp, X } from "lucide-react";
+import { ArrowRight, Check, History, ThumbsUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
@@ -112,13 +112,13 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
     if (!response.ok) setHistoryLikes((current) => ({ ...current, [id]: previous }));
   }
   return <section className="lab-insight-panel" aria-labelledby="lab-insight-title">
-    <header><div><span className="section-kicker">Morning analysis</span><h2 id="lab-insight-title">{narrative?.isCurrent ? narrative.headline : "Waiting for overnight data."}</h2></div>
+    <header><div><h2 id="lab-insight-title">{narrative?.isCurrent ? narrative.headline : "Waiting for overnight data."}</h2></div>
       <div className="lab-insight-actions">
         {narrative?.isCurrent && narrative.id && <button type="button" aria-pressed={liked} onClick={() => void likeCurrent()}><ThumbsUp size={15} fill={liked ? "currentColor" : "none"} /> Like</button>}
         {(narrative?.history?.length ?? 0) > 0 && <button type="button" aria-expanded={historyOpen} onClick={() => setHistoryOpen((current) => !current)}><History size={15} /> History</button>}
       </div>
     </header>
-    {lines.length > 0 && <ol>{lines.slice(0, 4).map((line, index) => <li key={line}><span>{String(index + 1).padStart(2, "0")}</span><button type="button" className="lab-insight-link" onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
+    {lines.length > 0 && <ol aria-label="Recommendations">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open recommendation ${index + 1}: ${line}`} onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
     {historyOpen && narrative?.history && <div className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
       <header><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
       <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>

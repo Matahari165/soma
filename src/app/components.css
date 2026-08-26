@@ -1141,6 +1141,50 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .metric-registry__table label { position: relative; }
 .metric-registry__table select { width: 100%; min-height: 44px; border: 1px solid var(--line-strong); background: var(--paper-strong); font-size: .65rem; }
 
+/* Personal Lab compact pass: hierarchy through rhythm, not extra rules. */
+.personal-lab-page .lab-header__row { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.personal-lab-page .lab-header__row h1 { flex: 1 1 auto; min-width: 0; order: 1; margin-top: 0; }
+.personal-lab-page .lab-header__row .page-date { flex: 0 0 auto; order: 2; text-align: right; }
+.lab-insight-panel > header { align-items: center; }
+.lab-insight-panel > header > div:first-child { min-width: 0; flex: 1; }
+.lab-insight-panel h2 { max-width: none; }
+.lab-insight-panel > ol { margin-top: 0; }
+.lab-insight-panel > ol li { grid-template-columns: 48px minmax(0, 1fr); }
+.lab-insight-panel > ol span { border-right: 0; justify-items: start; justify-content: start; padding-left: 14px; color: var(--moss-dark); }
+.lab-overview--signals { margin-top: 10px; }
+.lab-overview--signals .lab-signals { align-items: stretch; }
+.lab-overview--signals .lab-signals a { min-height: 60px; align-content: center; justify-items: center; padding: 8px 14px; text-align: center; }
+.lab-overview--signals .lab-signals a > strong { margin-top: 4px; line-height: 1; }
+
+.journal-card > header { gap: 14px; }
+.journal-card > header > div:first-child { min-width: 0; }
+.journal-card__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.journal-card__actions .primary-button { min-height: 40px; }
+.journal-card__actions .text-link { white-space: nowrap; }
+.journal-card__actions .checkin-state { order: -1; }
+.journal-date-strip { border-bottom-color: var(--line-strong); }
+.journal-sections { gap: 0; }
+.journal-period { border-bottom-color: var(--line); }
+.journal-period > h3 { border-right: 0; color: var(--muted); }
+.journal-grid { column-gap: 24px; row-gap: 2px; padding: 4px 14px 10px; }
+.journal-field { min-height: 58px; padding: 8px 0; border-right: 0; border-bottom: 0; }
+.journal-actions { display: none; }
+.journal-save-note { border-top: 0; padding: 10px 16px 14px; }
+.journal-manager--closed { display: none; }
+.journal-manager { border-top: 0; }
+
+@media (max-width: 700px) {
+  .personal-lab-page .lab-header__row { gap: 10px; }
+  .personal-lab-page .lab-header__row h1 { font-size: 2.7rem; }
+  .personal-lab-page .lab-header__row .page-date { font-size: .62rem; }
+  .lab-overview--signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
+  .journal-card > header { gap: 10px; }
+  .journal-card__actions { gap: 5px; }
+  .journal-card__actions .checkin-state { display: none; }
+  .journal-grid { padding-inline: 12px; column-gap: 0; }
+  .journal-field { min-height: 64px; padding-block: 10px; }
+}
+
 @media (min-width: 901px) {
   .matrix-scroll table { width: 100%; min-width: 860px; }
   .matrix-scroll th, .matrix-scroll td { width: auto; height: 72px; }
