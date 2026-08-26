@@ -18,7 +18,7 @@ const publicPaths = [
   "/terms",
 ];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const development = process.env.NODE_ENV !== "production";
   const contentSecurityPolicy = [
@@ -85,3 +85,5 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
+
+export const runtime = "experimental-edge";
