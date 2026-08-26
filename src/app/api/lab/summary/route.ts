@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { claimCloudflareLock, createCloudflareAdminClient, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { getPersonalLabSnapshot } from "@/services/personal-lab";
+import { shouldGenerateDailyNarrative } from "@/services/lab-narrative-policy";
 
 export const maxDuration = 50;
 
@@ -15,7 +16,7 @@ export async function POST() {
   const admin = createCloudflareAdminClient();
   const snapshot = await getPersonalLabSnapshot(user, { periods: [30, 90] });
   if (snapshot.aiNarrative?.isCurrent) return NextResponse.json({ ok: true, fresh: true });
-  if (!snapshot.needsNarrativeRefresh || !snapshot.matrix.topRelations.length) return NextResponse.json({ error: "Reliable overnight data is not available yet." }, { status: 409 });
+  if (!shouldGenerateDailyNarrative({ isCurrent: false, needsRefresh: snapshot.needsNarrativeRefresh, candidateCount: snapshot.matrix.topRelations.length })) return NextResponse.json({ error: "Reliable overnight data is not available yet." }, { status: 409 });
   const lockKey = `lab-narrative:${user.id}:${snapshot.todayDate}`;
   const claimed = await claimCloudflareLock(lockKey, user.id, 90_000);
   if (!claimed) return NextResponse.json({ ok: true, generating: true }, { status: 202 });
@@ -25,10 +26,10 @@ export async function POST() {
     if (existingError) throw new Error("The current Personal Lab summary could not be checked.");
     const likedRelations = (snapshot.aiNarrative?.history ?? []).filter((item) => item.liked).flatMap((item) => item.sourceFacts.map((fact) => ({ predictor: fact.predictor, outcome: fact.outcome })));
     const previousRelations = (snapshot.aiNarrative?.history ?? []).flatMap((item) => item.sourceFacts.map((fact) => ({ predictor: fact.predictor, outcome: fact.outcome })));
-    const { narrative, facts } = await generateLabNarrative({ userId: user.id, relations: snapshot.matrix.topRelations, likedRelations, previousRelations });
+    const { narrative, facts, usage } = await generateLabNarrative({ userId: user.id, relations: snapshot.matrix.topRelations, likedRelations, previousRelations });
     const selectedFacts = narrative.highlights.map((highlight) => facts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact));
     const storedNarrative = { ...narrative, highlights: narrative.highlights.map((highlight, index) => ({ text: highlight.text, factIndex: index })) };
-    const record = { id: existingToday?.id ?? crypto.randomUUID(), user_id: user.id, analysis_date: snapshot.todayDate, overnight_fingerprint: snapshot.overnightFingerprint, ...storedNarrative, source_facts: selectedFacts, model: "grok-4.6", liked: existingToday?.liked ?? false, generated_at: new Date().toISOString() };
+    const record = { id: existingToday?.id ?? crypto.randomUUID(), user_id: user.id, analysis_date: snapshot.todayDate, overnight_fingerprint: snapshot.overnightFingerprint, ...storedNarrative, source_facts: selectedFacts, evidence_candidates: facts, token_usage: usage, model: "grok-4.6", liked: existingToday?.liked ?? false, generated_at: new Date().toISOString() };
     const [{ error }, { error: currentError }] = await Promise.all([
       admin.from("lab_narrative_history").upsert(record, { onConflict: "user_id,analysis_date" }),
       admin.from("lab_narratives").upsert(record, { onConflict: "user_id" }),

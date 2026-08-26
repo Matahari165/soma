@@ -5,6 +5,8 @@ import { askSomaCoach } from "@/integrations/xai/coach";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { compactHealthContext, type CoachMetricRow, type CoachScoreRow } from "@/services/coach-context";
+import { evidenceCandidatesForNarrative } from "@/services/lab-narrative-policy";
 
 const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), threadId: z.string().uuid().nullable().optional() });
 const threadIdSchema = z.string().uuid();
@@ -73,9 +75,14 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createCloudflareAdminClient();
   const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
-  const { count, error: countError } = await admin.from("coach_messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "user").gte("created_at", oneMinuteAgo);
-  if (countError) return NextResponse.json({ error: "Coach availability could not be checked." }, { status: 500 });
-  if ((count ?? 0) >= 10) return NextResponse.json({ error: "Please wait a moment before sending another Coach message." }, { status: 429 });
+  const startOfUtcDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+  const [minuteQuota, dailyQuota] = await Promise.all([
+    admin.from("coach_messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "user").gte("created_at", oneMinuteAgo),
+    admin.from("coach_messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "user").gte("created_at", startOfUtcDay),
+  ]);
+  if (minuteQuota.error || dailyQuota.error) return NextResponse.json({ error: "Coach availability could not be checked." }, { status: 500 });
+  if ((minuteQuota.count ?? 0) >= 10) return NextResponse.json({ error: "Please wait a moment before sending another Coach message." }, { status: 429 });
+  if ((dailyQuota.count ?? 0) >= 30) return NextResponse.json({ error: "You have reached today's 30-message Coach limit." }, { status: 429 });
   const threadId = parsed.data.threadId ?? null;
   if (threadId) {
     const { data, error } = await admin.from("coach_threads").select("id").eq("id", threadId).eq("user_id", user.id).maybeSingle();
@@ -83,14 +90,21 @@ export async function POST(request: Request) {
     if (!data) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   }
   const contextResults = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_need_minutes,sleep_regularity,hrv_ms,resting_heart_rate,steps,zone_minutes").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(14),
-    admin.from("daily_scores").select("score_date,kind,score,status,drivers").eq("user_id", user.id).order("score_date", { ascending: false }).limit(42),
-    admin.from("correlation_results").select("variable_x,variable_y,coefficient,sample_size,quality_status,lag_days").eq("user_id", user.id).order("calculated_at", { ascending: false }).limit(8),
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_need_minutes,sleep_regularity,hrv_ms,resting_heart_rate,steps,zone_minutes").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(30),
+    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false }).limit(90),
+    admin.from("lab_narrative_history").select("headline,summary,highlights,evidence_candidates,source_facts,generated_at").eq("user_id", user.id).order("generated_at", { ascending: false }).limit(1),
+    threadId ? admin.from("coach_messages").select("role,content,created_at").eq("user_id", user.id).eq("thread_id", threadId).order("created_at", { ascending: false }).limit(6) : Promise.resolve({ data: [], error: null }),
   ]);
   if (contextResults.some((query) => query.error)) return NextResponse.json({ error: "Your health context could not be loaded." }, { status: 500 });
-  const [{ data: metrics }, { data: scores }, { data: correlations }] = contextResults;
+  const [{ data: metrics }, { data: scores }, { data: narratives }, { data: recentMessages }] = contextResults;
   try {
-    const result = await askSomaCoach({ userId: user.id, message: parsed.data.message, context: { metrics, scores, correlations } });
+    const narrative = narratives?.[0];
+    const evidenceCandidates = evidenceCandidatesForNarrative(narrative);
+    const result = await askSomaCoach({ userId: user.id, message: parsed.data.message, context: {
+      dailyDigest: narrative ? { headline: narrative.headline, summary: narrative.summary, highlights: narrative.highlights, evidenceCandidates, generatedAt: narrative.generated_at } : null,
+      ...compactHealthContext((metrics ?? []) as CoachMetricRow[], (scores ?? []) as CoachScoreRow[]),
+      recentMessages: [...(recentMessages ?? [])].reverse().map((message) => ({ role: message.role, content: message.content })),
+    } });
     const { data: persisted, error: persistError } = await admin.rpc("persist_soma_coach_exchange", {
       p_user_id: user.id,
       p_thread_id: threadId,
@@ -99,6 +113,7 @@ export async function POST(request: Request) {
       p_assistant_message: result.answer,
       p_evidence: result.evidence,
       p_model: "grok-4.6",
+      p_token_usage: result.usage,
       p_action_tool_name: result.proposedAction?.type ?? null,
       p_action_arguments: result.proposedAction?.payload ?? null,
       p_action_preview: result.proposedAction ? `${result.proposedAction.title}: ${result.proposedAction.description}` : null,

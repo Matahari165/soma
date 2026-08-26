@@ -125,7 +125,7 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
       }
       await client.from("coach_messages").insert({ user_id: input.p_user_id, thread_id: threadId, role: "user", content: input.p_user_message });
       const assistantId = crypto.randomUUID();
-      await client.from("coach_messages").insert({ id: assistantId, user_id: input.p_user_id, thread_id: threadId, role: "assistant", content: input.p_assistant_message, evidence_refs: input.p_evidence ?? [], model: input.p_model });
+      await client.from("coach_messages").insert({ id: assistantId, user_id: input.p_user_id, thread_id: threadId, role: "assistant", content: input.p_assistant_message, evidence_refs: input.p_evidence ?? [], model: input.p_model, token_usage: input.p_token_usage ?? null });
       let proposalId: string | null = null;
       if (input.p_action_tool_name) {
         proposalId = crypto.randomUUID();

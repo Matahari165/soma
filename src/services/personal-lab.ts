@@ -1,12 +1,13 @@
 import type { LabObservation } from "@/domain/lab/insights";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
-import { adjustMatrixRelations, calculateMatrixRelation, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
 import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-matrix-cache";
 import { loadJournalData } from "@/services/journal";
+import { evidenceCandidatesForNarrative } from "@/services/lab-narrative-policy";
 
 export type DailyCheckin = {
   checkin_date: string;
@@ -102,6 +103,7 @@ export type PersonalLabSnapshot = {
     generatedAt: string;
     liked: boolean;
     sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }>;
+    evidenceCandidates: unknown[];
     history: Array<{ id: string; headline: string; summary: string; highlights: string[]; generatedAt: string; liked: boolean; sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }> }>;
   } | null;
   needsNarrativeRefresh: boolean;
@@ -110,6 +112,7 @@ export type PersonalLabSnapshot = {
     outcomes: Array<{ id: string; label: string; unit: string; direction: "higher" | "lower" | "target" }>;
     rows: LabMatrixRow[];
     periods: AnalysisPeriod[];
+    meaningfulRelations: MatrixRelation[];
     topRelations: MatrixRelation[];
     acuteHighlights: MatrixRelation[];
     chronicHighlights: MatrixRelation[];
@@ -153,6 +156,7 @@ function isCachedMatrix(value: unknown): value is PersonalLabSnapshot["matrix"] 
   return Array.isArray(matrix.outcomes)
     && Array.isArray(matrix.rows)
     && Array.isArray(matrix.periods)
+    && Array.isArray(matrix.meaningfulRelations)
     && Array.isArray(matrix.topRelations)
     && Array.isArray(matrix.acuteHighlights)
     && Array.isArray(matrix.chronicHighlights)
@@ -362,14 +366,18 @@ function buildCorrelationMatrix(input: {
   });
 
   const minimumVisibleEffect: Record<string, number> = {
-    sleep_minutes: 10,
-    sleep_efficiency: 1,
+    sleep_minutes: 15,
+    sleep_efficiency: 1.5,
+    sleep_latency: 5,
+    sleep_awake: 5,
+    sleep_awakenings: 1,
     deep_sleep: 5,
     rem_sleep: 5,
-    hrv: 1,
-    rhr: .5,
-    respiratory: .1,
-    spo2: .2,
+    hrv: 2,
+    rhr: 1,
+    respiratory: .3,
+    spo2: .3,
+    recovery: 3,
   };
   const sleepComponents = new Set(["sleep_minutes", "sleep_efficiency", "sleep_awake", "deep_sleep", "rem_sleep", "light_sleep", "sleep_debt", "daily_sleep_debt"]);
   const effortInputs = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
@@ -390,6 +398,8 @@ function buildCorrelationMatrix(input: {
       evidence: "insufficient" as const,
       strength: "hidden" as const,
       stable: false,
+      practicallyMeaningful: false,
+      practicalRatio: 0,
       featureEligible: false,
       excluded: true,
       exclusionReasons: [relation.predictorId === relation.outcomeId ? "A metric is not compared with itself" : "These measures share a direct calculation"],
@@ -405,6 +415,8 @@ function buildCorrelationMatrix(input: {
       evidence: "insufficient" as const,
       strength: "hidden" as const,
       stable: false,
+      practicallyMeaningful: false,
+      practicalRatio: 0,
       featureEligible: false,
       excluded: true,
       exclusionReasons: ["This overnight outcome was measured before the daytime behavior; use the following-night or next-day relation"],
@@ -477,26 +489,15 @@ function buildCorrelationMatrix(input: {
   const visiblePredictors = new Set(visibleRows.flatMap((row) => row.relations.map((relation) => relation.predictorId)));
   const coverageByMetric = [...new Map(allSpecs.map((row) => [row.series.id, coverageForSeries(row.series)])).values()];
   const collectionProgress = coverageByMetric.filter((coverage) => !visiblePredictors.has(coverage.id));
-  const rank = (relations: MatrixRelation[]) => relations
-    .filter((relation) => relation.featureEligible && relation.qValue < 0.05)
-    .sort((first, second) => second.relevance - first.relevance || first.qValue - second.qValue || second.sampleSize - first.sampleSize)
-    .slice(0, 8);
-  const distinct = (relations: MatrixRelation[]) => {
-    const seen = new Set<string>();
-    return relations.filter((relation) => {
-      const key = `${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  };
-  const acuteHighlights = rank(visibleRows.filter((row) => row.period === 30).flatMap((row) => row.relations));
-  const chronicHighlights = distinct(rank(visibleRows.filter((row) => row.period === 90 || row.period === "all").flatMap((row) => row.relations)));
-  const topRelations = [...acuteHighlights, ...chronicHighlights].sort((first, second) => second.relevance - first.relevance).slice(0, 12);
+  const meaningfulRelations = selectMeaningfulRelations(visibleRows.flatMap((row) => row.relations), 12);
+  const acuteHighlights = selectMeaningfulRelations(visibleRows.filter((row) => row.period === 30).flatMap((row) => row.relations), 8);
+  const chronicHighlights = selectMeaningfulRelations(visibleRows.filter((row) => row.period === 90 || row.period === "all").flatMap((row) => row.relations), 8);
+  const topRelations = meaningfulRelations;
   return {
     outcomes: dailyOutcomes.map(({ id, label, unit, direction }) => ({ id, label, unit, direction })),
     rows: visibleRows,
     periods,
+    meaningfulRelations,
     topRelations,
     acuteHighlights,
     chronicHighlights,
@@ -598,8 +599,8 @@ function buildSnapshot(input: {
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
   journal: { variables: JournalVariable[]; entries: JournalEntry[]; days: import("@/domain/lab/journal").JournalDay[] };
-  narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
-  narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown }>;
+  narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; evidence_candidates?: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
+  narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown; evidence_candidates?: unknown }>;
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
   allowNarrativeRefresh?: boolean;
   connections: Array<{ provider: string; status: string; last_synced_at: string | null }>;
@@ -703,6 +704,7 @@ function buildSnapshot(input: {
     generatedAt: narrativeIsCurrent ? input.narrative?.generated_at ?? "" : "",
     liked: narrativeIsCurrent ? input.narrative?.liked ?? false : false,
     sourceFacts: narrativeIsCurrent ? highlights.map((item) => facts[item.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)) : [],
+    evidenceCandidates: narrativeIsCurrent ? evidenceCandidatesForNarrative(input.narrative) : [],
     history,
   } : null;
   const connection = (provider: string) => input.connections.find((item) => item.provider === provider);
@@ -792,8 +794,8 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     calendarQuery,
     checkinQuery,
     admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
-    admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
-    admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
+    admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
+    admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
     loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {}),
     matrixCachePromise,
@@ -810,7 +812,7 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
     journal,
     narrative: narrativeHistoryResult.data?.[0] ?? narrativeResult.data,
-    narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts })),
+    narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
     metricPreferences: (metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
     connections: connectionResult.data ?? [],
     requestedPeriods: options.periods,

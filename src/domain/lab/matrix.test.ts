@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adjustMatrixRelations, calculateMatrixRelation, type MatrixSeries } from "./matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
 
 function date(index: number) {
   const value = new Date("2025-01-01T12:00:00Z");
@@ -200,5 +200,49 @@ describe("Personal Lab raw within-person relations", () => {
     const adjusted = adjustMatrixRelations(relations);
     expect(adjusted.every((relation) => relation.qValue >= relation.pValue)).toBe(true);
     expect(adjusted.every((relation) => relation.featureEligible === (relation.qValue < .05))).toBe(true);
+  });
+
+  it("applies every real-unit practical threshold", () => {
+    expect(PRACTICAL_EFFECT_THRESHOLDS).toMatchObject({
+      sleep_minutes: 15, sleep_efficiency: 1.5, sleep_latency: 5, sleep_awake: 5,
+      sleep_awakenings: 1, deep_sleep: 5, rem_sleep: 5, hrv: 2, rhr: 1,
+      respiratory: .3, spo2: .3, recovery: 3,
+    });
+  });
+
+  it("keeps a significant negligible effect in the matrix but out of meaningful selection", () => {
+    const values = Array.from({ length: 120 }, (_, index) => index % 12 + Math.sin(index));
+    const relation = calculateMatrixRelation(series("steps", values), series("hrv", values.map((value, index) => 50 + value * .05 + Math.sin(index * 1.7) * .01)));
+    const significantButSmall = { ...relation, qValue: .01, featureEligible: true, practicallyMeaningful: false, practicalThreshold: 2, practicalRatio: .25 };
+    expect(significantButSmall.featureEligible).toBe(true);
+    expect(selectMeaningfulRelations([significantButSmall])).toEqual([]);
+  });
+
+  it("uses 0.2 standard deviations for a future outcome without an explicit threshold", () => {
+    const values = Array.from({ length: 100 }, (_, index) => index % 20 + Math.sin(index));
+    const outcome = values.map((value, index) => 10 + value * .5 + Math.sin(index * 1.3));
+    const relation = calculateMatrixRelation(series("load", values), series("future_metric", outcome));
+    const outcomeMean = outcome.reduce((sum, value) => sum + value, 0) / outcome.length;
+    const outcomeSpread = Math.sqrt(outcome.reduce((sum, value) => sum + (value - outcomeMean) ** 2, 0) / (outcome.length - 1));
+    expect(relation.practicalThreshold).toBe(.2);
+    expect(relation.practicalRatio).toBeCloseTo(Math.abs(relation.effect ?? 0) / outcomeSpread / .2, 1);
+  });
+
+  it("deduplicates lags by ratio, then q value, then sample size", () => {
+    const base = calculateMatrixRelation(series("load", Array.from({ length: 80 }, (_, index) => index)), series("hrv", Array.from({ length: 80 }, (_, index) => 40 + index)));
+    const relation = (lagDays: number, practicalRatio: number, qValue: number, sampleSize: number) => ({ ...base, lagDays, practicalRatio, qValue, sampleSize, practicallyMeaningful: true, featureEligible: true });
+    expect(selectMeaningfulRelations([
+      relation(0, 2, .01, 80),
+      relation(1, 3, .04, 60),
+      relation(2, 3, .02, 40),
+    ])[0]?.lagDays).toBe(2);
+  });
+
+  it("keeps target outcomes eligible when their real-unit effect clears the threshold", () => {
+    const bedtime = Array.from({ length: 100 }, (_, index) => 1320 + index % 40);
+    const sleep = bedtime.map((value, index) => 470 + (value - 1320) * .8 + Math.sin(index));
+    const relation = calculateMatrixRelation(series("bedtime", bedtime, "numeric", "clock-time"), series("sleep_minutes", sleep), 0, { outcomeDirection: "target", outcomeTarget: 510 });
+    expect(relation.practicalThreshold).toBe(15);
+    expect(relation.practicalRatio).toBeGreaterThanOrEqual(1);
   });
 });

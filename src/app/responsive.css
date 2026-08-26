@@ -17,6 +17,7 @@
   .journal-grid { grid-template-columns: 1fr; }
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .relation-detail__explanation { white-space: normal; }
+  .strongest-effects > header, .strongest-effects li > button { grid-template-columns: minmax(220px, .9fr) minmax(280px, 1.1fr) 80px; }
 }
 
 @media (max-width: 700px) {
@@ -50,10 +51,15 @@
   .matrix-periods { width: 100%; }
   .matrix-periods button { flex: 1; min-width: 0; }
   .matrix-toggle span { justify-content: center; }
+  .strongest-effects > header { grid-template-columns: 1fr; align-items: start; }
+  .strongest-effects__axis { grid-column: 1; width: 100%; margin-top: 5px; }
+  .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) auto; gap: 7px 12px; }
+  .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
   .matrix-scroll { display: block; width: calc(100vw - 28px); max-height: 70vh; overscroll-behavior-inline: contain; }
   .matrix-mobile-list { display: none; }
   .matrix-scroll table { width: max-content; min-width: 1320px; }
-  .matrix-scroll thead th:first-child, .matrix-scroll tbody th { width: 176px; }
+  .matrix-scroll thead th:first-child, .matrix-scroll tbody th { width: 160px; }
+  .matrix-effect-line > strong { font-size: .68rem !important; }
   .matrix-scroll th, .matrix-scroll td { width: 104px; }
   .relation-detail__plot > div { grid-template-columns: 1fr; gap: 5px; }
   .relation-detail dl { grid-template-columns: 1fr 1fr; }
@@ -359,7 +365,7 @@
   .lab-header h1 { font-size: clamp(2.8rem, 14vw, 4.2rem); }
   .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
   .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
-  .personal-lab-page .lab-header__signals .lab-signals a > span { min-width: 0; flex-direction: column; gap: 1px; }
+  .personal-lab-page .lab-header__signals .lab-signals a > span { min-width: 0; flex-direction: column; gap: 4px; }
   .personal-lab-page .lab-header__signals .lab-signals a > span .lab-signal__label { line-height: 1; }
   .lab-question { grid-template-columns: 1fr; align-items: start; }
   .lab-question dl { width: 100%; }

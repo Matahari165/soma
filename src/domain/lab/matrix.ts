@@ -58,6 +58,7 @@ export type MatrixRelation = {
   stable: boolean; stability: MatrixStability; strength: "hidden" | "light" | "clear" | "strong";
   coverageBySource: MatrixSourceCoverage[]; sourceEstimates: MatrixSourceEstimate[];
   doseResponse: MatrixDoseResponse | null;
+  practicallyMeaningful: boolean; practicalThreshold: number; practicalRatio: number;
   featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
 };
 export type MatrixRelationOptions = {
@@ -446,15 +447,47 @@ function chronologicalDirection(pairs: Pair[]) {
 }
 
 function finalizeRelation(relation: MatrixRelation, qValue: number): MatrixRelation {
-  if (relation.coefficient === null) return { ...relation, qValue: 1, featureEligible: false };
+  if (relation.coefficient === null) return { ...relation, qValue: 1, practicallyMeaningful: false, practicalRatio: 0, featureEligible: false };
   const significant = qValue < .05;
+  const practicalRatio = relation.practicalRatio;
   return {
-    ...relation, qValue, featureEligible: significant, stable: significant,
+    ...relation, qValue, practicalRatio: round(practicalRatio, 3), practicallyMeaningful: significant && practicalRatio >= 1,
+    featureEligible: significant, stable: significant,
     evidence: significant ? "established" : "exploratory",
     strength: significant ? (Math.abs(relation.percentEffect ?? 0) >= 10 ? "strong" : "clear") : "light",
     relevance: significant ? Math.abs(relation.percentEffect ?? relation.coefficient ?? 0) * -Math.log10(Math.max(qValue, 1e-8)) * Math.log10(relation.sampleSize + 1) : 0,
     exclusionReasons: significant ? relation.exclusionReasons : [...new Set([...relation.exclusionReasons, "BH-adjusted q value is not below 0.05"])],
   };
+}
+
+export const PRACTICAL_EFFECT_THRESHOLDS: Readonly<Record<string, number>> = {
+  sleep_minutes: 15,
+  sleep_efficiency: 1.5,
+  sleep_latency: 5,
+  sleep_awake: 5,
+  sleep_awakenings: 1,
+  deep_sleep: 5,
+  rem_sleep: 5,
+  hrv: 2,
+  rhr: 1,
+  respiratory: .3,
+  spo2: .3,
+  recovery: 3,
+};
+
+export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8) {
+  const bestByPair = new Map<string, MatrixRelation>();
+  const stronger = (first: MatrixRelation, second: MatrixRelation) =>
+    second.practicalRatio - first.practicalRatio
+    || first.qValue - second.qValue
+    || second.sampleSize - first.sampleSize;
+  for (const relation of relations) {
+    if (relation.excluded || relation.qValue >= .05 || !relation.practicallyMeaningful) continue;
+    const key = `${relation.period}:${relation.predictorId}:${relation.outcomeId}`;
+    const current = bestByPair.get(key);
+    if (!current || stronger(relation, current) < 0) bestByPair.set(key, relation);
+  }
+  return [...bestByPair.values()].sort(stronger).slice(0, limit);
 }
 
 export function adjustMatrixRelations(relations: MatrixRelation[]) {
@@ -489,6 +522,11 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
   const confidenceHigh = estimate ? estimate.effect + 1.959963984540054 * estimate.standardError : null;
   const outcomeScale = standardDeviation(pairs.map((pair) => pair.outcome)) || 1;
   const sourceName = coverageBySource.map((item) => item.source).join(" + ") || "All data";
+  const explicitPracticalThreshold = PRACTICAL_EFFECT_THRESHOLDS[outcome.id];
+  const practicalThreshold = explicitPracticalThreshold ?? .2;
+  const practicalRatio = estimate
+    ? explicitPracticalThreshold === undefined ? Math.abs(estimate.effect) / outcomeScale / practicalThreshold : Math.abs(estimate.effect) / practicalThreshold
+    : 0;
   const relation: MatrixRelation = {
     predictorId: predictor.id, predictorLabel: predictor.label, predictorUnit: predictor.unit, predictorKind: predictor.kind,
     predictorPresentation: predictor.presentation ?? "amount",
@@ -509,6 +547,7 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
     strength: estimate ? "light" : "hidden", coverageBySource,
     sourceEstimates: estimate ? [{ source: sourceName, sampleSize: pairs.length, effect: round(estimate.effect, 1), effectConfidenceLow: round(confidenceLow ?? estimate.effect, 1), effectConfidenceHigh: round(confidenceHigh ?? estimate.effect, 1), coefficient: round(estimate.coefficient, 3), pValue: estimate.pValue }] : [],
     doseResponse,
+    practicallyMeaningful: false, practicalThreshold, practicalRatio: round(practicalRatio, 3),
     featureEligible: false, exclusionReasons, excluded: false,
   };
   return finalizeRelation(relation, relation.pValue);

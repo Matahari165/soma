@@ -3,7 +3,7 @@
 import { ArrowRight, Check, ThumbsUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
+import { PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { effectText, percentText, RelationDetail, relationTone, shortTimingText } from "./relation-detail";
@@ -18,6 +18,50 @@ type RelationLocator = { predictor: string; outcome: string; period: AnalysisPer
 function openRelation(locator: RelationLocator | undefined) {
   document.querySelector("#relations")?.scrollIntoView({ behavior: "smooth", block: "start" });
   if (locator) window.dispatchEvent(new CustomEvent<RelationLocator>("soma:open-relation", { detail: locator }));
+}
+
+function effectDirection(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
+  return relationTone(relation, direction) === "is-positive" ? 1 : relationTone(relation, direction) === "is-negative" ? -1 : 0;
+}
+
+function StrongestEffects({ relations, outcomes, onSelect }: {
+  relations: MatrixRelation[];
+  outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
+  onSelect: (relation: MatrixRelation) => void;
+}) {
+  const meaningful = useMemo(() => selectMeaningfulRelations(relations, 8), [relations]);
+  return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
+    <header>
+      <div><h3 id="strongest-effects-title">Strongest effects</h3><p>Only q &lt; 0.05 effects above a practical threshold.</p></div>
+      <div className="strongest-effects__axis" aria-hidden="true"><span>Less favourable</span><span>More favourable</span></div>
+    </header>
+    {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : <ol>
+      {meaningful.map((relation) => {
+        const direction = outcomes.find((outcome) => outcome.id === relation.outcomeId)?.direction ?? "target";
+        const sign = effectDirection(relation, direction);
+        const point = Math.max(-1, Math.min(1, sign * relation.practicalRatio / 4));
+        const standardizedEffect = Math.sign(relation.effect ?? 0) * relation.practicalRatio * .2;
+        const uncertainty = PRACTICAL_EFFECT_THRESHOLDS[relation.outcomeId] === undefined
+          ? Math.max(Math.abs(standardizedEffect - relation.confidenceLow), Math.abs(relation.confidenceHigh - standardizedEffect)) / .2 / 4
+          : relation.effectConfidenceLow === null || relation.effectConfidenceHigh === null || relation.effect === null
+            ? 0
+            : Math.max(Math.abs(relation.effect - relation.effectConfidenceLow), Math.abs(relation.effectConfidenceHigh - relation.effect)) / relation.practicalThreshold / 4;
+        const low = Math.max(-1, point - uncertainty);
+        const high = Math.min(1, point + uncertainty);
+        return <li key={`${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
+          <button type="button" onClick={() => onSelect(relation)} aria-label={`Open ${relation.predictorLabel} and ${relation.outcomeLabel}: ${effectText(relation)}, ${shortTimingText(relation)}`}>
+            <span className="strongest-effects__relation"><strong>{relation.predictorLabel}</strong><small>{relation.comparisonLabel} · {relation.outcomeLabel} · {shortTimingText(relation)}</small></span>
+            <span className="strongest-effects__plot" aria-hidden="true">
+              <i className="strongest-effects__zero" />
+              <i className="strongest-effects__interval" style={{ left: `${50 + low * 46}%`, width: `${Math.max(1, (high - low) * 46)}%` }} />
+              <i className="strongest-effects__point" style={{ left: `${50 + point * 46}%` }} />
+            </span>
+            <strong className="strongest-effects__value">{effectText(relation)}</strong>
+          </button>
+        </li>;
+      })}
+    </ol>}
+  </section>;
 }
 
 export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {
@@ -39,7 +83,8 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
     <header>
       <h2 id="lab-insight-title">{hasHistory ? <button type="button" className="lab-insight-header-trigger" aria-expanded={historyOpen} aria-controls="lab-insight-history" onClick={() => setHistoryOpen((current) => !current)}>{insightTitle}</button> : insightTitle}</h2>
     </header>
-    {lines.length > 0 && <ol aria-label="Recommendations">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open recommendation ${index + 1}: ${line}`} onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
+    {narrative?.isCurrent && narrative.summary && <p>{narrative.summary}</p>}
+    {lines.length > 0 && <ol aria-label="Insights">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open insight ${index + 1}: ${line}`} onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
     {historyOpen && narrative?.history && <div id="lab-insight-history" className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
       <header><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
       <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>
@@ -120,6 +165,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
+    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)))} />
     <div className="matrix-scroll" role="region" aria-label="Scrollable relationship matrix" tabIndex={0}>
       <table>
         <thead><tr><th scope="col">Influence</th>{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr></thead>

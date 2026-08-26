@@ -17,9 +17,10 @@ describe("Grok Personal Lab output", () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
       output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Signal", summary: "A clear signal appears in recovery.", highlights: [{ text: "More steps are linked to -3 bpm in resting heart rate.", factIndex: 0 }] }) }] }],
+      usage: { input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 },
     }), { status: 200 }));
 
-    await generateLabNarrative({ userId: "user-1", relations: [{
+    const generated = await generateLabNarrative({ userId: "user-1", relations: [{
       predictorId: "steps",
       predictorLabel: "Pas",
       predictorUnit: "steps",
@@ -64,6 +65,9 @@ describe("Grok Personal Lab output", () => {
       modelType: "linear",
       modelImprovement: 0,
       nonlinearTested: true,
+      practicallyMeaningful: true,
+      practicalThreshold: 1,
+      practicalRatio: 3,
       featureEligible: true,
       exclusionReasons: [],
       excluded: false,
@@ -71,7 +75,7 @@ describe("Grok Personal Lab output", () => {
 
     const request = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(request?.body)) as { reasoning?: { effort?: string }; max_output_tokens?: number; store?: boolean; input?: string; instructions?: string };
-    expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 1200, store: false });
+    expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 700, store: false });
     expect(body.input).toContain("qValue");
     expect(body.input).toContain("interval95");
     expect(body.input).toContain("pairedObservations");
@@ -81,5 +85,7 @@ describe("Grok Personal Lab output", () => {
     expect(body.instructions).toContain("clear, natural English");
     expect(body.instructions).toContain("1 to 4 short effect bullets");
     expect(request?.signal).toBeInstanceOf(AbortSignal);
+    expect(generated.usage).toEqual({ input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 });
+    expect(generated.facts).toHaveLength(1);
   });
 });

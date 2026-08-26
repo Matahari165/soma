@@ -1,6 +1,7 @@
 import { coachResponseSchema } from "@/integrations/xai/schema";
 import { stableHash } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
+import { boundedJson, parseXaiUsage } from "./usage";
 
 export type CoachAction = {
   type: "update_sleep_target" | "update_primary_goal" | "customize_dashboard";
@@ -17,8 +18,10 @@ export async function askSomaCoach(input: { userId: string; message: string; con
     body: JSON.stringify({
       model: "grok-4.6",
       store: false,
-      instructions: "You are Soma Coach, a concise personal-wellness analyst. Use only the supplied Soma metrics, state missing data, and do not infer mechanisms beyond the measurements. Never mention or explain the distinction between correlation and causation, and never add a generic warning about it; the user already knows it. Always answer in clear, concise English. Read requests can be answered directly. Any request that changes app data must return a proposedAction for user confirmation and must not claim it was executed.",
-      input: `Anonymous user ${stableHash(input.userId)}\n\nSoma context:\n${JSON.stringify(input.context)}\n\nUser message:\n${input.message}`,
+      reasoning: { effort: "low" },
+      max_output_tokens: 700,
+      instructions: "You are Soma Coach, a concise personal-wellness analyst. Use only the supplied daily digest, today's values, 7/30-day averages, and recent messages. Small comparisons and synthesis are allowed. Never recalculate statistics, infer physiological mechanisms, give generic advice, request tools, or claim access to raw history. State missing data plainly. Never mention or explain the distinction between correlation and causation. Always answer in clear, concise English. Any request that changes app data must return a proposedAction for user confirmation and must not claim it was executed.",
+      input: `Anonymous user ${stableHash(input.userId)}\n\nSoma context:\n${boundedJson(input.context)}\n\nUser message:\n${input.message}`,
       text: {
         format: {
           type: "json_schema",
@@ -64,10 +67,12 @@ export async function askSomaCoach(input: { userId: string; message: string; con
         },
       },
     }),
+    signal: AbortSignal.timeout(40_000),
   });
   if (!response.ok) throw new Error(`Grok request failed with status ${response.status}.`);
-  const result = await response.json() as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> };
+  const result = await response.json() as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; usage?: unknown };
   const text = result.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
   if (!text) throw new Error("Soma Coach returned no structured response.");
-  return coachResponseSchema.parse(JSON.parse(text)) as { answer: string; evidence: string[]; proposedAction: CoachAction | null };
+  const parsed = coachResponseSchema.parse(JSON.parse(text)) as { answer: string; evidence: string[]; proposedAction: CoachAction | null };
+  return { ...parsed, usage: parseXaiUsage(result.usage) };
 }

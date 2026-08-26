@@ -60,7 +60,7 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
     { label: "Effort", value: values.effortScore === null ? "—" : String(Math.round(values.effortScore)), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
   ];
   return <section className="lab-signals" aria-label="Today" aria-busy={refreshing} aria-live="polite">{signals.map(({ label, value, average, trend, href }) => <Link href={href} prefetch={false} key={label}>
-    <span><span className="lab-signal__label">{label}</span><small>30d avg {average}</small></span>
+    <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">30-day avg · {average}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`}>{value}</strong>
   </Link>)}</section>;
 }

@@ -343,7 +343,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
     <span className={validated || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{state === "saving" ? "Saving" : validated ? "Validated" : state === "saved" ? "Draft saved" : "Draft"}</span>
     {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button>}
-    {!managerOpen && <button className="text-link" type="button" onClick={() => setManagerOpen(true)}>Manage journal fields</button>}
+    {!managerOpen && <button className="text-link" type="button" aria-label="Edit journal fields" onClick={() => setManagerOpen(true)}>Edit</button>}
   </div></header>
     <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
