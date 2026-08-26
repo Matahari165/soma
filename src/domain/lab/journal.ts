@@ -43,17 +43,6 @@ export function journalDayPeriod(position: number): JournalDayPeriod {
   return "other";
 }
 
-export function journalFieldHint(variable: Pick<JournalVariable, "name" | "variableType" | "unit">) {
-  // The unit is already rendered inside the numeric field. Keep the hint for
-  // boolean/time/scale controls, but do not repeat units such as mg or g.
-  if (variable.unit) return null;
-  if (variable.name === "WHM") return "Rounds";
-  if (variable.variableType === "boolean") return "Yes / no";
-  if (variable.variableType === "time") return "Time";
-  if (variable.variableType === "scale") return "Scale 1–5";
-  return null;
-}
-
 const name = z.string().trim().min(1).max(80);
 const options = z.array(z.string().trim().min(1).max(60)).max(20).default([])
   .transform((values) => [...new Set(values)]);

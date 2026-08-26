@@ -279,9 +279,7 @@ textarea:focus-visible,
 .mobile-header, .bottom-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
 
 .eyebrow,
-.page-date,
-.quality-pill,
-.analytics-source {
+.quality-pill {
   color: var(--muted);
   font-family: var(--font-soma-ui);
   font-size: .67rem;
@@ -293,8 +291,7 @@ textarea:focus-visible,
 .primary-button,
 .secondary-button,
 .danger-button,
-.google-button,
-.summary-button {
+.google-button {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -310,8 +307,8 @@ textarea:focus-visible,
   transition: background var(--fast), color var(--fast), border-color var(--fast);
 }
 .primary-button:hover, .google-button:hover { background: var(--moss-dark); border-color: var(--moss-dark); }
-.secondary-button, .summary-button { background: transparent; color: var(--ink); }
-.secondary-button:hover, .summary-button:hover { background: var(--ink); color: var(--canvas); }
+.secondary-button { background: transparent; color: var(--ink); }
+.secondary-button:hover { background: var(--ink); color: var(--canvas); }
 .danger-button { border-color: var(--danger); background: var(--danger); color: #fff; }
 .icon-button {
   display: inline-grid;

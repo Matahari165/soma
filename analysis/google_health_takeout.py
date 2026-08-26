@@ -76,11 +76,6 @@ def _read_json_files(files: Iterable[Path]) -> list[dict]:
     return rows
 
 
-def _date_index(values: pd.Series, *, utc: bool = True) -> pd.Series:
-    parsed = pd.to_datetime(values, errors="coerce", format="mixed", utc=utc)
-    return pd.Series(parsed.dt.date, index=values.index)
-
-
 def _daily_csv(
     root: Path,
     filename: str,

@@ -1,0 +1,23 @@
+export type LabObservation = {
+  date: string;
+  sleepMinutes: number | null;
+  sleepEfficiency: number | null;
+  sleepRegularity: number | null;
+  sleepDebtMinutes: number | null;
+  hrv: number | null;
+  restingHeartRate: number | null;
+  recoveryScore: number | null;
+  effortScore: number | null;
+  steps: number | null;
+  zoneMinutes: number | null;
+  deepWorkMinutes: number | null;
+  energy: number | null;
+  focus: number | null;
+  stress: number | null;
+  mood: number | null;
+  soreness: number | null;
+  caffeine: number | null;
+  alcohol: number | null;
+  lateMeal: boolean | null;
+  illness: boolean | null;
+};

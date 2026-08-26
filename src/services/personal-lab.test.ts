@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
-import type { LabObservation } from "@/domain/lab/insights";
+import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
   const now = new Date("2026-08-25T12:00:00.000Z");

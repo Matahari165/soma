@@ -66,10 +66,10 @@ describe("production-only application contract", () => {
     expect(proxySource).toContain("...publicMachinePaths");
   });
 
-  it("keeps authenticated server data canonical across dashboard and workouts", () => {
-    const dashboard = readFileSync(`${sourceRoot}/components/dashboard/dashboard.tsx`, "utf8");
+  it("keeps authenticated server data canonical across Personal Lab and workouts", () => {
+    const personalLab = readFileSync(`${sourceRoot}/components/lab/personal-lab.tsx`, "utf8");
     const workouts = readFileSync(`${sourceRoot}/components/workout-studio.tsx`, "utf8");
-    expect(dashboard).not.toContain("localStorage");
+    expect(personalLab).not.toContain("localStorage");
     expect(workouts).not.toContain("localStorage");
     expect(workouts).not.toContain("ExerciseFigure");
   });

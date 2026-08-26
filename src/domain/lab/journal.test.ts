@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalFieldHint, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -83,9 +83,7 @@ describe("journal values", () => {
     expect(defaultJournalVariables.find((item) => item.name === "Dark room")?.dayPeriod).toBe("sleep");
   });
 
-  it("does not repeat a numeric unit in the field hint", () => {
-    const sugar = defaultJournalVariables.find((item) => item.name === "Added sugar");
-    expect(sugar?.unit).toBe("g");
-    expect(journalFieldHint({ name: sugar?.name ?? "", variableType: sugar?.variableType ?? "number", unit: sugar?.unit ?? null })).toBeNull();
+  it("keeps the added sugar unit", () => {
+    expect(defaultJournalVariables.find((item) => item.name === "Added sugar")?.unit).toBe("g");
   });
 });
