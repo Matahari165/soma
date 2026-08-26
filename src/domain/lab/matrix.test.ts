@@ -43,6 +43,24 @@ describe("Personal Lab raw within-person relations", () => {
     expect(relation.percentEffect).toBeLessThan(0);
   });
 
+  it("adds a readable dose response among non-zero caffeine days", () => {
+    const caffeine = Array.from({ length: 120 }, (_, index) => index % 3 === 0 ? 0 : 80 + index % 5 * 40);
+    const rhr = caffeine.map((value, index) => 52 + value * .025 + Math.sin(index * 1.7));
+    const predictor = { ...series("caffeine", caffeine), unit: "mg" };
+    const relation = calculateMatrixRelation(predictor, { ...series("rhr", rhr), unit: "bpm" });
+    expect(relation.comparisonLabel).toContain("avg vs 0");
+    expect(relation.doseResponse?.comparisonLabel).toMatch(/^\+\d+ mg among consumption days$/);
+    expect(relation.doseResponse?.effect).toBeGreaterThan(0);
+    expect(relation.doseResponse?.sampleSize).toBe(80);
+  });
+
+  it("only reports relative percentages for outcomes with a meaningful zero", () => {
+    const values = Array.from({ length: 80 }, (_, index) => 1360 + index % 30);
+    const recovery = values.map((value, index) => 75 - (value - 1360) * .1 + Math.sin(index));
+    const relation = calculateMatrixRelation(series("bedtime", values, "numeric", "clock-time"), { ...series("recovery", recovery), unit: "pts" });
+    expect(relation.percentEffect).toBeNull();
+  });
+
   it("translates clock-time relations into a 30-minute contrast", () => {
     const bedtime = Array.from({ length: 80 }, (_, index) => 1360 + index % 30);
     const recovery = bedtime.map((value, index) => 80 - (value - 1360) * .1 + Math.sin(index));

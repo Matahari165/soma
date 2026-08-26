@@ -60,6 +60,7 @@ describe("Grok Personal Lab output", () => {
       strength: "clear",
       coverageBySource: [{ source: "Fitbit", pairedDays: 60, pairedWeeks: 0 }],
       sourceEstimates: [{ source: "Fitbit", sampleSize: 60, effect: -3, effectConfidenceLow: -4.5, effectConfidenceHigh: -1.5, coefficient: -0.4, pValue: 0.01 }],
+      doseResponse: null,
       featureEligible: true,
       exclusionReasons: [],
       excluded: false,

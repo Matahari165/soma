@@ -7,7 +7,6 @@ import { useMemo, useRef, useState } from "react";
 import {
   journalDayPeriod,
   journalDayPeriods,
-  journalFieldHint,
   journalVariableSuggestions,
   type JournalEntry,
   type JournalEntryValue,
@@ -31,10 +30,6 @@ const typeLabels: Record<JournalVariableType, string> = {
 };
 
 const numericTypes = new Set<JournalVariableType>(["count", "duration", "number", "scale"]);
-
-function formatEntryDate(date: string) {
-  return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
-}
 
 function splitOptions(value: string) {
   return value.split(",").map((option) => option.trim()).filter(Boolean);
@@ -246,8 +241,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
 }
 
 function JournalFieldRow({ variable, value, onChange, disabled }: { variable: JournalVariable; value: DraftValue; onChange: (value: DraftValue) => void; disabled: boolean }) {
-  const hint = journalFieldHint(variable);
-  const label = <>{variable.name}{hint && <small>{hint}</small>}</>;
+  const label = <>{variable.name}</>;
   return <div className="journal-field"><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span>
     {variable.variableType === "boolean" || variable.variableType === "scale"
       ? <span className="journal-field__label">{label}</span>
@@ -346,7 +340,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     queueDraft(entryDate, next);
   }
 
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal <span aria-hidden="true">·</span> {formatEntryDate(entryDate)}</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
+  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
     <span className={validated || state === "saved" ? "checkin-state checkin-state--saved" : "checkin-state"}>{state === "saving" ? "Saving" : validated ? "Validated" : state === "saved" ? "Draft saved" : "Draft"}</span>
     {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Saving…</> : "Validate day"}</button>}
     {!managerOpen && <button className="text-link" type="button" onClick={() => setManagerOpen(true)}>Manage journal fields</button>}

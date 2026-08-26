@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { analysisWindowForPeriods, hasReliableOvernightData, labMatrixCacheKey, latestLabDate, overnightFingerprint } from "./personal-lab";
+import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
+import type { LabObservation } from "@/domain/lab/insights";
 
 describe("Personal Lab analysis window", () => {
   const now = new Date("2026-08-25T12:00:00.000Z");
@@ -43,5 +44,60 @@ describe("Personal Lab morning readiness", () => {
     const base = { sleep_minutes: 500, bedtime: "2026-08-24T22:30:00Z", wake_time: "2026-08-25T07:00:00Z", hrv_ms: 44, steps: 1000 };
     expect(overnightFingerprint({ ...base, steps: 9000 })).toBe(overnightFingerprint(base));
     expect(overnightFingerprint({ ...base, hrv_ms: 48 })).not.toBe(overnightFingerprint(base));
+  });
+});
+
+describe("Personal Lab timing", () => {
+  it("rejects daytime and journal predictors against overnight outcomes that already happened", () => {
+    expect(isImpossibleSameDayTiming("daytime", "sleep_minutes", 0)).toBe(true);
+    expect(isImpossibleSameDayTiming("journal", "hrv", 0)).toBe(true);
+    expect(isImpossibleSameDayTiming("daytime", "sleep_minutes", 1)).toBe(false);
+  });
+
+  it("keeps genuinely same-episode and same-day comparisons", () => {
+    expect(isImpossibleSameDayTiming("overnight", "sleep_minutes", 0)).toBe(false);
+    expect(isImpossibleSameDayTiming("daytime", "effort", 0)).toBe(false);
+  });
+
+  it("classifies optional activity metrics as daytime and optional sleep metrics as overnight", () => {
+    expect(timingForAutomaticMetric("active_energy")).toBe("daytime");
+    expect(timingForAutomaticMetric("distance")).toBe("daytime");
+    expect(timingForAutomaticMetric("night_temperature")).toBe("overnight");
+    expect(isImpossibleSameDayTiming(timingForAutomaticMetric("active_energy"), "bedtime", 0)).toBe(true);
+  });
+});
+
+describe("Personal Lab 30-day signal averages", () => {
+  const observation = (date: string, values: Partial<LabObservation>): LabObservation => ({
+    date,
+    sleepMinutes: null,
+    sleepEfficiency: null,
+    sleepRegularity: null,
+    sleepDebtMinutes: null,
+    hrv: null,
+    restingHeartRate: null,
+    recoveryScore: null,
+    effortScore: null,
+    steps: null,
+    zoneMinutes: null,
+    deepWorkMinutes: null,
+    energy: null,
+    focus: null,
+    stress: null,
+    mood: null,
+    soreness: null,
+    caffeine: null,
+    alcohol: null,
+    lateMeal: null,
+    illness: null,
+    ...values,
+  });
+
+  it("uses an inclusive 30-day window and excludes missing values", () => {
+    expect(recentAverages([
+      observation("2026-07-26", { sleepMinutes: 100, recoveryScore: 10, effortScore: 1 }),
+      observation("2026-07-27", { sleepMinutes: 400, recoveryScore: 40, effortScore: 4 }),
+      observation("2026-08-25", { sleepMinutes: 500, recoveryScore: 60, effortScore: 6 }),
+    ], "2026-08-25")).toEqual({ averageSleepMinutes: 450, averageRecoveryScore: 50, averageEffortScore: 5 });
   });
 });

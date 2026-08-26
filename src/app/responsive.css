@@ -358,6 +358,10 @@
   .personal-lab-page, .discoveries-page { padding: 14px 14px 84px; }
   .lab-header { padding-bottom: 18px; }
   .lab-header h1 { font-size: clamp(2.8rem, 14vw, 4.2rem); }
+  .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
+  .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
+  .personal-lab-page .lab-header__signals .lab-signals a > span { min-width: 0; flex-direction: column; gap: 1px; }
+  .personal-lab-page .lab-header__signals .lab-signals a > span .lab-signal__label { line-height: 1; }
   .lab-question { grid-template-columns: 1fr; align-items: start; }
   .lab-question dl { width: 100%; }
   .lab-question dl > div { flex: 1; }

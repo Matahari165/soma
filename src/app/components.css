@@ -1090,7 +1090,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-toggle input:not(:checked) + span svg { opacity: 0; }
 .matrix-scroll { max-height: min(72vh, 820px); border-top: 1px solid var(--ink); }
 .matrix-scroll table { width: max(100%, 1420px); table-layout: fixed; }
-.matrix-scroll th, .matrix-scroll td { width: 112px; height: 52px; padding: 0; }
+.matrix-scroll th, .matrix-scroll td { width: 112px; height: 76px; padding: 0; }
 .matrix-scroll thead th { height: 58px; padding: 6px 7px; background: var(--ink); }
 .matrix-scroll thead th > span { font-size: .73rem; line-height: 1.1; }
 .matrix-scroll thead th small { margin-top: 4px; font-size: .58rem; }
@@ -1099,13 +1099,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .matrix-scroll tbody th strong { font-size: .76rem; line-height: 1.1; }
 .matrix-scroll tbody th small { margin-top: 4px; font-size: .58rem; line-height: 1.1; }
 .matrix-scroll tbody th strong > span { display: inline-grid; width: 24px; min-width: 24px; margin-right: 5px; place-items: center; font-size: .95rem; line-height: 1; text-align: center; vertical-align: -0.1em; }
-.matrix-scroll td > button { position: relative; display: grid; width: 100%; height: 100%; align-content: center; gap: 2px; padding: 5px; border: 0; background: transparent; text-align: left; }
+.matrix-scroll td > button { position: relative; display: grid; width: 100%; min-height: 76px; align-content: center; gap: 3px; padding: 5px; border: 0; background: transparent; text-align: left; }
 .matrix-scroll td > button strong { font-family: var(--font-soma-mono), monospace; font-size: .8rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .matrix-scroll td > button small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .57rem; line-height: 1.05; }
 .matrix-scroll td > button em { position: absolute; top: 3px; right: 4px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .5rem; font-style: normal; text-transform: uppercase; }
+.matrix-effect-line { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: baseline; gap: 3px; }
+.matrix-effect-line > b { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .5rem; font-weight: 650; }
+.matrix-effect-line > strong { overflow: hidden; font-size: .63rem !important; text-overflow: ellipsis; white-space: nowrap; }
+.matrix-effect-line > em { position: static !important; }
 .matrix-scroll td.is-positive { background: color-mix(in srgb, var(--moss-soft) 72%, var(--paper)); box-shadow: inset 0 3px var(--moss); }
 .matrix-scroll td.is-negative { background: color-mix(in srgb, var(--clay-soft) 74%, var(--paper)); box-shadow: inset 0 3px var(--clay); }
 .matrix-scroll td.is-neutral { background: color-mix(in srgb, var(--cobalt-soft) 58%, var(--paper)); box-shadow: inset 0 3px var(--cobalt); }
+.matrix-scroll td.is-mixed { background: color-mix(in srgb, var(--cobalt-soft) 42%, var(--paper)); box-shadow: inset 0 3px var(--ink-soft); }
 .matrix-scroll td.is-non-significant { background: var(--paper); color: var(--muted); }
 .matrix-scroll td.is-non-significant button { opacity: .56; }
 .matrix-empty { display: grid; height: 100%; place-items: center; color: var(--faint); font-family: var(--font-soma-mono), monospace; font-size: .78rem; }
@@ -1113,7 +1118,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .relation-detail { scroll-margin-top: 24px; border: 1px solid var(--ink); border-top: 0; background: var(--paper); }
 .relation-detail > header { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--ink); }
 .relation-detail h3 { margin-top: 4px; font-family: var(--font-soma-sans), sans-serif; font-size: 1.2rem; }
-.relation-detail__finding { max-width: 80ch; padding: 16px 18px; font-size: .82rem; }
+.relation-detail__explanation { max-width: 92ch; padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: .72rem; line-height: 1.5; }
+.relation-evidence { border-bottom: 1px solid var(--ink); }
+.relation-evidence > header { display: flex; min-height: 38px; align-items: center; justify-content: space-between; padding: 7px 18px; background: var(--canvas); font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
+.relation-evidence > header strong { font-weight: 560; }
+.relation-detail__finding { max-width: 88ch; padding: 14px 18px; font-size: .78rem; line-height: 1.5; }
 .relation-detail__plot { display: grid; gap: 8px; padding: 0 18px 18px; }
 .relation-detail__plot > div { display: grid; grid-template-columns: 150px minmax(0, 1fr) 130px; align-items: center; gap: 10px; font-size: .66rem; }
 .relation-detail__plot i { display: block; min-width: 2px; height: 8px; background: var(--cobalt); }
@@ -1124,6 +1133,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .relation-detail dl > div { min-height: 70px; padding: 10px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .relation-detail dt { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .52rem; text-transform: uppercase; }
 .relation-detail dd { margin: 7px 0 0; font-family: var(--font-soma-mono), monospace; font-size: .6rem; line-height: 1.35; }
+.relation-dose { padding: 13px 18px 16px; border-top: 1px solid var(--line); }
+.relation-dose h5 { font-family: var(--font-soma-mono), monospace; font-size: .55rem; text-transform: uppercase; }
+.relation-dose p { max-width: 90ch; margin-top: 7px; font-size: .72rem; line-height: 1.45; }
+.relation-dose small { display: block; margin-top: 7px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .55rem; }
+.relation-detail > footer { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 7px 12px; padding: 14px 18px; font-family: var(--font-soma-mono), monospace; font-size: .56rem; line-height: 1.4; }
+.relation-detail > footer span { color: var(--muted); text-transform: uppercase; }
+.relation-detail > footer strong { font-weight: 520; }
 .matrix-method { border-bottom: 1px solid var(--line); }
 .matrix-method summary { display: flex; min-height: 44px; align-items: center; }
 
@@ -1142,12 +1158,22 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .metric-registry__table select { width: 100%; min-height: 44px; border: 1px solid var(--line-strong); background: var(--paper-strong); font-size: .65rem; }
 
 /* Personal Lab compact pass: hierarchy through rhythm, not extra rules. */
-.personal-lab-page .lab-header__row { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
-.personal-lab-page .lab-header__row h1 { flex: 1 1 auto; min-width: 0; order: 1; margin-top: 0; }
-.personal-lab-page .lab-header__row .page-date { flex: 0 0 auto; order: 2; text-align: right; }
+.personal-lab-page .lab-header__row { display: grid; grid-template-columns: minmax(210px, max-content) minmax(0, 1fr); align-items: center; gap: clamp(20px, 4vw, 58px); }
+.personal-lab-page .lab-header__row h1 { min-width: 0; margin-top: 0; }
+.personal-lab-page .lab-header__signals { min-width: 0; }
+.personal-lab-page .lab-header__signals .lab-signals { grid-template-columns: repeat(3, minmax(0, 1fr)); border: 0; background: transparent; }
+.personal-lab-page .lab-header__signals .lab-signals a { min-height: 64px; align-content: center; justify-items: center; padding: 7px 12px; border-right: 1px solid var(--line); text-align: center; }
+.personal-lab-page .lab-header__signals .lab-signals a:last-child { border-right: 0; }
+.personal-lab-page .lab-header__signals .lab-signals a > span { align-items: center; justify-content: center; gap: 2px; text-align: center; }
+.lab-signals a > span small { display: block; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .53rem; font-weight: 400; letter-spacing: .01em; line-height: 1.15; white-space: nowrap; }
+.lab-signals a > strong.lab-signal__value { margin-top: 5px; }
+.lab-signals a > strong.lab-signal__value--above { color: var(--moss-dark); }
+.lab-signals a > strong.lab-signal__value--below { color: var(--clay); }
 .lab-insight-panel > header { align-items: center; }
+.lab-insight-panel > header { min-height: 64px; padding: 12px 16px; gap: 14px; }
 .lab-insight-panel > header > div:first-child { min-width: 0; flex: 1; }
 .lab-insight-panel h2 { max-width: none; }
+.lab-insight-panel h2, .journal-card h2, .matrix-header h2 { margin-top: 0; font-size: clamp(1.15rem, 1.8vw, 1.75rem); line-height: 1.08; }
 .lab-insight-panel > ol { margin-top: 0; }
 .lab-insight-panel > ol li { grid-template-columns: 48px minmax(0, 1fr); }
 .lab-insight-panel > ol span { border-right: 0; justify-items: start; justify-content: start; padding-left: 14px; color: var(--moss-dark); }
@@ -1156,7 +1182,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .lab-overview--signals .lab-signals a { min-height: 60px; align-content: center; justify-items: center; padding: 8px 14px; text-align: center; }
 .lab-overview--signals .lab-signals a > strong { margin-top: 4px; line-height: 1; }
 
-.journal-card > header { gap: 14px; }
+.journal-card > header { min-height: 68px; gap: 12px; padding: 12px 16px; }
 .journal-card > header > div:first-child { min-width: 0; }
 .journal-card__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .journal-card__actions .primary-button { min-height: 40px; }
@@ -1172,11 +1198,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .journal-save-note { border-top: 0; padding: 10px 16px 14px; }
 .journal-manager--closed { display: none; }
 .journal-manager { border-top: 0; }
+.matrix-section { margin-top: 26px; }
+.matrix-header { padding-bottom: 10px; }
 
 @media (max-width: 700px) {
-  .personal-lab-page .lab-header__row { gap: 10px; }
+  .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
   .personal-lab-page .lab-header__row h1 { font-size: 2.7rem; }
-  .personal-lab-page .lab-header__row .page-date { font-size: .62rem; }
+  .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
   .lab-overview--signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
   .journal-card > header { gap: 10px; }
   .journal-card__actions { gap: 5px; }

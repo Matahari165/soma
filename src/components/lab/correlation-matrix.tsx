@@ -1,57 +1,13 @@
 "use client";
 
-import { ArrowRight, Check, History, ThumbsUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { ArrowRight, Check, History, ThumbsUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AnalysisPeriod, MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
-function signed(value: number, digits = 1) {
-  const rounded = Number(value.toFixed(digits));
-  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(digits)}`;
-}
-
-function effectDigits(relation: MatrixRelation) {
-  return ["bpm", "ms", "min", "count"].includes(relation.outcomeUnit) && Math.abs(relation.effect ?? 0) >= 1 ? 0 : 1;
-}
-
-function effectText(relation: MatrixRelation) {
-  if (relation.effect === null) return "—";
-  return `${signed(relation.effect, effectDigits(relation))}${relation.outcomeUnit ? ` ${relation.outcomeUnit}` : ""}`;
-}
-
-function percentText(relation: MatrixRelation) {
-  return relation.percentEffect === null ? null : `${signed(relation.percentEffect, 1)}%`;
-}
-
-function probability(value: number) {
-  return value < .001 ? "<.001" : value.toFixed(3);
-}
-
-function sourceText(relation: MatrixRelation) {
-  return relation.coverageBySource.map((item) => `${item.source} ${item.pairedDays}`).join(" · ") || "No paired source";
-}
-
-function timingText(relation: MatrixRelation) {
-  const sleepOutcome = ["sleep_minutes", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_awakenings", "sleep_fragmentation", "deep_sleep", "rem_sleep", "light_sleep"].some((id) => relation.outcomeId.startsWith(id));
-  if (relation.lagDays === 0) return sleepOutcome ? "that sleep episode" : "the same day";
-  if (relation.lagDays === 1) return sleepOutcome ? "the following night" : "the next day";
-  return "two days later";
-}
-
-function findingSentence(relation: MatrixRelation) {
-  return `${relation.predictorLabel} (${relation.comparisonLabel}) is associated with ${effectText(relation)} in ${relation.outcomeLabel} ${timingText(relation)}.`;
-}
-
-function relationTone(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
-  if (relation.effect === null) return "is-neutral";
-  if (direction === "higher") return relation.effect > 0 ? "is-positive" : "is-negative";
-  if (direction === "lower") return relation.effect < 0 ? "is-positive" : "is-negative";
-  if (relation.outcomeId === "sleep_minutes" && relation.baselineMean !== null && relation.comparisonMean !== null) {
-    return Math.abs(relation.comparisonMean - 510) < Math.abs(relation.baselineMean - 510) ? "is-positive" : "is-negative";
-  }
-  return "is-neutral";
-}
+import { effectText, percentText, RelationDetail, relationTone, shortTimingText } from "./relation-detail";
+import { calculableRelations, groupMatrixRows, significantRelations } from "./relationship-groups";
 
 function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "All" : `${period}d`;
@@ -62,32 +18,6 @@ type RelationLocator = { predictor: string; outcome: string; period: AnalysisPer
 function openRelation(locator: RelationLocator | undefined) {
   document.querySelector("#relations")?.scrollIntoView({ behavior: "smooth", block: "start" });
   if (locator) window.dispatchEvent(new CustomEvent<RelationLocator>("soma:open-relation", { detail: locator }));
-}
-
-function RelationDetail({ relation, direction, onClose, detailRef }: { relation: MatrixRelation; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
-  const maximum = Math.max(Math.abs(relation.baselineMean ?? 0), Math.abs(relation.comparisonMean ?? 0), 1);
-  return <aside ref={detailRef} className="relation-detail" tabIndex={-1} aria-labelledby="relation-detail-title">
-    <header>
-      <div><span className="section-kicker">Relation detail</span><h3 id="relation-detail-title">{relation.predictorLabel} × {relation.outcomeLabel}</h3></div>
-      <button type="button" className="icon-button" aria-label="Close relation detail" onClick={onClose}><X size={17} /></button>
-    </header>
-    <p className="relation-detail__finding">{findingSentence(relation)}</p>
-    <div className="relation-detail__plot" aria-label="Compared outcome means">
-      <div><span>Baseline</span><i style={{ width: `${Math.abs(relation.baselineMean ?? 0) / maximum * 100}%` }} /><strong>{relation.baselineMean ?? "—"} {relation.outcomeUnit}</strong></div>
-      <div><span>{relation.comparisonLabel}</span><i className={relationTone(relation, direction)} style={{ width: `${Math.abs(relation.comparisonMean ?? 0) / maximum * 100}%` }} /><strong>{relation.comparisonMean ?? "—"} {relation.outcomeUnit}</strong></div>
-    </div>
-    <dl>
-      <div><dt>Effect</dt><dd>{percentText(relation) ? `${percentText(relation)} · ` : ""}{effectText(relation)}</dd></div>
-      <div><dt>95% CI</dt><dd>{relation.effectConfidenceLow === null ? "—" : `${signed(relation.effectConfidenceLow, effectDigits(relation))} to ${signed(relation.effectConfidenceHigh ?? 0, effectDigits(relation))} ${relation.outcomeUnit}`}</dd></div>
-      <div><dt>Groups</dt><dd>{relation.baselineCount} baseline · {relation.comparisonCount} comparison</dd></div>
-      <div><dt>Tests</dt><dd>p {probability(relation.pValue)} · q {probability(relation.qValue)}</dd></div>
-      <div><dt>Period</dt><dd>{relation.period === "all" ? "All history" : `${relation.period} days`}</dd></div>
-      <div><dt>Lag</dt><dd>{timingText(relation)}</dd></div>
-      <div><dt>Source</dt><dd>{sourceText(relation)}</dd></div>
-      {relation.predictorKind === "numeric" && !relation.comparisonLabel.includes("avg vs 0") && <div><dt>Association</dt><dd>Monotonic coefficient {signed(relation.coefficient ?? 0, 2)}</dd></div>}
-      <div><dt>Method</dt><dd>Raw within-person comparison · serial-dependence robust · BH corrected</dd></div>
-    </dl>
-  </aside>;
 }
 
 export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {
@@ -135,13 +65,11 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
   const [loadingPeriod, setLoadingPeriod] = useState<AnalysisPeriod | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showNonSignificant, setShowNonSignificant] = useState(false);
-  const [selected, setSelected] = useState<MatrixRelation | null>(null);
+  const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
   const relationDetailRef = useRef<HTMLElement | null>(null);
   const outcomes = matrix.outcomes;
-  const rows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period)
-    .filter((row) => showNonSignificant
-      ? row.relations.some((relation) => !relation.excluded)
-      : row.relations.some((relation) => relation.featureEligible && relation.qValue < .05)), [rowsByPeriod, period, showNonSignificant]);
+  const periodRows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period), [rowsByPeriod, period]);
+  const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id), showNonSignificant), [outcomes, periodRows, showNonSignificant]);
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod) => {
     const cached = rowsByPeriod[nextPeriod];
@@ -177,7 +105,8 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       void loadPeriod(locator.period).then((loadedRows) => {
         const relation = loadedRows.flatMap((row) => row.relations)
           .find((candidate) => candidate.predictorLabel === locator.predictor && candidate.outcomeLabel === locator.outcome && candidate.lagDays === locator.lagDays);
-        setSelected(relation ?? null);
+        if (!relation) return setSelected(null);
+        setSelected(calculableRelations(loadedRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)));
       });
     };
     window.addEventListener("soma:open-relation", listener);
@@ -200,14 +129,18 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     <div className="matrix-scroll" role="region" aria-label="Scrollable relationship matrix" tabIndex={0}>
       <table>
         <thead><tr><th scope="col">Influence</th>{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong><small>{row.lagLabel}</small></th>{row.relations.map((relation, index) => {
-          const significant = relation.featureEligible && relation.qValue < .05;
+        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></th>{row.relationsByOutcome.map((relations, index) => {
+          const calculable = calculableRelations(relations);
+          const significant = significantRelations(relations);
+          const displayed = showNonSignificant ? calculable : significant;
           const outcome = outcomes[index];
-          return <td className={significant ? relationTone(relation, outcome.direction) : "is-non-significant"} key={relation.outcomeId}>
-            {!significant && !showNonSignificant ? <span className="matrix-empty">—</span> : relation.coefficient === null ? <span className="matrix-empty" title={relation.exclusionReasons[0]}>n={relation.sampleSize}</span> : <button type="button" onClick={() => setSelected(relation)} aria-label={`Open ${relation.predictorLabel} and ${relation.outcomeLabel} detail`}>
-              <strong>{percentText(relation) ? `${percentText(relation)} · ${effectText(relation)}` : effectText(relation)}</strong>
-              <small>{relation.comparisonLabel}</small>
-              {!significant && <em>ns</em>}
+          const tones = new Set(significant.map((relation) => relationTone(relation, outcome.direction)));
+          const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
+          const maximumSample = Math.max(0, ...relations.map((relation) => relation.sampleSize));
+          return <td className={tone} key={outcome.id}>
+            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => setSelected(calculable)} aria-label={`Open ${row.label} and ${outcome.label} detail for ${displayed.map(shortTimingText).join(" and ")}`}>
+              {displayed.map((relation) => <span className="matrix-effect-line" key={relation.lagDays}><b>{shortTimingText(relation)}</b><strong>{percentText(relation) ? `${percentText(relation)} · ${effectText(relation)}` : effectText(relation)}</strong>{relation.qValue >= .05 && <em>ns</em>}</span>)}
+              <small>{displayed[0]?.comparisonLabel}</small>
             </button>}
           </td>;
         })}</tr>)}</tbody>
@@ -216,7 +149,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}
       {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
-    {selected && <RelationDetail relation={selected} direction={outcomes.find((outcome) => outcome.id === selected.outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
-    <details className="matrix-method"><summary>Method</summary><p>Each cell is a raw within-person comparison over the selected rolling window. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction across the visible analysis family. The default table keeps only q &lt; 0.05.</p></details>
+    {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
+    <details className="matrix-method"><summary>Method</summary><p>Each variable appears once. Its cells group same-day, next-day and two-days-later results when those timings are possible. Daytime behavior is never paired with an overnight outcome that happened earlier. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. Amounts can also show a dose response among non-zero days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction. The default table keeps only q &lt; 0.05.</p></details>
   </section>;
 }

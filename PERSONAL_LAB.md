@@ -169,6 +169,8 @@ Additional received metrics are visible in settings and can be enabled by the us
 
 - Influences are rows.
 - Results are columns.
+- Each influence appears once. A cell groups every eligible timing for that influence and
+  result, such as `next day` and `two days later`, instead of duplicating the influence row.
 - Default period: 30 days.
 - Other periods: 15 days, 90 days, and all history.
 - Desktop shows the complete matrix.
@@ -264,11 +266,16 @@ For an amount such as caffeine, the main cell reports the average non-zero dose 
 exposed-versus-zero outcome difference. The detail view may additionally show the
 quantity-response relation among exposed days.
 
+The quantity-response contrast uses a readable observed step, such as `+100 mg`, and always
+states that it applies among consumption days. A percentage always describes the displayed
+predictor contrast and the outcome change; it never means an effect per one predictor unit.
+
 ### Continuous measures
 
 Use a robust monotonic association test and translate it to a meaningful observed contrast,
 such as 30 minutes later bedtime. If the observed shape is materially non-linear and has
 enough support, describe a best zone or threshold instead of forcing one linear effect.
+This non-linear check applies to supported numeric measures, not only clock times.
 
 ### Significance
 

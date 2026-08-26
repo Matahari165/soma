@@ -13,13 +13,13 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
     <header className="lab-header">
       <div className="lab-header__row">
         <h1>Personal Lab</h1>
-        <time className="page-date" dateTime={data.todayDate}>{data.dateLabel}</time>
+        <div className="lab-header__signals">
+          <TodaySignals key={data.overnightFingerprint ?? "pending"} initial={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} />
+        </div>
       </div>
     </header>
 
     <TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} />
-
-    <div className="lab-overview lab-overview--signals"><TodaySignals key={data.overnightFingerprint ?? "pending"} initial={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} /></div>
 
     <div className="lab-workspace">
       <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} todayDate={data.todayDate} /></div>
