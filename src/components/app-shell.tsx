@@ -3,8 +3,8 @@
 import {
   Activity,
   BedDouble,
-  FlaskConical,
   HeartPulse,
+  LayoutDashboard,
   Menu,
   MessageCircle,
   PanelLeftClose,
@@ -24,7 +24,7 @@ import type { SomaUser } from "@/lib/auth";
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
 
 const navigation = [
-  { label: "Lab", href: "/", icon: FlaskConical },
+  { label: "Lab", href: "/", icon: LayoutDashboard },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
