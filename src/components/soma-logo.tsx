@@ -16,9 +16,14 @@ export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProp
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      <rect className="soma-symbol__frame" x="8" y="6.5" width="32" height="35" rx="8" vectorEffect="non-scaling-stroke" strokeWidth="1.7" />
-      <path className="soma-symbol__measure" d="M15 17.5h18M15 24h18M15 30.5h10" vectorEffect="non-scaling-stroke" strokeWidth="1.35" />
-      <circle className="soma-symbol__sample" cx="33" cy="30.5" r="2.25" fill="currentColor" stroke="none" />
+      <path
+        className="soma-symbol__flask"
+        d="M20 8v10L10.8 36.2A3.4 3.4 0 0 0 13.8 41h20.4a3.4 3.4 0 0 0 3-4.8L28 18V8"
+        vectorEffect="non-scaling-stroke"
+        strokeWidth="2"
+      />
+      <path className="soma-symbol__rim" d="M18 8h12" vectorEffect="non-scaling-stroke" strokeWidth="2" />
+      <path className="soma-symbol__liquid" d="M14.5 32h19" vectorEffect="non-scaling-stroke" strokeWidth="1.5" />
     </svg>
   );
 }
