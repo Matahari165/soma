@@ -31,6 +31,8 @@ type D1PreparedStatement = {
   run(): Promise<{ success: boolean; error?: string; meta?: { changes?: number } }>;
 };
 
+type D1BatchResult = { success?: boolean; error?: string };
+
 type D1DatabaseLike = {
   prepare(query: string): D1PreparedStatement;
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<T[]>;
@@ -89,6 +91,45 @@ export function cloudflareArchives() {
   const bucket = cloudflareEnv().SOMA_ARCHIVES;
   if (!bucket) throw new Error("The SOMA_ARCHIVES binding is not configured.");
   return bucket;
+}
+
+export async function saveCloudflareJournalDay({ userId, entryDate, entries, validate }: { userId: string; entryDate: string; entries: Array<{ variable_id: string; value: unknown }>; validate: boolean }) {
+  const db = cloudflareDb();
+  const dayResult = await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND user_id = ? AND json_extract(json_data, '$.entry_date') = ? LIMIT 1")
+    .bind("journal_days", userId, entryDate).first<{ json_data: string }>();
+  const currentDay = dayResult ? JSON.parse(dayResult.json_data) as Row : null;
+  const wasValidated = currentDay?.status === "validated";
+  const now = new Date().toISOString();
+  const statements: D1PreparedStatement[] = [];
+
+  for (const entry of entries) {
+    const row = { user_id: userId, variable_id: entry.variable_id, entry_date: entryDate };
+    const rowKey = stableIdentity("journal_entries", row, "user_id,variable_id,entry_date");
+    if (entry.value === null) {
+      statements.push(db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ?").bind("journal_entries", rowKey));
+      continue;
+    }
+    const entryRow = withDefaults({ ...row, value: entry.value });
+    statements.push(db.prepare("INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(table_name, row_key) DO UPDATE SET user_id = excluded.user_id, json_data = excluded.json_data, updated_at = excluded.updated_at")
+      .bind("journal_entries", rowKey, userId, JSON.stringify(entryRow), entryRow.created_at, entryRow.updated_at));
+  }
+
+  const dayRow = withDefaults({
+    ...(currentDay ?? {}),
+    user_id: userId,
+    entry_date: entryDate,
+    status: validate || wasValidated ? "validated" : "draft",
+    validated_at: validate || wasValidated ? currentDay?.validated_at ?? now : null,
+    omitted_variables: entries.filter((entry) => entry.value === null).map((entry) => entry.variable_id),
+    updated_at: now,
+  });
+  const dayKey = stableIdentity("journal_days", dayRow, "user_id,entry_date");
+  statements.push(db.prepare("INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(table_name, row_key) DO UPDATE SET user_id = excluded.user_id, json_data = excluded.json_data, updated_at = excluded.updated_at")
+    .bind("journal_days", dayKey, userId, JSON.stringify(dayRow), dayRow.created_at, dayRow.updated_at));
+
+  const results = await db.batch<D1BatchResult>(statements);
+  const failed = results.find((result) => result?.success === false);
+  if (failed) throw new Error(failed.error ?? "Cloudflare D1 journal write failed.");
 }
 
 export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs = 60_000) {
@@ -433,7 +474,11 @@ async function writeRows(table: string, rows: Row[], explicitConflict?: string, 
       : "INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(table_name, row_key) DO UPDATE SET user_id = excluded.user_id, json_data = excluded.json_data, updated_at = excluded.updated_at";
     return db.prepare(sql).bind(table, rowKey, row.user_id ?? null, JSON.stringify(row), row.created_at ?? null, row.updated_at ?? null);
   });
-  for (let index = 0; index < statements.length; index += 40) await db.batch(statements.slice(index, index + 40));
+  for (let index = 0; index < statements.length; index += 40) {
+    const results = await db.batch<D1BatchResult>(statements.slice(index, index + 40));
+    const failed = results.find((result) => result?.success === false);
+    if (failed) throw new Error(failed.error ?? "Cloudflare D1 write failed.");
+  }
 }
 
 class CloudflareQueryBuilder implements PromiseLike<ManyResult> {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- RPC payloads mirror the former database function API. */
 
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, saveCloudflareJournalDay } from "@/lib/cloudflare/db";
 
 type Row = Record<string, any>;
 type Result = { data: any; error: { message: string; code?: string } | null };
@@ -57,23 +57,8 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
     }
 
     if (name === "save_personal_lab_journal_day") {
-      const { data: day } = await client.from("journal_days").select("status,validated_at").eq("user_id", input.p_user_id).eq("entry_date", input.p_entry_date).maybeSingle();
-      const wasValidated = day?.status === "validated";
       const entries = Array.isArray(input.p_entries) ? input.p_entries : [];
-      for (const entry of entries) {
-        if (entry.value === null) {
-          await client.from("journal_entries").delete().eq("user_id", input.p_user_id).eq("variable_id", entry.variable_id).eq("entry_date", input.p_entry_date);
-        } else {
-          await client.from("journal_entries").upsert({ user_id: input.p_user_id, variable_id: entry.variable_id, entry_date: input.p_entry_date, value: entry.value }, { onConflict: "user_id,variable_id,entry_date" });
-        }
-      }
-      await client.from("journal_days").upsert({
-        user_id: input.p_user_id,
-        entry_date: input.p_entry_date,
-        status: input.p_validate || wasValidated ? "validated" : "draft",
-        validated_at: input.p_validate || wasValidated ? day?.validated_at ?? new Date().toISOString() : null,
-        omitted_variables: entries.filter((entry: Row) => entry.value === null).map((entry: Row) => entry.variable_id),
-      }, { onConflict: "user_id,entry_date" });
+      await saveCloudflareJournalDay({ userId: input.p_user_id, entryDate: input.p_entry_date, entries, validate: Boolean(input.p_validate) });
       return { data: null, error: null };
     }
 

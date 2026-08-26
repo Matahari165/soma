@@ -18,6 +18,8 @@ export type JournalVariable = {
 
 export type JournalEntryValue = boolean | number | string;
 export type JournalEntry = { variableId: string; entryDate: string; value: JournalEntryValue };
+export type JournalDraft = Record<string, JournalEntryValue | null>;
+export type JournalDraftsByDate = Record<string, JournalDraft>;
 export type JournalDayStatus = "draft" | "validated";
 export type JournalDay = { entryDate: string; status: JournalDayStatus; validatedAt: string | null; omittedVariableIds: string[] };
 
@@ -111,6 +113,22 @@ export const saveJournalEntriesSchema = z.object({
   mode: z.enum(["draft", "validate"]).default("draft"),
   entries: z.array(z.object({ variableId: z.string().uuid(), value: rawEntryValue })).max(100),
 });
+
+export function journalValuesForDate(variables: readonly JournalVariable[], entries: readonly JournalEntry[], days: readonly JournalDay[], date: string): JournalDraft {
+  const omitted = new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? []);
+  return Object.fromEntries(variables.map((variable) => [
+    variable.id,
+    omitted.has(variable.id) ? null : entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? variable.defaultValue ?? null,
+  ]));
+}
+
+export function journalDraftsForDates(dates: readonly string[], variables: readonly JournalVariable[], entries: readonly JournalEntry[], days: readonly JournalDay[]): JournalDraftsByDate {
+  return Object.fromEntries(dates.map((date) => [date, journalValuesForDate(variables, entries, days, date)]));
+}
+
+export function updateJournalDraft(drafts: JournalDraftsByDate, date: string, variableId: string, value: JournalEntryValue | null): JournalDraftsByDate {
+  return { ...drafts, [date]: { ...(drafts[date] ?? {}), [variableId]: value } };
+}
 
 export function normalizeJournalValue(variable: JournalVariable, raw: unknown): JournalEntryValue | null {
   if (raw === null || raw === undefined || raw === "") return null;

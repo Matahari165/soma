@@ -7,7 +7,11 @@ import { useMemo, useRef, useState } from "react";
 import {
   journalDayPeriod,
   journalDayPeriods,
+  journalDraftsForDates,
+  journalValuesForDate,
   journalVariableSuggestions,
+  updateJournalDraft,
+  type JournalDraftsByDate,
   type JournalEntry,
   type JournalEntryValue,
   type JournalDay,
@@ -266,12 +270,9 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const availableDates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(todayDate, -index)), [todayDate]);
   const [entryDate, setEntryDate] = useState(todayDate);
   const selectedDate = useRef(todayDate);
-  const valuesForDate = (date: string) => {
-    const omitted = new Set(days.find((candidate) => candidate.entryDate === date)?.omittedVariableIds ?? []);
-    return Object.fromEntries(activeVariables.map((variable) => [variable.id, omitted.has(variable.id) ? null : entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? variable.defaultValue ?? null]));
-  };
-  const [values, setValues] = useState<Record<string, DraftValue>>(() => valuesForDate(todayDate));
-  const drafts = useRef<Record<string, Record<string, DraftValue>>>({ [todayDate]: valuesForDate(todayDate) });
+  const initialDrafts = useMemo(() => journalDraftsForDates(availableDates, activeVariables, entries, days), [activeVariables, availableDates, days, entries]);
+  const [draftsByDate, setDraftsByDate] = useState<JournalDraftsByDate>(initialDrafts);
+  const drafts = useRef<JournalDraftsByDate>(initialDrafts);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
@@ -279,6 +280,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const [managerOpen, setManagerOpen] = useState(false);
   const day = days.find((candidate) => candidate.entryDate === entryDate);
   const validated = day?.status === "validated";
+  const values = draftsByDate[entryDate] ?? journalValuesForDate(activeVariables, entries, days, entryDate);
 
   async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>) {
     const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: activeVariables.map((variable) => ({ variableId: variable.id, value: draftValues[variable.id] ?? null })) }) });
@@ -307,12 +309,13 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   }
 
   async function validate() {
+    const date = selectedDate.current;
     setSaving(true);
     setState("saving");
     setError(null);
     try {
       await saveQueue.current;
-      await persist(entryDate, "validate", drafts.current[entryDate] ?? values);
+      await persist(date, "validate", drafts.current[date] ?? journalValuesForDate(activeVariables, entries, days, date));
       setState("saved");
       router.refresh();
     } catch (saveError) {
@@ -326,18 +329,21 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   function changeDate(date: string) {
     selectedDate.current = date;
     setEntryDate(date);
-    const next = drafts.current[date] ?? valuesForDate(date);
-    drafts.current[date] = next;
-    setValues(next);
+    if (!drafts.current[date]) {
+      const next = { ...drafts.current, [date]: journalValuesForDate(activeVariables, entries, days, date) };
+      drafts.current = next;
+      setDraftsByDate(next);
+    }
     setState("idle");
     setError(null);
   }
 
   function changeValue(variableId: string, value: DraftValue) {
-    const next = { ...(drafts.current[entryDate] ?? values), [variableId]: value };
-    drafts.current[entryDate] = next;
-    setValues(next);
-    queueDraft(entryDate, next);
+    const date = selectedDate.current;
+    const next = updateJournalDraft(drafts.current, date, variableId, value);
+    drafts.current = next;
+    setDraftsByDate(next);
+    queueDraft(date, next[date]);
   }
 
   return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
