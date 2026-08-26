@@ -318,7 +318,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     setError(null);
     try {
       await saveQueue.current;
-      await persist(entryDate, "validate", values);
+      await persist(entryDate, "validate", drafts.current[entryDate] ?? values);
       setState("saved");
       router.refresh();
     } catch (saveError) {
@@ -340,7 +340,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   }
 
   function changeValue(variableId: string, value: DraftValue) {
-    const next = { ...values, [variableId]: value };
+    const next = { ...(drafts.current[entryDate] ?? values), [variableId]: value };
     drafts.current[entryDate] = next;
     setValues(next);
     queueDraft(entryDate, next);
