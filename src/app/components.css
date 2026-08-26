@@ -1191,6 +1191,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .metric-registry__head { font-family: var(--font-soma-ui); }
 
 .personal-lab-page .lab-header__row { display: grid; grid-template-columns: minmax(210px, max-content) minmax(0, 1fr); align-items: center; gap: clamp(20px, 4vw, 58px); }
+.personal-lab-page .lab-header__title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.personal-lab-mark { display: inline-grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border: 1px solid var(--ink); color: var(--ink-soft); }
 .personal-lab-page .lab-header__row h1 { min-width: 0; margin-top: 0; }
 .personal-lab-page .lab-header__signals { min-width: 0; }
 .personal-lab-page .lab-header__signals .lab-signals { grid-template-columns: repeat(3, minmax(0, 1fr)); border: 0; background: transparent; }
@@ -1241,6 +1243,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
+  .personal-lab-page .lab-header__title { gap: 11px; }
+  .personal-lab-mark { width: 36px; height: 36px; flex-basis: 36px; }
   .personal-lab-page .lab-header__row h1 { font-size: 2.7rem; }
   .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
   .lab-overview--signals .lab-signals a { min-height: 58px; padding: 8px 6px; }

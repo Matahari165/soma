@@ -4,6 +4,7 @@ import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
 import { DailyJournal } from "./daily-journal";
 import { MetricRegistry } from "./metric-registry";
 import { NarrativeRefresh } from "./narrative-refresh";
+import { PersonalLabMark } from "./personal-lab-mark";
 import { TodaySignals } from "./today-signals";
 
 export function PersonalLab({ data, connectionNotice = null }: { data: PersonalLabSnapshot; connectionNotice?: "health" | "calendar" | null }) {
@@ -12,7 +13,10 @@ export function PersonalLab({ data, connectionNotice = null }: { data: PersonalL
     {connectionNotice && <div className="lab-notice" role="status">{connectionNotice === "calendar" ? "Google Calendar connected." : "Google Health connected. Import in progress."}</div>}
     <header className="lab-header">
       <div className="lab-header__row">
-        <h1>Personal Lab</h1>
+        <div className="lab-header__title">
+          <PersonalLabMark />
+          <h1>Personal Lab</h1>
+        </div>
         <div className="lab-header__signals">
           <TodaySignals key={data.overnightFingerprint ?? "pending"} initial={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} />
         </div>
