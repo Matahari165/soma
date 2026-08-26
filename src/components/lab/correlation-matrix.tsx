@@ -24,6 +24,12 @@ function effectDirection(relation: MatrixRelation, direction: "higher" | "lower"
   return relationTone(relation, direction) === "is-positive" ? 1 : relationTone(relation, direction) === "is-negative" ? -1 : 0;
 }
 
+function matrixCellEffectText(relation: MatrixRelation) {
+  const percentage = percentText(relation);
+  const equivalent = effectText(relation);
+  return percentage && equivalent !== "—" ? `${percentage} (${equivalent})` : percentage ?? equivalent;
+}
+
 function StrongestEffects({ relations, outcomes, onSelect }: {
   relations: MatrixRelation[];
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
@@ -50,13 +56,13 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
         const high = Math.min(1, point + uncertainty);
         return <li key={`${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
           <button type="button" onClick={() => onSelect(relation)} aria-label={`Open ${relation.predictorLabel} and ${relation.outcomeLabel}: ${effectText(relation)}, ${shortTimingText(relation)}`}>
-            <span className="strongest-effects__relation"><strong>{relation.predictorLabel}</strong><small>{relation.comparisonLabel} · {relation.outcomeLabel} · {shortTimingText(relation)}</small></span>
+            <span className="strongest-effects__relation"><strong>{relation.predictorLabel}</strong><small>{relation.comparisonLabel} · {shortTimingText(relation)}</small></span>
             <span className="strongest-effects__plot" aria-hidden="true">
               <i className="strongest-effects__zero" />
               <i className="strongest-effects__interval" style={{ left: `${50 + low * 46}%`, width: `${Math.max(1, (high - low) * 46)}%` }} />
               <i className="strongest-effects__point" style={{ left: `${50 + point * 46}%` }} />
             </span>
-            <strong className="strongest-effects__value">{effectText(relation)}</strong>
+            <span className="strongest-effects__outcome"><strong>{relation.outcomeLabel}</strong><small>{effectText(relation)}</small></span>
           </button>
         </li>;
       })}
@@ -178,9 +184,8 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
           const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
           const maximumSample = Math.max(0, ...relations.map((relation) => relation.sampleSize));
           return <td className={tone} key={outcome.id}>
-            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => setSelected(calculable)} aria-label={`Open ${row.label} and ${outcome.label} detail for ${displayed.map(shortTimingText).join(" and ")}`}>
-              {displayed.map((relation) => <span className="matrix-effect-line" key={relation.lagDays}><b>{shortTimingText(relation)}</b><strong>{percentText(relation) ? `${percentText(relation)} · ${effectText(relation)}` : effectText(relation)}</strong>{relation.qValue >= .05 && <em>ns</em>}</span>)}
-              <small>{displayed[0]?.comparisonLabel}</small>
+            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => setSelected(calculable)} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
+              {displayed.map((relation) => <span className="matrix-effect-line" key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong></span>)}
             </button>}
           </td>;
         })}</tr>)}</tbody>
