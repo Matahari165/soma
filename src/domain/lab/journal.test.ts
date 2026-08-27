@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -16,6 +16,23 @@ const variable = (variableType: JournalVariable["variableType"], options: string
 });
 
 describe("journal values", () => {
+  it("treats dinner clock input as afternoon time without AM or PM", () => {
+    expect(normalizeDinnerTimeInput("8:15")).toBe("20:15");
+    expect(normalizeDinnerTimeInput("8h15")).toBe("20:15");
+    expect(normalizeDinnerTimeInput("815")).toBe("20:15");
+    expect(normalizeDinnerTimeInput("20:15")).toBe("20:15");
+    expect(normalizeDinnerTimeInput("8:75")).toBeNull();
+  });
+
+  it("normalizes existing morning-form dinner entries when reloading and analysing", () => {
+    const dinner = { ...variable("time"), id: "00000000-0000-4000-8000-000000000002", name: "Dinner end time" };
+    const drafts = journalDraftsForDates(["2026-08-25"], [dinner], [{ variableId: dinner.id, entryDate: "2026-08-25", value: "08:15" }], []);
+
+    expect(drafts["2026-08-25"]?.[dinner.id]).toBe("20:15");
+    expect(normalizeJournalValue(dinner, "08:15")).toBe("20:15");
+    expect(journalValueAsNumber(dinner, "08:15")).toBe(1215);
+  });
+
   it("keeps drafts and payload dates isolated", () => {
     const dinner = { ...variable("time"), id: "00000000-0000-4000-8000-000000000002", name: "Dinner end time" };
     const dates = ["2026-08-24", "2026-08-25"];

@@ -107,7 +107,7 @@ export function journalValuesForDate(variables: readonly JournalVariable[], entr
   const omitted = new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? []);
   return Object.fromEntries(variables.map((variable) => [
     variable.id,
-    omitted.has(variable.id) ? null : entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? variable.defaultValue ?? null,
+    omitted.has(variable.id) ? null : normalizeDinnerTimeValue(variable, entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? variable.defaultValue ?? null),
   ]));
 }
 
@@ -136,7 +136,10 @@ export function normalizeJournalValue(variable: JournalVariable, raw: unknown): 
   if (raw === null || raw === undefined || raw === "") return null;
   if (variable.variableType === "boolean") return typeof raw === "boolean" ? raw : null;
   if (variable.variableType === "category") return typeof raw === "string" && variable.options.includes(raw) ? raw : null;
-  if (variable.variableType === "time") return typeof raw === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : null;
+  if (variable.variableType === "time") {
+    if (typeof raw !== "string") return null;
+    return isDinnerTimeVariable(variable) ? normalizeDinnerTimeInput(raw) : /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : null;
+  }
   const value = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(value) || Math.abs(value) > 1_000_000) return null;
   if (["caffeine", "added sugar", "magnesium"].includes(variable.name.toLocaleLowerCase("en")) && value < 0) return null;
@@ -150,11 +153,32 @@ export function journalValueAsNumber(variable: JournalVariable, value: JournalEn
   if (typeof value === "number") return value;
   if (typeof value === "boolean") return value ? 1 : 0;
   if (variable.variableType === "time" && typeof value === "string") {
-    const [hours, minutes] = value.split(":").map(Number);
+    const normalized = normalizeDinnerTimeValue(variable, value);
+    if (typeof normalized !== "string") return null;
+    const [hours, minutes] = normalized.split(":").map(Number);
     const sinceMidnight = hours * 60 + minutes;
     return sinceMidnight < 12 * 60 ? sinceMidnight + 24 * 60 : sinceMidnight;
   }
   return null;
+}
+
+export function isDinnerTimeVariable(variable: Pick<JournalVariable, "name" | "variableType">) {
+  return variable.variableType === "time" && variable.name.trim().toLocaleLowerCase("en") === "dinner end time";
+}
+
+export function normalizeDinnerTimeInput(raw: string) {
+  const match = raw.trim().toLocaleLowerCase("en").match(/^(\d{1,2})(?::|h|\.)?(\d{2})$/);
+  if (!match) return null;
+  const enteredHour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(enteredHour) || enteredHour < 0 || enteredHour > 23 || minute < 0 || minute > 59) return null;
+  const hour = enteredHour < 12 ? enteredHour + 12 : enteredHour;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function normalizeDinnerTimeValue(variable: JournalVariable, value: JournalEntryValue | null) {
+  if (!isDinnerTimeVariable(variable) || typeof value !== "string") return value;
+  return normalizeDinnerTimeInput(value) ?? value;
 }
 
 export const defaultJournalVariables = [

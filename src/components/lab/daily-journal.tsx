@@ -10,6 +10,8 @@ import {
   journalDraftsForDates,
   journalEntriesForSave,
   journalValuesForDate,
+  isDinnerTimeVariable,
+  normalizeDinnerTimeInput,
   reconcileJournalDrafts,
   journalVariableSuggestions,
   updateJournalDraft,
@@ -64,7 +66,35 @@ function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]
   };
 }
 
-function Field({ variable, value, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {
+function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: string; value: DraftValue; disabled: boolean; onChange: (value: DraftValue) => void }) {
+  const canonicalValue = typeof value === "string" ? value : "";
+  const [draft, setDraft] = useState(canonicalValue);
+  const [invalid, setInvalid] = useState(false);
+  const helpId = `${inputId}-help`;
+
+  function commit() {
+    if (!draft.trim()) {
+      setInvalid(false);
+      onChange(null);
+      return;
+    }
+    const normalized = normalizeDinnerTimeInput(draft);
+    if (!normalized) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    setDraft(normalized);
+    onChange(normalized);
+  }
+
+  return <div className="journal-clock">
+    <div><input disabled={disabled} id={inputId} aria-label="Dinner end time" aria-describedby={helpId} aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="20:15" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} /><span aria-hidden="true">24 h</span></div>
+    <small id={helpId}>{invalid ? "Use 8:15 or 20:15." : "8:15 is saved as 20:15."}</small>
+  </div>;
+}
+
+function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {
   const inputId = `journal-${variable.id}`;
 
   if (variable.variableType === "boolean") {
@@ -87,6 +117,7 @@ function Field({ variable, value, onChange, onCommit, disabled = false }: { vari
   }
 
   if (variable.variableType === "time") {
+    if (isDinnerTimeVariable(variable)) return <DinnerTimeInput key={draftKey} inputId={inputId} value={value} disabled={disabled} onChange={onChange} />;
     return <input disabled={disabled} id={inputId} aria-label={variable.name} type="time" value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)} />;
   }
 
@@ -257,14 +288,14 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
   </section>;
 }
 
-function JournalFieldRow({ variable, value, onChange, onCommit, feedbackToken, disabled }: { variable: JournalVariable; value: DraftValue; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean }) {
+function JournalFieldRow({ variable, value, draftKey, onChange, onCommit, feedbackToken, disabled }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean }) {
   const label = <>{variable.name}</>;
   return <div className={feedbackToken ? "journal-field journal-field--changed" : "journal-field"}><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span>
     {variable.variableType === "boolean" || variable.variableType === "scale"
       ? <span className="journal-field__label">{label}</span>
       : <label className="journal-field__label" htmlFor={`journal-${variable.id}`}>{label}</label>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
-    <Field variable={variable} value={value} onChange={onChange} onCommit={onCommit} disabled={disabled} />
+    <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} />
   </div>;
 }
 
@@ -422,7 +453,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
       <h3 id={`journal-${section.id}-title`}>{section.label}</h3>
-      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
     {validated && <p className="journal-save-note" role="status">Changes save automatically and remain included in your relationships.</p>}

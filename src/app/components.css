@@ -595,6 +595,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .journal-new-variable select { width: 100%; min-height: 42px; padding: 8px 9px; border: 1px solid var(--line-strong); background: var(--paper-strong); }
 .journal-number { position: relative; }
 .journal-number input { padding-right: 46px; font-family: var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
+.journal-clock { display: grid; gap: 4px; }
+.journal-clock > div { position: relative; }
+.journal-clock input { width: 100%; padding-right: 48px; font-family: var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
+.journal-clock span { position: absolute; top: 50%; right: 13px; translate: 0 -50%; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .64rem; pointer-events: none; }
+.journal-clock small { color: var(--muted); font-size: .62rem; line-height: 1.35; }
+.journal-clock input[aria-invalid="true"] { border-color: var(--danger); }
 .journal-number span { position: absolute; top: 50%; right: 10px; color: var(--muted); font-size: .65rem; transform: translateY(-50%); }
 .journal-choice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line-strong); }
 .journal-choice--scale { grid-template-columns: repeat(5, minmax(0, 1fr)); }
