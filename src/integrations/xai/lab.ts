@@ -4,13 +4,15 @@ import { selectMeaningfulRelations, type MatrixRelation } from "@/domain/lab/mat
 import { stableHash } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
 import { boundedJson, parseXaiUsage } from "./usage";
+import { LAB_EDITORIAL_MEMORY } from "./lab-editorial-memory";
 
 export const labNarrativeSchema = z.object({
   headline: z.string().min(1).max(220),
   // Kept for storage/backwards compatibility. The dashboard presents the
   // headline and highlights as the user-facing synthesis.
-  summary: z.string().min(1).max(360),
+  summary: z.string().max(360),
   highlights: z.array(z.object({
+    label: z.string().min(1).max(100),
     text: z.string().min(1).max(260),
     factIndex: z.number().int().min(0).max(11),
   })).min(1).max(4),
@@ -73,11 +75,15 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     ["active_minutes", 7],
     ["exercise_minutes", 8],
   ]);
-  const usableRelations = selectMeaningfulRelations(input.relations, 12)
+  const eligibleRelations = selectMeaningfulRelations(input.relations, 12)
     .filter((relation) => !relation.excluded && relation.practicallyMeaningful && relation.qValue < 0.05 && relation.effect !== null && relation.coefficient !== null)
     // Keep the mechanically obvious bedtime → total sleep pair out of the
     // model context even if a caller passes a raw, unsorted relation list.
-    .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"))
+    .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"));
+  const narrativePeriod = eligibleRelations.some((relation) => relation.period === 30) ? 30 : eligibleRelations[0]?.period;
+  if (narrativePeriod === undefined) throw new Error("No eligible Personal Lab finding is available for Grok.");
+  const usableRelations = eligibleRelations
+    .filter((relation) => relation.period === narrativePeriod)
     .sort((first, second) => {
       const liked = (relation: MatrixRelation) => input.likedRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 0 : 1;
       const seen = (relation: MatrixRelation) => input.previousRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 1 : 0;
@@ -105,7 +111,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     analysisPeriod: relation.period,
     lagDays: relation.lagDays,
     timing: relation.lagDays === 0
-      ? (relation.outcomeId.startsWith("sleep") || ["deep_sleep", "rem_sleep"].includes(relation.outcomeId) ? "that sleep episode" : "same day")
+      ? (relation.outcomeId.startsWith("sleep") || ["deep_sleep", "rem_sleep"].includes(relation.outcomeId) ? "same sleep episode" : "same day")
       : relation.lagDays === 1
         ? (relation.outcomeId.startsWith("sleep") || ["deep_sleep", "rem_sleep"].includes(relation.outcomeId) ? "the following night" : "the next day")
         : `${relation.lagDays} days later`,
@@ -129,20 +135,23 @@ export async function generateLabNarrative(input: { userId: string; relations: M
       instructions: [
         "You are Soma's personal health analyst.",
         "The supplied calculations are final: do not recalculate them or infer values that are not supplied.",
-        "Write in clear, natural English.",
-        "Return one short, concrete headline, one brief plain-English summary sentence, and 1 to 4 short effect bullets.",
-        "Each bullet must state exactly one observed relationship, name the input and outcome, preserve the supplied effect and unit, explain the supplied predictor contrast in plain language, and include the zero-based factIndex of that exact supplied finding.",
-        "When detectedShape is non-linear, preserve the supplied threshold, plateau, or zone wording instead of describing a linear increase or decrease.",
+        LAB_EDITORIAL_MEMORY,
+        "Return the report in English.",
+        "Use the window shared by the selected findings; prefer 30-Day when available.",
+        "Set summary to an empty string because no narrative summary should be shown.",
+        "Return 1 to 4 highlights. Each highlight represents exactly one supplied finding and has label, text, and the zero-based factIndex of that exact finding.",
+        "Format text exactly as: <signed predictor contrast and predictor name> ➡️ <signed effect, unit, and outcome name> (<timing>). Example: +100 min Sleep Debt ➡️ -15.6 min REM (same sleep episode).",
+        "Preserve supplied effects and units and round only for readable display.",
+        "When detectedShape is non-linear, replace the signed predictor contrast with the supplied threshold, plateau, or zone wording. Example: Sleep Debt Plateau (>13h) ➡️ -1.7 bpm Resting Heart Rate (same day). Never describe it as a linear increase or decrease.",
         "Compare the 30-day and 90-day windows only with sharedPeriodContrast, which puts both estimates on the same predictor change. Never compare their raw effects when their raw predictor contrasts differ.",
-        "Explain why an effect matters in its real unit and offer one cautious implication only when it follows directly from the supplied observation.",
-        "A short-window decrease may coexist with a flat or beneficial long-window trend; state that distinction when both scales are supplied.",
+        "If windows differ, keep each selected finding self-contained and use its supplied period for the heading; do not compare windows unless sharedPeriodContrast supports it.",
         "Repetition is allowed, but prefer a newly available relationship over an equally useful previouslyHighlighted finding.",
-        "Use simple wording. Never give generic advice, mention rankings or statistical methods, or expose technical metadata.",
+        "Do not mention rankings, statistical methods, or technical metadata.",
         "Never mention or explain the distinction between correlation and causation, and do not add a generic statistical caveat.",
         "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",
         "Do not invent mechanisms, context, or data.",
       ].join(" "),
-      input: `Anonymous user ${stableHash(input.userId)}\nCalculated findings:\n${boundedJson(facts)}`,
+      input: `Anonymous user ${stableHash(input.userId)}\nReport window: ${narrativePeriod === "all" ? "All-Time" : `${narrativePeriod}-Day`}\nCalculated findings:\n${boundedJson(facts)}`,
       text: { format: { type: "json_schema", name: "soma_lab_narrative", strict: true, schema: {
         type: "object",
         additionalProperties: false,
@@ -153,8 +162,9 @@ export async function generateLabNarrative(input: { userId: string; relations: M
           highlights: { type: "array", minItems: 1, maxItems: 4, items: {
             type: "object",
             additionalProperties: false,
-            required: ["text", "factIndex"],
+            required: ["label", "text", "factIndex"],
             properties: {
+              label: { type: "string", maxLength: 100 },
               text: { type: "string", maxLength: 260 },
               factIndex: { type: "integer", minimum: 0, maximum: 11 },
             },
@@ -171,5 +181,6 @@ export async function generateLabNarrative(input: { userId: string; relations: M
   const narrative = labNarrativeSchema.parse(JSON.parse(text));
   const highlights = narrative.highlights.filter((highlight) => highlight.factIndex < facts.length);
   if (!highlights.length) throw new Error("Grok returned no grounded Personal Lab insight.");
-  return { narrative: { ...narrative, highlights }, facts, usage: parseXaiUsage(result.usage) };
+  const reportWindow = narrativePeriod === "all" ? "All-Time" : `${narrativePeriod}-Day`;
+  return { narrative: { ...narrative, headline: reportWindow, summary: "", highlights }, facts, usage: parseXaiUsage(result.usage) };
 }

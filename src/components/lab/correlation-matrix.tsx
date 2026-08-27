@@ -272,6 +272,12 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
   </section>;
 }
 
+function InsightCopy({ value }: { value: string }) {
+  const [label, ...detailParts] = value.split("\n");
+  const detail = detailParts.join(" ");
+  return detail ? <><strong>{label}</strong><br /><span>{detail}</span></> : <>{value}</>;
+}
+
 export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {
   const [historyLikes, setHistoryLikes] = useState<Record<string, boolean>>(() => Object.fromEntries((narrative?.history ?? []).map((item) => [item.id, item.liked])));
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -292,12 +298,12 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
       <h2 id="lab-insight-title">{hasHistory ? <button type="button" className="lab-insight-header-trigger" aria-expanded={historyOpen} aria-controls="lab-insight-history" onClick={() => setHistoryOpen((current) => !current)}>{insightTitle}</button> : insightTitle}</h2>
     </header>
     {narrative?.isCurrent && narrative.summary && <p>{narrative.summary}</p>}
-    {lines.length > 0 && <ol aria-label="Insights">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open insight ${index + 1}: ${line}`} onClick={() => openRelation(narrative?.sourceFacts[index])}>{line}</button></li>)}</ol>}
+    {lines.length > 0 && <ol aria-label="Insights">{lines.slice(0, 4).map((line, index) => <li key={line}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Open insight ${index + 1}: ${line.replace("\n", ". ")}`} onClick={() => openRelation(narrative?.sourceFacts[index])}><InsightCopy value={line} /></button></li>)}</ol>}
     {historyOpen && narrative?.history && <div id="lab-insight-history" className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
       <header><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Unlike" : "Like"} insight from ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
       <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>
       {item.summary && <p>{item.summary}</p>}
-      {item.highlights.length > 0 && <ol>{item.highlights.map((highlight, index) => <li key={`${item.id}-${index}`}><button type="button" className="lab-insight-link" onClick={() => openRelation(item.sourceFacts[index])}>{highlight}</button></li>)}</ol>}
+      {item.highlights.length > 0 && <ol>{item.highlights.map((highlight, index) => <li key={`${item.id}-${index}`}><button type="button" className="lab-insight-link" onClick={() => openRelation(item.sourceFacts[index])}><InsightCopy value={highlight} /></button></li>)}</ol>}
     </article>)}</div>}
     {!narrative && matrix.topRelations.length === 0 && <span className="sr-only">No significant relation is available yet.</span>}
   </section>;
