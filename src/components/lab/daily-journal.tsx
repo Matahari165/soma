@@ -88,7 +88,7 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
     onChange(normalized);
   }
 
-  return <input className="journal-clock" disabled={disabled} id={inputId} aria-label="Dinner end time" aria-invalid={invalid} inputMode="numeric" autoComplete="off" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />;
+  return <input className="journal-clock" disabled={disabled} id={inputId} aria-label="Dinner end time" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="8:15" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />;
 }
 
 function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {
