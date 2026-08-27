@@ -772,8 +772,11 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
   const matrixCacheKey = labMatrixCacheKey(options.periods);
   const matrixCachePromise = matrixCacheKey ? (async () => {
     try {
-      const inputRevision = await labMatrixInputRevision(user.id);
-      const cache = await getLabMatrixCacheObject(user.id, matrixCacheKey) as Record<string, unknown> | null;
+      const [inputRevision, cacheValue] = await Promise.all([
+        labMatrixInputRevision(user.id),
+        getLabMatrixCacheObject(user.id, matrixCacheKey),
+      ]);
+      const cache = cacheValue as Record<string, unknown> | null;
       const cachedMatrix = cache?.inputRevision === inputRevision
         && cache.algorithmVersion === LAB_MATRIX_CACHE_VERSION
         && isCachedMatrix(cache.matrix)

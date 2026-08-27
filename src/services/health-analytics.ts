@@ -211,6 +211,15 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
+  // Sleep stages and exercises do not depend on the aggregate metrics below.
+  // Start these remote reads immediately so they do not create a second
+  // database round trip after the first group resolves.
+  const sleepPromise = scope === "sleep" || scope === "all"
+    ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1).then((result) => result)
+    : Promise.resolve({ data: [], error: null });
+  const exercisePromise = scope === "activity" || scope === "all"
+    ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20).then((result) => result)
+    : Promise.resolve({ data: [], error: null });
   const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
@@ -232,15 +241,11 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const recoveryEnd = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
   recoveryEnd?.setUTCDate(recoveryEnd.getUTCDate() + 2);
   const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
-    scope === "sleep" || scope === "all"
-      ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1)
-      : Promise.resolve({ data: [], error: null }),
+    sleepPromise,
     (scope === "recovery" || scope === "all") && recoveryStart && recoveryEnd
       ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", recoveryStart.toISOString()).lt("measured_at", recoveryEnd.toISOString()).order("measured_at", { ascending: false }).limit(2000)
       : Promise.resolve({ data: [], error: null }),
-    scope === "activity" || scope === "all"
-      ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20)
-      : Promise.resolve({ data: [], error: null }),
+    exercisePromise,
   ]);
   if (sleepResult.error || heartRateResult.error || exerciseResult.error) throw new Error("Health detail records are temporarily unavailable.");
   const sleeps = sleepResult.data;

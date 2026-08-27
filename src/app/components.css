@@ -425,12 +425,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: 2
 .system-state p { color: var(--ink-soft); }
 .system-state--error > svg { color: var(--danger); }
 .system-loading { display: grid; gap: 16px; padding: clamp(24px, 5vw, 64px); }
-.system-loading__header, .system-loading__metrics span, .system-loading__line { background: linear-gradient(90deg, var(--line) 20%, var(--paper-strong) 50%, var(--line) 80%); background-size: 240% 100%; animation: atlas-loading 1.4s ease-in-out infinite; }
-.system-loading__header { width: min(560px, 72%); height: 88px; }
+.system-loading__header { display: grid; width: min(560px, 72%); min-height: 88px; align-content: end; gap: 4px; }
+.system-loading__header strong { font-family: var(--font-soma-ui); font-size: clamp(1.65rem, 4vw, 3.1rem); font-weight: 500; letter-spacing: -.04em; }
+.system-loading__status { display: flex; gap: 5px; margin-top: 7px; }
+.system-loading__status i { width: 5px; height: 5px; border-radius: 50%; background: var(--ochre); animation: soma-signal 1.2s ease-in-out infinite; }
+.system-loading__status i:nth-child(2) { animation-delay: 140ms; }
+.system-loading__status i:nth-child(3) { animation-delay: 280ms; }
 .system-loading__metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border: 1px solid var(--line); background: var(--line); }
-.system-loading__metrics span { min-height: 240px; }
-.system-loading__line { height: 84px; }
-@keyframes atlas-loading { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.system-loading__metrics > span { display: grid; min-height: 240px; place-items: center; overflow: hidden; background: var(--paper); }
+.system-loading__metrics > span > i { position: relative; display: block; width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--ochre) 45%, var(--line)); border-radius: 50%; animation: soma-breathe 1.8s cubic-bezier(.4, 0, .2, 1) infinite; }
+.system-loading__metrics > span > i::before, .system-loading__metrics > span > i::after { position: absolute; content: ""; border-radius: 50%; }
+.system-loading__metrics > span > i::before { inset: 8px; border: 1px solid var(--line); }
+.system-loading__metrics > span > i::after { inset: 19px; background: var(--ochre); }
+.system-loading__metrics > span:nth-child(2) > i { animation-delay: 180ms; }
+.system-loading__metrics > span:nth-child(3) > i { animation-delay: 360ms; }
+.system-loading__line { display: flex; height: 84px; align-items: center; justify-content: center; gap: clamp(5px, 1.2vw, 14px); border-block: 1px solid var(--line); background: var(--paper); }
+.system-loading__line i { width: 1px; height: 14px; background: var(--ink-soft); transform-origin: center; animation: soma-trace 1.35s ease-in-out infinite; }
+.system-loading__line i:nth-child(3n + 1) { animation-delay: -180ms; }
+.system-loading__line i:nth-child(3n + 2) { animation-delay: -360ms; }
+@keyframes soma-signal { 0%, 60%, 100% { opacity: .25; transform: scale(.75); } 30% { opacity: 1; transform: scale(1); } }
+@keyframes soma-breathe { 0%, 100% { opacity: .48; transform: scale(.88); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes soma-trace { 0%, 100% { opacity: .28; transform: scaleY(.6); } 50% { opacity: .85; transform: scaleY(2.4); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .system-loading__status i, .system-loading__metrics > span > i, .system-loading__line i { animation: none; }
+  .system-loading__status i:nth-child(2), .system-loading__metrics > span:nth-child(2) > i, .system-loading__line i:nth-child(3n + 2) { opacity: .55; }
+}
 
 /* Workouts */
 .workout-page { display: grid; gap: 30px; }

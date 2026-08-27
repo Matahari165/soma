@@ -177,7 +177,7 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
     { key: "recoveryScore" as const, label: "Recovery", value: displayValue("recoveryScore", animated.recoveryScore), finalValue: accessibleValue("recoveryScore", values.recoveryScore), average: values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : String(Math.round(values.averageRecoveryScore)), trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
     { key: "effortScore" as const, label: "Effort", value: displayValue("effortScore", animated.effortScore), finalValue: accessibleValue("effortScore", values.effortScore), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
   ];
-  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, value, finalValue, average, trend, href }) => <Link href={href} prefetch={false} key={label} aria-label={`${label}: ${finalValue}`}>
+  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, value, finalValue, average, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
     <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">30-day avg · {average}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{value}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;
