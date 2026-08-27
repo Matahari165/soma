@@ -10,6 +10,7 @@ import {
   journalDraftsForDates,
   journalEntriesForSave,
   journalValuesForDate,
+  dinnerTimeForDisplay,
   isDinnerTimeVariable,
   normalizeDinnerTimeInput,
   reconcileJournalDrafts,
@@ -68,9 +69,8 @@ function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]
 
 function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: string; value: DraftValue; disabled: boolean; onChange: (value: DraftValue) => void }) {
   const canonicalValue = typeof value === "string" ? value : "";
-  const [draft, setDraft] = useState(canonicalValue);
+  const [draft, setDraft] = useState(dinnerTimeForDisplay(canonicalValue));
   const [invalid, setInvalid] = useState(false);
-  const helpId = `${inputId}-help`;
 
   function commit() {
     if (!draft.trim()) {
@@ -84,14 +84,11 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
       return;
     }
     setInvalid(false);
-    setDraft(normalized);
+    setDraft(dinnerTimeForDisplay(normalized));
     onChange(normalized);
   }
 
-  return <div className="journal-clock">
-    <div><input disabled={disabled} id={inputId} aria-label="Dinner end time" aria-describedby={helpId} aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="20:15" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} /><span aria-hidden="true">24 h</span></div>
-    <small id={helpId}>{invalid ? "Use 8:15 or 20:15." : "8:15 is saved as 20:15."}</small>
-  </div>;
+  return <input className="journal-clock" disabled={disabled} id={inputId} aria-label="Dinner end time" aria-invalid={invalid} inputMode="numeric" autoComplete="off" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />;
 }
 
 function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {

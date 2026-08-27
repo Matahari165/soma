@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -22,6 +22,13 @@ describe("journal values", () => {
     expect(normalizeDinnerTimeInput("815")).toBe("20:15");
     expect(normalizeDinnerTimeInput("20:15")).toBe("20:15");
     expect(normalizeDinnerTimeInput("8:75")).toBeNull();
+  });
+
+  it("displays dinner time in English clock notation without an indicator", () => {
+    expect(dinnerTimeForDisplay("20:15")).toBe("8:15");
+    expect(dinnerTimeForDisplay("23:05")).toBe("11:05");
+    expect(dinnerTimeForDisplay("12:30")).toBe("12:30");
+    expect(dinnerTimeForDisplay("")).toBe("");
   });
 
   it("normalizes existing morning-form dinner entries when reloading and analysing", () => {

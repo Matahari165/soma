@@ -176,6 +176,14 @@ export function normalizeDinnerTimeInput(raw: string) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+export function dinnerTimeForDisplay(value: string) {
+  const normalized = normalizeDinnerTimeInput(value);
+  if (!normalized) return value;
+  const [hour, minute] = normalized.split(":");
+  const displayHour = Number(hour) > 12 ? Number(hour) - 12 : Number(hour);
+  return `${displayHour}:${minute}`;
+}
+
 function normalizeDinnerTimeValue(variable: JournalVariable, value: JournalEntryValue | null) {
   if (!isDinnerTimeVariable(variable) || typeof value !== "string") return value;
   return normalizeDinnerTimeInput(value) ?? value;
