@@ -318,7 +318,7 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
 function InsightCopy({ value }: { value: string }) {
   const [label, ...detailParts] = value.split("\n");
   const detail = detailParts.join(" ");
-  return detail ? <><strong>{label}</strong><br /><span>{detail}</span></> : <>{value}</>;
+  return detail ? <span className="lab-insight-copy"><strong>{label}</strong><span>{detail}</span></span> : <>{value}</>;
 }
 
 export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {

@@ -28,7 +28,7 @@ export async function POST() {
     const previousRelations = (snapshot.aiNarrative?.history ?? []).flatMap((item) => item.sourceFacts.map((fact) => ({ predictor: fact.predictor, outcome: fact.outcome })));
     const { narrative, facts, usage } = await generateLabNarrative({ userId: user.id, relations: snapshot.matrix.topRelations, likedRelations, previousRelations });
     const selectedFacts = narrative.highlights.map((highlight) => facts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact));
-    const storedNarrative = { ...narrative, highlights: narrative.highlights.map((highlight, index) => ({ label: highlight.label, text: highlight.text, factIndex: index })) };
+    const storedNarrative = { headline: narrative.headline, summary: narrative.summary, highlights: narrative.highlights.map((highlight, index) => ({ label: highlight.label, text: highlight.text, factIndex: index })) };
     const record = { id: existingToday?.id ?? crypto.randomUUID(), user_id: user.id, analysis_date: snapshot.todayDate, overnight_fingerprint: snapshot.overnightFingerprint, ...storedNarrative, source_facts: selectedFacts, evidence_candidates: facts, token_usage: usage, model: "grok-4.6", liked: existingToday?.liked ?? false, generated_at: new Date().toISOString() };
     const [{ error }, { error: currentError }] = await Promise.all([
       admin.from("lab_narrative_history").upsert(record, { onConflict: "user_id,analysis_date" }),

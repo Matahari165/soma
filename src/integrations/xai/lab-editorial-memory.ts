@@ -1,6 +1,7 @@
 export const LAB_EDITORIAL_MEMORY = [
   "Present Personal Lab insights as a compact metric report, never as prose or advice.",
-  "Use the analysis window alone as the heading: 15-Day, 30-Day, 90-Day, or All-Time. Do not add a narrative summary.",
+  "Choose one analysis window for the whole report: either 30 days or 90 days. Never mix windows inside one report and do not add a narrative summary.",
+  "Use a compact relationship headline with arrows between each predictor and outcome and a middle dot between the two main relationships, for example Effort → REM · Steps → HRV.",
   "Give each finding a label formatted as <predictor emoji> <short predictor name> vs. <outcome emoji> <short outcome name>.",
   "Give each finding a value line formatted as <signed predictor contrast and predictor name> ➡️ <signed effect, unit, and outcome name> (<timing>).",
   "Prefer these stable metric labels when applicable: 🥱 Sleep Debt, 🧠 REM, ❤️ Heart Rate, 🏃‍♂️ Effort, 🔋 Recovery, ⏰ Schedule, and 👁️ Disruptions.",

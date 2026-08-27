@@ -8,6 +8,7 @@ import { LAB_EDITORIAL_MEMORY } from "./lab-editorial-memory";
 
 export const labNarrativeSchema = z.object({
   headline: z.string().min(1).max(220),
+  period: z.union([z.literal(30), z.literal(90)]),
   // Kept for storage/backwards compatibility. The dashboard presents the
   // headline and highlights as the user-facing synthesis.
   summary: z.string().max(360),
@@ -62,6 +63,15 @@ function sharedContrastFor(relation: MatrixRelation, relations: MatrixRelation[]
   };
 }
 
+function insightHeadline(facts: LabEvidenceCandidate[], highlights: LabNarrative["highlights"], period: 30 | 90) {
+  const pairs = highlights.flatMap((highlight) => {
+    const fact = facts[highlight.factIndex];
+    return fact ? [`${fact.predictor} → ${fact.outcome}`] : [];
+  });
+  const mainPairs = [...new Set(pairs)].slice(0, 2);
+  return `${mainPairs.join(" · ")} — ${period} days`;
+}
+
 export async function generateLabNarrative(input: { userId: string; relations: MatrixRelation[]; likedRelations?: EditorialRelation[]; previousRelations?: EditorialRelation[] }) {
   const apiKey = requireServerEnv("XAI_API_KEY");
   const preferredOutcomes = new Map([
@@ -75,21 +85,21 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     ["active_minutes", 7],
     ["exercise_minutes", 8],
   ]);
-  const eligibleRelations = selectMeaningfulRelations(input.relations, 12)
+  const eligibleRelations = selectMeaningfulRelations(input.relations, 24)
     .filter((relation) => !relation.excluded && relation.practicallyMeaningful && relation.qValue < 0.05 && relation.effect !== null && relation.coefficient !== null)
+    .filter((relation) => relation.period === 30 || relation.period === 90)
     // Keep the mechanically obvious bedtime → total sleep pair out of the
     // model context even if a caller passes a raw, unsorted relation list.
     .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"));
-  const narrativePeriod = eligibleRelations.some((relation) => relation.period === 30) ? 30 : eligibleRelations[0]?.period;
-  if (narrativePeriod === undefined) throw new Error("No eligible Personal Lab finding is available for Grok.");
-  const usableRelations = eligibleRelations
-    .filter((relation) => relation.period === narrativePeriod)
-    .sort((first, second) => {
+  if (!eligibleRelations.length) throw new Error("No eligible Personal Lab finding is available for Grok.");
+  const availablePeriods = ([30, 90] as const).filter((period) => eligibleRelations.some((relation) => relation.period === period));
+  const editorialSort = (first: MatrixRelation, second: MatrixRelation) => {
       const liked = (relation: MatrixRelation) => input.likedRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 0 : 1;
       const seen = (relation: MatrixRelation) => input.previousRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 1 : 0;
       return liked(first) - liked(second) || seen(first) - seen(second) || (preferredOutcomes.get(first.outcomeId) ?? 50) - (preferredOutcomes.get(second.outcomeId) ?? 50);
-    });
-  const facts: LabEvidenceCandidate[] = usableRelations.slice(0, 12).map((relation) => ({
+  };
+  const usableRelations = ([30, 90] as const).flatMap((period) => eligibleRelations.filter((relation) => relation.period === period).sort(editorialSort).slice(0, 6));
+  const facts: LabEvidenceCandidate[] = usableRelations.map((relation) => ({
     predictor: relation.predictorLabel,
     predictorContrast: {
       low: relation.predictorLow,
@@ -137,9 +147,10 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "The supplied calculations are final: do not recalculate them or infer values that are not supplied.",
         LAB_EDITORIAL_MEMORY,
         "Return the report in English.",
-        "Use the window shared by the selected findings; prefer 30-Day when available.",
+        "Choose one of the available periods according to which window offers the strongest, most coherent and most useful set of findings. Do not automatically prefer 30 days.",
         "Set summary to an empty string because no narrative summary should be shown.",
-        "Return 1 to 4 highlights. Each highlight represents exactly one supplied finding and has label, text, and the zero-based factIndex of that exact finding.",
+        "Return 1 to 4 highlights from the chosen period only. Each highlight represents exactly one supplied finding and has label, text, and the zero-based factIndex of that exact finding.",
+        "Set headline to a short topic preview using arrows, such as Effort → REM · Steps → HRV. Do not include the period in headline; Soma appends it.",
         "Format text exactly as: <signed predictor contrast and predictor name> ➡️ <signed effect, unit, and outcome name> (<timing>). Example: +100 min Sleep Debt ➡️ -15.6 min REM (same sleep episode).",
         "Preserve supplied effects and units and round only for readable display.",
         "When detectedShape is non-linear, replace the signed predictor contrast with the supplied threshold, plateau, or zone wording. Example: Sleep Debt Plateau (>13h) ➡️ -1.7 bpm Resting Heart Rate (same day). Never describe it as a linear increase or decrease.",
@@ -151,13 +162,14 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",
         "Do not invent mechanisms, context, or data.",
       ].join(" "),
-      input: `Anonymous user ${stableHash(input.userId)}\nReport window: ${narrativePeriod === "all" ? "All-Time" : `${narrativePeriod}-Day`}\nCalculated findings:\n${boundedJson(facts)}`,
+      input: `Anonymous user ${stableHash(input.userId)}\nAvailable report windows: ${availablePeriods.map((period) => `${period} days`).join(" and ")}\nCalculated findings:\n${boundedJson(facts)}`,
       text: { format: { type: "json_schema", name: "soma_lab_narrative", strict: true, schema: {
         type: "object",
         additionalProperties: false,
-        required: ["headline", "summary", "highlights"],
+        required: ["headline", "period", "summary", "highlights"],
         properties: {
           headline: { type: "string", maxLength: 220 },
+          period: { type: "integer", enum: [30, 90] },
           summary: { type: "string", maxLength: 360 },
           highlights: { type: "array", minItems: 1, maxItems: 4, items: {
             type: "object",
@@ -179,8 +191,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
   const text = result.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
   if (!text) throw new Error("Grok returned no Personal Lab summary.");
   const narrative = labNarrativeSchema.parse(JSON.parse(text));
-  const highlights = narrative.highlights.filter((highlight) => highlight.factIndex < facts.length);
+  const highlights = narrative.highlights.filter((highlight) => highlight.factIndex < facts.length && facts[highlight.factIndex]?.analysisPeriod === narrative.period);
   if (!highlights.length) throw new Error("Grok returned no grounded Personal Lab insight.");
-  const reportWindow = narrativePeriod === "all" ? "All-Time" : `${narrativePeriod}-Day`;
-  return { narrative: { ...narrative, headline: reportWindow, summary: "", highlights }, facts, usage: parseXaiUsage(result.usage) };
+  return { narrative: { ...narrative, headline: insightHeadline(facts, highlights, narrative.period), summary: "", highlights }, facts, usage: parseXaiUsage(result.usage) };
 }
