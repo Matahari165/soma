@@ -14,7 +14,8 @@ describe("Today signals", () => {
     expect(html).toContain('href="/recovery"');
     expect(html).toContain('href="/activity"');
     expect(html).not.toContain('href="/effort"');
-    expect(html).toContain("Regularity · 84%");
+    expect(html).toContain("30-day avg · 8h 00");
+    expect(html).not.toContain("Regularity");
     expect(html).toContain("lab-signal__value--above");
     expect(html).toContain("lab-signal__value--below");
     expect(html).toContain('aria-label="Sleep duration: 8h 30"');

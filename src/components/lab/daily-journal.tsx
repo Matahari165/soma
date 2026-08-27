@@ -391,11 +391,10 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
 
   const statusClass = ["checkin-state", "journal-save-status", validated || saveStatus === "saved" ? "checkin-state--saved" : "", saveStatus === "error" ? "checkin-state--error" : ""].filter(Boolean).join(" ");
   const statusText = journalStatusText({ validated, validating, saveStatus });
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header><h2 id="journal-title">Journal</h2><div className="journal-card__actions" role="group" aria-label="Journal actions">
-    <span className={statusClass} aria-live="polite" aria-atomic="true">
+  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2><span className={statusClass} aria-live="polite" aria-atomic="true">
       {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : validated || saveStatus === "saved" ? <Check className="journal-save-status__icon journal-save-status__icon--success" size={14} aria-hidden="true" /> : null}
       <span>{statusText}</span>
-    </span>
+    </span></div><div className="journal-card__actions" role="group" aria-label="Journal actions">
     {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validating…</> : "Validate day"}</button>}
     {!managerOpen && <button className="text-link" type="button" aria-label="Edit journal fields" onClick={() => setManagerOpen(true)}>Edit</button>}
   </div></header>

@@ -26,6 +26,10 @@ describe("journal motion states", () => {
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: [], days: [], todayDate }));
 
     expect(html).toContain('class="checkin-state journal-save-status"');
+    expect(html).toContain('class="journal-card__header"');
+    expect(html).toContain('class="journal-card__heading"');
+    expect(html.indexOf("Draft")).toBeLessThan(html.indexOf("Validate day"));
+    expect(html.indexOf("Validate day")).toBeLessThan(html.indexOf("Edit journal fields"));
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain(">Draft</span>");
     expect(html).toContain("Validate day");
