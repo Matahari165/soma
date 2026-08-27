@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, createPersonalLabStream, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
@@ -116,5 +116,26 @@ describe("Personal Lab 30-day signal averages", () => {
       observation("2026-07-27", { sleepMinutes: 400, recoveryScore: 40, effortScore: 4 }),
       observation("2026-08-25", { sleepMinutes: 500, recoveryScore: 60, effortScore: 6 }),
     ], "2026-08-25")).toEqual({ averageSleepMinutes: 450, averageSleepRegularity: null, averageRecoveryScore: 50, averageEffortScore: 5 });
+  });
+});
+
+describe("Personal Lab progressive stream", () => {
+  it("exposes overview and journal independently from the complete analysis", async () => {
+    vi.stubEnv("SOMA_LOCAL_PREVIEW", "true");
+    try {
+      const stream = createPersonalLabStream({ id: "preview-user", email: null, displayName: "Jeremy" }, { periods: [30] });
+      const [overview, journal] = await Promise.all([stream.overview, stream.journal]);
+
+      expect(overview.today).toHaveProperty("sleepMinutes");
+      expect(journal.journal.variables.length).toBeGreaterThan(0);
+      expect(journal.todayDate).toBe(overview.todayDate);
+
+      const analysis = await stream.analysis;
+      expect(analysis.today).toEqual(overview.today);
+      expect(analysis.journal).toEqual(journal.journal);
+      expect(analysis.matrix.periods).toContain(30);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

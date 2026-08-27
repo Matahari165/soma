@@ -136,6 +136,13 @@ export type PersonalLabSnapshot = {
 };
 
 export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
+export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overnightFingerprint" | "today">;
+export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal">;
+export type PersonalLabStream = {
+  overview: Promise<PersonalLabOverview>;
+  journal: Promise<PersonalLabJournal>;
+  analysis: Promise<PersonalLabSnapshot>;
+};
 
 const MAX_RELATION_LAG_DAYS = 2;
 const OVERNIGHT_OUTCOME_IDS = new Set(["sleep_minutes", "sleep_need", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_awake_percent", "sleep_awakenings", "sleep_fragmentation", "deep_sleep", "deep_sleep_percent", "rem_sleep", "rem_sleep_percent", "light_sleep", "light_sleep_percent", "hrv", "rhr", "respiratory", "spo2", "spo2_low", "spo2_high", "bedtime", "wake_time", "sleep_regularity", "sleep_debt", "daily_sleep_debt", "skin_temperature", "night_temperature", "baseline_temperature", "recovery"]);
@@ -600,6 +607,54 @@ function previewData() {
   return { health, scores, calendars, checkins, journal };
 }
 
+function buildOverview(input: {
+  timeZone: string;
+  health: HealthDay[];
+  scores: ScoreDay[];
+  calendars: CalendarDay[];
+  checkins: DailyCheckin[];
+}): PersonalLabOverview {
+  const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
+  const todayDate = dateInTimezone(input.timeZone);
+  const todayObservation = observations.find((day) => day.date === todayDate);
+  const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
+  const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
+  const todayHealth = input.health.find((day) => day.metric_date === todayDate);
+  return {
+    todayDate,
+    overnightFingerprint: overnightFingerprint(todayHealth),
+    today: {
+      sleepMinutes: todayObservation?.sleepMinutes ?? null,
+      sleepRegularity: todayObservation?.sleepRegularity ?? null,
+      recoveryScore: todayObservation?.recoveryScore ?? null,
+      effortScore: todayObservation?.effortScore ?? null,
+      ...recentAverages(observations, todayDate),
+      deepWorkMinutes: todayObservation?.deepWorkMinutes ?? null,
+      calendarDeepWorkMinutes: todayCalendar?.deep_work_minutes ?? null,
+      deepWorkSource: checkin?.deep_work_minutes_override !== null && checkin?.deep_work_minutes_override !== undefined ? "corrected" : todayCalendar ? "calendar" : "missing",
+      focus: todayObservation?.focus ?? null,
+      energy: todayObservation?.energy ?? null,
+    },
+  };
+}
+
+function buildJournalView(timeZone: string, journal: {
+  variables: JournalVariable[];
+  entries: JournalEntry[];
+  days: import("@/domain/lab/journal").JournalDay[];
+}): PersonalLabJournal {
+  const todayDate = dateInTimezone(timeZone);
+  const earliestDate = addDays(todayDate, -4);
+  return {
+    todayDate,
+    journal: {
+      variables: journal.variables,
+      entries: journal.entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
+      days: journal.days.filter((day) => day.entryDate >= earliestDate && day.entryDate <= todayDate),
+    },
+  };
+}
+
 function buildSnapshot(input: {
   user: SomaUser;
   timeZone: string;
@@ -760,14 +815,19 @@ function buildSnapshot(input: {
   } satisfies PersonalLabSnapshot;
 }
 
-export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): Promise<PersonalLabSnapshot> {
+export function createPersonalLabStream(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): PersonalLabStream {
   const startedAt = Date.now();
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    return buildSnapshot({ user, timeZone: "Europe/Paris", ...preview, requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
+    const input = { user, timeZone: "Europe/Paris", ...preview, requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
-    ] });
+    ] };
+    return {
+      overview: Promise.resolve(buildOverview(input)),
+      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal)),
+      analysis: Promise.resolve().then(() => buildSnapshot(input)),
+    };
   }
   const admin = createCloudflareAdminClient();
   const analysisWindow = analysisWindowForPeriods(options.periods);
@@ -800,57 +860,81 @@ export async function getPersonalLabSnapshot(user: SomaUser, options: { periods?
     calendarQuery = calendarQuery.gte("metric_date", analysisWindow.start).limit(analysisWindow.days);
     checkinQuery = checkinQuery.gte("checkin_date", analysisWindow.start).limit(analysisWindow.days);
   }
-  const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult, journal, matrixCache] = await Promise.all([
-    admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    healthQuery,
-    scoresQuery,
-    calendarQuery,
-    checkinQuery,
-    admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]),
+  // Converting the query builders to real promises starts every independent
+  // read now and lets the streamed sections share the same database results.
+  const profilePromise = admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle().then((result) => result);
+  const healthPromise = healthQuery.then((result) => result);
+  const scoresPromise = scoresQuery.then((result) => result);
+  const calendarPromise = calendarQuery.then((result) => result);
+  const checkinPromise = checkinQuery.then((result) => result);
+  const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
+  const journalPromise = loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
+    const [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult] = results;
+    return {
+      timeZone: profileResult.data?.timezone ?? "Europe/Paris",
+      health: (healthResult.data ?? []) as HealthDay[],
+      scores: (scoresResult.data ?? []) as ScoreDay[],
+      calendars: (calendarResult.data ?? []) as CalendarDay[],
+      checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
+      connections: connectionResult.data ?? [],
+    };
+  });
+  const detailPromise = Promise.all([
     admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
     admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
-    loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {}),
     matrixCachePromise,
-  ]);
-  const queryCompletedAt = Date.now();
-  const failed = [profileResult, healthResult, scoresResult, calendarResult, checkinResult, connectionResult, narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
-  if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-  const snapshot = buildSnapshot({
-    user,
-    timeZone: profileResult.data?.timezone ?? "Europe/Paris",
-    health: (healthResult.data ?? []) as HealthDay[],
-    scores: (scoresResult.data ?? []) as ScoreDay[],
-    calendars: (calendarResult.data ?? []) as CalendarDay[],
-    checkins: (checkinResult.data ?? []).map((row) => ({ ...row, caffeine_servings: toNumber(row.caffeine_servings), alcohol_servings: toNumber(row.alcohol_servings) })) as DailyCheckin[],
-    journal,
-    narrative: narrativeHistoryResult.data?.[0] ?? narrativeResult.data,
-    narrativeHistory: (narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
-    metricPreferences: (metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
-    connections: connectionResult.data ?? [],
-    requestedPeriods: options.periods,
-    cachedMatrix: matrixCache?.cachedMatrix ?? undefined,
+  ]).then((results) => {
+    const [narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache] = results;
+    const failed = [narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
+    if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
+    return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
   });
-  if (matrixCacheKey && matrixCache && !matrixCache.cachedMatrix) {
-    // Bump LAB_MATRIX_CACHE_VERSION whenever a statistical formula or matrix
-    // serialization contract changes so an old result can never be reused.
-    await putLabMatrixCacheObject(user.id, matrixCacheKey, {
-      inputRevision: matrixCache.inputRevision,
-      algorithmVersion: LAB_MATRIX_CACHE_VERSION,
-      matrix: snapshot.matrix,
-      calculatedAt: new Date().toISOString(),
-    }).catch(() => console.warn("[personal-lab] matrix cache write failed", { period: matrixCacheKey }));
-  }
-  console.info("[personal-lab] snapshot ready", {
-    periods: options.periods ?? [15, 30, 90, "all"],
-    queryMs: queryCompletedAt - startedAt,
-    calculationMs: Date.now() - queryCompletedAt,
-    totalMs: Date.now() - startedAt,
-    healthDays: healthResult.data?.length ?? 0,
-    analysisStart: analysisWindow?.start ?? "all",
-    matrixCache: matrixCache?.cachedMatrix ? "hit" : matrixCacheKey ? "miss" : "bypass",
+
+  const overview = corePromise.then((core) => buildOverview(core));
+  const journal = Promise.all([profilePromise, journalPromise]).then(([profileResult, journalData]) => {
+    if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
+    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData);
   });
-  return snapshot;
+  const analysis = Promise.all([corePromise, journalPromise, detailPromise]).then(async ([core, journalData, detail]) => {
+    const queryCompletedAt = Date.now();
+    const snapshot = buildSnapshot({
+      user,
+      ...core,
+      journal: journalData,
+      narrative: detail.narrativeHistoryResult.data?.[0] ?? detail.narrativeResult.data,
+      narrativeHistory: (detail.narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
+      metricPreferences: (detail.metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
+      requestedPeriods: options.periods,
+      cachedMatrix: detail.matrixCache?.cachedMatrix ?? undefined,
+    });
+    if (matrixCacheKey && detail.matrixCache && !detail.matrixCache.cachedMatrix) {
+      await putLabMatrixCacheObject(user.id, matrixCacheKey, {
+        inputRevision: detail.matrixCache.inputRevision,
+        algorithmVersion: LAB_MATRIX_CACHE_VERSION,
+        matrix: snapshot.matrix,
+        calculatedAt: new Date().toISOString(),
+      }).catch(() => console.warn("[personal-lab] matrix cache write failed", { period: matrixCacheKey }));
+    }
+    console.info("[personal-lab] snapshot ready", {
+      periods: options.periods ?? [15, 30, 90, "all"],
+      queryMs: queryCompletedAt - startedAt,
+      calculationMs: Date.now() - queryCompletedAt,
+      totalMs: Date.now() - startedAt,
+      healthDays: core.health.length,
+      analysisStart: analysisWindow?.start ?? "all",
+      matrixCache: detail.matrixCache?.cachedMatrix ? "hit" : matrixCacheKey ? "miss" : "bypass",
+    });
+    return snapshot;
+  });
+  return { overview, journal, analysis };
+}
+
+export function getPersonalLabSnapshot(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): Promise<PersonalLabSnapshot> {
+  return createPersonalLabStream(user, options).analysis;
 }
 
 export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabToday> {

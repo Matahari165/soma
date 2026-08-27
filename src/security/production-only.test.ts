@@ -41,10 +41,12 @@ describe("production-only application contract", () => {
     expect(loginPage).toContain('if (user) redirect("/")');
   });
 
-  it("streams the authenticated Lab shell before expensive statistics finish", () => {
+  it("streams the authenticated Lab sections independently from expensive statistics", () => {
     const page = readFileSync(`${sourceRoot}/app/page.tsx`, "utf8");
-    expect(page).toContain("<Suspense fallback={<Loading />}");
-    expect(page).toContain("async function AuthenticatedLab");
+    expect(page).toContain("createPersonalLabStream");
+    expect(page).toContain("<Suspense fallback={<PersonalLabOverviewLoading />}");
+    expect(page).toContain("<Suspense fallback={<PersonalLabJournalLoading />}");
+    expect(page).toContain("<Suspense fallback={<PersonalLabAnalysisLoading />}");
   });
 
   it("bounds Google network waits and defers the first Calendar sync", () => {
