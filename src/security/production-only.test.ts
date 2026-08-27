@@ -49,6 +49,15 @@ describe("production-only application contract", () => {
     expect(page).toContain("<Suspense fallback={<PersonalLabAnalysisLoading />}");
   });
 
+  it("loads the latest Coach conversation with the initial history request", () => {
+    const route = readFileSync(`${sourceRoot}/app/api/coach/route.ts`, "utf8");
+    const workspace = readFileSync(`${sourceRoot}/components/coach-workspace.tsx`, "utf8");
+    expect(route).toContain("selectedThreadId: requestedThreadId");
+    expect(route).toContain("requestedThreadId ?? threads?.[0]?.id ?? null");
+    expect(workspace).toContain("result.selectedThreadId");
+    expect(workspace).toContain("skipNextThreadLoad.current === selectedId");
+  });
+
   it("bounds Google network waits and defers the first Calendar sync", () => {
     const authCallback = readFileSync(`${sourceRoot}/app/auth/callback/route.ts`, "utf8");
     const healthClient = readFileSync(`${sourceRoot}/integrations/google-health/client.ts`, "utf8");

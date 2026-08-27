@@ -14,10 +14,11 @@ const threadIdSchema = z.string().uuid();
 export async function GET(request: Request) {
   if (isLocalPreviewMode()) {
     const threadId = "30000000-0000-4000-8000-000000000001";
-    const requestedThreadId = new URL(request.url).searchParams.get("threadId");
+    const requestedThreadId = new URL(request.url).searchParams.get("threadId") ?? threadId;
     return NextResponse.json({
       threads: [{ id: threadId, title: "Understanding recovery", updatedAt: new Date().toISOString() }],
-      messages: requestedThreadId ? [{ id: "preview-message", role: "assistant", content: "Your demo recovery signal is above its recent range, supported by more regular sleep. Treat this as an interpretation of sample data, not medical advice.", evidence: ["Demo recovery · 82/100", "Demo sleep regularity · 84%"] }] : [],
+      selectedThreadId: requestedThreadId,
+      messages: [{ id: "preview-message", role: "assistant", content: "Your demo recovery signal is above its recent range, supported by more regular sleep. Treat this as an interpretation of sample data, not medical advice.", evidence: ["Demo recovery · 82/100", "Demo sleep regularity · 84%"] }],
     });
   }
   const user = await getCurrentUser();
@@ -34,15 +35,18 @@ export async function GET(request: Request) {
     .limit(50);
   if (threadError) return NextResponse.json({ error: "Conversation history could not be loaded." }, { status: 500 });
 
+  const selectedThreadId = requestedThreadId ?? threads?.[0]?.id ?? null;
   let messages: Array<{ id: string; role: string; content: string; evidence: unknown; createdAt: string }> = [];
-  if (requestedThreadId) {
-    const { data: ownedThread, error: ownedThreadError } = await admin.from("coach_threads").select("id").eq("id", requestedThreadId).eq("user_id", user.id).maybeSingle();
-    if (ownedThreadError) return NextResponse.json({ error: "Conversation could not be loaded." }, { status: 500 });
-    if (!ownedThread) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  if (selectedThreadId) {
+    if (requestedThreadId) {
+      const { data: ownedThread, error: ownedThreadError } = await admin.from("coach_threads").select("id").eq("id", requestedThreadId).eq("user_id", user.id).maybeSingle();
+      if (ownedThreadError) return NextResponse.json({ error: "Conversation could not be loaded." }, { status: 500 });
+      if (!ownedThread) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+    }
     const { data, error } = await admin.from("coach_messages")
       .select("id,role,content,evidence_refs,created_at")
       .eq("user_id", user.id)
-      .eq("thread_id", requestedThreadId)
+      .eq("thread_id", selectedThreadId)
       .order("created_at", { ascending: true })
       .limit(200);
     if (error) return NextResponse.json({ error: "Messages could not be loaded." }, { status: 500 });
@@ -57,6 +61,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     threads: (threads ?? []).map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updated_at })),
+    selectedThreadId,
     messages,
   });
 }

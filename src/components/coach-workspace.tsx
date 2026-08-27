@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, History, LoaderCircle, MessageSquarePlus, RotateCcw, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CoachChat, type ChatMessage } from "@/components/coach-chat";
 
@@ -16,6 +16,7 @@ export function CoachWorkspace() {
   const [retryVersion, setRetryVersion] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [conversationVersion, setConversationVersion] = useState(0);
+  const skipNextThreadLoad = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -23,9 +24,12 @@ export function CoachWorkspace() {
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Conversation history is unavailable.")))
       .then((result) => {
         const nextThreads = (result.threads ?? []) as CoachThread[];
+        const nextSelectedId = typeof result.selectedThreadId === "string" ? result.selectedThreadId : null;
         setThreads(nextThreads);
-        if (nextThreads[0]) setSelectedId(nextThreads[0].id);
-        else setLoading(false);
+        setMessages((result.messages ?? []).map((item: { id: string; role: "assistant" | "user"; content: string; evidence?: string[] }) => ({ ...item, evidence: item.evidence ?? [] })));
+        skipNextThreadLoad.current = nextSelectedId;
+        setSelectedId(nextSelectedId);
+        setLoading(false);
       })
       .catch((caughtError) => { if (caughtError instanceof Error && caughtError.name !== "AbortError") { setError(caughtError.message); setLoading(false); } });
     return () => controller.abort();
@@ -33,6 +37,11 @@ export function CoachWorkspace() {
 
   useEffect(() => {
     if (!selectedId) return;
+    if (skipNextThreadLoad.current === selectedId) {
+      skipNextThreadLoad.current = null;
+      return;
+    }
+    skipNextThreadLoad.current = null;
     const controller = new AbortController();
     fetch(`/api/coach?threadId=${encodeURIComponent(selectedId)}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("This conversation could not be loaded.")))
