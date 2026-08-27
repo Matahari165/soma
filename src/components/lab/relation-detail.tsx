@@ -59,7 +59,7 @@ function modelEvidence(modelType: MatrixRelation["modelType"], improvement: numb
 }
 
 function overnightOutcome(relation: MatrixRelation) {
-  return ["sleep_minutes", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_awakenings", "sleep_fragmentation", "deep_sleep", "rem_sleep", "light_sleep", "hrv", "rhr", "respiratory", "spo2", "recovery"].some((id) => relation.outcomeId.startsWith(id));
+  return ["sleep_minutes", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_fragmentation", "deep_sleep", "rem_sleep", "light_sleep", "hrv", "rhr", "respiratory", "spo2", "recovery"].some((id) => relation.outcomeId.startsWith(id));
 }
 
 export function timingText(relation: MatrixRelation) {

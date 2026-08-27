@@ -195,7 +195,6 @@ const outcomeThemeById: Record<string, string> = {
   sleep_efficiency: "Sleep",
   sleep_latency: "Sleep",
   sleep_awake: "Sleep",
-  sleep_awakenings: "Sleep",
   sleep_fragmentation: "Sleep",
   deep_sleep: "Sleep",
   rem_sleep: "Sleep",

@@ -149,6 +149,11 @@ const OVERNIGHT_OUTCOME_IDS = new Set(["sleep_minutes", "sleep_need", "sleep_eff
 const EFFORT_INPUT_IDS = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
 const RECOVERY_INPUT_IDS = new Set(["hrv", "rhr", "sleep_minutes", "sleep_efficiency"]);
 const SLEEP_DEBT_INPUT_IDS = new Set(["sleep_minutes", "sleep_need", "daily_sleep_debt"]);
+const PERSONAL_LAB_EXCLUDED_METRIC_IDS = new Set(["sleep_awakenings"]);
+const SAME_NIGHT_TIMING_INPUTS = new Map([
+  ["bedtime", new Set(["sleep_minutes", "sleep_efficiency"])],
+  ["wake_time", new Set(["sleep_minutes", "sleep_efficiency", "sleep_awake"])],
+]);
 
 export function timingForAutomaticMetric(metricId: string): "overnight" | "daytime" {
   return OVERNIGHT_OUTCOME_IDS.has(metricId) ? "overnight" : "daytime";
@@ -161,7 +166,7 @@ export function isImpossibleSameDayTiming(timing: "overnight" | "daytime" | "jou
 export function isMechanicalRelation(predictorId: string, outcomeId: string, lagDays = 0) {
   if (predictorId === outcomeId) return true;
   if (predictorId === "sleep_debt" && OVERNIGHT_OUTCOME_IDS.has(outcomeId)) return lagDays !== 1;
-  if (predictorId === "wake_time" && outcomeId === "sleep_awakenings") return true;
+  if (lagDays === 0 && SAME_NIGHT_TIMING_INPUTS.get(predictorId)?.has(outcomeId)) return true;
   if ((predictorId === "effort" && EFFORT_INPUT_IDS.has(outcomeId)) || (outcomeId === "effort" && EFFORT_INPUT_IDS.has(predictorId))) return true;
   if ((predictorId === "recovery" && RECOVERY_INPUT_IDS.has(outcomeId)) || (outcomeId === "recovery" && RECOVERY_INPUT_IDS.has(predictorId))) return true;
   return (predictorId === "sleep_debt" && SLEEP_DEBT_INPUT_IDS.has(outcomeId))
@@ -216,7 +221,7 @@ export function overnightFingerprint(day: Partial<HealthDay> | undefined) {
   if (!hasReliableOvernightData(day)) return null;
   const value = JSON.stringify([
     day?.sleep_minutes, day?.bedtime, day?.wake_time, day?.sleep_efficiency,
-    day?.sleep_latency_minutes, day?.sleep_awake_minutes, day?.sleep_awakenings,
+    day?.sleep_latency_minutes, day?.sleep_awake_minutes,
     day?.sleep_fragmentation, day?.sleep_deep_minutes, day?.sleep_rem_minutes,
     day?.hrv_ms, day?.resting_heart_rate, day?.respiratory_rate,
   ]);
@@ -321,7 +326,6 @@ function buildCorrelationMatrix(input: {
     { ...healthSeries(health, "sleep_efficiency", "Sleep efficiency", "%", "sleep_efficiency"), direction: "higher" as const },
     { ...healthSeries(health, "sleep_latency", "Sleep latency", "min", "sleep_latency_minutes"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_awake", "Awake time", "min", "sleep_awake_minutes"), direction: "lower" as const },
-    { ...healthSeries(health, "sleep_awakenings", "Awakenings", "count", "sleep_awakenings"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_fragmentation", "Fragmentation", "/h", "sleep_fragmentation"), direction: "lower" as const },
     { ...healthSeries(health, "deep_sleep", "Deep sleep", "min", "sleep_deep_minutes"), direction: "higher" as const },
     { ...healthSeries(health, "rem_sleep", "REM sleep", "min", "sleep_rem_minutes"), direction: "higher" as const },
@@ -340,7 +344,7 @@ function buildCorrelationMatrix(input: {
   });
   const dailyOutcomes = [
     ...coreOutcomes,
-    ...input.metricDefinitions.filter((metric) => !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    ...input.metricDefinitions.filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id) && !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
       .map((metric) => ({ ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), direction: metric.direction })),
     { ...bedtime, direction: "target" as const },
     { ...wakeTime, direction: "target" as const },
@@ -395,7 +399,6 @@ function buildCorrelationMatrix(input: {
     sleep_efficiency: 1.5,
     sleep_latency: 5,
     sleep_awake: 5,
-    sleep_awakenings: 1,
     deep_sleep: 5,
     rem_sleep: 5,
     hrv: 2,
@@ -440,7 +443,7 @@ function buildCorrelationMatrix(input: {
     : relation;
   const automaticIds = new Set(automaticRows.map((row) => row.series.id));
   const genericAutomaticRows: RowSpec[] = input.metricDefinitions
-    .filter((metric) => !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    .filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id) && !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
     .map((metric) => {
       const binary = metric.id === "active_day" || health.some((day) => typeof (day as unknown as Record<string, unknown>)[metric.field] === "boolean");
       return { series: { ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), kind: binary ? "binary" as const : "numeric" as const }, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: timingForAutomaticMetric(metric.id) };
@@ -681,7 +684,7 @@ function buildSnapshot(input: {
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
-  const metricRegistry = metricDefinitions.map((metric) => {
+  const metricRegistry = metricDefinitions.filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id)).map((metric) => {
     const sourceDays = new Map<string, number>();
     const recordedDays = metric.id === "recovery" || metric.id === "effort"
       ? input.scores.filter((score) => {
@@ -958,11 +961,11 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
   const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
   const startDate = addDays(todayDate, -29);
   const [healthResult, scoresResult] = await Promise.all([
-    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
+    admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
   ]);
   if (healthResult.error || scoresResult.error) throw new Error("Today's signals could not be loaded.");
-  const healthRows = (healthResult.data ?? []) as Array<Pick<HealthDay, "metric_date" | "sleep_minutes" | "sleep_regularity" | "bedtime" | "wake_time" | "sleep_efficiency" | "sleep_latency_minutes" | "sleep_awake_minutes" | "sleep_awakenings" | "sleep_fragmentation" | "sleep_deep_minutes" | "sleep_rem_minutes" | "hrv_ms" | "resting_heart_rate" | "respiratory_rate">>;
+  const healthRows = (healthResult.data ?? []) as Array<Pick<HealthDay, "metric_date" | "sleep_minutes" | "sleep_regularity" | "bedtime" | "wake_time" | "sleep_efficiency" | "sleep_latency_minutes" | "sleep_awake_minutes" | "sleep_fragmentation" | "sleep_deep_minutes" | "sleep_rem_minutes" | "hrv_ms" | "resting_heart_rate" | "respiratory_rate">>;
   const scoreRows = scoresResult.data ?? [];
   const todayHealth = healthRows.find((day) => day.metric_date === todayDate);
   const todayScores = scoreRows.filter((score) => score.score_date === todayDate);

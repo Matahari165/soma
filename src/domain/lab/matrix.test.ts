@@ -213,7 +213,7 @@ describe("Personal Lab raw within-person relations", () => {
   it("applies every real-unit practical threshold", () => {
     expect(PRACTICAL_EFFECT_THRESHOLDS).toMatchObject({
       sleep_minutes: 15, sleep_efficiency: 1.5, sleep_latency: 5, sleep_awake: 5,
-      sleep_awakenings: 1, deep_sleep: 5, rem_sleep: 5, hrv: 2, rhr: 1,
+      deep_sleep: 5, rem_sleep: 5, hrv: 2, rhr: 1,
       respiratory: .3, spo2: .3, recovery: 3,
     });
   });
