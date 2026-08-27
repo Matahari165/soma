@@ -8,8 +8,95 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Soma product source of truth
+## Règles du projet Soma
 
-Before changing Personal Lab behavior, metrics, journal fields, statistics, Grok synthesis,
-or the main Lab interface, read `PERSONAL_LAB.md`. It is the canonical approved product
-contract and supersedes older planning documents when they disagree.
+### Communication et cadrage
+
+- Réponds en français, simplement et sans phrases inutiles. Commence par la conclusion utile.
+- Avant toute modification, donne un plan court, les hypothèses importantes et les critères de réussite.
+- Si une ambiguïté peut changer le résultat, pose une seule question et attends la réponse avant de coder.
+- Une demande de conseil, d'explication, d'audit ou de lecture seule n'autorise aucune modification.
+
+### Source de vérité Personal Lab
+
+- Avant de modifier le comportement de Personal Lab, ses métriques, le journal, les statistiques,
+  la synthèse Grok ou l'interface principale du Lab, lis `PERSONAL_LAB.md` en entier.
+- `PERSONAL_LAB.md` est le contrat produit approuvé et prévaut sur les anciens documents de
+  planification lorsqu'ils se contredisent.
+- Distingue toujours les données provenant d'une source de santé des métriques calculées par Soma.
+- Ne mets jamais dans le code, Git, les journaux ou les réponses des exports de santé, identifiants,
+  clés, jetons, sessions ou autres données personnelles sensibles.
+
+### Interface et expérience utilisateur
+
+- Conserve une identité visuelle cohérente et intentionnelle ; évite l'apparence générique des
+  applications générées par IA, les cartes répétitives et les grands espaces vides sans fonction.
+- Simplifie d'abord l'écran principal et place les explications ou données denses dans un détail
+  accessible au clic.
+- Chaque texte visible doit aider à comprendre, décider ou agir. Le titre de l'onglet reste `Soma`.
+- Vérifie par défaut les formats MacBook Air `1440x900`, iPhone `390x844` et les largeurs intermédiaires utiles.
+- Vérifie contraste, lisibilité, clavier, focus visible, zones tactiles et information indépendante de la couleur.
+- Utilise le navigateur intégré pour toute modification visuelle ou interactive significative ; une petite
+  correction évidente peut recevoir une vérification proportionnée.
+
+### Développement, qualité et Git
+
+- Inspecte les conventions et l'état Git avant de modifier. Préserve les changements existants et reste
+  strictement dans le périmètre demandé.
+- Utilise la solution la plus simple qui répond au besoin, réutilise l'existant et n'ajoute pas de dépendance
+  sans bénéfice clair.
+- Utilise une branche par modification cohérente et livrable ; ne mélange pas deux sujets indépendants.
+- Après une modification, vérifie selon le risque : cas normal, chargement, absence de données, erreur,
+  responsive, accessibilité, types, lint, tests et build pertinents.
+- Pour une vérification complète du projet, utilise `CI=true pnpm verify`.
+- Relis le diff final. Un commit local, un push, un déploiement et une vérification en production sont des
+  preuves distinctes : ne présente jamais l'une comme la preuve d'une autre.
+- Ne publie, ne déploie, n'envoie de message et ne modifie aucun service externe sans autorisation explicite.
+
+### Délégation et apprentissage
+
+- N'utilise des sous-agents que pour des tâches réellement indépendantes. L'agent principal reste responsable
+  de la cohérence, des conflits, des vérifications et de la synthèse finale.
+- Quand le choix est disponible, utilise Luna `high` pour un travail ciblé, Luna `xhigh` pour une analyse
+  indépendante exigeante et Sol pour l'architecture, les changements sensibles et la synthèse.
+- Après une étape technique importante, explique brièvement ce qui fonctionne, comment et pourquoi, avec un
+  exemple concret si cela aide.
+- Pour un audit ou un diagnostic, sépare clairement les faits vérifiés, les hypothèses, les causes écartées et
+  les inconnues.
+- Termine toute modification par : ce qui a changé, les vérifications effectuées, puis les limites ou risques restants.
+
+## Rapport d'utilisation à la fin de chaque tâche
+
+À la toute fin de chaque tâche, y compris une simple lecture, un audit ou une modification,
+ajoute un bloc très court `Utilisation estimée`. Ce bloc vient après le compte rendu normal
+et contient :
+
+- le nom exact du modèle principal et son niveau d'effort tels qu'affichés par l'environnement ;
+- le nombre de tokens d'entrée, de cache et de sortie, puis le total, lorsque ces données sont
+  accessibles ;
+- le coût API estimé en appliquant à ces catégories les tarifs officiels actuels, avec la devise
+  et la date du tarif ;
+- si des sous-agents ont été utilisés, une ventilation séparée du coût de l'orchestrateur et du
+  coût cumulé des sous-agents, en nommant chaque modèle et niveau d'effort, puis le coût global ;
+- une comparaison contrefactuelle en une seule ligne : coût estimé de la même tâche avec le
+  modèle principal seul, contre coût réel estimé avec sous-agents, et économie ou surcoût. Si la
+  tâche n'a utilisé que le modèle principal, fais la comparaison inverse avec une orchestration
+  composée de ce modèle et de sous-agents Luna `high` ou `xhigh`.
+
+Pour cette comparaison, « Sol Light » signifie Sol avec un niveau d'effort `low`, sauf si
+l'environnement expose un autre nom officiel. Les sous-agents de référence sont Luna `high` ou
+`xhigh` ; choisis le niveau le plus plausible pour la tâche et indique qu'il s'agit d'une
+simulation. Utilise les métriques exactes fournies par l'environnement. Si elles ne sont pas
+accessibles, écris `indisponible` ; n'invente jamais un nombre de tokens. Si une répartition
+contrefactuelle doit être supposée, donne l'hypothèse en quelques mots et marque le résultat
+comme une estimation. Ne présente pas le prix d'un abonnement ChatGPT ou les crédits Codex
+comme un coût API.
+
+Format attendu, en restant sur quatre lignes si possible :
+
+```text
+Utilisation estimée
+Principal — <modèle + effort> : <entrée/cache/sortie = total> · <coût API>
+Sous-agents — <modèles + efforts> : <tokens totaux> · <coût cumulé> (ou « aucun »)
+Comparaison — <scénario réel> vs <scénario simulé> : <économie ou surcoût>
+```
