@@ -3,7 +3,7 @@ import "server-only";
 import { cloudflareArchives } from "@/lib/cloudflare/db";
 import { getR2JsonObject, putR2JsonObject } from "@/lib/r2";
 
-export const LAB_MATRIX_CACHE_VERSION = "matrix-v10";
+export const LAB_MATRIX_CACHE_VERSION = "matrix-v11";
 const LAB_MATRIX_PERIOD_KEYS = ["15", "30", "90", "all"] as const;
 
 export function labMatrixCacheObjectKey(userId: string, periodKey: string) {
