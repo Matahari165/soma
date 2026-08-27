@@ -9,14 +9,14 @@ afterEach(() => {
 
 describe("Grok Personal Lab output", () => {
   it("accepts a concise grounded summary", () => {
-    const result = labNarrativeSchema.parse({ headline: "More activity is linked to a lower resting heart rate.", summary: "The clearest signal is in the recovery metrics.", highlights: [{ text: "More activity is linked to -2 bpm in resting heart rate.", factIndex: 0 }, { text: "More activity is linked to +4 ms in HRV.", factIndex: 1 }] });
-    expect(result.highlights).toHaveLength(2);
+    const result = labNarrativeSchema.parse({ headline: "30-Day", summary: "", highlights: [{ label: "🏃‍♂️ Effort vs. ❤️ Heart Rate", text: "+50 Effort Points ➡️ -2 bpm Resting Heart Rate (next day)", factIndex: 0 }] });
+    expect(result.highlights).toHaveLength(1);
   });
 
   it("uses bounded low-latency reasoning for the dashboard synthesis", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
-      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Signal", summary: "A clear signal appears in recovery.", highlights: [{ text: "More steps are linked to -3 bpm in resting heart rate.", factIndex: 0 }] }) }] }],
+      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "30-Day", summary: "", highlights: [{ label: "🚶 Steps vs. ❤️ Heart Rate", text: "+3000 steps ➡️ -3 bpm Resting Heart Rate (next day)", factIndex: 0 }] }) }] }],
       usage: { input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 },
     }), { status: 200 }));
 
@@ -79,6 +79,7 @@ describe("Grok Personal Lab output", () => {
     const body = JSON.parse(String(request?.body)) as { reasoning?: { effort?: string }; max_output_tokens?: number; store?: boolean; input?: string; instructions?: string };
     expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 700, store: false });
     expect(body.input).toContain("qValue");
+    expect(body.input).toContain("Report window: 30-Day");
     expect(body.input).toContain("interval95");
     expect(body.input).toContain("pairedObservations");
     expect(body.input).toContain("analysisPeriod");
@@ -86,9 +87,11 @@ describe("Grok Personal Lab output", () => {
     expect(body.input).toContain("habitualVariation");
     expect(body.input).toContain("sharedPeriodContrast");
     expect(body.input).not.toContain("method");
-    expect(body.instructions).toContain("clear, natural English");
-    expect(body.instructions).toContain("1 to 4 short effect bullets");
+    expect(body.instructions).toContain("compact metric report");
+    expect(body.instructions).toContain("<predictor emoji> <short predictor name> vs. <outcome emoji> <short outcome name>");
+    expect(body.instructions).toContain("➡️");
     expect(request?.signal).toBeInstanceOf(AbortSignal);
+    expect(generated.narrative).toMatchObject({ headline: "30-Day", summary: "" });
     expect(generated.usage).toEqual({ input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 });
     expect(generated.facts).toHaveLength(1);
   });

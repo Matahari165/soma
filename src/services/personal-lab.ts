@@ -716,10 +716,10 @@ function buildSnapshot(input: {
     return [{ predictor: fact.predictor, outcome: fact.outcome, period: period as AnalysisPeriod, lagDays: typeof fact.lagDays === "number" ? fact.lagDays : 0 }];
   }) : [];
   const parseHighlights = (value: unknown) => Array.isArray(value) ? value.flatMap((item, index) => {
-    if (typeof item === "string") return [{ text: item, factIndex: index }];
+    if (typeof item === "string") return [{ label: "", text: item, factIndex: index }];
     if (typeof item !== "object" || item === null) return [];
     const record = item as Record<string, unknown>;
-    return typeof record.text === "string" && Number.isInteger(record.factIndex) ? [{ text: record.text, factIndex: Number(record.factIndex) }] : [];
+    return typeof record.text === "string" && Number.isInteger(record.factIndex) ? [{ label: typeof record.label === "string" ? record.label : "", text: record.text, factIndex: Number(record.factIndex) }] : [];
   }) : [];
   const facts = parseSourceFacts(input.narrative?.source_facts);
   const highlights = parseHighlights(input.narrative?.highlights);
@@ -755,7 +755,7 @@ function buildSnapshot(input: {
       id: item.id,
       headline: item.headline,
       summary: item.summary,
-      highlights: itemHighlights.map((highlight) => highlight.text),
+      highlights: itemHighlights.map((highlight) => highlight.label ? `${highlight.label}\n${highlight.text}` : highlight.text),
       generatedAt: item.generated_at,
       liked: item.liked,
       sourceFacts: itemHighlights.map((highlight) => itemFacts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)),
@@ -766,7 +766,7 @@ function buildSnapshot(input: {
     id: narrativeIsCurrent ? input.narrative?.id ?? null : null,
     headline: narrativeIsCurrent ? input.narrative?.headline ?? "" : "",
     summary: narrativeIsCurrent ? input.narrative?.summary ?? "" : "",
-    highlights: narrativeIsCurrent ? highlights.map((item) => item.text) : [],
+    highlights: narrativeIsCurrent ? highlights.map((item) => item.label ? `${item.label}\n${item.text}` : item.text) : [],
     model: narrativeIsCurrent ? input.narrative?.model ?? "" : "",
     generatedAt: narrativeIsCurrent ? input.narrative?.generated_at ?? "" : "",
     liked: narrativeIsCurrent ? input.narrative?.liked ?? false : false,
