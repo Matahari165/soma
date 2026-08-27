@@ -5,13 +5,32 @@ export type GroupedMatrixRow = {
   id: string;
   label: string;
   emoji: string | null;
+  journal: boolean;
+  group: string;
   relationsByOutcome: MatrixRelation[][];
 };
+
+const activityLoadIds = new Set(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "active_minutes"]);
+const sleepPatternIds = new Set(["bedtime", "wake_time", "sleep_regularity", "sleep_debt"]);
+const runningAndSedentaryIds = new Set(["sedentary_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"]);
+const influenceGroupOrder = ["Sleep pattern", "Daily movement", "Activity load", "Running & sedentary time", "Other influences", "Journal habits"];
+
+export function influenceGroup(predictorId: string) {
+  if (predictorId.startsWith("journal:")) return "Journal habits";
+  if (activityLoadIds.has(predictorId)) return "Activity load";
+  if (predictorId === "steps") return "Daily movement";
+  if (runningAndSedentaryIds.has(predictorId)) return "Running & sedentary time";
+  if (sleepPatternIds.has(predictorId)) return "Sleep pattern";
+  return "Other influences";
+}
+
+export function compareInfluenceGroups(first: string, second: string) {
+  return influenceGroupOrder.indexOf(first) - influenceGroupOrder.indexOf(second);
+}
 
 export function groupMatrixRows(
   rows: PersonalLabSnapshot["matrix"]["rows"],
   outcomeIds: readonly string[],
-  showNonSignificant: boolean,
 ) {
   const grouped = new Map<string, GroupedMatrixRow>();
   for (const row of rows) {
@@ -21,6 +40,8 @@ export function groupMatrixRows(
       id: predictorId,
       label: row.label,
       emoji: row.emoji,
+      journal: row.relations.some((relation) => relation.family === "journal-acute" || relation.family === "journal-chronic"),
+      group: influenceGroup(predictorId),
       relationsByOutcome: outcomeIds.map(() => []),
     };
     row.relations.forEach((relation) => {
@@ -33,9 +54,7 @@ export function groupMatrixRows(
   return [...grouped.values()].map((row) => ({
     ...row,
     relationsByOutcome: row.relationsByOutcome.map((relations) => [...relations].sort((first, second) => first.lagDays - second.lagDays)),
-  })).filter((row) => row.relationsByOutcome.some((relations) => showNonSignificant
-    ? relations.some((relation) => !relation.excluded)
-    : relations.some((relation) => relation.featureEligible && relation.qValue < .05)));
+  })).sort((first, second) => compareInfluenceGroups(first.group, second.group));
 }
 
 export function calculableRelations(relations: MatrixRelation[]) {

@@ -9,7 +9,8 @@ const MINIMUM_NONLINEAR_IMPROVEMENT = .1;
 const MINIMUM_SHAPE_EFFECT_STANDARD_DEVIATIONS = .15;
 const SEARCHED_NONLINEAR_SHAPES = 3;
 const EXTREME_IMPORT_FENCE_MULTIPLIER = 6;
-const J2_HIGHLIGHT_ADVANTAGE = 1.2;
+const J2_HIGHLIGHT_EFFECT_ADVANTAGE = 1.2;
+const J2_HIGHLIGHT_Q_ADVANTAGE = .6;
 
 export type AnalysisPeriod = 15 | 30 | 90 | "all";
 export type MatrixPoint = { date: string; value: number; segment?: string };
@@ -61,6 +62,7 @@ export type MatrixRelation = {
   coverageBySource: MatrixSourceCoverage[]; sourceEstimates: MatrixSourceEstimate[];
   doseResponse: MatrixDoseResponse | null;
   habitualPredictorDelta: number | null; habitualEffect: number | null;
+  minimumDaysRemaining?: number;
   practicallyMeaningful: boolean; practicalThreshold: number; practicalRatio: number;
   featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
 };
@@ -504,7 +506,11 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
     const nextDay = candidates.filter((relation) => relation.lagDays === 1).sort(stronger)[0];
     if (!nextDay) return [...candidates].sort(stronger)[0];
     const twoDaysLater = candidates.filter((relation) => relation.lagDays === 2).sort(stronger)[0];
-    return twoDaysLater && twoDaysLater.practicalRatio >= nextDay.practicalRatio * J2_HIGHLIGHT_ADVANTAGE ? twoDaysLater : nextDay;
+    return twoDaysLater
+      && twoDaysLater.practicalRatio >= nextDay.practicalRatio * J2_HIGHLIGHT_EFFECT_ADVANTAGE
+      && twoDaysLater.qValue <= nextDay.qValue * J2_HIGHLIGHT_Q_ADVANTAGE
+      ? twoDaysLater
+      : nextDay;
   });
   return selected.sort(stronger).slice(0, limit);
 }
@@ -534,6 +540,10 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
   const estimate = fitEstimate(pairs, predictor, options);
   const doseResponse = calculateDoseResponse(pairs, predictor, options, outcome.unit);
   const stability = chronologicalDirection(pairs);
+  const minimumDaysRemaining = predictor.kind === "binary"
+    ? Math.max(0, MINIMUM_BINARY_GROUP - pairs.filter((pair) => pair.predictor === 0).length)
+      + Math.max(0, MINIMUM_BINARY_GROUP - pairs.filter((pair) => pair.predictor === 1).length)
+    : Math.max(0, MINIMUM_DAILY_OBSERVATIONS - pairs.length);
   const minimum = predictor.kind === "binary" ? `${MINIMUM_BINARY_GROUP} yes and ${MINIMUM_BINARY_GROUP} no days` : `${MINIMUM_DAILY_OBSERVATIONS} paired days`;
   const exclusionReasons = estimate ? [] : [`At least ${minimum} are required`];
   if (estimate && Math.abs(estimate.effect) < (options.minimumMeaningfulEffect ?? 0)) exclusionReasons.push("Effect is below the practical display threshold");
@@ -568,6 +578,7 @@ export function calculateMatrixRelation(predictor: MatrixSeries, outcome: Matrix
     doseResponse,
     habitualPredictorDelta: estimate?.habitualPredictorDelta === null || estimate?.habitualPredictorDelta === undefined ? null : round(estimate.habitualPredictorDelta, 2),
     habitualEffect: estimate?.habitualEffect === null || estimate?.habitualEffect === undefined ? null : round(estimate.habitualEffect, 1),
+    minimumDaysRemaining,
     practicallyMeaningful: false, practicalThreshold, practicalRatio: round(practicalRatio, 3),
     featureEligible: false, exclusionReasons, excluded: false,
   };

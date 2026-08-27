@@ -51,9 +51,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const debt = latest?.cumulative_sleep_debt_minutes ?? null;
   const averageSleep = latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null;
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
+  const averageLatency = latest ? averageLast30Measured(data.days, "sleep_latency_minutes", latest.metric_date) : null;
   const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
   const sleepTone = metricTone(latest?.sleep_minutes ?? null, averageSleep, "higher_is_better");
   const efficiencyTone = metricTone(latest?.sleep_efficiency ?? null, averageEfficiency, "higher_is_better");
+  const latencyTone = metricTone(latest?.sleep_latency_minutes ?? null, averageLatency, "lower_is_better");
   const debtTone = metricTone(debt, averageDebt, "lower_is_better");
   const bedtimeRegularity = timingRegularity(data.days, "bedtime", data.timezone);
   const wakeRegularity = timingRegularity(data.days, "wake_time", data.timezone);
@@ -70,6 +72,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         <article className={`health-primary-card health-primary-card--featured health-primary-card--centered metric-tone--${sleepTone}`}><span>Total sleep</span><AnimatedMetricReading value={latest.sleep_minutes} format="duration" className={`metric-reading--${sleepTone}`} /><p className="health-primary-card__average">30-day average · {formatDurationMinutes(averageSleep)}</p></article>
         <article className={`health-primary-card health-primary-card--centered health-primary-card--connected health-primary-card--connected-start metric-tone--${efficiencyTone}`}><span>Efficiency</span><AnimatedMetricReading value={latest.sleep_efficiency} format="decimal" unit="%" className={`metric-reading--${efficiencyTone}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averageEfficiency, "decimal", 1)}%</p></article>
         <article className={`health-primary-card health-primary-card--centered health-primary-card--connected health-primary-card--connected-end metric-tone--${efficiencyTone}`}><span>Awake</span><AnimatedMetricReading value={latest.sleep_awake_minutes} format="number" unit="min" decimals={0} /><p className="health-primary-card__average health-primary-card__average--spacer" aria-hidden="true">Linked to efficiency</p></article>
+        <article className={`health-primary-card health-primary-card--centered metric-tone--${latencyTone}`}><span>Sleep latency</span><AnimatedMetricReading value={latest.sleep_latency_minutes} format="number" unit={latest.sleep_latency_minutes === null ? undefined : "min"} decimals={0} className={`metric-reading--${latencyTone}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averageLatency, "decimal", 0)} min</p></article>
         <article className="health-primary-card health-primary-card--centered health-primary-card--recommendation"><span>Tonight&apos;s optimal bedtime</span><strong className="metric-reading"><span>{formatClockMinutes(tonightBedtime)}</span></strong><p>{tonightBedtime === null || target === null ? "Target bedtime unavailable." : <>To wake at {formatClockMinutes(recommendedWakeMinutes)} and reach your {formatDurationMinutes(target)} target.</>}</p></article>
       </section>
 
@@ -82,6 +85,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       <section className="health-trends-block" aria-labelledby="sleep-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="sleep-trends-heading">Sleep trends</h2></div></div><div className="metric-trend-grid">
         <MetricTrendCard label="Total sleep" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={(value) => duration(value)} target={target} animateCurrent animationFormat="duration" />
         <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
+        <MetricTrendCard label="Sleep latency" points={points(data.days, "sleep_latency_minutes")} unit="min" direction="lower_is_better" animateCurrent animationFormat="number" />
         <MetricTrendCard label="Cumulative debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" format={(value) => duration(value)} animateCurrent animationFormat="duration" />
         <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" animateCurrent animationFormat="decimal" />
         <MetricTrendCard label="Sleep regularity" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />

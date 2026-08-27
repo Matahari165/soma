@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analysisWindowForPeriods, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, hasReliableOvernightData, healthSeries, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
@@ -67,6 +67,27 @@ describe("Personal Lab timing", () => {
   });
 });
 
+describe("Personal Lab daily health mapping", () => {
+  it("omits missing running days instead of turning them into zero points", () => {
+    expect(healthSeries([
+      { metric_date: "2026-08-24", running_distance_km: null },
+      { metric_date: "2026-08-25", running_distance_km: 5.4 },
+    ] as Parameters<typeof healthSeries>[0], "running_distance_km", "Running distance", "km", "running_distance_km").points).toEqual([
+      { date: "2026-08-25", value: 5.4 },
+    ]);
+  });
+
+  it("represents active days as binary observations", () => {
+    expect(healthSeries([
+      { metric_date: "2026-08-24", active_day: false },
+      { metric_date: "2026-08-25", active_day: true },
+    ] as Parameters<typeof healthSeries>[0], "active_day", "Active day", "yes/no", "active_day")).toMatchObject({
+      kind: "binary",
+      points: [{ date: "2026-08-24", value: 0 }, { date: "2026-08-25", value: 1 }],
+    });
+  });
+});
+
 describe("Personal Lab mechanical exclusions", () => {
   it("keeps informative sleep-component relationships while excluding direct score inputs", () => {
     expect(isMechanicalRelation("sleep_minutes", "deep_sleep")).toBe(false);
@@ -74,6 +95,13 @@ describe("Personal Lab mechanical exclusions", () => {
     expect(isMechanicalRelation("sleep_minutes", "sleep_debt")).toBe(true);
     expect(isMechanicalRelation("steps", "effort")).toBe(true);
     expect(isMechanicalRelation("hrv", "recovery")).toBe(true);
+    expect(isMechanicalRelation("wake_time", "sleep_awakenings")).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep")).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep", 1)).toBe(false);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep", 2)).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "sleep_minutes", 1)).toBe(false);
+    expect(isMechanicalRelation("effort", "steps", 1)).toBe(true);
+    expect(isMechanicalRelation("wake_time", "sleep_awakenings", 1)).toBe(true);
   });
 });
 

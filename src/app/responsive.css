@@ -2,6 +2,7 @@
 
 @media (max-width: 1240px) {
   .health-primary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .health-detail-page--activity .health-primary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .health-primary-card:nth-child(3n) { border-right: 0; }
   .health-primary-card:nth-child(-n + 3) { border-bottom: 1px solid var(--line); }
   .metric-trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -47,6 +48,7 @@
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
   .matrix-scroll { display: block; width: 100%; max-height: 70vh; overscroll-behavior: contain; }
+  .lab-entry__relations { min-width: 0; max-width: 100%; overflow-x: clip; }
   .matrix-mobile-list { display: none; }
   .matrix-scroll table { width: max-content; min-width: 1320px; }
   .matrix-scroll .matrix-theme-row > th:first-child, .matrix-scroll tbody th { width: 160px; }
@@ -143,6 +145,7 @@
   .health-detail-hero--with-metrics { grid-template-columns: minmax(220px, 1fr) minmax(480px, 1.2fr); }
   .health-detail-hero h1 { font-size: clamp(3.6rem, 10vw, 6rem); }
   .health-primary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-detail-page--activity .health-primary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .health-primary-card:nth-child(n) { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .health-primary-card:nth-child(2n) { border-right: 0; }
   .health-primary-card:nth-last-child(-n + 2) { border-bottom: 0; }

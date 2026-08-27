@@ -21,7 +21,8 @@ export function calculateSleepDebt(days: Array<{ date: string; targetMinutes: nu
   });
 }
 
-export function isActiveDay(input: { steps: number | null; activeZoneMinutes: number | null; activeMinutes: number | null }) {
+export function isActiveDay(input: { steps: number | null; activeZoneMinutes: number | null; activeMinutes: number | null }): boolean | null {
+  if (input.steps === null && input.activeZoneMinutes === null && input.activeMinutes === null) return null;
   return (input.steps ?? 0) >= 7_500 || (input.activeZoneMinutes ?? 0) >= 20 || (input.activeMinutes ?? 0) >= 30;
 }
 

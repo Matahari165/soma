@@ -49,7 +49,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <MetricTrendCard label="SpO₂" points={points(data.days, "oxygen_saturation")} unit="%" direction="context_only" animateCurrent animationFormat="decimal" />
         <MetricTrendCard label="Respiration" points={points(data.days, "respiratory_rate")} unit="/min" direction="context_only" animateCurrent animationFormat="decimal" />
         <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" animateCurrent animationFormat="decimal" />
       </div></section>
 
       <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest complete day</span><h2>Time in heart-rate zones</h2></div></div><ZoneDistribution zones={[

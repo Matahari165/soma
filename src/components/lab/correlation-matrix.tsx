@@ -1,14 +1,14 @@
 "use client";
 
 import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 
 import { PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { effectText, percentText, RelationDetail, relationTone, shortTimingText } from "./relation-detail";
-import { calculableRelations, groupMatrixRows, significantRelations } from "./relationship-groups";
+import { calculableRelations, compareInfluenceGroups, groupMatrixRows, influenceGroup, significantRelations } from "./relationship-groups";
 
 export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "All" : `${period}d`;
@@ -35,8 +35,45 @@ function effectDirection(relation: MatrixRelation, direction: "higher" | "lower"
   return relationTone(relation, direction) === "is-positive" ? 1 : relationTone(relation, direction) === "is-negative" ? -1 : 0;
 }
 
-function matrixCellEffectText(relation: MatrixRelation) {
-  return relation.outcomeUnit === "%" ? effectText(relation) : percentText(relation) ?? "—";
+export function matrixCellEffectText(relation: MatrixRelation) {
+  return relation.outcomeUnit === "%" ? effectText(relation) : percentText(relation) ?? effectText(relation);
+}
+
+export function daysUntilFirstResult(relations: MatrixRelation[]) {
+  const eligible = relations.filter((relation) => !relation.excluded);
+  if (!eligible.length || eligible.some((relation) => relation.coefficient !== null)) return null;
+  const remaining = Math.min(...eligible.map((relation) => relation.minimumDaysRemaining ?? 0));
+  return remaining > 0 ? remaining : 0;
+}
+
+export type MatrixCellState = "collecting" | "no-signal" | "excluded" | null;
+
+export function matrixCellState(relations: MatrixRelation[], displayed: MatrixRelation[]): MatrixCellState {
+  if (displayed.length) return null;
+  const eligible = relations.filter((relation) => !relation.excluded);
+  if (!eligible.length) return "excluded";
+  if (!eligible.some((relation) => relation.coefficient !== null)
+    && eligible.some((relation) => (relation.minimumDaysRemaining ?? 0) > 0)) return "collecting";
+  return "no-signal";
+}
+
+function cellProgress(relations: MatrixRelation[]) {
+  const eligible = relations.filter((relation) => !relation.excluded);
+  const closest = [...eligible].sort((first, second) => (first.minimumDaysRemaining ?? 0) - (second.minimumDaysRemaining ?? 0))[0];
+  if (!closest) return 0;
+  const required = closest.sampleSize + (closest.minimumDaysRemaining ?? 0);
+  return required ? Math.min(1, closest.sampleSize / required) : 0;
+}
+
+function MatrixStateMark({ state, progress = 0, labelled = false }: { state: Exclude<MatrixCellState, null>; progress?: number; labelled?: boolean }) {
+  const labels = { collecting: "Collecting data", "no-signal": "Enough data, no clear signal", excluded: "Not applicable" };
+  return <span
+    className={`matrix-state matrix-state--${state}`}
+    aria-hidden={labelled ? undefined : true}
+    aria-label={labelled ? labels[state] : undefined}
+    role={labelled ? "img" : undefined}
+    style={state === "collecting" ? { "--matrix-state-progress": `${Math.round(progress * 360)}deg` } as CSSProperties : undefined}
+  />;
 }
 
 function matrixRelationTone(relation: MatrixRelation) {
@@ -112,6 +149,42 @@ const influenceExplanations: Record<string, Omit<InfluenceExplanation, "sourceDe
     source: "Google Health",
     sourceDetail: "Collected by your connected wearable and imported through Google Health.",
   },
+  sedentary_minutes: {
+    definition: "The number of minutes spent sedentary during the day.",
+    calculation: "The daily sedentary-minute total is used as received; missing days remain missing.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  active_day: {
+    definition: "Whether the day counts as active: yes or no.",
+    calculation: "Soma marks a day active when it has at least 7,500 steps, or 20 active-zone minutes, or 30 active minutes; it compares active and non-active days.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from daily activity measures imported through Google Health.",
+  },
+  running_distance: {
+    definition: "The distance covered during recorded running sessions.",
+    calculation: "The day's running distance is used in kilometres; days without a recorded run remain missing.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  running_pace: {
+    definition: "The average pace of recorded running sessions.",
+    calculation: "Soma uses the day's running pace in seconds per kilometre; a lower value means a faster pace.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  running_average_heart_rate: {
+    definition: "The average heart rate during recorded running sessions.",
+    calculation: "The day's running average is used in beats per minute and compared with the observed personal range.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  vo2_max: {
+    definition: "An estimate of the maximum amount of oxygen your body can use during exercise.",
+    calculation: "The daily VO₂ max estimate is used as received in the relationship analysis.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
   effort: {
     definition: "Soma's daily estimate of accomplished activity load.",
     calculation: "Soma combines available zone minutes, exercise minutes, active energy, and steps with diminishing returns, then normalizes the result to a 0–100 score.",
@@ -165,10 +238,13 @@ const outcomeThemeById: Record<string, string> = {
   hrv: "Cardio & recovery",
   rhr: "Cardio & recovery",
   recovery: "Cardio & recovery",
+  vo2_max: "Cardio & recovery",
+  running_average_heart_rate: "Running performance",
+  running_pace: "Running performance",
   respiratory: "Breathing & oxygen",
   spo2: "Breathing & oxygen",
 };
-const outcomeThemeOrder = ["Sleep", "Cardio & recovery", "Breathing & oxygen", "Other"];
+const outcomeThemeOrder = ["Sleep", "Cardio & recovery", "Running performance", "Breathing & oxygen", "Other"];
 
 export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outcomes"]) {
   return outcomes.reduce<Array<{ label: string; count: number }>>((groups, outcome) => {
@@ -185,7 +261,12 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
   onSelect: (relation: MatrixRelation) => void;
 }) {
-  const meaningful = useMemo(() => selectMeaningfulRelations(relations, 8), [relations]);
+  const meaningful = useMemo(() => selectMeaningfulRelations(relations, relations.length), [relations]);
+  const meaningfulGroups = useMemo(() => {
+    const groups = new Map<string, MatrixRelation[]>();
+    for (const relation of meaningful) groups.set(influenceGroup(relation.predictorId), [...(groups.get(influenceGroup(relation.predictorId)) ?? []), relation]);
+    return [...groups].sort(([first], [second]) => compareInfluenceGroups(first, second));
+  }, [meaningful]);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const [visibleRows, setVisibleRows] = useState<Set<string>>(() => new Set());
   const setRowRef = useCallback((key: string, node: HTMLLIElement | null) => {
@@ -229,8 +310,10 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
       <div><h3 id="strongest-effects-title">Strongest effects</h3><p>Only q &lt; 0.05 effects above a practical threshold.</p></div>
       <div className="strongest-effects__axis" aria-hidden="true"><span>Less favourable</span><span>More favourable</span></div>
     </header>
-    {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : <ol>
-      {meaningful.map((relation, index) => {
+    {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : meaningfulGroups.map(([group, groupRelations]) => <section className="strongest-effects__group" aria-labelledby={`strongest-${group.replaceAll(" ", "-").toLowerCase()}`} key={group}>
+      <h4 id={`strongest-${group.replaceAll(" ", "-").toLowerCase()}`}>{group}</h4>
+      <ol>{groupRelations.map((relation) => {
+        const index = meaningful.indexOf(relation);
         const direction = outcomes.find((outcome) => outcome.id === relation.outcomeId)?.direction ?? "target";
         const sign = effectDirection(relation, direction);
         const point = Math.max(-1, Math.min(1, sign * relation.practicalRatio / 4));
@@ -267,8 +350,8 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
             <span className="strongest-effects__outcome"><strong>{relation.outcomeLabel}</strong><small>{effectText(relation)}</small></span>
           </button>
         </li>;
-      })}
-    </ol>}
+      })}</ol>
+    </section>)}
   </section>;
 }
 
@@ -327,7 +410,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
   }), [matrix.outcomes]);
   const outcomeThemes = useMemo(() => groupOutcomeThemes(outcomes), [outcomes]);
   const periodRows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period), [rowsByPeriod, period]);
-  const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id), showNonSignificant), [outcomes, periodRows, showNonSignificant]);
+  const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id)), [outcomes, periodRows]);
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod) => {
     const cached = rowsByPeriod[nextPeriod];
@@ -408,6 +491,11 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
         >
           {matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}
         </div>
+        <div className="matrix-legend" aria-label="Cell states">
+          <span><MatrixStateMark state="collecting" progress={.58} /><small>Collecting</small></span>
+          <span><MatrixStateMark state="no-signal" /><small>No clear signal</small></span>
+          <span><MatrixStateMark state="excluded" /><small>Not applicable</small></span>
+        </div>
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
@@ -418,20 +506,20 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
           <tr className="matrix-theme-row"><th scope="col" rowSpan={2}>Influence</th>{outcomeThemes.map((theme, index) => <th scope="colgroup" colSpan={theme.count} key={`${theme.label}-${index}`}>{theme.label}</th>)}</tr>
           <tr className="matrix-outcome-row">{outcomes.map((outcome) => <th scope="col" key={outcome.id}><span>{outcome.label}</span><small>{outcome.unit}</small></th>)}</tr>
         </thead>
-        <tbody>{rows.map((row) => <tr key={row.id}><th scope="row"><button type="button" className="matrix-influence-trigger" aria-expanded={selectedInfluence?.id === row.id} aria-controls={selectedInfluence?.id === row.id ? "influence-detail" : undefined} onClick={() => selectInfluence(row)}><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></button></th>{row.relationsByOutcome.map((relations, index) => {
+        <tbody>{rows.map((row, rowIndex) => <Fragment key={row.id}>{(rowIndex === 0 || rows[rowIndex - 1].group !== row.group) && <tr className="matrix-group-row"><th colSpan={outcomes.length + 1}>{row.group}</th></tr>}<tr><th scope="row"><button type="button" className="matrix-influence-trigger" aria-expanded={selectedInfluence?.id === row.id} aria-controls={selectedInfluence?.id === row.id ? "influence-detail" : undefined} onClick={() => selectInfluence(row)}><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></button></th>{row.relationsByOutcome.map((relations, index) => {
           const calculable = calculableRelations(relations);
           const significant = significantRelations(relations);
           const displayed = showNonSignificant ? calculable : significant;
           const outcome = outcomes[index];
           const tones = new Set(significant.map(matrixRelationTone));
           const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
-          const maximumSample = Math.max(0, ...relations.map((relation) => relation.sampleSize));
-          return <td className={tone} key={outcome.id}>
-            {!displayed.length ? <span className="matrix-empty">{showNonSignificant && maximumSample ? `n=${maximumSample}` : "—"}</span> : <button type="button" onClick={() => { setSelectedInfluence(null); setSelected(calculable); }} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
+          const state = matrixCellState(relations, displayed);
+          return <td className={`${tone}${state ? ` has-state has-state--${state}` : ""}`} key={outcome.id}>
+            {!displayed.length && state ? <span className="matrix-empty"><MatrixStateMark state={state} progress={cellProgress(relations)} labelled /><span className="sr-only"> for {row.label} and {outcome.label}</span></span> : <button type="button" onClick={() => { setSelectedInfluence(null); setSelected(calculable); }} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
               {displayed.map((relation) => <span className={`matrix-effect-line ${matrixRelationTone(relation)}`} key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong>{matrixTimingLabel(relation.lagDays) && <small>{matrixTimingLabel(relation.lagDays)}</small>}</span>)}
             </button>}
           </td>;
-        })}</tr>)}</tbody>
+        })}</tr></Fragment>)}</tbody>
       </table>
       {loadingPeriod === period && <p className="matrix-no-results" role="status">Loading relationships…</p>}
       {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}

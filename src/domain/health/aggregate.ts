@@ -48,6 +48,10 @@ export type AggregatedHealthDay = {
   sedentary_minutes: number | null;
   exercise_minutes: number | null;
   distance_km: number | null;
+  running_distance_km: number | null;
+  running_duration_minutes: number | null;
+  running_pace_seconds_per_km: number | null;
+  running_average_heart_rate: number | null;
   floors: number | null;
   weight_kg: number | null;
   body_fat_percent: number | null;
@@ -245,6 +249,29 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
     const wakeTime = sleep.map((record) => record.end_time).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
     const values = (type: string, keys: string[]) => byType(type).map((record) => findNumber(record.payload, keys)).filter((value): value is number => value !== null);
     const exerciseMinutes = byType("exercise").map((record) => minutesBetween(record.start_time, record.end_time)).filter((value): value is number => value !== null);
+    const runningExercises = byType("exercise").filter((record) => String(findObject(record.payload, "exercise")?.exerciseType ?? "").toUpperCase() === "RUNNING");
+    const runningDistances = runningExercises.map((record) => {
+      const millimeters = findNumber(record.payload, ["distanceMillimeters"]);
+      return millimeters === null ? null : millimeters / 1_000_000;
+    }).filter((value): value is number => value !== null);
+    const runningDurations = runningExercises.map((record) => {
+      const exercise = findObject(record.payload, "exercise");
+      return minutesBetween(record.start_time, record.end_time) ?? durationMinutes(exercise?.duration ?? exercise?.activeDuration);
+    }).filter((value): value is number => value !== null);
+    const runningHeartRates = runningExercises.map((record) => findNumber(record.payload, ["averageHeartRateBeatsPerMinute"])).filter((value): value is number => value !== null);
+    const runningHeartRateObservations = runningExercises.map((record) => ({
+      heartRate: findNumber(record.payload, ["averageHeartRateBeatsPerMinute"]),
+      duration: minutesBetween(record.start_time, record.end_time) ?? (() => {
+        const exercise = findObject(record.payload, "exercise");
+        return durationMinutes(exercise?.duration ?? exercise?.activeDuration);
+      })(),
+    })).filter((observation): observation is { heartRate: number; duration: number } => observation.heartRate !== null && observation.duration !== null && observation.duration > 0);
+    const weightedRunningHeartRateDuration = total(runningHeartRateObservations.map((observation) => observation.duration));
+    const runningAverageHeartRate = weightedRunningHeartRateDuration !== null && weightedRunningHeartRateDuration > 0
+      ? runningHeartRateObservations.reduce((sum, observation) => sum + observation.heartRate * observation.duration, 0) / weightedRunningHeartRateDuration
+      : average(runningHeartRates);
+    const runningDistance = total(runningDistances);
+    const runningDuration = total(runningDurations);
     const exerciseSummaryMinutes = total(values("daily-exercise-summary", ["minutes"]));
     const sedentaryMinutes = byType("sedentary-period").map((record) => minutesBetween(record.start_time, record.end_time)
       ?? durationMinutes(findStrings(record.payload, "durationSum").at(0))).filter((value): value is number => value !== null);
@@ -310,6 +337,10 @@ export function aggregateHealthRecords(records: NormalizedHealthRecord[], timeZo
       sedentary_minutes: total(sedentaryMinutes),
       exercise_minutes: exerciseSummaryMinutes ?? total(exerciseMinutes),
       distance_km: (() => { const millimeters = total(values("distance", ["millimeters", "millimetersSum", "distanceMillimeters"])); return millimeters === null ? null : Math.round((millimeters / 1_000_000) * 100) / 100; })(),
+      running_distance_km: runningDistance,
+      running_duration_minutes: runningDuration,
+      running_pace_seconds_per_km: runningDistance !== null && runningDistance > 0 && runningDuration !== null ? (runningDuration * 60) / runningDistance : null,
+      running_average_heart_rate: runningAverageHeartRate,
       floors: total(values("floors", ["count", "countSum"])),
       weight_kg: (() => { const grams = average(values("weight", ["weightGrams", "weightGramsAvg"])); return grams === null ? null : Math.round((grams / 1000) * 100) / 100; })(),
       body_fat_percent: average(values("body-fat", ["percentage", "percentageAvg"])),

@@ -287,6 +287,7 @@ export async function healthRecordsForAnalysis(userId: string, dataTypes: readon
 
 const labMatrixRevisionTables = [
   "profiles",
+  "health_records",
   "daily_health_metrics",
   "daily_scores",
   "daily_calendar_metrics",

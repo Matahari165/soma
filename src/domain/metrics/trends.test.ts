@@ -46,6 +46,7 @@ describe("wellness calculations", () => {
     expect(isActiveDay({ steps: 2_000, activeZoneMinutes: 20, activeMinutes: 0 })).toBe(true);
     expect(isActiveDay({ steps: 2_000, activeZoneMinutes: 0, activeMinutes: 30 })).toBe(true);
     expect(isActiveDay({ steps: 7_499, activeZoneMinutes: 19, activeMinutes: 29 })).toBe(false);
+    expect(isActiveDay({ steps: null, activeZoneMinutes: null, activeMinutes: null })).toBeNull();
   });
 
   it("calculates active and inactive days without treating missing days as inactive", () => {

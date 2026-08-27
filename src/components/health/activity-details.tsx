@@ -27,6 +27,12 @@ function averageScores(scores: ScoreDay[], kind: ScoreDay["kind"], endDate: stri
   return average(scores.filter((item) => item.kind === kind && item.score_date >= startDate && item.score_date <= endDate).map((item) => item.score));
 }
 
+function formatPace(secondsPerKm: number | null) {
+  if (secondsPerKm === null || !Number.isFinite(secondsPerKm)) return "—";
+  const rounded = Math.max(0, Math.round(secondsPerKm));
+  return `${Math.floor(rounded / 60)}:${(rounded % 60).toString().padStart(2, "0")} min/km`;
+}
+
 export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const activityDays = completedActivityDays(data.days, currentDate);
@@ -38,19 +44,26 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const averages = {
     steps: latest ? averageLast30Measured(activityDays, "steps", latest.metric_date) : null,
     activeCalories: latest ? averageLast30Measured(activityDays, "active_energy_kcal", latest.metric_date) : null,
+    totalCalories: latest ? averageLast30Measured(activityDays, "total_energy_kcal", latest.metric_date) : null,
+    sedentaryMinutes: latest ? averageLast30Measured(activityDays, "sedentary_minutes", latest.metric_date) : null,
     dailyLoad: averageScores(effortScores, "effort", latest?.metric_date),
     weeklyLoad: latest ? averageLast30Measured(activityDays, "weekly_load", latest.metric_date) : null,
     acuteChronicLoadRatio: latest ? averageLast30Measured(activityDays, "acute_chronic_load_ratio", latest.metric_date) : null,
     activityRegularity: latest ? averageLast30Measured(activityDays, "activity_consistency_28d", latest.metric_date) : null,
+    vo2Max: latest ? averageLast30Measured(activityDays, "vo2_max", latest.metric_date) : null,
   };
   const tones = {
     steps: metricTone(latest?.steps ?? null, averages.steps, "higher_is_better"),
     activeCalories: metricTone(latest?.active_energy_kcal ?? null, averages.activeCalories, "higher_is_better"),
+    sedentaryMinutes: metricTone(latest?.sedentary_minutes ?? null, averages.sedentaryMinutes, "lower_is_better"),
     dailyLoad: metricTone(score, averages.dailyLoad, "higher_is_better"),
     weeklyLoad: metricTone(latest?.weekly_load ?? null, averages.weeklyLoad, "higher_is_better"),
+    vo2Max: metricTone(latest?.vo2_max ?? null, averages.vo2Max, "higher_is_better"),
     activityRegularity: metricTone(regularity.consistencyScore, averages.activityRegularity, "higher_is_better"),
   };
   const latestExercise = data.exercises.at(0);
+  const runningExercises = data.exercises.filter((exercise) => exercise.type === "RUNNING");
+  const activeDayRate = latest?.active_day_rate_28d ?? regularity.activeDayRate;
   const activityMeasurements = latest ? ["steps", "active-zone-minutes", "active-energy-burned", "exercise"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
   const driverCoverage = Number(latestEffort?.drivers?.coverage);
   const freshness = calculateSignalFreshness({ measuredAt: activityMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : score === null ? 0 : 1 });
@@ -59,9 +72,13 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
       <section className="health-primary-grid" aria-label="Latest activity summary">
         <article className={`health-primary-card health-primary-card--featured health-primary-card--centered metric-tone--${tones.steps}`}><span>Steps</span><AnimatedMetricReading value={latest.steps} format="number" decimals={0} className={`metric-reading--${tones.steps}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.steps, "number")}</p></article>
         <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.activeCalories}`}><span>Active calories</span><AnimatedMetricReading value={latest.active_energy_kcal} format="number" decimals={0} unit={latest.active_energy_kcal === null ? undefined : "kcal"} className={`metric-reading--${tones.activeCalories}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.activeCalories, "number")} kcal</p></article>
+        <article className="health-primary-card health-primary-card--centered"><span>Total calories</span><AnimatedMetricReading value={latest.total_energy_kcal} format="number" decimals={0} unit={latest.total_energy_kcal === null ? undefined : "kcal"} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.totalCalories, "number")} kcal</p></article>
+        <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.sedentaryMinutes}`}><span>Sedentary time</span><AnimatedMetricReading value={latest.sedentary_minutes} format="number" decimals={0} unit={latest.sedentary_minutes === null ? undefined : "min"} className={`metric-reading--${tones.sedentaryMinutes}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.sedentaryMinutes, "number")} min</p></article>
+        <article className="health-primary-card health-primary-card--centered"><span>Active day</span><strong className="metric-reading"><span>{latest.active_day === null ? "—" : latest.active_day ? "Yes" : "No"}</span></strong><p className="health-primary-card__average">28-day rate · {activeDayRate === null ? "—" : `${Math.round(activeDayRate)}%`}</p></article>
         <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.dailyLoad}`}><span>Daily load</span><AnimatedMetricReading value={score} format="number" decimals={0} unit={score === null ? undefined : "/100"} className={`metric-reading--${tones.dailyLoad}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.dailyLoad, "number")}</p></article>
         <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.weeklyLoad}`}><span>Weekly load</span><AnimatedMetricReading value={latest.weekly_load} format="number" decimals={0} className={`metric-reading--${tones.weeklyLoad}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.weeklyLoad, "number")}</p></article>
         <article className="health-primary-card health-primary-card--centered"><span>Recent / habitual</span><AnimatedMetricReading value={latest.acute_chronic_load_ratio} format="decimal" decimals={2} unit={latest.acute_chronic_load_ratio === null ? undefined : "×"} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.acuteChronicLoadRatio, "decimal", 2)}×</p></article>
+        <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.vo2Max}`}><span>VO₂ max</span><AnimatedMetricReading value={latest.vo2_max} format="decimal" decimals={1} unit={latest.vo2_max === null ? undefined : "ml/kg/min"} className={`metric-reading--${tones.vo2Max}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.vo2Max, "decimal", 1)}</p></article>
         <ActivityRegularityCard value={regularity.consistencyScore} average={formatAverage(averages.activityRegularity, "number")} tone={tones.activityRegularity} observedDays={regularity.observedDays} />
       </section>
 
@@ -85,10 +102,12 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
           <MetricTrendCard label="Body fat" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" animateCurrent animationFormat="decimal" />
         </div></details></section>
 
+      {runningExercises.length > 0 && <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Google Health exercises</span><h2>Running sessions</h2></div><span className="quality-pill">{runningExercises.length} runs</span></div><div className="exercise-table-wrap" role="region" aria-label="Running sessions, horizontally scrollable" tabIndex={0}><table className="exercise-table"><thead><tr><th>Session</th><th>Date</th><th>Distance</th><th>Avg pace</th><th>Avg HR</th><th>Duration</th><th>Calories</th><th>Elevation</th><th>VO₂ max</th></tr></thead><tbody>{runningExercises.map((exercise) => <tr key={exercise.id}><th scope="row"><Footprints size={16} aria-hidden="true" />{exercise.name}<small>RUNNING</small></th><td>{exercise.date}</td><td>{exercise.distanceKm === null ? "—" : `${exercise.distanceKm.toFixed(2)} km`}</td><td>{formatPace(exercise.averagePaceSecondsPerKm)}</td><td>{exercise.averageHeartRate === null ? "—" : `${Math.round(exercise.averageHeartRate)} bpm`}</td><td>{exercise.durationMinutes === null ? "—" : `${Math.round(exercise.durationMinutes)} min`}</td><td>{exercise.calories === null ? "—" : `${Math.round(exercise.calories)} kcal`}</td><td>{exercise.elevationGainMeters === null ? "—" : `${Math.round(exercise.elevationGainMeters)} m`}</td><td>{exercise.runVo2Max === null ? "—" : exercise.runVo2Max.toFixed(1)}</td></tr>)}</tbody></table></div></section>}
+
       {latestExercise && <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest session detail</span><h2>{latestExercise.name}</h2></div><span className="quality-pill">{latestExercise.type.replaceAll("_", " ")}</span></div><dl className="exercise-detail-grid">
         <div><dt>Active time</dt><dd>{latestExercise.activeMinutes === null ? "—" : `${Math.round(latestExercise.activeMinutes)} min`}</dd></div>
         <div><dt>Speed</dt><dd>{latestExercise.averageSpeedKph === null ? "—" : `${latestExercise.averageSpeedKph.toFixed(1)} km/h`}</dd></div>
-        <div><dt>Pace</dt><dd>{latestExercise.averagePaceSecondsPerKm === null ? "—" : `${Math.floor(latestExercise.averagePaceSecondsPerKm / 60)}:${Math.round(latestExercise.averagePaceSecondsPerKm % 60).toString().padStart(2, "0")} /km`}</dd></div>
+        <div><dt>Pace</dt><dd>{formatPace(latestExercise.averagePaceSecondsPerKm)}</dd></div>
         <div><dt>Elevation</dt><dd>{latestExercise.elevationGainMeters === null ? "—" : `${Math.round(latestExercise.elevationGainMeters)} m`}</dd></div>
         <div><dt>Steps</dt><dd>{number(latestExercise.steps)}</dd></div>
         <div><dt>Run VO₂ max</dt><dd>{latestExercise.runVo2Max === null ? "—" : latestExercise.runVo2Max.toFixed(1)}</dd></div>

@@ -46,6 +46,10 @@ export type HealthMetricDay = {
   sedentary_minutes: number | null;
   exercise_minutes: number | null;
   distance_km: number | null;
+  running_distance_km: number | null;
+  running_duration_minutes: number | null;
+  running_pace_seconds_per_km: number | null;
+  running_average_heart_rate: number | null;
   floors: number | null;
   weight_kg: number | null;
   body_fat_percent: number | null;
@@ -137,6 +141,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       oxygen_saturation_lower: 94.8 + wave * 0.3, oxygen_saturation_upper: 97.4 + wave * 0.3, skin_temperature_delta: wave * 0.18, nightly_temperature_celsius: 33.4 + wave * 0.18, baseline_temperature_celsius: 33.4,
       steps, active_energy_kcal: 520 + wave * 110, total_energy_kcal: 2_180 + wave * 130, zone_minutes: 31 + wave * 12, light_zone_minutes: 12, moderate_zone_minutes: 10 + wave * 4, vigorous_zone_minutes: 6 + wave * 4, peak_zone_minutes: 3 + wave * 2,
       active_minutes: 52 + wave * 15, sedentary_minutes: 560 - wave * 35, exercise_minutes: 38 + wave * 18, distance_km: steps * 0.00072, floors: 11 + wave * 4, weight_kg: 74.2 - index * 0.004, body_fat_percent: 17.4 - index * 0.003, vo2_max: 47.2 + index * 0.012,
+      running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null,
       altitude_gain_m: 82 + wave * 25, height_cm: 178, core_body_temperature_celsius: null, blood_glucose_mg_dl: null,
       active_day: steps >= 7_500, active_day_rate_28d: 71, activity_consistency_28d: 78, weekly_load: 408 + wave * 30, acute_chronic_load_ratio: 1.04 + wave * 0.04, source_freshness: { latestMeasuredAt: date.toISOString() },
     };
@@ -211,6 +216,15 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
+  // Sleep stages and exercises do not depend on the aggregate metrics below.
+  // Start these remote reads immediately so they do not create a second
+  // database round trip after the first group resolves.
+  const sleepPromise = scope === "sleep" || scope === "all"
+    ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1).then((result) => result)
+    : Promise.resolve({ data: [], error: null });
+  const exercisePromise = scope === "activity" || scope === "all"
+    ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20).then((result) => result)
+    : Promise.resolve({ data: [], error: null });
   const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
@@ -232,15 +246,11 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const recoveryEnd = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
   recoveryEnd?.setUTCDate(recoveryEnd.getUTCDate() + 2);
   const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
-    scope === "sleep" || scope === "all"
-      ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1)
-      : Promise.resolve({ data: [], error: null }),
+    sleepPromise,
     (scope === "recovery" || scope === "all") && recoveryStart && recoveryEnd
       ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", recoveryStart.toISOString()).lt("measured_at", recoveryEnd.toISOString()).order("measured_at", { ascending: false }).limit(2000)
       : Promise.resolve({ data: [], error: null }),
-    scope === "activity" || scope === "all"
-      ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20)
-      : Promise.resolve({ data: [], error: null }),
+    exercisePromise,
   ]);
   if (sleepResult.error || heartRateResult.error || exerciseResult.error) throw new Error("Health detail records are temporarily unavailable.");
   const sleeps = sleepResult.data;

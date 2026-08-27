@@ -11,6 +11,17 @@ describe("Personal Lab metric registry", () => {
     expect(roles.get("effort")).toBe("influence");
   });
 
+  it("enables the approved activity and running metrics without enabling active-day rate", () => {
+    const definitions = new Map(healthMetricRegistry.map((metric) => [metric.id, metric]));
+    expect(definitions.get("sedentary_minutes")).toMatchObject({ defaultRole: "influence", source: "Google Health", direction: "lower" });
+    expect(definitions.get("active_day")).toMatchObject({ defaultRole: "influence", unit: "yes/no", source: "Soma", direction: "higher" });
+    expect(definitions.get("running_distance")).toMatchObject({ defaultRole: "influence", field: "running_distance_km", unit: "km", source: "Google Health", direction: "higher" });
+    expect(definitions.get("running_pace")).toMatchObject({ defaultRole: "both", field: "running_pace_seconds_per_km", unit: "sec/km", source: "Google Health", direction: "lower" });
+    expect(definitions.get("running_average_heart_rate")).toMatchObject({ defaultRole: "both", field: "running_average_heart_rate", unit: "bpm", source: "Google Health", direction: "target" });
+    expect(definitions.get("vo2_max")).toMatchObject({ defaultRole: "result", unit: "ml/kg/min", source: "Google Health", direction: "higher" });
+    expect(definitions.get("active_day_rate")).toMatchObject({ defaultRole: "disabled" });
+  });
+
   it("discovers future numeric and boolean health fields without enabling them", () => {
     const definitions = metricDefinitionsForHealth([{ metric_date: "2026-08-24", new_sensor_value: 12.5, new_flag: true, note: "ignored" }]);
     expect(definitions).toEqual(expect.arrayContaining([
