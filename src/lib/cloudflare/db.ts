@@ -77,6 +77,42 @@ const conflictKeys: Record<string, string[]> = {
   health_record_archives: ["user_id", "provider", "data_type", "range_start", "range_end"],
 };
 
+export const labMatrixRevisionTables = [
+  "profiles",
+  "daily_health_metrics",
+  "daily_scores",
+  "daily_calendar_metrics",
+  "daily_checkins",
+  "journal_variables",
+  "journal_entries",
+  "journal_days",
+  "lab_metric_preferences",
+] as const;
+
+const labMatrixRevisionTableSet = new Set<string>(labMatrixRevisionTables);
+const LAB_MATRIX_REVISION_TABLE = "lab_matrix_revisions";
+
+export function affectsLabMatrixRevision(table: string) {
+  return labMatrixRevisionTableSet.has(table);
+}
+
+function labMatrixRevisionStatement(db: D1DatabaseLike, userId: string) {
+  const now = new Date().toISOString();
+  const row = { user_id: userId, revision: 1, updated_at: now };
+  return db.prepare(`
+    INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(table_name, row_key) DO UPDATE SET
+      user_id = excluded.user_id,
+      json_data = json_set(
+        excluded.json_data,
+        '$.revision',
+        COALESCE(CAST(json_extract(soma_rows.json_data, '$.revision') AS INTEGER), 0) + 1
+      ),
+      updated_at = excluded.updated_at
+  `).bind(LAB_MATRIX_REVISION_TABLE, userId, userId, JSON.stringify(row), now, now);
+}
+
 export function cloudflareEnv() {
   return getCloudflareContext().env as unknown as SomaCloudflareEnv;
 }
@@ -127,6 +163,7 @@ export async function saveCloudflareJournalDay({ userId, entryDate, entries, val
   const dayKey = stableIdentity("journal_days", dayRow, "user_id,entry_date");
   statements.push(db.prepare("INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(table_name, row_key) DO UPDATE SET user_id = excluded.user_id, json_data = excluded.json_data, updated_at = excluded.updated_at")
     .bind("journal_days", dayKey, userId, JSON.stringify(dayRow), dayRow.created_at, dayRow.updated_at));
+  statements.push(labMatrixRevisionStatement(db, userId));
 
   const results = await db.batch<D1BatchResult>(statements);
   const failed = results.find((result) => result?.success === false);
@@ -285,49 +322,13 @@ export async function healthRecordsForAnalysis(userId: string, dataTypes: readon
   return (result.results ?? []).map((row) => JSON.parse(row.json_data) as Row);
 }
 
-const labMatrixRevisionTables = [
-  "profiles",
-  "daily_health_metrics",
-  "daily_scores",
-  "daily_calendar_metrics",
-  "daily_checkins",
-  "journal_variables",
-  "lab_metric_preferences",
-] as const;
-
-export type LabMatrixRevisionRow = { table_name: string; row_count: number; latest_update: string | null };
-
-export function serializeLabMatrixRevision(rows: readonly LabMatrixRevisionRow[]) {
-  return [...rows]
-    .sort((first, second) => first.table_name.localeCompare(second.table_name))
-    .map((row) => `${row.table_name}:${Number(row.row_count)}:${row.latest_update ?? ""}`)
-    .join("|");
-}
-
 export async function labMatrixInputRevision(userId: string) {
-  const db = cloudflareDb();
-  const placeholders = labMatrixRevisionTables.map(() => "?").join(", ");
-  const [baseResult, validatedJournalResult] = await Promise.all([
-    db.prepare(`
-      SELECT table_name, COUNT(*) AS row_count, MAX(COALESCE(updated_at, created_at, '')) AS latest_update
-      FROM soma_rows
-      WHERE user_id = ? AND table_name IN (${placeholders})
-      GROUP BY table_name
-    `).bind(userId, ...labMatrixRevisionTables).all<LabMatrixRevisionRow>(),
-    db.prepare(`
-      SELECT
-        'validated_journal_days' AS table_name,
-        COUNT(*) AS row_count,
-        MAX(COALESCE(updated_at, created_at, '')) AS latest_update
-      FROM soma_rows
-      WHERE table_name = 'journal_days'
-        AND user_id = ?
-        AND json_extract(json_data, '$.status') = 'validated'
-    `).bind(userId).all<LabMatrixRevisionRow>(),
-  ]);
-  if (!baseResult.success) throw new Error(baseResult.error ?? "Lab matrix revision could not be loaded from D1.");
-  if (!validatedJournalResult.success) throw new Error(validatedJournalResult.error ?? "Validated journal revision could not be loaded from D1.");
-  return serializeLabMatrixRevision([...(baseResult.results ?? []), ...(validatedJournalResult.results ?? [])]);
+  const row = await cloudflareDb().prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? LIMIT 1")
+    .bind(LAB_MATRIX_REVISION_TABLE, userId)
+    .first<{ json_data: string }>();
+  if (!row) return "0";
+  const revision = Number((JSON.parse(row.json_data) as { revision?: unknown }).revision);
+  return Number.isSafeInteger(revision) && revision >= 0 ? String(revision) : "0";
 }
 
 function stableIdentity(table: string, row: Row, explicitConflict?: string) {
@@ -520,8 +521,15 @@ async function writeRows(table: string, rows: Row[], explicitConflict?: string, 
       : "INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(table_name, row_key) DO UPDATE SET user_id = excluded.user_id, json_data = excluded.json_data, updated_at = excluded.updated_at";
     return db.prepare(sql).bind(table, rowKey, row.user_id ?? null, JSON.stringify(row), row.created_at ?? null, row.updated_at ?? null);
   });
-  for (let index = 0; index < statements.length; index += 40) {
-    const results = await db.batch<D1BatchResult>(statements.slice(index, index + 40));
+  for (let index = 0; index < statements.length; index += 35) {
+    const rowSlice = rows.slice(index, index + 35);
+    const revisionUserIds = affectsLabMatrixRevision(table)
+      ? [...new Set(rowSlice.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))]
+      : [];
+    const results = await db.batch<D1BatchResult>([
+      ...statements.slice(index, index + 35),
+      ...revisionUserIds.map((userId) => labMatrixRevisionStatement(db, userId)),
+    ]);
     const failed = results.find((result) => result?.success === false);
     if (failed) throw new Error(failed.error ?? "Cloudflare D1 write failed.");
   }
@@ -644,7 +652,16 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     if (this.mutation.kind === "delete") {
       const db = cloudflareDb();
       const statements = existing.map((row) => db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ?").bind(this.table, stableIdentity(this.table, row)));
-      for (let index = 0; index < statements.length; index += 40) await db.batch(statements.slice(index, index + 40));
+      for (let index = 0; index < statements.length; index += 35) {
+        const rowSlice = existing.slice(index, index + 35);
+        const revisionUserIds = affectsLabMatrixRevision(this.table)
+          ? [...new Set(rowSlice.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))]
+          : [];
+        await db.batch([
+          ...statements.slice(index, index + 35),
+          ...revisionUserIds.map((userId) => labMatrixRevisionStatement(db, userId)),
+        ]);
+      }
       return this.shape(existing);
     }
     const values = this.mutation.values;
