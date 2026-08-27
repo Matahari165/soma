@@ -58,7 +58,7 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
 
     if (name === "save_personal_lab_journal_day") {
       const entries = Array.isArray(input.p_entries) ? input.p_entries : [];
-      await saveCloudflareJournalDay({ userId: input.p_user_id, entryDate: input.p_entry_date, entries, validate: Boolean(input.p_validate) });
+      await saveCloudflareJournalDay({ userId: input.p_user_id, entryDate: input.p_entry_date, entries, validate: Boolean(input.p_validate), replaceOmissions: Boolean(input.p_replace_omissions) });
       return { data: null, error: null };
     }
 

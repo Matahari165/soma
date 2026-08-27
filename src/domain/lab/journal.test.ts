@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -29,6 +29,34 @@ describe("journal values", () => {
     const reloaded = journalDraftsForDates(dates, [dinner], [{ variableId: dinner.id, entryDate: dates[0], value: "22:30" }], []);
     expect(reloaded[dates[0]]?.[dinner.id]).toBe("22:30");
     expect(reloaded[dates[1]]?.[dinner.id]).toBeNull();
+  });
+
+  it("refreshes saved dates from the server without overwriting a pending date", () => {
+    const server = {
+      "2026-08-25": { dinner: "22:30" },
+      "2026-08-26": { dinner: "21:15" },
+    };
+    const current = {
+      "2026-08-25": { dinner: "22:00" },
+      "2026-08-26": { dinner: "21:45" },
+    };
+
+    expect(reconcileJournalDrafts(server, current, new Set(["2026-08-26"]))).toEqual({
+      "2026-08-25": { dinner: "22:30" },
+      "2026-08-26": { dinner: "21:45" },
+    });
+  });
+
+  it("autosaves only the changed field but validates the complete day", () => {
+    const draft = { dinner: "22:30", caffeine: 75 };
+
+    expect(journalEntriesForSave(["dinner", "caffeine"], draft, "draft", "dinner")).toEqual([
+      { variableId: "dinner", value: "22:30" },
+    ]);
+    expect(journalEntriesForSave(["dinner", "caffeine"], draft, "validate")).toEqual([
+      { variableId: "dinner", value: "22:30" },
+      { variableId: "caffeine", value: 75 },
+    ]);
   });
 
   it("keeps zero and false as explicit observations", () => {

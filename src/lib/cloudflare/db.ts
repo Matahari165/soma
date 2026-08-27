@@ -93,7 +93,7 @@ export function cloudflareArchives() {
   return bucket;
 }
 
-export async function saveCloudflareJournalDay({ userId, entryDate, entries, validate }: { userId: string; entryDate: string; entries: Array<{ variable_id: string; value: unknown }>; validate: boolean }) {
+export async function saveCloudflareJournalDay({ userId, entryDate, entries, validate, replaceOmissions }: { userId: string; entryDate: string; entries: Array<{ variable_id: string; value: unknown }>; validate: boolean; replaceOmissions: boolean }) {
   const db = cloudflareDb();
   const dayResult = await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND user_id = ? AND json_extract(json_data, '$.entry_date') = ? LIMIT 1")
     .bind("journal_days", userId, entryDate).first<{ json_data: string }>();
@@ -114,13 +114,14 @@ export async function saveCloudflareJournalDay({ userId, entryDate, entries, val
       .bind("journal_entries", rowKey, userId, JSON.stringify(entryRow), entryRow.created_at, entryRow.updated_at));
   }
 
+  const omittedVariables = mergeJournalOmissions(currentDay?.omitted_variables, entries, replaceOmissions);
   const dayRow = withDefaults({
     ...(currentDay ?? {}),
     user_id: userId,
     entry_date: entryDate,
     status: validate || wasValidated ? "validated" : "draft",
     validated_at: validate || wasValidated ? currentDay?.validated_at ?? now : null,
-    omitted_variables: entries.filter((entry) => entry.value === null).map((entry) => entry.variable_id),
+    omitted_variables: omittedVariables,
     updated_at: now,
   });
   const dayKey = stableIdentity("journal_days", dayRow, "user_id,entry_date");
@@ -130,6 +131,51 @@ export async function saveCloudflareJournalDay({ userId, entryDate, entries, val
   const results = await db.batch<D1BatchResult>(statements);
   const failed = results.find((result) => result?.success === false);
   if (failed) throw new Error(failed.error ?? "Cloudflare D1 journal write failed.");
+
+  const singleEntryKey = entries.length === 1
+    ? stableIdentity("journal_entries", { user_id: userId, variable_id: entries[0].variable_id, entry_date: entryDate }, "user_id,variable_id,entry_date")
+    : null;
+  const persistedEntriesResult = singleEntryKey
+    ? await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ?").bind("journal_entries", singleEntryKey).all<{ json_data: string }>()
+    : await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND user_id = ? AND json_extract(json_data, '$.entry_date') = ?").bind("journal_entries", userId, entryDate).all<{ json_data: string }>();
+  const persistedDayResult = await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? LIMIT 1")
+    .bind("journal_days", dayKey).first<{ json_data: string }>();
+  if (!persistedEntriesResult.success) throw new Error(persistedEntriesResult.error ?? "Cloudflare D1 journal verification failed.");
+  const persistedEntries = (persistedEntriesResult.results ?? []).map((result) => JSON.parse(result.json_data) as Row);
+  const persistedDay = persistedDayResult ? JSON.parse(persistedDayResult.json_data) as Row : null;
+  assertJournalDayPersisted({ entryDate, entries, persistedEntries, persistedDay, expectedStatus: validate || wasValidated ? "validated" : "draft" });
+}
+
+export function mergeJournalOmissions(current: unknown, entries: Array<{ variable_id: string; value: unknown }>, replace: boolean) {
+  const omitted = new Set(replace ? [] : Array.isArray(current) ? current.filter((value): value is string => typeof value === "string") : []);
+  for (const entry of entries) {
+    if (entry.value === null) omitted.add(entry.variable_id);
+    else omitted.delete(entry.variable_id);
+  }
+  return [...omitted];
+}
+
+export function assertJournalDayPersisted({ entryDate, entries, persistedEntries, persistedDay, expectedStatus }: {
+  entryDate: string;
+  entries: Array<{ variable_id: string; value: unknown }>;
+  persistedEntries: Row[];
+  persistedDay: Row | null;
+  expectedStatus: "draft" | "validated";
+}) {
+  const persistedByVariable = new Map(persistedEntries.map((entry) => [entry.variable_id, entry]));
+  for (const entry of entries) {
+    const persisted = persistedByVariable.get(entry.variable_id);
+    if (entry.value === null) {
+      if (persisted) throw new Error("Cloudflare D1 kept an omitted journal value.");
+      continue;
+    }
+    if (!persisted || persisted.entry_date !== entryDate || JSON.stringify(persisted.value) !== JSON.stringify(entry.value)) {
+      throw new Error("Cloudflare D1 did not persist the journal value for the selected date.");
+    }
+  }
+  if (!persistedDay || persistedDay.entry_date !== entryDate || persistedDay.status !== expectedStatus) {
+    throw new Error("Cloudflare D1 did not persist the selected journal day.");
+  }
 }
 
 export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs = 60_000) {

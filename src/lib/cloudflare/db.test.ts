@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCloudflareReadPlan, serializeLabMatrixRevision } from "@/lib/cloudflare/db";
+import { assertJournalDayPersisted, buildCloudflareReadPlan, mergeJournalOmissions, serializeLabMatrixRevision } from "@/lib/cloudflare/db";
 
 describe("Cloudflare D1 read planning", () => {
   it("pushes simple filters, ordering, and pagination into D1", () => {
@@ -67,6 +67,44 @@ describe("Cloudflare D1 read planning", () => {
 
     expect(plan.sql).not.toContain("OR 1=1");
     expect(plan.paginationPushed).toBe(false);
+  });
+});
+
+describe("Cloudflare journal persistence verification", () => {
+  it("updates omissions as a field patch until the complete validation snapshot", () => {
+    expect(mergeJournalOmissions(["dinner", "reading"], [{ variable_id: "dinner", value: "22:30" }], false)).toEqual(["reading"]);
+    expect(mergeJournalOmissions(["reading"], [{ variable_id: "dinner", value: null }], false)).toEqual(["reading", "dinner"]);
+    expect(mergeJournalOmissions(["old"], [{ variable_id: "dinner", value: null }, { variable_id: "reading", value: true }], true)).toEqual(["dinner"]);
+  });
+
+  it("accepts the value read back for the selected date", () => {
+    expect(() => assertJournalDayPersisted({
+      entryDate: "2026-08-25",
+      entries: [{ variable_id: "dinner", value: "22:30" }],
+      persistedEntries: [{ variable_id: "dinner", entry_date: "2026-08-25", value: "22:30" }],
+      persistedDay: { entry_date: "2026-08-25", status: "draft" },
+      expectedStatus: "draft",
+    })).not.toThrow();
+  });
+
+  it("rejects a value read back under another date", () => {
+    expect(() => assertJournalDayPersisted({
+      entryDate: "2026-08-25",
+      entries: [{ variable_id: "dinner", value: "22:30" }],
+      persistedEntries: [{ variable_id: "dinner", entry_date: "2026-08-26", value: "22:30" }],
+      persistedDay: { entry_date: "2026-08-25", status: "draft" },
+      expectedStatus: "draft",
+    })).toThrow("selected date");
+  });
+
+  it("rejects an omitted value that still exists after deletion", () => {
+    expect(() => assertJournalDayPersisted({
+      entryDate: "2026-08-25",
+      entries: [{ variable_id: "dinner", value: null }],
+      persistedEntries: [{ variable_id: "dinner", entry_date: "2026-08-25", value: "22:30" }],
+      persistedDay: { entry_date: "2026-08-25", status: "draft" },
+      expectedStatus: "draft",
+    })).toThrow("omitted journal value");
   });
 });
 
