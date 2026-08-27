@@ -74,6 +74,13 @@ describe("Personal Lab mechanical exclusions", () => {
     expect(isMechanicalRelation("sleep_minutes", "sleep_debt")).toBe(true);
     expect(isMechanicalRelation("steps", "effort")).toBe(true);
     expect(isMechanicalRelation("hrv", "recovery")).toBe(true);
+    expect(isMechanicalRelation("wake_time", "sleep_awakenings")).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep")).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep", 1)).toBe(false);
+    expect(isMechanicalRelation("sleep_debt", "rem_sleep", 2)).toBe(true);
+    expect(isMechanicalRelation("sleep_debt", "sleep_minutes", 1)).toBe(false);
+    expect(isMechanicalRelation("effort", "steps", 1)).toBe(true);
+    expect(isMechanicalRelation("wake_time", "sleep_awakenings", 1)).toBe(true);
   });
 });
 

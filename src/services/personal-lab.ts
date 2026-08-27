@@ -151,8 +151,10 @@ export function isImpossibleSameDayTiming(timing: "overnight" | "daytime" | "jou
   return lagDays === 0 && OVERNIGHT_OUTCOME_IDS.has(outcomeId) && (timing === "journal" || timing === "daytime");
 }
 
-export function isMechanicalRelation(predictorId: string, outcomeId: string) {
+export function isMechanicalRelation(predictorId: string, outcomeId: string, lagDays = 0) {
   if (predictorId === outcomeId) return true;
+  if (predictorId === "sleep_debt" && OVERNIGHT_OUTCOME_IDS.has(outcomeId)) return lagDays !== 1;
+  if (predictorId === "wake_time" && outcomeId === "sleep_awakenings") return true;
   if ((predictorId === "effort" && EFFORT_INPUT_IDS.has(outcomeId)) || (outcomeId === "effort" && EFFORT_INPUT_IDS.has(predictorId))) return true;
   if ((predictorId === "recovery" && RECOVERY_INPUT_IDS.has(outcomeId)) || (outcomeId === "recovery" && RECOVERY_INPUT_IDS.has(predictorId))) return true;
   return (predictorId === "sleep_debt" && SLEEP_DEBT_INPUT_IDS.has(outcomeId))
@@ -347,7 +349,7 @@ function buildCorrelationMatrix(input: {
     { series: bedtime, acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
     { series: wakeTime, acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
     { series: healthSeries(health, "sleep_regularity", "Sleep regularity", "%", "sleep_regularity"), acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
-    { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
+    { series: healthSeries(health, "sleep_debt", "Sleep debt", "min", "cumulative_sleep_debt_minutes"), acuteLags: [1], chronic: true, journal: false, timing: "overnight" },
     { series: healthSeries(health, "steps", "Steps", "steps", "steps"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "zone_minutes", "Zone minutes", "min", "zone_minutes"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: intense, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
@@ -395,7 +397,7 @@ function buildCorrelationMatrix(input: {
     spo2: .3,
     recovery: 3,
   };
-  const excludeDerivedOutcome = (relation: MatrixRelation) => isMechanicalRelation(relation.predictorId, relation.outcomeId)
+  const excludeDerivedOutcome = (relation: MatrixRelation) => isMechanicalRelation(relation.predictorId, relation.outcomeId, relation.lagDays)
     ? {
       ...relation,
       coefficient: null,
