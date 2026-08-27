@@ -51,6 +51,7 @@ export async function PUT(request: Request) {
     p_entry_date: parsed.data.entryDate,
     p_entries: payload,
     p_validate: validating,
+    p_replace_omissions: parsed.data.mode === "validate",
   });
   if (saveError) {
     return NextResponse.json({ error: validating ? "This day could not be validated." : "This draft could not be saved." }, { status: 500 });

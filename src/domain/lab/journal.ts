@@ -119,6 +119,19 @@ export function updateJournalDraft(drafts: JournalDraftsByDate, date: string, va
   return { ...drafts, [date]: { ...(drafts[date] ?? {}), [variableId]: value } };
 }
 
+export function reconcileJournalDrafts(serverDrafts: JournalDraftsByDate, currentDrafts: JournalDraftsByDate, pendingDates: ReadonlySet<string>): JournalDraftsByDate {
+  const next = { ...serverDrafts };
+  for (const date of pendingDates) {
+    if (currentDrafts[date]) next[date] = currentDrafts[date];
+  }
+  return next;
+}
+
+export function journalEntriesForSave(variableIds: readonly string[], draft: JournalDraft, mode: "draft" | "validate", changedVariableId?: string) {
+  const ids = mode === "draft" && changedVariableId ? [changedVariableId] : variableIds;
+  return ids.map((variableId) => ({ variableId, value: draft[variableId] ?? null }));
+}
+
 export function normalizeJournalValue(variable: JournalVariable, raw: unknown): JournalEntryValue | null {
   if (raw === null || raw === undefined || raw === "") return null;
   if (variable.variableType === "boolean") return typeof raw === "boolean" ? raw : null;

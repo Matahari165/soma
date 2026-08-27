@@ -8,7 +8,9 @@ import {
   journalDayPeriod,
   journalDayPeriods,
   journalDraftsForDates,
+  journalEntriesForSave,
   journalValuesForDate,
+  reconcileJournalDrafts,
   journalVariableSuggestions,
   updateJournalDraft,
   type JournalDraftsByDate,
@@ -285,6 +287,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const initialDrafts = useMemo(() => journalDraftsForDates(availableDates, activeVariables, entries, days), [activeVariables, availableDates, days, entries]);
   const [draftsByDate, setDraftsByDate] = useState<JournalDraftsByDate>(initialDrafts);
   const drafts = useRef<JournalDraftsByDate>(initialDrafts);
+  const pendingSavesByDate = useRef<Record<string, number>>({});
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const [validatingDate, setValidatingDate] = useState<string | null>(null);
   const [validatedDate, setValidatedDate] = useState<string | null>(null);
@@ -304,6 +307,13 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
   }, []);
 
+  useEffect(() => {
+    const pendingDates = new Set(Object.entries(pendingSavesByDate.current).filter(([, count]) => count > 0).map(([date]) => date));
+    const next = reconcileJournalDrafts(initialDrafts, drafts.current, pendingDates);
+    drafts.current = next;
+    setDraftsByDate(next);
+  }, [initialDrafts]);
+
   function triggerFeedback(fieldId: string) {
     feedbackSequence.current += 1;
     setFeedback({ fieldId, token: feedbackSequence.current });
@@ -316,19 +326,21 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     triggerFeedback(fieldId);
   }
 
-  async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>) {
-    const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: activeVariables.map((variable) => ({ variableId: variable.id, value: draftValues[variable.id] ?? null })) }) });
+  async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>, changedVariableId?: string) {
+    const entriesToSave = journalEntriesForSave(activeVariables.map((variable) => variable.id), draftValues, mode, changedVariableId);
+    const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: entriesToSave }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Your journal could not be saved.");
   }
 
-  function queueDraft(date: string, draftValues: Record<string, DraftValue>) {
+  function queueDraft(date: string, variableId: string, draftValues: Record<string, DraftValue>) {
+    pendingSavesByDate.current[date] = (pendingSavesByDate.current[date] ?? 0) + 1;
     setSaveStatus("saving");
     saveQueue.current = saveQueue.current
       .catch(() => undefined)
-      .then(() => persist(date, "draft", draftValues))
+      .then(() => persist(date, "draft", draftValues, variableId))
       .then(() => {
-        if (date === selectedDate.current) {
+        if (date === selectedDate.current && pendingSavesByDate.current[date] === 1) {
           setSaveStatus("saved");
           setError(null);
           if (days.find((candidate) => candidate.entryDate === date)?.status === "validated") router.refresh();
@@ -339,11 +351,17 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
           setSaveStatus("error");
           setError(saveError instanceof Error ? saveError.message : "Your journal could not be saved.");
         }
+      })
+      .finally(() => {
+        const remaining = (pendingSavesByDate.current[date] ?? 1) - 1;
+        if (remaining > 0) pendingSavesByDate.current[date] = remaining;
+        else delete pendingSavesByDate.current[date];
       });
   }
 
   async function validate() {
     const date = selectedDate.current;
+    pendingSavesByDate.current[date] = (pendingSavesByDate.current[date] ?? 0) + 1;
     setValidatingDate(date);
     setSaveStatus("saving");
     try {
@@ -361,6 +379,9 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
         setError(saveError instanceof Error ? saveError.message : "This day could not be validated.");
       }
     } finally {
+      const remaining = (pendingSavesByDate.current[date] ?? 1) - 1;
+      if (remaining > 0) pendingSavesByDate.current[date] = remaining;
+      else delete pendingSavesByDate.current[date];
       setValidatingDate(null);
     }
   }
@@ -386,7 +407,7 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     setDraftsByDate(next);
     if (variable && textNumericTypes.has(variable.variableType)) pendingNumericFeedback.current.add(variableId);
     else if (variable) triggerFeedback(variableId);
-    queueDraft(date, next[date]);
+    queueDraft(date, variableId, next[date]);
   }
 
   const statusClass = ["checkin-state", "journal-save-status", validated || saveStatus === "saved" ? "checkin-state--saved" : "", saveStatus === "error" ? "checkin-state--error" : ""].filter(Boolean).join(" ");
