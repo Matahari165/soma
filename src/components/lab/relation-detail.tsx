@@ -88,9 +88,64 @@ function sourceText(relation: MatrixRelation) {
   return `One longitudinal history · ${coverage}`;
 }
 
-function findingSentence(relation: MatrixRelation) {
-  const relative = percentText(relation) ? ` (${percentText(relation)} relative to baseline ${relation.outcomeLabel})` : "";
-  return `${relation.predictorLabel} (${relation.comparisonLabel}) is associated with ${effectText(relation)}${relative} in ${relation.outcomeLabel} ${timingText(relation).toLowerCase()}.`;
+function sentenceComparisonText(relation: MatrixRelation) {
+  if (relation.comparisonLabel === "yes vs no") return "yes rather than no";
+  if (relation.comparisonLabel === "30 min later") return "30 minutes later";
+  const amountComparison = relation.comparisonLabel.match(/^(.+?) avg vs 0$/);
+  if (amountComparison) return `${amountComparison[1]} on average rather than zero`;
+  const threshold = relation.comparisonLabel.match(/^threshold above (.+)$/);
+  if (threshold) return `above ${threshold[1]}`;
+  const plateau = relation.comparisonLabel.match(/^plateau after (.+)$/);
+  if (plateau) return `after ${plateau[1]}`;
+  const zone = relation.comparisonLabel.match(/^(?:optimal|adverse|middle) zone (.+)$/);
+  if (zone) return `within ${zone[1]}`;
+  if (relation.comparisonLabel.startsWith("+")) return `${relation.comparisonLabel.slice(1)} higher`;
+  return relation.comparisonLabel;
+}
+
+function associationVerb(label: string) {
+  return /\b(?:steps|minutes|awakenings|floors|zones|days)$/i.test(label.trim()) ? "are" : "is";
+}
+
+function sentenceTimingText(relation: MatrixRelation) {
+  if (relation.lagDays === 0) return overnightOutcome(relation) ? "during the same sleep episode" : "on the same day";
+  if (relation.lagDays === 1) return overnightOutcome(relation) ? "during the following night" : "on the next day";
+  return "two days later";
+}
+
+function effectMagnitudeText(relation: MatrixRelation) {
+  if (relation.effect === null) return null;
+  const unit = effectUnit(relation.outcomeUnit);
+  const digits = unit === "pts" && Math.abs(relation.effect) >= 1 ? 0 : effectDigits(relation.effect, relation.outcomeUnit);
+  const value = Math.abs(Number(relation.effect.toFixed(digits))).toFixed(digits);
+  if (unit === "pp") return `${value} percentage point${value === "1.0" ? "" : "s"}`;
+  if (unit === "count") return `${value} ${relation.outcomeLabel.toLowerCase()}`;
+  if (unit === "/h") return `${value} per hour`;
+  if (unit === "/min") return `${value} per minute`;
+  if (unit === "pts") return `${value} point${value === "1.0" ? "" : "s"}`;
+  if (unit === "min") return `${value} minute${value === "1" ? "" : "s"}`;
+  if (unit === "ms") return `${value} millisecond${value === "1" ? "" : "s"}`;
+  return `${value}${unit ? ` ${unit}` : ""}`;
+}
+
+export function findingSentence(relation: MatrixRelation) {
+  const effect = relation.effect;
+  const magnitude = effectMagnitudeText(relation);
+  if (magnitude === null || effect === null || effect === 0) {
+    return `${relation.predictorLabel} (${sentenceComparisonText(relation)}) ${associationVerb(relation.predictorLabel)} not associated with a measurable change in ${relation.outcomeLabel} ${sentenceTimingText(relation)}.`;
+  }
+  const direction = effect > 0 ? "increase" : "decrease";
+  const article = direction === "increase" ? "an" : "a";
+  const relative = relation.percentEffect === null
+    ? ""
+    : ` (${Math.abs(relation.percentEffect).toFixed(1)}% ${direction} compared with baseline)`;
+  return `${relation.predictorLabel} (${sentenceComparisonText(relation)}) ${associationVerb(relation.predictorLabel)} associated with ${article} ${direction} of ${magnitude} in ${relation.outcomeLabel} ${sentenceTimingText(relation)}${relative}.`;
+}
+
+function intervalText(relation: MatrixRelation) {
+  if (relation.effectConfidenceLow === null) return "—";
+  const digits = effectDigits(relation.effect, relation.outcomeUnit);
+  return `${signed(relation.effectConfidenceLow, digits)} to ${signed(relation.effectConfidenceHigh ?? 0, digits)} ${effectUnit(relation.outcomeUnit)}`;
 }
 
 function doseEffectText(dose: MatrixDoseResponse, unit: string) {
@@ -102,7 +157,7 @@ function doseEffectText(dose: MatrixDoseResponse, unit: string) {
 function RelationEvidence({ relation, direction }: { relation: MatrixRelation; direction: "higher" | "lower" | "target" }) {
   const maximum = Math.max(Math.abs(relation.baselineMean ?? 0), Math.abs(relation.comparisonMean ?? 0), 1);
   return <article className="relation-evidence">
-    <header><span>{timingText(relation)}</span><strong>{relation.qValue < .05 ? "q < 0.05" : "Not significant"}</strong></header>
+    <header><span>{timingText(relation)}</span><strong>{relation.qValue < .05 ? "Significant" : "Not significant"}</strong></header>
     <p className="relation-detail__finding">{findingSentence(relation)}</p>
     <div className="relation-detail__plot" aria-label={`Compared ${relation.outcomeLabel} values ${timingText(relation).toLowerCase()}`}>
       <div><span>Baseline outcome</span><i style={{ width: `${Math.abs(relation.baselineMean ?? 0) / maximum * 100}%` }} /><strong>{relation.baselineMean ?? "—"} {relation.outcomeUnit}</strong></div>
@@ -111,10 +166,8 @@ function RelationEvidence({ relation, direction }: { relation: MatrixRelation; d
     <dl>
       <div><dt>Outcome change</dt><dd>{percentText(relation) ? `${percentText(relation)} of baseline · ` : ""}{effectText(relation)}</dd></div>
       {relation.habitualEffect !== null && <div><dt>Your habitual variation</dt><dd>{predictorDeltaText(relation)} → {effectText({ effect: relation.habitualEffect, outcomeUnit: relation.outcomeUnit })}</dd></div>}
-      <div><dt>95% interval</dt><dd>{relation.effectConfidenceLow === null ? "—" : `${signed(relation.effectConfidenceLow, effectDigits(relation.effect, relation.outcomeUnit))} to ${signed(relation.effectConfidenceHigh ?? 0, effectDigits(relation.effect, relation.outcomeUnit))} ${effectUnit(relation.outcomeUnit)}`}</dd></div>
-      <div><dt>Compared days</dt><dd>{relation.baselineCount} baseline · {relation.comparisonCount} comparison</dd></div>
+      <div><dt>95% interval · tests</dt><dd>{intervalText(relation)}<br />p {probability(relation.pValue)} · q {probability(relation.qValue)}</dd></div>
       <div><dt>Detected shape</dt><dd>{modelEvidence(relation.modelType, relation.modelImprovement, relation.nonlinearTested)}</dd></div>
-      <div><dt>Tests</dt><dd>p {probability(relation.pValue)} · q {probability(relation.qValue)}</dd></div>
     </dl>
     {relation.doseResponse && <section className="relation-dose">
       <h5>Dose response</h5>
@@ -133,7 +186,6 @@ export function RelationDetail({ relations, direction, onClose, detailRef }: { r
       <div><h3 id="relation-detail-title">{first.predictorLabel} × {first.outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation detail" onClick={onClose}><X size={17} /></button>
     </header>
-    <p className="relation-detail__explanation">Each percentage below is the relative change in the <strong>outcome</strong> for the predictor contrast written beside it. It is never an effect per one unit unless that exact unit is stated.</p>
     {relations.map((relation) => <RelationEvidence key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`} relation={relation} direction={direction} />)}
     <footer><span>Period</span><strong>{first.period === "all" ? "All history" : `${first.period} days`}</strong><span>Sources</span><strong>{sourceText(first)}</strong><span>Method</span><strong>Raw within-person · device baseline adjusted · serial-dependence robust · BH corrected</strong></footer>
   </aside>;

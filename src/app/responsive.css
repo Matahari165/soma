@@ -12,7 +12,6 @@
 @media (max-width: 1024px) {
   .journal-grid { grid-template-columns: 1fr; }
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .relation-detail__explanation { white-space: normal; }
   .strongest-effects > header, .strongest-effects li > button { grid-template-columns: minmax(190px, .9fr) minmax(260px, 1.1fr) minmax(135px, .6fr); }
 }
 
@@ -141,6 +140,7 @@
   .legal-page { padding: 24px 20px 90px; }
 
   .health-detail-hero { grid-template-columns: 1fr 190px; }
+  .health-detail-hero--with-metrics { grid-template-columns: minmax(220px, 1fr) minmax(480px, 1.2fr); }
   .health-detail-hero h1 { font-size: clamp(3.6rem, 10vw, 6rem); }
   .health-primary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .health-primary-card:nth-child(n) { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -178,6 +178,14 @@
   .live-workout-content { grid-template-columns: 1fr; overflow-y: auto; }
 }
 
+@media (max-width: 800px) {
+  .health-detail-hero--with-metrics { grid-template-columns: 1fr; }
+  .health-detail-hero--with-metrics > div:first-child { min-height: 112px; }
+  .health-hero-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); }
+  .health-hero-metrics .health-hero-score { min-height: 140px; border-left: 0; }
+  .health-hero-stat { min-height: 140px; }
+}
+
 @media (max-width: 640px) {
   .health-detail-page,
   .workout-page,
@@ -197,6 +205,21 @@
   .medical-note { font-size: 1rem; }
   .health-detail-page { gap: 20px; }
   .health-detail-hero { grid-template-columns: minmax(0, 1fr) 132px; min-height: 150px; }
+  .health-detail-hero--with-metrics { grid-template-columns: 1fr; }
+  .health-detail-hero--with-metrics > div:first-child { min-height: 96px; }
+  .health-hero-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); }
+  .health-hero-metrics .health-hero-score { min-height: 128px; border-left: 0; }
+  .health-hero-metrics .score-ring { width: 86px; }
+  .health-hero-stat { min-height: 128px; gap: 8px; padding: 12px 8px; }
+  .health-hero-stat .metric-reading { font-size: clamp(1.1rem, 5.6vw, 1.6rem); }
+  .health-hero-stat__average { font-size: .58rem; }
+  .health-debt-comparison { grid-template-columns: 1fr; justify-items: center; gap: 2px; padding-top: 6px; }
+  .health-debt-comparison i { display: none; }
+  .health-debt-comparison > span:first-child { display: none; }
+  .recovery-score-popover { position: fixed; top: 186px; right: 14px; width: calc(100vw - 28px); }
+  .recovery-score-popover::before { display: none; }
+  .health-explanation-popover { position: fixed; top: 150px; right: 14px; width: calc(100vw - 28px); max-height: calc(100dvh - 170px); overflow-y: auto; }
+  .health-explanation-popover::before { display: none; }
   .health-detail-hero > div:first-child { min-height: 150px; padding: 20px 16px; }
   .health-detail-hero h1 { font-size: clamp(2.75rem, 13vw, 4.2rem); }
   .health-hero-score { min-height: 150px; padding: 10px; border-left: 1px solid var(--ink); }
@@ -259,6 +282,7 @@
   .preview-banner { gap: 6px; font-size: .53rem; white-space: nowrap; }
   .bottom-nav__link { font-size: .56rem; }
   .health-detail-hero { grid-template-columns: minmax(0, 1fr) 116px; }
+  .health-detail-hero--with-metrics { grid-template-columns: 1fr; }
   .health-detail-hero h1 { font-size: 2.6rem; }
   .score-ring { width: 94px; }
   .score-ring__value strong { font-size: 2.3rem; }
@@ -299,6 +323,8 @@
   .lab-signals a:nth-child(2n) { border-right: 0; }
   .lab-signals a:nth-child(n+3) { border-bottom: 0; }
   .journal-card > header { align-items: start; flex-direction: column; }
+  .journal-card__heading { width: 100%; justify-content: space-between; }
+  .journal-card__actions { width: 100%; justify-content: flex-start; }
   .journal-field { grid-template-columns: 1fr; gap: 8px; }
   .journal-variable-row { grid-template-columns: 1fr auto; }
   .journal-variable-row > button:last-child { grid-column: 2; }
