@@ -853,7 +853,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .matrix-state--no-signal::after { position: absolute; inset: 3px; border-radius: 50%; background: currentColor; content: ""; }
 .matrix-state--excluded::before { position: absolute; top: 5px; right: -1px; left: -1px; height: 1px; background: currentColor; content: ""; transform: rotate(-45deg); transform-origin: center; }
 .strongest-effects { --effect-positive: #16833c; --effect-negative: #c43b2f; border: 1px solid var(--ink); border-bottom: 0; background: var(--paper); }
-.strongest-effects > header { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(300px, 1.25fr) minmax(140px, .55fr); min-height: 58px; align-items: end; gap: 18px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.strongest-effects > header { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(300px, 1.25fr) minmax(140px, .55fr); min-height: 44px; align-items: center; gap: 18px; padding: 7px 12px; border-bottom: 1px solid var(--line); }
 .strongest-effects h3 { font-size: .94rem; line-height: 1.2; }
 .strongest-effects header p { margin-top: 3px; color: var(--muted); font-size: .68rem; }
 .strongest-effects__axis { grid-column: 2; display: flex; justify-content: space-between; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
@@ -863,20 +863,21 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .effect-legend__swatch--negative { background: var(--danger); }
 .strongest-effects ol { margin: 0; padding: 0; list-style: none; }
 .strongest-effects__group > h4 { padding: 7px 12px; border-bottom: 1px solid var(--line-strong); background: color-mix(in srgb, var(--line) 52%, var(--canvas)); color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .55rem; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
-.strongest-effects__influence { border-bottom: 1px solid var(--line); }
+.strongest-effects__influence { border-bottom: 1px solid var(--line); background: var(--paper); }
 .strongest-effects__influence:last-child { border-bottom: 0; }
-.strongest-effects__influence-header { display: flex; min-height: 42px; align-items: baseline; justify-content: space-between; gap: 14px; padding: 9px 12px 6px; background: color-mix(in srgb, var(--canvas) 42%, var(--paper)); }
+.strongest-effects__influence-header { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 12px; background: var(--paper); }
 .strongest-effects__influence-header strong { font-size: .86rem; font-weight: 650; }
 .strongest-effects__influence-header small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; text-align: right; }
 .strongest-effects__comparison-group { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(440px, 1.8fr); }
-.strongest-effects__comparison-header { display: grid; align-content: start; padding: 12px; background: color-mix(in srgb, var(--canvas) 34%, var(--paper)); }
+.strongest-effects__comparison-group + .strongest-effects__comparison-group { margin-top: 18px; }
+.strongest-effects__comparison-header { display: grid; align-content: center; padding: 12px; background: var(--paper); }
 .strongest-effects__comparison-header strong { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .68rem; font-weight: 400; }
 .strongest-effects__comparison-group > ol { border-left: 0; }
 .strongest-effects li { border-bottom: 0; }
 .strongest-effects__comparison-group > ol > li:last-child { border-bottom: 0; }
 .strongest-effects li > button { display: grid; width: 100%; min-height: 56px; grid-template-columns: minmax(210px, 1fr) minmax(300px, 1.25fr) minmax(140px, .55fr); align-items: center; gap: 18px; padding: 7px 12px; border: 0; background: transparent; color: var(--ink); text-align: left; }
 .strongest-effects__comparison-group li > button { grid-template-columns: minmax(300px, 1.25fr) minmax(140px, .55fr); }
-.strongest-effects li > button:hover { background: var(--canvas); }
+.strongest-effects li > button:hover { background: color-mix(in srgb, var(--ink) 3%, var(--paper)); }
 .strongest-effects__relation strong, .strongest-effects__relation small { display: block; }
 .strongest-effects__relation strong { font-size: .78rem; }
 .strongest-effects__relation small { margin-top: 3px; color: var(--ink-soft); font-size: .66rem; }
