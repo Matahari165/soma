@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { createSession, upsertGoogleUser } from "@/lib/cloudflare/session";
+import { createSession, hasCompletedOnboarding, upsertGoogleUser } from "@/lib/cloudflare/session";
 import { requireServerEnv } from "@/lib/env";
 
 type GoogleProfile = { sub?: unknown; email?: unknown; name?: unknown; picture?: unknown };
@@ -11,7 +11,12 @@ function loginError(origin: string, code: string) {
 }
 
 function safeNextPath(value: string | undefined) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/onboarding";
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
+function postLoginDestination(nextPath: string, onboardingCompleted: boolean) {
+  if (!onboardingCompleted) return "/onboarding";
+  return nextPath === "/onboarding" ? "/" : nextPath;
 }
 
 export async function GET(request: Request) {
@@ -54,11 +59,12 @@ export async function GET(request: Request) {
       name: typeof profile.name === "string" ? profile.name : undefined,
       picture: typeof profile.picture === "string" ? profile.picture : undefined,
     });
+    const onboardingCompleted = await hasCompletedOnboarding(user.id);
     await createSession(user.id);
     cookieStore.delete("soma_oauth_state");
     cookieStore.delete("soma_oauth_verifier");
     cookieStore.delete("soma_oauth_next");
-    return NextResponse.redirect(new URL(nextPath, url.origin));
+    return NextResponse.redirect(new URL(postLoginDestination(nextPath, onboardingCompleted), url.origin));
   } catch {
     return loginError(url.origin, "oauth_callback");
   }

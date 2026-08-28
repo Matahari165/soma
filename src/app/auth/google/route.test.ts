@@ -39,6 +39,6 @@ describe("Google OAuth start route", () => {
 
   it("rejects an external post-login destination", async () => {
     await GET(new Request("https://soma.example/auth/google?next=https://evil.example"));
-    expect(setCookie).toHaveBeenCalledWith("soma_oauth_next", "/onboarding", expect.any(Object));
+    expect(setCookie).toHaveBeenCalledWith("soma_oauth_next", "/", expect.any(Object));
   });
 });

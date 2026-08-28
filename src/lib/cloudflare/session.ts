@@ -62,6 +62,18 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return row ? { id: row.id, email: row.email, displayName: row.display_name } : null;
 }
 
+export async function hasCompletedOnboarding(userId: string) {
+  const row = await cloudflareDb().prepare(`
+    SELECT 1
+    FROM soma_rows
+    WHERE table_name = 'profiles'
+      AND user_id = ?
+      AND json_extract(json_data, '$.onboarding_completed_at') IS NOT NULL
+    LIMIT 1
+  `).bind(userId).first();
+  return Boolean(row);
+}
+
 export async function upsertGoogleUser(profile: { sub: string; email?: string; name?: string; picture?: string }) {
   const db = cloudflareDb();
   const existing = await db.prepare("SELECT id FROM soma_users WHERE google_subject = ? LIMIT 1").bind(profile.sub).first<{ id: string }>();
