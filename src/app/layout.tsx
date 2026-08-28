@@ -36,9 +36,9 @@ export const metadata: Metadata = {
   applicationName: "Soma",
   description: "A personal lab for the relationships between health, focus, energy, recovery, and Deep Work.",
   icons: {
-    icon: [{ url: "/icon.svg?v=erlenmeyer-transparent-3", type: "image/svg+xml" }],
-    shortcut: ["/icon.svg?v=erlenmeyer-transparent-3"],
-    apple: [{ url: "/apple-icon.png?v=erlenmeyer-transparent-3", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/icon.svg?v=erlenmeyer-black-4", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg?v=erlenmeyer-black-4"],
+    apple: [{ url: "/apple-icon.png?v=erlenmeyer-black-4", sizes: "180x180", type: "image/png" }],
   },
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
