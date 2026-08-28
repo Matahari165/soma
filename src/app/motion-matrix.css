@@ -50,26 +50,26 @@
 }
 
 .strongest-effects__interval {
-  transform: scaleX(0);
+  transform: translateY(-50%) scaleX(0);
   transform-origin: var(--matrix-interval-origin, center);
   transition: transform 460ms cubic-bezier(.22, .8, .26, 1), opacity 180ms ease;
   transition-delay: calc(var(--matrix-row-delay, 0ms) + 70ms);
 }
 
 .strongest-effects__row.is-visible .strongest-effects__interval {
-  transform: scaleX(1);
+  transform: translateY(-50%) scaleX(1);
 }
 
 .strongest-effects__point {
   opacity: 0;
-  transform: translateX(-50%) scale(.45);
+  transform: translate(-50%, -50%) scale(.45);
   transition: opacity 180ms ease, transform 300ms cubic-bezier(.22, .8, .26, 1);
   transition-delay: calc(var(--matrix-row-delay, 0ms) + 230ms);
 }
 
 .strongest-effects__row.is-visible .strongest-effects__point {
   opacity: 1;
-  transform: translateX(-50%) scale(1);
+  transform: translate(-50%, -50%) scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -90,12 +90,12 @@
 
   .strongest-effects__interval,
   .strongest-effects__row.is-visible .strongest-effects__interval {
-    transform: scaleX(1);
+    transform: translateY(-50%) scaleX(1);
   }
 
   .strongest-effects__point,
   .strongest-effects__row.is-visible .strongest-effects__point {
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
