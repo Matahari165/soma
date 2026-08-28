@@ -55,7 +55,14 @@ type HealthDay = {
   vigorous_zone_minutes: number | null;
   peak_zone_minutes: number | null;
   active_minutes: number | null;
+  sedentary_minutes: number | null;
   exercise_minutes: number | null;
+  vo2_max: number | null;
+  active_day: boolean | null;
+  running_distance_km: number | null;
+  running_duration_minutes: number | null;
+  running_pace_seconds_per_km: number | null;
+  running_average_heart_rate: number | null;
   data_quality?: { primaryWearable?: string | null };
 };
 
@@ -273,7 +280,7 @@ function healthSeries(health: HealthDay[], id: string, label: string, unit: stri
     id,
     label,
     unit,
-    kind: "numeric",
+    kind: id === "active_day" ? "binary" : "numeric",
     points: health.flatMap((day) => {
       const value = toNumber((day as unknown as Record<string, unknown>)[key]);
       return value === null ? [] : [{ date: day.metric_date, value, segment: day.data_quality?.primaryWearable ?? undefined }];
@@ -326,6 +333,7 @@ function buildCorrelationMatrix(input: {
     { ...healthSeries(health, "sleep_efficiency", "Sleep efficiency", "%", "sleep_efficiency"), direction: "higher" as const },
     { ...healthSeries(health, "sleep_latency", "Sleep latency", "min", "sleep_latency_minutes"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_awake", "Awake time", "min", "sleep_awake_minutes"), direction: "lower" as const },
+    { ...healthSeries(health, "sleep_awakenings", "Awakenings", "count", "sleep_awakenings"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_fragmentation", "Fragmentation", "/h", "sleep_fragmentation"), direction: "lower" as const },
     { ...healthSeries(health, "deep_sleep", "Deep sleep", "min", "sleep_deep_minutes"), direction: "higher" as const },
     { ...healthSeries(health, "rem_sleep", "REM sleep", "min", "sleep_rem_minutes"), direction: "higher" as const },
@@ -366,6 +374,11 @@ function buildCorrelationMatrix(input: {
     { series: intense, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: exercise, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: healthSeries(health, "sedentary_minutes", "Sedentary time", "min", "sedentary_minutes"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: healthSeries(health, "running_distance", "Running distance", "km", "running_distance_km"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: healthSeries(health, "running_pace", "Running pace", "sec/km", "running_pace_seconds_per_km"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: healthSeries(health, "running_average_heart_rate", "Running average heart rate", "bpm", "running_average_heart_rate"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: healthSeries(health, "active_day", "Active day", "yes/no", "active_day"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "skin_temperature", "Skin temperature delta", "°C", "skin_temperature_delta"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "overnight" },
     { series: effortSeries, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
   ];
@@ -581,7 +594,8 @@ function previewData() {
     const vigorous = 4 + (index % 4) * 5;
     const previousVigorous = 4 + ((index + 3) % 4) * 5;
     const previewWeek = Math.floor(index / 7) % 3;
-    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_latency_minutes: 14 + Math.sin(index / 3) * 4, sleep_awake_minutes: 31 + Math.cos(index / 4) * 8, sleep_awakenings: 6 + index % 5, sleep_fragmentation: .8 + (index % 5) * .12, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 50 - previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 60 + previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps: 7_200 + (index % 6) * 720, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), wake_time: new Date(`${dateString}T07:${String(2 + index % 28).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, exercise_minutes: index % 3 === 0 ? 42 : 0 });
+    const steps = 7_200 + (index % 6) * 720;
+    health.push({ metric_date: dateString, sleep_minutes: sleep, sleep_efficiency: 89 + Math.sin(index / 4) * 4, sleep_latency_minutes: 14 + Math.sin(index / 3) * 4, sleep_awake_minutes: 31 + Math.cos(index / 4) * 8, sleep_awakenings: 6 + index % 5, sleep_fragmentation: .8 + (index % 5) * .12, sleep_regularity: 78 + Math.cos(index / 6) * 9, cumulative_sleep_debt_minutes: Math.max(0, 500 - sleep), hrv_ms: 50 - previousVigorous * .32 + previewWeek * .6 + Math.sin(index / 5), resting_heart_rate: 60 + previousVigorous * .16 - previewWeek * .8 + Math.sin(index / 5) * .5, steps, zone_minutes: 18 + (index % 5) * 8, bedtime: new Date(`${dateString}T22:${String(5 + index % 45).padStart(2, "0")}:00+02:00`).toISOString(), wake_time: new Date(`${dateString}T07:${String(2 + index % 28).padStart(2, "0")}:00+02:00`).toISOString(), sleep_deep_minutes: sleep * .19, sleep_rem_minutes: sleep * .23, respiratory_rate: 14.2 + Math.sin(index / 9) * .6, oxygen_saturation: 96.4 + Math.cos(index / 8) * .7, skin_temperature_delta: Math.sin(index / 11) * .25, vigorous_zone_minutes: vigorous, peak_zone_minutes: index % 5 === 0 ? 3 : 0, active_minutes: active, sedentary_minutes: 900 - active, exercise_minutes: index % 3 === 0 ? 42 : 0, vo2_max: 46 + index * .01, active_day: steps >= 7_500, running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null });
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },

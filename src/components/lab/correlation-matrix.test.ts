@@ -91,4 +91,13 @@ describe("relationship matrix motion helpers", () => {
       sourceDetail: expect.stringContaining("Journal"),
     });
   });
+
+  it("explains the selected running and activity metrics", () => {
+    expect(influenceExplanation("running_distance", "Running distance")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("kilometres") });
+    expect(influenceExplanation("running_pace", "Running pace")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("seconds per kilometre") });
+    expect(influenceExplanation("running_average_heart_rate", "Running average heart rate")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("beats per minute") });
+    expect(influenceExplanation("vo2_max", "VO₂ max")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("oxygen") });
+    expect(influenceExplanation("sedentary_minutes", "Sedentary minutes")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("sedentary") });
+    expect(influenceExplanation("active_day", "Active day")).toMatchObject({ source: "Soma", calculation: expect.stringContaining("7,500 steps") });
+  });
 });

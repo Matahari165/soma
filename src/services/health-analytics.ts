@@ -46,6 +46,10 @@ export type HealthMetricDay = {
   sedentary_minutes: number | null;
   exercise_minutes: number | null;
   distance_km: number | null;
+  running_distance_km: number | null;
+  running_duration_minutes: number | null;
+  running_pace_seconds_per_km: number | null;
+  running_average_heart_rate: number | null;
   floors: number | null;
   weight_kg: number | null;
   body_fat_percent: number | null;
@@ -136,7 +140,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       hrv_ms: 49 + wave * 5 + index * 0.06, resting_heart_rate: 61 - wave * 2 - index * 0.025, respiratory_rate: 14.4 + wave * 0.35, oxygen_saturation: 96.1 + wave * 0.45,
       oxygen_saturation_lower: 94.8 + wave * 0.3, oxygen_saturation_upper: 97.4 + wave * 0.3, skin_temperature_delta: wave * 0.18, nightly_temperature_celsius: 33.4 + wave * 0.18, baseline_temperature_celsius: 33.4,
       steps, active_energy_kcal: 520 + wave * 110, total_energy_kcal: 2_180 + wave * 130, zone_minutes: 31 + wave * 12, light_zone_minutes: 12, moderate_zone_minutes: 10 + wave * 4, vigorous_zone_minutes: 6 + wave * 4, peak_zone_minutes: 3 + wave * 2,
-      active_minutes: 52 + wave * 15, sedentary_minutes: 560 - wave * 35, exercise_minutes: 38 + wave * 18, distance_km: steps * 0.00072, floors: 11 + wave * 4, weight_kg: 74.2 - index * 0.004, body_fat_percent: 17.4 - index * 0.003, vo2_max: 47.2 + index * 0.012,
+      active_minutes: 52 + wave * 15, sedentary_minutes: 560 - wave * 35, exercise_minutes: 38 + wave * 18, distance_km: steps * 0.00072, running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, floors: 11 + wave * 4, weight_kg: 74.2 - index * 0.004, body_fat_percent: 17.4 - index * 0.003, vo2_max: 47.2 + index * 0.012,
       altitude_gain_m: 82 + wave * 25, height_cm: 178, core_body_temperature_celsius: null, blood_glucose_mg_dl: null,
       active_day: steps >= 7_500, active_day_rate_28d: 71, activity_consistency_28d: 78, weekly_load: 408 + wave * 30, acute_chronic_load_ratio: 1.04 + wave * 0.04, source_freshness: { latestMeasuredAt: date.toISOString() },
     };
@@ -197,7 +201,7 @@ const metricColumns: Record<HealthAnalyticsScope, string> = {
   all: "*",
   sleep: "metric_date,sleep_minutes,sleep_need_minutes,sleep_efficiency,sleep_regularity,sleep_latency_minutes,sleep_awake_minutes,sleep_awake_percent,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_deep_percent,sleep_rem_minutes,sleep_rem_percent,sleep_light_minutes,sleep_light_percent,daily_sleep_debt_minutes,cumulative_sleep_debt_minutes,bedtime,wake_time,source_freshness",
   recovery: "metric_date,hrv_ms,resting_heart_rate,respiratory_rate,oxygen_saturation,oxygen_saturation_lower,oxygen_saturation_upper,skin_temperature_delta,nightly_temperature_celsius,baseline_temperature_celsius,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,vo2_max,core_body_temperature_celsius,source_freshness",
-  activity: "metric_date,steps,active_energy_kcal,total_energy_kcal,zone_minutes,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,active_minutes,sedentary_minutes,exercise_minutes,distance_km,floors,weight_kg,body_fat_percent,altitude_gain_m,active_day,active_day_rate_28d,activity_consistency_28d,weekly_load,acute_chronic_load_ratio,source_freshness",
+  activity: "metric_date,steps,active_energy_kcal,total_energy_kcal,zone_minutes,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,active_minutes,sedentary_minutes,exercise_minutes,distance_km,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,floors,weight_kg,body_fat_percent,altitude_gain_m,active_day,active_day_rate_28d,activity_consistency_28d,weekly_load,acute_chronic_load_ratio,source_freshness",
   trends: "metric_date,sleep_minutes,hrv_ms,resting_heart_rate,steps,source_freshness",
 };
 

@@ -12,12 +12,14 @@ export type GroupedMatrixRow = {
 
 const activityLoadIds = new Set(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "active_minutes"]);
 const sleepPatternIds = new Set(["bedtime", "wake_time", "sleep_regularity", "sleep_debt"]);
-const influenceGroupOrder = ["Sleep pattern", "Daily movement", "Activity load", "Other influences", "Journal habits"];
+const runningAndSedentaryIds = new Set(["sedentary_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"]);
+const influenceGroupOrder = ["Sleep pattern", "Daily movement", "Activity load", "Running & sedentary time", "Other influences", "Journal habits"];
 
 export function influenceGroup(predictorId: string) {
   if (predictorId.startsWith("journal:")) return "Journal habits";
   if (activityLoadIds.has(predictorId)) return "Activity load";
   if (predictorId === "steps") return "Daily movement";
+  if (runningAndSedentaryIds.has(predictorId)) return "Running & sedentary time";
   if (sleepPatternIds.has(predictorId)) return "Sleep pattern";
   return "Other influences";
 }

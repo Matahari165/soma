@@ -28,6 +28,9 @@ describe("groupMatrixRows", () => {
     expect(influenceGroup("steps")).toBe("Daily movement");
     expect(influenceGroup("journal:reading")).toBe("Journal habits");
   });
+  it("keeps running and sedentary influences in one coherent group", () => {
+    expect(["sedentary_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"].every((id) => influenceGroup(id) === "Running & sedentary time")).toBe(true);
+  });
   it("keeps J+1 and J+2 in one predictor row and one outcome cell", () => {
     const predictor = series("caffeine");
     const outcome = series("hrv", 2);

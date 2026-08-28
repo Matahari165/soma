@@ -481,6 +481,7 @@ export const PRACTICAL_EFFECT_THRESHOLDS: Readonly<Record<string, number>> = {
   sleep_efficiency: 1.5,
   sleep_latency: 5,
   sleep_awake: 5,
+  sleep_awakenings: 1,
   deep_sleep: 5,
   rem_sleep: 5,
   hrv: 2,

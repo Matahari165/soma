@@ -149,6 +149,42 @@ const influenceExplanations: Record<string, Omit<InfluenceExplanation, "sourceDe
     source: "Google Health",
     sourceDetail: "Collected by your connected wearable and imported through Google Health.",
   },
+  sedentary_minutes: {
+    definition: "The number of minutes spent sedentary during the day.",
+    calculation: "The daily sedentary-minute total is used as received; missing days remain missing.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  active_day: {
+    definition: "Whether the day counts as active: yes or no.",
+    calculation: "Soma marks a day active when it has at least 7,500 steps, or 20 active-zone minutes, or 30 active minutes; it compares active and non-active days.",
+    source: "Soma",
+    sourceDetail: "Calculated by Soma from daily activity measures imported through Google Health.",
+  },
+  running_distance: {
+    definition: "The distance covered during recorded running sessions.",
+    calculation: "The day's running distance is used in kilometres; days without a recorded run remain missing.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  running_pace: {
+    definition: "The average pace of recorded running sessions.",
+    calculation: "Soma uses the day's running pace in seconds per kilometre; a lower value means a faster pace.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  running_average_heart_rate: {
+    definition: "The average heart rate during recorded running sessions.",
+    calculation: "The day's running average is used in beats per minute and compared with the observed personal range.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
+  vo2_max: {
+    definition: "An estimate of the maximum amount of oxygen your body can use during exercise.",
+    calculation: "The daily VO₂ max estimate is used as received in the relationship analysis.",
+    source: "Google Health",
+    sourceDetail: "Collected by your connected wearable and imported through Google Health.",
+  },
   effort: {
     definition: "Soma's daily estimate of accomplished activity load.",
     calculation: "Soma combines available zone minutes, exercise minutes, active energy, and steps with diminishing returns, then normalizes the result to a 0–100 score.",
@@ -195,16 +231,20 @@ const outcomeThemeById: Record<string, string> = {
   sleep_efficiency: "Sleep",
   sleep_latency: "Sleep",
   sleep_awake: "Sleep",
+  sleep_awakenings: "Sleep",
   sleep_fragmentation: "Sleep",
   deep_sleep: "Sleep",
   rem_sleep: "Sleep",
   hrv: "Cardio & recovery",
   rhr: "Cardio & recovery",
   recovery: "Cardio & recovery",
+  vo2_max: "Cardio & recovery",
+  running_average_heart_rate: "Running performance",
+  running_pace: "Running performance",
   respiratory: "Breathing & oxygen",
   spo2: "Breathing & oxygen",
 };
-const outcomeThemeOrder = ["Sleep", "Cardio & recovery", "Breathing & oxygen", "Other"];
+const outcomeThemeOrder = ["Sleep", "Cardio & recovery", "Running performance", "Breathing & oxygen", "Other"];
 
 export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outcomes"]) {
   return outcomes.reduce<Array<{ label: string; count: number }>>((groups, outcome) => {
