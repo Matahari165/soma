@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
 import uuid
 from datetime import datetime, timedelta
@@ -18,11 +19,26 @@ FITBIT_DEVICE = "Google Fitbit Air"
 PROVIDER = "google_health"
 
 
-def number(value: str | None) -> float | None:
-    if value is None or not value.strip():
+def number(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
         return None
     parsed = float(value)
+    if not math.isfinite(parsed):
+        return None
     return int(parsed) if parsed.is_integer() else parsed
+
+
+def takeout_timestamp(value: Any) -> datetime:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Takeout record has no timestamp")
+    text = value.strip()
+    try:
+        return datetime.strptime(text, "%m/%d/%y %H:%M:%S")
+    except ValueError:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=None)
 
 
 def local_timestamp(value: str) -> str:
@@ -32,7 +48,8 @@ def local_timestamp(value: str) -> str:
 
 
 def record(data_type: str, date: str, payload: dict[str, Any], *, source_key: str | None = None,
-           start: str | None = None, end: str | None = None) -> dict[str, Any]:
+           start: str | None = None, end: str | None = None,
+           measured_at: str | None = None) -> dict[str, Any]:
     source_id = f"google-takeout:v1:{data_type}:{source_key or date}"
     return {
         "id": str(uuid.uuid5(uuid.NAMESPACE_URL, source_id)),
@@ -45,7 +62,7 @@ def record(data_type: str, date: str, payload: dict[str, Any], *, source_key: st
         "recording_method": "TAKEOUT_VERIFIED",
         "source_device": FITBIT_DEVICE,
         "payload": {"source": {"provider": "google_takeout", "device": FITBIT_DEVICE}, **payload},
-        "measured_at": end or f"{date}T12:00:00.000+02:00",
+        "measured_at": measured_at or end or f"{date}T12:00:00.000+02:00",
     }
 
 
@@ -109,6 +126,16 @@ def exercise_type(name: str) -> str:
     return re.sub(r"[^A-Z0-9]+", "_", name.upper()).strip("_") or "OTHER"
 
 
+def json_rows(paths: list[Path]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in sorted(paths):
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, list):
+            raise ValueError(f"Expected a JSON array in {path.name}")
+        rows.extend(row for row in value if isinstance(row, dict))
+    return rows
+
+
 def load_exercises(takeout_root: Path, start_date: str, end_date: str) -> list[dict[str, Any]]:
     by_id: dict[str, dict[str, Any]] = {}
     for path in sorted((takeout_root / "Global Export Data").glob("exercise-*.json")):
@@ -126,25 +153,150 @@ def load_exercises(takeout_root: Path, start_date: str, end_date: str) -> list[d
         start = local_timestamp(start_value.isoformat(timespec="seconds"))
         end = local_timestamp(end_value.isoformat(timespec="seconds"))
         active_zone = row.get("activeZoneMinutes", {})
+        metrics_summary: dict[str, Any] = {
+            "caloriesKcal": row.get("calories"),
+            "averageHeartRateBeatsPerMinute": row.get("averageHeartRate"),
+            "steps": row.get("steps"),
+            "activeZoneMinutes": active_zone.get("totalMinutes"),
+        }
+        distance = number(row.get("distance"))
+        if distance is not None:
+            unit = str(row.get("distanceUnit") or "").strip().lower()
+            if unit not in {"kilometer", "kilometre", "km"}:
+                raise ValueError(f"Unsupported exercise distance unit on {date}: {row.get('distanceUnit')}")
+            if distance < 0:
+                raise ValueError(f"Negative exercise distance on {date}: {distance}")
+            metrics_summary["distanceMillimeters"] = int(round(distance * 1_000_000))
         payload = {
             "exercise": {
                 "displayName": row.get("activityName") or "Exercise",
                 "exerciseType": exercise_type(str(row.get("activityName") or "Exercise")),
                 "activeDuration": f"{float(row.get('activeDuration', 0)) / 1000}s",
-                "metricsSummary": {
-                    "caloriesKcal": row.get("calories"),
-                    "averageHeartRateBeatsPerMinute": row.get("averageHeartRate"),
-                    "steps": row.get("steps"),
-                    "activeZoneMinutes": active_zone.get("totalMinutes"),
-                },
+                "metricsSummary": metrics_summary,
             }
         }
         output.append(record("exercise", date, payload, source_key=key, start=start, end=end))
     return output
 
 
+def _vo2_value(value: Any, keys: tuple[str, ...]) -> tuple[float, dict[str, Any]] | None:
+    if not isinstance(value, dict):
+        return None
+    for key in keys:
+        parsed = number(value.get(key))
+        if parsed is not None:
+            return parsed, value
+    return None
+
+
+def _unique_vo2_candidate(
+    candidates: dict[str, tuple[float, dict[str, Any]]],
+    key: str,
+    candidate: tuple[float, dict[str, Any]],
+    label: str,
+) -> None:
+    existing = candidates.get(key)
+    if existing is None:
+        candidates[key] = candidate
+        return
+    if existing[0] != candidate[0]:
+        raise ValueError(f"Conflicting {label} values at {key}: {existing[0]} vs {candidate[0]}")
+
+
+def load_vo2_max(takeout_root: Path, start_date: str, end_date: str) -> list[dict[str, Any]]:
+    export = takeout_root / "Global Export Data"
+    daily_paths = sorted(set(export.glob("demographic_vo2_max-*.json")) | set(export.glob("daily_vo2_max-*.json")))
+    run_paths = sorted(set(export.glob("run_vo2_max-*.json")) | set(export.glob("run_vo2max-*.json")))
+    generic_paths = sorted(export.glob("vo2_max-*.json"))
+    daily: dict[str, tuple[float, dict[str, Any]]] = {}
+    run: dict[str, tuple[float, dict[str, Any]]] = {}
+    generic: dict[str, tuple[float, dict[str, Any]]] = {}
+
+    for row in json_rows(daily_paths):
+        moment = takeout_timestamp(row.get("dateTime"))
+        metric_date = moment.date().isoformat()
+        if not start_date <= metric_date <= end_date:
+            continue
+        candidate = _vo2_value(row.get("value"), ("filteredDemographicVO2Max", "demographicVO2Max", "filteredVo2Max", "vo2Max"))
+        if candidate is None:
+            raise ValueError(f"Daily VO₂ max record has no numeric value on {metric_date}")
+        _unique_vo2_candidate(daily, metric_date, candidate, "daily VO₂ max")
+
+    for path in [*run_paths, *generic_paths]:
+        is_run = path in run_paths
+        keys = ("filteredRunVO2Max", "runVO2Max", "filteredVo2Max", "vo2Max") if is_run else ("filteredVo2Max", "vo2Max", "filteredRunVO2Max", "runVO2Max")
+        for row in json_rows([path]):
+            moment = takeout_timestamp(row.get("dateTime"))
+            metric_date = moment.date().isoformat()
+            if not start_date <= metric_date <= end_date:
+                continue
+            candidate = _vo2_value(row.get("value"), keys)
+            if candidate is None:
+                raise ValueError(f"VO₂ max record has no numeric value on {metric_date}")
+            target = run if is_run else generic
+            _unique_vo2_candidate(target, local_timestamp(moment.isoformat(timespec="seconds")), candidate, "run VO₂ max" if is_run else "VO₂ max")
+
+    records: list[dict[str, Any]] = []
+    for metric_date in sorted(daily):
+        value, source_value = daily[metric_date]
+        records.append(record(
+            "daily-vo2-max",
+            metric_date,
+            {"dailyVo2Max": {"vo2Max": value, "sourceValue": source_value}},
+            source_key=metric_date,
+        ))
+
+    for timestamp in sorted(set(run) | set(generic)):
+        if timestamp in run:
+            value, source_value = run[timestamp]
+            records.append(record(
+                "run-vo2-max",
+                timestamp[:10],
+                {"runVo2Max": {"runVo2Max": value, "sourceValue": source_value}},
+                source_key=timestamp,
+                measured_at=timestamp,
+            ))
+            if timestamp in generic and generic[timestamp][0] != value:
+                raise ValueError(f"Conflicting run and generic VO₂ max values at {timestamp}")
+            continue
+        value, source_value = generic[timestamp]
+        records.append(record(
+            "vo2-max",
+            timestamp[:10],
+            {"vo2Max": {"vo2Max": value, "sourceValue": source_value}},
+            source_key=timestamp,
+            measured_at=timestamp,
+        ))
+    return records
+
+
+def load_sedentary_periods(takeout_root: Path, start_date: str, end_date: str) -> list[dict[str, Any]]:
+    export = takeout_root / "Global Export Data"
+    by_date: dict[str, float] = {}
+    for row in json_rows(sorted(export.glob("sedentary_minutes-*.json"))):
+        moment = takeout_timestamp(row.get("dateTime"))
+        metric_date = moment.date().isoformat()
+        if not start_date <= metric_date <= end_date:
+            continue
+        minutes = number(row.get("value"))
+        if minutes is None or not 0 <= minutes <= 1440:
+            raise ValueError(f"Invalid sedentary duration on {metric_date}: {row.get('value')}")
+        existing = by_date.get(metric_date)
+        if existing is not None and existing != minutes:
+            raise ValueError(f"Conflicting sedentary durations on {metric_date}: {existing} vs {minutes}")
+        by_date[metric_date] = minutes
+
+    return [record(
+        "sedentary-period",
+        metric_date,
+        {"dailyRollup": {"sedentaryPeriod": {"durationSum": f"{int(minutes * 60)}s"}}},
+        source_key=metric_date,
+    ) for metric_date, minutes in sorted(by_date.items())]
+
+
 def build_records(takeout_root: Path, daily_dataset: Path, start_date: str, end_date: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    daily_rows = {row["date"]: row for row in csv.DictReader(daily_dataset.open(encoding="utf-8")) if start_date <= row["date"] <= end_date}
+    with daily_dataset.open(encoding="utf-8", newline="") as handle:
+        daily_rows = {row["date"]: row for row in csv.DictReader(handle) if start_date <= row["date"] <= end_date}
     sleeps, raw_sleep_by_date = load_sleep(takeout_root, start_date, end_date)
     output = list(sleeps)
 
@@ -193,6 +345,8 @@ def build_records(takeout_root: Path, daily_dataset: Path, start_date: str, end_
             output.append(record("active-minutes", date, {"dailyRollup": {"activeMinutesSum": sum(value or 0 for value in active_components)}}))
 
     output.extend(load_exercises(takeout_root, start_date, end_date))
+    output.extend(load_vo2_max(takeout_root, start_date, end_date))
+    output.extend(load_sedentary_periods(takeout_root, start_date, end_date))
     identities = {(item["provider"], item["data_type"], item["source_record_id"]) for item in output}
     if len(identities) != len(output):
         raise ValueError("Duplicate normalized Takeout identities")

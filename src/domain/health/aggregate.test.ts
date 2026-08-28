@@ -139,6 +139,43 @@ describe("aggregateHealthRecords", () => {
     expect(day.running_average_heart_rate).toBeCloseTo((150 * 25 + 160 * 18) / 43);
   });
 
+  it("does not calculate pace from a distance-only or duration-only session", () => {
+    const [day] = aggregateHealthRecords([
+      record({
+        data_type: "exercise",
+        start_time: null,
+        end_time: null,
+        payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 5_000_000 } } },
+      }),
+      record({
+        data_type: "exercise",
+        start_time: "2026-08-07T18:00:00Z",
+        end_time: "2026-08-07T18:18:00Z",
+        payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { averageHeartRateBeatsPerMinute: 160 } } },
+      }),
+    ]);
+
+    expect(day.running_distance_km).toBe(5);
+    expect(day.running_duration_minutes).toBe(18);
+    expect(day.running_pace_seconds_per_km).toBeNull();
+  });
+
+  it("recognizes WHOOP trail running and its legacy average heart-rate field without inventing distance", () => {
+    const [day] = aggregateHealthRecords([record({
+      provider: "whoop_export",
+      data_type: "exercise",
+      civil_date: "2026-05-28",
+      start_time: "2026-05-28T10:00:00+02:00",
+      end_time: "2026-05-28T10:32:00+02:00",
+      payload: { exercise: { exerciseType: "TRAIL_RUNNING", averageHeartRate: 154 } },
+    })]);
+
+    expect(day.running_duration_minutes).toBe(32);
+    expect(day.running_average_heart_rate).toBe(154);
+    expect(day.running_distance_km).toBeNull();
+    expect(day.running_pace_seconds_per_km).toBeNull();
+  });
+
   it("uses the session total before a one-kilometre split and accepts jogging", () => {
     const [day] = aggregateHealthRecords([
       record({
@@ -189,6 +226,18 @@ describe("aggregateHealthRecords", () => {
     })]);
 
     expect(day.running_distance_km).toBeNull();
+    expect(day.running_pace_seconds_per_km).toBeNull();
+  });
+
+  it("does not derive pace from a zero-duration run", () => {
+    const [day] = aggregateHealthRecords([record({
+      data_type: "exercise",
+      start_time: "2026-08-07T10:00:00Z",
+      end_time: "2026-08-07T10:00:00Z",
+      payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 4_000_000 } } },
+    })]);
+
+    expect(day.running_distance_km).toBe(4);
     expect(day.running_pace_seconds_per_km).toBeNull();
   });
 
