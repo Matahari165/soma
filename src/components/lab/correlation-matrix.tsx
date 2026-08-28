@@ -380,11 +380,13 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
       const groupId = group.replaceAll(" ", "-").toLowerCase();
       return <section className="strongest-effects__group" aria-labelledby={`strongest-${groupId}`} key={group}>
       <h4 id={`strongest-${groupId}`}>{group}</h4>
-      {influences.map((influence) => <article className="strongest-effects__influence" key={`${influence.group}:${influence.predictorId}`}>
+      {influences.map((influence) => {
+        const comparisonGroups = groupRelationsByComparison(influence.relations);
+        return <article className={`strongest-effects__influence${comparisonGroups.length === 1 ? " is-single-comparison" : ""}`} key={`${influence.group}:${influence.predictorId}`}>
         <header className="strongest-effects__influence-header">
           <strong>{influence.predictorLabel}</strong>
         </header>
-        {groupRelationsByComparison(influence.relations).map((comparisonGroup) => <section className="strongest-effects__comparison-group" key={comparisonGroup.comparisonLabel}>
+        {comparisonGroups.map((comparisonGroup) => <section className="strongest-effects__comparison-group" key={comparisonGroup.comparisonLabel}>
         <header className="strongest-effects__comparison-header"><strong>{formatComparisonLabel(comparisonGroup.comparisonLabel)}</strong></header>
         <ol>{comparisonGroup.relations.map((relation) => {
         const index = meaningful.indexOf(relation);
@@ -426,7 +428,8 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
         </li>;
       })}</ol>
         </section>)}
-      </article>)}
+      </article>;
+      })}
     </section>;
     })}
   </section>;
