@@ -865,7 +865,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__group > h4 { padding: 7px 12px; border-bottom: 1px solid var(--line-strong); background: color-mix(in srgb, var(--line) 52%, var(--canvas)); color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .55rem; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
 .strongest-effects__influence { border-bottom: 1px solid var(--line); background: var(--paper); }
 .strongest-effects__influence:last-child { border-bottom: 0; }
-.strongest-effects__influence-header { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 12px; background: var(--paper); }
+.strongest-effects__influence-header { display: flex; min-height: 42px; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; background: var(--paper); text-align: center; }
 .strongest-effects__influence-header strong { font-size: .86rem; font-weight: 650; }
 .strongest-effects__influence-header small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; text-align: right; }
 .strongest-effects__comparison-group { display: grid; grid-template-columns: minmax(190px, 240px) minmax(0, 1fr); }
@@ -882,10 +882,11 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__relation strong, .strongest-effects__relation small { display: block; }
 .strongest-effects__relation strong { font-size: .78rem; }
 .strongest-effects__relation small { margin-top: 3px; color: var(--ink-soft); font-size: .66rem; }
-.strongest-effects__plot { position: relative; display: block; height: 20px; border-top: 2px solid var(--line-strong); }
-.strongest-effects__zero { position: absolute; top: -6px; bottom: 0; left: 50%; width: 1px; background: var(--line-strong); }
-.strongest-effects__interval { position: absolute; top: -3px; height: 5px; background: var(--ink-soft); }
-.strongest-effects__point { position: absolute; top: -6px; width: 11px; height: 11px; border: 2px solid var(--paper); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--ink); transform: translateX(-50%); }
+.strongest-effects__plot { position: relative; display: block; height: 20px; }
+.strongest-effects__plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 2px; background: var(--line-strong); content: ""; transform: translateY(-50%); }
+.strongest-effects__zero { position: absolute; z-index: 1; top: 50%; left: 50%; width: 1px; height: 12px; background: var(--line-strong); transform: translateY(-50%); }
+.strongest-effects__interval { position: absolute; z-index: 2; top: 50%; height: 5px; background: var(--ink-soft); transform: translateY(-50%); }
+.strongest-effects__point { position: absolute; z-index: 3; top: 50%; width: 11px; height: 11px; border: 2px solid var(--paper); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--ink); transform: translate(-50%, -50%); }
 .strongest-effects__plot.is-positive .strongest-effects__interval { background: var(--effect-positive); }
 .strongest-effects__plot.is-positive .strongest-effects__point { background: var(--effect-positive); box-shadow: 0 0 0 2px var(--effect-positive); }
 .strongest-effects__plot.is-negative .strongest-effects__interval { background: var(--effect-negative); }
@@ -901,12 +902,12 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__outcome.is-neutral { color: var(--ink-soft); }
 .strongest-effects__empty { padding: 20px 12px; color: var(--muted); font-size: .7rem; }
 @media (min-width: 701px) {
-  .strongest-effects__influence.is-single-comparison { display: grid; min-height: 98px; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: 42px minmax(56px, auto); }
-  .strongest-effects__influence.is-single-comparison > .strongest-effects__influence-header { grid-column: 1; grid-row: 1; }
-  .strongest-effects__influence.is-single-comparison > .strongest-effects__comparison-group { display: contents; }
-  .strongest-effects__influence.is-single-comparison .strongest-effects__comparison-header { grid-column: 1; grid-row: 2; }
-  .strongest-effects__influence.is-single-comparison .strongest-effects__comparison-group > ol { grid-column: 2; grid-row: 1 / 3; }
-  .strongest-effects__influence.is-single-comparison .strongest-effects__comparison-group li > button { min-height: 98px; }
+  .strongest-effects__influence.is-single-result { display: grid; min-height: 98px; grid-template-columns: 240px minmax(0, 1fr); }
+  .strongest-effects__influence.is-single-result > .strongest-effects__influence-header { z-index: 1; grid-column: 1 / 3; grid-row: 1; align-self: start; background: transparent; pointer-events: none; }
+  .strongest-effects__influence.is-single-result > .strongest-effects__comparison-group { display: contents; }
+  .strongest-effects__influence.is-single-result .strongest-effects__comparison-header { grid-column: 1; grid-row: 1; }
+  .strongest-effects__influence.is-single-result .strongest-effects__comparison-group > ol { grid-column: 2; grid-row: 1; }
+  .strongest-effects__influence.is-single-result .strongest-effects__comparison-group li > button { min-height: 98px; }
 }
 .matrix-scroll {
   display: block;

@@ -382,7 +382,9 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
       <h4 id={`strongest-${groupId}`}>{group}</h4>
       {influences.map((influence) => {
         const comparisonGroups = groupRelationsByComparison(influence.relations);
-        return <article className={`strongest-effects__influence${comparisonGroups.length === 1 ? " is-single-comparison" : ""}`} key={`${influence.group}:${influence.predictorId}`}>
+        const singleComparison = comparisonGroups.length === 1;
+        const singleResult = singleComparison && comparisonGroups[0].relations.length === 1;
+        return <article className={`strongest-effects__influence${singleComparison ? " is-single-comparison" : ""}${singleResult ? " is-single-result" : ""}`} key={`${influence.group}:${influence.predictorId}`}>
         <header className="strongest-effects__influence-header">
           <strong>{influence.predictorLabel}</strong>
         </header>

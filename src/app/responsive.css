@@ -17,7 +17,7 @@
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strongest-effects > header, .strongest-effects li > button { grid-template-columns: minmax(190px, .9fr) minmax(260px, 1.1fr) minmax(135px, .6fr); }
   .strongest-effects__comparison-group { grid-template-columns: 190px minmax(395px, 1fr); }
-  .strongest-effects__influence.is-single-comparison { grid-template-columns: 190px minmax(0, 1fr); }
+  .strongest-effects__influence.is-single-result { grid-template-columns: 190px minmax(0, 1fr); }
   .strongest-effects__comparison-group li > button { grid-template-columns: minmax(0, 1fr) minmax(135px, 190px); }
 }
 
