@@ -38,6 +38,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/icon.svg?v=erlenmeyer-transparent-3", type: "image/svg+xml" }],
     shortcut: ["/icon.svg?v=erlenmeyer-transparent-3"],
+    apple: [{ url: "/apple-icon.png?v=erlenmeyer-transparent-3", sizes: "180x180", type: "image/png" }],
   },
   verification: {
     google: "vN4Hbw8JsncwAf_vQailk6Xw0Wrh7awEsPtmaVoJWL8",
