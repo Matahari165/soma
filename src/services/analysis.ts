@@ -42,8 +42,23 @@ export const ANALYSIS_DATA_TYPES = [
   "weight",
 ] as const;
 
-export function rollingAnalysisStart(now: Date, days = 45) {
+export const DEFAULT_ANALYSIS_WINDOW_DAYS = 45 as const;
+export const HISTORICAL_ANALYSIS_WINDOW_DAYS = 90 as const;
+
+export type RecomputeUserHealthOptions = {
+  windowDays?: typeof DEFAULT_ANALYSIS_WINDOW_DAYS | typeof HISTORICAL_ANALYSIS_WINDOW_DAYS;
+};
+
+export function rollingAnalysisStart(now: Date, days: number = DEFAULT_ANALYSIS_WINDOW_DAYS) {
   return new Date(now.getTime() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+export function analysisWindowFor(now: Date, options: RecomputeUserHealthOptions = {}) {
+  const days = options.windowDays ?? DEFAULT_ANALYSIS_WINDOW_DAYS;
+  if (days !== DEFAULT_ANALYSIS_WINDOW_DAYS && days !== HISTORICAL_ANALYSIS_WINDOW_DAYS) {
+    throw new Error("Health analysis window must be 45 or 90 days.");
+  }
+  return { days, start: rollingAnalysisStart(now, days) } as const;
 }
 
 function canonicalDerivedValue(value: unknown): unknown {
@@ -120,12 +135,11 @@ async function deleteStaleDerivedRows(userId: string, analysisStart: string, act
   }
 }
 
-export async function recomputeUserHealth(userId: string) {
+export async function recomputeUserHealth(userId: string, options: RecomputeUserHealthOptions = {}) {
   const admin = createCloudflareAdminClient();
-  // Recent scores need a 30-day baseline. Recomputing a bounded 45-day window
-  // preserves older derived history while keeping each Cloudflare Free job
-  // within its CPU budget after new wearable data arrives.
-  const analysisStart = rollingAnalysisStart(new Date());
+  // Recent scores need a 30-day baseline. The default bounded 45-day window
+  // preserves older derived history; historical/manual jobs can request 90 days.
+  const { start: analysisStart } = analysisWindowFor(new Date(), options);
   const [recordsResult, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, currentMetrics, currentScores] = await Promise.all([
     healthRecordsForAnalysis(userId, ANALYSIS_DATA_TYPES, analysisStart)
       .then((data) => ({ data: data as NormalizedHealthRecord[], error: null }))
@@ -140,7 +154,8 @@ export async function recomputeUserHealth(userId: string) {
   const timezone = profile?.timezone ?? "Europe/Paris";
   const sourceCoverageDates = healthRecordCoverageDates(records ?? []);
   const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
-  const days = aggregateHealthRecords(wearableWindow.records, timezone);
+  const days = aggregateHealthRecords(wearableWindow.records, timezone)
+    .filter((day) => day.metric_date >= analysisStart);
   console.info("[health-analysis] source records loaded", {
     recordCount: wearableWindow.records.length,
     dayCount: days.length,

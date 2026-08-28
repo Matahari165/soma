@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { GoogleHealthRequestError } from "./client";
 import { normalizeGoogleHealthPoint } from "./normalize";
-import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthSyncRangeStart, googleHealthSyncRuntimeState, selectNextGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
+import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHealthAnalyticsRequestForJob, googleHealthAnalyticsLookbackDaysForTrigger, googleHealthSyncRangeStart, googleHealthSyncRuntimeState, selectNextGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger, usesDirectGoogleHealthUpsert } from "./sync";
 
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
@@ -20,6 +20,17 @@ describe("Google Health sync failures", () => {
     expect(shouldRefreshAnalyticsForTrigger("automatic")).toBe(true);
     expect(shouldRefreshAnalyticsForTrigger("initial")).toBe(true);
     expect(shouldRefreshAnalyticsForTrigger("manual")).toBe(true);
+  });
+
+  it("requests short analytics for automatic jobs and 90 days for historical/manual jobs", () => {
+    expect(googleHealthAnalyticsLookbackDaysForTrigger("automatic")).toBe(45);
+    expect(googleHealthAnalyticsLookbackDaysForTrigger("webhook")).toBe(45);
+    expect(googleHealthAnalyticsLookbackDaysForTrigger("manual")).toBe(90);
+    expect(googleHealthAnalyticsLookbackDaysForTrigger("initial")).toBe(90);
+    expect(googleHealthAnalyticsRequestForJob({ sync_trigger: "automatic" })).toMatchObject({ lookbackDays: 45, backfillVersion: null });
+    expect(googleHealthAnalyticsRequestForJob({ sync_trigger: "manual" })).toMatchObject({ lookbackDays: 90, backfillVersion: 1 });
+    expect(googleHealthAnalyticsRequestForJob({ sync_trigger: "initial" })).toMatchObject({ lookbackDays: 90, backfillVersion: 1 });
+    expect(googleHealthAnalyticsRequestForJob({ sync_trigger: "webhook" })).toMatchObject({ lookbackDays: 45, backfillVersion: null });
   });
 
   it("publishes high-frequency series page by page", () => {

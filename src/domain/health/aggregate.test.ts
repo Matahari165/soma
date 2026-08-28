@@ -100,4 +100,120 @@ describe("aggregateHealthRecords", () => {
     expect(day.sedentary_minutes).toBe(360);
     expect(day.active_energy_kcal).toBeNull();
   });
+
+  it("aggregates the metrics of one running exercise", () => {
+    const [day] = aggregateHealthRecords([
+      record({
+        data_type: "exercise",
+        start_time: "2026-08-07T10:00:00Z",
+        end_time: "2026-08-07T10:25:00Z",
+        payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 5_000_000, averageHeartRateBeatsPerMinute: 150 } } },
+      }),
+    ]);
+
+    expect(day.running_distance_km).toBe(5);
+    expect(day.running_duration_minutes).toBe(25);
+    expect(day.running_pace_seconds_per_km).toBe(300);
+    expect(day.running_average_heart_rate).toBe(150);
+  });
+
+  it("aggregates several runs using total pace and duration-weighted heart rate", () => {
+    const [day] = aggregateHealthRecords([
+      record({
+        data_type: "exercise",
+        start_time: "2026-08-07T10:00:00Z",
+        end_time: "2026-08-07T10:25:00Z",
+        payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 5_000_000, averageHeartRateBeatsPerMinute: 150 } } },
+      }),
+      record({
+        data_type: "exercise",
+        start_time: "2026-08-07T18:00:00Z",
+        end_time: "2026-08-07T18:18:00Z",
+        payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 3_000_000, averageHeartRateBeatsPerMinute: 160 } } },
+      }),
+    ]);
+
+    expect(day.running_distance_km).toBe(8);
+    expect(day.running_duration_minutes).toBe(43);
+    expect(day.running_pace_seconds_per_km).toBe(322.5);
+    expect(day.running_average_heart_rate).toBeCloseTo((150 * 25 + 160 * 18) / 43);
+  });
+
+  it("uses the session total before a one-kilometre split and accepts jogging", () => {
+    const [day] = aggregateHealthRecords([
+      record({
+        data_type: "exercise",
+        start_time: "2026-08-09T10:00:00Z",
+        end_time: "2026-08-09T10:34:00Z",
+        // This order mirrors the Google Health payload that exposed the bug:
+        // the first split is encountered before the session summary.
+        payload: {
+          exercise: {
+            exerciseType: "JOGGING",
+            splits: [{ metricsSummary: { distanceMillimeters: 1_000_000, averageHeartRateBeatsPerMinute: 120 } }],
+            metricsSummary: { distanceMillimeters: 5_510_000, averageHeartRateBeatsPerMinute: 162 },
+          },
+        },
+      }),
+    ]);
+
+    expect(day.running_distance_km).toBe(5.51);
+    expect(day.running_duration_minutes).toBe(34);
+    expect(day.running_pace_seconds_per_km).toBeCloseTo((34 * 60) / 5.51);
+    expect(day.running_average_heart_rate).toBe(162);
+  });
+
+  it("sums split distances when a running session has no session total", () => {
+    const [day] = aggregateHealthRecords([record({
+      data_type: "exercise",
+      start_time: "2026-08-07T10:00:00Z",
+      end_time: "2026-08-07T10:20:00Z",
+      payload: {
+        exercise: {
+          exerciseType: "RUNNING",
+          splits: [
+            { metricsSummary: { distanceMillimeters: 1_000_000 } },
+            { metricsSummary: { distanceMillimeters: 2_000_000 } },
+          ],
+        },
+      },
+    })]);
+
+    expect(day.running_distance_km).toBe(3);
+  });
+
+  it("does not classify walking as running", () => {
+    const [day] = aggregateHealthRecords([record({
+      data_type: "exercise",
+      payload: { exercise: { exerciseType: "WALKING", metricsSummary: { distanceMillimeters: 4_000_000 } } },
+    })]);
+
+    expect(day.running_distance_km).toBeNull();
+    expect(day.running_pace_seconds_per_km).toBeNull();
+  });
+
+  it("keeps running metrics missing on a day without a run", () => {
+    const [day] = aggregateHealthRecords([record({ data_type: "steps", payload: { steps: { count: 4200 } } })]);
+
+    expect(day.running_distance_km).toBeNull();
+    expect(day.running_duration_minutes).toBeNull();
+    expect(day.running_pace_seconds_per_km).toBeNull();
+    expect(day.running_average_heart_rate).toBeNull();
+  });
+
+  it("preserves partial running metrics without filling missing values with zero", () => {
+    const [distanceOnly, durationOnly] = aggregateHealthRecords([
+      record({ data_type: "exercise", civil_date: "2026-08-07", payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 4_000_000, averageHeartRateBeatsPerMinute: 145 } } } }),
+      record({ data_type: "exercise", civil_date: "2026-08-08", start_time: "2026-08-08T10:00:00Z", end_time: "2026-08-08T10:20:00Z", payload: { exercise: { exerciseType: "RUNNING", metricsSummary: {} } } }),
+    ]);
+
+    expect(distanceOnly.running_distance_km).toBe(4);
+    expect(distanceOnly.running_duration_minutes).toBeNull();
+    expect(distanceOnly.running_pace_seconds_per_km).toBeNull();
+    expect(distanceOnly.running_average_heart_rate).toBe(145);
+    expect(durationOnly.running_distance_km).toBeNull();
+    expect(durationOnly.running_duration_minutes).toBe(20);
+    expect(durationOnly.running_pace_seconds_per_km).toBeNull();
+    expect(durationOnly.running_average_heart_rate).toBeNull();
+  });
 });

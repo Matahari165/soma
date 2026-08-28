@@ -4,8 +4,13 @@ import {
   automaticGoogleHealthDataTypes,
   automaticGoogleHealthRange,
   clampGoogleHealthRangeToConnection,
+  googleHealthAnalyticsBackfillNeeded,
+  GOOGLE_HEALTH_ANALYTICS_BACKFILL_IDEMPOTENCY_KEY,
+  googleHealthAnalyticsBackfillVersion,
   googleHealthHistorySeededFromTakeout,
   isAutomaticGoogleHealthSyncDue,
+  manualGoogleHealthRange,
+  shouldQueueGoogleHealthAnalyticsBackfill,
   zonedClock,
 } from "./schedule";
 import { GOOGLE_HEALTH_SCOPES } from "./client";
@@ -43,6 +48,30 @@ describe("Google Health hourly schedule", () => {
   it("refreshes a three-day reconciliation window", () => {
     const range = automaticGoogleHealthRange(new Date("2026-08-20T09:00:00.000Z"));
     expect(range).toEqual({ start: "2026-08-17T09:00:00.000Z", end: "2026-08-20T09:00:00.000Z" });
+  });
+
+  it("refreshes a 90-day manual window without changing the automatic window", () => {
+    const now = new Date("2026-08-20T09:00:00.000Z");
+    expect(automaticGoogleHealthRange(now).start).toBe("2026-08-17T09:00:00.000Z");
+    expect(manualGoogleHealthRange(now)).toEqual({ start: "2026-05-22T09:00:00.000Z", end: "2026-08-20T09:00:00.000Z" });
+  });
+
+  it("requires a new historical backfill when the stored version is missing or old", () => {
+    expect(googleHealthAnalyticsBackfillVersion(null)).toBe(0);
+    expect(googleHealthAnalyticsBackfillNeeded(null)).toBe(true);
+    expect(googleHealthAnalyticsBackfillNeeded({ analytics_backfill_version: 1 })).toBe(false);
+    expect(googleHealthAnalyticsBackfillNeeded({ analytics_backfill_version: 0 })).toBe(true);
+    expect(GOOGLE_HEALTH_ANALYTICS_BACKFILL_IDEMPOTENCY_KEY).toBe("google-health-analytics-backfill-v1");
+  });
+
+  it("queues one historical analytics repair without waiting for full history", () => {
+    const base = {
+      metadata: null,
+      analyticsBackfillOpen: false,
+    };
+    expect(shouldQueueGoogleHealthAnalyticsBackfill(base)).toBe(true);
+    expect(shouldQueueGoogleHealthAnalyticsBackfill({ ...base, analyticsBackfillOpen: true })).toBe(false);
+    expect(shouldQueueGoogleHealthAnalyticsBackfill({ ...base, metadata: { analytics_backfill_version: 1 } })).toBe(false);
   });
 
   it("prioritizes all hourly health metrics without blocking on raw streams", () => {

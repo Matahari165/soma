@@ -7,7 +7,11 @@ import {
   GOOGLE_HEALTH_SCOPES,
 } from "@/integrations/google-health/client";
 import { toSyncStatus } from "@/integrations/google-health/status";
-import { automaticGoogleHealthDataTypes, clampGoogleHealthRangeToConnection } from "@/integrations/google-health/schedule";
+import {
+  automaticGoogleHealthDataTypes,
+  clampGoogleHealthRangeToConnection,
+  manualGoogleHealthRange,
+} from "@/integrations/google-health/schedule";
 import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -26,9 +30,12 @@ type OpenJob = {
   cursor: { phase?: string } | null;
   completed_at: string | null;
   created_at: string;
+  sync_trigger?: string;
+  import_range?: string;
 };
 
-function isDashboardRefreshJob(job: Pick<OpenJob, "data_types">, expectedTypes: readonly string[]) {
+function isDashboardRefreshJob(job: Pick<OpenJob, "data_types" | "sync_trigger" | "import_range">, expectedTypes: readonly string[]) {
+  if (!((job.sync_trigger === "manual" || job.sync_trigger === "initial") && job.import_range === "90_days")) return false;
   const expected = new Set(expectedTypes);
   return job.data_types?.length === expected.size && job.data_types.every((dataType) => expected.has(dataType));
 }
@@ -75,7 +82,7 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createCloudflareAdminClient();
   const [jobsResult, connectionResult] = await Promise.all([
-    admin.from("sync_jobs").select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at")
+    admin.from("sync_jobs").select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at,sync_trigger,import_range")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
     admin.from("provider_connections").select("status,scopes,last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
   ]);
@@ -145,7 +152,7 @@ export async function POST() {
   if (!dataTypes.length) return NextResponse.json({ error: "Grant at least one Soma health permission before syncing." }, { status: 409 });
 
   const { data: openJobs, error: openJobsError } = await admin.from("sync_jobs")
-    .select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at")
+    .select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at,sync_trigger,import_range")
     .eq("user_id", user.id).in("status", ["queued", "running"]).order("created_at", { ascending: false }).limit(20);
   if (openJobsError) return NextResponse.json({ error: "Sync queue could not be checked." }, { status: 500 });
   const existing = ((openJobs ?? []) as OpenJob[]).find((job) => isDashboardRefreshJob(job, dataTypes));
@@ -154,10 +161,7 @@ export async function POST() {
     return NextResponse.json({ status: toSyncStatus(existing, {}), message: "Google Health is already updating in the background." }, { status: 202 });
   }
 
-  const end = new Date();
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 3);
-  const range = clampGoogleHealthRangeToConnection({ start: start.toISOString(), end: end.toISOString() }, connection.metadata);
+  const range = clampGoogleHealthRangeToConnection(manualGoogleHealthRange(new Date()), connection.metadata);
   const { data: job, error: jobError } = await admin.from("sync_jobs").insert({
     user_id: user.id,
     connection_id: connection.id,

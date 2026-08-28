@@ -1,6 +1,10 @@
 import { decryptSecret, encryptSecret, stableHash } from "@/lib/crypto";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { recomputeUserHealth } from "@/services/analysis";
+import { claimCloudflareLock, createCloudflareAdminClient, releaseCloudflareLock } from "@/lib/cloudflare/db";
+import {
+  DEFAULT_ANALYSIS_WINDOW_DAYS,
+  HISTORICAL_ANALYSIS_WINDOW_DAYS,
+  recomputeUserHealth,
+} from "@/services/analysis";
 
 import {
   GOOGLE_HEALTH_DATA_TYPES,
@@ -13,6 +17,9 @@ import {
   usesCivilDateWindow,
 } from "./client";
 import { normalizeGoogleHealthDailyRollup, normalizeGoogleHealthPoint } from "./normalize";
+import { GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION } from "./schedule";
+
+export const GOOGLE_HEALTH_ANALYTICS_RECENT_LOOKBACK_DAYS = DEFAULT_ANALYSIS_WINDOW_DAYS;
 
 type SyncCursor = {
   typeIndex?: number;
@@ -26,6 +33,7 @@ type SyncJob = {
   id: string;
   user_id: string;
   connection_id: string;
+  import_range: string;
   data_types: string[];
   range_start: string;
   range_end: string;
@@ -42,6 +50,7 @@ type ProviderConnection = {
   access_token_ciphertext: string;
   refresh_token_ciphertext: string | null;
   token_expires_at: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type GoogleHealthSyncQueueCandidate = {
@@ -183,6 +192,25 @@ export function shouldRefreshAnalyticsForTrigger(trigger: string) {
   return trigger !== "webhook";
 }
 
+export function googleHealthAnalyticsLookbackDaysForTrigger(trigger: string) {
+  return trigger === "automatic" || trigger === "webhook"
+    ? GOOGLE_HEALTH_ANALYTICS_RECENT_LOOKBACK_DAYS
+    : HISTORICAL_ANALYSIS_WINDOW_DAYS;
+}
+
+export function googleHealthAnalyticsRequestForJob(job: Pick<SyncJob, "sync_trigger">) {
+  const historical = job.sync_trigger !== "automatic" && job.sync_trigger !== "webhook";
+  return {
+    lookbackDays: googleHealthAnalyticsLookbackDaysForTrigger(job.sync_trigger),
+    backfillVersion: historical ? GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION : null,
+  };
+}
+
+function completedAnalyticsMetadata(connection: ProviderConnection, request: ReturnType<typeof googleHealthAnalyticsRequestForJob>) {
+  if (!request.backfillVersion) return connection.metadata ?? {};
+  return { ...(connection.metadata ?? {}), analytics_backfill_version: request.backfillVersion };
+}
+
 export function googleHealthSyncRuntimeState(input: Pick<SyncJob, "cursor" | "attempts">) {
   return {
     cursor: input.cursor ?? {},
@@ -203,14 +231,32 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
 
   const initialState = googleHealthSyncRuntimeState(job);
 
-  const { data: rawClaimedJob, error: claimError } = await admin.from("sync_jobs").update({
-    status: "running",
-    started_at: new Date().toISOString(),
-    attempts: initialState.attempts + 1,
-    error_code: null,
-    error_message: null,
-  }).eq("id", job.id).eq("status", "queued").select("*").maybeSingle();
-  if (claimError) throw new Error("Sync job could not be claimed.");
+  // The D1 compatibility adapter performs filtered mutations through a read
+  // followed by a write. A short lock makes the claim itself exclusive when
+  // two cron invocations race for the same queued job. It is released right
+  // after the conditional claim so a multi-batch drain can continue normally.
+  const claimLockKey = `google-health-sync-job:${job.id}`;
+  if (!await claimCloudflareLock(claimLockKey, job.user_id, 10_000)) {
+    return { completed: false, progress: job.progress ?? 0, skipped: true, analyticsRefreshed: false, analytics: null };
+  }
+  let rawClaimedJob: unknown = null;
+  try {
+    const claimResult = await admin.from("sync_jobs").update({
+      status: "running",
+      started_at: new Date().toISOString(),
+      attempts: initialState.attempts + 1,
+      error_code: null,
+      error_message: null,
+    }).eq("id", job.id).eq("status", "queued").select("*").maybeSingle();
+    if (claimResult.error) throw new Error("Sync job could not be claimed.");
+    rawClaimedJob = claimResult.data;
+  } finally {
+    try {
+      await releaseCloudflareLock(claimLockKey, job.user_id);
+    } catch {
+      console.error("[google-health-sync] claim lock could not be released", { jobId: job.id });
+    }
+  }
   if (!rawClaimedJob) return { completed: false, progress: job.progress ?? 0, skipped: true, analyticsRefreshed: false, analytics: null };
   const claimedJob = rawClaimedJob as SyncJob;
   const claimedState = googleHealthSyncRuntimeState(claimedJob);
@@ -219,7 +265,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
   try {
     const { data: rawConnection, error: connectionError } = await admin
       .from("provider_connections")
-      .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at")
+      .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at,metadata")
       .eq("id", claimedJob.connection_id)
       .single();
     if (connectionError || !rawConnection) throw new Error("Google Health connection was not found.");
@@ -228,16 +274,22 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     const typeIndex = cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
-      const analytics = refreshAnalytics ? await recomputeUserHealth(claimedJob.user_id) : null;
-      await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: new Date().toISOString() }).eq("id", claimedJob.id);
+      const analyticsRequest = googleHealthAnalyticsRequestForJob(claimedJob);
+      const analytics = refreshAnalytics
+        ? await recomputeUserHealth(claimedJob.user_id, { windowDays: analyticsRequest.lookbackDays })
+        : null;
       const completedAt = new Date().toISOString();
-      await admin.from("provider_connections").update({
+      const { error: freshnessError } = await admin.from("provider_connections").update({
         last_synced_at: completedAt,
+        ...(refreshAnalytics ? { metadata: completedAnalyticsMetadata(rawConnection as ProviderConnection, analyticsRequest) } : {}),
         ...(shouldRefreshAnalyticsForTrigger(claimedJob.sync_trigger) ? { last_lab_synced_at: completedAt } : {}),
         status: "connected",
       }).eq("id", claimedJob.connection_id);
-      console.info("[google-health-sync] completed pending analytics", { jobId: claimedJob.id, analytics });
-      return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics };
+      if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
+      const { error: completionError } = await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: completedAt }).eq("id", claimedJob.id);
+      if (completionError) throw new Error("Google Health sync completion could not be stored.");
+      console.info("[google-health-sync] completed pending analytics", { jobId: claimedJob.id, analyticsRequest, analytics });
+      return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics, analyticsRequest };
     }
 
     const end = new Date(claimedJob.range_end);
@@ -300,7 +352,18 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
     const analyticsRefreshed = false;
     const analytics = null;
-    await admin.from("sync_jobs").update({
+    if (completed) {
+      const completedAt = new Date().toISOString();
+      const { error: freshnessError } = await admin.from("provider_connections").update({
+        last_synced_at: completedAt,
+        ...(refreshAnalytics ? { metadata: completedAnalyticsMetadata(rawConnection as ProviderConnection, googleHealthAnalyticsRequestForJob(claimedJob)) } : {}),
+        ...(shouldRefreshAnalyticsForTrigger(claimedJob.sync_trigger) ? { last_lab_synced_at: completedAt } : {}),
+        status: "connected",
+        last_error_code: null,
+      }).eq("id", claimedJob.connection_id);
+      if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
+    }
+    const { error: progressError } = await admin.from("sync_jobs").update({
       cursor: nextCursor,
       progress,
       attempts: 0,
@@ -308,17 +371,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       status: completed ? "completed" : "queued",
       completed_at: completed ? new Date().toISOString() : null,
     }).eq("id", claimedJob.id);
-
-    if (completed) {
-      const completedAt = new Date().toISOString();
-      const { error: freshnessError } = await admin.from("provider_connections").update({
-        last_synced_at: completedAt,
-        ...(shouldRefreshAnalyticsForTrigger(claimedJob.sync_trigger) ? { last_lab_synced_at: completedAt } : {}),
-        status: "connected",
-        last_error_code: null,
-      }).eq("id", claimedJob.connection_id);
-      if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
-    }
+    if (progressError) throw new Error("Google Health sync progress could not be stored.");
 
     console.info("[google-health-sync] batch processed", {
       jobId: claimedJob.id,
@@ -342,7 +395,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
         if (stageCleanupError) console.error("[google-health-sync] denied data type staging cleanup failed", { jobId: claimedJob.id, dataType });
         const nextTypeIndex = typeIndex + 1;
         const message = error instanceof Error ? error.message : "Google Health denied this data type.";
-        await admin.from("sync_jobs").update({
+        const { error: skipError } = await admin.from("sync_jobs").update({
           status: "queued",
           cursor: {
             typeIndex: nextTypeIndex,
@@ -356,7 +409,9 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
           error_message: null,
           started_at: null,
         }).eq("id", claimedJob.id);
-        await admin.from("provider_connections").update({ status: "connected", last_error_code: classification.code }).eq("id", claimedJob.connection_id);
+        if (skipError) throw new Error("Denied Google Health data type could not be skipped.");
+        const { error: connectionError } = await admin.from("provider_connections").update({ status: "connected", last_error_code: classification.code }).eq("id", claimedJob.connection_id);
+        if (connectionError) throw new Error("Google Health connection state could not be updated.");
         console.warn("[google-health-sync] data type skipped after permission denial", { jobId: claimedJob.id, dataType, error: message });
         return { completed: false, progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)), skippedDataType: dataType, analyticsRefreshed: false, analytics: null };
       }

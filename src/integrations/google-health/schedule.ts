@@ -5,10 +5,14 @@ import {
 
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES = 60;
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS = 3;
+export const GOOGLE_HEALTH_MANUAL_SYNC_LOOKBACK_DAYS = 90;
+export const GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION = 1;
+export const GOOGLE_HEALTH_ANALYTICS_BACKFILL_IDEMPOTENCY_KEY = `google-health-analytics-backfill-v${GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION}`;
 
 type GoogleHealthConnectionMetadata = {
   api_sync_start?: unknown;
   takeout_imported_through?: unknown;
+  analytics_backfill_version?: unknown;
 };
 
 function metadataObject(value: unknown): GoogleHealthConnectionMetadata {
@@ -22,6 +26,23 @@ function validIsoDate(value: unknown) {
 
 export function googleHealthHistorySeededFromTakeout(metadata: unknown) {
   return validIsoDate(metadataObject(metadata).takeout_imported_through) !== null;
+}
+
+export function googleHealthAnalyticsBackfillVersion(metadata: unknown) {
+  const version = metadataObject(metadata).analytics_backfill_version;
+  return typeof version === "number" && Number.isInteger(version) && version >= 0 ? version : 0;
+}
+
+export function googleHealthAnalyticsBackfillNeeded(metadata: unknown) {
+  return googleHealthAnalyticsBackfillVersion(metadata) < GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION;
+}
+
+export function shouldQueueGoogleHealthAnalyticsBackfill(input: {
+  metadata: unknown;
+  analyticsBackfillOpen: boolean;
+}) {
+  if (!googleHealthAnalyticsBackfillNeeded(input.metadata)) return false;
+  return !input.analyticsBackfillOpen;
 }
 
 export function clampGoogleHealthRangeToConnection<T extends { start: string; end: string }>(range: T, metadata: unknown): T {
@@ -72,6 +93,13 @@ export function automaticGoogleHealthRange(now: Date) {
   const end = new Date(now);
   const start = new Date(now);
   start.setUTCDate(start.getUTCDate() - GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+export function manualGoogleHealthRange(now: Date) {
+  const end = new Date(now);
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - GOOGLE_HEALTH_MANUAL_SYNC_LOOKBACK_DAYS);
   return { start: start.toISOString(), end: end.toISOString() };
 }
 

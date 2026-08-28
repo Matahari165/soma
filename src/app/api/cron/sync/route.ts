@@ -4,6 +4,9 @@ import {
   automaticGoogleHealthDataTypes,
   automaticGoogleHealthRange,
   clampGoogleHealthRangeToConnection,
+  GOOGLE_HEALTH_ANALYTICS_BACKFILL_IDEMPOTENCY_KEY,
+  manualGoogleHealthRange,
+  shouldQueueGoogleHealthAnalyticsBackfill,
   googleHealthHistorySeededFromTakeout,
   isAutomaticGoogleHealthSyncDue,
 } from "@/integrations/google-health/schedule";
@@ -12,7 +15,7 @@ import { coalesceWebhookJobs, mergeWebhookRange, type WebhookJobCandidate } from
 import { getGrantedGoogleHealthDataTypes, isGoogleHealthDataType } from "@/integrations/google-health/client";
 import { syncGoogleCalendar } from "@/integrations/google-calendar/sync";
 import { requireServerEnv } from "@/lib/env";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { claimCloudflareLock, createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 export const maxDuration = 50;
 
@@ -166,6 +169,33 @@ async function queueAutomaticJobs(now = new Date()) {
     const hourlyDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
     if (!hourlyDataTypes.length) continue;
     if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
+    const analyticsBackfillOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "90_days");
+    if (shouldQueueGoogleHealthAnalyticsBackfill({
+      metadata: connection.metadata,
+      analyticsBackfillOpen,
+    })) {
+      // Repair the analytics window as soon as the API can be queried. It does
+      // not need to wait for the optional all-history import below.
+      const backfillLockKey = `google-health-analytics-backfill:${connection.id}`;
+      if (!await claimCloudflareLock(backfillLockKey, connection.user_id, 60_000)) continue;
+      const range = clampGoogleHealthRangeToConnection(manualGoogleHealthRange(now), connection.metadata);
+      const historicalDataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
+      const { error } = await admin.from("sync_jobs").upsert({
+        user_id: connection.user_id,
+        connection_id: connection.id,
+        idempotency_key: GOOGLE_HEALTH_ANALYTICS_BACKFILL_IDEMPOTENCY_KEY,
+        import_range: "90_days",
+        data_types: [...historicalDataTypes],
+        range_start: range.start,
+        range_end: range.end,
+        status: "queued",
+        sync_trigger: "initial",
+      }, { onConflict: "connection_id,idempotency_key", ignoreDuplicates: true });
+      if (!error) queued += 1;
+      else if (error.code !== "23505") throw new Error("Historical Google Health analytics repair could not be queued.");
+      continue;
+    }
+    if (analyticsBackfillOpen) continue;
     const historyImportOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "all_history");
     const historySeeded = googleHealthHistorySeededFromTakeout(connection.metadata);
     if (!historySeeded && !fullHistoryConnections.has(connection.id) && !historyImportOpen) {
@@ -184,6 +214,7 @@ async function queueAutomaticJobs(now = new Date()) {
       else throw new Error("Complete Google Health history could not be queued.");
       continue;
     }
+    if (historyImportOpen) continue;
     const range = clampGoogleHealthRangeToConnection(automaticGoogleHealthRange(now), connection.metadata);
     const { error } = await admin.from("sync_jobs").insert({
       user_id: connection.user_id,
