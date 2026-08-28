@@ -53,8 +53,8 @@
   .strongest-effects__axis { grid-column: 1; width: 100%; margin-top: 5px; }
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
-  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overscroll-behavior: contain; }
-  .matrix-mobile-list { display: none; }
+  .matrix-scroll { display: none; }
+  .matrix-mobile-list { display: block; }
   .matrix-scroll table { width: max-content; min-width: 1320px; }
   .matrix-scroll .matrix-theme-row > th:first-child, .matrix-scroll tbody th { width: 160px; }
   .matrix-effect-line > strong { font-size: .68rem !important; }
@@ -71,7 +71,7 @@
 
 @media (max-width: 1100px) {
   :root { --sidebar-width: 0px; }
-  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: 0; }
   .sidebar { display: none; }
   .main-content { margin-left: 0; padding-top: calc(64px + env(safe-area-inset-top)); }
   .app-shell--sidebar-collapsed .main-content { margin-left: 0; }
@@ -91,47 +91,36 @@
     background: var(--paper);
   }
   .mobile-header .brand { min-height: 48px; }
-  .mobile-header .brand-symbol { width: 36px; height: 36px; }
-  .mobile-header__actions { display: flex; gap: 3px; }
+  .mobile-header .brand-symbol { width: 30px; height: 30px; }
+  .mobile-header .soma-logo { gap: 5px; }
+  .mobile-header .soma-wordmark strong { font-size: .8rem; }
+  .mobile-header__actions { display: flex; }
   .mobile-header .icon-button { width: 44px; min-width: 44px; min-height: 44px; }
-
-  .bottom-nav {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 70;
-    display: grid;
-    height: calc(64px + env(safe-area-inset-bottom));
-    grid-template-columns: repeat(5, 1fr);
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--ink);
-    background: var(--paper);
-  }
-  .bottom-nav__link {
-    position: relative;
+  .mobile-header-nav {
     display: flex;
-    min-width: 44px;
-    min-height: 60px;
-    flex-direction: column;
+    min-width: 0;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 4px;
+    justify-content: flex-end;
+  }
+  .mobile-header-nav__link {
+    position: relative;
+    display: grid;
+    min-width: 44px;
+    min-height: 44px;
+    place-items: center;
+    padding: 0;
     border: 0;
-    border-right: 1px solid var(--line);
     background: transparent;
     color: var(--muted);
-    font-size: .62rem;
   }
-  .bottom-nav__link:last-child { border-right: 0; }
-  .bottom-nav__link--active { background: var(--ink); color: var(--canvas); }
+  .mobile-header-nav__link--active { background: var(--ink); color: var(--canvas); }
 
   .mobile-menu-backdrop { position: fixed; inset: 0; z-index: 75; display: block; border: 0; background: var(--overlay); }
   .mobile-menu {
     position: fixed;
     right: 10px;
-    bottom: calc(72px + env(safe-area-inset-bottom));
+    top: calc(58px + env(safe-area-inset-top));
+    bottom: auto;
     left: 10px;
     z-index: 80;
     display: grid;
@@ -144,7 +133,7 @@
   .health-detail-page,
   .workout-page,
   .settings-page,
-  .legal-page { padding: 24px 20px 90px; }
+  .legal-page { padding: 24px 20px; }
 
   .health-detail-hero { grid-template-columns: 1fr 190px; }
   .health-detail-hero--with-metrics { grid-template-columns: minmax(220px, 1fr) minmax(480px, 1.2fr); }
@@ -175,7 +164,7 @@
   .onboarding-aside > div:not(.brand) { display: none; }
   .onboarding-steps { grid-template-columns: repeat(4, 1fr); margin-top: 14px; }
   .onboarding-steps li { justify-content: center; font-size: 0; }
-  .onboarding-main { padding: 24px 20px 90px; }
+  .onboarding-main { padding: 24px 20px; }
 
   .auth-page { grid-template-columns: 1fr; }
   .auth-intro { min-height: 62vh; border-right: 0; border-bottom: 1px solid var(--ink); }
@@ -287,7 +276,8 @@
 
 @media (max-width: 380px) {
   .preview-banner { gap: 6px; font-size: .53rem; white-space: nowrap; }
-  .bottom-nav__link { font-size: .56rem; }
+  .mobile-header { padding-inline: 8px; }
+  .mobile-header .soma-wordmark { display: none; }
   .health-detail-hero { grid-template-columns: minmax(0, 1fr) 116px; }
   .health-detail-hero--with-metrics { grid-template-columns: 1fr; }
   .health-detail-hero h1 { font-size: 2.6rem; }
@@ -299,8 +289,6 @@
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 900px) {
   .mobile-header { min-height: 52px; }
   .main-content { padding-top: 52px; }
-  .bottom-nav { height: 54px; }
-  .bottom-nav__link { min-height: 50px; flex-direction: row; }
   .auth-intro { min-height: 100vh; }
   .live-workout-content { grid-template-columns: .65fr 1fr; padding-block: 20px; }
 }
@@ -315,11 +303,12 @@
 }
 
 @media (max-width: 700px) {
-  .personal-lab-page { padding: 14px 14px 84px; }
+  .personal-lab-page { padding: 14px 14px 24px; }
   .lab-header { padding-bottom: 18px; }
   .lab-header h1 { font-size: clamp(2.8rem, 14vw, 4.2rem); }
   .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
-  .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
+  .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; border-right: 0; border-bottom: 0; }
+  .personal-lab-page .lab-header__signals .lab-signals a + a { border-left: 1px solid var(--line); }
   .personal-lab-page .lab-header__signals .lab-signals a > span { min-width: 0; flex-direction: column; gap: 4px; }
   .personal-lab-page .lab-header__signals .lab-signals a > span .lab-signal__label { line-height: 1; }
   .matrix-collection { grid-template-columns: 1fr; gap: 9px; }
@@ -329,35 +318,49 @@
   .lab-signals a { min-height: 126px; border-bottom: 1px solid var(--line); }
   .lab-signals a:nth-child(2n) { border-right: 0; }
   .lab-signals a:nth-child(n+3) { border-bottom: 0; }
-  .journal-card > header { align-items: start; flex-direction: column; }
-  .journal-card__heading { width: 100%; justify-content: space-between; }
-  .journal-card__actions { width: 100%; justify-content: flex-start; }
-  .journal-field { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .journal-card > header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .journal-card__heading { width: auto; justify-content: flex-start; }
+  .journal-card__actions { width: auto; min-width: 0; flex-wrap: nowrap; justify-content: flex-end; gap: 4px; }
+  .journal-card__actions .journal-save-status { display: inline-flex; }
+  .journal-card__actions .journal-save-status { min-height: 36px; padding-inline: 6px; font-size: .55rem; }
+  .journal-card__actions .primary-button { min-height: 36px; padding: 7px 9px; font-size: .7rem; }
+  .journal-card__actions .text-link { min-height: 36px; padding: 7px 8px; font-size: .65rem; }
+  .journal-field { grid-template-columns: minmax(0, 1fr) minmax(116px, 148px); gap: 8px; }
+  .journal-field > .journal-choice,
+  .journal-field > .journal-number,
+  .journal-field > input,
+  .journal-field > select { width: 100%; }
+  .journal-field > .journal-choice--scale { width: 148px; }
   .journal-variable-row { grid-template-columns: 1fr auto; }
   .journal-variable-row > button:last-child { grid-column: 2; }
   .journal-variable-edit,
   .journal-new-variable { grid-template-columns: 1fr; }
   .journal-actions .primary-button { width: 100%; justify-content: center; }
   .matrix-header { align-items: start; flex-direction: column; gap: 14px; padding-bottom: 12px; }
+  .matrix-controls { width: 100%; }
+  .matrix-state-controls { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+  .matrix-state-controls .matrix-legend { min-width: 0; flex-wrap: nowrap; justify-content: space-between; gap: 4px; min-height: 32px; padding: 3px 0; border: 0; }
+  .matrix-state-controls .matrix-legend > span { gap: 3px; }
+  .matrix-state-controls .matrix-legend small { font-size: .5rem; }
+  .matrix-state-controls .matrix-toggle { flex: 0 0 auto; }
+  .matrix-state-controls .matrix-toggle { align-self: center; }
+  .matrix-state-controls .matrix-toggle > span { min-height: 32px; align-items: center; justify-content: center; padding: 3px 6px; border: 1px solid var(--line-strong); line-height: 1; }
+  .matrix-toggle .matrix-toggle__label { display: none; }
+  .matrix-toggle .matrix-toggle__label--mobile { display: inline; font-size: .55rem; }
+  .strongest-effects header p { display: none; }
   .matrix-grain { width: 100%; }
   .matrix-grain button { flex: 1; justify-content: center; }
-  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overflow: auto; overscroll-behavior: contain; }
-  .matrix-mobile-list { display: none; border: 1px solid var(--ink); border-bottom: 0; }
-  .matrix-mobile-list article { display: grid; border-bottom: 1px solid var(--line); background: var(--paper); }
-  .matrix-mobile-list > p { padding: 22px; border-bottom: 1px solid var(--ink); background: var(--paper); color: var(--muted); }
-  .matrix-mobile-list strong { font-size: .82rem; }
-  .matrix-mobile-list__trigger { display: grid; gap: 4px; width: 100%; padding: 15px; border: 0; background: transparent; text-align: left; }
-  .matrix-mobile-list__trigger span { color: var(--ink-soft); font-size: .76rem; }
-  .matrix-mobile-list article > small { display: block; padding: 0 15px 13px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .55rem; }
+  .matrix-scroll { display: none; }
+  .matrix-mobile-list { display: block; border: 1px solid var(--ink); border-bottom: 0; }
 }
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
   .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
-  .journal-card > header { align-items: center; flex-direction: row; }
-  .journal-field { grid-template-columns: 1fr; gap: 8px; }
-  .matrix-scroll { display: block; width: 100%; max-height: 70vh; overflow: auto; }
-  .matrix-mobile-list { display: none; }
+  .journal-card > header { align-items: center; }
+  .journal-field { grid-template-columns: minmax(0, 1fr) minmax(116px, 148px); gap: 8px; }
+  .matrix-scroll { display: none; }
+  .matrix-mobile-list { display: block; }
   .recovery-formula dl { grid-template-columns: 1fr; }
   .recovery-formula dl > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .recovery-formula dl > div:last-child { border-bottom: 0; }

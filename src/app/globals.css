@@ -277,7 +277,7 @@ textarea:focus-visible,
 .sidebar--collapsed .profile-card > span:nth-child(2),
 .sidebar--collapsed .profile-card > svg { display: none; }
 
-.mobile-header, .bottom-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
+.mobile-header, .mobile-header-nav, .mobile-menu, .mobile-menu-backdrop { display: none; }
 
 .eyebrow,
 .quality-pill {

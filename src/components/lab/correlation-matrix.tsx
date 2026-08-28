@@ -486,6 +486,14 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     setSelectedInfluence((current) => current?.id === row.id ? null : row);
   }
 
+  const resultsStatus = loadingPeriod === period
+    ? <p className="matrix-no-results" role="status">Loading relationships…</p>
+    : loadError
+      ? <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>
+      : !rows.length
+        ? <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>
+        : null;
+
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
     <header className="matrix-header">
       <div><h2 id="matrix-title">Relationship matrix</h2></div>
@@ -498,12 +506,14 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
         >
           {matrix.periods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => void selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}
         </div>
-        <div className="matrix-legend" aria-label="Cell states">
-          <span><MatrixStateMark state="collecting" progress={.58} /><small>Collecting</small></span>
-          <span><MatrixStateMark state="no-signal" /><small>No clear signal</small></span>
-          <span><MatrixStateMark state="excluded" /><small>Not applicable</small></span>
+        <div className="matrix-state-controls">
+          <div className="matrix-legend" aria-label="Cell states">
+            <span><MatrixStateMark state="collecting" progress={.58} /><small>Collecting</small></span>
+            <span><MatrixStateMark state="no-signal" /><small>No clear signal</small></span>
+            <span><MatrixStateMark state="excluded" /><small>Not applicable</small></span>
+          </div>
+          <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /><span className="matrix-toggle__label">Show non-significant</span><span className="matrix-toggle__label matrix-toggle__label--mobile">Non-signif.</span></span></label>
         </div>
-        <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
     <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => { setSelectedInfluence(null); setSelected(publishedRelationsForPair(periodRows.flatMap((row) => row.relations), relation)); }} key={periodAnimationSequence} />
@@ -528,10 +538,42 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
           </td>;
         })}</tr></Fragment>)}</tbody>
       </table>
-      {loadingPeriod === period && <p className="matrix-no-results" role="status">Loading relationships…</p>}
-      {loadError && loadingPeriod === null && <p className="matrix-no-results" role="alert">Relationships could not be loaded. Select the period to retry.</p>}
-      {!rows.length && loadingPeriod !== period && !loadError && <p className="matrix-no-results">{showNonSignificant ? "No calculable relation in this window." : "No q < 0.05 relation in this window."}</p>}
     </div>
+    <div className="matrix-mobile-list" role="region" aria-label="Relationship list by influence">
+      {rows.map((row, rowIndex) => {
+        const displayedCount = row.relationsByOutcome.reduce((count, relations) => count + (showNonSignificant ? calculableRelations(relations) : significantRelations(relations)).length, 0);
+        const mobileOutcomes = row.relationsByOutcome.map((relations, index) => ({
+          relations,
+          outcome: outcomes[index],
+          displayed: showNonSignificant ? calculableRelations(relations) : significantRelations(relations),
+          priority: significantRelations(relations).length > 0 ? 2 : showNonSignificant && calculableRelations(relations).length > 0 ? 1 : 0,
+        })).sort((left, right) => right.priority - left.priority);
+        return <Fragment key={row.id}>
+          {(rowIndex === 0 || rows[rowIndex - 1].group !== row.group) && <h3>{row.group}</h3>}
+          <details className={displayedCount === 0 ? "is-empty" : undefined}>
+            <summary>
+              <span><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong><small>{displayedCount > 0 ? `${displayedCount} ${displayedCount === 1 ? "result" : "results"}` : "No clear result"}</small></span>
+            </summary>
+            <div className="matrix-mobile-list__outcomes">
+              {mobileOutcomes.map(({ relations, outcome, displayed }) => {
+                const state = matrixCellState(relations, displayed);
+                return displayed.length > 0
+                  ? <button type="button" className="matrix-mobile-result" onClick={() => { setSelectedInfluence(null); setSelected(displayed); }} aria-label={`Open ${row.label} and ${outcome.label} detail`} key={outcome.id}>
+                    <span><strong>{outcome.label}</strong><small>{outcome.unit}</small></span>
+                    <span className="matrix-mobile-result__effects">{displayed.map((relation) => <span className={matrixRelationTone(relation)} key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong>{matrixTimingLabel(relation.lagDays) && <small>{matrixTimingLabel(relation.lagDays)}</small>}</span>)}</span>
+                  </button>
+                  : <div className="matrix-mobile-result matrix-mobile-result--state" key={outcome.id}>
+                    <span><strong>{outcome.label}</strong><small>{outcome.unit}</small></span>
+                    <span>{state ? <MatrixStateMark state={state} progress={cellProgress(relations)} labelled /> : <small>No data</small>}</span>
+                  </div>;
+              })}
+              <button type="button" className="matrix-mobile-list__info" onClick={() => selectInfluence(row)}>About {row.label}</button>
+            </div>
+          </details>
+        </Fragment>;
+      })}
+    </div>
+    {resultsStatus}
     {selectedInfluence && <InfluenceDetail explanation={influenceExplanation(selectedInfluence.id, selectedInfluence.label)} label={selectedInfluence.label} onClose={() => setSelectedInfluence(null)} detailRef={influenceDetailRef} />}
     {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
     <details className="matrix-method"><summary>Method</summary><p>Each variable appears once. Its cells group same-day, next-day and two-days-later results when those timings are possible. Daytime behavior is never paired with an overnight outcome that happened earlier. Blank values are omitted pair by pair. Boolean and exposure comparisons need at least five days in each group; continuous measures need ten paired days. With at least 30 paired days, every numeric relation also tests a threshold, plateau and middle zone against a straight line, retaining a non-linear shape only when it improves the fit materially. Amounts use every recorded day, including zero-amount days. Two-sided p values use serial-dependence-robust intervals, then Benjamini–Hochberg correction. The default table keeps only q &lt; 0.05.</p></details>

@@ -132,13 +132,27 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         <Link className="brand" href="/" aria-label="Soma home">
           <SomaLogo />
         </Link>
+        <nav className="mobile-header-nav" aria-label="Mobile primary navigation">
+          {mobileNavigation.map(({ label, href, icon: Icon }) => (
+            <Link
+              href={href}
+              key={href}
+              className={isActive(href) ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"}
+              aria-current={isActive(href) ? "page" : undefined}
+              aria-label={label}
+              onClick={closeMobileMenu}
+            >
+              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+            </Link>
+          ))}
+          <button type="button" className={mobileMenuOpen || isActive("/coach") || isActive("/settings") ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
+            {mobileMenuOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}
+          </button>
+        </nav>
         <div className="mobile-header__actions">
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
-            <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
+            <MessageCircle size={19} strokeWidth={1.8} aria-hidden="true" />
           </button>}
-          <button className="icon-button" type="button" onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close menu" : "Open menu"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
-            {mobileMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
-          </button>
         </div>
       </header>
 
@@ -155,25 +169,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       )}
 
       <main className="main-content">{children}</main>
-
-      <nav className="bottom-nav" aria-label="Mobile primary navigation">
-        {mobileNavigation.map(({ label, href, icon: Icon }) => (
-          <Link
-            href={href}
-            key={href}
-            className={isActive(href) ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"}
-            aria-current={isActive(href) ? "page" : undefined}
-            onClick={closeMobileMenu}
-          >
-            <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span>{label}</span>
-          </Link>
-        ))}
-        <button type="button" className={mobileMenuOpen || isActive("/coach") || isActive("/settings") ? "bottom-nav__link bottom-nav__link--active" : "bottom-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
-          <Menu size={20} aria-hidden="true" />
-          <span>More</span>
-        </button>
-      </nav>
 
       {coachOpen && (
         <>

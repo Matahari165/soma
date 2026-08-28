@@ -36,7 +36,7 @@ export function useDialogLayer({
       const parent: HTMLElement = layer.parentElement;
       for (const sibling of Array.from(parent.children)) {
         if (sibling === layer || !(sibling instanceof HTMLElement)) continue;
-        if (sibling.classList.contains("panel-backdrop")) continue;
+        if (sibling.classList.contains("panel-backdrop") || sibling.classList.contains("mobile-menu-backdrop")) continue;
         inerted.push({ element: sibling, wasInert: sibling.hasAttribute("inert") });
         sibling.setAttribute("inert", "");
       }
