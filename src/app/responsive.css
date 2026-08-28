@@ -56,7 +56,7 @@
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
   .strongest-effects__comparison-group { grid-template-columns: 1fr; }
   .strongest-effects__comparison-header { padding: 8px 12px; }
-  .strongest-effects__comparison-group > ol { border-top: 1px solid var(--line); border-left: 0; }
+  .strongest-effects__comparison-group > ol { border-top: 0; border-left: 0; }
   .strongest-effects__comparison-group li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
   .strongest-effects__influence-header { align-items: start; flex-direction: column; gap: 3px; }

@@ -373,7 +373,7 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
 
   return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
-      <div><h3 id="strongest-effects-title">Strongest effects</h3><p>Only q &lt; 0.05 effects above a practical threshold.</p></div>
+      <div><h3 id="strongest-effects-title">Strongest effects</h3></div>
       <div className="strongest-effects__axis" aria-label="Chart legend"><span><b className="effect-legend__swatch effect-legend__swatch--negative" />↓ Result decreases</span><span>↑ Result increases <b className="effect-legend__swatch effect-legend__swatch--positive" /></span></div>
     </header>
     {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : meaningfulGroups.map(([group, influences]) => {
