@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calculateEffortScore, calculateEffortScoreFromAvailable, diminishingLoad } from "./effort";
 import { calculateRecoveryScore } from "./recovery";
 import { circularMean, sleepRegularityScore } from "./regularity";
-import { estimateSleepNeed, recommendBedtime } from "./sleep-need";
+import { estimateSleepNeed, recommendBedtime, recommendBedtimeFromHistory } from "./sleep-need";
 
 describe("score engines", () => {
   it("keeps the personal sleep target fixed across debt and effort contexts", () => {
@@ -22,9 +22,38 @@ describe("score engines", () => {
     ])).toBeGreaterThan(90);
   });
 
-  it("limits bedtime movement to protect regularity", () => {
-    const result = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 540, recentEfficiencyPercent: 85, regularBedtimeMinutes: 23 * 60, windDownMinutes: 30 });
+  it("uses regularity when it can still protect the sleep target", () => {
+    const result = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 450, recentEfficiencyPercent: 100, regularBedtimeMinutes: 22 * 60, windDownMinutes: 30 });
     expect(Math.abs(result.bedtimeMinutes - 23 * 60)).toBeLessThanOrEqual(45);
+    expect(result.timeInBedMinutes).toBeGreaterThanOrEqual(result.sleepNeedMinutes);
+  });
+
+  it("never shifts bedtime later when regularity would miss the target", () => {
+    const result = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 540, recentEfficiencyPercent: 85, regularBedtimeMinutes: 23 * 60, windDownMinutes: 30 });
+    expect(result.timeInBedMinutes).toBeGreaterThanOrEqual(540);
+    expect(result.bedtimeMinutes).toBe(20 * 60 + 25);
+  });
+
+  it("treats wind-down as separate from the bedtime", () => {
+    const withoutWindDown = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 510, recentEfficiencyPercent: 100, regularBedtimeMinutes: 22 * 60 + 30, windDownMinutes: 0 });
+    const withWindDown = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 510, recentEfficiencyPercent: 100, regularBedtimeMinutes: 22 * 60 + 30, windDownMinutes: 30 });
+    expect(withWindDown.bedtimeMinutes).toBe(withoutWindDown.bedtimeMinutes);
+    expect(withWindDown.bedtimeMinutes).toBe(22 * 60 + 30);
+  });
+
+  it("keeps bedtime regularity coherent across midnight", () => {
+    const result = recommendBedtimeFromHistory({
+      wakeTime: "07:00",
+      sleepNeedMinutes: 450,
+      recentNights: [
+        { bedtimeMinutes: 23 * 60 + 30, efficiencyPercent: null },
+        { bedtimeMinutes: 30, efficiencyPercent: null },
+      ],
+      windDownMinutes: 30,
+    });
+    expect(result.recentEfficiencyPercent).toBe(85);
+    expect(result.bedtimeMinutes).toBe(22 * 60 + 11);
+    expect(result.timeInBedMinutes).toBeGreaterThanOrEqual(result.sleepNeedMinutes);
   });
 
   it("withholds recovery when personal history is insufficient", () => {

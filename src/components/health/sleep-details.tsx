@@ -32,11 +32,6 @@ function timingRegularity(days: HealthMetricDay[], key: "bedtime" | "wake_time",
   return Math.round(Math.max(0, 100 - (averageDeviation / 120) * 100));
 }
 
-function usualClockMinutes(days: HealthMetricDay[], key: "bedtime" | "wake_time", timeZone: string) {
-  const values = days.slice(-30).map((day) => clockMinutes(day[key], timeZone)).filter((value): value is number => value !== null);
-  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null;
-}
-
 function formatClockMinutes(value: number | null) {
   if (value === null) return "—";
   const normalized = ((value % 1440) + 1440) % 1440;
@@ -47,7 +42,8 @@ function formatClockMinutes(value: number | null) {
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const latest = data.days.findLast((day) => day.sleep_minutes !== null && day.sleep_minutes > 0);
   const score = data.scores.findLast((item) => item.kind === "sleep" && item.score_date === latest?.metric_date)?.score ?? null;
-  const target = latest?.sleep_need_minutes ?? null;
+  const recommendation = data.sleepRecommendation;
+  const target = recommendation?.sleepNeedMinutes ?? latest?.sleep_need_minutes ?? null;
   const debt = latest?.cumulative_sleep_debt_minutes ?? null;
   const averageSleep = latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null;
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
@@ -57,9 +53,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const debtTone = metricTone(debt, averageDebt, "lower_is_better");
   const bedtimeRegularity = timingRegularity(data.days, "bedtime", data.timezone);
   const wakeRegularity = timingRegularity(data.days, "wake_time", data.timezone);
-  const usualWakeMinutes = usualClockMinutes(data.days, "wake_time", data.timezone);
-  const recommendedWakeMinutes = usualWakeMinutes ?? clockMinutes(latest?.wake_time ?? null, data.timezone);
-  const tonightBedtime = recommendedWakeMinutes === null ? null : target === null ? null : recommendedWakeMinutes - target;
+  const recommendedWakeMinutes = recommendation?.wakeTimeMinutes ?? clockMinutes(latest?.wake_time ?? null, data.timezone);
+  const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
   return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone} heroMetrics={<>
     <div className="health-hero-stat health-hero-stat--regularity"><ScoreRing kind="sleep" label="Regularity" score={latest?.sleep_regularity ?? null} animate /></div>

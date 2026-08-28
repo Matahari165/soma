@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calculateMatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
-import { groupMatrixRows, influenceGroup } from "./relationship-groups";
+import { calculableRelations, groupMatrixRows, influenceGroup, significantRelations } from "./relationship-groups";
 
 function series(id: string, slope = 1): MatrixSeries {
   const start = new Date("2026-01-01T12:00:00Z");
@@ -64,6 +64,14 @@ describe("groupMatrixRows", () => {
     }] satisfies PersonalLabSnapshot["matrix"]["rows"];
 
     expect(groupMatrixRows(rows, ["hrv"])).toHaveLength(1);
+  });
+
+  it("keeps non-significant relations for matrix exploration only", () => {
+    const base = calculateMatrixRelation(series("steps"), series("hrv", 2));
+    const published = { ...base, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01 };
+    const exploratory = { ...published, qValue: .2 };
+    expect(calculableRelations([published, exploratory])).toHaveLength(2);
+    expect(significantRelations([published, exploratory])).toEqual([published]);
   });
 
   it("places wearable groups before journal habits", () => {

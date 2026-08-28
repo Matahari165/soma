@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { compactHealthContext, type CoachMetricRow, type CoachScoreRow } from "@/services/coach-context";
-import { evidenceCandidatesForNarrative } from "@/services/lab-narrative-policy";
+import { getPersonalLabSnapshot } from "@/services/personal-lab";
 
 const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), threadId: z.string().uuid().nullable().optional() });
 const threadIdSchema = z.string().uuid();
@@ -97,16 +97,20 @@ export async function POST(request: Request) {
   const contextResults = await Promise.all([
     admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_need_minutes,sleep_regularity,hrv_ms,resting_heart_rate,steps,zone_minutes").eq("user_id", user.id).order("metric_date", { ascending: false }).limit(30),
     admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false }).limit(90),
-    admin.from("lab_narrative_history").select("headline,summary,highlights,evidence_candidates,source_facts,generated_at").eq("user_id", user.id).order("generated_at", { ascending: false }).limit(1),
+    admin.from("lab_narrative_history").select("source_facts").eq("user_id", user.id).order("generated_at", { ascending: false }).limit(1),
     threadId ? admin.from("coach_messages").select("role,content,created_at").eq("user_id", user.id).eq("thread_id", threadId).order("created_at", { ascending: false }).limit(6) : Promise.resolve({ data: [], error: null }),
   ]);
   if (contextResults.some((query) => query.error)) return NextResponse.json({ error: "Your health context could not be loaded." }, { status: 500 });
-  const [{ data: metrics }, { data: scores }, { data: narratives }, { data: recentMessages }] = contextResults;
+  const [{ data: metrics }, { data: scores }, { data: narrativePointers }, { data: recentMessages }] = contextResults;
   try {
-    const narrative = narratives?.[0];
-    const evidenceCandidates = evidenceCandidatesForNarrative(narrative);
+    const sourceFacts = narrativePointers?.[0]?.source_facts;
+    const narrativePeriod = Array.isArray(sourceFacts) && sourceFacts.some((fact) => fact && typeof fact === "object" && (fact as Record<string, unknown>).analysisPeriod === 90) ? 90 : 30;
+    // A single-period request reuses the canonical matrix cache instead of
+    // rebuilding the combined 30/90-day matrix for every Coach message.
+    const labSnapshot = await getPersonalLabSnapshot(user, { periods: [narrativePeriod] });
+    const narrative = labSnapshot.aiNarrative?.isCurrent ? labSnapshot.aiNarrative : null;
     const result = await askSomaCoach({ userId: user.id, message: parsed.data.message, context: {
-      dailyDigest: narrative ? { headline: narrative.headline, summary: narrative.summary, highlights: narrative.highlights, evidenceCandidates, generatedAt: narrative.generated_at } : null,
+      dailyDigest: narrative ? { headline: narrative.headline, summary: narrative.summary, highlights: narrative.highlights, evidenceCandidates: narrative.evidenceCandidates, generatedAt: narrative.generatedAt } : null,
       ...compactHealthContext((metrics ?? []) as CoachMetricRow[], (scores ?? []) as CoachScoreRow[]),
       recentMessages: [...(recentMessages ?? [])].reverse().map((message) => ({ role: message.role, content: message.content })),
     } });

@@ -76,6 +76,26 @@ export type MatrixRelationOptions = {
   outcomeTarget?: number;
 };
 
+/** Metrics that are retained in health storage but intentionally absent from Personal Lab analysis. */
+export const PERSONAL_LAB_EXCLUDED_METRIC_IDS = new Set(["sleep_awakenings"]);
+
+export function isPersonalLabMetricAllowed(metricId: string) {
+  return !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metricId);
+}
+
+/** Canonical publication gate for Personal Lab highlights, narratives, and graphs. */
+export function isPersonalLabPublishedRelation(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful">) {
+  return isPersonalLabMetricAllowed(relation.predictorId)
+    && isPersonalLabMetricAllowed(relation.outcomeId)
+    && !relation.excluded
+    && relation.featureEligible
+    && relation.qValue < .05
+    && relation.practicallyMeaningful;
+}
+
+/** @deprecated Use isPersonalLabPublishedRelation for anything that is rendered as a finding. */
+export const isPersonalLabFeatureEligible = isPersonalLabPublishedRelation;
+
 type Pair = { date: string; predictor: number; outcome: number; segment: string };
 type Estimate = {
   effect: number; standardError: number; pValue: number; coefficient: number;
@@ -498,7 +518,7 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
     || first.qValue - second.qValue
     || second.sampleSize - first.sampleSize;
   for (const relation of relations) {
-    if (relation.excluded || relation.qValue >= .05 || !relation.practicallyMeaningful) continue;
+    if (!isPersonalLabPublishedRelation(relation)) continue;
     const key = `${relation.period}:${relation.predictorId}:${relation.outcomeId}`;
     eligibleByPair.set(key, [...(eligibleByPair.get(key) ?? []), relation]);
   }

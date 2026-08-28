@@ -4,7 +4,7 @@ import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 
-import { PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
+import { isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { effectText, percentText, RelationDetail, relationTone, shortTimingText } from "./relation-detail";
@@ -85,6 +85,13 @@ function matrixRelationTone(relation: MatrixRelation) {
 /** Matrix cells only expose delayed timing when it exists; same-day timing needs no badge. */
 export function matrixTimingLabel(lagDays: number) {
   return lagDays > 0 ? `J+${lagDays}` : null;
+}
+
+/** Details opened from a published finding must stay within the published relation set. */
+export function publishedRelationsForPair(relations: MatrixRelation[], relation: Pick<MatrixRelation, "predictorId" | "outcomeId">) {
+  return relations.filter((candidate) => candidate.predictorId === relation.predictorId
+    && candidate.outcomeId === relation.outcomeId
+    && isPersonalLabPublishedRelation(candidate));
 }
 
 export type InfluenceExplanation = {
@@ -261,7 +268,7 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
   onSelect: (relation: MatrixRelation) => void;
 }) {
-  const meaningful = useMemo(() => selectMeaningfulRelations(relations, relations.length), [relations]);
+  const meaningful = useMemo(() => selectMeaningfulRelations(relations.filter((relation) => isPersonalLabPublishedRelation(relation)), relations.length), [relations]);
   const meaningfulGroups = useMemo(() => {
     const groups = new Map<string, MatrixRelation[]>();
     for (const relation of meaningful) groups.set(influenceGroup(relation.predictorId), [...(groups.get(influenceGroup(relation.predictorId)) ?? []), relation]);
@@ -450,8 +457,8 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       void loadPeriod(locator.period).then((loadedRows) => {
         const relation = loadedRows.flatMap((row) => row.relations)
           .find((candidate) => candidate.predictorLabel === locator.predictor && candidate.outcomeLabel === locator.outcome && candidate.lagDays === locator.lagDays);
-        if (!relation) return setSelected(null);
-        setSelected(calculableRelations(loadedRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId)));
+        if (!relation || !isPersonalLabPublishedRelation(relation)) return setSelected(null);
+        setSelected(publishedRelationsForPair(loadedRows.flatMap((row) => row.relations), relation));
       });
     };
     window.addEventListener("soma:open-relation", listener);
@@ -499,7 +506,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
         <label className="matrix-toggle"><input type="checkbox" checked={showNonSignificant} onChange={(event) => setShowNonSignificant(event.target.checked)} /><span><Check size={12} /> Show non-significant</span></label>
       </div>
     </header>
-    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => { setSelectedInfluence(null); setSelected(calculableRelations(periodRows.flatMap((row) => row.relations).filter((candidate) => candidate.predictorId === relation.predictorId && candidate.outcomeId === relation.outcomeId))); }} key={periodAnimationSequence} />
+    <StrongestEffects relations={periodRows.flatMap((row) => row.relations)} outcomes={outcomes} onSelect={(relation) => { setSelectedInfluence(null); setSelected(publishedRelationsForPair(periodRows.flatMap((row) => row.relations), relation)); }} key={periodAnimationSequence} />
     <div className="matrix-scroll" role="region" aria-label="Scrollable relationship matrix" tabIndex={0}>
       <table>
         <thead>
@@ -515,7 +522,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
           const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
           const state = matrixCellState(relations, displayed);
           return <td className={`${tone}${state ? ` has-state has-state--${state}` : ""}`} key={outcome.id}>
-            {!displayed.length && state ? <span className="matrix-empty"><MatrixStateMark state={state} progress={cellProgress(relations)} labelled /><span className="sr-only"> for {row.label} and {outcome.label}</span></span> : <button type="button" onClick={() => { setSelectedInfluence(null); setSelected(calculable); }} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
+            {!displayed.length && state ? <span className="matrix-empty"><MatrixStateMark state={state} progress={cellProgress(relations)} labelled /><span className="sr-only"> for {row.label} and {outcome.label}</span></span> : <button type="button" onClick={() => { setSelectedInfluence(null); setSelected(displayed); }} aria-label={`Open ${row.label} and ${outcome.label} detail`}>
               {displayed.map((relation) => <span className={`matrix-effect-line ${matrixRelationTone(relation)}`} key={relation.lagDays}><strong>{matrixCellEffectText(relation)}</strong>{matrixTimingLabel(relation.lagDays) && <small>{matrixTimingLabel(relation.lagDays)}</small>}</span>)}
             </button>}
           </td>;

@@ -3,6 +3,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createCloudflareServerClient } from "@/lib/cloudflare/server";
+import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
 
 export type HealthMetricDay = {
   metric_date: string;
@@ -76,6 +77,7 @@ export type HealthAnalytics = {
   importedAt: string | null;
   days: HealthMetricDay[];
   scores: ScoreDay[];
+  sleepRecommendation: BedtimeRecommendation | null;
   latestSleepStages: SleepStageSegment[];
   heartRateSamples: HeartRateSample[];
   exercises: ExerciseSummary[];
@@ -114,6 +116,32 @@ function durationMinutes(value: unknown) {
   if (typeof value !== "string") return null;
   const seconds = Number(value.replace(/s$/, ""));
   return Number.isFinite(seconds) ? seconds / 60 : null;
+}
+
+function minutesSinceMidnightIn(value: string, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  return Number(parts.find((part) => part.type === "hour")?.value ?? 0) * 60 + Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+}
+
+function sleepRecommendationFor(input: {
+  days: HealthMetricDay[];
+  timezone: string;
+  targetMinutes: number;
+  wakeTime: string;
+  windDownMinutes: number;
+}) {
+  const latestIndex = input.days.findLastIndex((day) => day.sleep_minutes !== null && day.sleep_minutes > 0);
+  if (latestIndex < 0) return null;
+  const recentDays = input.days.slice(Math.max(0, latestIndex - 29), latestIndex + 1);
+  return recommendBedtimeFromHistory({
+    wakeTime: input.wakeTime,
+    sleepNeedMinutes: input.targetMinutes,
+    recentNights: recentDays.map((day) => ({
+      bedtimeMinutes: day.bedtime ? minutesSinceMidnightIn(day.bedtime, input.timezone) : null,
+      efficiencyPercent: day.sleep_efficiency,
+    })),
+    windDownMinutes: input.windDownMinutes,
+  });
 }
 
 export function buildPreviewAnalytics(): HealthAnalytics {
@@ -178,6 +206,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
     importedAt: now.toISOString(),
     days,
     scores,
+    sleepRecommendation: sleepRecommendationFor({ days, timezone: "Europe/Paris", targetMinutes: 510, wakeTime: "07:00", windDownMinutes: 30 }),
     latestSleepStages: [
       { type: "LIGHT", startTime: `${lastBedtimeDate}T22:48:00Z`, endTime: `${lastBedtimeDate}T23:25:00Z` },
       { type: "DEEP", startTime: `${lastBedtimeDate}T23:25:00Z`, endTime: `${lastDate}T00:30:00Z` },
@@ -212,7 +241,7 @@ function civilDateIn(value: string, timeZone: string) {
 async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
-  if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], latestSleepStages: [], heartRateSamples: [], exercises: [] };
+  if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [] };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
   // Sleep stages and exercises do not depend on the aggregate metrics below.
@@ -233,10 +262,13 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
       return query.limit(273);
     })(),
     admin.from("provider_connections").select("last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
+    scope === "sleep"
+      ? admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", user.id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   const failed = baseResults.find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
-  const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }] = baseResults;
+  const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = baseResults;
   const timezone = profile?.timezone ?? "Europe/Paris";
   const orderedMetrics = [...((metrics ?? []) as unknown as HealthMetricDay[])].reverse();
   const latestRecoveryDate = orderedMetrics.findLast((day) => day.hrv_ms !== null || day.resting_heart_rate !== null)?.metric_date;
@@ -295,11 +327,22 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
       verticalRatio: findNumber(metricsSummary, ["avgVerticalRatio"]),
     };
   });
+  const targetMinutes = Number(sleepPreferences?.base_target_minutes);
+  const sleepRecommendation = scope === "sleep"
+    ? sleepRecommendationFor({
+      days: orderedMetrics,
+      timezone,
+      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 510,
+      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
+      windDownMinutes: Number(sleepPreferences?.wind_down_minutes) || 30,
+    })
+    : null;
   return {
     timezone,
     importedAt: connection?.last_synced_at ?? null,
     days: orderedMetrics,
     scores: [...((scores ?? []) as ScoreDay[])].reverse(),
+    sleepRecommendation,
     latestSleepStages,
     heartRateSamples,
     exercises: exerciseSummaries,

@@ -29,7 +29,7 @@ export function generateEveningBrief(input: BriefInput) {
   const effort = input.effortScore === null
     ? "Today's accomplished load is not available yet."
     : `Today's accomplished load is ${input.effortScore}/100.`;
-  const bedtime = input.bedtime ? `Aim to start winding down for a ${input.bedtime} bedtime.` : "A bedtime recommendation needs more sleep data.";
+  const bedtime = input.bedtime ? `Aim for a ${input.bedtime} bedtime.` : "A bedtime recommendation needs more sleep data.";
   return `${effort} ${bedtime}`;
 }
 

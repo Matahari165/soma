@@ -1,4 +1,4 @@
-import type { MatrixRelation } from "@/domain/lab/matrix";
+import { isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 export type GroupedMatrixRow = {
@@ -58,9 +58,12 @@ export function groupMatrixRows(
 }
 
 export function calculableRelations(relations: MatrixRelation[]) {
-  return relations.filter((relation) => !relation.excluded && relation.coefficient !== null);
+  return relations.filter((relation) => isPersonalLabMetricAllowed(relation.predictorId)
+    && isPersonalLabMetricAllowed(relation.outcomeId)
+    && !relation.excluded
+    && relation.coefficient !== null);
 }
 
 export function significantRelations(relations: MatrixRelation[]) {
-  return calculableRelations(relations).filter((relation) => relation.featureEligible && relation.qValue < .05);
+  return calculableRelations(relations).filter((relation) => isPersonalLabPublishedRelation(relation));
 }

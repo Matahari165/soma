@@ -26,4 +26,11 @@ describe("local preview health contract", () => {
       zone_minutes: 33,
     });
   });
+
+  it("uses the declared wake time and sleep target for the bedtime recommendation", () => {
+    expect(buildPreviewAnalytics().sleepRecommendation).toMatchObject({
+      wakeTimeMinutes: 7 * 60,
+      sleepNeedMinutes: 510,
+    });
+  });
 });

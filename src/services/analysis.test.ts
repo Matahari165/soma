@@ -39,7 +39,7 @@ vi.mock("@/domain/scores/recovery", () => ({
 vi.mock("@/domain/scores/regularity", () => ({ sleepRegularityScore: () => 80 }));
 vi.mock("@/domain/scores/sleep-need", () => ({
   estimateSleepNeed: () => ({ estimatedNeedMinutes: 510 }),
-  recommendBedtime: () => ({ bedtimeMinutes: 1_380 }),
+  recommendBedtimeFromHistory: () => ({ bedtimeMinutes: 1_380 }),
 }));
 vi.mock("@/domain/scores/sleep", () => ({
   calculateSleepScore: () => ({ score: 80, durationComponent: 80, efficiencyComponent: 80, regularityComponent: 80, algorithmVersion: "test" }),

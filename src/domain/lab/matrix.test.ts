@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adjustMatrixRelations, calculateMatrixRelation, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabFeatureEligible, isPersonalLabMetricAllowed, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
 
 function date(index: number) {
   const value = new Date("2025-01-01T12:00:00Z");
@@ -13,6 +13,21 @@ function series(id: string, values: Array<number | null>, kind: MatrixSeries["ki
 }
 
 describe("Personal Lab raw within-person relations", () => {
+  it("shares the Personal Lab metric and feature eligibility gate", () => {
+    expect(isPersonalLabMetricAllowed("sleep_awakenings")).toBe(false);
+    expect(isPersonalLabMetricAllowed("sleep_fragmentation")).toBe(true);
+    const relation = calculateMatrixRelation(series("bedtime", Array.from({ length: 80 }, (_, index) => 1320 + index % 30)), series("hrv", Array.from({ length: 80 }, (_, index) => 50 + index % 20)));
+    const eligible = { ...relation, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01, practicalRatio: 2 };
+    for (const period of [15, 30, 90, "all"] as const) {
+      const periodRelation = { ...eligible, period };
+      expect(isPersonalLabFeatureEligible(periodRelation)).toBe(true);
+    }
+    expect(isPersonalLabFeatureEligible({ ...eligible, qValue: .05 })).toBe(false);
+    expect(isPersonalLabFeatureEligible({ ...eligible, practicallyMeaningful: false })).toBe(false);
+    expect(isPersonalLabFeatureEligible({ ...eligible, outcomeId: "sleep_awakenings" })).toBe(false);
+    expect(selectMeaningfulRelations([{ ...eligible, outcomeId: "sleep_awakenings" }])).toEqual([]);
+  });
+
   it("keeps missing values absent and requires ten numeric pairs", () => {
     const relation = calculateMatrixRelation(series("x", [...Array(12).fill(null), ...Array(9).keys()]), series("hrv", Array.from({ length: 21 }, (_, index) => 40 + index)));
     expect(relation.sampleSize).toBe(9);

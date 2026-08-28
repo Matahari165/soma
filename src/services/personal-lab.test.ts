@@ -141,6 +141,8 @@ describe("Personal Lab progressive stream", () => {
       expect(analysis.today).toEqual(overview.today);
       expect(analysis.journal).toEqual(journal.journal);
       expect(analysis.matrix.periods).toContain(30);
+      expect(analysis.matrix.outcomes.some((outcome) => outcome.id === "sleep_awakenings")).toBe(false);
+      expect(analysis.matrix.rows.flatMap((row) => row.relations).some((relation) => relation.outcomeId === "sleep_awakenings" || relation.predictorId === "sleep_awakenings")).toBe(false);
     } finally {
       vi.unstubAllEnvs();
     }

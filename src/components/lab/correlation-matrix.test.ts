@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysUntilFirstResult, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel } from "./correlation-matrix";
+import { daysUntilFirstResult, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel, publishedRelationsForPair } from "./correlation-matrix";
 import { calculateMatrixRelation, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 
 describe("relationship matrix motion helpers", () => {
@@ -47,6 +47,21 @@ describe("relationship matrix motion helpers", () => {
     expect(matrixTimingLabel(0)).toBeNull();
     expect(matrixTimingLabel(1)).toBe("J+1");
     expect(matrixTimingLabel(2)).toBe("J+2");
+  });
+
+  it("opens only currently published relations from a summary finding", () => {
+    const dates = Array.from({ length: 80 }, (_, index) => {
+      const value = new Date("2026-01-01T12:00:00Z");
+      value.setUTCDate(value.getUTCDate() + index);
+      return value.toISOString().slice(0, 10);
+    });
+    const base = calculateMatrixRelation(
+      { id: "bedtime", label: "Bedtime", unit: "min", kind: "numeric", points: dates.map((date, index) => ({ date, value: 1320 + index })) },
+      { id: "hrv", label: "HRV", unit: "ms", kind: "numeric", points: dates.map((date, index) => ({ date, value: 50 + index })) },
+    );
+    const published = { ...base, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01 };
+    const stale = { ...published, lagDays: 1, qValue: .2 };
+    expect(publishedRelationsForPair([published, stale], published)).toEqual([published]);
   });
 
   it("shows the absolute effect when a relative percentage is unavailable", () => {

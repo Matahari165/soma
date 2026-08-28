@@ -7,7 +7,7 @@ import { acuteChronicLoadRatio, activityRegularity, isActiveDay } from "@/domain
 import { calculateEffortScoreFromAvailable } from "@/domain/scores/effort";
 import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
-import { estimateSleepNeed, recommendBedtime } from "@/domain/scores/sleep-need";
+import { estimateSleepNeed, recommendBedtimeFromHistory } from "@/domain/scores/sleep-need";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { createCloudflareAdminClient, healthRecordsForAnalysis } from "@/lib/cloudflare/db";
 
@@ -168,7 +168,8 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     return { days: 0, scores: 0, insights: 0 };
   }
 
-  const baseSleepTarget = 510;
+  const configuredSleepTarget = Number(sleepPreferences?.base_target_minutes);
+  const baseSleepTarget = Number.isFinite(configuredSleepTarget) && configuredSleepTarget > 0 ? configuredSleepTarget : 510;
   const scoreRows: Record<string, unknown>[] = [];
   const metricRows: Record<string, unknown>[] = [];
   const effortByDate = new Map<string, number | null>();
@@ -199,8 +200,15 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
     const weeklyEffort = days.slice(Math.max(0, weekStart), index + 1).reduce((sum, item) => sum + (effortByDate.get(item.metric_date) ?? 0), 0);
-    const regularBedtime = regularNights.length ? regularNights.at(-1)?.bedtimeMinutes ?? 23 * 60 : 23 * 60;
-    const bedtimeRecommendation = recommendBedtime({ wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5), sleepNeedMinutes: sleepNeed.estimatedNeedMinutes, recentEfficiencyPercent: day.sleep_efficiency ?? 85, regularBedtimeMinutes: regularBedtime, windDownMinutes: sleepPreferences?.wind_down_minutes ?? 30 });
+    const bedtimeRecommendation = recommendBedtimeFromHistory({
+      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
+      sleepNeedMinutes: sleepNeed.estimatedNeedMinutes,
+      recentNights: [...history, day].map((item) => ({
+        bedtimeMinutes: item.bedtime ? minutesSinceMidnightIn(item.bedtime, timezone) : null,
+        efficiencyPercent: item.sleep_efficiency,
+      })),
+      windDownMinutes: sleepPreferences?.wind_down_minutes ?? 30,
+    });
 
     const dailySleepDebt = day.sleep_minutes === null ? null : sleepNeed.estimatedNeedMinutes - day.sleep_minutes;
     sleepDebtByDate.set(day.metric_date, dailySleepDebt);

@@ -1,6 +1,6 @@
 import type { LabObservation } from "@/domain/lab/observation";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
-import { adjustMatrixRelations, calculateMatrixRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -156,7 +156,6 @@ const OVERNIGHT_OUTCOME_IDS = new Set(["sleep_minutes", "sleep_need", "sleep_eff
 const EFFORT_INPUT_IDS = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
 const RECOVERY_INPUT_IDS = new Set(["hrv", "rhr", "sleep_minutes", "sleep_efficiency"]);
 const SLEEP_DEBT_INPUT_IDS = new Set(["sleep_minutes", "sleep_need", "daily_sleep_debt"]);
-const PERSONAL_LAB_EXCLUDED_METRIC_IDS = new Set(["sleep_awakenings"]);
 const SAME_NIGHT_TIMING_INPUTS = new Map([
   ["bedtime", new Set(["sleep_minutes", "sleep_efficiency"])],
   ["wake_time", new Set(["sleep_minutes", "sleep_efficiency", "sleep_awake"])],
@@ -189,15 +188,22 @@ export function labMatrixCacheKey(periods: AnalysisPeriod[] | undefined) {
 function isCachedMatrix(value: unknown): value is PersonalLabSnapshot["matrix"] {
   if (!value || typeof value !== "object") return false;
   const matrix = value as Partial<PersonalLabSnapshot["matrix"]>;
+  const relationListIsAllowed = (relations: unknown) => Array.isArray(relations)
+    && relations.every((relation) => relation && typeof relation === "object"
+      && isPersonalLabMetricAllowed((relation as MatrixRelation).predictorId)
+      && isPersonalLabMetricAllowed((relation as MatrixRelation).outcomeId));
   return Array.isArray(matrix.outcomes)
     && Array.isArray(matrix.rows)
     && Array.isArray(matrix.periods)
-    && Array.isArray(matrix.meaningfulRelations)
-    && Array.isArray(matrix.topRelations)
-    && Array.isArray(matrix.acuteHighlights)
-    && Array.isArray(matrix.chronicHighlights)
+    && relationListIsAllowed(matrix.meaningfulRelations)
+    && relationListIsAllowed(matrix.topRelations)
+    && relationListIsAllowed(matrix.acuteHighlights)
+    && relationListIsAllowed(matrix.chronicHighlights)
     && Array.isArray(matrix.coverageByMetric)
-    && Array.isArray(matrix.collectionProgress);
+    && Array.isArray(matrix.collectionProgress)
+    && matrix.outcomes.every((outcome) => typeof outcome?.id === "string" && isPersonalLabMetricAllowed(outcome.id))
+    && matrix.rows.every((row) => row && Array.isArray(row.relations)
+      && row.relations.every((relation) => isPersonalLabMetricAllowed(relation.predictorId) && isPersonalLabMetricAllowed(relation.outcomeId)));
 }
 
 export function analysisWindowForPeriods(periods: AnalysisPeriod[] | undefined, now: Date = new Date()) {
@@ -333,7 +339,6 @@ function buildCorrelationMatrix(input: {
     { ...healthSeries(health, "sleep_efficiency", "Sleep efficiency", "%", "sleep_efficiency"), direction: "higher" as const },
     { ...healthSeries(health, "sleep_latency", "Sleep latency", "min", "sleep_latency_minutes"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_awake", "Awake time", "min", "sleep_awake_minutes"), direction: "lower" as const },
-    { ...healthSeries(health, "sleep_awakenings", "Awakenings", "count", "sleep_awakenings"), direction: "lower" as const },
     { ...healthSeries(health, "sleep_fragmentation", "Fragmentation", "/h", "sleep_fragmentation"), direction: "lower" as const },
     { ...healthSeries(health, "deep_sleep", "Deep sleep", "min", "sleep_deep_minutes"), direction: "higher" as const },
     { ...healthSeries(health, "rem_sleep", "REM sleep", "min", "sleep_rem_minutes"), direction: "higher" as const },
@@ -352,7 +357,7 @@ function buildCorrelationMatrix(input: {
   });
   const dailyOutcomes = [
     ...coreOutcomes,
-    ...input.metricDefinitions.filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id) && !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    ...input.metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id) && !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
       .map((metric) => ({ ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), direction: metric.direction })),
     { ...bedtime, direction: "target" as const },
     { ...wakeTime, direction: "target" as const },
@@ -456,7 +461,7 @@ function buildCorrelationMatrix(input: {
     : relation;
   const automaticIds = new Set(automaticRows.map((row) => row.series.id));
   const genericAutomaticRows: RowSpec[] = input.metricDefinitions
-    .filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id) && !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    .filter((metric) => isPersonalLabMetricAllowed(metric.id) && !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
     .map((metric) => {
       const binary = metric.id === "active_day" || health.some((day) => typeof (day as unknown as Record<string, unknown>)[metric.field] === "boolean");
       return { series: { ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), kind: binary ? "binary" as const : "numeric" as const }, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: timingForAutomaticMetric(metric.id) };
@@ -698,7 +703,7 @@ function buildSnapshot(input: {
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
-  const metricRegistry = metricDefinitions.filter((metric) => !PERSONAL_LAB_EXCLUDED_METRIC_IDS.has(metric.id)).map((metric) => {
+  const metricRegistry = metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id)).map((metric) => {
     const sourceDays = new Map<string, number>();
     const recordedDays = metric.id === "recovery" || metric.id === "effort"
       ? input.scores.filter((score) => {
@@ -727,7 +732,7 @@ function buildSnapshot(input: {
     const fact = item as Record<string, unknown>;
     const period = fact.analysisPeriod;
     if (typeof fact.predictor !== "string" || typeof fact.outcome !== "string" || (period !== 15 && period !== 30 && period !== 90 && period !== "all")) return [];
-    return [{ predictor: fact.predictor, outcome: fact.outcome, period: period as AnalysisPeriod, lagDays: typeof fact.lagDays === "number" ? fact.lagDays : 0 }];
+    return [{ predictor: fact.predictor, outcome: fact.outcome, period: period as AnalysisPeriod, lagDays: typeof fact.lagDays === "number" ? fact.lagDays : 0, effect: typeof fact.effect === "number" ? fact.effect : null }];
   }) : [];
   const parseHighlights = (value: unknown) => Array.isArray(value) ? value.flatMap((item, index) => {
     if (typeof item === "string") return [{ label: "", text: item, factIndex: index }];
@@ -738,22 +743,19 @@ function buildSnapshot(input: {
   const facts = parseSourceFacts(input.narrative?.source_facts);
   const highlights = parseHighlights(input.narrative?.highlights);
   const availableRelations = matrix.rows.flatMap((row) => row.relations);
-  const sourceFacts = Array.isArray(input.narrative?.source_facts) ? input.narrative.source_facts : [];
   const requestedPeriods = new Set(input.requestedPeriods ?? [15, 30, 90, "all"]);
-  const verifiableFacts = sourceFacts.filter((item) => {
-    if (typeof item !== "object" || item === null) return false;
-    return requestedPeriods.has((item as Record<string, unknown>).analysisPeriod as AnalysisPeriod);
+  const factsStillAvailable = highlights.length > 0 && highlights.every((highlight) => {
+    const fact = facts[highlight.factIndex];
+    return Boolean(fact
+      && requestedPeriods.has(fact.period)
+      && availableRelations.some((relation) => isPersonalLabPublishedRelation(relation)
+        && relation.predictorLabel === fact.predictor
+        && relation.outcomeLabel === fact.outcome
+        && relation.period === fact.period
+        && relation.lagDays === fact.lagDays
+        && fact.effect !== null
+        && relation.effect === fact.effect));
   });
-  const factsStillAvailable = sourceFacts.length > 0 && (verifiableFacts.length === 0 || verifiableFacts.every((item) => {
-    if (typeof item !== "object" || item === null) return false;
-    const fact = item as Record<string, unknown>;
-    return availableRelations.some((relation) => relation.featureEligible
-      && relation.predictorLabel === fact.predictor
-      && relation.outcomeLabel === fact.outcome
-      && relation.period === fact.analysisPeriod
-      && relation.lagDays === fact.lagDays
-      && relation.effect === fact.effect);
-  }));
   const todayHealth = input.health.find((day) => day.metric_date === todayDate);
   const currentOvernightFingerprint = overnightFingerprint(todayHealth);
   const overnightSnapshotStable = !input.narrative?.overnight_fingerprint
@@ -762,10 +764,29 @@ function buildSnapshot(input: {
     && dateInTimezone(input.timeZone, input.narrative.generated_at) === todayDate
     && factsStillAvailable
     && overnightSnapshotStable);
-  const history = (input.narrativeHistory ?? []).map((item) => {
+  const validatedEvidenceCandidates = evidenceCandidatesForNarrative(input.narrative).filter((candidate) => {
+    if (!candidate || typeof candidate !== "object") return false;
+    const fact = candidate as Record<string, unknown>;
+    return availableRelations.some((relation) => isPersonalLabPublishedRelation(relation)
+      && relation.predictorLabel === fact.predictor
+      && relation.outcomeLabel === fact.outcome
+      && relation.period === fact.analysisPeriod
+      && relation.lagDays === fact.lagDays
+      && relation.effect === fact.effect);
+  });
+  const relationMatchesFact = (relation: MatrixRelation, fact: { predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }) => isPersonalLabPublishedRelation(relation)
+    && relation.predictorLabel === fact.predictor
+    && relation.outcomeLabel === fact.outcome
+    && relation.period === fact.period
+    && relation.lagDays === fact.lagDays;
+  const history = (input.narrativeHistory ?? []).flatMap((item) => {
     const itemFacts = parseSourceFacts(item.source_facts);
     const itemHighlights = parseHighlights(item.highlights);
-    return {
+    if (!itemHighlights.length || !itemHighlights.every((highlight) => {
+      const fact = itemFacts[highlight.factIndex];
+      return fact ? availableRelations.some((relation) => relationMatchesFact(relation, fact)) : false;
+    })) return [];
+    return [{
       id: item.id,
       headline: item.headline,
       summary: item.summary,
@@ -773,7 +794,7 @@ function buildSnapshot(input: {
       generatedAt: item.generated_at,
       liked: item.liked,
       sourceFacts: itemHighlights.map((highlight) => itemFacts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)),
-    };
+    }];
   });
   const aiNarrative = input.narrative || history.length ? {
     isCurrent: narrativeIsCurrent,
@@ -785,7 +806,7 @@ function buildSnapshot(input: {
     generatedAt: narrativeIsCurrent ? input.narrative?.generated_at ?? "" : "",
     liked: narrativeIsCurrent ? input.narrative?.liked ?? false : false,
     sourceFacts: narrativeIsCurrent ? highlights.map((item) => facts[item.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)) : [],
-    evidenceCandidates: narrativeIsCurrent ? evidenceCandidatesForNarrative(input.narrative) : [],
+    evidenceCandidates: narrativeIsCurrent ? validatedEvidenceCandidates : [],
     history,
   } : null;
   const connection = (provider: string) => input.connections.find((item) => item.provider === provider);

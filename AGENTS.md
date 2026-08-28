@@ -43,6 +43,7 @@
 - Lorsque le choix du modèle est disponible, tous les sous-agents doivent utiliser exclusivement Luna `high` ou Luna `xhigh`. N'utilise jamais Sol ni un autre modèle comme sous-agent.
 - Utilise Luna `high` par défaut afin de limiter le coût. Réserve Luna `xhigh` aux analyses difficiles, diagnostics ambigus, recherches de bugs, revues critiques ou vérifications indépendantes où le niveau supplémentaire de raisonnement apporte une valeur réelle.
 - Utilise les sous-agents pour le travail borné et parallélisable. Évite les délégations redondantes ou plusieurs agents faisant essentiellement le même travail sans justification.
+- Lorsque plusieurs agents travaillent en parallèle et que leurs périmètres peuvent se chevaucher ou provoquer des conflits, ils doivent se coordonner directement entre eux par messages, sans demander à l'utilisateur d'organiser leur travail. Ils identifient les fichiers et dépendances partagés, conviennent de l'ordre des interventions et se transmettent l'état utile. Si nécessaire, un agent attend que l'autre ait terminé, puis reprend automatiquement son travail dès que le blocage est levé, sans attendre une relance ou une instruction de l'utilisateur. Aucun agent ne doit écraser, annuler ou intégrer silencieusement le travail d'un autre.
 - Une conversation qui développe une fonctionnalité reste propriétaire de cette fonctionnalité jusqu'à sa validation finale.
 
 ### Revue indépendante
