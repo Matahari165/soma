@@ -16,6 +16,8 @@
   .journal-field:nth-child(n + 2) { border-top: 1px solid var(--line); }
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strongest-effects > header, .strongest-effects li > button { grid-template-columns: minmax(190px, .9fr) minmax(260px, 1.1fr) minmax(135px, .6fr); }
+  .strongest-effects__comparison-group { grid-template-columns: minmax(190px, .9fr) minmax(395px, 1.7fr); }
+  .strongest-effects__comparison-group li > button { grid-template-columns: minmax(260px, 1.1fr) minmax(135px, .6fr); }
 }
 
 @media (max-width: 700px) {
@@ -52,6 +54,10 @@
   .strongest-effects > header { grid-template-columns: 1fr; align-items: start; }
   .strongest-effects__axis { grid-column: 1; width: 100%; margin-top: 5px; }
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
+  .strongest-effects__comparison-group { grid-template-columns: 1fr; }
+  .strongest-effects__comparison-header { padding: 8px 12px; }
+  .strongest-effects__comparison-group > ol { border-top: 1px solid var(--line); border-left: 0; }
+  .strongest-effects__comparison-group li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
   .strongest-effects__influence-header { align-items: start; flex-direction: column; gap: 3px; }
   .strongest-effects__influence-header small { text-align: left; }
@@ -349,7 +355,7 @@
   .matrix-state-controls .matrix-legend small { font-size: .5rem; }
   .matrix-state-controls .matrix-toggle { flex: 0 0 auto; }
   .matrix-state-controls .matrix-toggle { align-self: center; }
-  .matrix-state-controls .matrix-toggle > span { min-height: 32px; align-items: center; justify-content: center; padding: 3px 6px; border: 1px solid var(--line-strong); line-height: 1; }
+  .matrix-state-controls .matrix-toggle > span { min-height: 32px; align-items: center; justify-content: center; padding: 3px 2px; border: 0; line-height: 1; }
   .matrix-toggle .matrix-toggle__label { display: none; }
   .matrix-toggle .matrix-toggle__label--mobile { display: inline; font-size: .55rem; }
   .strongest-effects header p { display: none; }

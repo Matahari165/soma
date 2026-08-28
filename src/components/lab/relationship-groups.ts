@@ -66,3 +66,25 @@ export function calculableRelations(relations: MatrixRelation[]) {
 export function significantRelations(relations: MatrixRelation[]) {
   return calculableRelations(relations).filter((relation) => isPersonalLabPublishedRelation(relation));
 }
+
+/**
+ * Keeps effects with the same comparison together so the threshold/dose is
+ * written once while every outcome keeps its own visual estimate.
+ */
+export type RelationComparisonGroup = {
+  comparisonLabel: string;
+  relations: MatrixRelation[];
+};
+
+export function groupRelationsByComparison(relations: readonly MatrixRelation[]): RelationComparisonGroup[] {
+  const grouped = new Map<string, MatrixRelation[]>();
+  for (const relation of relations) {
+    const current = grouped.get(relation.comparisonLabel) ?? [];
+    current.push(relation);
+    grouped.set(relation.comparisonLabel, current);
+  }
+  return [...grouped.entries()].map(([comparisonLabel, groupedRelations]) => ({
+    comparisonLabel,
+    relations: groupedRelations,
+  }));
+}

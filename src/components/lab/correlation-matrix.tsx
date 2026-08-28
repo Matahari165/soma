@@ -8,7 +8,7 @@ import { isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMean
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { effectText, outcomeExplanation, percentText, RelationDetail } from "./relation-detail";
-import { calculableRelations, compareInfluenceGroups, groupMatrixRows, influenceGroup, significantRelations } from "./relationship-groups";
+import { calculableRelations, compareInfluenceGroups, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
 
 export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "All" : `${period}d`;
@@ -312,18 +312,15 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
 }) {
   const meaningful = useMemo(() => selectMeaningfulRelations(relations.filter((relation) => isPersonalLabPublishedRelation(relation)), relations.length), [relations]);
   const meaningfulGroups = useMemo(() => {
-    const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; comparisons: string[]; relations: MatrixRelation[] }>();
+    const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; relations: MatrixRelation[] }>();
     for (const relation of meaningful) {
       const key = `${relation.period}:${relation.predictorId}`;
       const current = groups.get(key) ?? {
         group: influenceGroup(relation.predictorId),
         predictorId: relation.predictorId,
         predictorLabel: relation.predictorLabel,
-        comparisons: [],
         relations: [],
       };
-      const comparison = formatComparisonLabel(relation.comparisonLabel);
-      if (!current.comparisons.includes(comparison)) current.comparisons.push(comparison);
       current.relations.push(relation);
       groups.set(key, current);
     }
@@ -386,9 +383,10 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
       {influences.map((influence) => <article className="strongest-effects__influence" key={`${influence.group}:${influence.predictorId}`}>
         <header className="strongest-effects__influence-header">
           <strong>{influence.predictorLabel}</strong>
-          <small>{influence.comparisons.join(" · ")}</small>
         </header>
-        <ol>{influence.relations.map((relation) => {
+        {groupRelationsByComparison(influence.relations).map((comparisonGroup) => <section className="strongest-effects__comparison-group" key={comparisonGroup.comparisonLabel}>
+        <header className="strongest-effects__comparison-header"><strong>{formatComparisonLabel(comparisonGroup.comparisonLabel)}</strong></header>
+        <ol>{comparisonGroup.relations.map((relation) => {
         const index = meaningful.indexOf(relation);
         const direction = outcomes.find((outcome) => outcome.id === relation.outcomeId)?.direction ?? "target";
         const sign = effectDirection(relation, direction);
@@ -418,16 +416,16 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
           style={rowStyle}
         >
           <button type="button" onClick={() => onSelect(relation)} aria-label={`Open ${relationLabel}`}>
-            <span className="strongest-effects__relation"><small>{formatComparisonLabel(relation.comparisonLabel)}</small></span>
             <span className={`strongest-effects__plot ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`} aria-hidden="true">
               <i className="strongest-effects__zero" />
               <i className="strongest-effects__interval" style={intervalStyle} />
               <i className="strongest-effects__point" style={{ left: `${50 + point * 46}%` }} />
             </span>
-            <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{relation.outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em><span>n={relation.sampleSize}d</span></small></span>
+            <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{relation.outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
           </button>
         </li>;
       })}</ol>
+        </section>)}
       </article>)}
     </section>;
     })}

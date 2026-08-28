@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calculateMatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
-import { calculableRelations, groupMatrixRows, influenceGroup, significantRelations } from "./relationship-groups";
+import { calculableRelations, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
 
 function series(id: string, slope = 1): MatrixSeries {
   const start = new Date("2026-01-01T12:00:00Z");
@@ -93,6 +93,23 @@ describe("groupMatrixRows", () => {
       "Daily activity",
       "Training & running",
       "Journal habits",
+    ]);
+  });
+});
+
+describe("groupRelationsByComparison", () => {
+  it("groups outcomes with the exact same comparison label", () => {
+    const base = calculateMatrixRelation(series("steps"), series("hrv", 2), 1);
+    const sameComparison = { ...base, outcomeId: "rhr", comparisonLabel: "+10 %" };
+    const differentComparison = { ...base, outcomeId: "sleep_minutes", comparisonLabel: "+20 %" };
+
+    expect(groupRelationsByComparison([
+      { ...base, comparisonLabel: "+10 %" },
+      sameComparison,
+      differentComparison,
+    ])).toEqual([
+      { comparisonLabel: "+10 %", relations: [{ ...base, comparisonLabel: "+10 %" }, sameComparison] },
+      { comparisonLabel: "+20 %", relations: [differentComparison] },
     ]);
   });
 });
