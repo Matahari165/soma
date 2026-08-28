@@ -20,8 +20,6 @@
 - Vérifie par défaut les formats MacBook Air `1440x900`, iPhone `390x844` et les largeurs intermédiaires utiles.
 - Vérifie contraste, lisibilité, clavier, focus visible, zones tactiles et information indépendante de la couleur.
 - Utilise le navigateur intégré pour toute modification visuelle ou interactive significative ; une petite correction évidente peut recevoir une vérification proportionnée.
-- Lorsqu'une modification peut affecter significativement l'interface ou l'expérience utilisateur, demande une revue indépendante à la conversation permanente `UI/UX` du projet lorsqu'elle est disponible.
-- Ne sollicite pas `UI/UX` pour une modification purement technique ou une différence visuelle triviale sans impact utilisateur réel.
 
 ### Développement, qualité et Git
 
@@ -45,15 +43,6 @@
 - Utilise les sous-agents pour le travail borné et parallélisable. Évite les délégations redondantes ou plusieurs agents faisant essentiellement le même travail sans justification.
 - Lorsque plusieurs agents travaillent en parallèle et que leurs périmètres peuvent se chevaucher ou provoquer des conflits, ils doivent se coordonner directement entre eux par messages, sans demander à l'utilisateur d'organiser leur travail. Ils identifient les fichiers et dépendances partagés, conviennent de l'ordre des interventions et se transmettent l'état utile. Si nécessaire, un agent attend que l'autre ait terminé, puis reprend automatiquement son travail dès que le blocage est levé, sans attendre une relance ou une instruction de l'utilisateur. Aucun agent ne doit écraser, annuler ou intégrer silencieusement le travail d'un autre.
 - Une conversation qui développe une fonctionnalité reste propriétaire de cette fonctionnalité jusqu'à sa validation finale.
-
-### Revue indépendante
-
-- Pour une modification importante, risquée ou suffisamment large pour qu'une seconde lecture puisse raisonnablement trouver des problèmes, demande une revue indépendante à la conversation permanente `Reviewer` du projet lorsqu'elle est disponible.
-- Le Reviewer doit chercher activement bugs, régressions, cas limites, effets de bord, complexité inutile et écarts par rapport à la demande.
-- N'utilise pas systématiquement le Reviewer pour les petites modifications évidentes : le bénéfice attendu de la revue doit justifier le coût supplémentaire.
-- Si une revue indépendante est nécessaire mais que la conversation `Reviewer` n'est pas disponible, utilise un sous-agent Luna `xhigh` comme reviewer indépendant.
-- Le Reviewer ne devient pas propriétaire de la fonctionnalité : la conversation propriétaire reçoit ses conclusions, décide des corrections, les applique et effectue les vérifications finales.
-- Si un changement important touche à la fois au fonctionnement et à l'expérience utilisateur, les conversations `REVIEWER` et `UI/UX` peuvent toutes les deux être sollicitées, chacune uniquement sur son domaine.
 
 ### Apprentissage et restitution
 
