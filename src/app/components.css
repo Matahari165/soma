@@ -869,9 +869,10 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__influence-header strong { font-size: .86rem; font-weight: 650; }
 .strongest-effects__influence-header small { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; text-align: right; }
 .strongest-effects__comparison-group { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(440px, 1.8fr); }
-.strongest-effects__comparison-group + .strongest-effects__comparison-group { margin-top: 18px; }
+.strongest-effects__comparison-group + .strongest-effects__comparison-group { margin-top: 28px; }
 .strongest-effects__comparison-header { display: grid; align-content: center; padding: 12px; background: var(--paper); }
-.strongest-effects__comparison-header strong { color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .68rem; font-weight: 400; }
+.strongest-effects__comparison-header strong { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .68rem; font-weight: 400; }
+.strongest-effects__comparison-header strong::before { width: 5px; height: 5px; flex: 0 0 5px; background: var(--faint); content: ""; }
 .strongest-effects__comparison-group > ol { border-left: 0; }
 .strongest-effects li { border-bottom: 0; }
 .strongest-effects__comparison-group > ol > li:last-child { border-bottom: 0; }
@@ -899,6 +900,9 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__outcome.is-negative { color: color-mix(in srgb, var(--danger) 88%, var(--ink)); }
 .strongest-effects__outcome.is-neutral { color: var(--ink-soft); }
 .strongest-effects__empty { padding: 20px 12px; color: var(--muted); font-size: .7rem; }
+@media (min-width: 701px) {
+  .strongest-effects__influence:has(> .strongest-effects__comparison-group:only-of-type) > .strongest-effects__comparison-group { transform: translateY(-21px); }
+}
 .matrix-scroll {
   display: block;
   max-height: min(72vh, 820px);
