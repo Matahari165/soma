@@ -308,14 +308,20 @@ function healthSeries(health: HealthDay[], id: string, label: string, unit: stri
 }
 
 const RELIABLE_ACTIVITY_DATA_TYPES = new Set([
+  "steps",
   "exercise",
   "daily-exercise-summary",
+  "distance",
+  "active-minutes",
+  "active-zone-minutes",
+  "time-in-heart-rate-zone",
+  "sedentary-period",
 ]);
 
 /**
- * A no-run value requires an exercise-level record. Generic daily measures
- * such as steps cannot prove that exercise import completed, so those days
- * remain unknown instead of being turned into false zeroes.
+ * A day with any recorded activity is covered by the wearable: a recorded run
+ * becomes 1 and the absence of a run becomes 0. Days without activity data
+ * remain unknown and are excluded from the comparison.
  */
 export function hasReliableActivityCoverage(day: Pick<HealthDay, "data_quality">) {
   return (day.data_quality?.presentTypes ?? []).some((type) => RELIABLE_ACTIVITY_DATA_TYPES.has(type));

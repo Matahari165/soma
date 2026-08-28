@@ -103,15 +103,15 @@ describe("Personal Lab mechanical exclusions", () => {
 describe("Personal Lab run-day coverage", () => {
   it("only treats activity-covered days as evidence for no run", () => {
     expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["sleep"] } })).toBe(false);
-    expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["steps"] } })).toBe(false);
+    expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["steps"] } })).toBe(true);
     expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["exercise"] } })).toBe(true);
     expect(hasReliableActivityCoverage({ data_quality: undefined })).toBe(false);
   });
 
   it("builds yes/no run observations without turning uncovered days into no", () => {
     const result = runningDaySeries([
-      { metric_date: "2026-08-01", running_distance_km: 5, running_duration_minutes: 30, running_pace_seconds_per_km: 360, running_average_heart_rate: 150, data_quality: { presentTypes: ["exercise"] } },
-      { metric_date: "2026-08-02", running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, data_quality: { presentTypes: ["exercise"] } },
+      { metric_date: "2026-08-01", running_distance_km: 5, running_duration_minutes: 30, running_pace_seconds_per_km: 360, running_average_heart_rate: 150, data_quality: { presentTypes: ["steps"] } },
+      { metric_date: "2026-08-02", running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, data_quality: { presentTypes: ["steps"] } },
       { metric_date: "2026-08-03", running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, data_quality: { presentTypes: ["sleep"] } },
     ]);
     expect(result.kind).toBe("binary");
