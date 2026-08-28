@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysUntilFirstResult, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel, publishedRelationsForPair } from "./correlation-matrix";
+import { daysUntilFirstResult, defaultAnalysisPeriod, formatComparisonLabel, formatDuration, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel, publishedRelationsForPair } from "./correlation-matrix";
 import { calculateMatrixRelation, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 
 describe("relationship matrix motion helpers", () => {
@@ -11,6 +11,19 @@ describe("relationship matrix motion helpers", () => {
     expect(periodLabel(30)).toBe("30d");
     expect(periodLabel(90)).toBe("90d");
     expect(periodLabel("all")).toBe("All");
+  });
+
+  it("defaults Personal Lab to the 90-day window when available", () => {
+    expect(defaultAnalysisPeriod([15, 30, 90, "all"])).toBe(90);
+    expect(defaultAnalysisPeriod([15, 30])).toBe(15);
+  });
+
+  it("formats long minute comparisons as hours without changing short values", () => {
+    expect(formatDuration(120)).toBe("120 min");
+    expect(formatDuration(540)).toBe("9 h");
+    expect(formatDuration(676)).toBe("11 h 16 min");
+    expect(formatComparisonLabel("adverse zone 540 min–676 min · J+1")).toBe("adverse zone 9 h–11 h 16 min · J+1");
+    expect(formatComparisonLabel("+200 min")).toBe("+3 h 20 min");
   });
 
   it("groups consecutive outcomes into readable themes", () => {

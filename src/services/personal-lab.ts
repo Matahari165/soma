@@ -63,7 +63,7 @@ type HealthDay = {
   running_duration_minutes: number | null;
   running_pace_seconds_per_km: number | null;
   running_average_heart_rate: number | null;
-  data_quality?: { primaryWearable?: string | null };
+  data_quality?: { primaryWearable?: string | null; presentTypes?: string[] };
 };
 
 type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null };
@@ -156,6 +156,18 @@ const OVERNIGHT_OUTCOME_IDS = new Set(["sleep_minutes", "sleep_need", "sleep_eff
 const EFFORT_INPUT_IDS = new Set(["steps", "zone_minutes", "active_energy", "exercise_minutes"]);
 const RECOVERY_INPUT_IDS = new Set(["hrv", "rhr", "sleep_minutes", "sleep_efficiency"]);
 const SLEEP_DEBT_INPUT_IDS = new Set(["sleep_minutes", "sleep_need", "daily_sleep_debt"]);
+const SAME_NIGHT_SLEEP_COMPONENTS = new Set([
+  "sleep_efficiency",
+  "sleep_awake",
+  "sleep_awake_percent",
+  "sleep_fragmentation",
+  "deep_sleep",
+  "deep_sleep_percent",
+  "rem_sleep",
+  "rem_sleep_percent",
+  "light_sleep",
+  "light_sleep_percent",
+]);
 const SAME_NIGHT_TIMING_INPUTS = new Map([
   ["bedtime", new Set(["sleep_minutes", "sleep_efficiency"])],
   ["wake_time", new Set(["sleep_minutes", "sleep_efficiency", "sleep_awake"])],
@@ -171,6 +183,7 @@ export function isImpossibleSameDayTiming(timing: "overnight" | "daytime" | "jou
 
 export function isMechanicalRelation(predictorId: string, outcomeId: string, lagDays = 0) {
   if (predictorId === outcomeId) return true;
+  if (predictorId === "sleep_minutes" && lagDays === 0 && SAME_NIGHT_SLEEP_COMPONENTS.has(outcomeId)) return true;
   if (predictorId === "sleep_debt" && OVERNIGHT_OUTCOME_IDS.has(outcomeId)) return lagDays !== 1;
   if (lagDays === 0 && SAME_NIGHT_TIMING_INPUTS.get(predictorId)?.has(outcomeId)) return true;
   if ((predictorId === "effort" && EFFORT_INPUT_IDS.has(outcomeId)) || (outcomeId === "effort" && EFFORT_INPUT_IDS.has(predictorId))) return true;
@@ -294,6 +307,40 @@ function healthSeries(health: HealthDay[], id: string, label: string, unit: stri
   };
 }
 
+const RELIABLE_ACTIVITY_DATA_TYPES = new Set([
+  "exercise",
+  "daily-exercise-summary",
+]);
+
+/**
+ * A no-run value requires an exercise-level record. Generic daily measures
+ * such as steps cannot prove that exercise import completed, so those days
+ * remain unknown instead of being turned into false zeroes.
+ */
+export function hasReliableActivityCoverage(day: Pick<HealthDay, "data_quality">) {
+  return (day.data_quality?.presentTypes ?? []).some((type) => RELIABLE_ACTIVITY_DATA_TYPES.has(type));
+}
+
+function hasRecordedRun(day: Pick<HealthDay, "running_distance_km" | "running_duration_minutes" | "running_pace_seconds_per_km" | "running_average_heart_rate">) {
+  return [day.running_distance_km, day.running_duration_minutes, day.running_pace_seconds_per_km, day.running_average_heart_rate]
+    .some((value) => toNumber(value) !== null && Number(value) > 0);
+}
+
+type RunningDay = Pick<HealthDay, "metric_date" | "running_distance_km" | "running_duration_minutes" | "running_pace_seconds_per_km" | "running_average_heart_rate" | "data_quality">;
+
+export function runningDaySeries(health: RunningDay[]): MatrixSeries {
+  return {
+    id: "run_day",
+    label: "Run day",
+    unit: "yes/no",
+    kind: "binary",
+    points: health.flatMap((day) => {
+      if (!hasReliableActivityCoverage(day)) return [];
+      return [{ date: day.metric_date, value: hasRecordedRun(day) ? 1 : 0, segment: day.data_quality?.primaryWearable ?? undefined }];
+    }),
+  };
+}
+
 function combinedHealthSeries(health: HealthDay[], id: string, label: string, unit: string, keys: Array<keyof HealthDay>): MatrixSeries {
   return {
     id,
@@ -370,6 +417,7 @@ function buildCorrelationMatrix(input: {
 
   type RowSpec = { series: MatrixSeries; acuteLags: number[]; chronic: boolean; journal: boolean; timing: "overnight" | "daytime" | "journal" | "unknown" };
   const automaticRows: RowSpec[] = [
+    { series: healthSeries(health, "sleep_minutes", "Previous night's sleep duration", "min", "sleep_minutes"), acuteLags: [1, 2], chronic: true, journal: false, timing: "overnight" },
     { series: bedtime, acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
     { series: wakeTime, acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
     { series: healthSeries(health, "sleep_regularity", "Sleep regularity", "%", "sleep_regularity"), acuteLags: [0], chronic: true, journal: false, timing: "overnight" },
@@ -381,6 +429,7 @@ function buildCorrelationMatrix(input: {
     { series: healthSeries(health, "active_minutes", "Active time", "min", "active_minutes"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "sedentary_minutes", "Sedentary time", "min", "sedentary_minutes"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "running_distance", "Running distance", "km", "running_distance_km"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
+    { series: runningDaySeries(health), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "running_pace", "Running pace", "sec/km", "running_pace_seconds_per_km"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "running_average_heart_rate", "Running average heart rate", "bpm", "running_average_heart_rate"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
     { series: healthSeries(health, "active_day", "Active day", "yes/no", "active_day"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
@@ -490,6 +539,7 @@ function buildCorrelationMatrix(input: {
     active_minutes: "⚡",
     skin_temperature: "🌡️",
     effort: "💪",
+    run_day: "🏃",
   };
   const emojiByVariable = new Map(input.variables.map((variable) => [`journal:${variable.id}`, variable.emoji]));
   const rows: LabMatrixRow[] = calculatedPeriods.flatMap((period) => allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({

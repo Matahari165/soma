@@ -83,7 +83,7 @@ describe("relation detail formatting", () => {
     );
   });
 
-  it("keeps interval, p, and q together and removes redundant detail copy", () => {
+  it("keeps the click detail short and explains both sides of the relation", () => {
     const html = renderToStaticMarkup(createElement(RelationDetail, {
       relations: [makeRelation()],
       direction: "lower",
@@ -94,8 +94,10 @@ describe("relation detail formatting", () => {
     expect(html).not.toContain("Each percentage below is the relative change");
     expect(html).not.toContain("Compared days");
     expect(html).not.toContain("q &lt; 0.05");
-    expect(html).toContain("95% interval · tests");
-    expect(html).toContain("p 0.010 · q 0.030");
-    expect(html).toContain("Significant");
+    expect(html).toContain("Relationship");
+    expect(html).toContain("Influence");
+    expect(html).toContain("Result");
+    expect(html).toContain("during the same sleep episode");
+    expect(html).not.toContain("95% interval · tests");
   });
 });

@@ -10,16 +10,15 @@ export type GroupedMatrixRow = {
   relationsByOutcome: MatrixRelation[][];
 };
 
-const activityLoadIds = new Set(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "active_minutes"]);
-const sleepPatternIds = new Set(["bedtime", "wake_time", "sleep_regularity", "sleep_debt"]);
-const runningAndSedentaryIds = new Set(["sedentary_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"]);
-const influenceGroupOrder = ["Sleep pattern", "Daily movement", "Activity load", "Running & sedentary time", "Other influences", "Journal habits"];
+const activityLoadIds = new Set(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max", "run_day"]);
+const dailyActivityIds = new Set(["steps", "active_minutes", "sedentary_minutes", "active_day"]);
+const sleepPatternIds = new Set(["bedtime", "wake_time", "sleep_regularity", "sleep_debt", "sleep_minutes"]);
+const influenceGroupOrder = ["Sleep pattern", "Daily activity", "Training & running", "Other influences", "Journal habits"];
 
 export function influenceGroup(predictorId: string) {
   if (predictorId.startsWith("journal:")) return "Journal habits";
-  if (activityLoadIds.has(predictorId)) return "Activity load";
-  if (predictorId === "steps") return "Daily movement";
-  if (runningAndSedentaryIds.has(predictorId)) return "Running & sedentary time";
+  if (dailyActivityIds.has(predictorId)) return "Daily activity";
+  if (activityLoadIds.has(predictorId)) return "Training & running";
   if (sleepPatternIds.has(predictorId)) return "Sleep pattern";
   return "Other influences";
 }

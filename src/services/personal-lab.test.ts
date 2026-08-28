@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { analysisWindowForPeriods, createPersonalLabStream, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, createPersonalLabStream, hasReliableActivityCoverage, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, runningDaySeries, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
@@ -69,7 +69,7 @@ describe("Personal Lab timing", () => {
 
 describe("Personal Lab mechanical exclusions", () => {
   it("keeps informative sleep-component relationships while excluding direct score inputs", () => {
-    expect(isMechanicalRelation("sleep_minutes", "deep_sleep")).toBe(false);
+    expect(isMechanicalRelation("sleep_minutes", "deep_sleep")).toBe(true);
     expect(isMechanicalRelation("sleep_efficiency", "rem_sleep")).toBe(false);
     expect(isMechanicalRelation("sleep_minutes", "sleep_debt")).toBe(true);
     expect(isMechanicalRelation("steps", "effort")).toBe(true);
@@ -88,6 +88,37 @@ describe("Personal Lab mechanical exclusions", () => {
     expect(isMechanicalRelation("sleep_debt", "sleep_minutes", 1)).toBe(false);
     expect(isMechanicalRelation("effort", "steps", 1)).toBe(true);
     expect(isMechanicalRelation("wake_time", "sleep_minutes", 1)).toBe(false);
+  });
+
+  it("excludes same-night sleep composition but keeps next-day sleep effects", () => {
+    expect(isMechanicalRelation("sleep_minutes", "deep_sleep", 0)).toBe(true);
+    expect(isMechanicalRelation("sleep_minutes", "rem_sleep", 0)).toBe(true);
+    expect(isMechanicalRelation("sleep_minutes", "sleep_fragmentation", 0)).toBe(true);
+    expect(isMechanicalRelation("sleep_minutes", "deep_sleep", 1)).toBe(false);
+    expect(isMechanicalRelation("sleep_minutes", "hrv", 1)).toBe(false);
+    expect(isMechanicalRelation("sleep_minutes", "recovery", 1)).toBe(true);
+  });
+});
+
+describe("Personal Lab run-day coverage", () => {
+  it("only treats activity-covered days as evidence for no run", () => {
+    expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["sleep"] } })).toBe(false);
+    expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["steps"] } })).toBe(false);
+    expect(hasReliableActivityCoverage({ data_quality: { presentTypes: ["exercise"] } })).toBe(true);
+    expect(hasReliableActivityCoverage({ data_quality: undefined })).toBe(false);
+  });
+
+  it("builds yes/no run observations without turning uncovered days into no", () => {
+    const result = runningDaySeries([
+      { metric_date: "2026-08-01", running_distance_km: 5, running_duration_minutes: 30, running_pace_seconds_per_km: 360, running_average_heart_rate: 150, data_quality: { presentTypes: ["exercise"] } },
+      { metric_date: "2026-08-02", running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, data_quality: { presentTypes: ["exercise"] } },
+      { metric_date: "2026-08-03", running_distance_km: null, running_duration_minutes: null, running_pace_seconds_per_km: null, running_average_heart_rate: null, data_quality: { presentTypes: ["sleep"] } },
+    ]);
+    expect(result.kind).toBe("binary");
+    expect(result.points).toEqual([
+      { date: "2026-08-01", value: 1, segment: undefined },
+      { date: "2026-08-02", value: 0, segment: undefined },
+    ]);
   });
 });
 

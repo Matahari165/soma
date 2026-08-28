@@ -53,6 +53,11 @@
   .strongest-effects__axis { grid-column: 1; width: 100%; margin-top: 5px; }
   .strongest-effects li > button { grid-template-columns: minmax(0, 1fr) minmax(130px, auto); gap: 7px 12px; }
   .strongest-effects__plot { grid-column: 1 / -1; grid-row: 2; }
+  .strongest-effects__influence-header { align-items: start; flex-direction: column; gap: 3px; }
+  .strongest-effects__influence-header small { text-align: left; }
+  .relation-detail__definitions { grid-template-columns: 1fr; }
+  .relation-detail__definitions > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .relation-detail__definitions > div:last-child { border-bottom: 0; }
   .matrix-scroll { display: none; }
   .matrix-mobile-list { display: block; }
   .matrix-scroll table { width: max-content; min-width: 1320px; }

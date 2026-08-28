@@ -31,7 +31,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   if (!user) return <PublicHome />;
 
   const connectionNotice = params.calendar === "connected" ? "calendar" : params.health === "connected" || params.health === "connected_partial" ? "health" : null;
-  const stream = createPersonalLabStream(user, { periods: [30] });
+  const stream = createPersonalLabStream(user, { periods: [90] });
   return <div id="main-page-content" className="personal-lab-page lab-entry">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
     <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>

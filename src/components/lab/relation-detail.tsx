@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import type { RefObject } from "react";
 
-import type { MatrixDoseResponse, MatrixRelation } from "@/domain/lab/matrix";
+import type { MatrixRelation } from "@/domain/lab/matrix";
 
 function signed(value: number, digits = 1) {
   const rounded = Number(value.toFixed(digits));
@@ -18,14 +18,6 @@ function effectUnit(unit: string) {
   return unit === "%" ? "pp" : unit;
 }
 
-function predictorDeltaText(relation: MatrixRelation) {
-  if (relation.habitualPredictorDelta === null) return null;
-  const value = relation.predictorUnit === "steps"
-    ? Math.round(relation.habitualPredictorDelta).toLocaleString("en-US")
-    : Number(relation.habitualPredictorDelta.toFixed(1)).toString();
-  return `${value}${relation.predictorUnit ? ` ${relation.predictorUnit}` : ""}`;
-}
-
 export function effectText(relation: Pick<MatrixRelation, "effect" | "outcomeUnit">) {
   if (relation.effect === null) return "—";
   const unit = effectUnit(relation.outcomeUnit);
@@ -36,30 +28,50 @@ export function percentText(relation: Pick<MatrixRelation, "percentEffect">) {
   return relation.percentEffect === null ? null : `${signed(relation.percentEffect, 1)}%`;
 }
 
-function probability(value: number) {
-  return value < .001 ? "<.001" : value.toFixed(3);
-}
-
-function modelText(modelType: MatrixRelation["modelType"]) {
-  if (modelType === "binary") return "Exposure comparison";
-  if (modelType === "linear") return "Linear relation retained";
-  if (modelType === "threshold") return "Threshold detected";
-  if (modelType === "plateau") return "Plateau detected";
-  if (modelType === "optimal-zone") return "Optimal zone detected";
-  if (modelType === "adverse-zone") return "Adverse zone detected";
-  return "Middle zone detected";
-}
-
-function modelEvidence(modelType: MatrixRelation["modelType"], improvement: number, nonlinearTested: boolean) {
-  return modelType === "binary"
-    ? modelText(modelType)
-    : modelType === "linear"
-      ? nonlinearTested ? "Linear relation retained after the non-linear check" : "Linear estimate · non-linear check needs 30 varied paired days"
-    : `${modelText(modelType)} · ${Math.round(improvement * 100)}% less unexplained variation than a straight line`;
-}
-
 function overnightOutcome(relation: MatrixRelation) {
   return ["sleep_minutes", "sleep_efficiency", "sleep_latency", "sleep_awake", "sleep_fragmentation", "deep_sleep", "rem_sleep", "light_sleep", "hrv", "rhr", "respiratory", "spo2", "recovery"].some((id) => relation.outcomeId.startsWith(id));
+}
+
+const predictorDefinitions: Record<string, string> = {
+  steps: "Total steps recorded during the day.",
+  active_minutes: "Minutes classified as active by your wearable.",
+  sedentary_minutes: "Minutes classified as sedentary by Google Health.",
+  active_day: "Whether the day met Soma's activity threshold.",
+  effort: "Soma's estimate of your daily activity load.",
+  zone_minutes: "Minutes spent in the wearable's heart-rate activity zones.",
+  intense_minutes: "Minutes spent in vigorous and peak heart-rate zones.",
+  exercise_minutes: "Total duration of recorded exercise.",
+  running_distance: "Distance covered during recorded running sessions.",
+  running_pace: "Average pace of recorded running sessions.",
+  running_average_heart_rate: "Average heart rate during recorded running sessions.",
+  vo2_max: "Wearable estimate of the maximum oxygen use during exercise.",
+  sleep_minutes: "Duration of the previous sleep episode.",
+  sleep_regularity: "How closely your sleep schedule follows its recent pattern.",
+};
+
+export function outcomeExplanation(outcomeId: string, label: string) {
+  const explanations: Record<string, string> = {
+    sleep_minutes: "Total time spent asleep during the sleep episode.",
+    sleep_efficiency: "The percentage of time in bed spent asleep.",
+    sleep_latency: "Time needed to fall asleep.",
+    sleep_awake: "Time awake during the sleep episode.",
+    sleep_fragmentation: "How interrupted the sleep episode was.",
+    deep_sleep: "Time spent in deep sleep.",
+    rem_sleep: "Time spent in REM sleep.",
+    light_sleep: "Time spent in light sleep.",
+    hrv: "Heart-rate variability, measured in milliseconds.",
+    rhr: "Average resting heart rate.",
+    recovery: "Soma's recovery estimate from several health inputs.",
+    vo2_max: "Wearable estimate of the maximum oxygen use during exercise.",
+    running_average_heart_rate: "Average heart rate during recorded running sessions.",
+    running_pace: "Average pace of recorded running sessions.",
+  };
+  return explanations[outcomeId] ?? `${label} measured by Soma from your connected health data.`;
+}
+
+export function predictorExplanation(relation: Pick<MatrixRelation, "predictorId" | "predictorLabel">) {
+  if (relation.predictorId.startsWith("journal:")) return `${relation.predictorLabel} is a personal measure recorded by you in the Journal.`;
+  return predictorDefinitions[relation.predictorId] ?? `${relation.predictorLabel} is a daily measure from your connected health data.`;
 }
 
 export function timingText(relation: MatrixRelation) {
@@ -83,24 +95,27 @@ export function relationTone(relation: MatrixRelation, direction: "higher" | "lo
   return "is-neutral";
 }
 
-function sourceText(relation: MatrixRelation) {
-  const coverage = relation.coverageBySource.map((item) => `${item.source} ${item.pairedDays} days`).join(" · ") || "No paired source";
-  return `One longitudinal history · ${coverage}`;
-}
-
 function sentenceComparisonText(relation: MatrixRelation) {
   if (relation.comparisonLabel === "yes vs no") return "yes rather than no";
   if (relation.comparisonLabel === "30 min later") return "30 minutes later";
-  const amountComparison = relation.comparisonLabel.match(/^(.+?) avg vs 0$/);
+  const readable = relation.comparisonLabel.replace(/([+−-]?\d+(?:\.\d+)?)\s*min\b/g, (match, raw: string) => {
+    const value = Number(raw.replace("−", "-"));
+    if (Math.abs(value) <= 120) return match;
+    const absolute = Math.abs(Math.round(value));
+    const hours = Math.floor(absolute / 60);
+    const minutes = absolute % 60;
+    return `${raw.startsWith("+") ? "+" : raw.startsWith("-") || raw.startsWith("−") ? "−" : ""}${hours} hour${hours === 1 ? "" : "s"}${minutes ? ` ${minutes} minutes` : ""}`;
+  });
+  const amountComparison = readable.match(/^(.+?) avg vs 0$/);
   if (amountComparison) return `${amountComparison[1]} on average rather than zero`;
-  const threshold = relation.comparisonLabel.match(/^threshold above (.+)$/);
+  const threshold = readable.match(/^threshold above (.+)$/);
   if (threshold) return `above ${threshold[1]}`;
-  const plateau = relation.comparisonLabel.match(/^plateau after (.+)$/);
+  const plateau = readable.match(/^plateau after (.+)$/);
   if (plateau) return `after ${plateau[1]}`;
-  const zone = relation.comparisonLabel.match(/^(?:optimal|adverse|middle) zone (.+)$/);
+  const zone = readable.match(/^(?:optimal|adverse|middle) zone (.+)$/);
   if (zone) return `within ${zone[1]}`;
-  if (relation.comparisonLabel.startsWith("+")) return `${relation.comparisonLabel.slice(1)} higher`;
-  return relation.comparisonLabel;
+  if (readable.startsWith("+")) return `${readable.slice(1)} higher`;
+  return readable;
 }
 
 function associationVerb(label: string) {
@@ -142,51 +157,21 @@ export function findingSentence(relation: MatrixRelation) {
   return `${relation.predictorLabel} (${sentenceComparisonText(relation)}) ${associationVerb(relation.predictorLabel)} associated with ${article} ${direction} of ${magnitude} in ${relation.outcomeLabel} ${sentenceTimingText(relation)}${relative}.`;
 }
 
-function intervalText(relation: MatrixRelation) {
-  if (relation.effectConfidenceLow === null) return "—";
-  const digits = effectDigits(relation.effect, relation.outcomeUnit);
-  return `${signed(relation.effectConfidenceLow, digits)} to ${signed(relation.effectConfidenceHigh ?? 0, digits)} ${effectUnit(relation.outcomeUnit)}`;
-}
-
-function doseEffectText(dose: MatrixDoseResponse, unit: string) {
-  const digits = effectDigits(dose.effect, unit);
-  const displayedUnit = effectUnit(unit);
-  return `${signed(dose.effect, digits)}${displayedUnit ? ` ${displayedUnit}` : ""}`;
-}
-
-function RelationEvidence({ relation, direction }: { relation: MatrixRelation; direction: "higher" | "lower" | "target" }) {
-  const maximum = Math.max(Math.abs(relation.baselineMean ?? 0), Math.abs(relation.comparisonMean ?? 0), 1);
-  return <article className="relation-evidence">
-    <header><span>{timingText(relation)}</span><strong>{relation.qValue < .05 ? "Significant" : "Not significant"}</strong></header>
-    <p className="relation-detail__finding">{findingSentence(relation)}</p>
-    <div className="relation-detail__plot" aria-label={`Compared ${relation.outcomeLabel} values ${timingText(relation).toLowerCase()}`}>
-      <div><span>Baseline outcome</span><i style={{ width: `${Math.abs(relation.baselineMean ?? 0) / maximum * 100}%` }} /><strong>{relation.baselineMean ?? "—"} {relation.outcomeUnit}</strong></div>
-      <div><span>{relation.comparisonLabel}</span><i className={relationTone(relation, direction)} style={{ width: `${Math.abs(relation.comparisonMean ?? 0) / maximum * 100}%` }} /><strong>{relation.comparisonMean ?? "—"} {relation.outcomeUnit}</strong></div>
-    </div>
-    <dl>
-      <div><dt>Outcome change</dt><dd>{percentText(relation) ? `${percentText(relation)} of baseline · ` : ""}{effectText(relation)}</dd></div>
-      {relation.habitualEffect !== null && <div><dt>Your habitual variation</dt><dd>{predictorDeltaText(relation)} → {effectText({ effect: relation.habitualEffect, outcomeUnit: relation.outcomeUnit })}</dd></div>}
-      <div><dt>95% interval · tests</dt><dd>{intervalText(relation)}<br />p {probability(relation.pValue)} · q {probability(relation.qValue)}</dd></div>
-      <div><dt>Detected shape</dt><dd>{modelEvidence(relation.modelType, relation.modelImprovement, relation.nonlinearTested)}</dd></div>
-    </dl>
-    {relation.doseResponse && <section className="relation-dose">
-      <h5>Dose response</h5>
-      <p><strong>{relation.doseResponse.comparisonLabel}</strong> is associated with {doseEffectText(relation.doseResponse, relation.outcomeUnit)}{relation.doseResponse.percentEffect === null ? "" : ` (${signed(relation.doseResponse.percentEffect, 1)}% of baseline)`}. This uses all {relation.doseResponse.sampleSize} recorded days, including zero-amount days.</p>
-      <p><small>{modelEvidence(relation.doseResponse.modelType, relation.doseResponse.modelImprovement, relation.doseResponse.nonlinearTested)}.</small></p>
-      <small>Exploratory quantity estimate · {relation.doseResponse.modelType === "linear" ? "raw" : "shape-search adjusted"} p {probability(relation.doseResponse.pValue)} · not used to qualify the main exposure relation · 95% interval {signed(relation.doseResponse.effectConfidenceLow, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} to {signed(relation.doseResponse.effectConfidenceHigh, effectDigits(relation.doseResponse.effect, relation.outcomeUnit))} {effectUnit(relation.outcomeUnit)}</small>
-    </section>}
-  </article>;
-}
-
 export function RelationDetail({ relations, direction, onClose, detailRef }: { relations: MatrixRelation[]; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
   const first = relations[0];
   if (!first) return null;
-  return <aside ref={detailRef} className="relation-detail" tabIndex={-1} aria-labelledby="relation-detail-title">
+  void direction;
+  return <aside ref={detailRef} className="relation-detail relation-detail--popover" tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
     <header>
-      <div><h3 id="relation-detail-title">{first.predictorLabel} × {first.outcomeLabel}</h3></div>
+      <div><span className="relation-detail__eyebrow">Relationship</span><h3 id="relation-detail-title">{first.predictorLabel} → {first.outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation detail" onClick={onClose}><X size={17} /></button>
     </header>
-    {relations.map((relation) => <RelationEvidence key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`} relation={relation} direction={direction} />)}
-    <footer><span>Period</span><strong>{first.period === "all" ? "All history" : `${first.period} days`}</strong><span>Sources</span><strong>{sourceText(first)}</strong><span>Method</span><strong>Raw within-person · device baseline adjusted · serial-dependence robust · BH corrected</strong></footer>
+    <div className="relation-detail__popover-body">
+      {relations.map((relation) => <p className="relation-detail__finding" key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>{findingSentence(relation)}</p>)}
+      <dl className="relation-detail__definitions">
+        <div><dt>Influence</dt><dd>{predictorExplanation(first)}</dd></div>
+        <div><dt>Result</dt><dd>{outcomeExplanation(first.outcomeId, first.outcomeLabel)}</dd></div>
+      </dl>
+    </div>
   </aside>;
 }

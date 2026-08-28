@@ -7,8 +7,8 @@ vi.mock("@/lib/r2", () => ({ getR2JsonObject: vi.fn(), putR2JsonObject: vi.fn() 
 import { LAB_MATRIX_CACHE_VERSION, labMatrixCacheObjectKey, labMatrixCacheObjectKeys } from "./lab-matrix-cache";
 
 describe("lab matrix cache object keys", () => {
-  it("invalidates matrices created before excluded outcomes were removed", () => {
-    expect(LAB_MATRIX_CACHE_VERSION).toBe("matrix-v13");
+  it("invalidates matrices created before the new influence series were added", () => {
+    expect(LAB_MATRIX_CACHE_VERSION).toBe("matrix-v14");
   });
 
   it("keeps stable keys across algorithm versions and escapes the user id", () => {
