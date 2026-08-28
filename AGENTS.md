@@ -1,13 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
-
 ## Règles du projet Soma
 
 ### Communication et cadrage
@@ -17,12 +7,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Si une ambiguïté peut changer le résultat, pose une seule question et attends la réponse avant de coder.
 - Une demande de conseil, d'explication, d'audit ou de lecture seule n'autorise aucune modification.
 
-### Source de vérité Personal Lab
+### Données de santé
 
-- Avant de modifier le comportement de Personal Lab, ses métriques, le journal, les statistiques,
-  la synthèse Grok ou l'interface principale du Lab, lis `PERSONAL_LAB.md` en entier.
-- `PERSONAL_LAB.md` est le contrat produit approuvé et prévaut sur les anciens documents de
-  planification lorsqu'ils se contredisent.
 - Distingue toujours les données provenant d'une source de santé des métriques calculées par Soma.
 - Ne mets jamais dans le code, Git, les journaux ou les réponses des exports de santé, identifiants,
   clés, jetons, sessions ou autres données personnelles sensibles.
@@ -48,6 +34,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Utilise une branche par modification cohérente et livrable ; ne mélange pas deux sujets indépendants.
 - Après une modification, vérifie selon le risque : cas normal, chargement, absence de données, erreur,
   responsive, accessibilité, types, lint, tests et build pertinents.
+- Ne lance jamais `pnpm install`, `pnpm verify` ou un build Next pendant qu'un serveur `next dev` utilise le
+  même checkout : ces commandes peuvent réorganiser `node_modules` ou `.next` et casser Turbopack. Arrête le
+  serveur, exécute les opérations séquentiellement, puis relance-le.
+- Pendant une itération UI locale, utilise les exécutables déjà installés dans `node_modules/.bin` pour les
+  contrôles ciblés afin de ne pas déclencher une réinstallation implicite de pnpm.
 - Pour une vérification complète du projet, utilise `CI=true pnpm verify`.
 - Relis le diff final. Un commit local, un push, un déploiement et une vérification en production sont des
   preuves distinctes : ne présente jamais l'une comme la preuve d'une autre.
@@ -65,38 +56,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   les inconnues.
 - Termine toute modification par : ce qui a changé, les vérifications effectuées, puis les limites ou risques restants.
 
-## Rapport d'utilisation à la fin de chaque tâche
+<!-- BEGIN:nextjs-agent-rules -->
 
-À la toute fin de chaque tâche, y compris une simple lecture, un audit ou une modification,
-ajoute un bloc très court `Utilisation estimée`. Ce bloc vient après le compte rendu normal
-et contient :
+# This is NOT the Next.js you know
 
-- le nom exact du modèle principal et son niveau d'effort tels qu'affichés par l'environnement ;
-- le nombre de tokens d'entrée, de cache et de sortie, puis le total, lorsque ces données sont
-  accessibles ;
-- le coût API estimé en appliquant à ces catégories les tarifs officiels actuels, avec la devise
-  et la date du tarif ;
-- si des sous-agents ont été utilisés, une ventilation séparée du coût de l'orchestrateur et du
-  coût cumulé des sous-agents, en nommant chaque modèle et niveau d'effort, puis le coût global ;
-- une comparaison contrefactuelle en une seule ligne : coût estimé de la même tâche avec le
-  modèle principal seul, contre coût réel estimé avec sous-agents, et économie ou surcoût. Si la
-  tâche n'a utilisé que le modèle principal, fais la comparaison inverse avec une orchestration
-  composée de ce modèle et de sous-agents Luna `high` ou `xhigh`.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-Pour cette comparaison, « Sol Light » signifie Sol avec un niveau d'effort `low`, sauf si
-l'environnement expose un autre nom officiel. Les sous-agents de référence sont Luna `high` ou
-`xhigh` ; choisis le niveau le plus plausible pour la tâche et indique qu'il s'agit d'une
-simulation. Utilise les métriques exactes fournies par l'environnement. Si elles ne sont pas
-accessibles, écris `indisponible` ; n'invente jamais un nombre de tokens. Si une répartition
-contrefactuelle doit être supposée, donne l'hypothèse en quelques mots et marque le résultat
-comme une estimation. Ne présente pas le prix d'un abonnement ChatGPT ou les crédits Codex
-comme un coût API.
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
-Format attendu, en restant sur quatre lignes si possible :
-
-```text
-Utilisation estimée
-Principal — <modèle + effort> : <entrée/cache/sortie = total> · <coût API>
-Sous-agents — <modèles + efforts> : <tokens totaux> · <coût cumulé> (ou « aucun »)
-Comparaison — <scénario réel> vs <scénario simulé> : <économie ou surcoût>
-```
+<!-- END:nextjs-agent-rules -->

@@ -1,11 +1,10 @@
 "use client";
 
-import { Check, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  journalDayPeriod,
   journalDayPeriods,
   journalDraftsForDates,
   journalEntriesForSave,
@@ -38,6 +37,9 @@ const typeLabels: Record<JournalVariableType, string> = {
   time: "Time",
 };
 
+const journalDisplayOrder: JournalDayPeriod[] = ["morning", "day", "evening", "context", "other"];
+const editableJournalDayPeriods = journalDayPeriods.filter((period) => period.id !== "sleep");
+
 const numericTypes = new Set<JournalVariableType>(["count", "duration", "number", "scale"]);
 const textNumericTypes = new Set<JournalVariableType>(["count", "duration", "number"]);
 type JournalSaveStatus = "draft" | "saving" | "saved" | "error";
@@ -53,6 +55,11 @@ export function journalStatusText({ validated, validating, saveStatus }: { valid
 
 function splitOptions(value: string) {
   return value.split(",").map((option) => option.trim()).filter(Boolean);
+}
+
+function displayedDayPeriod(variable: JournalVariable) {
+  if (variable.name.toLocaleLowerCase("en") === "magnesium") return "morning";
+  return variable.dayPeriod === "sleep" ? "evening" : variable.dayPeriod;
 }
 
 function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]): NewVariable {
@@ -96,7 +103,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
 
   if (variable.variableType === "boolean") {
     return <div className="journal-choice" role="group" aria-label={variable.name}>
-      {[{ label: "—", value: null }, { label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
+      {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
   }
 
@@ -148,7 +155,7 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
     </label>
     <label><span>Emoji</span><input aria-label="Measure emoji" maxLength={8} value={emoji} onChange={(event) => onEmojiChange(event.target.value)} /></label>
     <label><span>Type</span><select aria-label="Measure type" value={variableType} onChange={(event) => onTypeChange(event.target.value as JournalVariableType)}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale", variableType].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-    <label><span>Moment</span><select aria-label="Measure moment" value={dayPeriod} onChange={(event) => onDayPeriodChange(event.target.value as JournalDayPeriod)}>{journalDayPeriods.map((period) => <option value={period.id} key={period.id}>{period.label}</option>)}</select></label>
+    <label><span>Moment</span><select aria-label="Measure moment" value={dayPeriod === "sleep" ? "evening" : dayPeriod} onChange={(event) => onDayPeriodChange(event.target.value as JournalDayPeriod)}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{period.label}</option>)}</select></label>
     {numericTypes.has(variableType) && <label>
       <span>Unit</span>
       <input aria-label="Optional unit" placeholder="Optional" value={unit} onChange={(event) => onUnitChange(event.target.value)} />
@@ -217,7 +224,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
     setEditUnit(variable.unit ?? "");
     setEditOptions(variable.options.join(", "));
     setEditEmoji(variable.emoji);
-    setEditDayPeriod(variable.dayPeriod);
+    setEditDayPeriod(displayedDayPeriod(variable));
     setEditDefaultValue(variable.defaultValue === null ? "" : String(variable.defaultValue));
     setError(null);
   }
@@ -256,7 +263,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
       <div className="journal-variable-list" aria-live="polite">
         {activeVariables.length === 0 && <p className="journal-manager__empty">No measures yet.</p>}
         {activeVariables.map((variable) => editingId === variable.id ? <VariableEditor key={variable.id} variableType={editVariableType} name={editName} unit={editUnit} options={editOptions} emoji={editEmoji} dayPeriod={editDayPeriod} defaultValue={editDefaultValue} busy={busyId === variable.id} onNameChange={setEditName} onTypeChange={(value) => { setEditVariableType(value); setEditDefaultValue(value === "boolean" ? "false" : value === "time" || value === "scale" ? "" : "0"); }} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onEmojiChange={setEditEmoji} onDayPeriodChange={setEditDayPeriod} onDefaultValueChange={setEditDefaultValue} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} /> : <div className="journal-variable-row" key={variable.id}>
-          <span><strong>{variable.emoji} {variable.name}</strong><small>{typeLabels[variable.variableType]}{variable.unit ? ` · ${variable.unit}` : ""} · {journalDayPeriods.find((period) => period.id === variable.dayPeriod)?.label}{variable.defaultValue !== null ? ` · default ${String(variable.defaultValue)}` : ""}</small></span>
+          <span><strong>{variable.emoji} {variable.name}</strong><small>{typeLabels[variable.variableType]}{variable.unit ? ` · ${variable.unit}` : ""} · {journalDayPeriods.find((period) => period.id === displayedDayPeriod(variable))?.label}{variable.defaultValue !== null ? ` · default ${String(variable.defaultValue)}` : ""}</small></span>
           <button type="button" aria-label={`Move ${variable.name} earlier`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
           <button type="button" aria-label={`Move ${variable.name} later`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
           <button type="button" onClick={() => startEdit(variable)}>Edit</button>
@@ -272,7 +279,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
           const variableType = event.target.value as JournalVariableType;
           setDraft((current) => ({ ...current, variableType, defaultValue: variableType === "boolean" ? "false" : variableType === "time" || variableType === "scale" ? "" : "0" }));
         }}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale"].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-        <label><span>Moment</span><select aria-label="Time of day" value={draft.dayPeriod} onChange={(event) => setDraft((current) => ({ ...current, dayPeriod: event.target.value as JournalDayPeriod }))}>{journalDayPeriods.map((period) => <option value={period.id} key={period.id}>{period.label}</option>)}</select></label>
+        <label><span>Moment</span><select aria-label="Time of day" value={draft.dayPeriod} onChange={(event) => setDraft((current) => ({ ...current, dayPeriod: event.target.value as JournalDayPeriod }))}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{period.label}</option>)}</select></label>
         {draft.variableType === "boolean" ? <label><span>Default</span><select aria-label="Default value" value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))}><option value="">Not recorded</option><option value="false">No</option><option value="true">Yes</option></select></label> : <label><span>Default</span><input aria-label="Default value" type={draft.variableType === "time" ? "time" : "number"} value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))} /></label>}
         {numericTypes.has(draft.variableType) && <label><span>Unit <em>(optional)</em></span><input placeholder="e.g. mg, min, drinks" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} /></label>}
         {draft.variableType === "category" && <label><span>Choices <em>(at least two)</em></span><input placeholder="e.g. Home, Office, Vacation" value={draft.options} onChange={(event) => setDraft((current) => ({ ...current, options: event.target.value }))} /></label>}
@@ -285,12 +292,15 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
   </section>;
 }
 
-function JournalFieldRow({ variable, value, draftKey, onChange, onCommit, feedbackToken, disabled }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean }) {
-  const label = <>{variable.name}</>;
-  return <div className={feedbackToken ? "journal-field journal-field--changed" : "journal-field"}><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span>
-    {variable.variableType === "boolean" || variable.variableType === "scale"
-      ? <span className="journal-field__label">{label}</span>
-      : <label className="journal-field__label" htmlFor={`journal-${variable.id}`}>{label}</label>}
+function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, onChange, onCommit, feedbackToken, disabled }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean }) {
+  const stateLabel = confirmed ? "Recorded" : skipped ? "Not recorded" : "To confirm";
+  const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
+  const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{variable.name}</span></span></>;
+  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={`${variable.name}: ${stateLabel}`}>
+    {canConfirmDisplayedValue
+      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirm the displayed value for ${variable.name}`} onClick={() => onChange(value)}>{headingContent}</button>
+      : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
     <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} />
   </div>;
@@ -305,10 +315,12 @@ function addDays(date: string, days: number) {
 export function DailyJournal({ variables, entries, days, todayDate }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string }) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
-  const sections = useMemo(() => journalDayPeriods.map((period) => ({
-    ...period,
-    variables: activeVariables.filter((variable) => (variable.dayPeriod ?? journalDayPeriod(variable.position)) === period.id),
-  })).filter((period) => period.variables.length > 0), [activeVariables]);
+  const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
+    const period = journalDayPeriods.find((candidate) => candidate.id === periodId);
+    if (!period) return [];
+    const periodVariables = activeVariables.filter((variable) => displayedDayPeriod(variable) === period.id);
+    return periodVariables.length > 0 ? [{ ...period, variables: periodVariables }] : [];
+  }), [activeVariables]);
   const availableDates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(todayDate, -index)), [todayDate]);
   const [entryDate, setEntryDate] = useState(todayDate);
   const selectedDate = useRef(todayDate);
@@ -323,6 +335,8 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const [error, setError] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ fieldId: string; token: number } | null>(null);
+  const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(availableDates.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
+  const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(availableDates.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
   const feedbackSequence = useRef(0);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNumericFeedback = useRef(new Set<string>());
@@ -330,6 +344,8 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   const validated = day?.status === "validated" || validatedDate === entryDate;
   const validating = validatingDate === entryDate;
   const values = draftsByDate[entryDate] ?? journalValuesForDate(activeVariables, entries, days, entryDate);
+  const recorded = recordedByDate[entryDate] ?? new Set<string>();
+  const skipped = skippedByDate[entryDate] ?? new Set<string>();
 
   useEffect(() => () => {
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
@@ -355,7 +371,8 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
   }
 
   async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>, changedVariableId?: string) {
-    const entriesToSave = journalEntriesForSave(activeVariables.map((variable) => variable.id), draftValues, mode, changedVariableId);
+    const included = mode === "validate" ? new Set([...(recordedByDate[date] ?? []), ...(skippedByDate[date] ?? [])]) : undefined;
+    const entriesToSave = journalEntriesForSave(activeVariables.map((variable) => variable.id), draftValues, mode, changedVariableId, included);
     const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: entriesToSave }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Your journal could not be saved.");
@@ -433,25 +450,49 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
     const next = updateJournalDraft(drafts.current, date, variableId, value);
     drafts.current = next;
     setDraftsByDate(next);
+    setRecordedByDate((current) => {
+      const nextRecorded = new Set(current[date] ?? []);
+      if (value === null) nextRecorded.delete(variableId);
+      else nextRecorded.add(variableId);
+      return { ...current, [date]: nextRecorded };
+    });
+    setSkippedByDate((current) => {
+      const nextSkipped = new Set(current[date] ?? []);
+      if (value === null) nextSkipped.add(variableId);
+      else nextSkipped.delete(variableId);
+      return { ...current, [date]: nextSkipped };
+    });
     if (variable && textNumericTypes.has(variable.variableType)) pendingNumericFeedback.current.add(variableId);
     else if (variable) triggerFeedback(variableId);
     queueDraft(date, variableId, next[date]);
   }
 
+  function confirmPeriodDefaults(periodVariables: JournalVariable[]) {
+    for (const variable of periodVariables) {
+      const displayedValue = values[variable.id] ?? null;
+      if (!recorded.has(variable.id) && !skipped.has(variable.id) && displayedValue !== null) changeValue(variable.id, displayedValue);
+    }
+  }
+
   const statusClass = ["checkin-state", "journal-save-status", validated || saveStatus === "saved" ? "checkin-state--saved" : "", saveStatus === "error" ? "checkin-state--error" : ""].filter(Boolean).join(" ");
   const statusText = journalStatusText({ validated, validating, saveStatus });
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2><span className={statusClass} aria-live="polite" aria-atomic="true">
-      {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : validated || saveStatus === "saved" ? <Check className="journal-save-status__icon journal-save-status__icon--success" size={14} aria-hidden="true" /> : null}
+  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Journal actions"><span className={statusClass} aria-live="polite" aria-atomic="true">
+      {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
       <span>{statusText}</span>
-    </span></div><div className="journal-card__actions" role="group" aria-label="Journal actions">
+    </span>
     {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validating…</> : "Validate day"}</button>}
     {!managerOpen && <button className="text-link" type="button" aria-label="Edit journal fields" onClick={() => setManagerOpen(true)}>Edit</button>}
   </div></header>
     <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
-    {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => <section className="journal-period" aria-labelledby={`journal-${section.id}-title`} key={section.id}>
-      <h3 id={`journal-${section.id}-title`}>{section.label}</h3>
-      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
-    </section>)}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
+    {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => {
+      const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
+      const complete = completedCount === section.variables.length;
+      const canConfirmDefaults = section.variables.some((variable) => !recorded.has(variable.id) && !skipped.has(variable.id) && (values[variable.id] ?? null) !== null);
+      return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${section.label}${complete ? ", complete" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
+      <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirm all displayed defaults for ${section.label}`} onClick={() => confirmPeriodDefaults(section.variables)}>{section.label}</button> : section.label}</h3></header>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
+    </section>;
+    })}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
     {validated && <p className="journal-save-note" role="status">Changes save automatically and remain included in your relationships.</p>}
     <VariableManager variables={variables} open={managerOpen} onClose={() => setManagerOpen(false)} />

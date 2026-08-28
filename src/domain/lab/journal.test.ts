@@ -83,6 +83,15 @@ describe("journal values", () => {
     ]);
   });
 
+  it("validates only explicitly recorded or skipped fields", () => {
+    const draft = { vacation: false, caffeine: 0, dinner: "22:30" };
+
+    expect(journalEntriesForSave(["vacation", "caffeine", "dinner"], draft, "validate", undefined, new Set(["vacation", "dinner"]))).toEqual([
+      { variableId: "vacation", value: false },
+      { variableId: "dinner", value: "22:30" },
+    ]);
+  });
+
   it("keeps zero and false as explicit observations", () => {
     expect(normalizeJournalValue(variable("count"), 0)).toBe(0);
     expect(normalizeJournalValue(variable("boolean"), false)).toBe(false);
@@ -132,7 +141,8 @@ describe("journal values", () => {
   it("groups starter fields in chronological day periods", () => {
     expect(journalDayPeriod(defaultJournalVariables.find((item) => item.name === "Breakfast")?.position ?? -1)).toBe("morning");
     expect(journalDayPeriod(defaultJournalVariables.find((item) => item.name === "Dinner end time")?.position ?? -1)).toBe("evening");
-    expect(defaultJournalVariables.find((item) => item.name === "Dark room")?.dayPeriod).toBe("sleep");
+    expect(defaultJournalVariables.find((item) => item.name === "Magnesium")?.dayPeriod).toBe("morning");
+    expect(defaultJournalVariables.find((item) => item.name === "Dark room")?.dayPeriod).toBe("evening");
   });
 
   it("keeps the added sugar unit", () => {

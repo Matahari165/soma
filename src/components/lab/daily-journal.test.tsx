@@ -33,6 +33,16 @@ describe("journal motion states", () => {
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain(">Draft</span>");
     expect(html).toContain("Validate day");
+    expect(html).not.toContain('button type="button">—</button>');
+    expect(html).not.toContain(">To confirm<");
+    expect(html).not.toContain("0/2 recorded");
+    expect(html).toContain('data-complete="false"');
+    expect(html).toContain('aria-label="Confirm the displayed value for Alcohol"');
+    expect(html).toContain('aria-label="Confirm the displayed value for Vacation"');
+    expect(html).toContain('aria-label="Confirm all displayed defaults for Morning"');
+    expect(html).toContain('aria-label="Confirm all displayed defaults for Day context"');
+    expect(html).not.toContain('data-period="sleep"');
+    expect(html.indexOf("Magnesium")).toBeLessThan(html.indexOf('data-period="day"'));
   });
 
   it("does not present a saved draft as a validated day", () => {
@@ -44,8 +54,50 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain(">Validated</span>");
-    expect(html).toContain("journal-save-status__icon--success");
+    expect(html).not.toContain("journal-save-status__icon--success");
     expect(html).not.toContain(">Draft saved</span>");
     expect(html).not.toContain("Validate day");
+  });
+
+  it("marks an explicit false entry as recorded", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: vacation ? [{ variableId: vacation.id, entryDate: todayDate, value: false }] : [],
+      days: [],
+      todayDate,
+    }));
+
+    expect(html).toContain('data-state="recorded"');
+    expect(html).not.toContain("1/2 recorded");
+    expect(html).toContain('aria-label="Vacation: Recorded"');
+    expect(html).not.toContain('aria-label="Confirm the displayed value for Vacation"');
+  });
+
+  it("does not offer to reconfirm a recorded numeric value", () => {
+    const alcohol = variables.find((variable) => variable.name === "Alcohol");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: alcohol ? [{ variableId: alcohol.id, entryDate: todayDate, value: 0 }] : [],
+      days: [],
+      todayDate,
+    }));
+
+    expect(html).toContain('aria-label="Alcohol: Recorded"');
+    expect(html).not.toContain('aria-label="Confirm the displayed value for Alcohol"');
+  });
+
+  it("marks a fully recorded period without displaying a counter", () => {
+    const dayVariables = variables.filter((variable) => variable.dayPeriod === "day");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: dayVariables.flatMap((variable) => variable.defaultValue === null ? [] : [{ variableId: variable.id, entryDate: todayDate, value: variable.defaultValue }]),
+      days: [],
+      todayDate,
+    }));
+
+    expect(html).toContain('class="journal-period journal-period--complete"');
+    expect(html).toContain('aria-label="Day, complete"');
+    expect(html).not.toContain("3/3 recorded");
   });
 });

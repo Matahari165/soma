@@ -10,7 +10,10 @@
 }
 
 @media (max-width: 1024px) {
+  .journal-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .journal-period[data-period="other"] { grid-column: 1 / -1; }
   .journal-grid { grid-template-columns: 1fr; }
+  .journal-field:nth-child(n + 2) { border-top: 1px solid var(--line); }
   .relation-detail dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strongest-effects > header, .strongest-effects li > button { grid-template-columns: minmax(190px, .9fr) minmax(260px, 1.1fr) minmax(135px, .6fr); }
 }
@@ -24,11 +27,15 @@
   .lab-insight-history article { grid-template-columns: 1fr; gap: 3px; }
   .journal-card > header { align-items: center; flex-direction: row; padding: 14px; }
   .journal-date-strip { overflow-x: auto; grid-template-columns: repeat(5, minmax(78px, 1fr)); }
-  .journal-period { grid-template-columns: 1fr; }
-  .journal-period > h3 { padding: 9px 11px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .journal-field { grid-template-columns: 34px minmax(0, 1fr); }
-  .journal-field > :last-child { grid-column: 1 / -1; }
-  .journal-field__emoji { align-self: center; }
+  .journal-sections { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+  .journal-period[data-period="other"] { grid-column: auto; }
+  .journal-period__header { padding-inline: 11px; }
+  .journal-field { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 11px; }
+  .journal-field > .journal-choice { width: 132px; }
+  .journal-field > .journal-choice--scale { width: 180px; }
+  .journal-field > .journal-number,
+  .journal-field > input,
+  .journal-field > select { width: 148px; }
   .journal-choice button, .journal-field input, .journal-field select { min-height: 44px; }
   .journal-suggestions button,
   .journal-variable-row button,
@@ -325,7 +332,7 @@
   .journal-card > header { align-items: start; flex-direction: column; }
   .journal-card__heading { width: 100%; justify-content: space-between; }
   .journal-card__actions { width: 100%; justify-content: flex-start; }
-  .journal-field { grid-template-columns: 1fr; gap: 8px; }
+  .journal-field { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
   .journal-variable-row { grid-template-columns: 1fr auto; }
   .journal-variable-row > button:last-child { grid-column: 2; }
   .journal-variable-edit,
@@ -348,9 +355,7 @@
   .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
   .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
   .journal-card > header { align-items: center; flex-direction: row; }
-  .journal-period { grid-template-columns: 1fr; }
-  .journal-field { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
-  .journal-field > :last-child { grid-column: 1 / -1; }
+  .journal-field { grid-template-columns: 1fr; gap: 8px; }
   .matrix-scroll { display: block; width: 100%; max-height: 70vh; overflow: auto; }
   .matrix-mobile-list { display: none; }
   .recovery-formula dl { grid-template-columns: 1fr; }

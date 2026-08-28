@@ -8,8 +8,10 @@
 
 .journal-card .journal-save-status {
   display: inline-flex;
-  min-width: 7.75rem;
-  min-height: 44px;
+  width: max-content;
+  min-width: 0;
+  min-height: 40px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
@@ -18,10 +20,6 @@
 
 .journal-save-status__icon {
   flex: 0 0 14px;
-}
-
-.journal-save-status__icon--success {
-  animation: journal-status-check 320ms var(--ease) both;
 }
 
 .journal-save-status__icon--error {
@@ -89,23 +87,6 @@
   }
 }
 
-@keyframes journal-status-check {
-  0% {
-    opacity: 0;
-    transform: scale(.72) rotate(-8deg);
-  }
-
-  70% {
-    opacity: 1;
-    transform: scale(1.1) rotate(2deg);
-  }
-
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .journal-choice button,
   .journal-date-strip button,
@@ -119,8 +100,7 @@
     transform: none;
   }
 
-  .journal-field__feedback,
-  .journal-save-status__icon--success {
+  .journal-field__feedback {
     animation: none;
   }
 }
@@ -128,8 +108,9 @@
 @media (max-width: 700px) {
   .journal-card .journal-card__actions .journal-save-status {
     display: inline-flex;
-    min-width: 5.5rem;
-    min-height: 44px;
+    width: max-content;
+    min-width: 0;
+    min-height: 40px;
     font-size: .55rem;
   }
 }

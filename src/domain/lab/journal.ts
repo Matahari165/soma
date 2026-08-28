@@ -127,8 +127,12 @@ export function reconcileJournalDrafts(serverDrafts: JournalDraftsByDate, curren
   return next;
 }
 
-export function journalEntriesForSave(variableIds: readonly string[], draft: JournalDraft, mode: "draft" | "validate", changedVariableId?: string) {
-  const ids = mode === "draft" && changedVariableId ? [changedVariableId] : variableIds;
+export function journalEntriesForSave(variableIds: readonly string[], draft: JournalDraft, mode: "draft" | "validate", changedVariableId?: string, includedVariableIds?: ReadonlySet<string>) {
+  const ids = mode === "draft" && changedVariableId
+    ? [changedVariableId]
+    : includedVariableIds
+      ? variableIds.filter((variableId) => includedVariableIds.has(variableId))
+      : variableIds;
   return ids.map((variableId) => ({ variableId, value: draft[variableId] ?? null }));
 }
 
@@ -199,10 +203,10 @@ export const defaultJournalVariables = [
   { name: "Masturbation", emoji: "✋", variableType: "boolean", unit: null, options: [], position: 50, dayPeriod: "day", defaultValue: false },
   { name: "Alcohol", emoji: "🍷", variableType: "count", unit: "drinks", options: [], position: 60, dayPeriod: "evening", defaultValue: 0 },
   { name: "Dinner end time", emoji: "🍽️", variableType: "time", unit: null, options: [], position: 70, dayPeriod: "evening", defaultValue: null },
-  { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "evening", defaultValue: 0 },
-  { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "sleep", defaultValue: false },
-  { name: "Reading for 30 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "sleep", defaultValue: false },
-  { name: "Dark room", emoji: "🌑", variableType: "boolean", unit: null, options: [], position: 110, dayPeriod: "sleep", defaultValue: true },
+  { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "morning", defaultValue: 0 },
+  { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },
+  { name: "Reading for 30 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },
+  { name: "Dark room", emoji: "🌑", variableType: "boolean", unit: null, options: [], position: 110, dayPeriod: "evening", defaultValue: true },
 ] as const satisfies ReadonlyArray<{ name: string; emoji: string; variableType: JournalVariableType; unit: string | null; options: readonly string[]; position: number; dayPeriod: JournalDayPeriod; defaultValue: JournalEntryValue | null }>;
 
 export const journalVariableSuggestions = [
