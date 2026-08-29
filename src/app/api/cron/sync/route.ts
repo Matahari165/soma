@@ -179,7 +179,7 @@ async function queueAutomaticJobs(now = new Date()) {
       const backfillLockKey = `google-health-analytics-backfill:${connection.id}`;
       if (!await claimCloudflareLock(backfillLockKey, connection.user_id, 60_000)) continue;
       const range = clampGoogleHealthRangeToConnection(manualGoogleHealthRange(now), connection.metadata);
-      const historicalDataTypes = getGrantedGoogleHealthDataTypes(connection.scopes ?? []);
+      const historicalDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
       const { error } = await admin.from("sync_jobs").upsert({
         user_id: connection.user_id,
         connection_id: connection.id,

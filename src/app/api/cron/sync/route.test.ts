@@ -92,7 +92,7 @@ describe("Google Health cron historical repair", () => {
     vi.clearAllMocks();
   });
 
-  it("queues a single 90-day repair with every granted analytics data type", async () => {
+  it("queues a single 90-day repair without high-volume webhook streams", async () => {
     const response = await GET(new Request("https://soma.example/api/cron/sync", { headers: { authorization: "Bearer cron-secret" } }));
 
     expect(response.status).toBe(200);
@@ -109,6 +109,7 @@ describe("Google Health cron historical repair", () => {
       range_end: "2026-08-20T09:05:00.000Z",
     });
     expect(jobs[0]?.data_types).toEqual(expect.arrayContaining(["exercise", "distance", "sedentary-period", "run-vo2-max"]));
+    expect(jobs[0]?.data_types).not.toEqual(expect.arrayContaining(["heart-rate", "heart-rate-variability", "activity-level"]));
   });
 
   it("does not insert a second repair when another cron already owns the lock", async () => {
