@@ -377,3 +377,66 @@
   .recovery-formula dl > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .recovery-formula dl > div:last-child { border-bottom: 0; }
 }
+
+/* Strongest effects: keep the relation readable without sacrificing plot width on iPhone. */
+@media (max-width: 480px) {
+  .strongest-effects__influence-header {
+    min-height: 0;
+    align-items: baseline;
+    justify-content: flex-start;
+    padding: 12px 12px 9px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+
+  .strongest-effects__group > h4 { padding: 9px 12px; }
+  .strongest-effects__influence + .strongest-effects__influence { margin-top: 12px; }
+  .strongest-effects__comparison-group,
+  .strongest-effects__comparison-group > ol { min-width: 0; }
+  .strongest-effects__comparison-group + .strongest-effects__comparison-group { margin-top: 32px; }
+  .strongest-effects__comparison-header { padding: 10px 12px 6px; }
+  .strongest-effects__comparison-header strong {
+    display: block;
+    max-width: 100%;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+  }
+  .strongest-effects__comparison-header strong::before { display: none; }
+  .strongest-effects__comparison-group li > button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 7px 12px 14px;
+  }
+  .strongest-effects__outcome {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "result"
+      "values";
+    align-items: baseline;
+    justify-self: stretch;
+    gap: 3px 8px;
+    padding-bottom: 7px;
+    text-align: right;
+  }
+  .strongest-effects__outcome strong {
+    grid-area: result;
+    min-width: 0;
+    justify-self: end;
+  }
+  .strongest-effects__outcome small {
+    grid-area: values;
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+  .strongest-effects__plot {
+    grid-column: 1;
+    grid-row: 2;
+    width: calc(100% - 8px);
+    min-width: 0;
+    margin-top: 3px;
+    justify-self: center;
+  }
+}
