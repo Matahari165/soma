@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, labMatrixRevisionTables, mergeJournalOmissions } from "@/lib/cloudflare/db";
+import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+
+describe("Cloudflare D1 row identity", () => {
+  it("keeps idempotent sync jobs on the same connection-scoped row", () => {
+    const row = {
+      id: "job-1",
+      connection_id: "connection-1",
+      idempotency_key: "google-health-analytics-backfill-v1",
+    };
+
+    expect(decodeURIComponent(stableIdentity("sync_jobs", row))).toBe(JSON.stringify([
+      ["connection_id", "connection-1"],
+      ["idempotency_key", "google-health-analytics-backfill-v1"],
+    ]));
+  });
+
+  it("keeps ordinary sync jobs identified by their id", () => {
+    expect(decodeURIComponent(stableIdentity("sync_jobs", {
+      id: "job-2",
+      connection_id: "connection-1",
+      idempotency_key: undefined,
+    }))).toBe(JSON.stringify([["id", "job-2"]]));
+  });
+});
 
 describe("Cloudflare D1 read planning", () => {
   it("pushes simple filters, ordering, and pagination into D1", () => {

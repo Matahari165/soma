@@ -56,6 +56,7 @@ const conflictKeys: Record<string, string[]> = {
   sleep_preferences: ["user_id"],
   dashboard_layouts: ["user_id"],
   provider_connections: ["user_id", "provider"],
+  sync_jobs: ["connection_id", "idempotency_key"],
   webhook_events: ["deduplication_key"],
   ingestion_checkpoints: ["user_id", "provider", "data_type"],
   health_records: ["user_id", "provider", "data_type", "source_record_id"],
@@ -331,7 +332,7 @@ export async function labMatrixInputRevision(userId: string) {
   return Number.isSafeInteger(revision) && revision >= 0 ? String(revision) : "0";
 }
 
-function stableIdentity(table: string, row: Row, explicitConflict?: string) {
+export function stableIdentity(table: string, row: Row, explicitConflict?: string) {
   const keys = explicitConflict?.split(",").map((key) => key.trim()).filter(Boolean)
     ?? conflictKeys[table]
     ?? (row.id ? ["id"] : []);
