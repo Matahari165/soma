@@ -12,7 +12,7 @@ import {
   clampGoogleHealthRangeToConnection,
   manualGoogleHealthRange,
 } from "@/integrations/google-health/schedule";
-import { drainGoogleHealthSyncJob } from "@/integrations/google-health/sync";
+import { drainGoogleHealthSyncJob, shouldRefreshAnalyticsForTrigger } from "@/integrations/google-health/sync";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, healthSyncDiagnostics, latestHealthRecordsByType } from "@/lib/cloudflare/db";
@@ -30,6 +30,8 @@ type OpenJob = {
   cursor: { phase?: string } | null;
   completed_at: string | null;
   created_at: string;
+  started_at?: string | null;
+  retry_after?: string | null;
   sync_trigger?: string;
   import_range?: string;
 };
@@ -40,13 +42,21 @@ function isDashboardRefreshJob(job: Pick<OpenJob, "data_types" | "sync_trigger" 
   return job.data_types?.length === expected.size && job.data_types.every((dataType) => expected.has(dataType));
 }
 
-function continueHealthSync(jobId: string) {
+function retryIsDue(job: Pick<OpenJob, "retry_after">, now = Date.now()) {
+  return !job.retry_after || new Date(job.retry_after).getTime() <= now;
+}
+
+function continueHealthSync(job: Pick<OpenJob, "id" | "sync_trigger">) {
   after(async () => {
     try {
-      await drainGoogleHealthSyncJob(jobId, { maxBatches: 1, maxDurationMs: 8_000 });
+      await drainGoogleHealthSyncJob(job.id, {
+        maxBatches: 6,
+        maxDurationMs: 25_000,
+        refreshAnalytics: shouldRefreshAnalyticsForTrigger(job.sync_trigger ?? "manual"),
+      });
     } catch (error) {
       console.error("[api/health/sync] manual background update failed", {
-        jobId,
+        jobId: job.id,
         error: error instanceof Error ? error.message : "Unknown sync error.",
       });
     }
@@ -82,7 +92,7 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const admin = createCloudflareAdminClient();
   const [jobsResult, connectionResult] = await Promise.all([
-    admin.from("sync_jobs").select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at,sync_trigger,import_range")
+    admin.from("sync_jobs").select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at,started_at,retry_after,sync_trigger,import_range")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
     admin.from("provider_connections").select("status,scopes,last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
   ]);
@@ -108,7 +118,26 @@ export async function GET(request: Request) {
     return [dataType, calculateSignalFreshness({ measuredAt, importedAt: connection?.last_synced_at ?? null, coverage: record ? 1 : 0 })];
   }));
   const jobs = (jobsResult.data ?? []) as OpenJob[];
-  const status = toSyncStatus(jobs[0] ?? null, perType, partialConsent);
+
+  // The scheduled worker remains the primary queue consumer. Status polling is
+  // also allowed to advance the user's active manual dashboard refresh so a
+  // missed cron invocation cannot leave it permanently queued after its first
+  // batch. Initial, automatic, and webhook jobs remain owned by the worker.
+  const automaticTypes = automaticGoogleHealthDataTypes(scopes);
+  const activeJob = jobs.find((job) => job.sync_trigger === "manual"
+    && isDashboardRefreshJob(job, automaticTypes)
+    && (job.status === "queued" || job.status === "running"));
+  const status = toSyncStatus(activeJob ?? jobs[0] ?? null, perType, partialConsent);
+  if (activeJob) {
+    const staleRunning = activeJob.status === "running"
+      && Boolean(activeJob.started_at)
+      && new Date(activeJob.started_at as string).getTime() < Date.now() - 10 * 60_000;
+    if (staleRunning) {
+      const recovery = await admin.from("sync_jobs").update({ status: "queued", started_at: null })
+        .eq("id", activeJob.id).eq("user_id", user.id).eq("status", "running");
+      if (!recovery.error) continueHealthSync(activeJob);
+    } else if (activeJob.status === "queued" && retryIsDue(activeJob)) continueHealthSync(activeJob);
+  }
 
   const response: Record<string, unknown> = {
     status,
@@ -157,7 +186,7 @@ export async function POST() {
   if (openJobsError) return NextResponse.json({ error: "Sync queue could not be checked." }, { status: 500 });
   const existing = ((openJobs ?? []) as OpenJob[]).find((job) => isDashboardRefreshJob(job, dataTypes));
   if (existing) {
-    continueHealthSync(existing.id);
+    continueHealthSync(existing);
     return NextResponse.json({ status: toSyncStatus(existing, {}), message: "Google Health is already updating in the background." }, { status: 202 });
   }
 
@@ -174,7 +203,7 @@ export async function POST() {
   }).select("id,data_types,status,progress,error_code,error_message,cursor,completed_at,created_at").single();
   if (jobError || !job) return NextResponse.json({ error: "Sync job could not be created." }, { status: 500 });
 
-  continueHealthSync(job.id);
+  continueHealthSync({ ...job, sync_trigger: "manual" });
 
   return NextResponse.json({
     status: toSyncStatus(job as OpenJob, {}),
