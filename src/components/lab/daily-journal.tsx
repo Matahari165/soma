@@ -76,26 +76,46 @@ function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]
 
 function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: string; value: DraftValue; disabled: boolean; onChange: (value: DraftValue) => void }) {
   const canonicalValue = typeof value === "string" ? value : "";
-  const [draft, setDraft] = useState(dinnerTimeForDisplay(canonicalValue));
+  const [displayHour = "", displayMinute = ""] = dinnerTimeForDisplay(canonicalValue).split(":");
+  const [hour, setHour] = useState(displayHour);
+  const [minute, setMinute] = useState(displayMinute);
   const [invalid, setInvalid] = useState(false);
+  const minuteRef = useRef<HTMLInputElement>(null);
 
   function commit() {
-    if (!draft.trim()) {
+    if (!hour && !minute) {
       setInvalid(false);
       onChange(null);
       return;
     }
-    const normalized = normalizeDinnerTimeInput(draft);
+    const normalized = normalizeDinnerTimeInput(`${hour}:${minute}`);
     if (!normalized) {
       setInvalid(true);
       return;
     }
     setInvalid(false);
-    setDraft(dinnerTimeForDisplay(normalized));
+    const [nextHour, nextMinute] = dinnerTimeForDisplay(normalized).split(":");
+    setHour(nextHour);
+    setMinute(nextMinute);
     onChange(normalized);
   }
 
-  return <input className="journal-clock" disabled={disabled} id={inputId} aria-label="Dinner end time" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="8:15" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />;
+  function digits(value: string, maximumLength: number) {
+    return value.replace(/\D/g, "").slice(0, maximumLength);
+  }
+
+  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Dinner end time" onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
+  }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
+    <input disabled={disabled} aria-label="Dinner end hour" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
+      const next = digits(event.target.value, 2);
+      setHour(next);
+      setInvalid(false);
+      if (next.length === 2) minuteRef.current?.focus();
+    }} />
+    <span aria-hidden="true">:</span>
+    <input ref={minuteRef} disabled={disabled} aria-label="Dinner end minutes" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+  </div>;
 }
 
 function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {

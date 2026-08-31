@@ -7,7 +7,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
 import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-matrix-cache";
 import { loadJournalData } from "@/services/journal";
-import { evidenceCandidatesForNarrative } from "@/services/lab-narrative-policy";
+import { evidenceCandidatesForNarrative, isWeeklyNarrativeCurrent, LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
 
 export type DailyCheckin = {
   checkin_date: string;
@@ -582,7 +582,7 @@ function buildCorrelationMatrix(input: {
   const visiblePredictors = new Set(visibleRows.flatMap((row) => row.relations.map((relation) => relation.predictorId)));
   const coverageByMetric = [...new Map(allSpecs.map((row) => [row.series.id, coverageForSeries(row.series)])).values()];
   const collectionProgress = coverageByMetric.filter((coverage) => !visiblePredictors.has(coverage.id));
-  const meaningfulRelations = selectMeaningfulRelations(visibleRows.flatMap((row) => row.relations), 12);
+  const meaningfulRelations = selectMeaningfulRelations(visibleRows.flatMap((row) => row.relations), 40);
   const acuteHighlights = selectMeaningfulRelations(visibleRows.filter((row) => row.period === 30).flatMap((row) => row.relations), 8);
   const chronicHighlights = selectMeaningfulRelations(visibleRows.filter((row) => row.period === 90 || row.period === "all").flatMap((row) => row.relations), 8);
   const topRelations = meaningfulRelations;
@@ -799,27 +799,11 @@ function buildSnapshot(input: {
   const facts = parseSourceFacts(input.narrative?.source_facts);
   const highlights = parseHighlights(input.narrative?.highlights);
   const availableRelations = matrix.rows.flatMap((row) => row.relations);
-  const requestedPeriods = new Set(input.requestedPeriods ?? [15, 30, 90, "all"]);
-  const factsStillAvailable = highlights.length > 0 && highlights.every((highlight) => {
-    const fact = facts[highlight.factIndex];
-    return Boolean(fact
-      && requestedPeriods.has(fact.period)
-      && availableRelations.some((relation) => isPersonalLabPublishedRelation(relation)
-        && relation.predictorLabel === fact.predictor
-        && relation.outcomeLabel === fact.outcome
-        && relation.period === fact.period
-        && relation.lagDays === fact.lagDays
-        && fact.effect !== null
-        && relation.effect === fact.effect));
-  });
   const todayHealth = input.health.find((day) => day.metric_date === todayDate);
   const currentOvernightFingerprint = overnightFingerprint(todayHealth);
-  const overnightSnapshotStable = !input.narrative?.overnight_fingerprint
-    || input.narrative.overnight_fingerprint === currentOvernightFingerprint;
   const narrativeIsCurrent = Boolean(input.narrative
-    && dateInTimezone(input.timeZone, input.narrative.generated_at) === todayDate
-    && factsStillAvailable
-    && overnightSnapshotStable);
+    && input.narrative.model === "grok-4.6-weekly-v1"
+    && isWeeklyNarrativeCurrent(input.narrative.generated_at));
   const validatedEvidenceCandidates = evidenceCandidatesForNarrative(input.narrative).filter((candidate) => {
     if (!candidate || typeof candidate !== "object") return false;
     const fact = candidate as Record<string, unknown>;
@@ -890,7 +874,7 @@ function buildSnapshot(input: {
     aiNarrative,
     needsNarrativeRefresh: Boolean(input.allowNarrativeRefresh !== false
       && hasReliableOvernightData(todayHealth)
-      && matrix.topRelations.length
+      && Math.max(...[30, 90].map((period) => matrix.topRelations.filter((relation) => relation.period === period).length)) >= LAB_NARRATIVE_ITEM_COUNT
       && !narrativeIsCurrent),
     metricRegistry,
     matrix,

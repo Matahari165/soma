@@ -9,15 +9,22 @@ afterEach(() => {
 });
 
 describe("Grok Personal Lab output", () => {
-  it("accepts a concise grounded summary", () => {
-    const result = labNarrativeSchema.parse({ headline: "Effort → Heart Rate", period: 30, summary: "", highlights: [{ label: "🏃‍♂️ Effort vs. ❤️ Heart Rate", text: "+50 Effort Points ➡️ -2 bpm Resting Heart Rate (next day)", factIndex: 0 }] });
-    expect(result.highlights).toHaveLength(1);
+  const highlights = Array.from({ length: 10 }, (_, index) => ({
+    label: `Measure ${index + 1}`,
+    text: `+${index + 1} measure ➡️ -${index + 1} bpm Resting Heart Rate (next day)`,
+    factIndex: index,
+  }));
+
+  it("requires ten distinct grounded measures", () => {
+    const result = labNarrativeSchema.parse({ headline: "Effort → Heart Rate", period: 30, summary: "", highlights });
+    expect(result.highlights).toHaveLength(10);
+    expect(() => labNarrativeSchema.parse({ headline: "Effort → Heart Rate", period: 30, summary: "", highlights: highlights.map((item) => ({ ...item, factIndex: 0 })) })).toThrow();
   });
 
   it("uses bounded low-latency reasoning for the dashboard synthesis", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
-      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Steps → Heart Rate", period: 90, summary: "", highlights: [{ label: "🚶 Steps vs. ❤️ Heart Rate", text: "+3000 steps ➡️ -3 bpm Resting Heart Rate (next day)", factIndex: 1 }] }) }] }],
+      output: [{ content: [{ type: "output_text", text: JSON.stringify({ headline: "Steps → Heart Rate", period: 90, summary: "", highlights }) }] }],
       usage: { input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 },
     }), { status: 200 }));
 
@@ -75,13 +82,22 @@ describe("Grok Personal Lab output", () => {
       exclusionReasons: [],
       excluded: false,
     } satisfies MatrixRelation;
-    const generated = await generateLabNarrative({ userId: "user-1", relations: [relation, { ...relation, period: 90 }] });
+    const generated = await generateLabNarrative({
+      userId: "user-1",
+      relations: Array.from({ length: 10 }, (_, index) => ({
+        ...relation,
+        predictorId: `steps-${index}`,
+        predictorLabel: `Steps ${index + 1}`,
+        period: 90 as const,
+      })),
+    });
 
     const request = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(request?.body)) as { reasoning?: { effort?: string }; max_output_tokens?: number; store?: boolean; input?: string; instructions?: string };
-    expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 700, store: false });
+    expect(body).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 1_600, store: false });
     expect(body.input).toContain("qValue");
-    expect(body.input).toContain("Available report windows: 30 days and 90 days");
+    expect(body.input).toContain("Available report windows: 90 days");
+    expect(body.input).not.toContain('"truncated":true');
     expect(body.input).toContain("interval95");
     expect(body.input).toContain("pairedObservations");
     expect(body.input).toContain("analysisPeriod");
@@ -93,8 +109,8 @@ describe("Grok Personal Lab output", () => {
     expect(body.instructions).toContain("<predictor emoji> <short predictor name> vs. <outcome emoji> <short outcome name>");
     expect(body.instructions).toContain("➡️");
     expect(request?.signal).toBeInstanceOf(AbortSignal);
-    expect(generated.narrative).toMatchObject({ headline: "Pas → FC repos — 90 days", period: 90, summary: "" });
+    expect(generated.narrative).toMatchObject({ headline: "Steps 1 → FC repos · Steps 2 → FC repos — 90 days", period: 90, summary: "" });
     expect(generated.usage).toEqual({ input_tokens: 400, output_tokens: 100, total_tokens: 500, cost_in_usd_ticks: 1400 });
-    expect(generated.facts).toHaveLength(2);
+    expect(generated.facts).toHaveLength(10);
   });
 });

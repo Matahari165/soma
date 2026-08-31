@@ -5,6 +5,7 @@ import { stableHash } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
 import { boundedJson, parseXaiUsage } from "./usage";
 import { LAB_EDITORIAL_MEMORY } from "./lab-editorial-memory";
+import { LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
 
 export const labNarrativeSchema = z.object({
   headline: z.string().min(1).max(220),
@@ -15,8 +16,12 @@ export const labNarrativeSchema = z.object({
   highlights: z.array(z.object({
     label: z.string().min(1).max(100),
     text: z.string().min(1).max(260),
-    factIndex: z.number().int().min(0).max(11),
-  })).min(1).max(4),
+    factIndex: z.number().int().min(0).max(19),
+  })).length(LAB_NARRATIVE_ITEM_COUNT),
+}).superRefine((narrative, context) => {
+  if (new Set(narrative.highlights.map((highlight) => highlight.factIndex)).size !== LAB_NARRATIVE_ITEM_COUNT) {
+    context.addIssue({ code: "custom", path: ["highlights"], message: "Weekly measures must reference ten distinct findings." });
+  }
 });
 
 export type LabNarrative = z.infer<typeof labNarrativeSchema>;
@@ -92,13 +97,14 @@ export async function generateLabNarrative(input: { userId: string; relations: M
     // model context even if a caller passes a raw, unsorted relation list.
     .filter((relation) => !(relation.predictorId === "bedtime" && relation.outcomeId === "sleep_minutes"));
   if (!eligibleRelations.length) throw new Error("No eligible Personal Lab finding is available for Grok.");
-  const availablePeriods = ([30, 90] as const).filter((period) => eligibleRelations.some((relation) => relation.period === period));
+  const availablePeriods = ([30, 90] as const).filter((period) => eligibleRelations.filter((relation) => relation.period === period).length >= LAB_NARRATIVE_ITEM_COUNT);
+  if (!availablePeriods.length) throw new Error("Ten eligible Personal Lab findings are required for Grok.");
   const editorialSort = (first: MatrixRelation, second: MatrixRelation) => {
       const liked = (relation: MatrixRelation) => input.likedRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 0 : 1;
       const seen = (relation: MatrixRelation) => input.previousRelations?.some((item) => item.predictor === relation.predictorLabel && item.outcome === relation.outcomeLabel) ? 1 : 0;
       return liked(first) - liked(second) || seen(first) - seen(second) || (preferredOutcomes.get(first.outcomeId) ?? 50) - (preferredOutcomes.get(second.outcomeId) ?? 50);
   };
-  const usableRelations = ([30, 90] as const).flatMap((period) => eligibleRelations.filter((relation) => relation.period === period).sort(editorialSort).slice(0, 6));
+  const usableRelations = availablePeriods.flatMap((period) => eligibleRelations.filter((relation) => relation.period === period).sort(editorialSort).slice(0, LAB_NARRATIVE_ITEM_COUNT));
   const facts: LabEvidenceCandidate[] = usableRelations.map((relation) => ({
     predictor: relation.predictorLabel,
     predictorContrast: {
@@ -141,7 +147,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
       model: "grok-4.6",
       store: false,
       reasoning: { effort: "low" },
-      max_output_tokens: 700,
+      max_output_tokens: 1_600,
       instructions: [
         "You are Soma's personal health analyst.",
         "The supplied calculations are final: do not recalculate them or infer values that are not supplied.",
@@ -149,7 +155,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Return the report in English.",
         "Choose one of the available periods according to which window offers the strongest, most coherent and most useful set of findings. Do not automatically prefer 30 days.",
         "Set summary to an empty string because no narrative summary should be shown.",
-        "Return 1 to 4 highlights from the chosen period only. Each highlight represents exactly one supplied finding and has label, text, and the zero-based factIndex of that exact finding.",
+        "Return exactly 10 highlights from the chosen period only. Use ten distinct supplied findings, ordered from most important to least important. Each highlight has label, text, and the zero-based factIndex of that exact finding.",
         "Set headline to a short topic preview using arrows, such as Effort → REM · Steps → HRV. Do not include the period in headline; Soma appends it.",
         "Format text exactly as: <signed predictor contrast and predictor name> ➡️ <signed effect, unit, and outcome name> (<timing>). Example: +100 min Sleep Debt ➡️ -15.6 min REM (same sleep episode).",
         "Preserve supplied effects and units and round only for readable display.",
@@ -162,7 +168,7 @@ export async function generateLabNarrative(input: { userId: string; relations: M
         "Do not elevate the obvious bedtime-to-total-sleep relationship. Prefer deep or REM sleep, HRV, resting heart rate, respiration, effort, vigorous-zone minutes, and other activity signals when they are present.",
         "Do not invent mechanisms, context, or data.",
       ].join(" "),
-      input: `Anonymous user ${stableHash(input.userId)}\nAvailable report windows: ${availablePeriods.map((period) => `${period} days`).join(" and ")}\nCalculated findings:\n${boundedJson(facts)}`,
+      input: `Anonymous user ${stableHash(input.userId)}\nAvailable report windows: ${availablePeriods.map((period) => `${period} days`).join(" and ")}\nCalculated findings:\n${boundedJson(facts, 40_000)}`,
       text: { format: { type: "json_schema", name: "soma_lab_narrative", strict: true, schema: {
         type: "object",
         additionalProperties: false,
@@ -171,14 +177,14 @@ export async function generateLabNarrative(input: { userId: string; relations: M
           headline: { type: "string", maxLength: 220 },
           period: { type: "integer", enum: [30, 90] },
           summary: { type: "string", maxLength: 360 },
-          highlights: { type: "array", minItems: 1, maxItems: 4, items: {
+          highlights: { type: "array", minItems: LAB_NARRATIVE_ITEM_COUNT, maxItems: LAB_NARRATIVE_ITEM_COUNT, items: {
             type: "object",
             additionalProperties: false,
             required: ["label", "text", "factIndex"],
             properties: {
               label: { type: "string", maxLength: 100 },
               text: { type: "string", maxLength: 260 },
-              factIndex: { type: "integer", minimum: 0, maximum: 11 },
+              factIndex: { type: "integer", minimum: 0, maximum: 19 },
             },
           } },
         },
