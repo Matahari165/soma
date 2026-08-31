@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Camera,
   Check,
+  ChevronLeft,
   ChevronRight,
   ImagePlus,
   LoaderCircle,
@@ -16,6 +17,7 @@ import {
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { MAX_MEAL_PHOTOS } from "@/domain/meals";
+import { normalizeMealImage } from "@/services/meal-image";
 import styles from "./meal-journal.module.css";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "dinner"] as const;
@@ -89,6 +91,7 @@ export type MealJournalApi = {
 
 type Props = {
   date?: string;
+  today?: string;
   initialData?: MealJournalData;
   api?: MealJournalApi;
   className?: string;
@@ -96,9 +99,6 @@ type Props = {
 
 type LoadState = "loading" | "ready" | "error";
 type SaveState = "idle" | "saving" | "error";
-
-const MAX_IMAGE_EDGE = 2048;
-const IMAGE_QUALITY = 0.85;
 
 const SLOT_LABELS: Record<MealSlot, string> = {
   breakfast: "Petit déjeuner",
@@ -129,77 +129,28 @@ function todayInLocalTime() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
+function shiftIsoDate(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00`);
+  value.setDate(value.getDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+export function mealHistoryDates(selectedDate: string, today = todayInLocalTime()) {
+  const end = selectedDate < shiftIsoDate(today, -3) ? shiftIsoDate(selectedDate, 3) : today;
+  return Array.from({ length: 7 }, (_, index) => shiftIsoDate(end, index - 6));
+}
+
+function compactDayLabel(date: string) {
+  const value = new Date(`${date}T12:00:00`);
+  return {
+    weekday: new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(value).replace(".", ""),
+    day: new Intl.DateTimeFormat("fr-FR", { day: "numeric" }).format(value),
+  };
+}
+
 function randomId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}-${crypto.randomUUID()}`;
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function imageExtension(name: string) {
-  const extension = name.lastIndexOf(".");
-  return extension >= 0 ? name.slice(extension).toLowerCase() : "";
-}
-
-function needsJpegNormalization(file: File) {
-  return file.type === "image/heic" || file.type === "image/heif" || file.type === "image/webp" || imageExtension(file.name) === ".heic" || imageExtension(file.name) === ".heif" || imageExtension(file.name) === ".webp";
-}
-
-function supportedPhoto(file: File) {
-  const extension = imageExtension(file.name);
-  return file.type === "image/jpeg" || file.type === "image/png" || needsJpegNormalization(file) || extension === ".jpg" || extension === ".jpeg" || extension === ".png";
-}
-
-async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; close?: () => void }> {
-  if (typeof createImageBitmap === "function") {
-    try {
-      const bitmap = await createImageBitmap(file);
-      return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close() };
-    } catch {
-      // Some browsers expose createImageBitmap without HEIC support. Try the
-      // regular image decoder before showing an actionable error.
-    }
-  }
-  if (typeof window === "undefined") throw new Error("Cette image ne peut pas être lue ici.");
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.decoding = "async";
-      element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error("Image illisible"));
-      element.src = objectUrl;
-    });
-    return { source: image, width: image.naturalWidth, height: image.naturalHeight };
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function normalizeImageFile(file: File) {
-  if (!supportedPhoto(file)) throw new Error("Ce format photo n’est pas compatible. Prends une nouvelle photo en JPEG ou PNG.");
-  if (typeof document === "undefined") throw new Error("La conversion photo est disponible dans le navigateur.");
-  const decoded = await decodeImage(file).catch(() => null);
-  if (!decoded || decoded.width <= 0 || decoded.height <= 0) throw new Error("Cette photo n’a pas pu être lue. Prends-la à nouveau en JPEG ou PNG.");
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(decoded.width, decoded.height));
-  if (!needsJpegNormalization(file) && scale === 1) {
-    decoded.close?.();
-    return file;
-  }
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(decoded.width * scale));
-  canvas.height = Math.max(1, Math.round(decoded.height * scale));
-  const context = canvas.getContext("2d");
-  if (!context) {
-    decoded.close?.();
-    throw new Error("La conversion photo n’est pas disponible. Prends-la à nouveau en JPEG ou PNG.");
-  }
-  context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
-  decoded.close?.();
-  const mimeType = needsJpegNormalization(file) ? "image/jpeg" : file.type === "image/png" ? "image/png" : "image/jpeg";
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, IMAGE_QUALITY));
-  if (!blob) throw new Error("Cette photo n’a pas pu être convertie. Prends-la à nouveau en JPEG ou PNG.");
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "repas";
-  const extension = mimeType === "image/png" ? "png" : "jpg";
-  return new File([blob], `${baseName}.${extension}`, { type: mimeType, lastModified: file.lastModified });
 }
 
 function emptyData(date: string): MealJournalData {
@@ -435,14 +386,14 @@ function PhotoInput({ slot, onFiles, disabled = false }: { slot: MealSlot; onFil
   </div>;
 }
 
-function PhotoStrip({ meal, files, onRemove, onOrigin }: { meal: MealRecord; files: Record<string, File>; onRemove: (photoId: string) => void; onOrigin: (photoId: string, origin: MealOrigin) => void }) {
+function PhotoStrip({ meal, files, onRemove, onOrigin, disabled }: { meal: MealRecord; files: Record<string, File>; onRemove: (photoId: string) => void; onOrigin: (photoId: string, origin: MealOrigin) => void; disabled: boolean }) {
   return <div className={styles.photoGrid} role="list" aria-label={`${meal.photos.length} photo${meal.photos.length > 1 ? "s" : ""} du repas`}>
     {meal.photos.map((photo, index) => <figure className={styles.photo} role="listitem" key={photo.id}>
       <div className={styles.photoFrame}>
         {/* User-selected blob URLs and authenticated photo routes cannot use next/image's static loader. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photo.url} alt={photo.filename ? `Photo ${index + 1}, ${photo.filename}` : `Photo ${index + 1} du repas`} width={360} height={280} />
-        <button className={styles.photoRemove} type="button" onClick={() => onRemove(photo.id)} aria-label={`Retirer la photo ${index + 1}`}><X size={15} aria-hidden="true" /></button>
+        <button className={styles.photoRemove} type="button" disabled={disabled} onClick={() => onRemove(photo.id)} aria-label={`Retirer la photo ${index + 1}`}><X size={15} aria-hidden="true" /></button>
       </div>
       <figcaption><span>Photo {index + 1}{files[photo.id] ? " · nouvelle" : ""}</span><PhotoOriginPicker photo={photo} onChange={(origin) => onOrigin(photo.id, origin)} /></figcaption>
     </figure>)}
@@ -472,12 +423,13 @@ function ReviewForm({ meal, onChange, onAddIngredient }: { meal: MealRecord; onC
   </div>;
 }
 
-function MealCard({ meal, slot, files, saveState, processingFiles, onFiles, onRemovePhoto, onOrigin, onAnalyze, onEdit, onReviewChange, onAddIngredient, onConfirm, onRating, onRetry }: {
+function MealCard({ meal, slot, files, saveState, processingFiles, mutationBusy, onFiles, onRemovePhoto, onOrigin, onAnalyze, onEdit, onReviewChange, onAddIngredient, onConfirm, onRating, onRetry }: {
   meal: MealRecord | null;
   slot: MealSlot;
   files: Record<string, File>;
   saveState: SaveState;
   processingFiles: boolean;
+  mutationBusy: boolean;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onOrigin: (photoId: string, origin: MealOrigin) => void;
@@ -503,10 +455,10 @@ function MealCard({ meal, slot, files, saveState, processingFiles, onFiles, onRe
     </div> : <>
       {meal.status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={22} aria-hidden="true" /><div><strong>Analyse des photos en cours</strong><span>Grok prépare une estimation à relire.</span></div></div>}
       {meal.status !== "analyzing" && <div className={styles.mealBody}>
-        <PhotoStrip meal={meal} files={files} onRemove={onRemovePhoto} onOrigin={onOrigin} />
+        <PhotoStrip meal={meal} files={files} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy} />
         {meal.status === "draft" && <div className={styles.photoActions}><PhotoInput slot={slot} onFiles={onFiles} disabled={processingFiles} /><button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles} onClick={onAnalyze}><Sparkles size={17} aria-hidden="true" />{processingFiles ? "Préparation…" : "Analyser les photos"}<ChevronRight size={16} aria-hidden="true" /></button>{noOrigin && <p className={styles.inlineHint}>Choisis l’origine de chaque photo pour continuer.</p>}</div>}
         {meal.status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{meal.error || "Réessaie lorsque la connexion sera disponible."}</span></div><button className={styles.retryButton} type="button" onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-        {meal.status === "review" && <><ReviewForm meal={meal} onChange={onReviewChange} onAddIngredient={onAddIngredient} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" onClick={onEdit}>Modifier les photos</button><button className={styles.confirmButton} type="button" disabled={saveState === "saving"} onClick={onConfirm}>{saveState === "saving" ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer le repas</button></div></>}
+        {meal.status === "review" && <><ReviewForm meal={meal} onChange={onReviewChange} onAddIngredient={onAddIngredient} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier les photos</button><button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saveState === "saving" ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer le repas</button></div></>}
         {meal.status === "confirmed" && <div className={styles.confirmedSummary}><div className={styles.confirmedNutrition}><span><strong>{formatRange(meal.analysis?.calories, "kcal")}</strong>Calories</span><span><strong>{formatRange(meal.analysis?.proteinGrams, "g")}</strong>Protéines</span></div><p>{meal.analysis?.ingredients.map((ingredient) => ingredient.name).join(" · ") || "Composition non détaillée"}</p><button className={styles.editButton} type="button" onClick={onEdit}>Relire ou modifier <ChevronRight size={15} aria-hidden="true" /></button></div>}
         {(meal.status === "review" || meal.status === "confirmed") && <div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div>}
       </div>}
@@ -514,63 +466,95 @@ function MealCard({ meal, slot, files, saveState, processingFiles, onFiles, onRe
   </article>;
 }
 
-export function MealJournal({ date = todayInLocalTime(), initialData, api, className }: Props) {
-  const [data, setData] = useState<MealJournalData | null>(() => initialData ? normalizeData(initialData, date) : null);
+export function MealJournal({ date, today: providedToday, initialData, api, className }: Props) {
+  const today = providedToday ?? todayInLocalTime();
+  const requestedDate = date ?? today;
+  const initialDate = requestedDate > today ? today : requestedDate;
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [data, setData] = useState<MealJournalData | null>(() => initialData ? normalizeData(initialData, initialDate) : null);
   const [loadState, setLoadState] = useState<LoadState>(initialData ? "ready" : "loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filesByPhotoId, setFilesByPhotoId] = useState<Record<string, File>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [processingFiles, setProcessingFiles] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const objectUrls = useRef(new Set<string>());
+  const loadRequestId = useRef(0);
+  const mutationInFlight = useRef(false);
+  const navigationDisabled = processingFiles || deletingPhotoId !== null || saveState === "saving" || Object.values(data?.meals ?? {}).some((meal) => meal?.status === "analyzing");
+
+  const selectDate = useCallback((nextDate: string) => {
+    if (navigationDisabled || mutationInFlight.current) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDate) || nextDate > today) return;
+    if (nextDate === selectedDate) return;
+    loadRequestId.current += 1;
+    objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrls.current.clear();
+    setFilesByPhotoId({});
+    setFileError(null);
+    setLoadState("loading");
+    setSelectedDate(nextDate);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (nextDate === today) url.searchParams.delete("date");
+      else url.searchParams.set("date", nextDate);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, [navigationDisabled, selectedDate, today]);
 
   const load = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
     setLoadState("loading");
     setLoadError(null);
     try {
-      const loaded = await (api?.load ? api.load(date) : defaultLoad(date));
-      setData(normalizeData(loaded, date));
+      const loaded = await (api?.load ? api.load(selectedDate) : defaultLoad(selectedDate));
+      if (requestId !== loadRequestId.current) return;
+      setData(normalizeData(loaded, selectedDate));
       setLoadState("ready");
     } catch (error) {
+      if (requestId !== loadRequestId.current) return;
       setLoadState("error");
       setLoadError(error instanceof Error ? error.message : "Les repas ne sont pas disponibles pour le moment.");
     }
-  }, [api, date]);
+  }, [api, selectedDate]);
 
   useEffect(() => {
-    if (initialData) {
-      setData(normalizeData(initialData, date));
+    if (initialData && selectedDate === initialDate) {
+      setData(normalizeData(initialData, selectedDate));
       setLoadState("ready");
       return;
     }
     void load();
-  }, [date, initialData, load]);
+  }, [initialData, initialDate, load, selectedDate]);
 
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
   const updateMeal = useCallback((slot: MealSlot, update: (meal: MealRecord) => MealRecord) => {
     setData((current) => {
-      const next = current ?? emptyData(date);
-      const meal = next.meals[slot] ?? emptyMeal(date, slot);
+      const next = current ?? emptyData(selectedDate);
+      const meal = next.meals[slot] ?? emptyMeal(selectedDate, slot);
       return { ...next, meals: { ...next.meals, [slot]: update(meal) } };
     });
-  }, [date]);
+  }, [selectedDate]);
 
   const addFiles = async (slot: MealSlot, incoming: File[]) => {
-    if (!incoming.length) return;
+    if (!incoming.length || mutationInFlight.current) return;
+    mutationInFlight.current = true;
     setProcessingFiles(true);
     setFileError(null);
     let prepared: File[];
     try {
-      prepared = await Promise.all(incoming.map((file) => normalizeImageFile(file)));
+      prepared = await Promise.all(incoming.map((file) => normalizeMealImage(file)));
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Cette photo n’a pas pu être préparée. Prends-la à nouveau en JPEG ou PNG.");
       setProcessingFiles(false);
+      mutationInFlight.current = false;
       return;
     }
     setData((current) => {
-      const next = current ?? emptyData(date);
-      const meal = next.meals[slot] ?? emptyMeal(date, slot);
+      const next = current ?? emptyData(selectedDate);
+      const meal = next.meals[slot] ?? emptyMeal(selectedDate, slot);
       const remaining = Math.max(0, MAX_MEAL_PHOTOS - meal.photos.length);
       const accepted = prepared.slice(0, remaining);
       const newPhotos = accepted.map((file) => {
@@ -584,6 +568,7 @@ export function MealJournal({ date = todayInLocalTime(), initialData, api, class
       return { ...next, meals: { ...next.meals, [slot]: { ...meal, photos: [...meal.photos, ...newPhotos], status: "draft", error: null } } };
     });
     setProcessingFiles(false);
+    mutationInFlight.current = false;
   };
 
   const removePhotoFromState = (slot: MealSlot, photoId: string) => {
@@ -591,6 +576,7 @@ export function MealJournal({ date = todayInLocalTime(), initialData, api, class
       if (!current?.meals[slot]) return current;
       const meal = current.meals[slot] as MealRecord;
       const photo = meal.photos.find((item) => item.id === photoId);
+      if (!photo) return current;
       if (photo && objectUrls.current.has(photo.url)) {
         URL.revokeObjectURL(photo.url);
         objectUrls.current.delete(photo.url);
@@ -603,47 +589,65 @@ export function MealJournal({ date = todayInLocalTime(), initialData, api, class
 
   const removePhoto = async (slot: MealSlot, photoId: string) => {
     const meal = data?.meals[slot];
-    if (!meal) return;
+    if (!meal || mutationInFlight.current) return;
     const localPhoto = Boolean(filesByPhotoId[photoId]) || meal.id.startsWith("meal-");
+    mutationInFlight.current = true;
+    setDeletingPhotoId(photoId);
     if (!localPhoto) {
-      if (typeof window !== "undefined" && !window.confirm("Supprimer cette photo du repas ?")) return;
+      if (typeof window !== "undefined" && !window.confirm("Supprimer cette photo du repas ?")) {
+        mutationInFlight.current = false;
+        setDeletingPhotoId(null);
+        return;
+      }
       try {
         await (api?.removePhoto ? api.removePhoto(meal.id, photoId) : defaultRemovePhoto(meal.id, photoId));
       } catch (error) {
         setFileError(error instanceof Error ? error.message : "Cette photo n’a pas pu être supprimée.");
+        mutationInFlight.current = false;
+        setDeletingPhotoId(null);
         return;
       }
     }
     removePhotoFromState(slot, photoId);
+    mutationInFlight.current = false;
+    setDeletingPhotoId(null);
   };
 
   const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed") => {
+    if (mutationInFlight.current) return;
+    mutationInFlight.current = true;
     setSaveState("saving");
     try {
       const saved = await (api?.save ? api.save({ ...meal, status }) : defaultSave({ ...meal, status }));
-      const nextMeal = normalizeMeal({ ...meal, ...saved, status }, date, meal.slot);
+      const nextMeal = normalizeMeal({ ...meal, ...saved, status }, selectedDate, meal.slot);
       setData((current) => current ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
       setSaveState("idle");
     } catch (error) {
       setSaveState("error");
       updateMeal(meal.slot, (current) => ({ ...current, status: "review", error: error instanceof Error ? error.message : "Le repas n’a pas pu être enregistré." }));
+    } finally {
+      mutationInFlight.current = false;
     }
   };
 
   const analyzeMeal = async (slot: MealSlot) => {
     const meal = data?.meals[slot];
-    if (!meal || meal.photos.length === 0) return;
+    if (!meal || meal.photos.length === 0 || mutationInFlight.current) return;
+    mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
     try {
       const files = meal.photos.map((photo) => filesByPhotoId[photo.id]).filter((file): file is File => Boolean(file));
-      const analyzed = await (api?.analyze ? api.analyze({ date, slot, meal, files }) : defaultAnalyze({ date, slot, meal, files }));
-      updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, date, slot), status: "review" }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files }) : defaultAnalyze({ date: selectedDate, slot, meal, files }));
+      updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, selectedDate, slot), status: "review" }));
     } catch (error) {
       updateMeal(slot, (current) => ({ ...current, status: "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));
+    } finally {
+      mutationInFlight.current = false;
     }
   };
 
   const setRating = (slot: MealSlot, key: "mouthHeat" | "stomachLoad", value: Rating | null) => {
+    if (mutationInFlight.current) return;
     const meal = data?.meals[slot];
     if (!meal) return;
     const next = { ...meal, [key]: value } as MealRecord;
@@ -651,19 +655,35 @@ export function MealJournal({ date = todayInLocalTime(), initialData, api, class
     if (meal.status === "confirmed") void saveMeal(next);
   };
 
-  if (loadState === "loading") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span className={styles.eyebrow}>Personal Lab · alimentation</span><h2 id="meal-journal-title">Repas</h2></div><span className={styles.dateLabel}>{formatDate(date)}</span></header><div className={styles.loadingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={21} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
-  if (loadState === "error") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span className={styles.eyebrow}>Personal Lab · alimentation</span><h2 id="meal-journal-title">Repas</h2></div><span className={styles.dateLabel}>{formatDate(date)}</span></header><div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Impossible de charger les repas</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div></section>;
+  const historyDates = mealHistoryDates(selectedDate, today);
+  const dateNavigation = <nav className={styles.historyNavigation} aria-label="Historique des repas">
+    <div className={styles.historyControls}>
+      <button type="button" className={styles.historyArrow} disabled={navigationDisabled} onClick={() => selectDate(shiftIsoDate(selectedDate, -1))} aria-label="Jour précédent"><ChevronLeft size={18} aria-hidden="true" /></button>
+      <label className={styles.datePicker}><span>Date</span><input type="date" max={today} value={selectedDate} disabled={navigationDisabled} onChange={(event) => selectDate(event.target.value)} /></label>
+      <button type="button" className={styles.historyArrow} disabled={navigationDisabled || selectedDate >= today} onClick={() => selectDate(shiftIsoDate(selectedDate, 1))} aria-label="Jour suivant"><ChevronRight size={18} aria-hidden="true" /></button>
+    </div>
+    <div className={styles.weekStrip} role="group" aria-label="Sept jours">
+      {historyDates.map((historyDate) => {
+        const label = compactDayLabel(historyDate);
+        return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><strong>{label.day}</strong></button>;
+      })}
+    </div>
+  </nav>;
 
-  const readyData = data ?? emptyData(date);
+  if (loadState === "loading") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span className={styles.eyebrow}>Personal Lab · alimentation</span><h2 id="meal-journal-title">Repas</h2></div><span className={styles.dateLabel}>{formatDate(selectedDate)}</span></header>{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={21} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
+  if (loadState === "error") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span className={styles.eyebrow}>Personal Lab · alimentation</span><h2 id="meal-journal-title">Repas</h2></div><span className={styles.dateLabel}>{formatDate(selectedDate)}</span></header>{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Impossible de charger les repas</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div></section>;
+
+  const readyData = data ?? emptyData(selectedDate);
   const confirmed = MEAL_SLOTS.filter((slot) => readyData.meals[slot]?.status === "confirmed").length;
   return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title">
     <header className={styles.pageHeader}><div><span className={styles.eyebrow}>Personal Lab · alimentation</span><h2 id="meal-journal-title">Repas</h2></div><div className={styles.dateBlock}><span>{formatDate(readyData.date)}</span><small>{confirmed}/3 confirmés</small></div></header>
+    {dateNavigation}
     <div className={styles.introRow}><p>Photographie ce que tu manges. Soma garde les photos, estime la composition, puis relie les repas à tes signaux au fil du temps.</p><span className={styles.limitNote}>1–{MAX_MEAL_PHOTOS} photos · 3 moments</span></div>
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}
     <nav className={styles.mealIndex} aria-label="Avancement des repas">{MEAL_SLOTS.map((slot) => <a href={`#meal-${slot}`} className={styles.mealIndexItem} key={slot}><span>{SLOT_SHORT_LABELS[slot]}</span><strong data-status={readyData.meals[slot]?.status ?? "empty"}>{statusLabel(readyData.meals[slot] ?? null)}</strong></a>)}</nav>
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} files={filesByPhotoId} saveState={saveState} processingFiles={processingFiles} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onEdit={() => updateMeal(slot, (current) => ({ ...current, status: "draft", error: null }))} onReviewChange={(next) => updateMeal(slot, () => ({ ...next, status: "review", error: null }))} onAddIngredient={() => updateMeal(slot, (current) => current.analysis ? { ...current, analysis: { ...current.analysis, ingredients: [...current.analysis.ingredients, { id: randomId("ingredient"), name: "", portion: "" }] } } : current)} onConfirm={() => { if (meal) void saveMeal(meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} /></div>;
+      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} files={filesByPhotoId} saveState={saveState} processingFiles={processingFiles} mutationBusy={navigationDisabled} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onEdit={() => updateMeal(slot, (current) => ({ ...current, status: "draft", error: null }))} onReviewChange={(next) => updateMeal(slot, () => ({ ...next, status: "review", error: null }))} onAddIngredient={() => updateMeal(slot, (current) => current.analysis ? { ...current, analysis: { ...current.analysis, ingredients: [...current.analysis.ingredients, { id: randomId("ingredient"), name: "", portion: "" }] } } : current)} onConfirm={() => { if (meal) void saveMeal(meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} /></div>;
     })}</div>
   </section>;
 }

@@ -49,6 +49,95 @@
   text-transform: uppercase;
 }
 
+.historyNavigation {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0 4px;
+}
+
+.historyControls {
+  display: grid;
+  grid-template-columns: 44px minmax(180px, 260px) 44px;
+  align-items: stretch;
+  justify-content: end;
+  gap: 6px;
+}
+
+.historyArrow {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink);
+}
+
+.historyArrow:hover:not(:disabled) { background: var(--ink); color: var(--canvas); }
+.historyArrow:disabled { border-color: var(--line); color: var(--line-strong); cursor: not-allowed; }
+
+.datePicker {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .61rem;
+  text-transform: uppercase;
+}
+
+.datePicker input {
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: right;
+}
+
+.weekStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-block: 1px solid var(--ink);
+}
+
+.weekDay,
+.weekDaySelected {
+  display: grid;
+  min-width: 0;
+  min-height: 52px;
+  place-content: center;
+  gap: 1px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  text-align: center;
+}
+
+.weekDay:last-child,
+.weekDaySelected:last-child { border-right: 0; }
+.weekDay:hover { background: var(--paper-strong); color: var(--ink); }
+.weekDaySelected { background: var(--ink); color: var(--canvas); }
+.weekDay span,
+.weekDaySelected span { font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
+.weekDay strong,
+.weekDaySelected strong { font-size: .82rem; font-weight: 650; }
+
+.historyArrow:focus-visible,
+.datePicker:focus-within,
+.weekDay:focus-visible,
+.weekDaySelected:focus-visible {
+  outline: 3px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
 .introRow {
   display: flex;
   align-items: start;
@@ -376,6 +465,10 @@
   .pageHeader { align-items: start; gap: 12px; }
   .pageHeader h2 { font-size: 3.1rem; }
   .dateLabel, .dateBlock { max-width: 135px; font-size: .61rem; }
+  .historyNavigation { margin-inline: -14px; padding-top: 12px; }
+  .historyControls { grid-template-columns: 44px minmax(0, 1fr) 44px; padding-inline: 14px; }
+  .datePicker { padding-inline: 8px; }
+  .weekDay, .weekDaySelected { min-height: 52px; }
   .introRow { display: grid; gap: 10px; padding-block: 16px; }
   .introRow p { font-size: .82rem; }
   .limitNote { justify-self: start; }

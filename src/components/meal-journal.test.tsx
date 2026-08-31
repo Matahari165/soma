@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { MealJournal, apiMealToRecord, type MealJournalData } from "./meal-journal";
+import { MealJournal, apiMealToRecord, mealHistoryDates, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -15,6 +15,20 @@ describe("MealJournal", () => {
     expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
     expect(html).toContain("0/3 confirmés");
     expect(html).toContain('capture="environment"');
+    expect(html).toContain('aria-label="Historique des repas"');
+    expect(html).toContain('aria-label="Jour précédent"');
+    expect(html).toContain('aria-label="Jour suivant"');
+    expect(html).toContain('type="date"');
+    expect(html).toContain('max="2026-08-31"');
+  });
+
+  it("shows seven navigable dates without offering a future day", () => {
+    expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
+      "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29", "2026-08-30", "2026-08-31",
+    ]);
+    expect(mealHistoryDates("2026-08-10", "2026-08-31")).toEqual([
+      "2026-08-07", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13",
+    ]);
   });
 
   it("keeps one origin control and the two compact feelings per meal", () => {

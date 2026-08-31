@@ -335,7 +335,7 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-export function DailyJournal({ variables, entries, days, todayDate }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string }) {
+export function DailyJournal({ variables, entries, days, todayDate, onTodayBreakfastValidation }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string; onTodayBreakfastValidation?: (skipped: boolean) => void }) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
@@ -408,6 +408,9 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
       .catch(() => undefined)
       .then(() => persist(date, "draft", draftValues, variableId))
       .then(() => {
+        const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDate === date;
+        if (date === todayDate && breakfast && dayIsValidated) onTodayBreakfastValidation?.(draftValues[breakfast.id] === false);
         if (date === selectedDate.current && pendingSavesByDate.current[date] === 1) {
           setSaveStatus("saved");
           setError(null);
@@ -439,6 +442,11 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
         setValidatedDate(date);
         setSaveStatus("saved");
         setError(null);
+      }
+      if (date === todayDate) {
+        const breakfast = activeVariables.find((variable) => variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const explicitlyRecorded = breakfast ? (recordedByDate[date] ?? new Set<string>()).has(breakfast.id) : false;
+        onTodayBreakfastValidation?.(Boolean(breakfast && explicitlyRecorded && drafts.current[date]?.[breakfast.id] === false));
       }
       router.refresh();
     } catch (saveError) {
