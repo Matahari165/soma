@@ -139,6 +139,10 @@ describe("Personal Lab matrix revision", () => {
       "daily_scores",
       "daily_calendar_metrics",
       "daily_checkins",
+      "meals",
+      "meal_photos",
+      "meal_analyses",
+      "meal_feelings",
       "journal_variables",
       "journal_entries",
       "journal_days",
@@ -149,6 +153,7 @@ describe("Personal Lab matrix revision", () => {
   it("does not invalidate the matrix for unrelated product writes", () => {
     expect(affectsLabMatrixRevision("daily_health_metrics")).toBe(true);
     expect(affectsLabMatrixRevision("journal_entries")).toBe(true);
+    expect(affectsLabMatrixRevision("meal_analyses")).toBe(true);
     expect(affectsLabMatrixRevision("coach_messages")).toBe(false);
   });
 });

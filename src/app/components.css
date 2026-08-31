@@ -797,6 +797,11 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .journal-field__label { min-width: 0; color: var(--ink-soft); font-size: .7rem; }
 .journal-field__label-text { display: block; overflow-wrap: anywhere; line-height: 1.16; white-space: normal; }
 .journal-field > .journal-choice { width: 92px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.journal-field > .journal-breakfast-actions { display: grid; width: 148px; justify-items: stretch; gap: 6px; }
+.journal-breakfast-actions > .journal-choice { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.journal-breakfast-actions > a { display: flex; min-height: 34px; align-items: center; justify-content: center; gap: 5px; padding: 6px 8px; border: 1px solid var(--ink); background: var(--ink); color: var(--canvas); font-family: var(--font-soma-mono), monospace; font-size: .58rem; font-weight: 700; text-decoration: none; text-transform: uppercase; }
+.journal-breakfast-actions > a:hover { background: var(--moss); }
+.journal-breakfast-actions > a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .journal-field > .journal-choice--scale { width: 104px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .journal-field > .journal-number,
 .journal-field > .journal-clock,

@@ -35,6 +35,7 @@
   .journal-period__header { padding-inline: 11px; }
   .journal-field { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 11px; }
   .journal-field > .journal-choice { width: 132px; }
+  .journal-field > .journal-breakfast-actions { width: 148px; }
   .journal-field > .journal-choice--scale { width: 180px; }
   .journal-field > .journal-number,
   .journal-field > input,

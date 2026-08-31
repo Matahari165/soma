@@ -10,6 +10,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Utensils,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,13 +26,14 @@ const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((mod
 
 const navigation = [
   { label: "Lab", href: "/", icon: LayoutDashboard },
+  { label: "Repas", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
-const mobileNavigation = navigation.slice(0, 4);
+const mobileNavigation = [navigation[1], navigation[2], navigation[3]];
 
 function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
   return (
@@ -68,7 +70,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   useDialogLayer({ open: mobileMenuOpen, onClose: closeMobileMenu, containerRef: mobileMenuRef });
 
   if (
-    (pathname === "/" && !user) ||
+    ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/onboarding") ||

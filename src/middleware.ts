@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { MAX_MEAL_MULTIPART_BYTES } from "@/domain/meals";
 import { isLocalPreviewMode } from "@/lib/env";
 
 const publicMachinePaths = [
@@ -17,6 +18,12 @@ const publicPaths = [
   "/privacy",
   "/terms",
 ];
+
+export function requestBodyLimitForPath(pathname: string) {
+  return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
+    ? MAX_MEAL_MULTIPART_BYTES
+    : 64 * 1024;
+}
 
 export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
@@ -56,7 +63,8 @@ export async function middleware(request: NextRequest) {
     const sameRequestHost = Boolean(parsedOrigin && requestHost && parsedOrigin.host === requestHost && ["http:", "https:"].includes(parsedOrigin.protocol));
     if (!origin || (!allowedOrigins.has(origin) && !sameRequestHost)) return secureResponse(NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 }));
     const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > 64 * 1024) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
+    const requestLimit = requestBodyLimitForPath(request.nextUrl.pathname);
+    if (contentLength > requestLimit) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
   }
 
   const response = createResponse();

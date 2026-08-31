@@ -74,6 +74,26 @@ describe("journal motion states", () => {
     expect(html).not.toContain('aria-label="Confirm the displayed value for Vacation"');
   });
 
+  it("offers the breakfast photo shortcut only after Breakfast is set to yes", () => {
+    const breakfast = variables.find((variable) => variable.name === "Breakfast");
+    const withBreakfast = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: breakfast ? [{ variableId: breakfast.id, entryDate: todayDate, value: true }] : [],
+      days: [],
+      todayDate,
+    }));
+    const withoutBreakfast = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: breakfast ? [{ variableId: breakfast.id, entryDate: todayDate, value: false }] : [],
+      days: [],
+      todayDate,
+    }));
+
+    expect(withBreakfast).toContain('href="/meals#meal-breakfast"');
+    expect(withBreakfast).toContain('aria-label="Ajouter une photo du petit déjeuner"');
+    expect(withoutBreakfast).not.toContain('href="/meals#meal-breakfast"');
+  });
+
   it("does not offer to reconfirm a recorded numeric value", () => {
     const alcohol = variables.find((variable) => variable.name === "Alcohol");
     const html = renderToStaticMarkup(createElement(DailyJournal, {

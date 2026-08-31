@@ -1,12 +1,15 @@
 import type { LabObservation } from "@/domain/lab/observation";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
+import { mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
 import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-matrix-cache";
 import { loadJournalData } from "@/services/journal";
+import { loadConfirmedMealRecords } from "@/services/meals";
+import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { evidenceCandidatesForNarrative, isWeeklyNarrativeCurrent, LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
 
 export type DailyCheckin = {
@@ -362,7 +365,11 @@ function combinedHealthSeries(health: HealthDay[], id: string, label: string, un
 
 function coverageForSeries(series: MatrixSeries): LabMetricCoverage {
   const sources = new Map<string, number>();
-  for (const point of series.points) sources.set(point.segment ?? "Journal / calendar", (sources.get(point.segment ?? "Journal / calendar") ?? 0) + 1);
+  const defaultSource = isMealMetric(series.id) ? "Soma meals" : "Journal / calendar";
+  for (const point of series.points) {
+    const source = point.segment ?? defaultSource;
+    sources.set(source, (sources.get(source) ?? 0) + 1);
+  }
   return {
     id: series.id,
     label: series.label,
@@ -380,6 +387,7 @@ function buildCorrelationMatrix(input: {
   validatedDates: Set<string>;
   metricPreferences: ReadonlyMap<string, MetricRole>;
   metricDefinitions: readonly LabMetricDefinition[];
+  meals?: readonly ConfirmedMealRecord[];
   timeZone: string;
   requestedPeriods?: AnalysisPeriod[];
 }) {
@@ -410,7 +418,7 @@ function buildCorrelationMatrix(input: {
   });
   const dailyOutcomes = [
     ...coreOutcomes,
-    ...input.metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id) && !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    ...input.metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id) && !isMealMetric(metric.id) && !coreOutcomeIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
       .map((metric) => ({ ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), direction: metric.direction })),
     { ...bedtime, direction: "target" as const },
     { ...wakeTime, direction: "target" as const },
@@ -442,6 +450,13 @@ function buildCorrelationMatrix(input: {
     { series: healthSeries(health, "skin_temperature", "Skin temperature delta", "°C", "skin_temperature_delta"), acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "overnight" },
     { series: effortSeries, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: "daytime" },
   ];
+  const mealRows: RowSpec[] = Object.values(mealDailySeries(input.meals ?? [])).map((series) => ({
+    series,
+    acuteLags: [0, 1, 2],
+    chronic: true,
+    journal: false,
+    timing: "daytime",
+  }));
 
   const entriesByVariable = new Map<string, JournalEntry[]>();
   for (const entry of input.entries.filter((candidate) => input.validatedDates.has(candidate.entryDate))) entriesByVariable.set(entry.variableId, [...(entriesByVariable.get(entry.variableId) ?? []), entry]);
@@ -516,16 +531,16 @@ function buildCorrelationMatrix(input: {
     : relation;
   const automaticIds = new Set(automaticRows.map((row) => row.series.id));
   const genericAutomaticRows: RowSpec[] = input.metricDefinitions
-    .filter((metric) => isPersonalLabMetricAllowed(metric.id) && !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
+    .filter((metric) => isPersonalLabMetricAllowed(metric.id) && !isMealMetric(metric.id) && !automaticIds.has(metric.id) && !["bedtime", "wake_time", "recovery", "effort"].includes(metric.id))
     .map((metric) => {
       const binary = metric.id === "active_day" || health.some((day) => typeof (day as unknown as Record<string, unknown>)[metric.field] === "boolean");
       return { series: { ...healthSeries(health, metric.id, metric.label, metric.unit, metric.field), kind: binary ? "binary" as const : "numeric" as const }, acuteLags: [0, 1, 2], chronic: true, journal: false, timing: timingForAutomaticMetric(metric.id) };
     });
-  const allSpecs = [...journalRows, ...[...automaticRows, ...genericAutomaticRows].filter((row) => ["influence", "both"].includes(metricRoleFor(row.series.id, input.metricPreferences)))];
+  const allSpecs = [...journalRows, ...[...automaticRows, ...genericAutomaticRows, ...mealRows].filter((row) => ["influence", "both"].includes(metricRoleFor(row.series.id, input.metricPreferences)))];
   const periods: AnalysisPeriod[] = [15, 30, 90, "all"];
   const calculatedPeriods = input.requestedPeriods ?? periods;
   const latestDate = latestLabDate(
-    health.map((day) => day.metric_date),
+    [...health.map((day) => day.metric_date), ...(input.meals ?? []).map((meal) => meal.mealDate)],
     input.entries.map((entry) => entry.entryDate),
     dateInTimezone(input.timeZone),
   );
@@ -546,6 +561,21 @@ function buildCorrelationMatrix(input: {
     skin_temperature: "🌡️",
     effort: "💪",
     run_day: "🏃",
+    meal_calories: "🍽️",
+    meal_protein: "🥚",
+    meal_carbs: "🍞",
+    meal_fat: "🥑",
+    meal_fiber: "🌾",
+    meal_count: "🍴",
+    meal_coverage: "📅",
+    meal_homemade_count: "🏠",
+    meal_prepared_count: "🛒",
+    meal_mixed_count: "🍲",
+    meal_homemade_share: "🏠",
+    meal_mouth_heat_average: "👄",
+    meal_mouth_heat_maximum: "👄",
+    meal_stomach_overfullness_average: "💥",
+    meal_stomach_overfullness_maximum: "💥",
   };
   const emojiByVariable = new Map(input.variables.map((variable) => [`journal:${variable.id}`, variable.emoji]));
   const rows: LabMatrixRow[] = calculatedPeriods.flatMap((period) => allSpecs.flatMap((row) => row.acuteLags.map((lagDays) => ({
@@ -741,6 +771,7 @@ function buildSnapshot(input: {
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
   journal: { variables: JournalVariable[]; entries: JournalEntry[]; days: import("@/domain/lab/journal").JournalDay[] };
+  meals?: readonly ConfirmedMealRecord[];
   narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; evidence_candidates?: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
   narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown; evidence_candidates?: unknown }>;
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
@@ -758,10 +789,18 @@ function buildSnapshot(input: {
   const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
-  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
+  const mealSeries = mealDailySeries(input.meals ?? []);
+  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, meals: input.meals, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
   const metricRegistry = metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id)).map((metric) => {
     const sourceDays = new Map<string, number>();
-    const recordedDays = metric.id === "recovery" || metric.id === "effort"
+    const recordedDays = isMealMetric(metric.id)
+      ? (() => {
+        const series = mealSeries[metric.id];
+        const source = "Soma meals";
+        if (series) sourceDays.set(source, series.points.length);
+        return series?.points.length ?? 0;
+      })()
+      : metric.id === "recovery" || metric.id === "effort"
       ? input.scores.filter((score) => {
         if (score.kind !== metric.id || score.score === null) return false;
         const source = healthByDate.get(score.score_date)?.data_quality?.primaryWearable ?? "Soma";
@@ -897,7 +936,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const startedAt = Date.now();
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    const input = { user, timeZone: "Europe/Paris", ...preview, requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
+    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
@@ -947,6 +986,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
   const journalPromise = loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const mealPromise = loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {});
   const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
     const failed = results.find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
@@ -977,12 +1017,13 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData);
   });
-  const analysis = Promise.all([corePromise, journalPromise, detailPromise]).then(async ([core, journalData, detail]) => {
+  const analysis = Promise.all([corePromise, journalPromise, mealPromise, detailPromise]).then(async ([core, journalData, meals, detail]) => {
     const queryCompletedAt = Date.now();
     const snapshot = buildSnapshot({
       user,
       ...core,
       journal: journalData,
+      meals,
       narrative: detail.narrativeHistoryResult.data?.[0] ?? detail.narrativeResult.data,
       narrativeHistory: (detail.narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
       metricPreferences: (detail.metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
