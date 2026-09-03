@@ -126,6 +126,7 @@ describe("journal values", () => {
       "Added sugar",
       "Masturbation",
       "Alcohol",
+      "Strength training",
       "Dinner end time",
       "Magnesium",
       "Breathing exercise",
