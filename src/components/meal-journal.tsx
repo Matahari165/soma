@@ -184,8 +184,8 @@ function emptyMeal(date: string, slot: MealSlot): MealRecord {
   return { id: randomId("meal"), date, slot, photos: [], note: "", analysis: null, mouthHeat: null, stomachLoad: null, status: "draft", error: null, confirmedAt: null };
 }
 
-function emptyManualAnalysis(): MealAnalysis {
-  return { ingredients: [{ id: randomId("ingredient"), name: "", portion: "", confidence: "medium" }], dishType: null, calorieAnalysis: null, calories: { low: null, likely: null, high: null }, proteinGrams: { low: null, likely: null, high: null } };
+function emptyManualAnalysis(seedName = ""): MealAnalysis {
+  return { ingredients: [{ id: randomId("ingredient"), name: seedName, portion: "", confidence: "medium" }], dishType: null, calorieAnalysis: null, calories: { low: null, likely: null, high: null }, proteinGrams: { low: null, likely: null, high: null } };
 }
 
 function normalizeMeal(raw: MealRecord, date: string, slot: MealSlot): MealRecord {
@@ -780,7 +780,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const startManualReview = (slot: MealSlot) => {
     updateMeal(slot, (current) => {
       if (!current.note.trim() || current.analysis) return current.status === "review" ? current : { ...current, status: "review", error: null };
-      return { ...current, analysis: { ...emptyManualAnalysis(), ingredients: [{ id: randomId("ingredient"), name: current.note.trim().slice(0, 120), portion: "", confidence: "medium" as const }] }, status: "review", error: null };
+      return { ...current, analysis: emptyManualAnalysis(current.note.trim().slice(0, 120)), status: "review", error: null };
     });
   };
 
