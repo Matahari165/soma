@@ -1,6 +1,7 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
+import { ImagePlus, LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -76,26 +77,46 @@ function suggestionDraft(suggestion: (typeof journalVariableSuggestions)[number]
 
 function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: string; value: DraftValue; disabled: boolean; onChange: (value: DraftValue) => void }) {
   const canonicalValue = typeof value === "string" ? value : "";
-  const [draft, setDraft] = useState(dinnerTimeForDisplay(canonicalValue));
+  const [displayHour = "", displayMinute = ""] = dinnerTimeForDisplay(canonicalValue).split(":");
+  const [hour, setHour] = useState(displayHour);
+  const [minute, setMinute] = useState(displayMinute);
   const [invalid, setInvalid] = useState(false);
+  const minuteRef = useRef<HTMLInputElement>(null);
 
   function commit() {
-    if (!draft.trim()) {
+    if (!hour && !minute) {
       setInvalid(false);
       onChange(null);
       return;
     }
-    const normalized = normalizeDinnerTimeInput(draft);
+    const normalized = normalizeDinnerTimeInput(`${hour}:${minute}`);
     if (!normalized) {
       setInvalid(true);
       return;
     }
     setInvalid(false);
-    setDraft(dinnerTimeForDisplay(normalized));
+    const [nextHour, nextMinute] = dinnerTimeForDisplay(normalized).split(":");
+    setHour(nextHour);
+    setMinute(nextMinute);
     onChange(normalized);
   }
 
-  return <input className="journal-clock" disabled={disabled} id={inputId} aria-label="Dinner end time" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="8:15" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />;
+  function digits(value: string, maximumLength: number) {
+    return value.replace(/\D/g, "").slice(0, maximumLength);
+  }
+
+  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Dinner end time" onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
+  }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
+    <input disabled={disabled} aria-label="Dinner end hour" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
+      const next = digits(event.target.value, 2);
+      setHour(next);
+      setInvalid(false);
+      if (next.length === 2) minuteRef.current?.focus();
+    }} />
+    <span aria-hidden="true">:</span>
+    <input ref={minuteRef} disabled={disabled} aria-label="Dinner end minutes" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+  </div>;
 }
 
 function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {
@@ -302,7 +323,9 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, onChan
       ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirm the displayed value for ${variable.name}`} onClick={() => onChange(value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
-    <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} />
+    {variable.name.trim().toLocaleLowerCase("en") === "breakfast" && value === true
+      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} /><Link href="/meals#meal-breakfast" aria-label="Ajouter une photo du petit déjeuner"><ImagePlus size={15} aria-hidden="true" />Ajouter une photo</Link></div>
+      : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} />}
   </div>;
 }
 
@@ -312,7 +335,7 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-export function DailyJournal({ variables, entries, days, todayDate }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string }) {
+export function DailyJournal({ variables, entries, days, todayDate, onTodayBreakfastValidation }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string; onTodayBreakfastValidation?: (skipped: boolean) => void }) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
@@ -385,6 +408,9 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
       .catch(() => undefined)
       .then(() => persist(date, "draft", draftValues, variableId))
       .then(() => {
+        const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDate === date;
+        if (date === todayDate && breakfast && dayIsValidated) onTodayBreakfastValidation?.(draftValues[breakfast.id] === false);
         if (date === selectedDate.current && pendingSavesByDate.current[date] === 1) {
           setSaveStatus("saved");
           setError(null);
@@ -416,6 +442,11 @@ export function DailyJournal({ variables, entries, days, todayDate }: { variable
         setValidatedDate(date);
         setSaveStatus("saved");
         setError(null);
+      }
+      if (date === todayDate) {
+        const breakfast = activeVariables.find((variable) => variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const explicitlyRecorded = breakfast ? (recordedByDate[date] ?? new Set<string>()).has(breakfast.id) : false;
+        onTodayBreakfastValidation?.(Boolean(breakfast && explicitlyRecorded && drafts.current[date]?.[breakfast.id] === false));
       }
       router.refresh();
     } catch (saveError) {

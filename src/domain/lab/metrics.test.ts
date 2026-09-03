@@ -22,6 +22,13 @@ describe("Personal Lab metric registry", () => {
     expect(definitions.get("vo2_max")).toMatchObject({ defaultRole: "result", unit: "ml/kg/min", source: "Google Health", direction: "higher" });
   });
 
+  it("registers meal series as Soma influences without exposing them as health fields", () => {
+    const definitions = new Map(healthMetricRegistry.map((metric) => [metric.id, metric]));
+    expect(definitions.get("meal_calories")).toMatchObject({ field: "meal_calories_kcal", unit: "kcal", defaultRole: "influence", source: "Soma" });
+    expect(definitions.get("meal_homemade_share")).toMatchObject({ field: "meal_homemade_share_percent", unit: "%", defaultRole: "influence", source: "Soma" });
+    expect(definitions.get("meal_mouth_heat_average")).toMatchObject({ field: "meal_mouth_heat_average", unit: "1–5", defaultRole: "influence", source: "Soma" });
+  });
+
   it("discovers future numeric and boolean health fields without enabling them", () => {
     const definitions = metricDefinitionsForHealth([{ metric_date: "2026-08-24", new_sensor_value: 12.5, new_flag: true, note: "ignored" }]);
     expect(definitions).toEqual(expect.arrayContaining([

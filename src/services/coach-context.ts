@@ -1,9 +1,15 @@
 export type CoachMetricRow = Record<string, unknown> & { metric_date: string };
 export type CoachScoreRow = { score_date: string; kind: string; score: number | null };
+export type CoachNutritionContext = {
+  today: { caloriesKcal: number | null; proteinG: number | null; fatG: number | null; carbsG: number | null; fiberG: number | null };
+  targets: { caloriesKcal: number; proteinG: number; fatG: number; carbsG: number; fiberG: number; surplusKcal: number };
+};
+
 export type CompactCoachHealthContext = {
   today: Record<string, unknown>;
   averages7d: Record<string, number | null>;
   averages30d: Record<string, number | null>;
+  nutrition?: CoachNutritionContext;
 };
 
 function average(values: number[]) {

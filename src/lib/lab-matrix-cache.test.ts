@@ -8,7 +8,7 @@ import { LAB_MATRIX_CACHE_VERSION, labMatrixCacheObjectKey, labMatrixCacheObject
 
 describe("lab matrix cache object keys", () => {
   it("invalidates matrices created before the new influence series were added", () => {
-    expect(LAB_MATRIX_CACHE_VERSION).toBe("matrix-v14");
+    expect(LAB_MATRIX_CACHE_VERSION).toBe("matrix-v15");
   });
 
   it("keeps stable keys across algorithm versions and escapes the user id", () => {

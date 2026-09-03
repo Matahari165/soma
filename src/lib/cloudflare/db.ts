@@ -76,6 +76,10 @@ const conflictKeys: Record<string, string[]> = {
   daily_calendar_metrics: ["user_id", "metric_date"],
   daily_checkins: ["user_id", "checkin_date"],
   health_record_archives: ["user_id", "provider", "data_type", "range_start", "range_end"],
+  meals: ["user_id", "id"],
+  meal_photos: ["user_id", "id"],
+  meal_analyses: ["user_id", "id"],
+  meal_feelings: ["user_id", "meal_id"],
 };
 
 export const labMatrixRevisionTables = [
@@ -84,6 +88,10 @@ export const labMatrixRevisionTables = [
   "daily_scores",
   "daily_calendar_metrics",
   "daily_checkins",
+  "meals",
+  "meal_photos",
+  "meal_analyses",
+  "meal_feelings",
   "journal_variables",
   "journal_entries",
   "journal_days",

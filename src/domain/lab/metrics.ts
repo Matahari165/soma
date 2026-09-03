@@ -72,6 +72,21 @@ export const healthMetricRegistry: readonly LabMetricDefinition[] = [
   { id: "load_ratio", label: "Acute / chronic load", unit: "ratio", field: "acute_chronic_load_ratio", defaultRole: "disabled", direction: "target", source: "Soma" },
   { id: "recovery", label: "Recovery", unit: "pts", field: "recovery_score", defaultRole: "result", direction: "higher", source: "Soma" },
   { id: "effort", label: "Effort", unit: "pts", field: "effort_score", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_calories", label: "Meal calories", unit: "kcal", field: "meal_calories_kcal", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_protein", label: "Meal protein", unit: "g", field: "meal_protein_g", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_carbs", label: "Meal carbohydrates", unit: "g", field: "meal_carbs_g", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_fat", label: "Meal fat", unit: "g", field: "meal_fat_g", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_fiber", label: "Meal fiber", unit: "g", field: "meal_fiber_g", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_count", label: "Meals recorded", unit: "count", field: "meal_count", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_coverage", label: "Meal coverage", unit: "%", field: "meal_coverage_percent", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_homemade_count", label: "Homemade meals", unit: "count", field: "meal_homemade_count", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_prepared_count", label: "Prepared / bought meals", unit: "count", field: "meal_prepared_count", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_mixed_count", label: "Mixed meals", unit: "count", field: "meal_mixed_count", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_homemade_share", label: "Homemade share", unit: "%", field: "meal_homemade_share_percent", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_mouth_heat_average", label: "Mouth heat · average", unit: "1–5", field: "meal_mouth_heat_average", defaultRole: "influence", direction: "lower", source: "Soma" },
+  { id: "meal_mouth_heat_maximum", label: "Mouth heat · maximum", unit: "1–5", field: "meal_mouth_heat_maximum", defaultRole: "influence", direction: "lower", source: "Soma" },
+  { id: "meal_stomach_overfullness_average", label: "Meal overload · average", unit: "1–5", field: "meal_stomach_overfullness_average", defaultRole: "influence", direction: "lower", source: "Soma" },
+  { id: "meal_stomach_overfullness_maximum", label: "Meal overload · maximum", unit: "1–5", field: "meal_stomach_overfullness_maximum", defaultRole: "influence", direction: "lower", source: "Soma" },
 ] as const;
 
 export function metricRoleFor(id: string, preferences: ReadonlyMap<string, MetricRole>) {

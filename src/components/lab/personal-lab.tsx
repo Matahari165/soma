@@ -1,8 +1,8 @@
 import type { PersonalLabJournal, PersonalLabOverview, PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
-import { DailyJournal } from "./daily-journal";
 import { MetricRegistry } from "./metric-registry";
+import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { NarrativeRefresh } from "./narrative-refresh";
 import { TodaySignals } from "./today-signals";
 
@@ -23,7 +23,7 @@ export function PersonalLabOverviewSection({ data, connectionNotice = null }: { 
 export function PersonalLabJournalSection({ data }: { data: PersonalLabJournal }) {
   return (
     <div className="lab-workspace lab-entry__section lab-entry__journal">
-      <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} todayDate={data.todayDate} /></div>
+      <PersonalLabJournalWorkspace data={data} />
     </div>
   );
 }
