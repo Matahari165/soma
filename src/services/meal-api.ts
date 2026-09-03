@@ -63,6 +63,8 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
   const [validCalories, validProteinGrams, validCarbohydrateGrams, validFatGrams, validFiberGrams] = ranges as Array<LegacyRange | null>;
   return {
     summary: typeof input.note === "string" && input.note.trim() ? input.note.trim() : "Composition du repas relue par l’utilisateur.",
+    dishType: null,
+    calorieAnalysis: null,
     foods,
     totals: { calories: validCalories, proteinGrams: validProteinGrams, carbohydrateGrams: validCarbohydrateGrams, fatGrams: validFatGrams, fiberGrams: validFiberGrams },
     confidence: input.confidence === "high" || input.confidence === "medium" ? input.confidence : "low",
@@ -78,13 +80,15 @@ export function mealToLegacyApi(meal: Meal) {
   const analysis = meal.analysis?.result;
   const legacyAnalysis = analysis ? {
     ingredients: analysis.foods.map((food, index) => ({ id: `${meal.analysis?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence })),
+    dishType: analysis.dishType ?? null,
+    calorieAnalysis: analysis.calorieAnalysis ?? null,
     calories: legacyRangeFromCanonical(analysis.totals.calories),
     proteinGrams: legacyRangeFromCanonical(analysis.totals.proteinGrams),
     carbohydratesGrams: legacyRangeFromCanonical(analysis.totals.carbohydrateGrams),
     fatGrams: legacyRangeFromCanonical(analysis.totals.fatGrams),
     fiberGrams: legacyRangeFromCanonical(analysis.totals.fiberGrams),
     confidence: analysis.confidence,
-    note: analysis.summary,
+    note: analysis.calorieAnalysis ?? analysis.summary,
   } : null;
   return {
     id: meal.id,

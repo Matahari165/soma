@@ -14,6 +14,7 @@ const slots: Array<{ id: MealType; label: string }> = [
   { id: "breakfast", label: "Matin" },
   { id: "lunch", label: "Midi" },
   { id: "dinner", label: "Soir" },
+  { id: "snack", label: "Goûter" },
 ];
 const origins: Array<{ id: MealOrigin; label: string }> = [
   { id: "homemade", label: "Maison" },
@@ -63,7 +64,7 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
   const photoButtons = useRef<Partial<Record<MealType, HTMLButtonElement | null>>>({});
   const firstOriginButtons = useRef<Partial<Record<MealType, HTMLButtonElement | null>>>({});
   const submittingSlots = useRef(new Set<MealType>());
-  const [slotStates, setSlotStates] = useState<Record<MealType, SlotState>>({ breakfast: emptySlot(), lunch: emptySlot(), dinner: emptySlot() });
+  const [slotStates, setSlotStates] = useState<Record<MealType, SlotState>>({ breakfast: emptySlot(), lunch: emptySlot(), dinner: emptySlot(), snack: emptySlot() });
 
   useEffect(() => {
     if (!breakfastDisabled) return;
@@ -79,7 +80,7 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
         const counts = new Map<MealType, number>();
         for (const raw of body.meals) {
           const meal = raw as { mealType?: MealType; photos?: unknown[] };
-          if (meal.mealType && Array.isArray(meal.photos)) counts.set(meal.mealType, meal.photos.length);
+          if (meal.mealType && Array.isArray(meal.photos)) counts.set(meal.mealType, (counts.get(meal.mealType) ?? 0) + meal.photos.length);
         }
         setSlotStates((current) => Object.fromEntries(slots.map(({ id }) => [id, { ...current[id], photoCount: counts.get(id) ?? 0 }])) as Record<MealType, SlotState>);
       })
@@ -120,16 +121,18 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
         const disabled = id === "breakfast" && breakfastDisabled;
         const busy = item.state === "uploading";
         const atLimit = item.photoCount >= MAX_MEAL_PHOTOS;
-        const status = disabled ? "Pas de petit déjeuner" : atLimit ? `${MAX_MEAL_PHOTOS} photos · maximum atteint` : item.state === "done" ? item.message : item.photoCount > 0 ? `${item.photoCount} photo${item.photoCount > 1 ? "s" : ""}` : "Aucune photo";
-        return <div className={`meal-quick__row${disabled ? " is-disabled" : ""}`} key={id}>
+        const filled = item.photoCount > 0 || item.state === "done";
+        const locked = filled && item.state !== "error";
+        const status = disabled ? "Pas de petit déjeuner" : atLimit ? `${MAX_MEAL_PHOTOS} photos · maximum atteint` : item.state === "done" ? item.message : filled ? `${item.photoCount} photo${item.photoCount > 1 ? "s" : ""} · ajoutée` : "Aucune photo";
+        return <div className={`meal-quick__row${disabled ? " is-disabled" : ""}${locked ? " is-filled" : ""}`} key={id}>
           <div className="meal-quick__summary"><strong>{label}</strong><span role="status" aria-live="polite" aria-atomic="true">{status}</span></div>
-          <input ref={(node) => { inputs.current[id] = node; }} className="sr-only" type="file" accept="image/*" capture="environment" aria-label={`Choisir une photo pour ${label.toLocaleLowerCase("fr")}`} disabled={disabled || busy || atLimit} onChange={(event) => chooseFile(id, event)} />
+          <input ref={(node) => { inputs.current[id] = node; }} className="sr-only" type="file" accept="image/*" capture="environment" aria-label={`Choisir une photo pour ${label.toLocaleLowerCase("fr")}`} disabled={disabled || busy || atLimit || locked} onChange={(event) => chooseFile(id, event)} />
           {item.state === "choosing-origin" ? <div className="meal-quick__origins" role="group" aria-label={`Origine du repas — ${label}`}>
             {origins.map((origin, index) => <button ref={index === 0 ? (node) => { firstOriginButtons.current[id] = node; } : undefined} type="button" key={origin.id} disabled={disabled || busy} onClick={() => void submit(id, origin.id)}>{origin.label}</button>)}
             <button type="button" className="meal-quick__cancel" onClick={() => { setSlotStates((current) => ({ ...current, [id]: { ...current[id], state: "idle", file: null, origin: null } })); requestAnimationFrame(() => photoButtons.current[id]?.focus()); }}>Annuler</button>
-          </div> : <button ref={(node) => { photoButtons.current[id] = node; }} type="button" className="meal-quick__photo" disabled={disabled || busy || atLimit} onClick={() => item.state === "error" && item.origin ? void submit(id, item.origin) : inputs.current[id]?.click()}>
-            {busy ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : item.state === "done" ? <Check size={18} aria-hidden="true" /> : item.state === "error" ? <RefreshCw size={18} aria-hidden="true" /> : <Camera size={18} aria-hidden="true" />}
-            {busy ? "Analyse…" : item.state === "error" ? "Réessayer" : "Photo"}
+          </div> : <button ref={(node) => { photoButtons.current[id] = node; }} type="button" className="meal-quick__photo" disabled={disabled || busy || atLimit || locked} aria-label={locked ? `Photo déjà ajoutée pour ${label} — voir l’historique` : undefined} onClick={() => item.state === "error" && item.origin ? void submit(id, item.origin) : inputs.current[id]?.click()}>
+            {busy ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : item.state === "error" ? <RefreshCw size={18} aria-hidden="true" /> : locked ? <Check size={18} aria-hidden="true" /> : <Camera size={18} aria-hidden="true" />}
+            {busy ? "Analyse…" : item.state === "error" ? "Réessayer" : locked ? "Ajoutée" : "Photo"}
           </button>}
           {item.state === "error" && <p className="meal-quick__error" role="alert">{item.message}</p>}
         </div>;

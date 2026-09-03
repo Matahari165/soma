@@ -1,7 +1,7 @@
 import type { MatrixPoint, MatrixSeries } from "@/domain/lab/matrix";
 
 /** Meal slots supported by the first meal journal version. */
-export const mealTypes = ["breakfast", "lunch", "dinner"] as const;
+export const mealTypes = ["breakfast", "lunch", "dinner", "snack"] as const;
 export type MealType = (typeof mealTypes)[number];
 
 /** Origin selected for the meal. A restaurant or delivery meal is prepared. */

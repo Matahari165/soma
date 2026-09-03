@@ -23,6 +23,8 @@ const meal = {
     model: "grok",
     result: {
       summary: "Repas",
+      dishType: null,
+      calorieAnalysis: null,
       foods: [],
       totals: { calories: { low: 400, likely: 500, high: 600 }, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
       confidence: "medium",

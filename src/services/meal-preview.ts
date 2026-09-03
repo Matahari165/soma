@@ -150,6 +150,8 @@ function previewRange(low: number, likely: number, high: number): NutritionEstim
 function previewAnalysis(): MealAnalysis {
   return {
     summary: "Analyse locale de prévisualisation basée sur les photos sélectionnées.",
+    dishType: null,
+    calorieAnalysis: null,
     foods: [{ name: "Repas photographié", preparation: null, portion: null, estimatedGrams: null, calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), confidence: "low" }],
     totals: { calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10) },
     confidence: "low",

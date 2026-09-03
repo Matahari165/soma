@@ -6,14 +6,21 @@ import { MealJournal, apiMealToRecord, mealHistoryDates, type MealJournalData } 
 const date = "2026-08-31";
 
 describe("MealJournal", () => {
-  it("renders the three empty meal slots with photo actions", () => {
-    const html = renderToStaticMarkup(<MealJournal date={date} initialData={{ date, meals: {} }} />);
+  it("renders the four empty meal slots with photo actions", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 
     expect(html).toContain("Petit déjeuner");
     expect(html).toContain("Déjeuner");
     expect(html).toContain("Dîner");
-    expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
-    expect(html).toContain("0/3 confirmés");
+    expect(html).toContain("Collation");
+    expect(html).toContain("Goûter");
+    expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(4);
+    expect(html.match(/>Ajouter ce texte<\/button>/g)).toHaveLength(4);
+    expect(html.match(/<textarea/g)).toHaveLength(4);
+    expect(html).toContain("Décrire le repas");
+    expect(html).toContain("En toutes lettres, sans quantités obligatoires");
+    expect(html).toContain("Ex. 2 bananes et un café.");
+    expect(html).toContain("0/4 confirmés");
     expect(html).toContain('capture="environment"');
     expect(html).toContain('aria-label="Historique des repas"');
     expect(html).toContain('aria-label="Jour précédent"');
@@ -22,6 +29,30 @@ describe("MealJournal", () => {
     expect(html).toContain('max="2026-08-31"');
   });
 
+  it("shows an analyze button for a text-only draft", () => {
+    const draft: MealJournalData = {
+      date,
+      meals: {
+        lunch: {
+          id: "meal-draft-text",
+          date,
+          slot: "lunch",
+          note: "2 bananes et un café",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "draft",
+        },
+      },
+    };
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
+
+    expect(html).toContain("<textarea");
+    expect(html).toContain("Analyser le texte");
+    expect(html).toContain("Analyser");
+    expect(html).toContain("aria-describedby");
+  });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
       "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29", "2026-08-30", "2026-08-31",
@@ -39,6 +70,7 @@ describe("MealJournal", () => {
           id: "meal-1",
           date,
           slot: "lunch",
+          note: "",
           photos: [
             { id: "photo-1", url: "/photo-1.jpg", filename: "lunch.jpg", origin: "prepared" },
             { id: "photo-2", url: "/photo-2.jpg", filename: "lunch-2.jpg", origin: "homemade" },
@@ -56,7 +88,7 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html.match(/Origine de lunch\.jpg/g)).toHaveLength(1);
+    expect(html.match(/Origine de la photo/g)).toHaveLength(2);
     expect(html.match(/Maison/g)).toHaveLength(2);
     expect(html.match(/Préparé \/ acheté/g)).toHaveLength(2);
     expect(html).toContain("Bouche chaude");

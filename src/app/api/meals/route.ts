@@ -31,12 +31,12 @@ export async function GET(request: Request) {
   const range = parsed.data.date ? { from: parsed.data.date, to: parsed.data.date } : { from: parsed.data.from, to: parsed.data.to };
   if (isLocalPreviewMode()) {
     const meals = listPreviewMeals(user.id, range);
-    if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })), preview: true });
+    if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })), preview: true });
     return NextResponse.json({ meals: meals.map(mealToApi), preview: true });
   }
   try {
     const meals = await listMeals(user.id, range);
-    if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })) }, { headers: { "Cache-Control": "private, no-store" } });
+    if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })) }, { headers: { "Cache-Control": "private, no-store" } });
     return NextResponse.json({ meals: meals.map(mealToApi) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return serviceError(error);
@@ -51,7 +51,7 @@ export async function PUT(request: Request) {
   const mealId = typeof rawMeal?.id === "string" ? rawMeal.id : null;
   const parsedDate = z.iso.date().safeParse(rawMeal?.date);
   const mealDate = parsedDate.success ? parsedDate.data : null;
-  const mealType = rawMeal?.slot === "breakfast" || rawMeal?.slot === "lunch" || rawMeal?.slot === "dinner" ? rawMeal.slot : null;
+  const mealType = rawMeal?.slot === "breakfast" || rawMeal?.slot === "lunch" || rawMeal?.slot === "dinner" || rawMeal?.slot === "snack" ? rawMeal.slot : null;
   if (!mealId || !mealDate || !mealType) return NextResponse.json({ error: "The meal is invalid." }, { status: 400 });
   const status = rawMeal?.status === "confirmed" ? "confirmed" : "draft";
   const mouthHeat = rawMeal?.mouthHeat === null || rawMeal?.mouthHeat === undefined ? null : rawMeal.mouthHeat;

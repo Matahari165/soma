@@ -31,7 +31,7 @@ describe("confirmed meal daily series", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.mealCount).toBe(1);
-    expect(result[0]?.mealCoverage).toBeCloseTo(100 / 3);
+    expect(result[0]?.mealCoverage).toBeCloseTo(100 / 4);
     expect(result[0]?.caloriesKcal).toBe(500);
   });
 
@@ -75,10 +75,11 @@ describe("confirmed meal daily series", () => {
       meal({ id: "meal-1", mealType: "breakfast", photoIds: ["a", "b"] }),
       meal({ id: "meal-2", mealType: "lunch", origin: "prepared" }),
       meal({ id: "meal-3", mealType: "dinner", origin: "mixed" }),
+      meal({ id: "meal-4", mealType: "snack", origin: "mixed" }),
     ];
     const result = aggregateConfirmedMeals(records);
 
-    expect(result[0]).toMatchObject({ mealCount: 3, mealCoverage: 100, homemadeCount: 1, preparedCount: 1, mixedCount: 1, homemadeShare: 50 });
+    expect(result[0]).toMatchObject({ mealCount: 4, mealCoverage: 100, homemadeCount: 1, preparedCount: 1, mixedCount: 2, homemadeShare: 50 });
     expect(mealDailySeries(records).meal_coverage.points).toEqual([{ date: "2026-08-25", value: 100 }]);
   });
 

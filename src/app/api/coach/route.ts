@@ -7,6 +7,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { compactHealthContext, type CoachMetricRow, type CoachScoreRow } from "@/services/coach-context";
 import { getPersonalLabSnapshot } from "@/services/personal-lab";
+import { loadConfirmedMealRecords } from "@/services/meals";
 
 const inputSchema = z.object({ message: z.string().trim().min(1).max(4000), threadId: z.string().uuid().nullable().optional() });
 const threadIdSchema = z.string().uuid();
@@ -109,9 +110,25 @@ export async function POST(request: Request) {
     // rebuilding the combined 30/90-day matrix for every Coach message.
     const labSnapshot = await getPersonalLabSnapshot(user, { periods: [narrativePeriod] });
     const narrative = labSnapshot.aiNarrative?.isCurrent ? labSnapshot.aiNarrative : null;
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60_000).toISOString().slice(0, 10);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    let nutritionToday = { caloriesKcal: null as number | null, proteinG: null as number | null, fatG: null as number | null, carbsG: null as number | null, fiberG: null as number | null };
+    try {
+      const meals = await loadConfirmedMealRecords(user.id, { from: weekAgo });
+      const todayMeals = meals.filter((meal) => meal.mealDate === todayKey);
+      const sum = (read: (meal: (typeof todayMeals)[number]) => { likely: number } | null) => {
+        if (!todayMeals.length) return null;
+        const values = todayMeals.map((meal) => read(meal)?.likely ?? null);
+        return values.every((value): value is number => typeof value === "number") ? values.reduce((a, b) => a + b, 0) : null;
+      };
+      nutritionToday = { caloriesKcal: sum((meal) => meal.caloriesKcal), proteinG: sum((meal) => meal.proteinG), fatG: sum((meal) => meal.fatG), carbsG: sum((meal) => meal.carbsG), fiberG: sum((meal) => meal.fiberG) };
+    } catch {
+      // Nutrition reste indisponible sans bloquer le coach.
+    }
     const result = await askSomaCoach({ userId: user.id, message: parsed.data.message, context: {
       dailyDigest: narrative ? { headline: narrative.headline, summary: narrative.summary, highlights: narrative.highlights, evidenceCandidates: narrative.evidenceCandidates, generatedAt: narrative.generatedAt } : null,
       ...compactHealthContext((metrics ?? []) as CoachMetricRow[], (scores ?? []) as CoachScoreRow[]),
+      nutrition: { today: nutritionToday, targets: { caloriesKcal: 3000, proteinG: 160, fatG: 80, carbsG: 385, fiberG: 30, surplusKcal: 300 } },
       recentMessages: [...(recentMessages ?? [])].reverse().map((message) => ({ role: message.role, content: message.content })),
     } });
     const { data: persisted, error: persistError } = await admin.rpc("persist_soma_coach_exchange", {

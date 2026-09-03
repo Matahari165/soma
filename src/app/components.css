@@ -1128,6 +1128,9 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .meal-quick__photo:disabled { cursor: not-allowed; border-color: var(--line); background: var(--line); color: var(--muted); }
 .meal-quick__row.is-disabled { background: color-mix(in srgb, var(--canvas) 78%, var(--paper)); }
 .meal-quick__row.is-disabled .meal-quick__summary { opacity: .58; }
+.meal-quick__row.is-filled { background: color-mix(in srgb, var(--moss-soft) 55%, var(--paper)); }
+.meal-quick__row.is-filled .meal-quick__summary { opacity: .8; }
+.meal-quick__row.is-filled .meal-quick__photo:disabled { border-color: var(--moss-dark); background: var(--moss-soft); color: var(--moss-dark); }
 .meal-quick__origins { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; grid-column: 1 / -1; }
 .meal-quick__origins button { min-width: 88px; padding: 0 10px; border-color: var(--line-strong); background: var(--paper-strong); color: var(--ink); }
 .meal-quick__origins button:hover { border-color: var(--ink); background: var(--moss-soft); }

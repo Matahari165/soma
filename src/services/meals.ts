@@ -13,7 +13,7 @@ import {
   type UpdateMealInput,
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
-import { analyzeMealImages, isXaiVisionMimeType, type MealVisionProvider } from "@/integrations/xai/meal-vision";
+import { analyzeMealImages, analyzeMealText, isXaiVisionMimeType, type MealVisionProvider } from "@/integrations/xai/meal-vision";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import {
@@ -52,7 +52,9 @@ function assertPhotoSize(size: number) {
 }
 
 export async function createMeal(userId: string, input: CreateMealInput) {
-  if (input.status === "confirmed") throw new MealServiceError("invalid", "Add photos before confirming a meal.");
+  // Un repas texte (note sans photo, ex "2 bananes") est un contenu valide.
+  // Règle de confirmation : photos > 0 OU note non-vide.
+  if (input.status === "confirmed" && !input.note?.trim()) throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
   const idempotencyLock = input.idempotencyKey ? `meal-create:${userId}:${input.idempotencyKey}` : null;
   let lockClaimed = false;
   if (idempotencyLock) {
@@ -121,8 +123,18 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
   const current = await findMeal(userId, mealId);
   if (!current) throw new MealServiceError("not_found", "Meal not found.");
   if (input.confirmedAnalysis && input.status !== "confirmed") throw new MealServiceError("invalid", "An edited analysis is saved when the meal is confirmed.");
-  if (input.status === "confirmed" && current.photos.length === 0) {
-    throw new MealServiceError("invalid", "Add at least one photo before confirming a meal.");
+  if (input.status === "confirmed") {
+    const effectiveNote = input.note !== undefined ? input.note : current.note;
+    if (current.photos.length === 0 && !effectiveNote?.trim()) {
+      throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
+    }
+  }
+  if (input.status === "confirmed") {
+    const effectiveMouthWarmth = input.mouthWarmthIntensity !== undefined ? normalizeMealFeeling(input.mouthWarmthIntensity) : current.mouthWarmthIntensity;
+    const effectiveStomachOverfull = input.stomachOverfullIntensity !== undefined ? normalizeMealFeeling(input.stomachOverfullIntensity) : current.stomachOverfullIntensity;
+    if (effectiveMouthWarmth === null || effectiveStomachOverfull === null) {
+      throw new MealServiceError("invalid", "Indique l'intensité bouche chaude et le rassasiement avant de confirmer.");
+    }
   }
   if ((input.mealDate && input.mealDate !== current.mealDate) || (input.mealType && input.mealType !== current.mealType)) {
     const conflicting = await findMealForSlot(userId, input.mealDate ?? current.mealDate, input.mealType ?? current.mealType);
@@ -255,8 +267,10 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
   assertMealId(mealId);
   const meal = await findMeal(userId, mealId);
   if (!meal) throw new MealServiceError("not_found", "Meal not found.");
-  if (!meal.photos.length) throw new MealServiceError("invalid", "Add at least one photo before analysing a meal.");
-  if (!meal.photos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
+  const note = meal.note?.trim() ?? "";
+  const hasPhotos = meal.photos.length > 0;
+  if (!hasPhotos && !note) throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
+  if (hasPhotos && !meal.photos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
   const lockKey = `meal-analysis:${userId}:${mealId}`;
   const claimed = await claimCloudflareLock(lockKey, userId, 120_000);
   if (!claimed) throw new MealServiceError("conflict", "This meal is already being analysed.");
@@ -280,13 +294,17 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       completed_at: null,
     });
     try {
-      const images = [];
-      for (const photo of meal.photos) {
-        const object = await getR2MealPhotoObject(photo.objectPath);
-        if (!object) throw new MealServiceError("unavailable", "One meal photo is no longer available.");
-        images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
-      }
-      const analysed = await analyzeMealImages({ mealType: meal.mealType, mealDate: meal.mealDate, note: meal.note, images }, options.provider);
+      const analysed = hasPhotos
+        ? await (async () => {
+            const images = [];
+            for (const photo of meal.photos) {
+              const object = await getR2MealPhotoObject(photo.objectPath);
+              if (!object) throw new MealServiceError("unavailable", "One meal photo is no longer available.");
+              images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
+            }
+            return analyzeMealImages({ mealType: meal.mealType, mealDate: meal.mealDate, note: meal.note, images }, options.provider);
+          })()
+        : await analyzeMealText({ mealType: meal.mealType, mealDate: meal.mealDate, note }, options.provider);
       const completed = await updateMealAnalysis(userId, analysisId, {
         status: "completed",
         provider: analysed.provider,

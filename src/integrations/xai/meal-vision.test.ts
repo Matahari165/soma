@@ -45,4 +45,25 @@ describe("xAI meal vision contract", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ summary: "bad", foods: [], totals: {}, confidence: "medium", uncertainties: [] }) }] }] }), { status: 200 }));
     await expect(createXaiMealVisionProvider().analyze({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] })).rejects.toThrow("invalid structured meal analysis");
   });
+
+  it("sends a text-only request without images for a free description", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const range = { low: 150, likely: 190, high: 230 };
+    const textOnly = {
+      summary: "2 bananes, sans photo.",
+      dishType: null,
+      calorieAnalysis: "Environ 190 kcal (likely), un en-cas modéré.",
+      foods: [{ name: "Banane", preparation: null, portion: null, estimatedGrams: null, calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "low" }],
+      totals: { calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+      confidence: "low",
+      uncertainties: ["Estimation à partir de la seule description, sans photo."],
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(textOnly) }] }] }), { status: 200 }));
+    const result = await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string; text?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
+    expect(body).toMatchObject({ max_output_tokens: 1500, text: { format: { type: "json_schema", name: "soma_meal_analysis", strict: true } } });
+    expect(body.input[0]?.content.some((item) => item.type === "input_image")).toBe(false);
+    expect(body.input[0]?.content[0]?.text).toContain("2 bananes");
+    expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
+  });
 });

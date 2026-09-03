@@ -17,10 +17,17 @@ export type MealVisionInput = {
   images: MealVisionImage[];
 };
 
+export type MealVisionTextInput = {
+  mealType: MealType;
+  mealDate: string;
+  note: string;
+};
+
 export type MealVisionProvider = {
   name: string;
   model: string;
   analyze(input: MealVisionInput): Promise<MealAnalysis>;
+  analyzeText?(input: MealVisionTextInput): Promise<MealAnalysis>;
 };
 
 /** xAI image understanding currently accepts JPEG/JPG and PNG input. */
@@ -68,9 +75,11 @@ function mealAnalysisJsonSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["summary", "foods", "totals", "confidence", "uncertainties"],
+    required: ["summary", "dishType", "calorieAnalysis", "foods", "totals", "confidence", "uncertainties"],
     properties: {
       summary: { type: "string", maxLength: 800 },
+      dishType: { anyOf: [{ type: "string", maxLength: 80 }, { type: "null" }] },
+      calorieAnalysis: { anyOf: [{ type: "string", maxLength: 500 }, { type: "null" }] },
       foods: { type: "array", maxItems: 30, items: food },
       totals: {
         type: "object",
@@ -106,12 +115,27 @@ function responseText(result: unknown) {
   return fragments.join("\n") || null;
 }
 
+export function makeTextPrompt(input: MealVisionTextInput) {
+  return [
+    "Analyse cette description libre d'un repas pour un journal alimentaire personnel. Réponds avec des libellés en français.",
+    "Liste chaque aliment cité dans la description. Indique une quantité ou une portion seulement si l'utilisateur la donne explicitement (par exemple « 2 bananes ») ; sinon portion à null. Ne jamais inventer de grammes : estimatedGrams à null si la description ne permet pas une estimation responsable.",
+    "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
+    "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
+    "confidence à low par défaut, sauf si la description est très précise (aliments, quantités et préparation explicites).",
+    `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
+    `User description: ${input.note}`,
+  ].join("\n");
+}
+
 function makePrompt(input: MealVisionInput) {
   const origins = input.images.map((image, index) => `Photo ${index + 1} source: ${image.origin}`).join("\n");
   return [
-    "Analyse these photos as one meal for a personal food journal.",
-    "Identify only foods and drinks that are visible or strongly supported by the images. Do not count the same food twice when photos show different angles.",
+    "Analyse these photos as one meal for a personal food journal. Réponds avec des libellés en français.",
+    "Identify only foods and drinks that are visible or strongly supported by the images. Do not count the same food twice when photos show different angles. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support.",
+    "dishType : nom du type de plat en français en 2-4 mots (par exemple « Salade composée », « Bowl de riz au poulet »), ou null si indéterminable (unclear).",
+    "Pour chaque aliment : name en français ; portion/quantityLabel en français seulement si visuellement estimable (par exemple « 1 bol », « 2 tranches »), sinon null ; ne jamais deviner les grammes : estimatedGrams à null si non estimable.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
+    "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
     "Include the main preparation (for example grilled, fried, raw, or with sauce) only when visible or stated.",
     "Return a concise summary, itemized foods, total calories and macros, confidence, and concrete uncertainties.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
@@ -120,48 +144,70 @@ function makePrompt(input: MealVisionInput) {
   ].join("\n");
 }
 
+async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens }: {
+  model: string;
+  instructions: string;
+  promptText: string;
+  imageContents: Array<{ type: string; image_url: string; detail: string }>;
+  maxOutputTokens: number;
+}) {
+  const apiKey = requireServerEnv("XAI_API_KEY");
+  const response = await fetch(process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      store: false,
+      reasoning: { effort: "low" },
+      max_output_tokens: maxOutputTokens,
+      instructions,
+      input: [{
+        role: "user",
+        content: [{ type: "input_text", text: promptText }, ...imageContents],
+      }],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "soma_meal_analysis",
+          strict: true,
+          schema: mealAnalysisJsonSchema(),
+        },
+      },
+    }),
+    signal: AbortSignal.timeout(45_000),
+  });
+  if (!response.ok) throw new Error(`Grok meal analysis failed with status ${response.status}.`);
+  const text = responseText(await response.json());
+  if (!text) throw new Error("Grok returned no structured meal analysis.");
+  try {
+    return mealAnalysisSchema.parse(JSON.parse(text));
+  } catch {
+    throw new Error("Grok returned an invalid structured meal analysis.");
+  }
+}
+
 export function createXaiMealVisionProvider(): MealVisionProvider {
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   return {
     name: "xai",
     model,
     async analyze(input) {
-      const apiKey = requireServerEnv("XAI_API_KEY");
-      const response = await fetch(process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          store: false,
-          reasoning: { effort: "low" },
-          max_output_tokens: 2_200,
-          instructions: "You are a careful food-photo analyst. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges and nulls as requested. Return only the requested JSON object.",
-          input: [{
-            role: "user",
-            content: [
-              { type: "input_text", text: makePrompt(input) },
-              ...input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
-            ],
-          }],
-          text: {
-            format: {
-              type: "json_schema",
-              name: "soma_meal_analysis",
-              strict: true,
-              schema: mealAnalysisJsonSchema(),
-            },
-          },
-        }),
-        signal: AbortSignal.timeout(45_000),
+      return requestGrokAnalysis({
+        model,
+        instructions: "You are a careful food-photo analyst. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high and nulls when not estimable. Labels in French. Return only the requested JSON object.",
+        promptText: makePrompt(input),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
+        maxOutputTokens: 2_600,
       });
-      if (!response.ok) throw new Error(`Grok meal analysis failed with status ${response.status}.`);
-      const text = responseText(await response.json());
-      if (!text) throw new Error("Grok returned no structured meal analysis.");
-      try {
-        return mealAnalysisSchema.parse(JSON.parse(text));
-      } catch {
-        throw new Error("Grok returned an invalid structured meal analysis.");
-      }
+    },
+    async analyzeText(input) {
+      return requestGrokAnalysis({
+        model,
+        instructions: "You are a careful food-description analyst. List only foods named in the user description. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and nulls when not estimable. Default confidence to low unless the description is very precise. Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties. Labels in French. Return only the requested JSON object.",
+        promptText: makeTextPrompt(input),
+        imageContents: [],
+        maxOutputTokens: 1_500,
+      });
     },
   };
 }
@@ -172,5 +218,11 @@ export function getMealVisionProvider(): MealVisionProvider {
 
 export async function analyzeMealImages(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
   const result = await provider.analyze(input);
+  return { result, provider: provider.name, model: provider.model };
+}
+
+export async function analyzeMealText(input: MealVisionTextInput, provider: MealVisionProvider = getMealVisionProvider()) {
+  if (!provider.analyzeText) throw new Error("This meal analysis provider does not support text-only analysis.");
+  const result = await provider.analyzeText(input);
   return { result, provider: provider.name, model: provider.model };
 }

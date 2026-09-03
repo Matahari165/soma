@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-/** The three meal slots currently supported by the mobile journal. */
-export const mealTypeSchema = z.enum(["breakfast", "lunch", "dinner"]);
+/** The four meal slots currently supported by the mobile journal. */
+export const mealTypeSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
 export type MealType = z.infer<typeof mealTypeSchema>;
 
 /** Where the food came from. This is intentionally stored per photo. */
@@ -64,6 +64,8 @@ export type MealFoodItem = z.infer<typeof mealFoodItemSchema>;
 
 export const mealAnalysisSchema = z.object({
   summary: z.string().trim().min(1).max(800),
+  dishType: z.string().trim().max(80).nullable().optional().default(null),
+  calorieAnalysis: z.string().trim().max(500).nullable().optional().default(null),
   foods: z.array(mealFoodItemSchema).max(30),
   totals: z.object({
     calories: nutritionRangeSchema.nullable(),
@@ -80,6 +82,7 @@ export type MealAnalysis = z.infer<typeof mealAnalysisSchema>;
 export const createMealInputSchema = z.object({
   mealDate: z.iso.date(),
   mealType: mealTypeSchema,
+  /** La note (max 500) fait foi comme contenu : un repas texte sans photo est valide. Confirmation exige photos > 0 OU note non-vide. */
   note: z.string().trim().max(500).nullable().optional(),
   status: mealStatusSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),
@@ -92,6 +95,7 @@ export type CreateMealInput = z.infer<typeof createMealInputSchema>;
 export const updateMealInputSchema = z.object({
   mealDate: z.iso.date().optional(),
   mealType: mealTypeSchema.optional(),
+  /** Même règle que create : la note non-vide autorise confirmed sans photo. */
   note: z.string().trim().max(500).nullable().optional(),
   status: mealStatusSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),

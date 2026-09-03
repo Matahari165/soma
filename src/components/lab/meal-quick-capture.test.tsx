@@ -14,7 +14,8 @@ describe("MealQuickCapture", () => {
     expect(html).toContain("Matin");
     expect(html).toContain("Midi");
     expect(html).toContain("Soir");
-    expect(html.match(/>Photo</g)).toHaveLength(3);
+    expect(html).toContain("Goûter");
+    expect(html.match(/>Photo</g)).toHaveLength(4);
   });
 
   it("only disables breakfast for an explicit no on a validated day", () => {
