@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MealJournal, apiMealToRecord, defaultAnalyze, mealHistoryDates, type MealJournalData } from "./meal-journal";
+import { apiMealToRecord } from "@/domain/meal-record";
+import { MealJournal, defaultAnalyze, mealHistoryDates, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 

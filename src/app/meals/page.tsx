@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import MealJournal, { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/components/meal-journal";
+import MealJournal from "@/components/meal-journal";
+import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
