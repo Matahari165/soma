@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { NutritionTargets } from "../domain/nutrition-targets";
 import styles from "./meal-day-targets.module.css";
 
@@ -13,6 +15,7 @@ export type MealDayTargetsProps = {
   totals: MealDayTotals | null;
   targets: NutritionTargets;
   className?: string;
+  headerAction?: ReactNode;
 };
 
 type CardState = "pending" | "below" | "ok" | "above";
@@ -60,11 +63,12 @@ function formatValue(value: number | null): string {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
-export function MealDayTargets({ totals, targets, className }: MealDayTargetsProps) {
+export function MealDayTargets({ totals, targets, className, headerAction }: MealDayTargetsProps) {
   return (
     <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-day-targets-title">
       <div className={styles.header}>
         <h3 id="meal-day-targets-title">Cibles du jour</h3>
+        {headerAction}
       </div>
       <ul className={styles.grid}>
         {CARDS.map((card) => {

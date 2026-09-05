@@ -4,16 +4,16 @@ import {
   AlertCircle,
   Camera,
   Check,
-  ChevronLeft,
-  ChevronRight,
   ImagePlus,
   LoaderCircle,
+  Pencil,
   RefreshCw,
   Sparkles,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
+import { ScoreRing } from "@/components/dashboard/score-ring";
 import { MAX_MEAL_PHOTOS } from "@/domain/meals";
 import {
   DEFAULT_NUTRITION_TARGETS,
@@ -523,21 +523,44 @@ function RatingScale({ label, value, onChange }: { label: string; value: Rating 
 function AnalysisDisplay({ meal }: { meal: MealRecord }) {
   const analysis = meal.analysis;
   if (!analysis) return null;
+  const nutritionMetrics = [
+    { label: "Calories", unit: "kcal", range: analysis.calories },
+    { label: "Protéines", unit: "g", range: analysis.proteinGrams },
+    { label: "Lipides", unit: "g", range: analysis.fatGrams },
+    { label: "Glucides", unit: "g", range: analysis.carbohydratesGrams },
+    { label: "Fibres", unit: "g", range: analysis.fiberGrams },
+    ...(analysis.sugarGrams ? [{ label: "Sucres", unit: "g", range: analysis.sugarGrams }] : []),
+  ];
   return <div className={styles.analysisDisplay}>
     {analysis.dishType && <p className={styles.dishType}><strong>{analysis.dishType}</strong></p>}
     <div className={styles.confirmedNutrition}>
-      <span><strong>{likelyLabel(analysis.calories)}</strong> kcal ({formatLowHigh(analysis.calories)}) Calories</span>
-      <span><strong>{likelyLabel(analysis.proteinGrams)}</strong> g ({formatLowHigh(analysis.proteinGrams)}) Protéines</span>
-      <span><strong>{likelyLabel(analysis.fatGrams)}</strong> g ({formatLowHigh(analysis.fatGrams)}) Lipides</span>
-      <span><strong>{likelyLabel(analysis.carbohydratesGrams)}</strong> g ({formatLowHigh(analysis.carbohydratesGrams)}) Glucides</span>
-      <span><strong>{likelyLabel(analysis.fiberGrams)}</strong> g ({formatLowHigh(analysis.fiberGrams)}) Fibres</span>
-      {analysis.sugarGrams && <span><strong>{likelyLabel(analysis.sugarGrams)}</strong> g ({formatLowHigh(analysis.sugarGrams)}) Sucres</span>}
+      {nutritionMetrics.map(({ label, unit, range }) => <span key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}, estimation ${formatLowHigh(range)}`} title={`Estimation ${formatLowHigh(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
     </div>
     {analysis.ingredients.length > 0
       ? <ul className={styles.ingredientsList}>{analysis.ingredients.map((ingredient) => <li key={ingredient.id}><strong>{formatIngredientLabel(ingredient)}</strong>{(ingredient.calories || ingredient.proteinGrams || ingredient.carbohydratesGrams || ingredient.fatGrams || ingredient.fiberGrams || ingredient.sugarGrams || ingredient.addedSugarGrams) && <small>{ingredient.calories && `${likelyLabel(ingredient.calories)} kcal`}{ingredient.proteinGrams && ` · ${likelyLabel(ingredient.proteinGrams)} g prot.`}{ingredient.carbohydratesGrams && ` · ${likelyLabel(ingredient.carbohydratesGrams)} g gluc.`}{ingredient.fatGrams && ` · ${likelyLabel(ingredient.fatGrams)} g lip.`}{ingredient.fiberGrams && ` · ${likelyLabel(ingredient.fiberGrams)} g fibres`}{ingredient.sugarGrams && ` · ${likelyLabel(ingredient.sugarGrams)} g sucres`}{ingredient.addedSugarGrams && ` · ${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés`}</small>}</li>)}</ul>
       : <p className={styles.ingredientsList}>Composition non détaillée</p>}
-    {analysis.confidence && <p className={styles.analysisMeta}>Confiance : {analysis.confidence === "high" ? "élevée" : analysis.confidence === "medium" ? "moyenne" : "faible"}</p>}
     {analysis.uncertainties && analysis.uncertainties.length > 0 && <details className={styles.uncertaintiesDetails}><summary>Incertitudes ({analysis.uncertainties.length})</summary><ul className={styles.uncertainties}>{analysis.uncertainties.map((item) => <li key={item}>{item}</li>)}</ul></details>}
+  </div>;
+}
+
+function MealCompletionControls({ meal, status, saving, mutationBusy, onEdit, onConfirm, onRating }: {
+  meal: MealRecord;
+  status: "review" | "confirmed";
+  saving: boolean;
+  mutationBusy: boolean;
+  onEdit: () => void;
+  onConfirm: () => void;
+  onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void;
+}) {
+  return <div className={styles.mealCompletionControls}>
+    <details className={styles.ratingsDetails}>
+      <summary>Ressentis</summary>
+      <div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div>
+    </details>
+    <div className={styles.reviewActions}>
+      <button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button>
+      {status === "review" && <button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saving ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer</button>}
+    </div>
   </div>;
 }
 
@@ -610,16 +633,12 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, 
         </button>
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-      {status === "review" && meal?.analysis && <><AnalysisDisplay meal={meal} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button><button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saving ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer</button></div>{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}</>}
-      {status === "confirmed" && meal && <><AnalysisDisplay meal={meal} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button></div></>}
+      {status === "review" && meal?.analysis && <><AnalysisDisplay meal={meal} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls meal={meal} status="review" saving={saving} mutationBusy={mutationBusy} onEdit={onEdit} onConfirm={onConfirm} onRating={onRating} /></>}
+      {status === "confirmed" && meal && <><AnalysisDisplay meal={meal} /><MealCompletionControls meal={meal} status="confirmed" saving={saving} mutationBusy={mutationBusy} onEdit={onEdit} onConfirm={onConfirm} onRating={onRating} /></>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="status">Réanalyse interrompue. L’analyse précédente reste conservée.</p>}
-      {(status === "review" || status === "confirmed") && meal && <details className={styles.ratingsDetails}><summary>Ressentis</summary><div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div></details>}
     </div>}
   </article>;
 }
-
-const NUTRITION_RING_RADIUS = 54;
-const NUTRITION_RING_CIRCUMFERENCE = 2 * Math.PI * NUTRITION_RING_RADIUS;
 
 function MealPageHeader({ totals, targets }: { totals: DayTotal | null; targets: NutritionTargets }) {
   const calories = totals?.calories ?? null;
@@ -628,17 +647,11 @@ function MealPageHeader({ totals, targets }: { totals: DayTotal | null; targets:
   const proteinTarget = targets.proteinG.likely;
   const calorieProgress = calories === null || calorieTarget <= 0 ? 0 : Math.min(100, Math.max(0, calories / calorieTarget * 100));
   const calorieProgressValue = calories === null ? null : Math.round(calorieProgress);
-  const ringStyle = { "--nutrition-ring-offset": NUTRITION_RING_CIRCUMFERENCE * (1 - calorieProgress / 100) } as CSSProperties;
 
   return <header className={styles.pageHeader}>
     <div><h1 id="meal-journal-title">Repas</h1></div>
     <div className={styles.dayProgress} aria-label={`Calories : ${calories ?? "indisponibles"} sur ${calorieTarget} kilocalories. Protéines : ${protein ?? "indisponibles"} sur ${proteinTarget} grammes.`}>
-      <div className={styles.nutritionRing} style={ringStyle} aria-hidden="true">
-        <svg viewBox="0 0 128 128"><circle className={styles.nutritionRingTrack} cx="64" cy="64" r={NUTRITION_RING_RADIUS} /><circle className={styles.nutritionRingProgress} cx="64" cy="64" r={NUTRITION_RING_RADIUS} strokeDasharray={NUTRITION_RING_CIRCUMFERENCE} /></svg>
-        <span><strong>{calorieProgressValue ?? "—"}</strong><small>% calories</small></span>
-      </div>
-      <p><span>Calories</span><strong>{calories ?? "—"} / {calorieTarget} kcal</strong></p>
-      <p><span>Protéines</span><strong>{protein ?? "—"} / {proteinTarget} g</strong></p>
+      <ScoreRing kind="recovery" label="% calories" score={calorieProgressValue} decorative animate />
     </div>
   </header>;
 }
@@ -658,6 +671,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const [confirmError, setConfirmError] = useState<Partial<Record<MealSlot, string | null>>>({});
   const [savingSlot, setSavingSlot] = useState<MealSlot | null>(null);
   const [targets, setTargets] = useState<NutritionTargets>(DEFAULT_NUTRITION_TARGETS);
+  const [targetsExpanded, setTargetsExpanded] = useState(false);
   const [targetError, setTargetError] = useState<string | null>(null);
   const objectUrls = useRef(new Set<string>());
   const targetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -923,11 +937,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   const historyDates = mealHistoryDates(selectedDate, today);
   const dateNavigation = <nav className={styles.historyNavigation} aria-label="Historique des repas">
-    <div className={styles.historyControls}>
-      <button type="button" className={styles.historyArrow} disabled={navigationDisabled} onClick={() => selectDate(shiftIsoDate(selectedDate, -1))} aria-label="Jour précédent"><ChevronLeft size={18} aria-hidden="true" /></button>
-      <label className={styles.datePicker}><span>Date</span><input type="date" max={today} value={selectedDate} disabled={navigationDisabled} onChange={(event) => selectDate(event.target.value)} /></label>
-      <button type="button" className={styles.historyArrow} disabled={navigationDisabled || selectedDate >= today} onClick={() => selectDate(shiftIsoDate(selectedDate, 1))} aria-label="Jour suivant"><ChevronRight size={18} aria-hidden="true" /></button>
-    </div>
     <div className={styles.weekStrip} role="group" aria-label="Sept jours">
       {historyDates.map((historyDate) => {
         const label = compactDayLabel(historyDate);
@@ -944,14 +953,14 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title">
     <MealPageHeader totals={dayTotal} targets={targets} />
     {dateNavigation}
-    <MealDayTargets totals={dayTotal ? { caloriesKcal: dayTotal.calories, proteinG: dayTotal.protein, fatG: dayTotal.fat, carbsG: dayTotal.carbs, fiberG: dayTotal.fiber } : null} targets={targets} />
-    <details className={styles.targetEditor}><summary>Cibles jour · {targets.caloriesKcal.likely} kcal</summary><div>
+    <MealDayTargets totals={dayTotal ? { caloriesKcal: dayTotal.calories, proteinG: dayTotal.protein, fatG: dayTotal.fat, carbsG: dayTotal.carbs, fiberG: dayTotal.fiber } : null} targets={targets} headerAction={<button className={styles.targetEditButton} type="button" aria-label="Modifier les cibles du jour" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={() => setTargetsExpanded((expanded) => !expanded)}><Pencil size={16} aria-hidden="true" /></button>} />
+    {targetsExpanded && <div id="meal-target-editor" className={styles.targetEditor}>
       <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories likely" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
       <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines likely" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>
       <label><span>Lipides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible lipides likely" value={targets.fatG.likely} onChange={(event) => updateTargetLikely("fatG", event.target.value)} /></label>
       <label><span>Glucides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible glucides likely" value={targets.carbsG.likely} onChange={(event) => updateTargetLikely("carbsG", event.target.value)} /></label>
       <label><span>Fibres (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible fibres likely" value={targets.fiberG.likely} onChange={(event) => updateTargetLikely("fiberG", event.target.value)} /></label>
-    </div></details>
+    </div>}
     {targetError && <p className={styles.confirmError} role="status">{targetError}</p>}
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {

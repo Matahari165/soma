@@ -27,10 +27,12 @@ describe("MealJournal", () => {
     expect(html).toContain("Calories : indisponibles sur 3000 kilocalories");
     expect(html).toContain('capture="environment"');
     expect(html).toContain('aria-label="Historique des repas"');
-    expect(html).toContain('aria-label="Jour précédent"');
-    expect(html).toContain('aria-label="Jour suivant"');
-    expect(html).toContain('type="date"');
-    expect(html).toContain('max="2026-08-31"');
+    expect(html).not.toContain('aria-label="Jour précédent"');
+    expect(html).not.toContain('aria-label="Jour suivant"');
+    expect(html).not.toContain('type="date"');
+    expect(html).toContain('score-ring--large');
+    expect(html).toContain('aria-label="Modifier les cibles du jour"');
+    expect(html).toContain('aria-expanded="false"');
   });
 
   it("shows an analyze button for a text-only draft", () => {
@@ -130,6 +132,7 @@ describe("MealJournal", () => {
             ingredients: [{ id: "food-1", name: "Riz", portion: "1 bol" }],
             calories: { low: 550, likely: 650, high: 750 },
             proteinGrams: { low: 25, likely: 30, high: 35 },
+            confidence: "low",
           },
           mouthHeat: 3,
           stomachLoad: 4,
@@ -144,6 +147,7 @@ describe("MealJournal", () => {
     expect(html).toContain("Repas qui m&#x27;a cassé");
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("Calories : 650 sur 3000 kilocalories");
+    expect(html).not.toContain("Confiance");
   });
 });
 
