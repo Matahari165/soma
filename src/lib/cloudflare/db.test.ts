@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
 
 describe("Cloudflare D1 row identity", () => {
   it("keeps idempotent sync jobs on the same connection-scoped row", () => {
@@ -22,6 +22,30 @@ describe("Cloudflare D1 row identity", () => {
       connection_id: "connection-1",
       idempotency_key: undefined,
     }))).toBe(JSON.stringify([["id", "job-2"]]));
+  });
+
+  it("keeps meal updates on the same slot-scoped row used at creation", () => {
+    const meal = {
+      id: "meal-1",
+      user_id: "user-1",
+      meal_date: "2026-09-05",
+      meal_type: "breakfast",
+      note: "2 bananes",
+    };
+
+    expect(stableIdentity("meals", meal)).toBe(
+      stableIdentity("meals", meal, "user_id,meal_date,meal_type"),
+    );
+  });
+
+  it("updates a meal row in place and moves its physical key with the slot", () => {
+    const existing = { user_id: "user-1", id: "meal-1", meal_date: "2026-09-05", meal_type: "breakfast", note: "2 bananes" };
+    const changed = { ...existing, meal_type: "lunch", updated_at: "2026-09-05T12:00:00.000Z" };
+    const plan = buildCloudflareUpdatePlan("meals", existing, changed);
+
+    expect(plan.sql).toContain("UPDATE soma_rows");
+    expect(plan.bindings[0]).toBe(stableIdentity("meals", changed));
+    expect(plan.bindings.at(-1)).toBe(stableIdentity("meals", existing));
   });
 });
 

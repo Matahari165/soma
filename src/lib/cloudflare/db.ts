@@ -23,6 +23,7 @@ type Mutation =
   | { kind: "delete" };
 
 type ReadPlan = { sql: string; bindings: unknown[]; paginationPushed: boolean };
+type UpdatePlan = { sql: string; bindings: unknown[] };
 
 type D1PreparedStatement = {
   bind(...values: unknown[]): D1PreparedStatement;
@@ -76,7 +77,10 @@ const conflictKeys: Record<string, string[]> = {
   daily_calendar_metrics: ["user_id", "metric_date"],
   daily_checkins: ["user_id", "checkin_date"],
   health_record_archives: ["user_id", "provider", "data_type", "range_start", "range_end"],
-  meals: ["user_id", "id"],
+  // Meal rows are created and constrained by calendar slot. Updates and
+  // deletes must reuse that same physical key instead of attempting to insert
+  // a second row keyed by the generated id.
+  meals: ["user_id", "meal_date", "meal_type"],
   meal_photos: ["user_id", "id"],
   meal_analyses: ["user_id", "id"],
   meal_feelings: ["user_id", "meal_id"],
@@ -544,6 +548,45 @@ async function writeRows(table: string, rows: Row[], explicitConflict?: string, 
   }
 }
 
+export function buildCloudflareUpdatePlan(table: string, existing: Row, changed: Row): UpdatePlan {
+  return {
+    sql: `
+      UPDATE soma_rows
+      SET row_key = ?, user_id = ?, json_data = ?, updated_at = ?
+      WHERE table_name = ? AND row_key = ?
+    `,
+    bindings: [
+      stableIdentity(table, changed),
+      changed.user_id ?? null,
+      JSON.stringify(changed),
+      changed.updated_at ?? null,
+      table,
+      stableIdentity(table, existing),
+    ],
+  };
+}
+
+async function updateRowsInPlace(table: string, existing: Row[], changed: Row[]) {
+  const db = cloudflareDb();
+  for (let index = 0; index < changed.length; index += 30) {
+    const existingSlice = existing.slice(index, index + 30);
+    const changedSlice = changed.slice(index, index + 30);
+    const revisionUserIds = affectsLabMatrixRevision(table)
+      ? [...new Set(changedSlice.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))]
+      : [];
+    const statements = changedSlice.map((row, rowIndex) => {
+      const plan = buildCloudflareUpdatePlan(table, existingSlice[rowIndex], row);
+      return db.prepare(plan.sql).bind(...plan.bindings);
+    });
+    const results = await db.batch<D1BatchResult>([
+      ...statements,
+      ...revisionUserIds.map((userId) => labMatrixRevisionStatement(db, userId)),
+    ]);
+    const failed = results.find((result) => result?.success === false);
+    if (failed) throw new Error(failed.error ?? "Cloudflare D1 update failed.");
+  }
+}
+
 class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
   private selector: string | undefined;
   private selectOptions: { count?: "exact"; head?: boolean } | undefined;
@@ -675,7 +718,7 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     }
     const values = this.mutation.values;
     const changed = existing.map((row) => cleanRow({ ...row, ...values, updated_at: new Date().toISOString() }));
-    await writeRows(this.table, changed);
+    await updateRowsInPlace(this.table, existing, changed);
     return this.shape(changed);
   }
 
