@@ -147,7 +147,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
               <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           ))}
-          <button type="button" className={mobileMenuOpen || isActive("/coach") || isActive("/settings") ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
+          <button type="button" className={mobileMenuOpen || isActive("/activity") || isActive("/coach") || isActive("/settings") ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
             {mobileMenuOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}
           </button>
         </nav>

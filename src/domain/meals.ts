@@ -5,7 +5,7 @@ export const mealTypeSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
 export type MealType = z.infer<typeof mealTypeSchema>;
 
 /** Where the food came from. This is intentionally stored per photo. */
-export const mealOriginSchema = z.enum(["homemade", "prepared", "mixed"]);
+export const mealOriginSchema = z.enum(["homemade", "prepared", "mixed", "unknown"]);
 export type MealOrigin = z.infer<typeof mealOriginSchema>;
 
 /** A missing answer is null; an explicit "none" is stored as 0. */
@@ -58,6 +58,9 @@ export const mealFoodItemSchema = z.object({
   carbohydrateGrams: nutritionRangeSchema.nullable(),
   fatGrams: nutritionRangeSchema.nullable(),
   fiberGrams: nutritionRangeSchema.nullable(),
+  /** Added in v2; old analyses are normalized to null when read. */
+  sugarGrams: nutritionRangeSchema.nullable().optional(),
+  addedSugarGrams: nutritionRangeSchema.nullable().optional(),
   confidence: z.enum(["low", "medium", "high"]),
 });
 export type MealFoodItem = z.infer<typeof mealFoodItemSchema>;
@@ -73,6 +76,8 @@ export const mealAnalysisSchema = z.object({
     carbohydrateGrams: nutritionRangeSchema.nullable(),
     fatGrams: nutritionRangeSchema.nullable(),
     fiberGrams: nutritionRangeSchema.nullable(),
+    sugarGrams: nutritionRangeSchema.nullable().optional(),
+    addedSugarGrams: nutritionRangeSchema.nullable().optional(),
   }),
   confidence: z.enum(["low", "medium", "high"]),
   uncertainties: z.array(z.string().trim().min(1).max(300)).max(12),
@@ -119,7 +124,13 @@ export type MealPhoto = {
   bytes: number;
   filename?: string | null;
   createdAt: string;
+  /** Storage lifecycle is explicit: metadata survives binary purge. */
+  storageStatus?: MealPhotoStorageStatus;
+  purgedAt?: string | null;
 };
+
+export const mealPhotoStorageStatusSchema = z.enum(["available", "purge_pending", "purged"]);
+export type MealPhotoStorageStatus = z.infer<typeof mealPhotoStorageStatusSchema>;
 
 export type Meal = {
   id: string;
@@ -134,6 +145,8 @@ export type Meal = {
   updatedAt: string;
   photos: MealPhoto[];
   analysis: MealAnalysisRecord | null;
+  /** Latest successful result retained when a newer retry fails. */
+  lastSuccessfulAnalysis?: MealAnalysisRecord | null;
 };
 
 export type MealAnalysisRecord = {
@@ -144,6 +157,8 @@ export type MealAnalysisRecord = {
   model: string;
   result: MealAnalysis | null;
   error: string | null;
+  /** Stable, non-sensitive diagnostic category for UI/log correlation. */
+  errorCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_unavailable" | "invalid_response" | "source_unavailable" | null;
   sourcePhotoIds: string[];
   createdAt: string;
   completedAt: string | null;

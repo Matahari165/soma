@@ -18,6 +18,8 @@ describe("local meal preview store", () => {
     expect(analysis?.analysis.result?.totals.calories?.likely).toBe(600);
     const confirmed = updatePreviewMeal(userId, meal.id, { status: "confirmed" });
     expect(confirmed?.status).toBe("confirmed");
+    expect(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")).toMatchObject({ storageStatus: "purged", purgedAt: expect.any(String) });
+    expect(new Uint8Array(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")?.data ?? new ArrayBuffer(0))).toEqual(new Uint8Array());
     expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "mixed", caloriesKcal: { low: 450, likely: 600, high: 800 } });
     expect(deletePreviewMeal(userId, meal.id)).toBe(true);
     expect(findPreviewMeal(userId, meal.id)).toBeNull();
@@ -32,5 +34,23 @@ describe("local meal preview store", () => {
     expect(updatePreviewPhotoOrigin(userId, first.id, photos?.[0]?.id ?? "", "prepared")?.origin).toBe("prepared");
     expect(clearPreviewUserData(userId)).toBe(1);
     expect(findPreviewMeal(userId, first.id)).toBeNull();
+  });
+
+  it("keeps a confirmed text-only meal origin unknown", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-02", mealType: "snack", note: "Une pomme", idempotencyKey: "preview-text-only-1" });
+    expect(analyzePreviewMeal(userId, meal.id)?.analysis.sourcePhotoIds).toEqual([]);
+    expect(updatePreviewMeal(userId, meal.id, { status: "confirmed" })?.status).toBe("confirmed");
+    expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "unknown" });
+  });
+
+  it("refuses to purge preview photos before analysis", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-03", mealType: "lunch", note: null });
+    const photos = addPreviewMealPhotos(userId, meal.id, [{ mimeType: "image/jpeg", size: 3, data: Uint8Array.from([1, 2, 3]).buffer, origin: "homemade" }]);
+
+    expect(() => updatePreviewMeal(userId, meal.id, { status: "confirmed" })).toThrow("Analyse les photos avant de confirmer ce repas.");
+    expect(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")).toMatchObject({ storageStatus: "available", bytes: 3 });
+    expect(new Uint8Array(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")?.data ?? new ArrayBuffer(0))).toEqual(new Uint8Array([1, 2, 3]));
   });
 });

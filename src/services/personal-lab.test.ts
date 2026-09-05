@@ -175,6 +175,8 @@ describe("Personal Lab progressive stream", () => {
       expect(analysis.matrix.outcomes.some((outcome) => outcome.id === "sleep_awakenings")).toBe(false);
       expect(analysis.matrix.rows.flatMap((row) => row.relations).some((relation) => relation.outcomeId === "sleep_awakenings" || relation.predictorId === "sleep_awakenings")).toBe(false);
       expect(analysis.matrix.rows.some((row) => row.id === "30:meal_calories:lag-0")).toBe(true);
+      expect(analysis.matrix.rows.some((row) => row.id === "30:meal_sugar:lag-0")).toBe(true);
+      expect(analysis.matrix.rows.some((row) => row.id === "30:meal_added_sugar:lag-0")).toBe(true);
       expect(analysis.matrix.rows.some((row) => row.id === "30:meal_calories:lag-1")).toBe(true);
       expect(analysis.matrix.coverageByMetric.some((coverage) => coverage.id === "meal_calories" && coverage.recordedDays === 0)).toBe(true);
     } finally {

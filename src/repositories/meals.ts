@@ -37,6 +37,8 @@ type PhotoRow = Row & {
   created_at: string;
   filename?: string | null;
   upload_idempotency_key?: string | null;
+  storage_status?: MealPhoto["storageStatus"];
+  purged_at?: string | null;
 };
 type AnalysisRow = Row & {
   id: string;
@@ -47,6 +49,7 @@ type AnalysisRow = Row & {
   model: string;
   result?: MealAnalysis | null;
   error?: string | null;
+  error_code?: MealAnalysisRecord["errorCode"];
   source_photo_ids?: unknown;
   created_at: string;
   completed_at?: string | null;
@@ -79,6 +82,8 @@ function photoFromRow(row: PhotoRow): MealPhoto {
     bytes: Number(row.bytes),
     filename: asNullableString(row.filename),
     createdAt: row.created_at,
+    storageStatus: row.storage_status === "purged" || row.storage_status === "purge_pending" ? row.storage_status : "available",
+    purgedAt: asNullableString(row.purged_at),
   };
 }
 
@@ -91,6 +96,7 @@ function analysisFromRow(row: AnalysisRow): MealAnalysisRecord {
     model: row.model,
     result: row.result && typeof row.result === "object" ? row.result : null,
     error: asNullableString(row.error),
+    errorCode: row.error_code === "provider_auth" || row.error_code === "provider_rate_limited" || row.error_code === "provider_request" || row.error_code === "provider_unavailable" || row.error_code === "invalid_response" || row.error_code === "source_unavailable" ? row.error_code : null,
     sourcePhotoIds: Array.isArray(row.source_photo_ids) ? row.source_photo_ids.filter((id): id is string => typeof id === "string") : [],
     createdAt: row.created_at,
     completedAt: asNullableString(row.completed_at),
@@ -124,6 +130,27 @@ async function rowsFor<T extends Row>(table: string, userId: string, mealId?: st
   return (result.data ?? []) as T[];
 }
 
+const STALE_ANALYSIS_AFTER_MS = 15 * 60 * 1000;
+
+async function reconcileStaleAnalyses(userId: string, rows: AnalysisRow[]) {
+  const cutoff = Date.now() - STALE_ANALYSIS_AFTER_MS;
+  for (const row of rows) {
+    if (row.status !== "running" || Date.parse(row.created_at) >= cutoff) continue;
+    const completedAt = new Date().toISOString();
+    const result = await createCloudflareAdminClient()
+      .from("meal_analyses")
+      .update({ status: "failed", error: "L’analyse a été interrompue. Relance-la pour réessayer.", error_code: "provider_unavailable", completed_at: completedAt })
+      .eq("user_id", userId)
+      .eq("id", row.id);
+    if (!result.error) {
+      row.status = "failed";
+      row.error = "L’analyse a été interrompue. Relance-la pour réessayer.";
+      row.error_code = "provider_unavailable";
+      row.completed_at = completedAt;
+    }
+  }
+}
+
 export async function findMeal(userId: string, mealId: string): Promise<Meal | null> {
   const admin = createCloudflareAdminClient();
   const [mealResult, photoRows, analysisRows, feelingsRows] = await Promise.all([
@@ -134,10 +161,13 @@ export async function findMeal(userId: string, mealId: string): Promise<Meal | n
   ]);
   if (mealResult.error) throw new Error("The meal could not be loaded.");
   if (!mealResult.data) return null;
+  await reconcileStaleAnalyses(userId, analysisRows);
   const meal = mergeFeelings(mealResult.data as MealRow, feelingsRows[0] ?? null);
   meal.photos = photoRows.map(photoFromRow);
   const latest = [...analysisRows].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
   meal.analysis = latest ? analysisFromRow(latest) : null;
+  const successful = selectLatestMealAnalysis(analysisRows, true);
+  meal.lastSuccessfulAnalysis = successful ? analysisFromRow(successful) : null;
   return meal;
 }
 
@@ -165,6 +195,7 @@ export async function listMeals(userId: string, options: ListMealsOptions = {}) 
     rowsFor<AnalysisRow>("meal_analyses", userId),
     rowsFor<FeelingsRow>("meal_feelings", userId),
   ]);
+  await reconcileStaleAnalyses(userId, analysisRows);
   const photosByMeal = new Map<string, MealPhoto[]>();
   for (const row of photoRows) photosByMeal.set(row.meal_id, [...(photosByMeal.get(row.meal_id) ?? []), photoFromRow(row)]);
   const analysisByMeal = new Map<string, AnalysisRow[]>();
@@ -177,6 +208,8 @@ export async function listMeals(userId: string, options: ListMealsOptions = {}) 
     meal.photos = photosByMeal.get(row.id) ?? [];
     const selectedAnalysis = selectLatestMealAnalysis(analysisByMeal.get(row.id) ?? [], options.preferLatestCompletedAnalysis);
     meal.analysis = selectedAnalysis ? analysisFromRow(selectedAnalysis) : null;
+    const successful = selectLatestMealAnalysis(analysisByMeal.get(row.id) ?? [], true);
+    meal.lastSuccessfulAnalysis = successful ? analysisFromRow(successful) : null;
     return meal;
   });
 }
@@ -235,6 +268,12 @@ export async function updatePhotoOrigin(userId: string, mealId: string, photoId:
   return data ? photoFromRow(data as PhotoRow) : null;
 }
 
+export async function updatePhotoStorage(userId: string, mealId: string, photoId: string, values: { storageStatus: MealPhoto["storageStatus"]; purgedAt?: string | null }) {
+  const { data, error } = await createCloudflareAdminClient().from("meal_photos").update({ storage_status: values.storageStatus, purged_at: values.purgedAt ?? null }).eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId).select("*").maybeSingle();
+  if (error) throw new Error("The meal photo storage state could not be updated.");
+  return data ? photoFromRow(data as PhotoRow) : null;
+}
+
 export async function findPhotosByUploadIdempotencyKey(userId: string, mealId: string, key: string) {
   const rows = await rowsFor<PhotoRow>("meal_photos", userId, mealId);
   return rows.filter((row) => row.upload_idempotency_key === key).map(photoFromRow);
@@ -247,8 +286,9 @@ export async function deletePhoto(userId: string, mealId: string, photoId: strin
   if (!photo.data) return false;
   const deleted = await admin.from("meal_photos").delete().eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId);
   if (deleted.error) throw new Error("The meal photo metadata could not be deleted.");
+  const photoRow = photo.data as PhotoRow;
   try {
-    await deleteR2MealPhotoObject(String((photo.data as PhotoRow).object_path));
+    if (photoRow.storage_status !== "purged") await deleteR2MealPhotoObject(String(photoRow.object_path));
   } catch {
     const restored = await admin.from("meal_photos").upsert(photo.data as PhotoRow).then((result) => result);
     if (restored.error) throw new Error("The meal photo could not be deleted or preserved for retry.");

@@ -25,6 +25,8 @@ describe("Personal Lab metric registry", () => {
   it("registers meal series as Soma influences without exposing them as health fields", () => {
     const definitions = new Map(healthMetricRegistry.map((metric) => [metric.id, metric]));
     expect(definitions.get("meal_calories")).toMatchObject({ field: "meal_calories_kcal", unit: "kcal", defaultRole: "influence", source: "Soma" });
+    expect(definitions.get("meal_sugar")).toMatchObject({ field: "meal_sugar_g", unit: "g", defaultRole: "influence", direction: "target", label: "Meal sugars", source: "Soma" });
+    expect(definitions.get("meal_added_sugar")).toMatchObject({ field: "meal_added_sugar_g", unit: "g", defaultRole: "influence", direction: "lower", label: "Meal added sugars", source: "Soma" });
     expect(definitions.get("meal_homemade_share")).toMatchObject({ field: "meal_homemade_share_percent", unit: "%", defaultRole: "influence", source: "Soma" });
     expect(definitions.get("meal_mouth_heat_average")).toMatchObject({ field: "meal_mouth_heat_average", unit: "1–5", defaultRole: "influence", source: "Soma" });
   });

@@ -27,6 +27,6 @@ describe("MealDayTargets", () => {
   it("affiche un état d’attente quand les totaux sont incomplets", () => {
     const html = renderToStaticMarkup(<MealDayTargets totals={null} targets={DEFAULT_NUTRITION_TARGETS} />);
     expect(html).toContain("En attente");
-    expect(html).toContain("Confirme des repas");
+    expect(html).not.toContain("Confirme des repas");
   });
 });

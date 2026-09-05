@@ -13,6 +13,33 @@ export type NutritionTargets = {
   surplusKcal: number;
 };
 
+/**
+ * Runtime validation shared by the server route and client consumers.
+ * Ranges are deliberately ordered so progress and Coach advice never use an
+ * inverted target by accident.
+ */
+export function parseNutritionTargets(value: unknown): NutritionTargets | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Record<string, unknown>;
+  const range = (candidate: unknown): NutritionTargetRange | null => {
+    if (!candidate || typeof candidate !== "object") return null;
+    const item = candidate as Record<string, unknown>;
+    const low = typeof item.low === "number" && Number.isFinite(item.low) && item.low >= 0 ? item.low : null;
+    const likely = typeof item.likely === "number" && Number.isFinite(item.likely) && item.likely >= 0 ? item.likely : null;
+    const high = typeof item.high === "number" && Number.isFinite(item.high) && item.high >= 0 ? item.high : null;
+    if (low === null || likely === null || high === null || low > likely || likely > high) return null;
+    return { low, likely, high };
+  };
+  const caloriesKcal = range(input.caloriesKcal);
+  const proteinG = range(input.proteinG);
+  const fatG = range(input.fatG);
+  const carbsG = range(input.carbsG);
+  const fiberG = range(input.fiberG);
+  const surplusKcal = typeof input.surplusKcal === "number" && Number.isFinite(input.surplusKcal) ? input.surplusKcal : null;
+  if (!caloriesKcal || !proteinG || !fatG || !carbsG || !fiberG || surplusKcal === null) return null;
+  return { caloriesKcal, proteinG, fatG, carbsG, fiberG, surplusKcal };
+}
+
 export const NUTRITION_TARGETS_STORAGE_KEY = "soma.nutrition-targets.v1";
 
 export const DEFAULT_NUTRITION_TARGETS: NutritionTargets = {
@@ -24,41 +51,13 @@ export const DEFAULT_NUTRITION_TARGETS: NutritionTargets = {
   surplusKcal: 300,
 };
 
-function isValidRange(value: unknown): value is NutritionTargetRange {
-  if (!value || typeof value !== "object") return false;
-  const range = value as Record<string, unknown>;
-  return (
-    typeof range.low === "number" &&
-    Number.isFinite(range.low) &&
-    typeof range.likely === "number" &&
-    Number.isFinite(range.likely) &&
-    typeof range.high === "number" &&
-    Number.isFinite(range.high)
-  );
-}
-
-function isValidTargets(value: unknown): value is NutritionTargets {
-  if (!value || typeof value !== "object") return false;
-  const targets = value as Record<string, unknown>;
-  return (
-    isValidRange(targets.caloriesKcal) &&
-    isValidRange(targets.proteinG) &&
-    isValidRange(targets.fatG) &&
-    isValidRange(targets.carbsG) &&
-    isValidRange(targets.fiberG) &&
-    typeof targets.surplusKcal === "number" &&
-    Number.isFinite(targets.surplusKcal)
-  );
-}
-
 export function loadNutritionTargets(): NutritionTargets {
   try {
     if (typeof localStorage === "undefined") return DEFAULT_NUTRITION_TARGETS;
     const raw = localStorage.getItem(NUTRITION_TARGETS_STORAGE_KEY);
     if (!raw) return DEFAULT_NUTRITION_TARGETS;
     const parsed: unknown = JSON.parse(raw);
-    if (!isValidTargets(parsed)) return DEFAULT_NUTRITION_TARGETS;
-    return parsed;
+    return parseNutritionTargets(parsed) ?? DEFAULT_NUTRITION_TARGETS;
   } catch {
     return DEFAULT_NUTRITION_TARGETS;
   }

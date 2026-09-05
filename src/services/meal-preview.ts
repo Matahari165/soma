@@ -35,11 +35,11 @@ function cloneMeal(meal: PreviewMeal): Meal {
 }
 
 function previewPhotoRecord(photo: PreviewPhoto): MealPhoto {
-  return { id: photo.id, mealId: photo.mealId, origin: photo.origin, objectPath: photo.objectPath, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt };
+  return { id: photo.id, mealId: photo.mealId, origin: photo.origin, objectPath: photo.objectPath, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null };
 }
 
 export function createPreviewMeal(userId: string, input: CreateMealInput): Meal {
-  if (input.status === "confirmed") throw new Error("Add photos before confirming a meal.");
+  if (input.status === "confirmed" && !input.note?.trim()) throw new Error("Add photos or a description before confirming a meal.");
   const idempotencyKey = input.idempotencyKey ? `${userId}:${input.idempotencyKey}` : null;
   const existingId = idempotencyKey ? idempotency.get(idempotencyKey) : null;
   const existing = existingId ? userMeals(userId).get(existingId) : null;
@@ -85,11 +85,21 @@ function mutablePreviewMeal(userId: string, mealId: string) {
   return userMeals(userId).get(mealId) ?? null;
 }
 
+function hasPreservedAnalysis(meal: PreviewMeal, confirmedAnalysis: UpdateMealInput["confirmedAnalysis"]) {
+  return Boolean(
+    confirmedAnalysis
+      ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis.result : null)
+      ?? (meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result ? meal.lastSuccessfulAnalysis.result : null),
+  );
+}
+
 export function updatePreviewMeal(userId: string, mealId: string, input: UpdateMealInput) {
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
   if (input.confirmedAnalysis && input.status !== "confirmed") throw new Error("An edited analysis is saved when the meal is confirmed.");
-  if (input.status === "confirmed" && !meal.photos.length) throw new Error("Add photos before confirming a meal.");
+  if (input.status === "confirmed" && !meal.photos.length && !meal.note?.trim()) throw new Error("Add photos or a description before confirming a meal.");
+  const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  if (input.status === "confirmed" && activePhotos.length > 0 && !hasPreservedAnalysis(meal, input.confirmedAnalysis)) throw new Error("Analyse les photos avant de confirmer ce repas.");
   if (input.mealDate !== undefined) meal.mealDate = input.mealDate;
   if (input.mealType !== undefined) meal.mealType = input.mealType;
   if (input.note !== undefined) meal.note = input.note;
@@ -100,6 +110,14 @@ export function updatePreviewMeal(userId: string, mealId: string, input: UpdateM
     const now = new Date().toISOString();
     meal.analysis = { id: crypto.randomUUID(), mealId, status: "completed", provider: "user", model: "confirmed-v1", result: input.confirmedAnalysis, error: null, sourcePhotoIds: meal.photos.map((photo) => photo.id), createdAt: now, completedAt: now };
   }
+  if (input.status === "confirmed") {
+    const purgedAt = new Date().toISOString();
+    for (const photo of meal.photos) {
+      photo.data = new ArrayBuffer(0);
+      photo.storageStatus = "purged";
+      photo.purgedAt = purgedAt;
+    }
+  }
   meal.updatedAt = new Date().toISOString();
   return cloneMeal(meal);
 }
@@ -107,10 +125,11 @@ export function updatePreviewMeal(userId: string, mealId: string, input: UpdateM
 export function addPreviewMealPhotos(userId: string, mealId: string, files: Array<{ filename?: string | null; mimeType: MealPhotoMime; size: number; data: ArrayBuffer; origin: MealOrigin }>) {
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
-  if (!files.length || meal.photos.length + files.length > MAX_MEAL_PHOTOS) throw new Error(`A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
+  const activePhotoCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+  if (!files.length || activePhotoCount + files.length > MAX_MEAL_PHOTOS) throw new Error(`A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
   if (files.some((file) => file.size <= 0 || file.size > MAX_MEAL_PHOTO_BYTES) || files.reduce((total, file) => total + file.size, 0) > MAX_MEAL_PHOTOS_BYTES) throw new Error("The selected photos are too large.");
   const now = new Date().toISOString();
-  const photos = files.map((file) => ({ id: crypto.randomUUID(), mealId, origin: file.origin, objectPath: `preview/${userId}/${mealId}/${crypto.randomUUID()}`, mimeType: file.mimeType, bytes: file.size, filename: file.filename ?? null, createdAt: now, data: file.data } satisfies PreviewPhoto));
+  const photos = files.map((file) => ({ id: crypto.randomUUID(), mealId, origin: file.origin, objectPath: `preview/${userId}/${mealId}/${crypto.randomUUID()}`, mimeType: file.mimeType, bytes: file.size, filename: file.filename ?? null, createdAt: now, storageStatus: "available", purgedAt: null, data: file.data } satisfies PreviewPhoto));
   meal.photos.push(...photos);
   meal.status = "draft";
   meal.updatedAt = now;
@@ -147,24 +166,30 @@ function previewRange(low: number, likely: number, high: number): NutritionEstim
   return { low, likely, high };
 }
 
-function previewAnalysis(): MealAnalysis {
+function previewAnalysis(input: { note: string | null; hasPhotos: boolean }): MealAnalysis {
+  const describedMeal = input.note?.trim();
+  const sourceLabel = input.hasPhotos && describedMeal
+    ? "photos et description"
+    : input.hasPhotos
+      ? "photos sélectionnées"
+      : "description saisie";
   return {
-    summary: "Analyse locale de prévisualisation basée sur les photos sélectionnées.",
+    summary: `Analyse locale de prévisualisation basée sur les ${sourceLabel}.`,
     dishType: null,
     calorieAnalysis: null,
-    foods: [{ name: "Repas photographié", preparation: null, portion: null, estimatedGrams: null, calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), confidence: "low" }],
-    totals: { calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10) },
+    foods: [{ name: describedMeal || "Repas photographié", preparation: null, portion: null, estimatedGrams: null, calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), sugarGrams: null, addedSugarGrams: null, confidence: "low" }],
+    totals: { calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), sugarGrams: null, addedSugarGrams: null },
     confidence: "low",
-    uncertainties: ["L’analyse locale est simulée pour tester le parcours. La version connectée utilise Grok.", "Les portions et ingrédients ne sont pas déduits dans le mode local."],
+    uncertainties: [],
   };
 }
 
 export function analyzePreviewMeal(userId: string, mealId: string) {
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
-  if (!meal.photos.length) throw new Error("Add at least one photo before analysing a meal.");
+  if (!meal.photos.length && !meal.note?.trim()) throw new Error("Add a photo or a description before analysing a meal.");
   const now = new Date().toISOString();
-  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis(), error: null, sourcePhotoIds: meal.photos.map((photo) => photo.id), createdAt: now, completedAt: now };
+  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note: meal.note, hasPhotos: meal.photos.length > 0 }), error: null, sourcePhotoIds: meal.photos.map((photo) => photo.id), createdAt: now, completedAt: now };
   meal.analysis = analysis;
   meal.updatedAt = now;
   return { analysis, fresh: true };
@@ -190,7 +215,7 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
   return listPreviewMeals(userId).flatMap((meal) => {
     if (meal.status !== "confirmed" || meal.analysis?.status !== "completed" || !meal.analysis.result) return [];
     const origins = new Set(meal.photos.map((photo) => photo.origin));
-    const origin = origins.size === 1 ? [...origins][0] : "mixed";
+    const origin = origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
     const totals = meal.analysis.result.totals;
     return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals.calories), proteinG: previewNutrition(totals.proteinGrams), carbsG: previewNutrition(totals.carbohydrateGrams), fatG: previewNutrition(totals.fatGrams), fiberG: previewNutrition(totals.fiberGrams), mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });

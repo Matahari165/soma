@@ -7,6 +7,7 @@ export type MealType = (typeof mealTypes)[number];
 /** Origin selected for the meal. A restaurant or delivery meal is prepared. */
 export const mealOrigins = ["homemade", "prepared", "mixed"] as const;
 export type MealOrigin = (typeof mealOrigins)[number];
+export type ConfirmedMealOrigin = MealOrigin | "unknown";
 
 /** A bounded AI estimate. The `likely` value is the value used in Personal Lab. */
 export type NutritionEstimate = {
@@ -27,12 +28,14 @@ export type ConfirmedMealRecord = {
   mealDate: string;
   mealType: MealType;
   status: "confirmed";
-  origin: MealOrigin;
+  origin: ConfirmedMealOrigin;
   caloriesKcal: NutritionEstimate | null;
   proteinG: NutritionEstimate | null;
   carbsG: NutritionEstimate | null;
   fatG: NutritionEstimate | null;
   fiberG: NutritionEstimate | null;
+  sugarG?: NutritionEstimate | null;
+  addedSugarG?: NutritionEstimate | null;
   /** 0 means explicitly no sensation; null means not answered. */
   mouthHeat: number | null;
   /** 0 means explicitly no sensation; null means not answered. */
@@ -54,6 +57,8 @@ export type MealDailyAggregate = {
   carbsG: number | null;
   fatG: number | null;
   fiberG: number | null;
+  sugarG: number | null;
+  addedSugarG: number | null;
   mouthHeatAverage: number | null;
   mouthHeatMaximum: number | null;
   stomachOverfullnessAverage: number | null;
@@ -66,6 +71,8 @@ export type MealMetricId =
   | "meal_carbs"
   | "meal_fat"
   | "meal_fiber"
+  | "meal_sugar"
+  | "meal_added_sugar"
   | "meal_count"
   | "meal_coverage"
   | "meal_homemade_count"
@@ -83,6 +90,8 @@ export const mealMetricIds: readonly MealMetricId[] = [
   "meal_carbs",
   "meal_fat",
   "meal_fiber",
+  "meal_sugar",
+  "meal_added_sugar",
   "meal_count",
   "meal_coverage",
   "meal_homemade_count",
@@ -179,6 +188,8 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       carbsG: sumNutrition(meals, (meal) => meal.carbsG),
       fatG: sumNutrition(meals, (meal) => meal.fatG),
       fiberG: sumNutrition(meals, (meal) => meal.fiberG),
+      sugarG: sumNutrition(meals, (meal) => meal.sugarG ?? null),
+      addedSugarG: sumNutrition(meals, (meal) => meal.addedSugarG ?? null),
       mouthHeatAverage: average(meals.map((meal) => intensity(meal.mouthHeat))),
       mouthHeatMaximum: maximum(meals.map((meal) => intensity(meal.mouthHeat))),
       stomachOverfullnessAverage: average(meals.map((meal) => intensity(meal.stomachOverfullness))),
@@ -193,6 +204,8 @@ const seriesSpec: ReadonlyArray<{ id: MealMetricId; label: string; unit: string;
   { id: "meal_carbs", label: "Meal carbohydrates", unit: "g", read: (day) => day.carbsG },
   { id: "meal_fat", label: "Meal fat", unit: "g", read: (day) => day.fatG },
   { id: "meal_fiber", label: "Meal fiber", unit: "g", read: (day) => day.fiberG },
+  { id: "meal_sugar", label: "Meal sugars", unit: "g", read: (day) => day.sugarG },
+  { id: "meal_added_sugar", label: "Meal added sugars", unit: "g", read: (day) => day.addedSugarG },
   { id: "meal_count", label: "Meals recorded", unit: "count", read: (day) => day.mealCount },
   { id: "meal_coverage", label: "Meal coverage", unit: "%", read: (day) => day.mealCoverage },
   { id: "meal_homemade_count", label: "Homemade meals", unit: "count", read: (day) => day.homemadeCount },

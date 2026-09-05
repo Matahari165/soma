@@ -126,7 +126,19 @@
     background: transparent;
     color: var(--muted);
   }
-  .mobile-header-nav__link--active { background: var(--ink); color: var(--canvas); }
+  .mobile-header-nav__link--active {
+    background: transparent;
+    box-shadow: none;
+    color: var(--moss-dark);
+  }
+  .mobile-header-nav__link--active::after {
+    position: absolute;
+    bottom: 3px;
+    width: 24px;
+    height: 2px;
+    background: currentColor;
+    content: "";
+  }
 
   .mobile-menu-backdrop { position: fixed; inset: 0; z-index: 75; display: block; border: 0; background: var(--overlay); }
   .mobile-menu {

@@ -32,7 +32,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   } catch (error) {
     if (error instanceof MealServiceError) {
       const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
-      return NextResponse.json({ error: error.message }, { status });
+      return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code }, { status });
     }
     return NextResponse.json({ error: "Meal analysis is temporarily unavailable." }, { status: 503 });
   }

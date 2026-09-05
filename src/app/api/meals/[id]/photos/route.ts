@@ -39,12 +39,12 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
   if (isLocalPreviewMode()) {
     const meal = findPreviewMeal(user.id, id);
-    return meal ? NextResponse.json({ photos: meal.photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })), preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
+    return meal ? NextResponse.json({ photos: meal.photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })), preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
   }
   try {
     const meal = await findMeal(user.id, id);
     if (!meal) return NextResponse.json({ error: "Meal not found." }, { status: 404 });
-    return NextResponse.json({ photos: (await listMealPhotos(user.id, id)).map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, createdAt: photo.createdAt, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ photos: (await listMealPhotos(user.id, id)).map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return errorResponse(error);
   }

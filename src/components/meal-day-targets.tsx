@@ -61,13 +61,10 @@ function formatValue(value: number | null): string {
 }
 
 export function MealDayTargets({ totals, targets, className }: MealDayTargetsProps) {
-  const hasAnyValue = totals !== null && CARDS.some((card) => totals[card.key] !== null);
-
   return (
     <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-day-targets-title">
       <div className={styles.header}>
         <h3 id="meal-day-targets-title">Cibles du jour</h3>
-        <p>{hasAnyValue ? "Total likely des repas confirmés." : "Confirme des repas pour suivre la journée."}</p>
       </div>
       <ul className={styles.grid}>
         {CARDS.map((card) => {

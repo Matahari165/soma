@@ -15,12 +15,14 @@ describe("MealJournal", () => {
     expect(html).toContain("Collation");
     expect(html).toContain("Goûter");
     expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(4);
-    expect(html.match(/>Ajouter ce texte<\/button>/g)).toHaveLength(4);
     expect(html.match(/<textarea/g)).toHaveLength(4);
-    expect(html).toContain("Décrire le repas");
-    expect(html).toContain("En toutes lettres, sans quantités obligatoires");
+    expect(html).not.toContain(">Décrire le repas<");
+    expect(html).toContain('for="meal-breakfast-note"');
     expect(html).toContain("Ex. 2 bananes et un café.");
-    expect(html).toContain("0/4 confirmés");
+    expect(html).not.toContain("À commencer");
+    expect(html).not.toContain("Avancement des repas");
+    expect(html).not.toContain("confirmés");
+    expect(html).toContain("Calories : indisponibles sur 3000 kilocalories");
     expect(html).toContain('capture="environment"');
     expect(html).toContain('aria-label="Historique des repas"');
     expect(html).toContain('aria-label="Jour précédent"');
@@ -49,9 +51,9 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
 
     expect(html).toContain("<textarea");
-    expect(html).toContain("Analyser le texte");
-    expect(html).toContain("Analyser");
-    expect(html).toContain("aria-describedby");
+    expect(html).toContain(">Analyser</button>");
+    expect(html).not.toContain("Grok");
+    expect(html).not.toContain("aria-describedby");
   });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
@@ -77,8 +79,8 @@ describe("MealJournal", () => {
           ],
           analysis: {
             ingredients: [{ id: "food-1", name: "Riz", portion: "1 bol" }],
-            calories: { low: 550, high: 750 },
-            proteinGrams: { low: 25, high: 35 },
+            calories: { low: 550, likely: 650, high: 750 },
+            proteinGrams: { low: 25, likely: 30, high: 35 },
           },
           mouthHeat: 3,
           stomachLoad: 4,
@@ -88,12 +90,11 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html.match(/Origine de la photo/g)).toHaveLength(2);
-    expect(html.match(/Maison/g)).toHaveLength(2);
-    expect(html.match(/Préparé \/ acheté/g)).toHaveLength(2);
+    expect(html).not.toContain("Origine de la photo");
     expect(html).toContain("Bouche chaude");
-    expect(html).toContain("Repas qui m’a cassé");
+    expect(html).toContain("Repas qui m&#x27;a cassé");
     expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("Calories : 650 sur 3000 kilocalories");
   });
 });
 
@@ -107,14 +108,14 @@ describe("apiMealToRecord", () => {
       mouthWarmthIntensity: 0,
       stomachOverfullIntensity: null,
       updatedAt: `${date}T09:00:00.000Z`,
-      photos: [{ id: "photo-3", url: "/api/meals/meal-2/photos/photo-3", filename: "breakfast.jpg", origin: "homemade" }],
+      photos: [{ id: "photo-3", url: "/api/meals/meal-2/photos/photo-3", filename: "breakfast.jpg", origin: "homemade", storageStatus: "purged", purgedAt: `${date}T10:00:00.000Z` }],
       analysis: {
         id: "analysis-2",
         status: "completed",
         error: null,
         result: {
-          foods: [{ name: "Yaourt", portion: "1 pot", confidence: "high" }],
-          totals: { calories: { low: 120, likely: 150, high: 180 }, proteinGrams: null },
+          foods: [{ name: "Yaourt", portion: "1 pot", estimatedGrams: 125, preparation: "nature", sugarGrams: { low: 8, likely: 10, high: 12 }, confidence: "high" }],
+          totals: { calories: { low: 120, likely: 150, high: 180 }, proteinGrams: null, sugarGrams: { low: 8, likely: 10, high: 12 } },
           confidence: "high",
           summary: "Petit déjeuner simple.",
           uncertainties: [],
@@ -123,8 +124,36 @@ describe("apiMealToRecord", () => {
     });
 
     expect(meal).toMatchObject({ id: "meal-2", date, slot: "breakfast", status: "confirmed", mouthHeat: 0, stomachLoad: null });
-    expect(meal.photos[0]).toMatchObject({ filename: "breakfast.jpg", origin: "homemade" });
+    expect(meal.photos[0]).toMatchObject({ filename: "breakfast.jpg", origin: "homemade", storageStatus: "purged" });
     expect(meal.analysis?.calories).toEqual({ low: 120, likely: 150, high: 180 });
     expect(meal.analysis?.proteinGrams).toEqual({ low: null, likely: null, high: null });
+    expect(meal.analysis?.sugarGrams).toEqual({ low: 8, likely: 10, high: 12 });
+    expect(meal.analysis?.ingredients[0]).toMatchObject({ estimatedGrams: 125, preparation: "nature", sugarGrams: { low: 8, likely: 10, high: 12 } });
+  });
+
+  it("keeps the last successful analysis visible after a failed retry", () => {
+    const meal = apiMealToRecord({
+      id: "meal-retry",
+      mealDate: date,
+      mealType: "dinner",
+      status: "confirmed",
+      photos: [],
+      analysis: { id: "failed", status: "failed", result: null, error: "Grok est momentanément sollicité." },
+      lastSuccessfulAnalysis: {
+        id: "successful",
+        status: "completed",
+        result: {
+          foods: [{ name: "Poulet rôti", portion: "1 cuisse", confidence: "medium" }],
+          totals: { calories: { low: 350, likely: 420, high: 520 }, proteinGrams: { low: 30, likely: 38, high: 45 } },
+          confidence: "medium",
+          summary: "Poulet rôti.",
+          uncertainties: [],
+        },
+      },
+    });
+
+    expect(meal.status).toBe("confirmed");
+    expect(meal.analysis?.ingredients[0]?.name).toBe("Poulet rôti");
+    expect(meal.analysis?.calories.likely).toBe(420);
   });
 });

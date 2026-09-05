@@ -566,6 +566,8 @@ function buildCorrelationMatrix(input: {
     meal_carbs: "🍞",
     meal_fat: "🥑",
     meal_fiber: "🌾",
+    meal_sugar: "🍭",
+    meal_added_sugar: "🍬",
     meal_count: "🍴",
     meal_coverage: "📅",
     meal_homemade_count: "🏠",

@@ -66,4 +66,11 @@ describe("xAI meal vision contract", () => {
     expect(body.input[0]?.content[0]?.text).toContain("2 bananes");
     expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
   });
+
+  it("classifies provider failures without exposing the provider payload", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("private provider payload", { status: 429 }));
+    await expect(createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" }))
+      .rejects.toMatchObject({ code: "provider_rate_limited", message: "Grok est momentanément sollicité. Réessaie dans quelques instants." });
+  });
 });

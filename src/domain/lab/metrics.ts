@@ -77,6 +77,8 @@ export const healthMetricRegistry: readonly LabMetricDefinition[] = [
   { id: "meal_carbs", label: "Meal carbohydrates", unit: "g", field: "meal_carbs_g", defaultRole: "influence", direction: "target", source: "Soma" },
   { id: "meal_fat", label: "Meal fat", unit: "g", field: "meal_fat_g", defaultRole: "influence", direction: "target", source: "Soma" },
   { id: "meal_fiber", label: "Meal fiber", unit: "g", field: "meal_fiber_g", defaultRole: "influence", direction: "higher", source: "Soma" },
+  { id: "meal_sugar", label: "Meal sugars", unit: "g", field: "meal_sugar_g", defaultRole: "influence", direction: "target", source: "Soma" },
+  { id: "meal_added_sugar", label: "Meal added sugars", unit: "g", field: "meal_added_sugar_g", defaultRole: "influence", direction: "lower", source: "Soma" },
   { id: "meal_count", label: "Meals recorded", unit: "count", field: "meal_count", defaultRole: "influence", direction: "target", source: "Soma" },
   { id: "meal_coverage", label: "Meal coverage", unit: "%", field: "meal_coverage_percent", defaultRole: "influence", direction: "higher", source: "Soma" },
   { id: "meal_homemade_count", label: "Homemade meals", unit: "count", field: "meal_homemade_count", defaultRole: "influence", direction: "higher", source: "Soma" },

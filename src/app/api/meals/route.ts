@@ -17,7 +17,7 @@ const listQuerySchema = z.object({
 function serviceError(error: unknown) {
   if (!(error instanceof MealServiceError)) return NextResponse.json({ error: "Meals are temporarily unavailable." }, { status: 500 });
   const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
-  return NextResponse.json({ error: error.message }, { status });
+  return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code }, { status });
 }
 
 export async function GET(request: Request) {
@@ -54,6 +54,7 @@ export async function PUT(request: Request) {
   const mealType = rawMeal?.slot === "breakfast" || rawMeal?.slot === "lunch" || rawMeal?.slot === "dinner" || rawMeal?.slot === "snack" ? rawMeal.slot : null;
   if (!mealId || !mealDate || !mealType) return NextResponse.json({ error: "The meal is invalid." }, { status: 400 });
   const status = rawMeal?.status === "confirmed" ? "confirmed" : "draft";
+  const note = typeof rawMeal?.note === "string" ? rawMeal.note : rawMeal?.note === null ? null : undefined;
   const mouthHeat = rawMeal?.mouthHeat === null || rawMeal?.mouthHeat === undefined ? null : rawMeal.mouthHeat;
   const stomachLoad = rawMeal?.stomachLoad === null || rawMeal?.stomachLoad === undefined ? null : rawMeal.stomachLoad;
   const validFeeling = (value: unknown) => value === null || (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 5);
@@ -65,14 +66,14 @@ export async function PUT(request: Request) {
     const current = findPreviewMeal(user.id, mealId);
     if (!current) return NextResponse.json({ error: "Meal not found." }, { status: 404 });
     try {
-      const updated = updatePreviewMeal(user.id, mealId, { mealDate, mealType, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
+      const updated = updatePreviewMeal(user.id, mealId, { mealDate, mealType, note, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
       return NextResponse.json({ meal: mealToLegacyApi(updated as NonNullable<typeof updated>), preview: true });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Meal could not be saved." }, { status: 400 });
     }
   }
   try {
-    const updated = await updateMealRecord(user.id, mealId, { mealDate, mealType, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
+    const updated = await updateMealRecord(user.id, mealId, { mealDate, mealType, note, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
     return NextResponse.json({ meal: mealToLegacyApi(updated) });
   } catch (error) {
     return serviceError(error);

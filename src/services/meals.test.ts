@@ -8,11 +8,12 @@ const state = vi.hoisted(() => ({
   listMeals: vi.fn(),
   updateMeal: vi.fn(),
   updatePhotoOrigin: vi.fn(),
+  updatePhotoStorage: vi.fn(),
   upsertMealFeelings: vi.fn(),
 }));
 
 vi.mock("@/repositories/meals", () => ({
-  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, upsertMealFeelings: state.upsertMealFeelings,
+  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
 }));
 vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
@@ -20,6 +21,7 @@ vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObj
 import { createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
+import { deleteR2MealPhotoObject } from "@/lib/r2";
 
 const canonicalCorrection = {
   summary: "Correction utilisateur",
@@ -38,11 +40,72 @@ describe("meal analysis provenance", () => {
     state.findMeal.mockResolvedValue(meal);
     state.findMealForSlot.mockResolvedValue(null);
     state.insertMealAnalysis.mockResolvedValue({ ...meal.analysis, id: "analysis-user", provider: "user", model: "confirmed-v1", result: canonicalCorrection });
+    state.updatePhotoStorage.mockResolvedValue({ id: "photo-1" });
   });
 
   it("stores a user correction as a new analysis without replacing the Grok run", async () => {
     await updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", mouthWarmthIntensity: 2, stomachOverfullIntensity: 3, confirmedAnalysis: canonicalCorrection });
     expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ provider: "user", model: "confirmed-v1", status: "completed", result: canonicalCorrection, source_photo_ids: ["photo-1"] }));
+  });
+
+  it("refuses to purge a photo-only meal without a completed analysis", async () => {
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" })).rejects.toMatchObject({ code: "invalid", message: "Analyse les photos avant de confirmer ce repas." });
+    expect(state.updateMeal).not.toHaveBeenCalled();
+    expect(state.updatePhotoStorage).not.toHaveBeenCalled();
+    expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
+  });
+
+  it("keeps purge_pending and exposes an R2 failure", async () => {
+    state.findMeal.mockResolvedValue({
+      id: "12345678-1234-1234-1234-123456789012",
+      userId: "user-1",
+      mealDate: "2026-08-31",
+      mealType: "lunch" as const,
+      note: null,
+      status: "draft" as const,
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z",
+      updatedAt: "2026-08-31T10:00:00.000Z",
+      photos: [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const }],
+      analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: canonicalCorrection, error: null, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" },
+    });
+    vi.mocked(deleteR2MealPhotoObject).mockRejectedValueOnce(new Error("R2 unavailable"));
+
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    expect(state.updatePhotoStorage).toHaveBeenCalledTimes(1);
+    expect(state.updatePhotoStorage).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012", "photo-1", { storageStatus: "purge_pending", purgedAt: null });
+    expect(state.updateMeal).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" });
+  });
+
+  it("does not delete R2 when the pending marker cannot be written", async () => {
+    state.updatePhotoStorage.mockRejectedValueOnce(new Error("D1 unavailable"));
+
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", confirmedAnalysis: canonicalCorrection })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
+  });
+
+  it("leaves the already-written pending marker when the final state write fails", async () => {
+    state.updatePhotoStorage.mockResolvedValueOnce({ id: "photo-1" }).mockRejectedValueOnce(new Error("D1 unavailable"));
+    const meal = {
+      id: "12345678-1234-1234-1234-123456789012",
+      userId: "user-1",
+      mealDate: "2026-08-31",
+      mealType: "lunch" as const,
+      note: null,
+      status: "draft" as const,
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z",
+      updatedAt: "2026-08-31T10:00:00.000Z",
+      photos: [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const }],
+      analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: canonicalCorrection, error: null, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" },
+    };
+    state.findMeal.mockResolvedValue(meal);
+
+    await expect(updateMealRecord("user-1", meal.id, { status: "confirmed" })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    expect(deleteR2MealPhotoObject).toHaveBeenCalledWith("private/photo");
+    expect(state.updatePhotoStorage).toHaveBeenCalledTimes(2);
   });
 
   it("keeps explicit null feelings instead of falling back to the current rating", async () => {

@@ -4,7 +4,7 @@ import { POST as createMeal, GET as listMeals, PUT as saveMeal } from "./route";
 import { PATCH as patchMeal } from "./[id]/route";
 import { POST as uploadPhotos } from "./[id]/photos/route";
 import { POST as analyzeMeal } from "./[id]/analyze/route";
-import { DELETE as deletePhoto, PATCH as patchPhoto } from "./[id]/photos/[photoId]/route";
+import { DELETE as deletePhoto, GET as getPhoto, PATCH as patchPhoto } from "./[id]/photos/[photoId]/route";
 import { POST as legacyAnalyzeMeal } from "./analyze/route";
 
 describe("meal API local preview flow", () => {
@@ -77,6 +77,51 @@ describe("meal API local preview flow", () => {
     expect(deleted.status).toBe(200);
     const listed = await listMeals(new Request("https://soma.example/api/meals?from=2026-09-03&to=2026-09-03"));
     expect((await listed.json()).meals[0].photos).toEqual([]);
+  });
+
+  it("rejects confirmation of a photo-only meal until it has been analysed", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-09-03", mealType: "snack" }), headers: { "content-type": "application/json" } }));
+    const meal = (await created.json()).meal as { id: string };
+    const form = new FormData();
+    form.append("photos", new File([Uint8Array.from([7, 8, 9])], "snack.jpg", { type: "image/jpeg" }));
+    form.append("origin", "homemade");
+    const uploaded = await uploadPhotos(new Request(`https://soma.example/api/meals/${meal.id}/photos`, { method: "POST", body: form }), { params: Promise.resolve({ id: meal.id }) });
+    const photoId = (await uploaded.json()).photos[0].id as string;
+
+    const response = await patchMeal(new Request(`https://soma.example/api/meals/${meal.id}`, { method: "PATCH", body: JSON.stringify({ status: "confirmed" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: meal.id }) });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: "Analyse les photos avant de confirmer ce repas." });
+    const stillAvailable = await getPhoto(new Request(`https://soma.example/api/meals/${meal.id}/photos/${photoId}`), { params: Promise.resolve({ id: meal.id, photoId }) });
+    expect(stillAvailable.status).toBe(200);
+  });
+
+  it("returns the same purge response as production and ignores purged photos in the legacy origin index", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-09-04", mealType: "dinner" }), headers: { "content-type": "application/json" } }));
+    const meal = (await created.json()).meal as { id: string };
+    const initialForm = new FormData();
+    initialForm.append("photos", new File([Uint8Array.from([1, 2, 3])], "dinner.jpg", { type: "image/jpeg" }));
+    initialForm.append("origin", "homemade");
+    const uploaded = await uploadPhotos(new Request(`https://soma.example/api/meals/${meal.id}/photos`, { method: "POST", body: initialForm }), { params: Promise.resolve({ id: meal.id }) });
+    const photoId = (await uploaded.json()).photos[0].id as string;
+    await analyzeMeal(new Request(`https://soma.example/api/meals/${meal.id}/analyze`, { method: "POST", body: "{}", headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: meal.id }) });
+    const confirmed = await patchMeal(new Request(`https://soma.example/api/meals/${meal.id}`, { method: "PATCH", body: JSON.stringify({ status: "confirmed" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: meal.id }) });
+    expect(confirmed.status).toBe(200);
+
+    const purged = await getPhoto(new Request(`https://soma.example/api/meals/${meal.id}/photos/${photoId}`), { params: Promise.resolve({ id: meal.id, photoId }) });
+    expect(purged.status).toBe(410);
+    expect(await purged.json()).toEqual({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" });
+
+    const retryForm = new FormData();
+    retryForm.set("date", "2026-09-04");
+    retryForm.set("slot", "dinner");
+    retryForm.set("mealId", meal.id);
+    retryForm.set("origins", JSON.stringify(["prepared"]));
+    retryForm.append("photos", new File([Uint8Array.from([4, 5, 6])], "dinner-retry.jpg", { type: "image/jpeg" }));
+    const retried = await legacyAnalyzeMeal(new Request("https://soma.example/api/meals/analyze", { method: "POST", body: retryForm }));
+    expect(retried.status).toBe(200);
+    expect((await retried.json()).meal.photos).toHaveLength(2);
   });
 
   it("rejects a non-ISO date in the legacy save contract", async () => {

@@ -8,18 +8,17 @@ import {
   ChevronRight,
   ImagePlus,
   LoaderCircle,
-  Plus,
   RefreshCw,
   Sparkles,
-  Utensils,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 
 import { MAX_MEAL_PHOTOS } from "@/domain/meals";
 import {
   DEFAULT_NUTRITION_TARGETS,
   loadNutritionTargets,
+  parseNutritionTargets,
   saveNutritionTargets,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
@@ -38,12 +37,23 @@ export type MealPhoto = {
   url: string;
   filename?: string;
   origin: MealOrigin | null;
+  storageStatus?: "available" | "purge_pending" | "purged";
+  purgedAt?: string | null;
 };
 
 export type MealIngredient = {
   id: string;
   name: string;
   portion: string;
+  preparation?: string | null;
+  estimatedGrams?: number | null;
+  calories?: NutritionRange;
+  proteinGrams?: NutritionRange;
+  carbohydratesGrams?: NutritionRange;
+  fatGrams?: NutritionRange;
+  fiberGrams?: NutritionRange;
+  sugarGrams?: NutritionRange;
+  addedSugarGrams?: NutritionRange;
   confidence?: "low" | "medium" | "high";
 };
 
@@ -55,6 +65,7 @@ export type NutritionRange = {
 
 export type MealAnalysis = {
   ingredients: MealIngredient[];
+  summary?: string;
   dishType?: string | null;
   calorieAnalysis?: string | null;
   calories: NutritionRange;
@@ -62,18 +73,18 @@ export type MealAnalysis = {
   carbohydratesGrams?: NutritionRange;
   fatGrams?: NutritionRange;
   fiberGrams?: NutritionRange;
+  sugarGrams?: NutritionRange;
+  addedSugarGrams?: NutritionRange;
   confidence?: "low" | "medium" | "high";
   note?: string;
+  uncertainties?: string[];
 };
 
 function formatIngredientLabel(ingredient: MealIngredient) {
   const quantity = ingredient.portion.trim();
-  return quantity ? `${ingredient.name.trim()} (${quantity})` : ingredient.name.trim();
-}
-
-function formatIngredientList(ingredients: MealIngredient[]) {
-  const labels = ingredients.map(formatIngredientLabel).filter(Boolean);
-  return labels.length ? labels.join(" · ") : "Composition non détaillée";
+  const grams = typeof ingredient.estimatedGrams === "number" ? ` · ${Math.round(ingredient.estimatedGrams)} g` : "";
+  const preparation = ingredient.preparation?.trim() ? ` · ${ingredient.preparation.trim()}` : "";
+  return `${ingredient.name.trim()}${quantity ? ` (${quantity})` : ""}${grams}${preparation}`;
 }
 
 export type MealRecord = {
@@ -141,10 +152,8 @@ const ORIGIN_LABELS: Record<MealOrigin, string> = {
 
 const RATING_LABELS = {
   mouthHeat: "Bouche chaude",
-  stomachLoad: "Repas qui m’a cassé",
+  stomachLoad: "Repas qui m'a cassé",
 } as const;
-
-const CONFIRM_ERROR_MESSAGE = "Indique Bouche chaude et Repas qui m'a cassé (Aucune acceptée) pour valider.";
 
 function todayInLocalTime() {
   const now = new Date();
@@ -182,10 +191,6 @@ function emptyData(date: string): MealJournalData {
 
 function emptyMeal(date: string, slot: MealSlot): MealRecord {
   return { id: randomId("meal"), date, slot, photos: [], note: "", analysis: null, mouthHeat: null, stomachLoad: null, status: "draft", error: null, confirmedAt: null };
-}
-
-function emptyManualAnalysis(seedName = ""): MealAnalysis {
-  return { ingredients: [{ id: randomId("ingredient"), name: seedName, portion: "", confidence: "medium" }], dishType: null, calorieAnalysis: null, calories: { low: null, likely: null, high: null }, proteinGrams: { low: null, likely: null, high: null } };
 }
 
 function normalizeMeal(raw: MealRecord, date: string, slot: MealSlot): MealRecord {
@@ -244,9 +249,11 @@ async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInput) {
     await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }));
   }
   if (files.length > 0) {
-  const form = new FormData();
-    form.set("origins", JSON.stringify(newPhotos.map((photo) => photo.origin)));
-  files.forEach((file) => form.append("photos", file, file.name));
+    const origins = newPhotos.map((photo) => photo.origin ?? "unknown");
+    if (origins.length !== files.length) throw new Error("Les photos sélectionnées ne correspondent plus au repas.");
+    const form = new FormData();
+    form.set("origins", JSON.stringify(origins));
+    files.forEach((file) => form.append("photos", file, file.name));
     await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", body: form }));
   }
   const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) });
@@ -313,7 +320,13 @@ function confidence(value: unknown): MealIngredient["confidence"] {
 export function apiMealToRecord(value: unknown): MealRecord {
   const meal = isRecord(value) ? value : {};
   const analysisRecord = isRecord(meal.analysis) ? meal.analysis : null;
-  const result = analysisRecord && isRecord(analysisRecord.result) ? analysisRecord.result : null;
+  const successfulRecord = isRecord(meal.lastSuccessfulAnalysis) ? meal.lastSuccessfulAnalysis : null;
+  const result = analysisRecord && isRecord(analysisRecord.result)
+    ? analysisRecord.result
+    : successfulRecord && isRecord(successfulRecord.result)
+      ? successfulRecord.result
+      : null;
+  const resultRecord = analysisRecord && isRecord(analysisRecord.result) ? analysisRecord : successfulRecord;
   const rawPhotos = Array.isArray(meal.photos) ? meal.photos : [];
   const rawFoods = result && Array.isArray(result.foods) ? result.foods : [];
   const totals = result && isRecord(result.totals) ? result.totals : {};
@@ -321,7 +334,26 @@ export function apiMealToRecord(value: unknown): MealRecord {
     if (!isRecord(rawFood)) return [];
     const name = typeof rawFood.name === "string" ? rawFood.name : "";
     if (!name) return [];
-    return [{ id: `${analysisRecord?.id ?? "analysis"}-${index}`, name, portion: typeof rawFood.portion === "string" ? rawFood.portion : "", confidence: confidence(rawFood.confidence) }];
+    const range = (key: string) => apiRange(rawFood[key]);
+    const optionalRange = (key: string) => {
+      const value = range(key);
+      return value.low === null && value.high === null ? undefined : value;
+    };
+    return [{
+      id: `${resultRecord?.id ?? "analysis"}-${index}`,
+      name,
+      portion: typeof rawFood.portion === "string" ? rawFood.portion : "",
+      preparation: typeof rawFood.preparation === "string" ? rawFood.preparation : null,
+      estimatedGrams: typeof rawFood.estimatedGrams === "number" ? rawFood.estimatedGrams : null,
+      calories: optionalRange("calories"),
+      proteinGrams: optionalRange("proteinGrams"),
+      carbohydratesGrams: optionalRange("carbohydrateGrams") ?? optionalRange("carbohydratesGrams"),
+      fatGrams: optionalRange("fatGrams"),
+      fiberGrams: optionalRange("fiberGrams"),
+      sugarGrams: optionalRange("sugarGrams") ?? optionalRange("sugarsGrams") ?? optionalRange("sugars"),
+      addedSugarGrams: optionalRange("addedSugarGrams") ?? optionalRange("addedSugarsGrams") ?? optionalRange("addedSugars"),
+      confidence: confidence(rawFood.confidence),
+    }];
   });
   const uncertainties = result && Array.isArray(result.uncertainties) ? result.uncertainties.filter((item): item is string => typeof item === "string") : [];
   const dishType = result && typeof result.dishType === "string" && result.dishType.trim() ? result.dishType.trim().slice(0, 80) : null;
@@ -336,10 +368,18 @@ export function apiMealToRecord(value: unknown): MealRecord {
     note: typeof meal.note === "string" ? meal.note.slice(0, 500) : "",
     photos: rawPhotos.flatMap((rawPhoto) => {
       if (!isRecord(rawPhoto) || typeof rawPhoto.id !== "string") return [];
-      return [{ id: rawPhoto.id, url: typeof rawPhoto.url === "string" ? rawPhoto.url : "", filename: typeof rawPhoto.filename === "string" ? rawPhoto.filename : undefined, origin: isMealOrigin(rawPhoto.origin) ? rawPhoto.origin : null }];
+      return [{
+        id: rawPhoto.id,
+        url: typeof rawPhoto.url === "string" ? rawPhoto.url : "",
+        filename: typeof rawPhoto.filename === "string" ? rawPhoto.filename : undefined,
+        origin: isMealOrigin(rawPhoto.origin) ? rawPhoto.origin : null,
+        storageStatus: rawPhoto.storageStatus === "purged" || rawPhoto.storageStatus === "purge_pending" ? rawPhoto.storageStatus : "available",
+        purgedAt: typeof rawPhoto.purgedAt === "string" ? rawPhoto.purgedAt : null,
+      }];
     }),
     analysis: result ? {
       ingredients,
+      summary: result && typeof result.summary === "string" ? result.summary : undefined,
       dishType,
       calorieAnalysis,
       calories: apiRange(totals.calories),
@@ -347,6 +387,8 @@ export function apiMealToRecord(value: unknown): MealRecord {
       carbohydratesGrams: apiRange(totals.carbohydrateGrams),
       fatGrams: apiRange(totals.fatGrams),
       fiberGrams: apiRange(totals.fiberGrams),
+      sugarGrams: apiRange(totals.sugarGrams ?? totals.sugarsGrams ?? totals.sugars),
+      addedSugarGrams: apiRange(totals.addedSugarGrams ?? totals.addedSugarsGrams ?? totals.addedSugars),
       confidence: confidence(result.confidence),
       note: uncertainties.length ? uncertainties.join(" · ") : typeof result.summary === "string" ? result.summary : undefined,
     } : null,
@@ -373,8 +415,8 @@ function recordAnalysisToApi(analysis: MealAnalysis) {
     summary: "Analyse relue et confirmée.",
     dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
     calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
-    foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({ name: ingredient.name.trim(), preparation: null, portion: ingredient.portion.trim() || null, estimatedGrams: null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: ingredient.confidence ?? "medium" })),
-    totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams) },
+    foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({ name: ingredient.name.trim(), preparation: ingredient.preparation?.trim() || null, portion: ingredient.portion.trim() || null, estimatedGrams: ingredient.estimatedGrams ?? null, calories: normalizedApiRange(ingredient.calories), proteinGrams: normalizedApiRange(ingredient.proteinGrams), carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams), fatGrams: normalizedApiRange(ingredient.fatGrams), fiberGrams: normalizedApiRange(ingredient.fiberGrams), sugarGrams: normalizedApiRange(ingredient.sugarGrams), addedSugarGrams: normalizedApiRange(ingredient.addedSugarGrams), confidence: ingredient.confidence ?? "medium" })),
+    totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
     confidence: analysis.confidence ?? "medium",
     uncertainties: analysis.note ? [analysis.note.slice(0, 300)] : [],
   };
@@ -408,54 +450,54 @@ function likelyLabel(range: NutritionRange | undefined) {
   return "—";
 }
 
-type DayTotal = { calories: number; protein: number; fat: number; carbs: number; fiber: number };
+type DayTotal = { calories: number | null; protein: number | null; fat: number | null; carbs: number | null; fiber: number | null };
 
 function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
   const confirmed = MEAL_SLOTS.map((slot) => meals[slot]).filter((meal): meal is MealRecord => meal !== null && meal !== undefined && meal.status === "confirmed");
   if (confirmed.length === 0) return null;
-  let calories = 0;
-  let protein = 0;
-  let fat = 0;
-  let carbs = 0;
-  let fiber = 0;
+  let calories: number | null = 0;
+  let protein: number | null = 0;
+  let fat: number | null = 0;
+  let carbs: number | null = 0;
+  let fiber: number | null = 0;
   for (const meal of confirmed) {
     const analysis = meal.analysis;
-    const calorieLikely = likelyOf(analysis?.calories);
-    const proteinLikely = likelyOf(analysis?.proteinGrams);
-    const fatLikely = likelyOf(analysis?.fatGrams);
-    const carbsLikely = likelyOf(analysis?.carbohydratesGrams);
-    const fiberLikely = likelyOf(analysis?.fiberGrams);
-    if (calorieLikely === null || proteinLikely === null || fatLikely === null || carbsLikely === null || fiberLikely === null) return null;
-    calories += calorieLikely;
-    protein += proteinLikely;
-    fat += fatLikely;
-    carbs += carbsLikely;
-    fiber += fiberLikely;
+    const add = (total: number | null, value: number | null) => total === null || value === null ? null : total + value;
+    calories = add(calories, likelyOf(analysis?.calories));
+    protein = add(protein, likelyOf(analysis?.proteinGrams));
+    fat = add(fat, likelyOf(analysis?.fatGrams));
+    carbs = add(carbs, likelyOf(analysis?.carbohydratesGrams));
+    fiber = add(fiber, likelyOf(analysis?.fiberGrams));
   }
-  return { calories: Math.round(calories), protein: Math.round(protein), fat: Math.round(fat), carbs: Math.round(carbs), fiber: Math.round(fiber) };
+  return {
+    calories: calories === null ? null : Math.round(calories),
+    protein: protein === null ? null : Math.round(protein),
+    fat: fat === null ? null : Math.round(fat),
+    carbs: carbs === null ? null : Math.round(carbs),
+    fiber: fiber === null ? null : Math.round(fiber),
+  };
 }
 
 function statusLabel(meal: MealRecord | null) {
-  if (!meal) return "À commencer";
+  if (!meal) return "";
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
   if (meal.status === "confirmed") return "Confirmé";
   if (meal.status === "error") return "À réessayer";
-  if (meal.photos.length > 0) return "Photos à analyser";
+  if (meal.photos.some((photo) => photo.storageStatus !== "purged")) return "Photos à analyser";
   if (meal.note.trim()) return "Texte à compléter";
-  return "À commencer";
+  return "";
 }
 
-function MealTextInput({ slot, meal, disabled, onNote, onSubmitText }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; onNote: (note: string) => void; onSubmitText: () => void }) {
-  const hintId = `meal-${slot}-text-hint`;
-  return <form className={styles.textInput} onSubmit={(event) => { event.preventDefault(); onSubmitText(); }}>
-    <div className={styles.textField}>
-      <label className={styles.textLabel} htmlFor={`meal-${slot}-note`}>Décrire le repas</label>
-      <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder="Ex. 2 bananes et un café." aria-label={`Décrire le ${SLOT_LABELS[slot]}`} aria-describedby={hintId} disabled={disabled} onChange={(event) => onNote(event.target.value)} />
-      <p className={styles.textHint} id={hintId}>En toutes lettres, sans quantités obligatoires. Ex. 2 bananes et un café.</p>
-    </div>
-    <button className={styles.galleryButton} type="submit" disabled={disabled || !(meal?.note ?? "").trim()}>Ajouter ce texte</button>
-  </form>;
+function visibleAnalysisError(message: string | null | undefined) {
+  return message?.replace(/Grok/gi, "le service d’analyse") ?? "L’analyse n’a pas abouti. Vérifie ta connexion puis réessaie.";
+}
+
+function MealTextInput({ slot, meal, disabled, onNote }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; onNote: (note: string) => void }) {
+  return <div className={styles.textInput}>
+    <label className={styles.visuallyHidden} htmlFor={`meal-${slot}-note`}>Décrire le {SLOT_LABELS[slot]}</label>
+    <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder="Ex. 2 bananes et un café." disabled={disabled} onChange={(event) => onNote(event.target.value)} />
+  </div>;
 }
 
 function PhotoOriginPicker({ photo, onChange }: { photo: MealPhoto; onChange: (origin: MealOrigin) => void }) {
@@ -477,6 +519,27 @@ function RatingScale({ label, value, onChange }: { label: string; value: Rating 
   </fieldset>;
 }
 
+function AnalysisDisplay({ meal }: { meal: MealRecord }) {
+  const analysis = meal.analysis;
+  if (!analysis) return null;
+  return <div className={styles.analysisDisplay}>
+    {analysis.dishType && <p className={styles.dishType}><strong>{analysis.dishType}</strong></p>}
+    <div className={styles.confirmedNutrition}>
+      <span><strong>{likelyLabel(analysis.calories)}</strong> kcal ({formatLowHigh(analysis.calories)}) Calories</span>
+      <span><strong>{likelyLabel(analysis.proteinGrams)}</strong> g ({formatLowHigh(analysis.proteinGrams)}) Protéines</span>
+      <span><strong>{likelyLabel(analysis.fatGrams)}</strong> g ({formatLowHigh(analysis.fatGrams)}) Lipides</span>
+      <span><strong>{likelyLabel(analysis.carbohydratesGrams)}</strong> g ({formatLowHigh(analysis.carbohydratesGrams)}) Glucides</span>
+      <span><strong>{likelyLabel(analysis.fiberGrams)}</strong> g ({formatLowHigh(analysis.fiberGrams)}) Fibres</span>
+      {analysis.sugarGrams && <span><strong>{likelyLabel(analysis.sugarGrams)}</strong> g ({formatLowHigh(analysis.sugarGrams)}) Sucres</span>}
+    </div>
+    {analysis.ingredients.length > 0
+      ? <ul className={styles.ingredientsList}>{analysis.ingredients.map((ingredient) => <li key={ingredient.id}><strong>{formatIngredientLabel(ingredient)}</strong>{(ingredient.calories || ingredient.proteinGrams || ingredient.carbohydratesGrams || ingredient.fatGrams || ingredient.fiberGrams || ingredient.sugarGrams || ingredient.addedSugarGrams) && <small>{ingredient.calories && `${likelyLabel(ingredient.calories)} kcal`}{ingredient.proteinGrams && ` · ${likelyLabel(ingredient.proteinGrams)} g prot.`}{ingredient.carbohydratesGrams && ` · ${likelyLabel(ingredient.carbohydratesGrams)} g gluc.`}{ingredient.fatGrams && ` · ${likelyLabel(ingredient.fatGrams)} g lip.`}{ingredient.fiberGrams && ` · ${likelyLabel(ingredient.fiberGrams)} g fibres`}{ingredient.sugarGrams && ` · ${likelyLabel(ingredient.sugarGrams)} g sucres`}{ingredient.addedSugarGrams && ` · ${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés`}</small>}</li>)}</ul>
+      : <p className={styles.ingredientsList}>Composition non détaillée</p>}
+    {analysis.confidence && <p className={styles.analysisMeta}>Confiance : {analysis.confidence === "high" ? "élevée" : analysis.confidence === "medium" ? "moyenne" : "faible"}</p>}
+    {analysis.uncertainties && analysis.uncertainties.length > 0 && <details className={styles.uncertaintiesDetails}><summary>Incertitudes ({analysis.uncertainties.length})</summary><ul className={styles.uncertainties}>{analysis.uncertainties.map((item) => <li key={item}>{item}</li>)}</ul></details>}
+  </div>;
+}
+
 function PhotoInput({ slot, onFiles, disabled = false }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -492,111 +555,91 @@ function PhotoInput({ slot, onFiles, disabled = false }: { slot: MealSlot; onFil
   </div>;
 }
 
-function PhotoStrip({ meal, files, onRemove, onOrigin, disabled }: { meal: MealRecord; files: Record<string, File>; onRemove: (photoId: string) => void; onOrigin: (photoId: string, origin: MealOrigin) => void; disabled: boolean }) {
-  return <div className={styles.photoGrid} role="list" aria-label={`${meal.photos.length} photo${meal.photos.length > 1 ? "s" : ""} du repas`}>
-    {meal.photos.map((photo, index) => <figure className={styles.photo} role="listitem" key={photo.id}>
+function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; onRemove: (photoId: string) => void; onOrigin: (photoId: string, origin: MealOrigin) => void; disabled: boolean }) {
+  const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  return <div className={styles.photoGrid} role="list" aria-label={`${availablePhotos.length} photo${availablePhotos.length > 1 ? "s" : ""} du repas`}>
+    {availablePhotos.map((photo, index) => <figure className={styles.photo} role="listitem" key={photo.id}>
       <div className={styles.photoFrame}>
         {/* User-selected blob URLs and authenticated photo routes cannot use next/image's static loader. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo.url} alt={`Photo ${index + 1} du repas`} width={360} height={280} />
+        <img src={photo.url} alt={`Photo ${index + 1} du repas`} width={360} height={280} loading="lazy" decoding="async" />
         <button className={styles.photoRemove} type="button" disabled={disabled} onClick={() => onRemove(photo.id)} aria-label={`Retirer la photo ${index + 1}`}><X size={15} aria-hidden="true" /></button>
       </div>
-      <figcaption><span>Photo {index + 1}{files[photo.id] ? " · nouvelle" : ""}</span><PhotoOriginPicker photo={photo} onChange={(origin) => onOrigin(photo.id, origin)} /></figcaption>
+      <figcaption><span>Photo {index + 1}</span><PhotoOriginPicker photo={photo} onChange={(origin) => onOrigin(photo.id, origin)} /></figcaption>
     </figure>)}
   </div>;
 }
 
-function ReviewForm({ meal, onChange, onAddIngredient }: { meal: MealRecord; onChange: (next: MealRecord) => void; onAddIngredient: () => void }) {
-  const analysis = meal.analysis;
-  if (!analysis) return <div className={styles.analysisMissing} role="status">L’analyse n’a pas renvoyé de composition à relire.</div>;
-  const updateRange = (key: "calories" | "proteinGrams", edge: "low" | "high", raw: string) => onChange({ ...meal, analysis: { ...analysis, [key]: { ...analysis[key], [edge]: raw === "" ? null : Number(raw) } } });
-  return <div className={styles.reviewBody}>
-    <div className={styles.reviewIntro}><div><span className={styles.eyebrow}>Relecture</span><p>Corrige les éléments importants avant de confirmer. Les valeurs restent des estimations.</p></div><span className={styles.aiBadge}><Sparkles size={14} aria-hidden="true" />Grok</span></div>
-    <div className={styles.ingredientList}>
-      <div className={styles.reviewHeading}><h4>Type de plat</h4><span>{analysis.dishType ? "Identifié" : "Non déterminé"}</span></div>
-      <div className={styles.ingredientRow}>
-        <label><span className={styles.visuallyHidden}>Type de plat</span><input value={analysis.dishType ?? ""} placeholder="Ex. Salade composée" aria-label="Type de plat" onChange={(event) => onChange({ ...meal, analysis: { ...analysis, dishType: event.target.value || null } })} /></label>
-      </div>
-    </div>
-    <div className={styles.ingredientList}>
-      <div className={styles.reviewHeading}><h4>Ingrédients identifiés</h4><span>{analysis.ingredients.length} élément{analysis.ingredients.length > 1 ? "s" : ""}</span></div>
-      <p className={styles.inlineHint}>Quantité entre parenthèses seulement si estimable sur photo.</p>
-      {analysis.ingredients.map((ingredient) => <div className={styles.ingredientRow} key={ingredient.id}>
-        <label><span className={styles.visuallyHidden}>Aliment</span><input value={ingredient.name} placeholder="Aliment" aria-label={`Aliment ${ingredient.name}`} onChange={(event) => onChange({ ...meal, analysis: { ...analysis, ingredients: analysis.ingredients.map((item) => item.id === ingredient.id ? { ...item, name: event.target.value } : item) } })} /></label>
-        <label><span className={styles.visuallyHidden}>Quantité estimée, optionnel</span><input value={ingredient.portion} placeholder="Quantité (si visible)" aria-label={`Quantité de ${ingredient.name}, optionnel`} onChange={(event) => onChange({ ...meal, analysis: { ...analysis, ingredients: analysis.ingredients.map((item) => item.id === ingredient.id ? { ...item, portion: event.target.value } : item) } })} /></label>
-      </div>)}
-      <button className={styles.addIngredient} type="button" onClick={onAddIngredient}><Plus size={15} aria-hidden="true" />Ajouter un aliment</button>
-    </div>
-    <div className={styles.nutritionReview}>
-      <div className={styles.reviewHeading}><h4>Analyse calories</h4><span>{analysis.confidence ? `Confiance ${analysis.confidence === "high" ? "haute" : analysis.confidence === "medium" ? "moyenne" : "faible"}` : "Fourchette"}</span></div>
-      <p><strong>{likelyLabel(analysis.calories)}</strong> kcal ({formatLowHigh(analysis.calories)}){analysis.calorieAnalysis ? ` — ${analysis.calorieAnalysis}` : ""}</p>
-      <label className={styles.rangeField}><span>Calories</span><span className={styles.rangeInputs}><input type="number" min="0" inputMode="numeric" aria-label="Calories minimum" value={analysis.calories.low ?? ""} onChange={(event) => updateRange("calories", "low", event.target.value)} /><span aria-hidden="true">–</span><input type="number" min="0" inputMode="numeric" aria-label="Calories maximum" value={analysis.calories.high ?? ""} onChange={(event) => updateRange("calories", "high", event.target.value)} /><small>kcal</small></span></label>
-      <label className={styles.rangeField}><span>Protéines</span><span className={styles.rangeInputs}><input type="number" min="0" inputMode="decimal" aria-label="Protéines minimum" value={analysis.proteinGrams.low ?? ""} onChange={(event) => updateRange("proteinGrams", "low", event.target.value)} /><span aria-hidden="true">–</span><input type="number" min="0" inputMode="decimal" aria-label="Protéines maximum" value={analysis.proteinGrams.high ?? ""} onChange={(event) => updateRange("proteinGrams", "high", event.target.value)} /><small>g</small></span></label>
-    </div>
-    {analysis.note && <p className={styles.analysisNote}>{analysis.note}</p>}
-  </div>;
-}
-
-function MealCard({ meal, slot, files, saving, processingFiles, mutationBusy, confirmError, onFiles, onRemovePhoto, onOrigin, onAnalyze, onEdit, onReviewChange, onAddIngredient, onConfirm, onRating, onRetry, onNote, onSubmitText, onManualReview }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, onRemovePhoto, onOrigin, onAnalyze, onEdit, onConfirm, onRating, onRetry, onNote, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
-  files: Record<string, File>;
   saving: boolean;
   processingFiles: boolean;
   mutationBusy: boolean;
-  confirmError: string | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onOrigin: (photoId: string, origin: MealOrigin) => void;
   onAnalyze: () => void;
   onEdit: () => void;
-  onReviewChange: (next: MealRecord) => void;
-  onAddIngredient: () => void;
   onConfirm: () => void;
   onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void;
   onRetry: () => void;
   onNote: (note: string) => void;
-  onSubmitText: () => void;
-  onManualReview: () => void;
+  confirmError?: string | null;
 }) {
   const headingId = `meal-${slot}-title`;
-  const analyzeHintId = `meal-${slot}-analyze-hint`;
-  const textAnalyzeHintId = `meal-${slot}-text-analyze-hint`;
-  const noOrigin = meal?.photos.some((photo) => !photo.origin) ?? false;
-  const hasPhotos = Boolean(meal && meal.photos.length > 0);
+  const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
   const hasNote = Boolean(meal?.note.trim());
-  const canAnalyzePhotos = Boolean(meal && hasPhotos && meal.photos.length <= MAX_MEAL_PHOTOS && !noOrigin);
-  const canAnalyzeText = Boolean(meal && hasNote && !hasPhotos);
-  const canAnalyze = canAnalyzePhotos || canAnalyzeText;
-  const canManual = Boolean(meal && hasNote && !meal.analysis);
-  // Même bloc de saisie tant qu'il n'y a ni photo ni analyse : l'input texte
-  // reste monté pendant la frappe, pas de perte de focus au 1er caractère.
-  const isEmpty = !meal || (meal.status === "draft" && !hasPhotos && !meal.analysis);
+  const status = meal?.status ?? "draft";
+  const canAnalyze = Boolean(meal) && (hasPhotos || hasNote) && status === "draft";
+  const visibleStatus = meal ? statusLabel(meal) : "";
   return <article className={`${styles.mealCard} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><span className={styles.mealIndex}>{MEAL_SLOTS.indexOf(slot) + 1}</span><div><span className={styles.eyebrow}>{SLOT_SHORT_LABELS[slot]}</span><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div></div>
-      <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{statusLabel(meal)}</span>
+      {visibleStatus && <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
-    {isEmpty ? <div className={styles.emptyMeal}>
-      <div><Utensils size={18} aria-hidden="true" /><p>Photo ou simple texte : décris ce repas en quelques mots.</p></div>
-      <PhotoInput slot={slot} onFiles={onFiles} disabled={processingFiles} />
-      <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy} onNote={onNote} onSubmitText={onSubmitText} />
-      {hasNote ? <button className={styles.analyzeButton} type="button" disabled={processingFiles || mutationBusy} onClick={onAnalyze} aria-describedby={textAnalyzeHintId}><Sparkles size={17} aria-hidden="true" />Analyser le texte<ChevronRight size={16} aria-hidden="true" /></button> : null}
-      {hasNote ? <p className={styles.inlineHint} id={textAnalyzeHintId}>Analyse le texte sans photo, photos en option.</p> : null}
-    </div> : <>
-      {meal.status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={22} aria-hidden="true" /><div><strong>Analyse en cours</strong><span>Grok prépare une estimation à relire.</span></div></div>}
-      {meal.status !== "analyzing" && <div className={styles.mealBody}>
-        {hasPhotos ? <PhotoStrip meal={meal} files={files} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy} /> : null}
-        {hasNote ? <p className={styles.mealNote}>« {meal.note} »</p> : null}
-        {meal.status === "draft" && <div className={styles.photoActions}><PhotoInput slot={slot} onFiles={onFiles} disabled={processingFiles} /><button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy} onClick={onAnalyze} aria-describedby={analyzeHintId}><Sparkles size={17} aria-hidden="true" />{processingFiles ? "Préparation…" : hasPhotos ? "Analyser" : hasNote ? "Analyser le texte" : "Analyser"}<ChevronRight size={16} aria-hidden="true" /></button><p className={styles.inlineHint} id={analyzeHintId}>{hasPhotos ? "Analyse les photos et la note si présente." : hasNote ? "Analyse le texte sans photo." : "Ajoute une photo ou décris le repas pour analyser."}</p>{noOrigin && <p className={styles.inlineHint}>Choisis l’origine de chaque photo pour continuer.</p>}{canManual ? <button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onManualReview}>Compléter à la main</button> : null}</div>}
-        {meal.status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{meal.error || "Réessaie lorsque la connexion sera disponible."}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-        {meal.status === "review" && meal.analysis && <><ReviewForm meal={meal} onChange={onReviewChange} onAddIngredient={onAddIngredient} />{confirmError ? <p className={styles.confirmError} role="alert">{confirmError}</p> : null}{!confirmError && meal.error ? <p className={styles.confirmError} role="alert">{meal.error}</p> : null}<div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>{hasPhotos ? "Modifier les photos" : "Modifier le brouillon"}</button><button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm} aria-describedby={confirmError ? `meal-${slot}-confirm-error` : undefined}>{saving ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer le repas</button></div>{confirmError ? <span id={`meal-${slot}-confirm-error`} className={styles.visuallyHidden}>Renseigne les deux critères pour valider</span> : null}</>}
-        {meal.status === "review" && !meal.analysis && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Contenu à compléter</strong><span>Ajoute une photo analysée ou complète à la main avant de relire.</span></div><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Revenir au brouillon</button></div>}
-        {meal.status === "confirmed" && <div className={styles.confirmedSummary}>{meal.analysis?.dishType ? <p><strong>{meal.analysis.dishType}</strong></p> : null}<div className={styles.confirmedNutrition}><span><strong>{likelyLabel(meal.analysis?.calories)}</strong> kcal ({formatLowHigh(meal.analysis?.calories)})Calories</span><span><strong>{likelyLabel(meal.analysis?.proteinGrams)}</strong> g ({formatLowHigh(meal.analysis?.proteinGrams)})Protéines</span></div>{meal.analysis?.calorieAnalysis ? <p>{meal.analysis.calorieAnalysis}</p> : null}<p>{meal.analysis ? formatIngredientList(meal.analysis.ingredients) : hasNote ? `« ${meal.note} »` : "Composition non détaillée"}</p><button className={styles.editButton} type="button" onClick={onEdit}>Corriger <ChevronRight size={15} aria-hidden="true" /></button></div>}
-        {(meal.status === "review" || meal.status === "confirmed") && <div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div>}
+    {status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={22} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
+    {status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
+      {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy} />}
+      {status !== "confirmed" && <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy} onNote={onNote} />}
+      {status === "draft" && <div className={styles.actionsRow}>
+        <PhotoInput slot={slot} onFiles={onFiles} disabled={processingFiles} />
+        <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy} onClick={onAnalyze}>
+          <Sparkles size={17} aria-hidden="true" />Analyser
+        </button>
       </div>}
-    </>}
+      {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
+      {status === "review" && meal?.analysis && <><AnalysisDisplay meal={meal} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button><button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saving ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer</button></div>{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}</>}
+      {status === "confirmed" && meal && <><AnalysisDisplay meal={meal} /><div className={styles.reviewActions}><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button></div></>}
+      {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="status">Réanalyse interrompue. L’analyse précédente reste conservée.</p>}
+      {(status === "review" || status === "confirmed") && meal && <details className={styles.ratingsDetails}><summary>Ressentis</summary><div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div></details>}
+    </div>}
   </article>;
+}
+
+const NUTRITION_RING_RADIUS = 54;
+const NUTRITION_RING_CIRCUMFERENCE = 2 * Math.PI * NUTRITION_RING_RADIUS;
+
+function MealPageHeader({ totals, targets }: { totals: DayTotal | null; targets: NutritionTargets }) {
+  const calories = totals?.calories ?? null;
+  const calorieTarget = targets.caloriesKcal.likely;
+  const protein = totals?.protein ?? null;
+  const proteinTarget = targets.proteinG.likely;
+  const calorieProgress = calories === null || calorieTarget <= 0 ? 0 : Math.min(100, Math.max(0, calories / calorieTarget * 100));
+  const calorieProgressValue = calories === null ? null : Math.round(calorieProgress);
+  const ringStyle = { "--nutrition-ring-offset": NUTRITION_RING_CIRCUMFERENCE * (1 - calorieProgress / 100) } as CSSProperties;
+
+  return <header className={styles.pageHeader}>
+    <div><h1 id="meal-journal-title">Repas</h1></div>
+    <div className={styles.dayProgress} aria-label={`Calories : ${calories ?? "indisponibles"} sur ${calorieTarget} kilocalories. Protéines : ${protein ?? "indisponibles"} sur ${proteinTarget} grammes.`}>
+      <div className={styles.nutritionRing} style={ringStyle} aria-hidden="true">
+        <svg viewBox="0 0 128 128"><circle className={styles.nutritionRingTrack} cx="64" cy="64" r={NUTRITION_RING_RADIUS} /><circle className={styles.nutritionRingProgress} cx="64" cy="64" r={NUTRITION_RING_RADIUS} strokeDasharray={NUTRITION_RING_CIRCUMFERENCE} /></svg>
+        <span><strong>{calorieProgressValue ?? "—"}</strong><small>% calories</small></span>
+      </div>
+      <p><span>Calories</span><strong>{calories ?? "—"} / {calorieTarget} kcal</strong></p>
+      <p><span>Protéines</span><strong>{protein ?? "—"} / {proteinTarget} g</strong></p>
+    </div>
+  </header>;
 }
 
 export function MealJournal({ date, today: providedToday, initialData, api, className }: Props) {
@@ -614,7 +657,9 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const [confirmError, setConfirmError] = useState<Partial<Record<MealSlot, string | null>>>({});
   const [savingSlot, setSavingSlot] = useState<MealSlot | null>(null);
   const [targets, setTargets] = useState<NutritionTargets>(DEFAULT_NUTRITION_TARGETS);
+  const [targetError, setTargetError] = useState<string | null>(null);
   const objectUrls = useRef(new Set<string>());
+  const targetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRequestId = useRef(0);
   const mutationInFlight = useRef(false);
   const navigationDisabled = processingFiles || deletingPhotoId !== null || savingSlot !== null || Object.values(data?.meals ?? {}).some((meal) => meal?.status === "analyzing");
@@ -667,15 +712,59 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
   useEffect(() => {
-    setTargets(loadNutritionTargets());
+    const localTargets = loadNutritionTargets();
+    setTargets(localTargets);
+    const controller = new AbortController();
+    void fetch("/api/nutrition-targets", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Les objectifs nutritionnels ne sont pas disponibles.");
+        const parsed = parseNutritionTargets(body.targets);
+        if (parsed) {
+          const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
+          if (body.persisted === false && hasCustomizedLocalTargets) {
+            const migrated = await fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: localTargets }), signal: controller.signal });
+            if (!migrated.ok) throw new Error("Les objectifs locaux n’ont pas pu être synchronisés.");
+            setTargets(localTargets);
+            return;
+          }
+          setTargets(parsed);
+          saveNutritionTargets(parsed);
+        }
+      })
+      .catch((error) => {
+        if (error instanceof Error && error.name !== "AbortError") setTargetError("Objectifs locaux utilisés : la synchronisation Soma est indisponible.");
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => () => {
+    if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
   }, []);
 
   const updateTargetLikely = useCallback((key: "caloriesKcal" | "proteinG" | "fatG" | "carbsG" | "fiberG", raw: string) => {
     const value = raw === "" ? null : Number(raw);
     setTargets((current) => {
       if (value === null || !Number.isFinite(value) || value < 0) return current;
-      const next = { ...current, [key]: { ...current[key], likely: value } };
+      const range = current[key];
+      const next = {
+        ...current,
+        [key]: {
+          low: Math.max(0, value - (range.likely - range.low)),
+          likely: value,
+          high: value + (range.high - range.likely),
+        },
+      };
       saveNutritionTargets(next);
+      if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
+      targetSaveTimer.current = setTimeout(() => {
+        void fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: next }) })
+          .then(async (response) => {
+            if (!response.ok) throw new Error();
+            setTargetError(null);
+          })
+          .catch(() => setTargetError("Modification conservée sur cet appareil, mais pas encore synchronisée avec Soma."));
+      }, 500);
       return next;
     });
   }, []);
@@ -705,12 +794,14 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     setData((current) => {
       const next = current ?? emptyData(selectedDate);
       const meal = next.meals[slot] ?? emptyMeal(selectedDate, slot);
-      const remaining = Math.max(0, MAX_MEAL_PHOTOS - meal.photos.length);
+      const activePhotoCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+      const remaining = Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount);
       const accepted = prepared.slice(0, remaining);
       const newPhotos = accepted.map((file) => {
         const id = randomId("photo");
         const url = URL.createObjectURL(file);
         objectUrls.current.add(url);
+        // L’origine reste inconnue tant que l’utilisateur ne l’a pas choisie.
         return { id, url, filename: file.name, origin: null } satisfies MealPhoto;
       });
       if (accepted.length === 0) return next;
@@ -767,23 +858,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     updateMeal(slot, (current) => ({ ...current, note: note.slice(0, 500), error: null }));
   };
 
-  const submitText = (slot: MealSlot) => {
-    const meal = data?.meals[slot];
-    if (!meal?.note.trim()) {
-      setFileError("Écris quelques mots pour décrire le repas, par exemple « 2 bananes ».");
-      return;
-    }
-    setFileError(null);
-    startManualReview(slot);
-  };
-
-  const startManualReview = (slot: MealSlot) => {
-    updateMeal(slot, (current) => {
-      if (!current.note.trim() || current.analysis) return current.status === "review" ? current : { ...current, status: "review", error: null };
-      return { ...current, analysis: emptyManualAnalysis(current.note.trim().slice(0, 120)), status: "review", error: null };
-    });
-  };
-
   const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed") => {
     if (mutationInFlight.current) return;
     mutationInFlight.current = true;
@@ -805,11 +879,11 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const analyzeMeal = async (slot: MealSlot) => {
     const meal = data?.meals[slot];
     if (!meal || mutationInFlight.current) return;
-    const hasPhotosForAnalyze = meal.photos.length > 0;
+    const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+    const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasNoteForAnalyze = Boolean(meal.note.trim());
     if (hasPhotosForAnalyze) {
-      if (meal.photos.length > MAX_MEAL_PHOTOS) return;
-      if (meal.photos.some((photo) => !photo.origin)) return;
+      if (activePhotos.length > MAX_MEAL_PHOTOS) return;
     } else if (!hasNoteForAnalyze) return;
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
@@ -838,13 +912,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   const handleConfirm = (slot: MealSlot, meal: MealRecord) => {
     if (!meal.analysis) {
-      setConfirmError((previous) => ({ ...previous, [slot]: "Complète l’analyse (photo ou texte) avant de valider." }));
+      setConfirmError((previous) => ({ ...previous, [slot]: "Analyse le repas (photo ou texte) avant de valider." }));
       return;
     }
-    if (meal.mouthHeat === null || meal.stomachLoad === null) {
-      setConfirmError((previous) => ({ ...previous, [slot]: CONFIRM_ERROR_MESSAGE }));
-      return;
-    }
+    // Ressentis optionnels : ne plus bloquer la validation
     setConfirmError((previous) => ({ ...previous, [slot]: null }));
     void saveMeal(meal);
   };
@@ -864,30 +935,27 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     </div>
   </nav>;
 
-  if (loadState === "loading") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span aria-hidden="true" className={styles.brandMark}><Utensils size={16} /></span><div><span className={styles.eyebrow}>Nutrition</span><h1 id="meal-journal-title">Repas</h1><p className={styles.subtitle}>Photographie, confirme, suis le total jour.</p></div></div><span className={styles.dateLabel}>{formatDate(selectedDate)}</span></header>{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={21} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
-  if (loadState === "error") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><header className={styles.pageHeader}><div><span aria-hidden="true" className={styles.brandMark}><Utensils size={16} /></span><div><span className={styles.eyebrow}>Nutrition</span><h1 id="meal-journal-title">Repas</h1><p className={styles.subtitle}>Photographie, confirme, suis le total jour.</p></div></div><span className={styles.dateLabel}>{formatDate(selectedDate)}</span></header>{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Impossible de charger les repas</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div></section>;
+  if (loadState === "loading") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><MealPageHeader totals={null} targets={targets} />{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={21} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
+  if (loadState === "error") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title"><MealPageHeader totals={null} targets={targets} />{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Impossible de charger les repas</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div></section>;
 
   const readyData = data ?? emptyData(selectedDate);
-  const confirmed = MEAL_SLOTS.filter((slot) => readyData.meals[slot]?.status === "confirmed").length;
   const dayTotal = sumLikelyDay(readyData.meals);
   return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title">
-    <header className={styles.pageHeader}><div><span aria-hidden="true" className={styles.brandMark}><Utensils size={16} /></span><div><span className={styles.eyebrow}>Nutrition</span><h1 id="meal-journal-title">Repas</h1><p className={styles.subtitle}>Photographie, confirme, suis le total jour.</p></div></div><div className={styles.dateBlock}><span>{formatDate(readyData.date)}</span><small>{confirmed}/4 confirmés</small></div></header>
+    <MealPageHeader totals={dayTotal} targets={targets} />
     {dateNavigation}
-    <div className={styles.introRow}><p>Photo ou simple texte : décris ce que tu manges, Soma estime la composition et suit ton total face aux cibles masse.</p><span className={styles.limitNote}>Photo ou texte · 4 moments</span></div>
     <MealDayTargets totals={dayTotal ? { caloriesKcal: dayTotal.calories, proteinG: dayTotal.protein, fatG: dayTotal.fat, carbsG: dayTotal.carbs, fiberG: dayTotal.fiber } : null} targets={targets} />
-    <details className={styles.targetEditor}><summary>Cibles jour · {targets.caloriesKcal.likely} kcal (local)</summary><div>
+    <details className={styles.targetEditor}><summary>Cibles jour · {targets.caloriesKcal.likely} kcal</summary><div>
       <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories likely" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
       <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines likely" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>
       <label><span>Lipides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible lipides likely" value={targets.fatG.likely} onChange={(event) => updateTargetLikely("fatG", event.target.value)} /></label>
       <label><span>Glucides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible glucides likely" value={targets.carbsG.likely} onChange={(event) => updateTargetLikely("carbsG", event.target.value)} /></label>
       <label><span>Fibres (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible fibres likely" value={targets.fiberG.likely} onChange={(event) => updateTargetLikely("fiberG", event.target.value)} /></label>
-      <p>Fourchettes : {targets.caloriesKcal.low}–{targets.caloriesKcal.high} kcal · {targets.proteinG.low}–{targets.proteinG.high}g prot · {targets.fatG.low}–{targets.fatG.high}g lip · {targets.carbsG.low}–{targets.carbsG.high}g gluc · {targets.fiberG.low}–{targets.fiberG.high}g fibres. Stockées uniquement dans ce navigateur.</p>
     </div></details>
+    {targetError && <p className={styles.confirmError} role="status">{targetError}</p>}
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}
-    <nav className={styles.mealIndex} aria-label="Avancement des repas">{MEAL_SLOTS.map((slot) => <a href={`#meal-${slot}`} className={styles.mealIndexItem} key={slot}><span>{SLOT_SHORT_LABELS[slot]}</span><strong data-status={readyData.meals[slot]?.status ?? "empty"}>{statusLabel(readyData.meals[slot] ?? null)}</strong></a>)}</nav>
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} files={filesByPhotoId} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot] ?? null} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onEdit={() => updateMeal(slot, (current) => ({ ...current, status: "draft", error: null }))} onReviewChange={(next) => updateMeal(slot, () => ({ ...next, status: "review", error: null }))} onAddIngredient={() => updateMeal(slot, (current) => current.analysis ? { ...current, analysis: { ...current.analysis, ingredients: [...current.analysis.ingredients, { id: randomId("ingredient"), name: "", portion: "" }] } } : current)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onSubmitText={() => submitText(slot)} onManualReview={() => startManualReview(slot)} /></div>;
+      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onEdit={() => updateMeal(slot, (current) => ({ ...current, status: "draft", error: null }))} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
     })}</div>
   </section>;
 }

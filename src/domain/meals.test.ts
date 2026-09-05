@@ -12,4 +12,16 @@ describe("meal domain", () => {
   it("requires low, likely, and high nutrition estimates in order", () => {
     expect(() => mealAnalysisSchema.parse({ summary: "Meal", foods: [], totals: { calories: { low: 500, likely: 450, high: 600 }, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null }, confidence: "low", uncertainties: [] })).toThrow();
   });
+
+  it("accepts separate total and added sugar ranges", () => {
+    const result = mealAnalysisSchema.parse({
+      summary: "Banane et yaourt",
+      foods: [{ name: "Banane", preparation: null, portion: "1", estimatedGrams: null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: { low: 10, likely: 12, high: 15 }, addedSugarGrams: null, confidence: "medium" }],
+      totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: { low: 10, likely: 12, high: 15 }, addedSugarGrams: null },
+      confidence: "medium",
+      uncertainties: [],
+    });
+    expect(result.totals.sugarGrams?.likely).toBe(12);
+    expect(result.totals.addedSugarGrams).toBeNull();
+  });
 });

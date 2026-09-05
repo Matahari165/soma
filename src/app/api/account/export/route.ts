@@ -8,7 +8,7 @@ import { createR2ArchiveDownloadUrl } from "@/lib/r2";
 import { listPreviewMeals } from "@/services/meal-preview";
 import { mealToApi } from "@/services/meal-api";
 
-const userTables = ["profiles", "health_goals", "sleep_preferences", "dashboard_layouts", "sync_jobs", "health_records", "health_record_archives", "daily_health_metrics", "daily_calendar_metrics", "daily_checkins", "journal_variables", "journal_entries", "lab_narratives", "daily_scores", "insights", "correlation_results", "briefs", "coach_threads", "coach_messages", "agent_action_proposals", "workout_programs", "workout_program_exercises", "workout_sessions", "workout_session_sets", "meals", "meal_photos", "meal_feelings", "meal_analyses", "consent_events", "audit_events"];
+const userTables = ["profiles", "health_goals", "sleep_preferences", "dashboard_layouts", "nutrition_targets", "sync_jobs", "health_records", "health_record_archives", "daily_health_metrics", "daily_calendar_metrics", "daily_checkins", "journal_variables", "journal_entries", "lab_narratives", "daily_scores", "insights", "correlation_results", "briefs", "coach_threads", "coach_messages", "agent_action_proposals", "workout_programs", "workout_program_exercises", "workout_sessions", "workout_session_sets", "meals", "meal_photos", "meal_feelings", "meal_analyses", "consent_events", "audit_events"];
 
 export async function GET() {
   if (isLocalPreviewMode()) {
@@ -37,8 +37,8 @@ export async function GET() {
     return [Promise.resolve({ path: manifest.object_path, signedUrl: createR2ArchiveDownloadUrl(manifest.object_path) })];
   })).catch(() => null);
   if (!archiveDownloads) return NextResponse.json({ error: "Archived health records could not be added to the export." }, { status: 500 });
-  const mealPhotoDownloads = ((exported.meal_photos ?? []) as Array<{ id?: unknown; meal_id?: unknown }>).flatMap((photo) =>
-    typeof photo.id === "string" && typeof photo.meal_id === "string"
+  const mealPhotoDownloads = ((exported.meal_photos ?? []) as Array<{ id?: unknown; meal_id?: unknown; storage_status?: unknown }>).flatMap((photo) =>
+    typeof photo.id === "string" && typeof photo.meal_id === "string" && photo.storage_status !== "purged"
       ? [{ mealId: photo.meal_id, photoId: photo.id, path: `/api/meals/${encodeURIComponent(photo.meal_id)}/photos/${encodeURIComponent(photo.id)}` }]
       : [],
   );

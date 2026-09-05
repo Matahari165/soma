@@ -43,7 +43,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   } catch (error) {
     if (error instanceof MealServiceError) {
       const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : 503;
-      return NextResponse.json({ error: error.message }, { status });
+      return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code }, { status });
     }
     return NextResponse.json({ error: "Meal could not be updated." }, { status: 500 });
   }

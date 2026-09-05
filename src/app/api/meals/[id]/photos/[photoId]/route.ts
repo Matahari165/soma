@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { getR2MealPhotoObject } from "@/lib/r2";
 import { findPreviewPhoto, removePreviewPhoto, updatePreviewPhotoOrigin } from "@/services/meal-preview";
-import { findMealPhoto, MealServiceError, removeMealPhoto, updateMealPhotoOrigin } from "@/services/meals";
+import { findMealPhoto, MealServiceError, removeMealPhoto, updateMealPhotoOrigin, findMeal } from "@/services/meals";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string; photoId: string }> }) {
   const user = await getCurrentUser();
@@ -14,13 +14,19 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (isLocalPreviewMode()) {
     const photo = findPreviewPhoto(user.id, id, photoId);
     if (!photo) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    if (photo.storageStatus === "purged") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
     return new Response(photo.data, { headers: { "Content-Type": photo.mimeType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   }
   try {
     const photo = await findMealPhoto(user.id, id, photoId);
     if (!photo) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    if (photo.storageStatus === "purged") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
     const object = await getR2MealPhotoObject(photo.objectPath);
-    if (!object?.body) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    if (!object?.body) {
+      const meal = await findMeal(user.id, id).catch(() => null);
+      if (meal?.status === "confirmed") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée." }, { status: 410 });
+      return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    }
     return new Response(object.body, { headers: { "Content-Type": photo.mimeType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     if (error instanceof MealServiceError) return NextResponse.json({ error: error.message }, { status: error.code === "not_found" ? 404 : 500 });

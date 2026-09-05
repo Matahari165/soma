@@ -13,7 +13,7 @@ import {
   type UpdateMealInput,
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
-import { analyzeMealImages, analyzeMealText, isXaiVisionMimeType, type MealVisionProvider } from "@/integrations/xai/meal-vision";
+import { analyzeMealImages, analyzeMealText, isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import {
@@ -33,13 +33,53 @@ import {
   updateMeal,
   updateMealAnalysis,
   updatePhotoOrigin,
+  updatePhotoStorage,
   upsertMealFeelings,
 } from "@/repositories/meals";
 
 export class MealServiceError extends Error {
-  constructor(readonly code: "not_found" | "invalid" | "conflict" | "unavailable", message: string) {
+  constructor(readonly code: "not_found" | "invalid" | "conflict" | "unavailable", message: string, readonly diagnosticCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_unavailable" | "invalid_response" | "source_unavailable" | "photo_purge_pending") {
     super(message);
     this.name = "MealServiceError";
+  }
+}
+
+const PHOTO_PURGE_ERROR = "Les photos du repas n’ont pas pu être purgées. Réessaie pour terminer la confirmation.";
+
+function photoPurgeError() {
+  return new MealServiceError("unavailable", PHOTO_PURGE_ERROR, "photo_purge_pending");
+}
+
+async function setPhotoStorageState(userId: string, mealId: string, photoId: string, storageStatus: "available" | "purge_pending" | "purged", purgedAt: string | null) {
+  try {
+    const updated = await updatePhotoStorage(userId, mealId, photoId, { storageStatus, purgedAt });
+    if (!updated) throw photoPurgeError();
+  } catch {
+    throw photoPurgeError();
+  }
+}
+
+function hasPreservedAnalysis(meal: Meal, confirmedAnalysis: UpdateMealInput["confirmedAnalysis"]) {
+  return Boolean(
+    confirmedAnalysis
+      ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis.result : null)
+      ?? (meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result ? meal.lastSuccessfulAnalysis.result : null),
+  );
+}
+
+async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photos"][number]) {
+  // D1 is marked first so an R2 failure leaves an explicit retry state. If
+  // this write fails, the binary is deliberately kept and the error is
+  // surfaced to the caller.
+  await setPhotoStorageState(userId, mealId, photo.id, "purge_pending", null);
+  try {
+    await deleteR2MealPhotoObject(photo.objectPath);
+    await setPhotoStorageState(userId, mealId, photo.id, "purged", new Date().toISOString());
+  } catch {
+    // The successful pending write remains the durable recovery marker. The
+    // binary may or may not have been removed when the final D1 write failed,
+    // so retries must reconcile from this state rather than guess.
+    throw photoPurgeError();
   }
 }
 
@@ -52,8 +92,8 @@ function assertPhotoSize(size: number) {
 }
 
 export async function createMeal(userId: string, input: CreateMealInput) {
-  // Un repas texte (note sans photo, ex "2 bananes") est un contenu valide.
-  // Règle de confirmation : photos > 0 OU note non-vide.
+  // Photos are uploaded through the separate multipart endpoint; a confirmed
+  // create can therefore only be valid for a text-only meal.
   if (input.status === "confirmed" && !input.note?.trim()) throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
   const idempotencyLock = input.idempotencyKey ? `meal-create:${userId}:${input.idempotencyKey}` : null;
   let lockClaimed = false;
@@ -122,19 +162,17 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
   assertMealId(mealId);
   const current = await findMeal(userId, mealId);
   if (!current) throw new MealServiceError("not_found", "Meal not found.");
+  const activePhotos = current.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged");
   if (input.confirmedAnalysis && input.status !== "confirmed") throw new MealServiceError("invalid", "An edited analysis is saved when the meal is confirmed.");
   if (input.status === "confirmed") {
     const effectiveNote = input.note !== undefined ? input.note : current.note;
     if (current.photos.length === 0 && !effectiveNote?.trim()) {
       throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
     }
-  }
-  if (input.status === "confirmed") {
-    const effectiveMouthWarmth = input.mouthWarmthIntensity !== undefined ? normalizeMealFeeling(input.mouthWarmthIntensity) : current.mouthWarmthIntensity;
-    const effectiveStomachOverfull = input.stomachOverfullIntensity !== undefined ? normalizeMealFeeling(input.stomachOverfullIntensity) : current.stomachOverfullIntensity;
-    if (effectiveMouthWarmth === null || effectiveStomachOverfull === null) {
-      throw new MealServiceError("invalid", "Indique l'intensité bouche chaude et le rassasiement avant de confirmer.");
+    if (activePhotos.length > 0 && !hasPreservedAnalysis(current, input.confirmedAnalysis)) {
+      throw new MealServiceError("invalid", "Analyse les photos avant de confirmer ce repas.");
     }
+    // Les ressentis restent optionnels et ne bloquent pas la confirmation.
   }
   if ((input.mealDate && input.mealDate !== current.mealDate) || (input.mealType && input.mealType !== current.mealType)) {
     const conflicting = await findMealForSlot(userId, input.mealDate ?? current.mealDate, input.mealType ?? current.mealType);
@@ -170,6 +208,15 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
       completed_at: new Date().toISOString(),
     });
   }
+  if (input.status === "confirmed" && activePhotos.length > 0) {
+    // Politique Soma : l'analyse D1 est conservée, les binaires R2 sont
+    // purgés à la confirmation. Les lignes meal_photos (origine, métadonnées)
+    // sont gardées pour l'historique et Personal Lab. Un échec est exposé avec
+    // un état purge_pending pour permettre une nouvelle tentative.
+    await Promise.all(
+      activePhotos.map((photo) => purgeMealPhoto(userId, mealId, photo)),
+    );
+  }
   const updated = await findMeal(userId, mealId);
   if (!updated) throw new MealServiceError("unavailable", "The meal was updated but could not be reloaded.");
   return updated;
@@ -198,7 +245,8 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
       return existing;
     }
   }
-  if (meal.photos.length + files.length > MAX_MEAL_PHOTOS) {
+  const storedPhotoCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged").length;
+  if (storedPhotoCount + files.length > MAX_MEAL_PHOTOS) {
     if (uploadLock) await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
     throw new MealServiceError("invalid", `A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
   }
@@ -224,6 +272,8 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
         created_at: new Date().toISOString(),
         upload_idempotency_key: options.idempotencyKey ?? null,
         filename: file.filename ?? null,
+        storage_status: "available",
+        purged_at: null,
       }));
     }
     if (meal.status === "confirmed") await updateMeal(userId, mealId, { status: "draft" });
@@ -268,16 +318,26 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
   const meal = await findMeal(userId, mealId);
   if (!meal) throw new MealServiceError("not_found", "Meal not found.");
   const note = meal.note?.trim() ?? "";
-  const hasPhotos = meal.photos.length > 0;
-  if (!hasPhotos && !note) throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
-  if (hasPhotos && !meal.photos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
+  // A confirmed meal keeps photo metadata but its binaries are purged. Never
+  // try to send those paths back to Grok; a new analysis can use a note or
+  // newly uploaded available photos only.
+  const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
+  const hasPhotos = availablePhotos.length > 0;
+  const preservedAnalysis = meal.lastSuccessfulAnalysis ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis : null);
+  if (!hasPhotos && !note) {
+    if (preservedAnalysis) return { analysis: preservedAnalysis, fresh: false };
+    throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
+  }
+  if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
   const lockKey = `meal-analysis:${userId}:${mealId}`;
   const claimed = await claimCloudflareLock(lockKey, userId, 120_000);
   if (!claimed) throw new MealServiceError("conflict", "This meal is already being analysed.");
   try {
     const current = await findLatestMealAnalysis(userId, mealId);
-    if (current?.status === "completed" && !options.force) return { analysis: current, fresh: false };
-    const sourcePhotoIds = meal.photos.map((photo) => photo.id);
+    const lastSuccessful = meal.lastSuccessfulAnalysis ?? (current?.status === "completed" && current.result ? current : null);
+    if (!options.force && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
+    if (!hasPhotos && !note && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
+    const sourcePhotoIds = availablePhotos.map((photo) => photo.id);
     const analysisId = crypto.randomUUID();
     const createdAt = new Date().toISOString();
     await insertMealAnalysis({
@@ -297,9 +357,9 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       const analysed = hasPhotos
         ? await (async () => {
             const images = [];
-            for (const photo of meal.photos) {
+            for (const photo of availablePhotos) {
               const object = await getR2MealPhotoObject(photo.objectPath);
-              if (!object) throw new MealServiceError("unavailable", "One meal photo is no longer available.");
+              if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
               images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
             }
             return analyzeMealImages({ mealType: meal.mealType, mealDate: meal.mealDate, note: meal.note, images }, options.provider);
@@ -315,10 +375,15 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       });
       return { analysis: completed, fresh: true };
     } catch (error) {
-      const safeError = error instanceof MealServiceError ? error.message : "Grok meal analysis is temporarily unavailable.";
-      const failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, completed_at: new Date().toISOString() });
+      const visionError = error instanceof MealVisionError ? error : null;
+      const safeError = error instanceof MealServiceError ? error.message : visionError?.message ?? "Grok est momentanément indisponible.";
+      const errorCode = error instanceof MealServiceError ? error.diagnosticCode ?? "source_unavailable" : visionError?.code ?? "provider_unavailable";
+      let failed = null;
+      for (let attempt = 0; attempt < 2 && !failed; attempt += 1) {
+        failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, completed_at: new Date().toISOString() }).catch(() => null);
+      }
       if (error instanceof MealServiceError) throw error;
-      throw new MealServiceError("unavailable", failed.error ?? safeError);
+      throw new MealServiceError("unavailable", failed?.error ?? safeError, errorCode);
     }
   } finally {
     await releaseCloudflareLock(lockKey, userId).catch(() => undefined);
@@ -332,7 +397,7 @@ function nutritionEstimate(value: { low: number; likely: number; high: number } 
 
 function mealOrigin(meal: Meal): ConfirmedMealRecord["origin"] {
   const origins = new Set(meal.photos.map((photo) => photo.origin));
-  return origins.size === 1 ? [...origins][0] : "mixed";
+  return origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
 }
 
 /**
@@ -355,6 +420,8 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
       carbsG: nutritionEstimate(totals.carbohydrateGrams),
       fatG: nutritionEstimate(totals.fatGrams),
       fiberG: nutritionEstimate(totals.fiberGrams),
+      sugarG: nutritionEstimate(totals.sugarGrams),
+      addedSugarG: nutritionEstimate(totals.addedSugarGrams),
       mouthHeat: meal.mouthWarmthIntensity,
       stomachOverfullness: meal.stomachOverfullIntensity,
       photoIds: meal.photos.map((photo) => photo.id),
