@@ -18,87 +18,55 @@ export type TodaySignalValues = {
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-type AnimatedSignalValues = Pick<TodaySignalValues, "sleepMinutes" | "recoveryScore" | "effortScore">;
-
 const ANIMATION_DURATION_MS = 1_020;
 
-function animatedValues(values: TodaySignalValues): AnimatedSignalValues {
-  return {
-    sleepMinutes: values.sleepMinutes,
-    recoveryScore: values.recoveryScore,
-    effortScore: values.effortScore,
-  };
-}
-
-function valuesDiffer(left: AnimatedSignalValues, right: AnimatedSignalValues) {
-  return left.sleepMinutes !== right.sleepMinutes
-    || left.recoveryScore !== right.recoveryScore
-    || left.effortScore !== right.effortScore;
-}
-
-function interpolateValue(from: number | null, to: number | null, progress: number) {
-  if (to === null) return null;
-  const start = from === null ? 0 : from;
-  return start + (to - start) * progress;
-}
-
-function useAnimatedSignalValues(values: TodaySignalValues) {
-  const target = animatedValues(values);
-  const [displayed, setDisplayed] = useState<AnimatedSignalValues>(target);
-  const previousTarget = useRef(target);
+function AnimatedSignalNumber({
+  value,
+  format,
+}: {
+  value: number | null;
+  format: "duration" | "number";
+}) {
+  const spanRef = useRef<HTMLSpanElement>(null);
   const mounted = useRef(false);
+  const previousValue = useRef(value);
+
+  const formatted = value === null ? "—" : format === "duration" ? duration(value) : String(Math.round(value));
 
   useClientLayoutEffect(() => {
-    const previous = previousTarget.current;
-    const firstMount = !mounted.current;
-    const from: AnimatedSignalValues = {
-      sleepMinutes: firstMount ? (target.sleepMinutes === null ? null : 0) : previous.sleepMinutes,
-      recoveryScore: firstMount ? (target.recoveryScore === null ? null : 0) : previous.recoveryScore,
-      effortScore: firstMount ? (target.effortScore === null ? null : 0) : previous.effortScore,
-    };
-    const changed = firstMount || valuesDiffer(previous, target);
+    const from = !mounted.current ? 0 : previousValue.current ?? 0;
+    const target = value;
     mounted.current = true;
-    previousTarget.current = target;
+    previousValue.current = value;
 
-    if (!changed) {
-      setDisplayed(target);
+    if (target === null || from === target) {
+      if (spanRef.current) spanRef.current.textContent = formatted;
       return;
     }
 
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     if (reduceMotion || typeof window.requestAnimationFrame !== "function") {
-      setDisplayed(target);
+      if (spanRef.current) spanRef.current.textContent = formatted;
       return;
     }
 
-    setDisplayed(from);
     const startedAt = performance.now();
     let frame = 0;
-    let animationComplete = false;
     const tick = (now: number) => {
       const progress = Math.min(1, (now - startedAt) / ANIMATION_DURATION_MS);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayed({
-        sleepMinutes: interpolateValue(from.sleepMinutes, target.sleepMinutes, eased),
-        recoveryScore: interpolateValue(from.recoveryScore, target.recoveryScore, eased),
-        effortScore: interpolateValue(from.effortScore, target.effortScore, eased),
-      });
+      const current = from + (target - from) * eased;
+      if (spanRef.current) {
+        spanRef.current.textContent = format === "duration" ? duration(Math.round(current)) : String(Math.round(current));
+      }
       if (progress < 1) frame = window.requestAnimationFrame(tick);
-      else animationComplete = true;
+      else if (spanRef.current) spanRef.current.textContent = formatted;
     };
     frame = window.requestAnimationFrame(tick);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      // React Strict Mode probes effects twice in development. If that probe
-      // interrupts the initial animation, let the second setup replay it.
-      if (firstMount && !animationComplete) {
-        mounted.current = false;
-        previousTarget.current = target;
-      }
-    };
-  }, [target.effortScore, target.recoveryScore, target.sleepMinutes]);
+    return () => window.cancelAnimationFrame(frame);
+  }, [format, formatted, value]);
 
-  return displayed;
+  return <span ref={spanRef}>{formatted}</span>;
 }
 
 function duration(minutes: number | null) {
@@ -111,13 +79,7 @@ function comparison(value: number | null, average: number | null) {
   return value > average ? "above" : "below";
 }
 
-function displayValue(key: keyof AnimatedSignalValues, value: number | null) {
-  if (value === null) return "—";
-  if (key === "sleepMinutes") return duration(Math.round(value));
-  return String(Math.round(value));
-}
-
-function accessibleValue(key: keyof AnimatedSignalValues, value: number | null) {
+function accessibleValue(key: "sleepMinutes" | "recoveryScore" | "effortScore", value: number | null) {
   if (value === null) return "not available";
   if (key === "sleepMinutes") return duration(value);
   return String(Math.round(value));
@@ -128,7 +90,6 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   const [values, setValues] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const animated = useAnimatedSignalValues(values);
   const valuesRef = useRef(values);
   const announcedInitial = useRef(false);
 
@@ -173,12 +134,12 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [refresh]);
 
   const signals = [
-    { key: "sleepMinutes" as const, label: "Sleep duration", value: displayValue("sleepMinutes", animated.sleepMinutes), finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), average: values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes)), trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
-    { key: "recoveryScore" as const, label: "Recovery", value: displayValue("recoveryScore", animated.recoveryScore), finalValue: accessibleValue("recoveryScore", values.recoveryScore), average: values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : String(Math.round(values.averageRecoveryScore)), trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
-    { key: "effortScore" as const, label: "Effort", value: displayValue("effortScore", animated.effortScore), finalValue: accessibleValue("effortScore", values.effortScore), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
+    { key: "sleepMinutes" as const, label: "Sleep duration", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), average: values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes)), trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
+    { key: "recoveryScore" as const, label: "Recovery", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), average: values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : String(Math.round(values.averageRecoveryScore)), trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
+    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
   ];
-  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, value, finalValue, average, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
+  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, average, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
     <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">30-day avg · {average}</small></span>
-    <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{value}</strong>
+    <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{node}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;
 }

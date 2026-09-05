@@ -347,6 +347,13 @@ textarea:focus-visible,
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin .8s linear infinite; }
 
+.lab-entry__relations,
+.lab-entry__registry,
+.health-trends-block {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {

@@ -91,8 +91,12 @@
 .score-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .score-ring circle { fill: none; stroke-width: 6; }
 .score-ring__track { stroke: color-mix(in srgb, var(--ring-color) 18%, var(--paper)); }
-.score-ring__progress { stroke: var(--ring-color); stroke-linecap: round; transition: stroke-dashoffset 600ms var(--ease); }
-.score-ring--animated .score-ring__progress { transition: none; }
+.score-ring__progress { stroke: var(--ring-color); stroke-linecap: round; transition: stroke-dashoffset 900ms var(--ease); }
+.score-ring--animated .score-ring__progress { animation: score-ring-draw 1020ms var(--ease) both; }
+@keyframes score-ring-draw {
+  from { stroke-dashoffset: 339.292; }
+  to { stroke-dashoffset: var(--ring-offset); }
+}
 .score-ring__value { display: grid; place-items: center; font-family: var(--font-soma-mono), monospace; font-variant-numeric: tabular-nums; }
 .score-ring__value strong { font-size: 3.7rem; font-weight: 500; letter-spacing: -.09em; line-height: .85; }
 .score-ring__value small { margin-top: 8px; color: var(--ink-soft); font-size: .6rem; letter-spacing: .09em; text-transform: uppercase; }

@@ -87,12 +87,63 @@ export function AnimatedValueText({
   animate?: boolean;
   className?: string;
 }) {
-  const displayed = useAnimatedNumber(value, animate);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const target = value !== null && Number.isFinite(value) ? value : null;
+  const previousTarget = useRef(target);
+  const mounted = useRef(false);
+
   const prefix = showPlus && value !== null && value > 0 ? "+" : "";
-  const displayedPrefix = showPlus && displayed !== null && displayed > 0 ? "+" : "";
-  const finalText = value === null ? "Not available" : `${prefix}${formatAnimatedValue(value, format, decimals)}${suffix}`;
+  const initialFormatted = `${prefix}${formatAnimatedValue(value, format, decimals)}${suffix}`;
+  const finalText = value === null ? "Not available" : initialFormatted;
+
+  useClientLayoutEffect(() => {
+    const previous = previousTarget.current;
+    const firstMount = !mounted.current;
+    const from = firstMount ? (target === null ? null : 0) : previous;
+    const changed = firstMount || previous !== target;
+    mounted.current = true;
+    previousTarget.current = target;
+
+    if (!animate || !changed || from === null || target === null || from === target) {
+      if (spanRef.current) {
+        spanRef.current.textContent = `${prefix}${formatAnimatedValue(target, format, decimals)}${suffix}`;
+      }
+      return;
+    }
+
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    if (reduceMotion || typeof window.requestAnimationFrame !== "function") {
+      if (spanRef.current) {
+        spanRef.current.textContent = `${prefix}${formatAnimatedValue(target, format, decimals)}${suffix}`;
+      }
+      return;
+    }
+
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / ANIMATION_DURATION_MS);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = from + (target - from) * eased;
+      const currentPrefix = showPlus && current > 0 ? "+" : "";
+      if (spanRef.current) {
+        spanRef.current.textContent = `${currentPrefix}${formatAnimatedValue(current, format, decimals)}${suffix}`;
+      }
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(tick);
+      } else if (spanRef.current) {
+        spanRef.current.textContent = `${prefix}${formatAnimatedValue(target, format, decimals)}${suffix}`;
+      }
+    };
+    frame = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [animate, decimals, format, prefix, showPlus, suffix, target]);
+
   return <span className={className}>
-    <span aria-hidden="true">{`${displayedPrefix}${formatAnimatedValue(displayed, format, decimals)}${suffix}`}</span>
+    <span ref={spanRef} aria-hidden="true">{initialFormatted}</span>
     <span className="sr-only">{finalText}</span>
   </span>;
 }

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 
-import MealJournal from "@/components/meal-journal";
+import MealJournal, { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/components/meal-journal";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
+import { mealToApi } from "@/services/meal-api";
+import { listPreviewMeals } from "@/services/meal-preview";
+import { listMeals } from "@/services/meals";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
 
@@ -28,5 +31,16 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   }
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
-  return <div id="main-page-content"><MealJournal date={requestedDate} today={today} /></div>;
+
+  const rawMeals = isLocalPreviewMode()
+    ? listPreviewMeals(user.id, { from: requestedDate, to: requestedDate })
+    : await listMeals(user.id, { from: requestedDate, to: requestedDate }).catch(() => []);
+
+  const records = rawMeals.map((meal) => apiMealToRecord(mealToApi(meal)));
+  const initialData: MealJournalData = {
+    date: requestedDate,
+    meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, records.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
+  };
+
+  return <div id="main-page-content"><MealJournal date={requestedDate} today={today} initialData={initialData} /></div>;
 }

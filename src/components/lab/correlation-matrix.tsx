@@ -334,7 +334,6 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
     return [...categories.entries()];
   }, [meaningful]);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
-  const [visibleRows, setVisibleRows] = useState<Set<string>>(() => new Set());
   const setRowRef = useCallback((key: string, node: HTMLLIElement | null) => {
     if (node) rowRefs.current.set(key, node);
     else rowRefs.current.delete(key);
@@ -351,17 +350,12 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
 
     const rowKeys = new Set(rows);
     const observer = new IntersectionObserver((entries) => {
-      const entered = entries.filter((entry) => entry.isIntersecting)
-        .map((entry) => entry.target.getAttribute("data-matrix-effect-key"))
-        .filter((key): key is string => key !== null && rowKeys.has(key));
-      if (!entered.length) return;
-
-      setVisibleRows((current) => {
-        const next = new Set(current);
-        entered.forEach((key) => next.add(key));
-        return next;
-      });
-      entries.filter((entry) => entry.isIntersecting).forEach((entry) => observer.unobserve(entry.target));
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      }
     }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
 
     rowRefs.current.forEach((node, key) => {
@@ -413,7 +407,7 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
         } as CSSProperties;
         const relationLabel = `${relation.predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${relation.outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}`;
         return <li
-          className={visibleRows.has(rowKey) ? "strongest-effects__row is-visible" : "strongest-effects__row"}
+          className="strongest-effects__row"
           data-matrix-effect-key={rowKey}
           key={rowKey}
           ref={(node) => setRowRef(rowKey, node)}

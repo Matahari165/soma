@@ -3,7 +3,6 @@
 .lab-entry__section {
   --entry-delay: 0ms;
   animation: soma-entry-rise 760ms var(--ease) var(--entry-delay) both;
-  will-change: opacity, transform;
 }
 
 .lab-entry__header { --entry-delay: 0ms; }

@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 
-import { AnimatedValueText, useAnimatedNumber } from "@/components/health/animated-value";
+import { AnimatedValueText } from "@/components/health/animated-value";
 
 import type { ScoreKind } from "@/domain/health";
 
@@ -24,8 +24,7 @@ export function ScoreRing({
   decorative?: boolean;
   animate?: boolean;
 }) {
-  const animatedScore = useAnimatedNumber(score, animate);
-  const boundedScore = animatedScore === null ? 0 : Math.min(100, Math.max(0, animatedScore));
+  const boundedScore = score === null ? 0 : Math.min(100, Math.max(0, score));
   const style = {
     "--ring-offset": CIRCUMFERENCE * (1 - boundedScore / 100),
   } as CSSProperties;
