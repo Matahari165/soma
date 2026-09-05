@@ -81,10 +81,12 @@ export type MealAnalysis = {
 };
 
 function formatIngredientLabel(ingredient: MealIngredient) {
-  const quantity = ingredient.portion.trim();
-  const grams = typeof ingredient.estimatedGrams === "number" ? ` · ${Math.round(ingredient.estimatedGrams)} g` : "";
+  // Keep the quantity in one place. The model can return both a human portion
+  // (for example "300 g") and estimatedGrams; displaying both duplicates the
+  // same information in the journal.
+  const quantity = ingredient.portion.trim() || (typeof ingredient.estimatedGrams === "number" ? `${Math.round(ingredient.estimatedGrams)} g` : "");
   const preparation = ingredient.preparation?.trim() ? ` · ${ingredient.preparation.trim()}` : "";
-  return `${ingredient.name.trim()}${quantity ? ` (${quantity})` : ""}${grams}${preparation}`;
+  return `${ingredient.name.trim()}${quantity ? ` (${quantity})` : ""}${preparation}`;
 }
 
 export type MealRecord = {
@@ -523,18 +525,20 @@ function RatingScale({ label, value, onChange }: { label: string; value: Rating 
 function AnalysisDisplay({ meal }: { meal: MealRecord }) {
   const analysis = meal.analysis;
   if (!analysis) return null;
+  const sugarRange = analysis.sugarGrams ?? analysis.addedSugarGrams;
+  const sugarLabel = analysis.sugarGrams ? "Sucres" : analysis.addedSugarGrams ? "Sucres ajoutés" : null;
   const nutritionMetrics = [
-    { label: "Calories", unit: "kcal", range: analysis.calories },
-    { label: "Protéines", unit: "g", range: analysis.proteinGrams },
-    { label: "Lipides", unit: "g", range: analysis.fatGrams },
-    { label: "Glucides", unit: "g", range: analysis.carbohydratesGrams },
-    { label: "Fibres", unit: "g", range: analysis.fiberGrams },
-    ...(analysis.sugarGrams ? [{ label: "Sucres", unit: "g", range: analysis.sugarGrams }] : []),
+    { label: "Calories", unit: "kcal", range: analysis.calories, metric: "calories" },
+    { label: "Protéines", unit: "g", range: analysis.proteinGrams, metric: "protein" },
+    { label: "Lipides", unit: "g", range: analysis.fatGrams, metric: "fat" },
+    { label: "Glucides", unit: "g", range: analysis.carbohydratesGrams, metric: "carbs" },
+    { label: "Fibres", unit: "g", range: analysis.fiberGrams, metric: "fiber" },
+    ...(sugarRange && sugarLabel ? [{ label: sugarLabel, unit: "g", range: sugarRange, metric: "sugar" }] : []),
   ];
   return <div className={styles.analysisDisplay}>
     {analysis.dishType && <p className={styles.dishType}><strong>{analysis.dishType}</strong></p>}
     <div className={styles.confirmedNutrition}>
-      {nutritionMetrics.map(({ label, unit, range }) => <span key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}, estimation ${formatLowHigh(range)}`} title={`Estimation ${formatLowHigh(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
+      {nutritionMetrics.map(({ label, unit, range, metric }) => <span data-metric={metric} key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}, estimation ${formatLowHigh(range)}`} title={`Estimation ${formatLowHigh(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
     </div>
     {analysis.ingredients.length > 0
       ? <ul className={styles.ingredientsList}>{analysis.ingredients.map((ingredient) => <li key={ingredient.id}><strong>{formatIngredientLabel(ingredient)}</strong>{(ingredient.calories || ingredient.proteinGrams || ingredient.carbohydratesGrams || ingredient.fatGrams || ingredient.fiberGrams || ingredient.sugarGrams || ingredient.addedSugarGrams) && <small>{ingredient.calories && `${likelyLabel(ingredient.calories)} kcal`}{ingredient.proteinGrams && ` · ${likelyLabel(ingredient.proteinGrams)} g prot.`}{ingredient.carbohydratesGrams && ` · ${likelyLabel(ingredient.carbohydratesGrams)} g gluc.`}{ingredient.fatGrams && ` · ${likelyLabel(ingredient.fatGrams)} g lip.`}{ingredient.fiberGrams && ` · ${likelyLabel(ingredient.fiberGrams)} g fibres`}{ingredient.sugarGrams && ` · ${likelyLabel(ingredient.sugarGrams)} g sucres`}{ingredient.addedSugarGrams && ` · ${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés`}</small>}</li>)}</ul>

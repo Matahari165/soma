@@ -21,7 +21,7 @@ vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObj
 import { createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
-import { deleteR2MealPhotoObject } from "@/lib/r2";
+import { deleteR2MealPhotoObject, getR2MealPhotoObject } from "@/lib/r2";
 
 const canonicalCorrection = {
   summary: "Correction utilisateur",
@@ -229,6 +229,42 @@ describe("meal text-only analysis", () => {
     expect(analyzeText).toHaveBeenCalledWith({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
     expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ status: "running", source_photo_ids: [] }));
     expect(result).toMatchObject({ fresh: true, analysis: { status: "completed", result: textOnlyAnalysis } });
+  });
+
+  it("analyses an image-only meal with one vision call", async () => {
+    const photo = { id: "photo-1", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-1", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const };
+    state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [photo], analysis: null });
+    vi.mocked(getR2MealPhotoObject).mockResolvedValue(new Response(Uint8Array.from([1, 2, 3])));
+    const analyze = vi.fn().mockResolvedValue(textOnlyAnalysis);
+    const analyzeText = vi.fn().mockResolvedValue(textOnlyAnalysis);
+
+    await analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze, analyzeText } });
+
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: null, images: [{ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: expect.any(ArrayBuffer) }] });
+    expect(analyzeText).not.toHaveBeenCalled();
+  });
+
+  it("sends a note and all photos together in one vision call", async () => {
+    const photos = [
+      { id: "photo-1", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-1", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const },
+      { id: "photo-2", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-2", mimeType: "image/png" as const, bytes: 3, createdAt: "2026-08-31T10:00:01.000Z", storageStatus: "available" as const },
+    ];
+    state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: "Pâtes avec sauce tomate", status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos, analysis: null });
+    vi.mocked(getR2MealPhotoObject)
+      .mockResolvedValueOnce(new Response(Uint8Array.from([1, 2, 3])))
+      .mockResolvedValueOnce(new Response(Uint8Array.from([4, 5, 6])));
+    const analyze = vi.fn().mockResolvedValue(textOnlyAnalysis);
+    const analyzeText = vi.fn().mockResolvedValue(textOnlyAnalysis);
+
+    await analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze, analyzeText } });
+
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: "Pâtes avec sauce tomate", images: [
+      { id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: expect.any(ArrayBuffer) },
+      { id: "photo-2", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
+    ] });
+    expect(analyzeText).not.toHaveBeenCalled();
   });
 
   it("rejects analysis without photo and without note", async () => {

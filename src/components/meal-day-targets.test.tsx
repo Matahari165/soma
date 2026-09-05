@@ -16,6 +16,9 @@ describe("MealDayTargets", () => {
     for (const label of ["Calories", "Protéines", "Lipides", "Glucides", "Fibres"]) {
       expect(html).toContain(label);
     }
+    for (const metric of ["calories", "protein", "fat", "carbs", "fiber"]) {
+      expect(html).toContain(`data-metric="${metric}"`);
+    }
     expect(html.match(/role="progressbar"/g)).toHaveLength(5);
     expect(html).toContain("Dans la cible");
     expect(html).toContain("En dessous");

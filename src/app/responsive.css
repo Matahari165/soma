@@ -111,6 +111,7 @@
   .mobile-header .icon-button { width: 44px; min-width: 44px; min-height: 44px; }
   .mobile-header-nav {
     display: flex;
+    gap: 2px;
     min-width: 0;
     align-items: center;
     justify-content: flex-end;
@@ -138,21 +139,6 @@
     height: 2px;
     background: currentColor;
     content: "";
-  }
-
-  .mobile-menu-backdrop { position: fixed; inset: 0; z-index: 75; display: block; border: 0; background: var(--overlay); }
-  .mobile-menu {
-    position: fixed;
-    right: 10px;
-    top: calc(58px + env(safe-area-inset-top));
-    bottom: auto;
-    left: 10px;
-    z-index: 80;
-    display: grid;
-    padding: 10px;
-    border: 1px solid var(--ink);
-    background: var(--paper);
-    box-shadow: var(--shadow);
   }
 
   .health-detail-page,

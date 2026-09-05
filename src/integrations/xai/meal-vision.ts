@@ -277,3 +277,17 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
   const result = await provider.analyzeText(input);
   return { result, provider: provider.name, model: provider.model };
 }
+
+/**
+ * Dispatches one meal analysis according to the available evidence.
+ *
+ * A meal with at least one available image always uses the vision method once;
+ * its note is part of that same request. Only a note-only meal uses the
+ * provider's text-only method.
+ */
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
+  if (input.images.length > 0) return analyzeMealImages(input, provider);
+  const note = input.note?.trim() ?? "";
+  if (!note) throw new Error("A meal needs a note or at least one image before analysis.");
+  return analyzeMealText({ mealType: input.mealType, mealDate: input.mealDate, note }, provider);
+}

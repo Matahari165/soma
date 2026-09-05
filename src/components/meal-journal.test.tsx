@@ -132,6 +132,7 @@ describe("MealJournal", () => {
             ingredients: [{ id: "food-1", name: "Riz", portion: "1 bol" }],
             calories: { low: 550, likely: 650, high: 750 },
             proteinGrams: { low: 25, likely: 30, high: 35 },
+            sugarGrams: { low: 12, likely: 18, high: 25 },
             confidence: "low",
           },
           mouthHeat: 3,
@@ -147,7 +148,71 @@ describe("MealJournal", () => {
     expect(html).toContain("Repas qui m&#x27;a cassé");
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("Calories : 650 sur 3000 kilocalories");
+    for (const metric of ["calories", "protein", "fat", "carbs", "fiber", "sugar"]) {
+      expect(html).toContain(`data-metric="${metric}"`);
+    }
     expect(html).not.toContain("Confiance");
+  });
+
+  it("shows each ingredient quantity once in parentheses", () => {
+    const data: MealJournalData = {
+      date,
+      meals: {
+        lunch: {
+          id: "meal-quantity",
+          date,
+          slot: "lunch",
+          note: "",
+          photos: [],
+          analysis: {
+            ingredients: [
+              { id: "food-pasta", name: "Pâtes", portion: "300 g", estimatedGrams: 300 },
+              { id: "food-banana", name: "Bananes", portion: "Deux bananes", estimatedGrams: null },
+            ],
+            calories: { low: 400, likely: 500, high: 600 },
+            proteinGrams: { low: null, likely: null, high: null },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(<MealJournal initialData={data} />);
+
+    expect(html).toContain("Pâtes (300 g)");
+    expect(html).not.toContain("Pâtes (300 g) · 300 g");
+    expect(html).toContain("Bananes (Deux bananes)");
+  });
+
+  it("uses added sugar as the fallback sugar metric", () => {
+    const data: MealJournalData = {
+      date,
+      meals: {
+        snack: {
+          id: "meal-added-sugar",
+          date,
+          slot: "snack",
+          note: "",
+          photos: [],
+          analysis: {
+            ingredients: [],
+            calories: { low: 100, likely: 120, high: 140 },
+            proteinGrams: { low: 2, likely: 3, high: 4 },
+            addedSugarGrams: { low: 5, likely: 7, high: 9 },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(<MealJournal initialData={data} />);
+
+    expect(html).toContain("Sucres ajoutés");
+    expect(html).toContain('data-metric="sugar"');
   });
 });
 

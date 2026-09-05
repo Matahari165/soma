@@ -405,9 +405,34 @@
 .confirmButton:disabled { opacity: .55; }
 
 .confirmedNutrition { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-block: 1px solid var(--line); }
-.confirmedNutrition > span { display: grid; min-width: 0; gap: 3px; padding: 8px 10px; color: var(--muted); }
+.confirmedNutrition > span {
+  --metric-soft: var(--nutrition-protein-soft);
+  --metric-accent: color-mix(in srgb, var(--metric-soft) 72%, var(--ink-soft));
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--metric-soft) 25%, var(--paper));
+  color: var(--muted);
+}
+.confirmedNutrition > span[data-metric="calories"] { --metric-soft: var(--nutrition-calories-soft); }
+.confirmedNutrition > span[data-metric="protein"] { --metric-soft: var(--nutrition-protein-soft); }
+.confirmedNutrition > span[data-metric="fat"] { --metric-soft: var(--nutrition-fat-soft); }
+.confirmedNutrition > span[data-metric="carbs"] { --metric-soft: var(--nutrition-carbs-soft); }
+.confirmedNutrition > span[data-metric="fiber"] { --metric-soft: var(--nutrition-fiber-soft); }
+.confirmedNutrition > span[data-metric="sugar"] { --metric-soft: var(--nutrition-sugar-soft); }
 .confirmedNutrition > span + span { border-left: 1px solid var(--line); }
 .confirmedNutrition > span > small { overflow: hidden; font-size: .58rem; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.confirmedNutrition > span > small::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 5px 1px 0;
+  border-radius: 50%;
+  background: var(--metric-accent);
+  content: "";
+  vertical-align: middle;
+}
 .confirmedNutrition strong { color: var(--ink); font-family: var(--font-soma-mono), monospace; font-size: 1rem; font-weight: 600; line-height: 1; white-space: nowrap; }
 .confirmedNutrition strong small { color: var(--muted); font-size: .58rem; font-weight: 500; text-transform: uppercase; }
 .analysisDisplay { display: grid; gap: 12px; }

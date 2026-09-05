@@ -13,7 +13,7 @@ import {
   type UpdateMealInput,
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
-import { analyzeMealImages, analyzeMealText, isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
+import { analyzeMealInput, isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import {
@@ -354,17 +354,13 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       completed_at: null,
     });
     try {
-      const analysed = hasPhotos
-        ? await (async () => {
-            const images = [];
-            for (const photo of availablePhotos) {
-              const object = await getR2MealPhotoObject(photo.objectPath);
-              if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
-              images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
-            }
-            return analyzeMealImages({ mealType: meal.mealType, mealDate: meal.mealDate, note: meal.note, images }, options.provider);
-          })()
-        : await analyzeMealText({ mealType: meal.mealType, mealDate: meal.mealDate, note }, options.provider);
+      const images = [];
+      for (const photo of availablePhotos) {
+        const object = await getR2MealPhotoObject(photo.objectPath);
+        if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
+        images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
+      }
+      const analysed = await analyzeMealInput({ mealType: meal.mealType, mealDate: meal.mealDate, note: note || null, images }, options.provider);
       const completed = await updateMealAnalysis(userId, analysisId, {
         status: "completed",
         provider: analysed.provider,

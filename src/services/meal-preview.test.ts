@@ -44,6 +44,34 @@ describe("local meal preview store", () => {
     expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "unknown" });
   });
 
+  it("combines the note and available photos in one preview analysis", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-04", mealType: "lunch", note: "Pâtes avec sauce tomate" });
+    const photos = addPreviewMealPhotos(userId, meal.id, [
+      { mimeType: "image/jpeg", size: 1, data: Uint8Array.from([1]).buffer, origin: "homemade" },
+      { mimeType: "image/jpeg", size: 1, data: Uint8Array.from([2]).buffer, origin: "prepared" },
+    ]);
+
+    const result = analyzePreviewMeal(userId, meal.id);
+
+    expect(result?.analysis.result?.summary).toContain("photos et description");
+    expect(result?.analysis.sourcePhotoIds).toEqual(photos?.map((photo) => photo.id));
+  });
+
+  it("does not reuse purged photos when a text-only preview is analysed again", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-05", mealType: "dinner", note: "Une soupe" });
+    const photos = addPreviewMealPhotos(userId, meal.id, [{ mimeType: "image/jpeg", size: 1, data: Uint8Array.from([1]).buffer, origin: "homemade" }]);
+    analyzePreviewMeal(userId, meal.id);
+    updatePreviewMeal(userId, meal.id, { status: "confirmed" });
+
+    const result = analyzePreviewMeal(userId, meal.id);
+
+    expect(result?.analysis.result?.summary).toContain("description saisie");
+    expect(result?.analysis.sourcePhotoIds).toEqual([]);
+    expect(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")).toMatchObject({ storageStatus: "purged" });
+  });
+
   it("refuses to purge preview photos before analysis", () => {
     const userId = `preview-${crypto.randomUUID()}`;
     const meal = createPreviewMeal(userId, { mealDate: "2026-09-03", mealType: "lunch", note: null });

@@ -20,22 +20,24 @@ describe("xAI meal vision contract", () => {
     delete process.env.XAI_MEAL_VISION_MODEL;
   });
 
-  it("sends all photos in one structured vision request and keeps likely values", async () => {
+  it("sends the note and all photos in one structured vision request", async () => {
     process.env.XAI_API_KEY = "test-key";
     process.env.XAI_MEAL_VISION_MODEL = "grok-test";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
     const result = await createXaiMealVisionProvider().analyze({
       mealType: "lunch",
       mealDate: "2026-08-31",
-      note: null,
+      note: "Bol de riz avec légumes",
       images: [
         { id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: Uint8Array.from([1, 2, 3]).buffer },
         { id: "photo-2", mimeType: "image/jpeg", origin: "homemade", data: Uint8Array.from([4, 5, 6]).buffer },
       ],
     });
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; store: boolean; input: Array<{ content: Array<{ type: string; image_url?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; store: boolean; input: Array<{ content: Array<{ type: string; text?: string; image_url?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
     expect(body).toMatchObject({ model: "grok-test", store: false, text: { format: { type: "json_schema", name: "soma_meal_analysis", strict: true } } });
     expect(body.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(2);
+    expect(body.input[0]?.content[0]?.text).toContain("Bol de riz avec légumes");
     expect(body.input[0]?.content[1]?.image_url).toMatch(/^data:image\/jpeg;base64,/);
     expect(result.totals.calories?.likely).toBe(500);
   });

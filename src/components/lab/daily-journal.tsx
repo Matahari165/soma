@@ -335,7 +335,7 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-export function DailyJournal({ variables, entries, days, todayDate, onTodayBreakfastValidation }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string; onTodayBreakfastValidation?: (skipped: boolean) => void }) {
+export function DailyJournal({ variables, entries, days, todayDate, onTodayBreakfastValidation, onTodayMorningValidation }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string; onTodayBreakfastValidation?: (skipped: boolean) => void; onTodayMorningValidation?: (completed: boolean) => void }) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
@@ -447,6 +447,9 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
         const breakfast = activeVariables.find((variable) => variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
         const explicitlyRecorded = breakfast ? (recordedByDate[date] ?? new Set<string>()).has(breakfast.id) : false;
         onTodayBreakfastValidation?.(Boolean(breakfast && explicitlyRecorded && drafts.current[date]?.[breakfast.id] === false));
+        const morningIds = activeVariables.filter((variable) => variable.dayPeriod === "morning").map((variable) => variable.id);
+        const morningRecorded = morningIds.some((id) => (recordedByDate[date] ?? new Set<string>()).has(id) || (skippedByDate[date] ?? new Set<string>()).has(id));
+        onTodayMorningValidation?.(morningIds.length > 0 && morningRecorded);
       }
       router.refresh();
     } catch (saveError) {

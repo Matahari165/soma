@@ -19,19 +19,21 @@ export type MealDayTargetsProps = {
 };
 
 type CardState = "pending" | "below" | "ok" | "above";
+type MetricTone = "calories" | "protein" | "fat" | "carbs" | "fiber";
 
 type CardDef = {
   key: keyof MealDayTotals;
   label: string;
   unit: string;
+  tone: MetricTone;
 };
 
 const CARDS: CardDef[] = [
-  { key: "caloriesKcal", label: "Calories", unit: "kcal" },
-  { key: "proteinG", label: "Protéines", unit: "g" },
-  { key: "fatG", label: "Lipides", unit: "g" },
-  { key: "carbsG", label: "Glucides", unit: "g" },
-  { key: "fiberG", label: "Fibres", unit: "g" },
+  { key: "caloriesKcal", label: "Calories", unit: "kcal", tone: "calories" },
+  { key: "proteinG", label: "Protéines", unit: "g", tone: "protein" },
+  { key: "fatG", label: "Lipides", unit: "g", tone: "fat" },
+  { key: "carbsG", label: "Glucides", unit: "g", tone: "carbs" },
+  { key: "fiberG", label: "Fibres", unit: "g", tone: "fiber" },
 ];
 
 type TargetRangeKey = Exclude<keyof NutritionTargets, "surplusKcal">;
@@ -81,7 +83,7 @@ export function MealDayTargets({ totals, targets, className, headerAction }: Mea
           const valueText = formatValue(value);
 
           return (
-            <li className={styles.card} key={card.key}>
+            <li className={styles.card} data-metric={card.tone} key={card.key}>
               <span className={styles.label}>{card.label}</span>
               <span className={styles.value}>
                 {valueText}

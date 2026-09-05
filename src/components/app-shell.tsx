@@ -5,7 +5,6 @@ import {
   BedDouble,
   HeartPulse,
   LayoutDashboard,
-  Menu,
   MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
@@ -33,7 +32,10 @@ const navigation = [
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
-const mobileNavigation = [navigation[1], navigation[2], navigation[3]];
+// The logo is the home affordance and Coach keeps its dedicated panel action.
+// Show the remaining product destinations directly on mobile instead of hiding
+// them behind a second menu.
+const mobileNavigation = navigation.filter(({ href }) => href !== "/" && href !== "/coach");
 
 function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
   return (
@@ -56,18 +58,14 @@ function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: Reac
 export function AppShell({ children, user, localPreview = false }: { children: React.ReactNode; user: SomaUser | null; localPreview?: boolean }) {
   const pathname = usePathname();
   const [coachOpen, setCoachOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const coachPanelRef = useRef<HTMLElement>(null);
-  const mobileMenuRef = useRef<HTMLElement>(null);
   const closeCoach = useCallback(() => setCoachOpen(false), []);
-  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const displayName = user?.displayName ?? "Soma user";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const onCoachPage = pathname.startsWith("/coach");
 
   useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
-  useDialogLayer({ open: mobileMenuOpen, onClose: closeMobileMenu, containerRef: mobileMenuRef });
 
   if (
     ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
@@ -142,14 +140,10 @@ export function AppShell({ children, user, localPreview = false }: { children: R
               className={isActive(href) ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"}
               aria-current={isActive(href) ? "page" : undefined}
               aria-label={label}
-              onClick={closeMobileMenu}
             >
               <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           ))}
-          <button type="button" className={mobileMenuOpen || isActive("/activity") || isActive("/coach") || isActive("/settings") ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"} onClick={() => setMobileMenuOpen((value) => !value)} aria-label={mobileMenuOpen ? "Close more navigation" : "Open more navigation"} aria-expanded={mobileMenuOpen} aria-controls="mobile-more-menu">
-            {mobileMenuOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}
-          </button>
         </nav>
         <div className="mobile-header__actions">
           {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
@@ -157,18 +151,6 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           </button>}
         </div>
       </header>
-
-      {mobileMenuOpen && (
-        <><button className="mobile-menu-backdrop" type="button" onClick={closeMobileMenu} aria-label="Dismiss menu" /><nav ref={mobileMenuRef} id="mobile-more-menu" className="mobile-menu" aria-label="Additional navigation" role="dialog" aria-modal="true">
-          {navigation.slice(4).map(({ label, href, icon: Icon }) => (
-            <Link href={href} key={href} className={isActive(href) ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive(href) ? "page" : undefined} onClick={closeMobileMenu}>
-              <Icon size={19} aria-hidden="true" />
-              {label}
-            </Link>
-          ))}
-          <Link href="/settings" className={isActive("/settings") ? "nav-link nav-link--active" : "nav-link"} aria-current={isActive("/settings") ? "page" : undefined} onClick={closeMobileMenu}><Settings size={19} aria-hidden="true" />Settings</Link>
-        </nav></>
-      )}
 
       <main className="main-content">{children}</main>
 

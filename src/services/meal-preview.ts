@@ -187,9 +187,11 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean }): Me
 export function analyzePreviewMeal(userId: string, mealId: string) {
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
-  if (!meal.photos.length && !meal.note?.trim()) throw new Error("Add a photo or a description before analysing a meal.");
+  const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const note = meal.note?.trim() ?? "";
+  if (!availablePhotos.length && !note) throw new Error("Add a photo or a description before analysing a meal.");
   const now = new Date().toISOString();
-  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note: meal.note, hasPhotos: meal.photos.length > 0 }), error: null, sourcePhotoIds: meal.photos.map((photo) => photo.id), createdAt: now, completedAt: now };
+  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note, hasPhotos: availablePhotos.length > 0 }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
   meal.analysis = analysis;
   meal.updatedAt = now;
   return { analysis, fresh: true };
