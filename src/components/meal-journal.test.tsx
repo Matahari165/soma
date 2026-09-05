@@ -1,9 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MealJournal, apiMealToRecord, mealHistoryDates, type MealJournalData } from "./meal-journal";
+import { MealJournal, apiMealToRecord, defaultAnalyze, mealHistoryDates, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
   it("renders the four empty meal slots with photo actions", () => {
@@ -54,6 +56,53 @@ describe("MealJournal", () => {
     expect(html).toContain(">Analyser</button>");
     expect(html).not.toContain("Grok");
     expect(html).not.toContain("aria-describedby");
+  });
+
+  it("creates then analyzes a new text-only meal without a redundant update", async () => {
+    const requests: Array<{ url: string; method: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+      requests.push({ url, method });
+      if (url === "/api/meals") {
+        return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee" } }, { status: 201 });
+      }
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
+    }));
+
+    await defaultAnalyze({
+      date,
+      slot: "breakfast",
+      files: [],
+      meal: { id: "meal-new", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+    });
+
+    expect(requests).toEqual([
+      { url: "/api/meals", method: "POST" },
+      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze", method: "POST" },
+    ]);
+  });
+
+  it("updates then analyzes an existing text-only meal", async () => {
+    const requests: Array<{ url: string; method: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+      requests.push({ url, method });
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
+    }));
+
+    await defaultAnalyze({
+      date,
+      slot: "breakfast",
+      files: [],
+      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+    });
+
+    expect(requests).toEqual([
+      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", method: "PATCH" },
+      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze", method: "POST" },
+    ]);
   });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([

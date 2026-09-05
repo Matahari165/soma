@@ -233,9 +233,10 @@ async function defaultLoad(date: string) {
   return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
 }
 
-async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInput) {
+export async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInput) {
   let mealId = meal.id;
-  if (mealId.startsWith("meal-")) {
+  const isNewMeal = mealId.startsWith("meal-");
+  if (isNewMeal) {
     const createResponse = await fetch("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
@@ -245,7 +246,7 @@ async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInput) {
     mealId = created.meal.id;
   }
   const newPhotos = meal.photos.filter((photo) => files.some((file) => file === filesByFilename(files, photo.filename)));
-  if (!mealId.startsWith("meal-") && meal.note.trim()) {
+  if (!isNewMeal && meal.note.trim()) {
     await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }));
   }
   if (files.length > 0) {
