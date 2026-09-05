@@ -1,54 +1,48 @@
-## Règles du projet Soma
+# Règles du projet Soma
 
-### Communication et cadrage
+## Produit et données
 
-- Réponds en français, simplement et sans phrases inutiles. Commence par la conclusion utile.
-- Avant toute modification, donne un plan court, les hypothèses importantes et les critères de réussite.
-- Si une ambiguïté peut changer significativement le résultat, pose une seule question et attends la réponse avant de coder.
-- Une demande de conseil, d'explication, d'audit ou de lecture seule n'autorise aucune modification.
-
-### Données de santé
-
-- Distingue toujours les données provenant d'une source de santé des métriques calculées par Soma.
+- Soma est une application personnelle de suivi santé et nutrition. La V1 doit rester utile, lisible et fiable avant l’ajout de fonctions secondaires.
+- Distingue toujours les données provenant d’une source de santé des métriques calculées par Soma.
+- Préserve la sémantique des repas : l’absence de trace n’est pas zéro calorie ; livraison, take-away et industriel sont `Préparé / acheté` lorsqu’ils correspondent à la réalité.
 - Ne mets jamais dans le code, Git, les journaux ou les réponses des exports de santé, identifiants, clés, jetons, sessions ou autres données personnelles sensibles.
 
-### Interface et expérience utilisateur
+## Autonomie, délégation et coordination
 
-- Conserve une identité visuelle cohérente et intentionnelle ; évite l'apparence générique des applications générées par IA, les cartes répétitives et les grands espaces vides sans fonction.
-- Simplifie d'abord l'écran principal et place les explications ou données denses dans un détail accessible au clic.
-- Chaque texte visible doit aider à comprendre, décider ou agir. Le titre de l'onglet reste `Soma`.
-- Vérifie par défaut les formats MacBook Air `1440x900`, iPhone `390x844` et les largeurs intermédiaires utiles.
-- Vérifie contraste, lisibilité, clavier, focus visible, zones tactiles et information indépendante de la couleur.
-- Utilise le navigateur intégré pour toute modification visuelle ou interactive significative ; une petite correction évidente peut recevoir une vérification proportionnée.
+- L’agent principal reste responsable du périmètre, des décisions finales, de la cohérence, de la vérification et de la synthèse.
+- Pour chaque tâche non triviale, évalue les sous-tâches qui bénéficient réellement d’une analyse, recherche, implémentation ou vérification séparée. Si une délégation apporte une valeur claire, utilise au moins un sous-agent **GPT-5.6 Luna `high`**.
+- Utilise **Luna `xhigh`** pour une difficulté élevée, un diagnostic ambigu, une revue critique ou une vérification indépendante. Utilise deux, trois ou quatre sous-agents lorsque plusieurs lots sont réellement indépendants et que cela accélère le travail ou améliore la preuve.
+- Ne délègue pas une tâche triviale, strictement séquentielle ou trop petite pour justifier le coût de coordination. Ne crée pas de doublons.
+- Chaque sous-agent reçoit une mission bornée, son périmètre de fichiers, les invariants à respecter et la preuve attendue. Les agents coordonnent eux-mêmes les dépendances, les fichiers réservés, les conflits et la reprise après blocage.
 
-### Développement, qualité et Git
+## Git et sauvegardes
 
-- Inspecte les conventions et l'état Git avant de modifier. Préserve les changements existants et reste strictement dans le périmètre demandé.
-- Utilise la solution la plus simple qui répond au besoin, réutilise l'existant et n'ajoute pas de dépendance sans bénéfice clair.
-- Utilise une branche par modification cohérente et livrable ; ne mélange pas deux sujets indépendants.
-- Après une modification, vérifie selon le risque : cas normal, chargement, absence de données, erreur, responsive, accessibilité, types, lint, tests et build pertinents.
-- Ne lance jamais `pnpm install`, `pnpm verify` ou un build Next pendant qu'un serveur `next dev` utilise le même checkout : ces commandes peuvent réorganiser `node_modules` ou `.next` et casser Turbopack. Arrête le serveur, exécute les opérations séquentiellement, puis relance-le.
-- Pendant une itération UI locale, utilise les exécutables déjà installés dans `node_modules/.bin` pour les contrôles ciblés afin de ne pas déclencher une réinstallation implicite de pnpm.
-- Pour une vérification complète du projet, utilise `CI=true pnpm verify`.
-- Relis le diff final. Un commit local, un push, un déploiement et une vérification en production sont des preuves distinctes : ne présente jamais l'une comme la preuve d'une autre.
-- Ne publie, ne déploie, n'envoie de message et ne modifie aucun service externe sans autorisation explicite.
+- Avant toute modification, inspecte la branche, l’état Git et les changements existants. Préserve tout changement hors périmètre.
+- Les agents gèrent eux-mêmes les sauvegardes récupérables, les commits locaux cohérents et l’intégration des lots vérifiés. Utilise une branche ou un worktree séparé lorsque des tâches parallèles peuvent se chevaucher.
+- Ne réinitialise pas, n’écrase pas et ne supprime pas le travail existant. Relis le diff final.
+- N’exécute pas `pnpm install`, `pnpm verify` ou un build Next pendant qu’un serveur `next dev` utilise le même checkout. Utilise `CI=true pnpm verify` pour la vérification complète.
+- Push, publication, déploiement, dépense, contact d’un tiers et modification d’un service externe exigent une autorisation explicite.
 
-### Délégation, coût et revue
+## Interface et microcopy
 
-- L'agent principal reste responsable du plan, de l'architecture, des décisions finales, de l'intégration, des conflits, des vérifications et de la synthèse.
-- Utilise au moins un sous-agent dès qu'une tâche comporte une étape qui peut utilement être analysée, recherchée, exécutée ou vérifiée séparément, même si cette étape est relativement petite.
-- N'utilise pas de sous-agent uniquement lorsqu'une tâche est réellement triviale et que la délégation n'apporterait aucune valeur pratique.
-- Lorsque le choix du modèle est disponible, tous les sous-agents doivent utiliser exclusivement Luna `high` ou Luna `xhigh`. N'utilise jamais Sol ni un autre modèle comme sous-agent.
-- Utilise Luna `high` par défaut afin de limiter le coût. Réserve Luna `xhigh` aux analyses difficiles, diagnostics ambigus, recherches de bugs, revues critiques ou vérifications indépendantes où le niveau supplémentaire de raisonnement apporte une valeur réelle.
-- Utilise les sous-agents pour le travail borné et parallélisable. Évite les délégations redondantes ou plusieurs agents faisant essentiellement le même travail sans justification.
-- Lorsque plusieurs agents travaillent en parallèle et que leurs périmètres peuvent se chevaucher ou provoquer des conflits, ils doivent se coordonner directement entre eux par messages, sans demander à l'utilisateur d'organiser leur travail. Ils identifient les fichiers et dépendances partagés, conviennent de l'ordre des interventions et se transmettent l'état utile. Si nécessaire, un agent attend que l'autre ait terminé, puis reprend automatiquement son travail dès que le blocage est levé, sans attendre une relance ou une instruction de l'utilisateur. Aucun agent ne doit écraser, annuler ou intégrer silencieusement le travail d'un autre.
-- Une conversation qui développe une fonctionnalité reste propriétaire de cette fonctionnalité jusqu'à sa validation finale.
+- Construis une direction visuelle propre à Soma : typographie, palette, densité, formes, icônes et mouvement doivent servir la compréhension des données. Évite l’AI slop : gradients gratuits, cartes identiques, gros titres décoratifs, interfaces copiées ou styles mélangés sans raison.
+- Avant une création ou refonte importante, choisis une direction claire et vérifie-la avec des références pertinentes. Ne remplace pas l’identité de Soma par un thème générique.
+- Purge les textes visibles inutiles : sous-titres redondants, phrases évidentes, labels répétés, aide décorative et confirmations bavardes. Garde uniquement ce qui aide à comprendre, décider, agir, attendre, corriger une erreur ou utiliser l’accessibilité.
+- Vérifie MacBook Air `1440 × 900`, iPhone `390 × 844` et les largeurs intermédiaires utiles. Contrôle contraste, lisibilité, clavier, focus, zones tactiles et information indépendante de la couleur.
 
-### Apprentissage et restitution
+## Développement et définition de terminé
 
-- Après une étape technique importante, explique brièvement ce qui fonctionne, comment et pourquoi, avec un exemple concret si cela aide.
-- Pour un audit ou un diagnostic, sépare clairement les faits vérifiés, les hypothèses, les causes écartées et les inconnues.
-- Termine toute modification par : ce qui a changé, les vérifications effectuées, puis les limites ou risques restants.
+- Utilise la solution la plus simple, l’existant et les dépendances justifiées.
+- Après une modification, vérifie les états normal, chargement, vide, erreur, responsive, accessibilité, types, lint, tests et build pertinents.
+- Distingue tests locaux, environnement authentifié, déploiement et comportement réel en production. Un build réussi ne prouve pas le fonctionnement de la session authentifiée.
+- Une tâche n’est terminée qu’après implémentation, inspection du résultat, correction des échecs liés à la tâche, vérifications adaptées, relecture du diff et rapport des limites restantes.
+- Une demande d’audit, de conseil ou de lecture seule n’autorise aucune modification.
+
+## Communication
+
+- Réponds en français, simplement et directement. Commence par la conclusion utile.
+- Pour un audit ou un diagnostic, sépare faits vérifiés, hypothèses, causes écartées et inconnues.
+- Ne t’arrête pas après le premier patch si l’objectif inclut l’exécution, l’inspection et la correction.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
