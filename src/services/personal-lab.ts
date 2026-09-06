@@ -151,7 +151,7 @@ export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journa
 export type PersonalLabStream = {
   overview: Promise<PersonalLabOverview>;
   journal: Promise<PersonalLabJournal>;
-  analysis: Promise<PersonalLabSnapshot>;
+  analysis: Promise<PersonalLabSnapshot> | null;
 };
 
 const MAX_RELATION_LAG_DAYS = 2;
@@ -934,24 +934,25 @@ function buildSnapshot(input: {
   } satisfies PersonalLabSnapshot;
 }
 
-export function createPersonalLabStream(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): PersonalLabStream {
+export function createPersonalLabStream(user: SomaUser, options: { periods?: AnalysisPeriod[]; includeAnalysis?: boolean } = {}): PersonalLabStream {
   const startedAt = Date.now();
+  const includeAnalysis = options.includeAnalysis !== false;
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
+    const input = { user, timeZone: "Europe/Paris", ...preview, meals: includeAnalysis ? loadPreviewConfirmedMealRecords(user.id) : [], requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
     return {
       overview: Promise.resolve(buildOverview(input)),
       journal: Promise.resolve(buildJournalView(input.timeZone, input.journal)),
-      analysis: Promise.resolve().then(() => buildSnapshot(input)),
+      analysis: includeAnalysis ? Promise.resolve().then(() => buildSnapshot(input)) : null,
     };
   }
   const admin = createCloudflareAdminClient();
   const analysisWindow = analysisWindowForPeriods(options.periods);
   const matrixCacheKey = labMatrixCacheKey(options.periods);
-  const matrixCachePromise = matrixCacheKey ? (async () => {
+  const matrixCachePromise = includeAnalysis && matrixCacheKey ? (async () => {
     try {
       const [inputRevision, cacheValue] = await Promise.all([
         labMatrixInputRevision(user.id),
@@ -988,7 +989,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
   const journalPromise = loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {});
-  const mealPromise = loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const mealPromise = includeAnalysis ? loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {}) : Promise.resolve([]);
   const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
     const failed = results.find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
@@ -1002,7 +1003,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       connections: connectionResult.data ?? [],
     };
   });
-  const detailPromise = Promise.all([
+  const detailPromise = includeAnalysis ? Promise.all([
     admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
     admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
@@ -1012,14 +1013,14 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     const failed = [narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
-  });
+  }) : null;
 
   const overview = corePromise.then((core) => buildOverview(core));
   const journal = Promise.all([profilePromise, journalPromise]).then(([profileResult, journalData]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData);
   });
-  const analysis = Promise.all([corePromise, journalPromise, mealPromise, detailPromise]).then(async ([core, journalData, meals, detail]) => {
+  const analysis = includeAnalysis ? Promise.all([corePromise, journalPromise, mealPromise, detailPromise!]).then(async ([core, journalData, meals, detail]) => {
     const queryCompletedAt = Date.now();
     const snapshot = buildSnapshot({
       user,
@@ -1050,12 +1051,14 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       matrixCache: detail.matrixCache?.cachedMatrix ? "hit" : matrixCacheKey ? "miss" : "bypass",
     });
     return snapshot;
-  });
+  }) : null;
   return { overview, journal, analysis };
 }
 
 export function getPersonalLabSnapshot(user: SomaUser, options: { periods?: AnalysisPeriod[] } = {}): Promise<PersonalLabSnapshot> {
-  return createPersonalLabStream(user, options).analysis;
+  const analysis = createPersonalLabStream(user, options).analysis;
+  if (!analysis) return Promise.reject(new Error("Personal Lab analysis is unavailable."));
+  return analysis;
 }
 
 export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabToday> {

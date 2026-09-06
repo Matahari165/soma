@@ -168,6 +168,7 @@ describe("Personal Lab progressive stream", () => {
       expect(journal.journal.variables.length).toBeGreaterThan(0);
       expect(journal.todayDate).toBe(overview.todayDate);
 
+      if (!stream.analysis) throw new Error("Expected the complete analysis stream in preview mode.");
       const analysis = await stream.analysis;
       expect(analysis.today).toEqual(overview.today);
       expect(analysis.journal).toEqual(journal.journal);

@@ -16,7 +16,8 @@ describe("MealJournal", () => {
     expect(html).toContain("Déjeuner");
     expect(html).toContain("Dîner");
     expect(html).toContain("Collation");
-    expect(html).toContain("Goûter");
+    expect(html.indexOf("Collation")).toBeLessThan(html.indexOf("Dîner"));
+    expect(html).toContain("Collation");
     expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(4);
     expect(html.match(/<textarea/g)).toHaveLength(4);
     expect(html).not.toContain(">Décrire le repas<");
@@ -59,6 +60,41 @@ describe("MealJournal", () => {
     expect(html).toContain(">Analyser</button>");
     expect(html).not.toContain("Grok");
     expect(html).not.toContain("aria-describedby");
+  });
+
+  it("keeps analysis results available behind a compact disclosure", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{
+      date,
+      meals: {
+        lunch: {
+          id: "meal-analysis",
+          date,
+          slot: "lunch",
+          photos: [],
+          note: "Pâtes",
+          analysis: { ingredients: [], calories: { low: 400, high: 600 }, proteinGrams: { low: 20, high: 30 } },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "review",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Résultats de l’analyse");
+    expect(html).toContain("<details");
+    expect(html).toContain("open=\"\"");
+    expect(html.match(/Résultats de l’analyse/g)).toHaveLength(1);
+  });
+
+  it("shows the snack slot before dinner", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
+    expect(html.indexOf("Collation")).toBeLessThan(html.indexOf("Dîner"));
+  });
+
+  it("keeps an explicitly skipped breakfast visible but compact", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} disabledSlots={["breakfast"]} initialData={{ date, meals: {} }} />);
+    expect(html).toContain("Créneau ignoré dans le journal.");
+    expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
   });
 
   it("creates then analyzes a new text-only meal without a redundant update", async () => {

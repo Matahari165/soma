@@ -114,7 +114,7 @@
   height: 10px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-data);
+  border-radius: var(--radius-surface);
   border-color: color-mix(in srgb, var(--metric-soft) 45%, var(--line-strong));
   background: color-mix(in srgb, var(--metric-soft) 18%, var(--canvas));
 }
@@ -122,7 +122,7 @@
 .fill {
   height: 100%;
   width: 0;
-  border-radius: var(--radius-data);
+  border-radius: var(--radius-surface);
   background: var(--metric-accent);
 }
 

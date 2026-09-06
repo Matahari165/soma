@@ -1081,6 +1081,18 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .journal-manager { border-top: 0; }
 .matrix-section { margin-top: 26px; }
 .matrix-header { padding-bottom: 10px; }
+.matrix-disclosure { border-block: 1px solid var(--line); background: var(--paper); }
+.matrix-disclosure > summary { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 14px; cursor: pointer; color: var(--ink); font-size: .82rem; font-weight: 650; list-style: none; }
+.matrix-disclosure > summary::-webkit-details-marker { display: none; }
+.matrix-disclosure > summary::after { color: var(--muted); content: "▸"; font-size: 1rem; }
+.matrix-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
+.matrix-disclosure[open] > summary::after { content: "▾"; }
+.matrix-disclosure > summary:focus-visible { outline: 2px solid var(--focus-color); outline-offset: -2px; }
+.lab-entry__analysis-deferred { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 28px; padding: 18px 0; border-block: 1px solid var(--line); }
+.lab-entry__analysis-deferred h2 { margin-top: 4px; font-size: clamp(1.35rem, 2vw, 2rem); }
+.lab-entry__analysis-deferred p { margin: 7px 0 0; color: var(--muted); font-size: .76rem; }
+.lab-analysis-deferred__error { color: var(--danger) !important; }
+.lab-analysis-deferred__error .text-link { display: inline-flex; min-height: 32px; margin-left: 4px; border: 0; color: inherit; font-size: .72rem; }
 
 @media (min-width: 1101px) {
   .personal-lab-page { padding-top: clamp(12px, 2vw, 28px); }
@@ -1096,6 +1108,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
   .journal-grid { padding-inline: 12px; column-gap: 0; }
   .journal-field { min-height: 64px; padding-block: 10px; }
   .matrix-legend { flex-wrap: wrap; justify-content: center; padding-block: 7px; border: 1px solid var(--line-strong); }
+  .lab-entry__analysis-deferred { align-items: stretch; flex-direction: column; gap: 14px; }
 }
 
 @media (min-width: 901px) {
@@ -1154,3 +1167,114 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
   .meal-quick__origins { justify-content: stretch; }
   .meal-quick__origins button { flex: 1 1 calc(50% - 5px); }
 }
+
+/* Unified widget contract: one visible frame, one shared radius, semantic color only for state. */
+:where(
+  .health-detail-hero,
+  .health-signal-meta,
+  .health-more-metrics,
+  .zone-distribution,
+  .exercise-detail-grid,
+  .system-loading__metrics,
+  .inline-empty,
+  .health-empty,
+  .empty-state,
+  .lab-stream-placeholder,
+  .health-panel,
+  .health-primary-grid,
+  .health-timing-grid,
+  .metric-trend-grid,
+  .workout-summary,
+  .program-grid,
+  .lab-signals,
+  .lab-workspace,
+  .lab-insight-panel,
+  .journal-date-strip,
+  .journal-period,
+  .matrix-grain,
+  .matrix-scroll,
+  .matrix-collection,
+  .strongest-effects,
+  .relation-detail,
+  .influence-detail,
+  .metric-registry,
+  .recovery-formula dl,
+  .meal-quick,
+  .onboarding-card,
+  .choice-card,
+  .import-card,
+  .health-data-coverage,
+  .danger-zone,
+  .sync-diagnostics,
+  .sync-summary,
+  .sync-advanced,
+  .settings-message,
+  .inline-confirmation,
+  .modal-confirmation,
+  .lab-notice,
+  .lab-entry__analysis-deferred,
+  .matrix-disclosure,
+  .action-preview,
+  .load-error,
+  .selected-exercises article,
+  .journal-new-variable,
+  .journal-empty
+) {
+  border: var(--widget-border);
+  border-radius: var(--radius-surface);
+}
+
+.health-signal-meta strong {
+  border: 1px solid var(--domain-color);
+  border-radius: var(--radius-control);
+}
+.lab-narrative-highlights li { border-radius: var(--radius-control); }
+
+/* These three pieces form one framed matrix assembly, so their seams stay single-pixel. */
+.matrix-grain { border: var(--widget-border-strong); border-radius: var(--radius-surface) var(--radius-surface) 0 0; border-bottom: 0; }
+.matrix-scroll { border: var(--widget-border-strong); border-top: 0; border-radius: 0; }
+.matrix-collection { border: var(--widget-border-strong); border-top: 0; border-radius: 0 0 var(--radius-surface) var(--radius-surface); }
+
+/* Status surfaces keep the same geometry; only their semantic border color changes. */
+.form-error,
+.field-error,
+.modal-error { border: 1px solid var(--danger); border-radius: var(--radius-surface); }
+.medical-note { border: 1px solid var(--ochre); border-radius: var(--radius-surface); }
+.consent-preview,
+.scope-note { border: 1px solid var(--moss); border-radius: var(--radius-surface); }
+.sync-summary { border: 1px solid var(--moss); border-radius: var(--radius-surface); }
+.sync-summary--retrying,
+.sync-summary--partial { border-color: var(--ochre); }
+.sync-summary--needs_reconnect,
+.sync-summary--failed { border-color: var(--danger); }
+
+/* Bordered controls share the same radius without rounding their internal segments. */
+:where(
+  .recovery-score-popover header button,
+  .health-explanation-popover header button,
+  .coach-history > button,
+  .chat-suggestions button,
+  .exercise-picker button,
+  .program-icon,
+  .connection-logo,
+  .connection-actions > *,
+  .privacy-actions article > *,
+  .journal-clock,
+  .journal-choice,
+  .journal-variable-row button,
+  .journal-variable-edit button,
+  .journal-card__actions .journal-save-status,
+  .journal-card__actions .text-link,
+  .matrix-periods,
+  .matrix-legend,
+  .matrix-collection li,
+  .lab-insight-history__like,
+  .metric-registry__table select,
+  .recovery-formula dl
+) {
+  border-radius: var(--radius-control);
+}
+
+/* The outer journal frame remains visible after its inner card was made transparent. */
+.lab-workspace { border: var(--widget-border-strong); border-radius: var(--radius-surface); }
+.checkin-card.journal-card { border: 0; border-radius: var(--radius-surface); }

@@ -1,4 +1,4 @@
-export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
+export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
 export type MealOrigin = "homemade" | "prepared" | "mixed";
 export type MealStatus = "draft" | "analyzing" | "review" | "confirmed" | "error";

@@ -16,7 +16,7 @@ describe("MealQuickCapture", () => {
     expect(html).toContain("Matin");
     expect(html).toContain("Midi");
     expect(html).toContain("Soir");
-    expect(html).toContain("Goûter");
+    expect(html).toContain("Collation");
     expect(html.match(/>Photo</g)).toHaveLength(4);
   });
 

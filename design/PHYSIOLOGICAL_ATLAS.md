@@ -25,7 +25,7 @@ Soma is a personal health atlas: a calm, precise place where sleep, recovery, mo
 ## Interface language
 
 - Information is organized as spreads, strips, annotations, and measured plots rather than floating glass cards.
-- Corners are restrained: 2 px for data surfaces, 6 px for controls, circular only for explicit round actions.
+- Corners are clear and shared: 10 px for widgets, data surfaces and controls; circular only for explicit round actions. Dense tables keep square cells inside one framed surface.
 - Rules and spacing create hierarchy before shadows. Shadows stay neutral and rare.
 - Large numbers are part of the composition, but never overlap labels or charts.
 - Icons are line-based, optically consistent, and always paired with text when meaning may be ambiguous.

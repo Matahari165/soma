@@ -14,8 +14,8 @@ type QuickMealRecord = { status?: unknown; photos?: unknown[] };
 const slots: Array<{ id: MealType; label: string }> = [
   { id: "breakfast", label: "Matin" },
   { id: "lunch", label: "Midi" },
+  { id: "snack", label: "Collation" },
   { id: "dinner", label: "Soir" },
-  { id: "snack", label: "Goûter" },
 ];
 const origins: Array<{ id: MealOrigin; label: string }> = [
   { id: "homemade", label: "Maison" },

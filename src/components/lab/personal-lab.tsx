@@ -1,6 +1,6 @@
 import type { PersonalLabJournal, PersonalLabOverview, PersonalLabSnapshot } from "@/services/personal-lab";
 
-import { CorrelationMatrix, TimeScaleSummary } from "./correlation-matrix";
+import { MatrixDisclosure, TimeScaleSummary } from "./correlation-matrix";
 import { MetricRegistry } from "./metric-registry";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { NarrativeRefresh } from "./narrative-refresh";
@@ -28,11 +28,11 @@ export function PersonalLabJournalSection({ data }: { data: PersonalLabJournal }
   );
 }
 
-export function PersonalLabAnalysisSection({ data }: { data: PersonalLabSnapshot }) {
+export function PersonalLabAnalysisSection({ data, refreshNarrative = true }: { data: PersonalLabSnapshot; refreshNarrative?: boolean }) {
   return <>
-    <NarrativeRefresh enabled={data.needsNarrativeRefresh} />
+    <NarrativeRefresh enabled={refreshNarrative && data.needsNarrativeRefresh} />
     <div className="lab-entry__section lab-entry__insight"><TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} /></div>
-    <div className="lab-entry__section lab-entry__relations"><CorrelationMatrix matrix={data.matrix} /></div>
+    <div className="lab-entry__section lab-entry__relations"><MatrixDisclosure matrix={data.matrix} /></div>
     <div className="lab-entry__section lab-entry__registry"><MetricRegistry metrics={data.metricRegistry} /></div>
   </>;
 }
@@ -48,14 +48,14 @@ export function PersonalLabOverviewLoading() {
 }
 
 export function PersonalLabJournalLoading() {
-  return <section className="lab-stream-placeholder lab-entry__section lab-entry__journal" role="status" aria-live="polite" aria-label="Loading Journal">
-    <span className="eyebrow">Journal</span><strong>Preparing recent days</strong>
+  return <section className="lab-stream-placeholder lab-entry__section lab-entry__journal" role="status" aria-live="polite" aria-label="Loading daily workspace">
+    <span className="eyebrow">Journal &amp; repas</span><strong>Preparing today</strong>
   </section>;
 }
 
 export function PersonalLabAnalysisLoading() {
   return <section className="lab-stream-placeholder lab-stream-placeholder--analysis lab-entry__section lab-entry__insight" role="status" aria-live="polite" aria-label="Loading analysis">
-    <span className="eyebrow">Analysis</span><strong>Calculating relationships</strong>
+    <span className="eyebrow">Analysis</span><strong>Preparing signals</strong>
     <span className="system-loading__status" aria-hidden="true"><i /><i /><i /></span>
   </section>;
 }

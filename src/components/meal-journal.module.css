@@ -4,6 +4,27 @@
   padding: clamp(28px, 4.5vw, 72px);
 }
 
+.root:global(.meal-journal-home) {
+  width: 100%;
+  padding: 0;
+}
+
+.root:global(.meal-journal-home) .pageHeader {
+  min-height: 112px;
+}
+
+.root:global(.meal-journal-home) .pageHeader h1 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.root:global(.meal-journal-home) .historyNavigation {
+  padding-top: 10px;
+}
+
+.root:global(.meal-journal-home) .mealList {
+  gap: 10px;
+}
+
 .pageHeader {
   display: grid;
   min-height: 190px;
@@ -44,7 +65,8 @@
 .weekStrip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-block: 1px solid var(--ink);
+  border: var(--widget-border-strong);
+  border-radius: var(--radius-surface);
 }
 
 .weekDay,
@@ -93,14 +115,15 @@
 }
 
 .fileError > span { flex: 1 1 auto; }
-.dismissError { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid transparent; background: transparent; color: inherit; }
+.dismissError { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: inherit; }
 .dismissError:hover { border-color: currentColor; }
 
 .mealIndex {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 22px;
-  border-block: 1px solid var(--ink);
+  border: var(--widget-border-strong);
+  border-radius: var(--radius-surface);
 }
 
 .mealIndexItem {
@@ -205,6 +228,15 @@
 
 .mealBody { padding: 18px; }
 
+.skippedState {
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .66rem;
+  text-transform: uppercase;
+}
+
 .draftMeal {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 258px;
@@ -267,7 +299,8 @@
 .mealNote {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-left: 3px solid var(--moss);
+  border: 1px solid var(--moss);
+  border-radius: var(--radius-surface);
   background: var(--moss-soft);
   color: var(--ink-soft);
   font-size: .8rem;
@@ -440,6 +473,15 @@
 .confirmedNutrition strong { color: var(--ink); font-family: var(--font-soma-mono), monospace; font-size: 1rem; font-weight: 600; line-height: 1; white-space: nowrap; }
 .confirmedNutrition strong small { color: var(--muted); font-size: .58rem; font-weight: 500; text-transform: uppercase; }
 .analysisDisplay { display: grid; gap: 12px; }
+.analysisDetails { margin-top: 14px; border: var(--widget-border); border-radius: var(--radius-surface); }
+.analysisDetails > summary { display: flex; min-height: 44px; align-items: center; gap: 8px; padding-inline: 10px; cursor: pointer; color: var(--ink); font-size: .78rem; font-weight: 700; list-style: none; }
+.analysisDetails > summary::-webkit-details-marker { display: none; }
+.analysisDetails > summary::before { color: var(--muted); content: "▸"; font-size: .9rem; }
+.analysisDetails[open] > summary::before { content: "▾"; }
+.analysisDetails[open] > summary { border-bottom: 1px solid var(--line); }
+.analysisDetails > summary:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+.analysisDetailsBody { display: grid; gap: 12px; padding: 12px 10px 4px; }
+.analysisDetailsBody > .secondaryButton { justify-self: start; }
 .dishType { margin: 0; font-size: .95rem; }
 .ingredientsList { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--ink-soft); font-size: .8rem; }
 .ingredientsList li { padding-left: 2px; }
@@ -471,7 +513,8 @@
   gap: 8px;
   margin: -4px 0 18px;
   padding: 12px;
-  border: 1px solid var(--line-strong);
+  border: var(--widget-border);
+  border-radius: var(--radius-surface);
   background: var(--paper);
   color: var(--ink-soft);
   font-size: .76rem;

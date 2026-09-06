@@ -468,6 +468,23 @@ export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSna
   </section>;
 }
 
+export function MatrixDisclosure({ matrix }: { matrix: PersonalLabSnapshot["matrix"] }) {
+  const disclosureRef = useRef<HTMLDetailsElement | null>(null);
+
+  useEffect(() => {
+    const openForRelation = () => {
+      if (disclosureRef.current) disclosureRef.current.open = true;
+    };
+    window.addEventListener("soma:open-relation", openForRelation);
+    return () => window.removeEventListener("soma:open-relation", openForRelation);
+  }, []);
+
+  return <details ref={disclosureRef} className="matrix-disclosure">
+    <summary>Afficher la matrice de relations</summary>
+    <CorrelationMatrix matrix={matrix} />
+  </details>;
+}
+
 export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["matrix"] }) {
   const initialPeriod = defaultAnalysisPeriod(matrix.periods);
   const [period, setPeriod] = useState<AnalysisPeriod>(initialPeriod);

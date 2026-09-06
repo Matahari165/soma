@@ -235,7 +235,7 @@
   .score-ring circle { stroke-width: 7; }
   .score-ring__value strong { font-size: 2.65rem; }
   .score-ring__value small { margin-top: 5px; font-size: .52rem; }
-  .health-primary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-inline: 0; background: var(--line); }
+  .health-primary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-inline: 1px solid var(--line-strong); background: var(--line); }
   .health-primary-card:nth-child(n) { min-height: 132px; border: 0; }
   .health-primary-card--featured { grid-column: 1 / -1; }
   .health-primary-card:nth-child(6):last-child { grid-column: 1 / -1; }
@@ -244,13 +244,13 @@
   .health-section-heading { align-items: start; }
   .sleep-stage-chart { grid-template-columns: 38px minmax(0, 1fr); gap: 7px; }
   .sleep-stage-timeline { height: 132px; }
-  .metric-trend-grid { grid-template-columns: 1fr; border-left: 0; }
+  .metric-trend-grid { grid-template-columns: 1fr; border-left: 1px solid var(--ink); }
   .metric-trend-card { min-height: 286px; border-left: 1px solid var(--ink); }
   .exercise-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 
   .workout-header { min-height: 200px; display: grid; align-content: end; }
-  .program-grid { grid-template-columns: 1fr; border-left: 0; }
+  .program-grid { grid-template-columns: 1fr; border-left: 1px solid var(--ink); }
   .program-card { border-left: 1px solid var(--ink); }
   .workout-summary { grid-template-columns: 1fr; }
   .workout-summary > * { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -325,7 +325,7 @@
   .matrix-collection { grid-template-columns: 1fr; gap: 9px; }
   .matrix-collection ul { display: grid; }
   .matrix-collection li { justify-content: space-between; }
-  .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--ink); }
   .lab-signals a { min-height: 126px; border-bottom: 1px solid var(--line); }
   .lab-signals a:nth-child(2n) { border-right: 0; }
   .lab-signals a:nth-child(n+3) { border-bottom: 0; }
@@ -362,7 +362,7 @@
   .matrix-grain { width: 100%; }
   .matrix-grain button { flex: 1; justify-content: center; }
   .matrix-scroll { display: none; }
-  .matrix-mobile-list { display: block; border: 1px solid var(--ink); border-bottom: 0; }
+  .matrix-mobile-list { display: block; border: 1px solid var(--ink); border-radius: var(--radius-surface); }
 }
 
 @media (max-width: 700px) {
@@ -372,7 +372,7 @@
   .journal-field { grid-template-columns: minmax(0, 1fr) minmax(116px, 148px); gap: 8px; }
   .matrix-scroll { display: none; }
   .matrix-mobile-list { display: block; }
-  .recovery-formula dl { grid-template-columns: 1fr; }
+  .recovery-formula dl { grid-template-columns: 1fr; border-radius: var(--radius-surface); }
   .recovery-formula dl > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .recovery-formula dl > div:last-child { border-bottom: 0; }
 }

@@ -1,29 +1,26 @@
 import { Suspense } from "react";
 
 import {
-  PersonalLabAnalysisLoading,
-  PersonalLabAnalysisSection,
   PersonalLabJournalLoading,
   PersonalLabJournalSection,
   PersonalLabOverviewLoading,
   PersonalLabOverviewSection,
 } from "@/components/lab/personal-lab";
+import { DeferredPersonalLabAnalysis } from "@/components/lab/deferred-personal-lab-analysis";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createPersonalLabStream, type PersonalLabStream } from "@/services/personal-lab";
 
 type ConnectionNotice = "health" | "calendar" | null;
 
-async function LabOverview({ stream, connectionNotice }: { stream: PersonalLabStream; connectionNotice: ConnectionNotice }) {
+type PersonalLabPageStream = Pick<PersonalLabStream, "overview" | "journal">;
+
+async function LabOverview({ stream, connectionNotice }: { stream: PersonalLabPageStream; connectionNotice: ConnectionNotice }) {
   return <PersonalLabOverviewSection data={await stream.overview} connectionNotice={connectionNotice} />;
 }
 
-async function LabJournal({ stream }: { stream: PersonalLabStream }) {
+async function LabJournal({ stream }: { stream: PersonalLabPageStream }) {
   return <PersonalLabJournalSection data={await stream.journal} />;
-}
-
-async function LabAnalysis({ stream }: { stream: PersonalLabStream }) {
-  return <PersonalLabAnalysisSection data={await stream.analysis} />;
 }
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ health?: string | string[]; calendar?: string | string[] }> }) {
@@ -31,10 +28,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   if (!user) return <PublicHome />;
 
   const connectionNotice = params.calendar === "connected" ? "calendar" : params.health === "connected" || params.health === "connected_partial" ? "health" : null;
-  const stream = createPersonalLabStream(user, { periods: [90] });
+  const stream = createPersonalLabStream(user, { periods: [90], includeAnalysis: false });
   return <div id="main-page-content" className="personal-lab-page lab-entry">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
     <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>
-    <Suspense fallback={<PersonalLabAnalysisLoading />}><LabAnalysis stream={stream} /></Suspense>
+    <DeferredPersonalLabAnalysis />
   </div>;
 }

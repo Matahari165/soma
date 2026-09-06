@@ -46,7 +46,8 @@ describe("production-only application contract", () => {
     expect(page).toContain("createPersonalLabStream");
     expect(page).toContain("<Suspense fallback={<PersonalLabOverviewLoading />}");
     expect(page).toContain("<Suspense fallback={<PersonalLabJournalLoading />}");
-    expect(page).toContain("<Suspense fallback={<PersonalLabAnalysisLoading />}");
+    expect(page).toContain("includeAnalysis: false");
+    expect(page).toContain("<DeferredPersonalLabAnalysis />");
   });
 
   it("loads the latest Coach conversation with the initial history request", () => {
