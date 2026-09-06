@@ -50,6 +50,7 @@ type AnalysisRow = Row & {
   result?: MealAnalysis | null;
   error?: string | null;
   error_code?: MealAnalysisRecord["errorCode"];
+  source_fingerprint?: string | null;
   source_photo_ids?: unknown;
   created_at: string;
   completed_at?: string | null;
@@ -96,6 +97,7 @@ function analysisFromRow(row: AnalysisRow): MealAnalysisRecord {
     model: row.model,
     result: row.result && typeof row.result === "object" ? row.result : null,
     error: asNullableString(row.error),
+    sourceFingerprint: asNullableString(row.source_fingerprint),
     errorCode: row.error_code === "provider_auth" || row.error_code === "provider_rate_limited" || row.error_code === "provider_request" || row.error_code === "provider_unavailable" || row.error_code === "invalid_response" || row.error_code === "source_unavailable" ? row.error_code : null,
     sourcePhotoIds: Array.isArray(row.source_photo_ids) ? row.source_photo_ids.filter((id): id is string => typeof id === "string") : [],
     createdAt: row.created_at,

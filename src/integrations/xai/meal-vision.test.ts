@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createXaiMealVisionProvider } from "./meal-vision";
+import { analyzeMealInput, createXaiMealVisionProvider } from "./meal-vision";
 
 function structuredAnalysis() {
   const range = { low: 400, likely: 500, high: 650 };
@@ -18,6 +18,7 @@ describe("xAI meal vision contract", () => {
     vi.restoreAllMocks();
     delete process.env.XAI_API_KEY;
     delete process.env.XAI_MEAL_VISION_MODEL;
+    delete process.env.XAI_MEAL_VALIDATOR_MODEL;
   });
 
   it("sends the note and all photos in one structured vision request", async () => {
@@ -74,5 +75,72 @@ describe("xAI meal vision contract", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("private provider payload", { status: 429 }));
     await expect(createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" }))
       .rejects.toMatchObject({ code: "provider_rate_limited", message: "Grok est momentanément sollicité. Réessaie dans quelques instants." });
+  });
+
+  it("runs the dedicated validator with the primary analysis and a structured correction", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    process.env.XAI_MEAL_VISION_MODEL = "grok-primary";
+    process.env.XAI_MEAL_VALIDATOR_MODEL = "grok-validator";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+    const result = await analyzeMealInput({
+      mealType: "lunch",
+      mealDate: "2026-08-31",
+      note: "Bol de riz avec légumes",
+      correction: { action: "smaller", foodIndex: 0 },
+      images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const primaryBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string };
+    const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; input: Array<{ content: Array<{ text?: string }> }> };
+    expect(primaryBody.model).toBe("grok-primary");
+    expect(validatorBody.model).toBe("grok-validator");
+    expect(validatorBody.input[0]?.content[0]?.text).toContain("Primary analysis");
+    expect(validatorBody.input[0]?.content[0]?.text).toContain("Bol de riz");
+    expect(validatorBody.input[0]?.content[0]?.text).toContain('"action":"smaller"');
+    expect(result.result.summary).toBe(structuredAnalysis().summary);
+  });
+
+  it("keeps the primary result when optional verification fails", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response("validator unavailable", { status: 503 }));
+
+    const result = await analyzeMealInput({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.result.summary).toBe(structuredAnalysis().summary);
+  });
+
+  it("keeps providers without verify compatible", async () => {
+    const primary = structuredAnalysis();
+    const provider = {
+      name: "test",
+      model: "test-model",
+      analyze: vi.fn().mockResolvedValue(primary),
+    };
+
+    const result = await analyzeMealInput({ mealType: "breakfast", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "unknown", data: new Uint8Array([1]).buffer }] }, provider);
+
+    expect(provider.analyze).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ result: primary, provider: "test", model: "test-model" });
+  });
+
+  it("passes a structured correction through the text-only verification path", async () => {
+    const primary = structuredAnalysis();
+    const correction = { action: "add" as const, name: "Huile d'olive" };
+    const provider = {
+      name: "test",
+      model: "test-model",
+      analyze: vi.fn(),
+      analyzeText: vi.fn().mockResolvedValue(primary),
+      verify: vi.fn().mockResolvedValue(primary),
+    };
+
+    await analyzeMealInput({ mealType: "snack", mealDate: "2026-08-31", note: "Yaourt", correction, images: [] }, provider);
+
+    expect(provider.analyzeText).toHaveBeenCalledWith({ mealType: "snack", mealDate: "2026-08-31", note: "Yaourt", correction });
+    expect(provider.verify).toHaveBeenCalledWith(expect.objectContaining({ primaryAnalysis: primary, correction }));
   });
 });

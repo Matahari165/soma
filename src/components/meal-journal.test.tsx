@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealJournal, defaultAnalyze, mealHistoryDates, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, defaultAnalyze, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -106,6 +106,53 @@ describe("MealJournal", () => {
       { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", method: "PATCH" },
       { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze", method: "POST" },
     ]);
+  });
+
+  it("sends a structured correction with the forced second analysis", async () => {
+    let analyzeBody: unknown;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("/analyze")) analyzeBody = JSON.parse(String(init?.body));
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "lunch", note: "Pâtes", status: "draft", photos: [], analysis: null } });
+    }));
+
+    await defaultAnalyze({
+      date,
+      slot: "lunch",
+      files: [],
+      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+      correction: { action: "smaller", foodName: "Pâtes", foodIndex: 0 },
+    });
+
+    expect(analyzeBody).toEqual({ force: true, correction: { action: "smaller", foodName: "Pâtes", foodIndex: 0 } });
+  });
+
+  it("renders compact accessible correction actions without an uncertainty block", () => {
+    const meal: NonNullable<MealJournalData["meals"]["lunch"]> = {
+      id: "meal-review",
+      date,
+      slot: "lunch",
+      note: "",
+      photos: [],
+      analysis: {
+        ingredients: [{ id: "food-1", name: "Riz", portion: "1 bol" }],
+        calories: { low: 450, high: 650 },
+        proteinGrams: { low: 15, high: 25 },
+        uncertainties: ["portion à revoir"],
+      },
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "review",
+    };
+    const html = renderToStaticMarkup(<MealCorrectionPanel meal={meal} onCorrection={() => undefined} onCancel={() => undefined} />);
+
+    expect(html).toContain("Retirer Riz");
+    expect(html).toContain("Portion plus petite de Riz");
+    expect(html).toContain("Portion plus grande de Riz");
+    expect(html).toContain('aria-label="Corrections rapides"');
+    expect(html).toContain("Aliment manquant");
+    expect(html).toContain('type="text"');
+    expect(html).not.toContain("Incertitudes");
   });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
@@ -274,5 +321,15 @@ describe("apiMealToRecord", () => {
     expect(meal.status).toBe("confirmed");
     expect(meal.analysis?.ingredients[0]?.name).toBe("Poulet rôti");
     expect(meal.analysis?.calories.likely).toBe(420);
+  });
+
+  it("preserves a missing likely estimate when saving an analysis", () => {
+    const payload = recordAnalysisToApi({
+      ingredients: [],
+      calories: { low: 300, high: 500 },
+      proteinGrams: { low: null, high: null },
+    });
+
+    expect(payload.totals.calories).toEqual({ low: 300, high: 500 });
   });
 });

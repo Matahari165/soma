@@ -5,8 +5,10 @@ import {
   MAX_MEAL_PHOTOS,
   MAX_MEAL_PHOTOS_BYTES,
   normalizeMealFeeling,
+  validateMealAnalysis,
   type CreateMealInput,
   type Meal,
+  type MealAnalysisCorrection,
   type MealFeeling,
   type MealOrigin,
   type MealPhotoMime,
@@ -60,11 +62,33 @@ async function setPhotoStorageState(userId: string, mealId: string, photoId: str
 }
 
 function hasPreservedAnalysis(meal: Meal, confirmedAnalysis: UpdateMealInput["confirmedAnalysis"]) {
+  if (meal.analysis?.status === "running") return Boolean(confirmedAnalysis);
   return Boolean(
     confirmedAnalysis
       ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis.result : null)
       ?? (meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result ? meal.lastSuccessfulAnalysis.result : null),
   );
+}
+
+function analysisUsedForConfirmation(meal: Meal) {
+  if (meal.analysis?.status === "running") return null;
+  if (meal.analysis?.status === "completed" && meal.analysis.result) return meal.analysis;
+  if (meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result) return meal.lastSuccessfulAnalysis;
+  return null;
+}
+
+/**
+ * Hashes only the current analysis evidence. The note and photo metadata never
+ * leave this process and are not written to logs or diagnostics.
+ */
+export async function computeMealSourceFingerprint(meal: Pick<Meal, "note" | "photos">) {
+  const photos = meal.photos
+    .filter((photo) => (photo.storageStatus ?? "available") === "available")
+    .map((photo) => ({ id: photo.id, origin: photo.origin, status: photo.storageStatus ?? "available" }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const payload = JSON.stringify({ version: 1, note: meal.note?.trim() ?? "", photos });
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photos"][number]) {
@@ -162,15 +186,36 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
   assertMealId(mealId);
   const current = await findMeal(userId, mealId);
   if (!current) throw new MealServiceError("not_found", "Meal not found.");
-  const activePhotos = current.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged");
-  if (input.confirmedAnalysis && input.status !== "confirmed") throw new MealServiceError("invalid", "An edited analysis is saved when the meal is confirmed.");
-  if (input.status === "confirmed") {
-    const effectiveNote = input.note !== undefined ? input.note : current.note;
-    if (current.photos.length === 0 && !effectiveNote?.trim()) {
-      throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
+  let confirmedAnalysis = input.confirmedAnalysis;
+  if (confirmedAnalysis) {
+    try {
+      confirmedAnalysis = validateMealAnalysis(confirmedAnalysis);
+    } catch {
+      throw new MealServiceError("invalid", "La correction nutritionnelle est incohérente. Relance l’analyse puis réessaie.", "invalid_response");
     }
-    if (activePhotos.length > 0 && !hasPreservedAnalysis(current, input.confirmedAnalysis)) {
+  }
+  const activePhotos = current.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged");
+  if (confirmedAnalysis && input.status !== "confirmed") throw new MealServiceError("invalid", "An edited analysis is saved when the meal is confirmed.");
+  const effectiveNote = input.note !== undefined ? input.note : current.note;
+  if (input.status === "confirmed") {
+    if (activePhotos.length === 0 && !effectiveNote?.trim()) {
+      // A previously confirmed textless meal may have had its binaries purged.
+      // It remains confirmable because it is no longer reanalysable from the
+      // original photos.
+      if (current.status !== "confirmed") throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant de confirmer.");
+    }
+    if (activePhotos.length > 0 && !hasPreservedAnalysis(current, confirmedAnalysis)) {
       throw new MealServiceError("invalid", "Analyse les photos avant de confirmer ce repas.");
+    }
+    const hasCurrentEvidence = activePhotos.length > 0 || Boolean(effectiveNote?.trim());
+    if (hasCurrentEvidence && !confirmedAnalysis) {
+      const analysis = analysisUsedForConfirmation(current);
+      if (analysis) {
+        const currentFingerprint = await computeMealSourceFingerprint({ note: effectiveNote ?? null, photos: current.photos });
+        if (analysis.sourceFingerprint && analysis.sourceFingerprint !== currentFingerprint) {
+          throw new MealServiceError("invalid", "Les preuves du repas ont changé. Relance l’analyse avant de confirmer ce repas.");
+        }
+      }
     }
     // Les ressentis restent optionnels et ne bloquent pas la confirmation.
   }
@@ -193,7 +238,8 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
       stomachOverfullIntensity: input.stomachOverfullIntensity !== undefined ? feelingValues.stomachOverfullIntensity : current.stomachOverfullIntensity,
     });
   }
-  if (input.confirmedAnalysis) {
+  if (confirmedAnalysis) {
+    const sourceFingerprint = await computeMealSourceFingerprint({ note: effectiveNote ?? null, photos: current.photos });
     await insertMealAnalysis({
       id: crypto.randomUUID(),
       user_id: userId,
@@ -201,9 +247,10 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
       status: "completed",
       provider: "user",
       model: "confirmed-v1",
-      result: input.confirmedAnalysis,
+      result: confirmedAnalysis,
       error: null,
-      source_photo_ids: current.photos.map((photo) => photo.id),
+      source_fingerprint: sourceFingerprint,
+      source_photo_ids: activePhotos.map((photo) => photo.id),
       created_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
     });
@@ -313,29 +360,31 @@ export async function removeMealPhoto(userId: string, mealId: string, photoId: s
   await updateMeal(userId, mealId, { status: "draft" });
 }
 
-export async function analyzeMeal(userId: string, mealId: string, options: { force?: boolean; provider?: MealVisionProvider } = {}) {
+export async function analyzeMeal(userId: string, mealId: string, options: { force?: boolean; correction?: MealAnalysisCorrection; provider?: MealVisionProvider } = {}) {
   assertMealId(mealId);
   const meal = await findMeal(userId, mealId);
   if (!meal) throw new MealServiceError("not_found", "Meal not found.");
-  const note = meal.note?.trim() ?? "";
-  // A confirmed meal keeps photo metadata but its binaries are purged. Never
-  // try to send those paths back to Grok; a new analysis can use a note or
-  // newly uploaded available photos only.
-  const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
-  const hasPhotos = availablePhotos.length > 0;
-  const preservedAnalysis = meal.lastSuccessfulAnalysis ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis : null);
-  if (!hasPhotos && !note) {
-    if (preservedAnalysis) return { analysis: preservedAnalysis, fresh: false };
-    throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
-  }
-  if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
   const lockKey = `meal-analysis:${userId}:${mealId}`;
   const claimed = await claimCloudflareLock(lockKey, userId, 120_000);
   if (!claimed) throw new MealServiceError("conflict", "This meal is already being analysed.");
   try {
+    const currentMeal = await findMeal(userId, mealId);
+    if (!currentMeal) throw new MealServiceError("not_found", "Meal not found.");
+    const note = currentMeal.note?.trim() ?? "";
+    // A confirmed meal keeps photo metadata but its binaries are purged. Never
+    // try to send those paths back to Grok; a new analysis can use a note or
+    // newly uploaded available photos only.
+    const availablePhotos = currentMeal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
+    const hasPhotos = availablePhotos.length > 0;
+    const sourceFingerprint = await computeMealSourceFingerprint({ note: currentMeal.note, photos: currentMeal.photos });
     const current = await findLatestMealAnalysis(userId, mealId);
-    const lastSuccessful = meal.lastSuccessfulAnalysis ?? (current?.status === "completed" && current.result ? current : null);
-    if (!options.force && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
+    const lastSuccessful = currentMeal.lastSuccessfulAnalysis ?? (current?.status === "completed" && current.result ? current : null);
+    if (!hasPhotos && !note) {
+      if (lastSuccessful) return { analysis: lastSuccessful, fresh: false };
+      throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
+    }
+    if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
+    if (!options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false };
     if (!hasPhotos && !note && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
     const sourcePhotoIds = availablePhotos.map((photo) => photo.id);
     const analysisId = crypto.randomUUID();
@@ -349,6 +398,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       model: options.provider?.model ?? process.env.XAI_MEAL_VISION_MODEL ?? "grok-4.6",
       result: null,
       error: null,
+      source_fingerprint: sourceFingerprint,
       source_photo_ids: sourcePhotoIds,
       created_at: createdAt,
       completed_at: null,
@@ -360,12 +410,20 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
         images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
       }
-      const analysed = await analyzeMealInput({ mealType: meal.mealType, mealDate: meal.mealDate, note: note || null, images }, options.provider);
+      const input = { mealType: currentMeal.mealType, mealDate: currentMeal.mealDate, note: note || null, images, ...(options.correction ? { correction: options.correction } : {}) };
+      const analysed = await analyzeMealInput(input, options.provider);
+      let canonicalResult;
+      try {
+        canonicalResult = validateMealAnalysis(analysed.result);
+      } catch {
+        throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
+      }
       const completed = await updateMealAnalysis(userId, analysisId, {
         status: "completed",
         provider: analysed.provider,
         model: analysed.model,
-        result: analysed.result,
+        result: canonicalResult,
+        source_fingerprint: sourceFingerprint,
         error: null,
         completed_at: new Date().toISOString(),
       });
@@ -376,7 +434,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       const errorCode = error instanceof MealServiceError ? error.diagnosticCode ?? "source_unavailable" : visionError?.code ?? "provider_unavailable";
       let failed = null;
       for (let attempt = 0; attempt < 2 && !failed; attempt += 1) {
-        failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, completed_at: new Date().toISOString() }).catch(() => null);
+        failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, completed_at: new Date().toISOString() }).catch(() => null);
       }
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", failed?.error ?? safeError, errorCode);

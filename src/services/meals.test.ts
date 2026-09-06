@@ -18,7 +18,7 @@ vi.mock("@/repositories/meals", () => ({
 vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 
-import { createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
+import { computeMealSourceFingerprint, createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject } from "@/lib/r2";
@@ -45,7 +45,30 @@ describe("meal analysis provenance", () => {
 
   it("stores a user correction as a new analysis without replacing the Grok run", async () => {
     await updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", mouthWarmthIntensity: 2, stomachOverfullIntensity: 3, confirmedAnalysis: canonicalCorrection });
-    expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ provider: "user", model: "confirmed-v1", status: "completed", result: canonicalCorrection, source_photo_ids: ["photo-1"] }));
+    expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ provider: "user", model: "confirmed-v1", status: "completed", result: canonicalCorrection, source_fingerprint: expect.any(String), source_photo_ids: ["photo-1"] }));
+  });
+
+  it("refuses confirmation when the note changes after the analysis", async () => {
+    const photos = [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" }];
+    const sourceFingerprint = await computeMealSourceFingerprint({ note: null, photos });
+    state.findMeal.mockResolvedValue({
+      id: "12345678-1234-1234-1234-123456789012", userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const,
+      note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z",
+      photos,
+      analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: canonicalCorrection, error: null, sourceFingerprint, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" },
+    });
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", note: "Une nouvelle note" })).rejects.toMatchObject({ code: "invalid", message: "Les preuves du repas ont changé. Relance l’analyse avant de confirmer ce repas." });
+    expect(state.updateMeal).not.toHaveBeenCalled();
+  });
+
+  it("keeps the source fingerprint stable and changes it when photo proof changes", async () => {
+    const photos = [{ id: "photo-1", mealId: "meal", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 1, createdAt: "2026-08-31T10:00:00.000Z" }];
+    const first = await computeMealSourceFingerprint({ note: "Pâtes", photos });
+    const reordered = await computeMealSourceFingerprint({ note: " Pâtes ", photos: [...photos].reverse() });
+    const changed = await computeMealSourceFingerprint({ note: "Pâtes", photos: photos.map((photo) => ({ ...photo, origin: "prepared" as const })) });
+    expect(reordered).toBe(first);
+    expect(changed).not.toBe(first);
   });
 
   it("refuses to purge a photo-only meal without a completed analysis", async () => {

@@ -48,11 +48,76 @@ export const nutritionRangeSchema = z.object({
 }).refine((range) => range.low <= range.likely && range.likely <= range.high, { message: "The likely estimate must be between the lower and upper estimates." });
 export type NutritionRange = z.infer<typeof nutritionRangeSchema>;
 
+export const mealFoodKindSchema = z.enum(["dish", "component", "ingredient"]);
+export type MealFoodKind = z.infer<typeof mealFoodKindSchema>;
+
+export const mealEvidenceSchema = z.enum(["visible", "inferred", "unknown"]);
+export type MealEvidence = z.infer<typeof mealEvidenceSchema>;
+
+export const mealEvidenceSourceSchema = z.enum(["photo", "note", "model"]);
+export type MealEvidenceSource = z.infer<typeof mealEvidenceSourceSchema>;
+
+export const mealQuantitySchema = z.object({
+  value: z.number().finite().min(0).nullable(),
+  unit: z.string().trim().max(40).nullable(),
+  basis: z.string().trim().max(80).nullable(),
+  grams: z.number().finite().min(0).max(10000).nullable(),
+});
+export type MealQuantity = z.infer<typeof mealQuantitySchema>;
+
+export const mealAnalysisCorrectionSchema = z.object({
+  action: z.enum(["remove", "smaller", "larger", "add"]),
+  foodName: z.string().trim().min(1).max(120).optional(),
+  foodIndex: z.number().int().min(0).max(29).optional(),
+  /** A name is useful for an added item, but the user may only request a size change. */
+  name: z.string().trim().min(1).max(120).optional(),
+}).superRefine((correction, context) => {
+  if (correction.action !== "add" && !correction.foodName && correction.foodIndex === undefined) {
+    context.addIssue({ code: "custom", path: ["foodName"], message: "A correction must identify an existing food by name or index." });
+  }
+  if (correction.action === "add" && !correction.name) {
+    context.addIssue({ code: "custom", path: ["name"], message: "An added food must have a name." });
+  }
+});
+export type MealAnalysisCorrection = z.infer<typeof mealAnalysisCorrectionSchema>;
+
+type NutritionInvariantTarget = {
+  carbohydrateGrams?: NutritionRange | null;
+  sugarGrams?: NutritionRange | null;
+  addedSugarGrams?: NutritionRange | null;
+};
+
+function addNutritionInvariantIssues(
+  target: NutritionInvariantTarget,
+  path: (string | number)[],
+  context: z.RefinementCtx,
+) {
+  const sugar = target.sugarGrams;
+  const addedSugar = target.addedSugarGrams;
+  const carbohydrates = target.carbohydrateGrams;
+  // Reject only disjoint intervals. Overlapping ranges remain compatible even
+  // when their upper bounds differ because the model is expressing uncertainty.
+  if (sugar && addedSugar && addedSugar.low > sugar.high) {
+    context.addIssue({ code: "custom", path: [...path, "addedSugarGrams"], message: "Added sugar cannot exceed total sugar." });
+  }
+  if (sugar && carbohydrates && sugar.low > carbohydrates.high) {
+    context.addIssue({ code: "custom", path: [...path, "sugarGrams"], message: "Total sugar cannot exceed carbohydrates." });
+  }
+}
+
 export const mealFoodItemSchema = z.object({
   name: z.string().trim().min(1).max(120),
   preparation: z.string().trim().max(240).nullable(),
   portion: z.string().trim().max(120).nullable(),
   estimatedGrams: z.number().finite().min(0).max(10000).nullable(),
+  /** Internal provenance fields; they are intentionally optional for old analyses. */
+  kind: mealFoodKindSchema.optional(),
+  parentId: z.string().trim().max(120).nullable().optional(),
+  countedInTotals: z.boolean().optional(),
+  evidence: mealEvidenceSchema.optional(),
+  evidenceSource: mealEvidenceSourceSchema.optional(),
+  evidencePhotoIds: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
+  quantity: mealQuantitySchema.nullable().optional(),
   calories: nutritionRangeSchema.nullable(),
   proteinGrams: nutritionRangeSchema.nullable(),
   carbohydrateGrams: nutritionRangeSchema.nullable(),
@@ -81,8 +146,20 @@ export const mealAnalysisSchema = z.object({
   }),
   confidence: z.enum(["low", "medium", "high"]),
   uncertainties: z.array(z.string().trim().min(1).max(300)).max(12),
+}).superRefine((analysis, context) => {
+  analysis.foods.forEach((food, index) => addNutritionInvariantIssues(food, ["foods", index], context));
+  addNutritionInvariantIssues(analysis.totals, ["totals"], context);
 });
 export type MealAnalysis = z.infer<typeof mealAnalysisSchema>;
+
+/**
+ * Single canonical entry point for validating model or user-confirmed meal data.
+ * It deliberately does not compare nutrient sums: rounded/wide ranges need not
+ * add up exactly to the reported totals.
+ */
+export function validateMealAnalysis(value: unknown): MealAnalysis {
+  return mealAnalysisSchema.parse(value);
+}
 
 export const createMealInputSchema = z.object({
   mealDate: z.iso.date(),
@@ -113,6 +190,7 @@ export type UpdateMealInput = z.infer<typeof updateMealInputSchema>;
 export const mealAnalysisRequestSchema = z.object({
   force: z.boolean().optional().default(false),
   idempotencyKey: z.string().trim().min(8).max(160).optional(),
+  correction: mealAnalysisCorrectionSchema.optional(),
 });
 
 export type MealPhoto = {
@@ -157,6 +235,8 @@ export type MealAnalysisRecord = {
   model: string;
   result: MealAnalysis | null;
   error: string | null;
+  /** Optional provenance of the source snapshot; old analysis rows omit it. */
+  sourceFingerprint?: string | null;
   /** Stable, non-sensitive diagnostic category for UI/log correlation. */
   errorCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_unavailable" | "invalid_response" | "source_unavailable" | null;
   sourcePhotoIds: string[];

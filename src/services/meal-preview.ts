@@ -2,6 +2,7 @@ import type {
   CreateMealInput,
   Meal,
   MealAnalysis,
+  MealAnalysisCorrection,
   MealAnalysisRecord,
   MealOrigin,
   MealPhoto,
@@ -184,7 +185,8 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean }): Me
   };
 }
 
-export function analyzePreviewMeal(userId: string, mealId: string) {
+export function analyzePreviewMeal(userId: string, mealId: string, options?: { correction?: MealAnalysisCorrection }) {
+  void options;
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
   const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");

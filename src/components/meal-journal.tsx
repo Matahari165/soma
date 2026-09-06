@@ -25,6 +25,7 @@ import {
   type MealIngredient,
   type MealJournalApi,
   type MealJournalData,
+  type MealCorrection,
   type MealOrigin,
   type MealPhoto,
   type MealRecord,
@@ -51,6 +52,7 @@ export type {
   MealIngredient,
   MealJournalApi,
   MealJournalData,
+  MealCorrection,
   MealOrigin,
   MealPhoto,
   MealRecord,
@@ -171,7 +173,7 @@ async function defaultLoad(date: string) {
   return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
 }
 
-export async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInput) {
+export async function defaultAnalyze({ date, slot, meal, files, correction }: AnalyzeMealInput) {
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
   if (isNewMeal) {
@@ -195,7 +197,7 @@ export async function defaultAnalyze({ date, slot, meal, files }: AnalyzeMealInp
     files.forEach((file) => form.append("photos", file, file.name));
     await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", body: form }));
   }
-  const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) });
+  const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true, ...(correction ? { correction } : {}) }) });
   const body = await readJson(response);
   return apiMealToRecord(body.meal);
 }
@@ -238,18 +240,38 @@ function normalizedApiRange(range: NutritionRange | undefined) {
   if (!range || range.low === null || range.high === null) return null;
   const low = Math.min(range.low, range.high);
   const high = Math.max(range.low, range.high);
-  const likely = typeof range.likely === "number" && range.likely >= low && range.likely <= high ? range.likely : (low + high) / 2;
-  return { low, likely, high };
+  const likely = typeof range.likely === "number" && range.likely >= low && range.likely <= high ? range.likely : null;
+  return likely === null ? { low, high } : { low, likely, high };
 }
 
-function recordAnalysisToApi(analysis: MealAnalysis) {
+export function recordAnalysisToApi(analysis: MealAnalysis) {
   const calories = normalizedApiRange(analysis.calories);
   const proteinGrams = normalizedApiRange(analysis.proteinGrams);
   return {
     summary: "Analyse relue et confirmée.",
     dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
     calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
-    foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({ name: ingredient.name.trim(), preparation: ingredient.preparation?.trim() || null, portion: ingredient.portion.trim() || null, estimatedGrams: ingredient.estimatedGrams ?? null, calories: normalizedApiRange(ingredient.calories), proteinGrams: normalizedApiRange(ingredient.proteinGrams), carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams), fatGrams: normalizedApiRange(ingredient.fatGrams), fiberGrams: normalizedApiRange(ingredient.fiberGrams), sugarGrams: normalizedApiRange(ingredient.sugarGrams), addedSugarGrams: normalizedApiRange(ingredient.addedSugarGrams), confidence: ingredient.confidence ?? "medium" })),
+    foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({
+      name: ingredient.name.trim(),
+      preparation: ingredient.preparation?.trim() || null,
+      portion: ingredient.portion.trim() || null,
+      estimatedGrams: ingredient.estimatedGrams ?? null,
+      kind: ingredient.kind,
+      parentId: ingredient.parentId ?? null,
+      countedInTotals: ingredient.countedInTotals,
+      evidence: ingredient.evidence,
+      evidenceSource: ingredient.evidenceSource,
+      evidencePhotoIds: ingredient.evidencePhotoIds,
+      quantity: ingredient.quantity ?? null,
+      calories: normalizedApiRange(ingredient.calories),
+      proteinGrams: normalizedApiRange(ingredient.proteinGrams),
+      carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams),
+      fatGrams: normalizedApiRange(ingredient.fatGrams),
+      fiberGrams: normalizedApiRange(ingredient.fiberGrams),
+      sugarGrams: normalizedApiRange(ingredient.sugarGrams),
+      addedSugarGrams: normalizedApiRange(ingredient.addedSugarGrams),
+      confidence: ingredient.confidence ?? "medium",
+    })),
     totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
     confidence: analysis.confidence ?? "medium",
     uncertainties: analysis.note ? [analysis.note.slice(0, 300)] : [],
@@ -374,7 +396,36 @@ function AnalysisDisplay({ meal }: { meal: MealRecord }) {
     {analysis.ingredients.length > 0
       ? <ul className={styles.ingredientsList}>{analysis.ingredients.map((ingredient) => <li key={ingredient.id}><strong>{formatIngredientLabel(ingredient)}</strong>{(ingredient.calories || ingredient.proteinGrams || ingredient.carbohydratesGrams || ingredient.fatGrams || ingredient.fiberGrams || ingredient.sugarGrams || ingredient.addedSugarGrams) && <small>{ingredient.calories && `${likelyLabel(ingredient.calories)} kcal`}{ingredient.proteinGrams && ` · ${likelyLabel(ingredient.proteinGrams)} g prot.`}{ingredient.carbohydratesGrams && ` · ${likelyLabel(ingredient.carbohydratesGrams)} g gluc.`}{ingredient.fatGrams && ` · ${likelyLabel(ingredient.fatGrams)} g lip.`}{ingredient.fiberGrams && ` · ${likelyLabel(ingredient.fiberGrams)} g fibres`}{ingredient.sugarGrams && ` · ${likelyLabel(ingredient.sugarGrams)} g sucres`}{ingredient.addedSugarGrams && ` · ${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés`}</small>}</li>)}</ul>
       : <p className={styles.ingredientsList}>Composition non détaillée</p>}
-    {analysis.uncertainties && analysis.uncertainties.length > 0 && <details className={styles.uncertaintiesDetails}><summary>Incertitudes ({analysis.uncertainties.length})</summary><ul className={styles.uncertainties}>{analysis.uncertainties.map((item) => <li key={item}>{item}</li>)}</ul></details>}
+  </div>;
+}
+
+export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: MealRecord; onCorrection: (correction: MealCorrection) => void; onCancel: () => void }) {
+  const [missingFood, setMissingFood] = useState("");
+  const ingredients = meal.analysis?.ingredients ?? [];
+  const submitMissingFood = () => {
+    const name = missingFood.trim();
+    if (!name) return;
+    onCorrection({ action: "add", name: name.slice(0, 120) });
+  };
+  return <div className={styles.analysisDisplay} aria-label="Corrections rapides">
+    {ingredients.length > 0 && <ul className={styles.ingredientsList}>
+      {ingredients.map((ingredient, index) => <li key={ingredient.id}>
+        <strong>{formatIngredientLabel(ingredient)}</strong>
+        <div className={styles.reviewActions} role="group" aria-label={`Modifier ${ingredient.name}`}>
+          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "remove", foodName: ingredient.name, foodIndex: index })} aria-label={`Retirer ${ingredient.name}`}>Retirer</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "smaller", foodName: ingredient.name, foodIndex: index })} aria-label={`Portion plus petite de ${ingredient.name}`}>Moins</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "larger", foodName: ingredient.name, foodIndex: index })} aria-label={`Portion plus grande de ${ingredient.name}`}>Plus</button>
+        </div>
+      </li>)}
+    </ul>}
+    <div className={styles.textInput}>
+      <label htmlFor={`missing-food-${meal.id}`}>Aliment manquant</label>
+      <input id={`missing-food-${meal.id}`} type="text" value={missingFood} maxLength={120} placeholder="Ex. sauce tomate" onChange={(event) => setMissingFood(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitMissingFood(); } }} />
+      <button className={styles.secondaryButton} type="button" disabled={!missingFood.trim()} onClick={submitMissingFood}>Ajouter</button>
+    </div>
+    <div className={styles.reviewActions}>
+      <button className={styles.secondaryButton} type="button" onClick={onCancel}>Fermer</button>
+    </div>
   </div>;
 }
 
@@ -429,7 +480,7 @@ function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; 
   </div>;
 }
 
-function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, onRemovePhoto, onOrigin, onAnalyze, onEdit, onConfirm, onRating, onRetry, onNote, confirmError }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, onRemovePhoto, onOrigin, onAnalyze, onConfirm, onRating, onRetry, onNote, onCorrection, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
   saving: boolean;
@@ -439,13 +490,14 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, 
   onRemovePhoto: (photoId: string) => void;
   onOrigin: (photoId: string, origin: MealOrigin) => void;
   onAnalyze: () => void;
-  onEdit: () => void;
   onConfirm: () => void;
   onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void;
   onRetry: () => void;
   onNote: (note: string) => void;
+  onCorrection: (correction: MealCorrection) => void;
   confirmError?: string | null;
 }) {
+  const [correctionMode, setCorrectionMode] = useState(false);
   const headingId = `meal-${slot}-title`;
   const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
   const hasNote = Boolean(meal?.note.trim());
@@ -468,9 +520,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, onFiles, 
         </button>
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-      {status === "review" && meal?.analysis && <><AnalysisDisplay meal={meal} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls meal={meal} status="review" saving={saving} mutationBusy={mutationBusy} onEdit={onEdit} onConfirm={onConfirm} onRating={onRating} /></>}
-      {status === "confirmed" && meal && <><AnalysisDisplay meal={meal} /><MealCompletionControls meal={meal} status="confirmed" saving={saving} mutationBusy={mutationBusy} onEdit={onEdit} onConfirm={onConfirm} onRating={onRating} /></>}
-      {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="status">Réanalyse interrompue. L’analyse précédente reste conservée.</p>}
+      {status === "review" && meal?.analysis && <><AnalysisDisplay meal={meal} />{correctionMode && <MealCorrectionPanel meal={meal} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />}{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls meal={meal} status="review" saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} onRating={onRating} /></>}
+      {status === "confirmed" && meal && <><AnalysisDisplay meal={meal} />{correctionMode && <MealCorrectionPanel meal={meal} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />}<MealCompletionControls meal={meal} status="confirmed" saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} onRating={onRating} /></>}
+      {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Réanalyse interrompue. L’analyse précédente reste conservée. {visibleAnalysisError(meal.error)}</p>}
     </div>}
   </article>;
 }
@@ -726,23 +778,26 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     }
   };
 
-  const analyzeMeal = async (slot: MealSlot) => {
+  const analyzeMeal = async (slot: MealSlot, correction?: MealCorrection) => {
     const meal = data?.meals[slot];
     if (!meal || mutationInFlight.current) return;
     const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
     const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasNoteForAnalyze = Boolean(meal.note.trim());
-    if (hasPhotosForAnalyze) {
+    if (correction) {
+      // A correction is already grounded in the current analysis; the second
+      // pass decides the new quantities and totals.
+    } else if (hasPhotosForAnalyze) {
       if (activePhotos.length > MAX_MEAL_PHOTOS) return;
     } else if (!hasNoteForAnalyze) return;
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
     try {
       const files = meal.photos.map((photo) => filesByPhotoId[photo.id]).filter((file): file is File => Boolean(file));
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files }) : defaultAnalyze({ date: selectedDate, slot, meal, files }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, ...(correction ? { correction } : {}) }));
       updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, selectedDate, slot), status: "review" }));
     } catch (error) {
-      updateMeal(slot, (current) => ({ ...current, status: "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));
+      updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));
     } finally {
       mutationInFlight.current = false;
     }
@@ -800,7 +855,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onEdit={() => updateMeal(slot, (current) => ({ ...current, status: "draft", error: null }))} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
+      return <div id={`meal-${slot}`} key={slot}><MealCard meal={meal} slot={slot} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
     })}</div>
   </section>;
 }
