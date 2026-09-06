@@ -686,3 +686,217 @@
   .spin { animation: none; }
   .captureButton, .galleryButton, .captureButtonCompact, .galleryButtonCompact, .emptyNoteButton, .analyzeButton, .confirmButton, .secondaryButton, .retryButton, .originChoice, .originChoiceSelected, .ratingChoice, .ratingSelected, .mealIndexItem { transition: none; }
 }
+
+/* Home composition: the daily page is a quiet list, while /meals remains the
+   full framed editing surface. */
+.root:global(.meal-journal-home) .homeHeader {
+  min-height: 0;
+  align-items: end;
+  padding: 0 0 13px;
+  border-bottom: 0;
+}
+
+.root:global(.meal-journal-home) .homeHeader h2 {
+  margin-top: 3px;
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+}
+
+.root:global(.meal-journal-home) .homePageLink {
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  border-radius: 0;
+  font-size: .58rem;
+}
+
+.root:global(.meal-journal-home) .homePageLink:hover {
+  border-color: var(--moss-dark);
+  background: transparent;
+  color: var(--moss-dark);
+}
+
+.root:global(.meal-journal-home) .mealList {
+  gap: 0;
+  border-top: 1px solid var(--line-strong);
+}
+
+.root:global(.meal-journal-home) .mealCard {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.root:global(.meal-journal-home) .mealList > div:last-child .mealCard {
+  border-bottom: 0;
+}
+
+.root:global(.meal-journal-home) .mealCardConfirmed,
+.root:global(.meal-journal-home) .mealCardConfirmed .mealHeader {
+  border-color: var(--line);
+  background: transparent;
+}
+
+.root:global(.meal-journal-home) .mealHeader {
+  min-height: 56px;
+  padding: 8px 0 7px;
+  border-bottom: 0;
+}
+
+.root:global(.meal-journal-home) .mealTitle {
+  gap: 10px;
+}
+
+.root:global(.meal-journal-home) .mealTitle::before {
+  width: 28px;
+  height: 28px;
+  border-color: var(--line-strong);
+  color: var(--ink-soft);
+  font-size: .61rem;
+}
+
+.root:global(.meal-journal-home) .mealTitle h3 {
+  font-size: 1.05rem;
+  font-weight: 560;
+}
+
+.root:global(.meal-journal-home) .mealStatus {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: .56rem;
+}
+
+.root:global(.meal-journal-home) .mealStatus[data-status="confirmed"] {
+  background: transparent;
+  color: var(--moss-dark);
+}
+
+.root:global(.meal-journal-home) .emptyMealPrompt {
+  min-height: 48px;
+  padding: 0 0 8px;
+  border-top: 0;
+}
+
+.root:global(.meal-journal-home) .emptyMealPrompt > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.root:global(.meal-journal-home) .emptyMealPrompt strong {
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .58rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.root:global(.meal-journal-home) .emptyMealPrompt span {
+  display: none;
+}
+
+.root:global(.meal-journal-home) .emptyMealActions {
+  width: auto;
+  gap: 5px;
+}
+
+.root:global(.meal-journal-home) .photoInputCompact {
+  display: contents;
+}
+
+.root:global(.meal-journal-home) .emptyNoteButton,
+.root:global(.meal-journal-home) .captureButtonCompact,
+.root:global(.meal-journal-home) .galleryButtonCompact {
+  min-height: 40px;
+  padding: 7px 8px;
+  border-radius: var(--radius-control);
+  font-size: .61rem;
+}
+
+.root:global(.meal-journal-home) .emptyNoteButton,
+.root:global(.meal-journal-home) .galleryButtonCompact {
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.root:global(.meal-journal-home) .emptyNoteButton:hover,
+.root:global(.meal-journal-home) .galleryButtonCompact:hover {
+  border-color: var(--ink);
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+
+.root:global(.meal-journal-home) .captureButtonCompact {
+  border-color: var(--moss-dark);
+  background: var(--moss-dark);
+  color: var(--paper-strong);
+}
+
+.root:global(.meal-journal-home) .captureButtonCompact:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.root:global(.meal-journal-home) .mealBody {
+  padding: 0 0 17px;
+}
+
+.root:global(.meal-journal-home) .draftMeal {
+  min-height: 0;
+  padding: 4px 0 17px;
+}
+
+.root:global(.meal-journal-home) .analysisDetails {
+  margin-top: 9px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.root:global(.meal-journal-home) .analysisDetails > summary {
+  min-height: 40px;
+  padding-inline: 0;
+  font-size: .72rem;
+}
+
+.root:global(.meal-journal-home) .analysisDetailsBody {
+  padding: 10px 0 2px;
+}
+
+.root:global(.meal-journal-home) .mealCompletionControls {
+  margin-top: 9px;
+  padding-top: 8px;
+}
+
+@media (max-width: 680px) {
+  .root:global(.meal-journal-home) .homePageLink {
+    min-height: 40px;
+  }
+
+  .root:global(.meal-journal-home) .emptyMealPrompt {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .root:global(.meal-journal-home) .emptyMealPrompt > div:first-child {
+    flex: 1 1 auto;
+  }
+
+  .root:global(.meal-journal-home) .emptyMealActions {
+    display: flex;
+    flex: 0 0 auto;
+  }
+
+  .root:global(.meal-journal-home) .emptyNoteButton,
+  .root:global(.meal-journal-home) .captureButtonCompact,
+  .root:global(.meal-journal-home) .galleryButtonCompact {
+    min-height: 44px;
+    padding-inline: 7px;
+  }
+}

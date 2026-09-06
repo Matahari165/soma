@@ -213,3 +213,135 @@
     font-size: 1.05rem;
   }
 }
+
+/* Personal Lab uses the targets as a compact reading rail; the dedicated page
+   keeps the fuller, self-contained cards above. */
+.rootCompact {
+  gap: 8px;
+  padding: 10px 0 14px;
+}
+
+.rootCompact .header {
+  min-height: 28px;
+}
+
+.rootCompact .header h3 {
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.rootCompact .header button {
+  width: 34px;
+  min-height: 34px;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+}
+
+.rootCompact .header button:hover,
+.rootCompact .header button[aria-expanded="true"] {
+  border-color: var(--moss-dark);
+  background: transparent;
+  color: var(--moss-dark);
+}
+
+.rootCompact .grid {
+  gap: 0;
+  border-block: 1px solid var(--line);
+}
+
+.rootCompact .card {
+  gap: 5px;
+  min-height: 0;
+  padding: 10px 10px 9px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.rootCompact .card:last-child {
+  border-right: 0;
+}
+
+.rootCompact .card::before {
+  height: 2px;
+  opacity: .7;
+}
+
+.rootCompact .label {
+  color: var(--muted);
+  font-size: .58rem;
+  letter-spacing: .06em;
+}
+
+.rootCompact .value {
+  font-family: var(--font-soma-mono), monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.04em;
+}
+
+.rootCompact .value small {
+  font-size: .58rem;
+}
+
+.rootCompact .target {
+  color: var(--muted);
+  font-size: .61rem;
+  white-space: nowrap;
+}
+
+.rootCompact .track {
+  height: 5px;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--canvas-muted);
+}
+
+.rootCompact .fill {
+  border-radius: var(--radius-round);
+}
+
+.rootCompact .status {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .54rem;
+  font-weight: 500;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.rootCompact .status[data-state="ok"] {
+  border: 0;
+  color: var(--moss-dark);
+}
+
+.rootCompact .status[data-state="below"],
+.rootCompact .status[data-state="above"] {
+  border: 0;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .rootCompact .grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(132px, 42vw);
+    grid-template-columns: none;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .rootCompact .card {
+    min-height: 86px;
+    padding-inline: 12px;
+  }
+}

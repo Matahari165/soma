@@ -1,0 +1,229 @@
+/* Personal Lab — one calm daily workspace, with analysis kept secondary. */
+
+.personal-lab-page {
+  --lab-section-space: clamp(24px, 2.8vw, 38px);
+  max-width: 1500px;
+}
+
+.personal-lab-page .lab-header {
+  padding-bottom: 22px;
+  border-bottom-color: var(--ink);
+}
+
+.personal-lab-page .lab-header__signals {
+  min-width: 0;
+  padding-left: clamp(14px, 2.4vw, 32px);
+  border-left: 1px solid var(--line);
+}
+
+.personal-lab-page .lab-header__signals .lab-signals a {
+  min-height: 58px;
+  padding: 4px clamp(8px, 1.25vw, 16px);
+}
+
+.personal-lab-page .lab-header__signals .lab-signals a > strong.lab-signal__value {
+  margin-top: 7px;
+  line-height: .9;
+}
+
+.personal-lab-page .lab-workspace {
+  display: block;
+  margin-top: var(--lab-section-space);
+  border: 0;
+  border-radius: 0;
+}
+
+.personal-lab-page .meal-journal-home + #daily-journal {
+  margin-top: var(--lab-section-space);
+  padding-top: var(--lab-section-space);
+  border-top: 1px solid var(--ink);
+}
+
+/* The shared date control is the only framed navigation element in the day. */
+.personal-lab-page .personal-lab-day-strip {
+  margin-top: 0;
+}
+
+.personal-lab-page .personal-lab-day-strip__days {
+  overflow: hidden;
+  border-color: var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+}
+
+.personal-lab-page .personal-lab-day-strip button {
+  min-height: 52px;
+  padding: 7px 10px;
+  color: var(--ink-soft);
+  font-size: .64rem;
+  transition: background var(--fast), color var(--fast), box-shadow var(--fast);
+}
+
+.personal-lab-page .personal-lab-day-strip button:hover {
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+
+.personal-lab-page .personal-lab-day-strip button[aria-current="date"] {
+  background: var(--moss-soft);
+  box-shadow: inset 0 -2px var(--moss-dark);
+  color: var(--moss-dark);
+}
+
+.personal-lab-page .personal-lab-day-strip button[aria-current="date"] small {
+  color: var(--moss-dark);
+}
+
+/* Journal and meals share one left edge, one divider rhythm, and no outer box. */
+.personal-lab-page .journal-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.personal-lab-page .journal-card > header {
+  min-height: 56px;
+  align-items: end;
+  padding: 0 0 12px;
+  border-bottom: 0;
+}
+
+.personal-lab-page .journal-card__actions {
+  gap: 8px;
+}
+
+.personal-lab-page .journal-card__actions .journal-save-status {
+  min-height: 32px;
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+  font-size: .56rem;
+}
+
+.personal-lab-page .journal-card__actions .primary-button,
+.personal-lab-page .journal-card__actions .text-link {
+  min-height: 36px;
+}
+
+.personal-lab-page .journal-card__actions .primary-button {
+  padding-inline: 12px;
+}
+
+.personal-lab-page .journal-card__actions .text-link {
+  padding-inline: 8px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+}
+
+.personal-lab-page .journal-sections {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 0;
+  border-block: 1px solid var(--line-strong);
+}
+
+.personal-lab-page .journal-period {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.personal-lab-page .journal-period:last-child {
+  border-right: 0;
+}
+
+.personal-lab-page .journal-period__header {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-bottom-color: var(--line);
+  background: transparent;
+}
+
+.personal-lab-page .journal-period__header h3 {
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .57rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.personal-lab-page .journal-field {
+  min-height: 56px;
+  padding: 7px 10px;
+  border-right: 0;
+  border-bottom-color: var(--line);
+  background: transparent;
+}
+
+.personal-lab-page .journal-field--confirmed {
+  background: color-mix(in srgb, var(--moss-soft) 36%, transparent);
+}
+
+.personal-lab-page .journal-period--complete,
+.personal-lab-page .journal-period--complete .journal-period__header,
+.personal-lab-page .journal-period--complete .journal-field,
+.personal-lab-page .journal-period--complete .journal-choice,
+.personal-lab-page .journal-period--complete .journal-number,
+.personal-lab-page .journal-period--complete .journal-number input,
+.personal-lab-page .journal-period--complete .journal-field > input,
+.personal-lab-page .journal-period--complete .journal-field > select {
+  background: color-mix(in srgb, var(--moss-soft) 28%, transparent);
+}
+
+.personal-lab-page .journal-field__label {
+  color: var(--ink-soft);
+}
+
+.personal-lab-page .journal-field__label small {
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) and (min-width: 701px) {
+  .personal-lab-page .journal-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .personal-lab-page .journal-period:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .personal-lab-page .journal-period:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page .lab-header__signals {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .personal-lab-page .journal-card > header {
+    min-height: 52px;
+  }
+
+  .personal-lab-page .journal-sections {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .personal-lab-page .journal-period,
+  .personal-lab-page .journal-period:nth-child(2n) {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .personal-lab-page .journal-period:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personal-lab-page .personal-lab-day-strip button {
+    transition: none;
+  }
+}

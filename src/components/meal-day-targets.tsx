@@ -16,6 +16,7 @@ export type MealDayTargetsProps = {
   targets: NutritionTargets;
   className?: string;
   headerAction?: ReactNode;
+  compact?: boolean;
 };
 
 type CardState = "pending" | "below" | "ok" | "above";
@@ -65,9 +66,9 @@ function formatValue(value: number | null): string {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
-export function MealDayTargets({ totals, targets, className, headerAction }: MealDayTargetsProps) {
+export function MealDayTargets({ totals, targets, className, headerAction, compact = false }: MealDayTargetsProps) {
   return (
-    <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-day-targets-title">
+    <section className={`${styles.root} ${compact ? styles.rootCompact : ""} ${className ?? ""}`} aria-labelledby="meal-day-targets-title">
       <div className={styles.header}>
         <h3 id="meal-day-targets-title">Cibles du jour</h3>
         {headerAction}

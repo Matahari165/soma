@@ -10,6 +10,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import "./globals.css";
 import "./components.css";
 import "./responsive.css";
+import "./personal-lab.css";
 import "./motion-entry.css";
 import "./motion-journal.css";
 import "./motion-matrix.css";
