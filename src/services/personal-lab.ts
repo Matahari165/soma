@@ -1,4 +1,5 @@
 import type { LabObservation } from "@/domain/lab/observation";
+import { journalAchievementsFor, type JournalAchievement } from "@/domain/lab/journal-achievement";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import { mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
@@ -89,6 +90,7 @@ export type PersonalLabSnapshot = {
     variables: JournalVariable[];
     entries: JournalEntry[];
     days: import("@/domain/lab/journal").JournalDay[];
+    achievements: JournalAchievement[];
   };
   today: {
     sleepMinutes: number | null;
@@ -755,12 +757,14 @@ function buildJournalView(timeZone: string, journal: {
 }): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
   const earliestDate = addDays(todayDate, -4);
+  const achievements = journalAchievementsFor({ variables: journal.variables, entries: journal.entries, days: journal.days, todayDate });
   return {
     todayDate,
     journal: {
       variables: journal.variables,
       entries: journal.entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
       days: journal.days.filter((day) => day.entryDate >= earliestDate && day.entryDate <= todayDate),
+      achievements,
     },
   };
 }
@@ -899,7 +903,12 @@ function buildSnapshot(input: {
     dateLabel: new Intl.DateTimeFormat("en-US", { timeZone: input.timeZone, weekday: "long", month: "long", day: "numeric" }).format(new Date()),
     greetingName: input.user.displayName,
     checkin,
-    journal: { variables: input.journal.variables, entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -4) && entry.entryDate <= todayDate), days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -4) && day.entryDate <= todayDate) },
+    journal: {
+      variables: input.journal.variables,
+      entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -4) && entry.entryDate <= todayDate),
+      days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -4) && day.entryDate <= todayDate),
+      achievements: journalAchievementsFor({ variables: input.journal.variables, entries: input.journal.entries, days: input.journal.days, todayDate }),
+    },
     today: {
       sleepMinutes: todayObservation?.sleepMinutes ?? null,
       sleepRegularity: todayObservation?.sleepRegularity ?? null,
@@ -988,7 +997,10 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const calendarPromise = calendarQuery.then((result) => result);
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
-  const journalPromise = loadJournalData(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const journalPromise = profilePromise.then((profileResult) => loadJournalData(user.id, {
+    ...(analysisWindow ? { from: analysisWindow.start } : {}),
+    timeZone: profileResult.data?.timezone ?? "Europe/Paris",
+  }));
   const mealPromise = includeAnalysis ? loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {}) : Promise.resolve([]);
   const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
     const failed = results.find((result) => result.error);

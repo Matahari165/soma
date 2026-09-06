@@ -106,6 +106,12 @@ describe("journal values", () => {
     expect(createJournalVariableSchema.safeParse({ name: "Scale", variableType: "scale", options: [], defaultValue: 0 }).success).toBe(false);
   });
 
+  it("requires a compatible source when a metric is automatic", () => {
+    expect(createJournalVariableSchema.safeParse({ name: "Running", variableType: "boolean", options: [], captureMode: "automatic", automaticMetricId: "run_day" }).success).toBe(true);
+    expect(createJournalVariableSchema.safeParse({ name: "Coucher", variableType: "boolean", options: [], captureMode: "automatic", automaticMetricId: "bedtime" }).success).toBe(false);
+    expect(createJournalVariableSchema.safeParse({ name: "Running", variableType: "boolean", options: [], captureMode: "manual", automaticMetricId: "run_day" }).success).toBe(false);
+  });
+
   it("turns blank input into an absent observation", () => {
     expect(normalizeJournalValue(variable("duration"), "")).toBeNull();
     expect(normalizeJournalValue(variable("scale"), null)).toBeNull();

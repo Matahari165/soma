@@ -27,7 +27,15 @@ describe("journal variable compatibility", () => {
     expect(variableFromRow(row({ is_active: false })).isActive).toBe(false);
   });
 
-  it("keeps automatic bedtime out of the manual journal", () => {
-    expect(variableFromRow(row({ name: "Bedtime", is_active: true })).isActive).toBe(false);
+  it("preserves the explicit automatic source configuration", () => {
+    const bedtime = variableFromRow(row({ name: "Bedtime", is_active: true, capture_mode: "automatic", automatic_metric_id: "bedtime" }));
+    expect(bedtime.isActive).toBe(true);
+    expect(bedtime.captureMode).toBe("automatic");
+    expect(bedtime.automaticMetricId).toBe("bedtime");
+  });
+
+  it("defaults a running source to a weekly target when legacy data has no cadence", () => {
+    const running = variableFromRow(row({ name: "Running", capture_mode: "automatic", automatic_metric_id: "run_day" }));
+    expect(running.trackingCadence).toBe("weekly");
   });
 });

@@ -80,6 +80,20 @@ describe("journal motion states", () => {
     expect(html).not.toContain('aria-label="Confirm the displayed value for Vacation"');
   });
 
+  it("shows the achievement percentage without changing the field state", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      achievements: vacation ? [{ variableId: vacation.id, percentage: 75, successPeriods: 3, observedPeriods: 4, cadence: "daily" as const, windowStart: "2026-08-23", windowEnd: todayDate }] : [],
+      todayDate,
+    }));
+
+    expect(html).toContain("Achievement 75%");
+    expect(html).toContain('data-state="pending"');
+  });
+
   it("offers the breakfast photo shortcut only after Breakfast is set to yes", () => {
     const breakfast = variables.find((variable) => variable.name === "Breakfast");
     const withBreakfast = renderToStaticMarkup(createElement(DailyJournal, {

@@ -3,6 +3,43 @@ import { z } from "zod";
 export const journalVariableTypes = ["boolean", "count", "duration", "number", "scale", "category", "time"] as const;
 export type JournalVariableType = (typeof journalVariableTypes)[number];
 
+export const journalCaptureModes = ["manual", "automatic"] as const;
+export type JournalCaptureMode = (typeof journalCaptureModes)[number];
+
+export const journalTrackingCadences = ["daily", "weekly"] as const;
+export type JournalTrackingCadence = (typeof journalTrackingCadences)[number];
+
+export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime"] as const;
+export type JournalAutomaticMetricId = (typeof journalAutomaticMetricIds)[number];
+
+export type JournalAutomaticSource = {
+  id: JournalAutomaticMetricId;
+  label: string;
+  source: "Google Health";
+  variableType: JournalVariableType;
+  unit: string | null;
+  dayPeriod: JournalDayPeriod;
+  defaultTrackingCadence: JournalTrackingCadence;
+};
+
+export const journalAutomaticSources: readonly JournalAutomaticSource[] = [
+  { id: "run_day", label: "Running détecté", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "day", defaultTrackingCadence: "weekly" },
+  { id: "bedtime_before_23", label: "Coucher avant 23 h", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
+  { id: "bedtime", label: "Début du sommeil détecté", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
+] as const;
+
+export function journalAutomaticSource(id: unknown) {
+  return journalAutomaticSources.find((source) => source.id === id) ?? null;
+}
+
+export function journalCaptureMode(variable: Pick<JournalVariable, "captureMode">) {
+  return variable.captureMode === "automatic" ? "automatic" : "manual";
+}
+
+export function journalAutomaticMetricId(variable: Pick<JournalVariable, "automaticMetricId">) {
+  return typeof variable.automaticMetricId === "string" ? variable.automaticMetricId : null;
+}
+
 export type JournalVariable = {
   id: string;
   name: string;
@@ -14,6 +51,10 @@ export type JournalVariable = {
   emoji: string;
   defaultValue: JournalEntryValue | null;
   dayPeriod: JournalDayPeriod;
+  /** Legacy rows may omit these fields until the source-mode migration is applied. */
+  captureMode?: JournalCaptureMode;
+  automaticMetricId?: string | null;
+  trackingCadence?: JournalTrackingCadence;
 };
 
 export type JournalEntryValue = boolean | number | string;
@@ -48,6 +89,15 @@ const options = z.array(z.string().trim().min(1).max(60)).max(20).default([])
   .transform((values) => [...new Set(values)]);
 const rawEntryValue = z.union([z.boolean(), z.number().finite(), z.string().max(120), z.null()]);
 
+export function journalVariableSourceError({ captureMode, automaticMetricId, variableType }: { captureMode: JournalCaptureMode; automaticMetricId: string | null | undefined; variableType: JournalVariableType }) {
+  const source = journalAutomaticSource(automaticMetricId);
+  if (captureMode === "manual" && automaticMetricId) return "Une métrique manuelle ne peut pas avoir de source automatique.";
+  if (captureMode === "automatic" && !automaticMetricId) return "Choisis une source automatique.";
+  if (captureMode === "automatic" && !source) return "Cette source automatique n'est pas disponible.";
+  if (source && source.variableType !== variableType) return `Cette source automatique attend le type ${source.variableType}.`;
+  return null;
+}
+
 function defaultMatchesType(variableType: JournalVariableType, value: JournalEntryValue | null | undefined, choices: string[]) {
   if (value === null || value === undefined) return true;
   if (variableType === "boolean") return typeof value === "boolean";
@@ -68,6 +118,9 @@ export const createJournalVariableSchema = z.object({
   emoji: z.string().trim().max(8).default("🧪"),
   defaultValue: rawEntryValue.optional(),
   dayPeriod: z.enum(["context", "morning", "day", "evening", "sleep", "other"]).default("day"),
+  captureMode: z.enum(journalCaptureModes).default("manual"),
+  automaticMetricId: z.string().trim().regex(/^[a-z0-9_:-]{1,100}$/).nullable().default(null),
+  trackingCadence: z.enum(journalTrackingCadences).optional(),
 }).superRefine((value, context) => {
   if (value.variableType === "category" && value.options.length < 2) {
     context.addIssue({ code: "custom", path: ["options"], message: "Add at least two choices." });
@@ -75,6 +128,8 @@ export const createJournalVariableSchema = z.object({
   if (!defaultMatchesType(value.variableType, value.defaultValue, value.options)) {
     context.addIssue({ code: "custom", path: ["defaultValue"], message: "The default does not match this measure type." });
   }
+  const sourceError = journalVariableSourceError(value);
+  if (sourceError) context.addIssue({ code: "custom", path: ["captureMode"], message: sourceError });
 });
 
 export const updateJournalVariableSchema = z.object({
@@ -88,6 +143,9 @@ export const updateJournalVariableSchema = z.object({
   emoji: z.string().trim().max(8).optional(),
   defaultValue: rawEntryValue.optional(),
   dayPeriod: z.enum(["context", "morning", "day", "evening", "sleep", "other"]).optional(),
+  captureMode: z.enum(journalCaptureModes).optional(),
+  automaticMetricId: z.string().trim().regex(/^[a-z0-9_:-]{1,100}$/).nullable().optional(),
+  trackingCadence: z.enum(journalTrackingCadences).optional(),
 }).superRefine((value, context) => {
   if (value.options !== undefined && value.options.length < 2) {
     context.addIssue({ code: "custom", path: ["options"], message: "Add at least two choices." });
@@ -107,7 +165,7 @@ export function journalValuesForDate(variables: readonly JournalVariable[], entr
   const omitted = new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? []);
   return Object.fromEntries(variables.map((variable) => [
     variable.id,
-    omitted.has(variable.id) ? null : normalizeDinnerTimeValue(variable, entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? variable.defaultValue ?? null),
+    omitted.has(variable.id) ? null : normalizeDinnerTimeValue(variable, entries.find((entry) => entry.entryDate === date && entry.variableId === variable.id)?.value ?? (journalCaptureMode(variable) === "automatic" ? null : variable.defaultValue) ?? null),
   ]));
 }
 

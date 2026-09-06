@@ -49,6 +49,6 @@ export function PersonalLabJournalWorkspace({ data }: { data: PersonalLabJournal
 
   return <>
     <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-home" variant="home" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} sharedDateNavigation={sharedDateNavigation} publishMealTotals disabledSlots={disabledSlots} />
-    <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} /></div>
+    <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} /></div>
   </>;
 }

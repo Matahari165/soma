@@ -30,7 +30,7 @@ export async function PUT(request: Request) {
   }
   const { data: day, error: dayError } = await admin.from("journal_days").select("status").eq("user_id", user.id).eq("entry_date", parsed.data.entryDate).maybeSingle();
   if (dayError) return NextResponse.json({ error: "This journal day could not be checked." }, { status: 500 });
-  const journal = await loadJournalData(user.id);
+  const journal = await loadJournalData(user.id, { includeAutomaticEntries: false });
   const variables = new Map(journal.variables.map((variable) => [variable.id, variable]));
   const normalized = parsed.data.entries.map((entry) => {
     const variable = variables.get(entry.variableId);
