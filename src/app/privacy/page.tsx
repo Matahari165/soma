@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { SomaLogo } from "@/components/soma-logo";
 
-export const metadata: Metadata = { title: "Privacy" };
+export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 export default function PrivacyPage() {
   return (

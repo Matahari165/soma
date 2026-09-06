@@ -4,7 +4,7 @@ import type { CalendarConnectionNotice } from "@/components/calendar-connection-
 import { SettingsConsole } from "@/components/settings-console";
 import { getGoogleHealthNotice } from "@/integrations/google-health/status";
 
-export const metadata: Metadata = { title: "Settings" };
+export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ health?: string | string[]; calendar?: string | string[] }> }) {
   const params = await searchParams;

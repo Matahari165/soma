@@ -5,8 +5,8 @@
 }
 
 .root :focus-visible {
-  outline: 3px solid var(--moss-dark);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
 }
 
 .header {
@@ -114,7 +114,7 @@
   height: 10px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-data);
   border-color: color-mix(in srgb, var(--metric-soft) 45%, var(--line-strong));
   background: color-mix(in srgb, var(--metric-soft) 18%, var(--canvas));
 }
@@ -122,7 +122,7 @@
 .fill {
   height: 100%;
   width: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-data);
   background: var(--metric-accent);
 }
 
@@ -143,7 +143,7 @@
   width: fit-content;
   padding: 3px 8px;
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-data);
   color: var(--ink);
   font-size: 0.72rem;
   font-weight: 600;

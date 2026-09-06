@@ -29,10 +29,7 @@ const azeretMono = Azeret_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Soma | Personal Lab",
-    template: "Soma | %s",
-  },
+  title: "Soma",
   applicationName: "Soma",
   description: "A personal lab for the relationships between health, focus, energy, recovery, and Deep Work.",
   icons: {

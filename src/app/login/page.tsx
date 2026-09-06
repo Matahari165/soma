@@ -7,7 +7,7 @@ import { SomaLogo } from "@/components/soma-logo";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCloudflareConfig } from "@/lib/env";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 const authErrors: Record<string, string> = {
   auth_service: "Google sign-in is temporarily unavailable. Try again in a moment.",

@@ -73,8 +73,8 @@
 .datePicker:focus-within,
 .weekDay:focus-visible,
 .weekDaySelected:focus-visible {
-  outline: 3px solid var(--cobalt);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
 }
 
 .fileError {
@@ -228,7 +228,7 @@
   min-height: 88px;
   padding: 8px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background: var(--paper-strong);
   color: var(--ink);
   font-size: .8rem;
@@ -239,8 +239,8 @@
 .textInput textarea:focus { border-color: var(--moss-dark); outline: none; }
 
 .textInput textarea:focus-visible {
-  outline: 3px solid var(--cobalt);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
 }
 
 .textInput textarea::placeholder { color: var(--muted); }
@@ -250,7 +250,7 @@
   min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background: var(--paper-strong);
   color: var(--ink);
   font-size: .8rem;
@@ -283,7 +283,7 @@
   gap: 7px;
   padding: 9px 13px;
   border: 1px solid var(--ink);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   font-size: .76rem;
   font-weight: 650;
   line-height: 1.15;
@@ -311,8 +311,8 @@
 .mealIndexItem:focus-visible,
 .historyArrow:focus-visible,
 .dismissError:focus-visible {
-  outline: 3px solid var(--cobalt);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
 }
 .galleryButton,
 .secondaryButton { background: transparent; color: var(--ink); }
@@ -355,7 +355,7 @@
   min-height: 44px;
   padding: 5px 4px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink-soft);
   font-family: var(--font-soma-ui);
@@ -447,14 +447,14 @@
 .ratingsDetails { min-width: 0; }
 .ratingsDetails[open] { grid-column: 1 / -1; }
 .uncertaintiesDetails summary, .ratingsDetails summary { min-height: 44px; cursor: pointer; color: var(--ink-soft); font-size: .76rem; }
-.uncertaintiesDetails summary:focus-visible, .ratingsDetails summary:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; }
+.uncertaintiesDetails summary:focus-visible, .ratingsDetails summary:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
 
 .ratings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 .ratingFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .ratingFieldset legend { margin-bottom: 7px; color: var(--ink-soft); font-size: .74rem; }
 .ratingScale { display: grid; grid-template-columns: minmax(68px, 1.4fr) repeat(5, minmax(30px, 1fr)); gap: 4px; }
 .ratingChoice,
-.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-xs); background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
+.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
 .ratingChoice:hover { border-color: var(--ink); color: var(--ink); }
 .ratingSelected { border-color: var(--clay); background: var(--clay-soft); color: var(--clay); font-weight: 700; }
 
@@ -478,14 +478,14 @@
   min-height: 44px;
   place-items: center;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink);
 }
 .targetEditButton:hover, .targetEditButton[aria-expanded="true"] { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
 .targetEditButton:focus-visible {
-  outline: 3px solid var(--cobalt);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
 }
 
 .targetEditor label {
@@ -499,7 +499,7 @@
   min-height: 44px;
   padding: 8px 9px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background: var(--paper-strong);
   font-size: .78rem;
 }
