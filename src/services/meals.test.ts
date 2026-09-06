@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   updatePhotoOrigin: vi.fn(),
   updatePhotoStorage: vi.fn(),
   upsertMealFeelings: vi.fn(),
+  findRelevantMealRecipeReferences: vi.fn(),
 }));
 
 vi.mock("@/repositories/meals", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/repositories/meals", () => ({
 }));
 vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
+vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 
 import { computeMealSourceFingerprint, createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
@@ -36,6 +38,7 @@ const canonicalCorrection = {
 describe("meal analysis provenance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.findRelevantMealRecipeReferences.mockResolvedValue([]);
     const meal = { id: "12345678-1234-1234-1234-123456789012", userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" }], analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: null, error: null, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" } };
     state.findMeal.mockResolvedValue(meal);
     state.findMealForSlot.mockResolvedValue(null);
@@ -167,6 +170,7 @@ describe("text meal confirmation without photo", () => {
   const baseId = "12345678-1234-1234-1234-123456789012";
   beforeEach(() => {
     vi.clearAllMocks();
+    state.findRelevantMealRecipeReferences.mockResolvedValue([]);
     state.findMealForSlot.mockResolvedValue(null);
   });
 
@@ -228,6 +232,7 @@ describe("meal text-only analysis", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    state.findRelevantMealRecipeReferences.mockResolvedValue([]);
     vi.mocked(claimCloudflareLock).mockResolvedValue(true);
     vi.mocked(releaseCloudflareLock).mockResolvedValue(undefined);
     vi.mocked(findLatestMealAnalysis).mockResolvedValue(null);

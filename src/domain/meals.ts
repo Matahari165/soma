@@ -51,6 +51,27 @@ export type NutritionRange = z.infer<typeof nutritionRangeSchema>;
 export const mealFoodKindSchema = z.enum(["dish", "component", "ingredient"]);
 export type MealFoodKind = z.infer<typeof mealFoodKindSchema>;
 
+/** Broad food groups used for auditable balance and variety signals. */
+export const mealFoodGroupSchema = z.enum([
+  "fruit",
+  "vegetable",
+  "legume",
+  "whole_grain",
+  "refined_grain",
+  "potato",
+  "animal_protein",
+  "plant_protein",
+  "egg",
+  "dairy",
+  "nuts_seeds",
+  "added_fat",
+  "sauce",
+  "sweet",
+  "beverage",
+  "other",
+]);
+export type MealFoodGroup = z.infer<typeof mealFoodGroupSchema>;
+
 export const mealEvidenceSchema = z.enum(["visible", "inferred", "unknown"]);
 export type MealEvidence = z.infer<typeof mealEvidenceSchema>;
 
@@ -114,6 +135,9 @@ export const mealFoodItemSchema = z.object({
   kind: mealFoodKindSchema.optional(),
   parentId: z.string().trim().max(120).nullable().optional(),
   countedInTotals: z.boolean().optional(),
+  /** Optional on old analyses; new model responses should provide both fields. */
+  foodGroups: z.array(mealFoodGroupSchema).max(4).optional(),
+  varietyKey: z.string().trim().max(80).nullable().optional(),
   evidence: mealEvidenceSchema.optional(),
   evidenceSource: mealEvidenceSourceSchema.optional(),
   evidencePhotoIds: z.array(z.string().trim().min(1).max(120)).max(5).optional(),

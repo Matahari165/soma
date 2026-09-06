@@ -269,6 +269,8 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       kind: ingredient.kind,
       parentId: ingredient.parentId ?? null,
       countedInTotals: ingredient.countedInTotals,
+      foodGroups: ingredient.foodGroups,
+      varietyKey: ingredient.varietyKey ?? null,
       evidence: ingredient.evidence,
       evidenceSource: ingredient.evidenceSource,
       evidencePhotoIds: ingredient.evidencePhotoIds,

@@ -6,6 +6,7 @@ import { cloudflareArchives, createCloudflareAdminClient } from "@/lib/cloudflar
 import { isLocalPreviewMode } from "@/lib/env";
 import { deleteLabMatrixCache } from "@/lib/lab-matrix-cache";
 import { clearPreviewUserData } from "@/services/meal-preview";
+import { clearPreviewMealRecipes } from "@/services/meal-recipes";
 
 const schema = z.object({ confirmation: z.literal("DELETE MY SOMA DATA") });
 
@@ -16,6 +17,7 @@ export async function DELETE(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Enter the exact confirmation phrase." }, { status: 400 });
   if (isLocalPreviewMode()) {
     clearPreviewUserData(user.id);
+    clearPreviewMealRecipes(user.id);
     return NextResponse.json({ ok: true, preview: true });
   }
   const admin = createCloudflareAdminClient();

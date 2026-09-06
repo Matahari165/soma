@@ -1,0 +1,92 @@
+.page {
+  width: min(100%, 1320px);
+  margin-inline: auto;
+  padding: clamp(28px, 5vw, 72px);
+}
+
+.header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--ink);
+}
+
+.heading { max-width: 680px; }
+.heading h1 { margin-top: 8px; font-size: clamp(2.35rem, 5vw, 5rem); }
+.heading p { max-width: 58ch; margin-top: 18px; color: var(--ink-soft); font-size: .95rem; }
+.header > button { flex: 0 0 auto; }
+
+.notice { min-height: 24px; margin-top: 12px; color: var(--moss-dark); font-size: .76rem; }
+.notice:empty { margin-top: 0; }
+
+.content { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 42px; margin-top: 24px; align-items: start; }
+.formPanel { padding: 22px 0 28px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line-strong); }
+.listPanel { min-width: 0; }
+.sectionHeading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.sectionHeading h2 { margin-top: 7px; font-size: clamp(1.6rem, 3vw, 2.5rem); }
+.sectionHeading > .icon-button { margin-top: -6px; }
+.count { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .67rem; white-space: nowrap; }
+.explainer { max-width: 62ch; margin-top: 18px; color: var(--ink-soft); font-size: .78rem; }
+
+.form { display: grid; gap: 24px; margin-top: 24px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.formGrid :global(.field--wide) { grid-column: 1 / -1; }
+.form b { color: var(--danger); font-weight: 500; }
+.form small { color: var(--muted); font-size: .66rem; font-weight: 400; }
+.ingredients { min-width: 0; margin: 0; padding: 18px 0 0; border: 0; border-top: 1px solid var(--line); }
+.ingredients legend { padding: 0; color: var(--ink); font-size: .8rem; font-weight: 600; }
+.ingredients legend small { margin-left: 6px; color: var(--muted); font-size: .68rem; font-weight: 400; }
+.ingredientList { display: grid; gap: 12px; margin-top: 14px; }
+.ingredientRow { position: relative; display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(90px, .8fr) minmax(130px, 1fr) minmax(110px, 1fr) 34px; gap: 8px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ingredientRow .field { min-width: 0; }
+.removeIngredient { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--line); background: transparent; color: var(--muted); }
+.removeIngredient:hover { border-color: var(--danger); color: var(--danger); }
+.addIngredient { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; margin-top: 12px; padding: 8px 0; border: 0; background: transparent; color: var(--moss-dark); font-size: .76rem; }
+.addIngredient:hover { color: var(--ink); }
+.formActions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+
+.recipeList { display: grid; margin: 22px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--ink); }
+.recipeList > li { border-bottom: 1px solid var(--line-strong); }
+.recipe { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; padding: 18px 0; }
+.recipeBody { min-width: 0; }
+.recipeTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.recipeTitle h3 { font-size: 1.05rem; font-weight: 600; }
+.recipeTitle span { color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .62rem; text-transform: uppercase; }
+.recipeBody > p { margin-top: 7px; color: var(--ink-soft); font-size: .78rem; }
+.ingredientSummary { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 12px 0 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: .72rem; }
+.ingredientSummary li::before { margin-right: 6px; color: var(--moss); content: "·"; }
+.recipeMeta { color: var(--muted) !important; font-size: .68rem !important; }
+.recipeActions { display: flex; align-items: start; gap: 5px; }
+.recipeActions :global(.icon-button) { width: 36px; min-width: 36px; min-height: 36px; }
+.deleteConfirmation { display: flex; min-height: 36px; align-items: center; gap: 7px; padding-left: 6px; color: var(--danger); font-size: .68rem; }
+.deleteConfirmation button { min-height: 32px; padding: 4px 8px; border: 1px solid currentColor; background: transparent; font-size: .67rem; }
+.confirmDelete { color: var(--danger); }
+.cancelDelete { color: var(--muted); }
+
+.empty { display: grid; min-height: 260px; place-items: center; gap: 10px; margin-top: 22px; padding: 34px; border: 1px dashed var(--line-strong); color: var(--muted); text-align: center; }
+.empty h3 { color: var(--ink); font-size: 1rem; }
+.empty p { max-width: 38ch; font-size: .76rem; }
+.empty button { margin-top: 8px; }
+
+@media (max-width: 1000px) {
+  .content { grid-template-columns: 1fr; gap: 36px; }
+  .formPanel { order: 0; }
+  .listPanel { order: 1; }
+}
+
+@media (max-width: 700px) {
+  .page { padding: 24px 20px 40px; }
+  .header { display: grid; align-items: start; gap: 20px; }
+  .header > button { justify-self: start; }
+  .formGrid { grid-template-columns: 1fr; }
+  .formGrid :global(.field--wide) { grid-column: auto; }
+  .ingredientRow { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-right: 42px; }
+  .removeIngredient { position: absolute; top: 0; right: 0; }
+  .formActions { justify-content: stretch; }
+  .formActions button { flex: 1; justify-content: center; }
+  .recipe { grid-template-columns: 1fr; gap: 12px; }
+  .recipeActions { align-items: center; }
+  .deleteConfirmation { padding-left: 0; }
+}

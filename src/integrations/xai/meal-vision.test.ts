@@ -70,6 +70,23 @@ describe("xAI meal vision contract", () => {
     expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
   });
 
+  it("uses personal recipes only as variable context", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+
+    await createXaiMealVisionProvider().analyzeText!({
+      mealType: "dinner",
+      mealDate: "2026-08-31",
+      note: "Pâtes avec poulet",
+      recipeReferences: [{ name: "Pâtes du soir", dishType: "Pâtes", ingredients: [{ name: "Pâtes", usualAmount: "portion variable", alternatives: [] }], aliases: [], commonVariations: [] }],
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    expect(body.input[0]?.content[0]?.text).toContain("Pâtes du soir");
+    expect(body.input[0]?.content[0]?.text).toContain("indicatifs");
+    expect(body.input[0]?.content[0]?.text).toContain("La photo et la description actuelles priment");
+  });
+
   it("classifies provider failures without exposing the provider payload", async () => {
     process.env.XAI_API_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("private provider payload", { status: 429 }));

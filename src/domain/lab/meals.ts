@@ -1,4 +1,5 @@
 import type { MatrixPoint, MatrixSeries } from "@/domain/lab/matrix";
+import type { MealFoodGroup } from "@/domain/meals";
 
 /** Meal slots supported by the first meal journal version. */
 export const mealTypes = ["breakfast", "lunch", "snack", "dinner"] as const;
@@ -36,12 +37,22 @@ export type ConfirmedMealRecord = {
   fiberG: NutritionEstimate | null;
   sugarG?: NutritionEstimate | null;
   addedSugarG?: NutritionEstimate | null;
+  foods?: readonly ConfirmedMealFood[];
+  analysisConfidence?: "low" | "medium" | "high";
   /** 0 means explicitly no sensation; null means not answered. */
   mouthHeat: number | null;
   /** 0 means explicitly no sensation; null means not answered. */
   stomachOverfullness: number | null;
   /** Kept for provenance; photos must not create additional meal records. */
   photoIds?: readonly string[];
+};
+
+export type ConfirmedMealFood = {
+  name: string;
+  varietyKey?: string | null;
+  foodGroups?: readonly MealFoodGroup[];
+  countedInTotals?: boolean;
+  confidence?: "low" | "medium" | "high";
 };
 
 export type MealDailyAggregate = {
@@ -59,6 +70,10 @@ export type MealDailyAggregate = {
   fiberG: number | null;
   sugarG: number | null;
   addedSugarG: number | null;
+  analysisCoverage: number | null;
+  analysisConfidence: number | null;
+  foodVarietyCount: number | null;
+  foodGroupCount: number | null;
   mouthHeatAverage: number | null;
   mouthHeatMaximum: number | null;
   stomachOverfullnessAverage: number | null;
@@ -82,7 +97,11 @@ export type MealMetricId =
   | "meal_mouth_heat_average"
   | "meal_mouth_heat_maximum"
   | "meal_stomach_overfullness_average"
-  | "meal_stomach_overfullness_maximum";
+  | "meal_stomach_overfullness_maximum"
+  | "meal_analysis_coverage"
+  | "meal_analysis_confidence"
+  | "meal_food_variety"
+  | "meal_food_groups";
 
 export const mealMetricIds: readonly MealMetricId[] = [
   "meal_calories",
@@ -102,6 +121,10 @@ export const mealMetricIds: readonly MealMetricId[] = [
   "meal_mouth_heat_maximum",
   "meal_stomach_overfullness_average",
   "meal_stomach_overfullness_maximum",
+  "meal_analysis_coverage",
+  "meal_analysis_confidence",
+  "meal_food_variety",
+  "meal_food_groups",
 ];
 
 export function isMealMetric(id: string): id is MealMetricId {
@@ -134,6 +157,19 @@ function average(values: Array<number | null>) {
 function maximum(values: Array<number | null>) {
   const present = values.filter((value): value is number => value !== null);
   return present.length ? Math.max(...present) : null;
+}
+
+// Sugar fields were added later and remain optional on historical analyses;
+// coverage therefore measures the five core nutrition fields only.
+const nutritionFields = ["caloriesKcal", "proteinG", "carbsG", "fatG", "fiberG"] as const;
+
+function confidenceValue(value: ConfirmedMealRecord["analysisConfidence"]) {
+  return value === "high" ? 100 : value === "medium" ? 67 : value === "low" ? 33 : null;
+}
+
+function canonicalFoodKey(food: ConfirmedMealFood) {
+  const raw = food.varietyKey?.trim() || food.name.trim();
+  return raw ? raw.toLocaleLowerCase("fr-FR") : null;
 }
 
 /** A nutrition sum is unknown when at least one confirmed meal has no estimate. */
@@ -173,6 +209,20 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
     const homemadeCount = meals.filter((meal) => meal.origin === "homemade").length;
     const preparedCount = meals.filter((meal) => meal.origin === "prepared").length;
     const mixedCount = meals.filter((meal) => meal.origin === "mixed").length;
+    const nutritionObservations = meals.flatMap((meal) => nutritionFields.map((field) => meal[field] !== null && meal[field] !== undefined));
+    const analysisCoverage = nutritionObservations.length
+      ? nutritionObservations.filter(Boolean).length / nutritionObservations.length * 100
+      : null;
+    const confidenceValues = meals.flatMap((meal) => {
+      const value = confidenceValue(meal.analysisConfidence);
+      return value === null ? [] : [value];
+    });
+    const foods = meals.flatMap((meal) => (meal.foods ?? []).filter((food) => food.countedInTotals !== false));
+    const foodKeys = new Set(foods.flatMap((food) => {
+      const key = canonicalFoodKey(food);
+      return key ? [key] : [];
+    }));
+    const foodGroups = new Set(foods.flatMap((food) => food.foodGroups ?? []));
     return {
       date,
       mealCount: meals.length,
@@ -190,6 +240,10 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       fiberG: sumNutrition(meals, (meal) => meal.fiberG),
       sugarG: sumNutrition(meals, (meal) => meal.sugarG ?? null),
       addedSugarG: sumNutrition(meals, (meal) => meal.addedSugarG ?? null),
+      analysisCoverage,
+      analysisConfidence: confidenceValues.length ? average(confidenceValues) : null,
+      foodVarietyCount: foodKeys.size || null,
+      foodGroupCount: foodGroups.size || null,
       mouthHeatAverage: average(meals.map((meal) => intensity(meal.mouthHeat))),
       mouthHeatMaximum: maximum(meals.map((meal) => intensity(meal.mouthHeat))),
       stomachOverfullnessAverage: average(meals.map((meal) => intensity(meal.stomachOverfullness))),
@@ -216,6 +270,10 @@ const seriesSpec: ReadonlyArray<{ id: MealMetricId; label: string; unit: string;
   { id: "meal_mouth_heat_maximum", label: "Mouth heat · maximum", unit: "1–5", read: (day) => day.mouthHeatMaximum },
   { id: "meal_stomach_overfullness_average", label: "Meal overload · average", unit: "1–5", read: (day) => day.stomachOverfullnessAverage },
   { id: "meal_stomach_overfullness_maximum", label: "Meal overload · maximum", unit: "1–5", read: (day) => day.stomachOverfullnessMaximum },
+  { id: "meal_analysis_coverage", label: "Meal analysis coverage", unit: "%", read: (day) => day.analysisCoverage },
+  { id: "meal_analysis_confidence", label: "Meal analysis confidence", unit: "%", read: (day) => day.analysisConfidence },
+  { id: "meal_food_variety", label: "Distinct meal foods", unit: "count", read: (day) => day.foodVarietyCount },
+  { id: "meal_food_groups", label: "Meal food groups", unit: "count", read: (day) => day.foodGroupCount },
 ];
 
 /** Build the same MatrixSeries shape consumed by the existing relation engine. */

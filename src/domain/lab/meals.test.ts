@@ -14,6 +14,8 @@ function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "i
     carbsG: input.carbsG === undefined ? { low: 40, likely: 50, high: 60 } : input.carbsG,
     fatG: input.fatG === undefined ? { low: 10, likely: 15, high: 20 } : input.fatG,
     fiberG: input.fiberG === undefined ? { low: 4, likely: 5, high: 6 } : input.fiberG,
+    foods: input.foods,
+    analysisConfidence: input.analysisConfidence,
     mouthHeat: input.mouthHeat === undefined ? 0 : input.mouthHeat,
     stomachOverfullness: input.stomachOverfullness === undefined ? 0 : input.stomachOverfullness,
     photoIds: input.photoIds,
@@ -92,5 +94,21 @@ describe("confirmed meal daily series", () => {
       { date: "2026-08-25", value: 1 },
       { date: "2026-08-26", value: 1 },
     ]);
+  });
+
+  it("exposes evidence coverage and structured food signals without turning missing tags into zero", () => {
+    const records = [meal({
+      id: "meal-1",
+      foods: [
+        { name: "Tomate", varietyKey: "tomate", foodGroups: ["vegetable"], confidence: "high" },
+        { name: "Riz", varietyKey: "riz", foodGroups: ["refined_grain"], confidence: "medium" },
+      ],
+      analysisConfidence: "medium",
+    })];
+    const aggregate = aggregateConfirmedMeals(records)[0];
+
+    expect(aggregate).toMatchObject({ analysisCoverage: 100, analysisConfidence: 67, foodVarietyCount: 2, foodGroupCount: 2 });
+    expect(mealDailySeries(records).meal_analysis_coverage.points).toEqual([{ date: "2026-08-25", value: 100 }]);
+    expect(mealDailySeries([meal({ id: "meal-empty", foods: [] })]).meal_food_variety.points).toEqual([]);
   });
 });

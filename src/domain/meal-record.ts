@@ -1,3 +1,5 @@
+import type { MealFoodGroup } from "@/domain/meals";
+
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
 export type MealOrigin = "homemade" | "prepared" | "mixed";
@@ -56,6 +58,8 @@ export type MealIngredient = {
   kind?: MealFoodKind;
   parentId?: string | null;
   countedInTotals?: boolean;
+  foodGroups?: MealFoodGroup[];
+  varietyKey?: string | null;
   evidence?: MealFoodEvidence;
   evidenceSource?: MealFoodEvidenceSource;
   evidencePhotoIds?: string[];
@@ -204,6 +208,10 @@ export function apiMealToRecord(value: unknown): MealRecord {
       kind: mealFoodKind(rawFood.kind),
       parentId: typeof rawFood.parentId === "string" ? rawFood.parentId : null,
       countedInTotals: typeof rawFood.countedInTotals === "boolean" ? rawFood.countedInTotals : undefined,
+      foodGroups: Array.isArray(rawFood.foodGroups)
+        ? rawFood.foodGroups.filter((group): group is MealFoodGroup => group === "fruit" || group === "vegetable" || group === "legume" || group === "whole_grain" || group === "refined_grain" || group === "potato" || group === "animal_protein" || group === "plant_protein" || group === "egg" || group === "dairy" || group === "nuts_seeds" || group === "added_fat" || group === "sauce" || group === "sweet" || group === "beverage" || group === "other").slice(0, 4)
+        : undefined,
+      varietyKey: typeof rawFood.varietyKey === "string" && rawFood.varietyKey.trim() ? rawFood.varietyKey.trim().slice(0, 80) : null,
       evidence: mealFoodEvidence(rawFood.evidence),
       evidenceSource: mealFoodEvidenceSource(rawFood.evidenceSource),
       evidencePhotoIds: Array.isArray(rawFood.evidencePhotoIds) ? rawFood.evidencePhotoIds.filter((id): id is string => typeof id === "string").slice(0, 5) : undefined,

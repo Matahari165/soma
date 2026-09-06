@@ -89,6 +89,10 @@ export const healthMetricRegistry: readonly LabMetricDefinition[] = [
   { id: "meal_mouth_heat_maximum", label: "Mouth heat · maximum", unit: "1–5", field: "meal_mouth_heat_maximum", defaultRole: "influence", direction: "lower", source: "Soma" },
   { id: "meal_stomach_overfullness_average", label: "Meal overload · average", unit: "1–5", field: "meal_stomach_overfullness_average", defaultRole: "influence", direction: "lower", source: "Soma" },
   { id: "meal_stomach_overfullness_maximum", label: "Meal overload · maximum", unit: "1–5", field: "meal_stomach_overfullness_maximum", defaultRole: "influence", direction: "lower", source: "Soma" },
+  { id: "meal_analysis_coverage", label: "Meal analysis coverage", unit: "%", field: "meal_analysis_coverage", defaultRole: "disabled", direction: "higher", source: "Soma" },
+  { id: "meal_analysis_confidence", label: "Meal analysis confidence", unit: "%", field: "meal_analysis_confidence", defaultRole: "disabled", direction: "higher", source: "Soma" },
+  { id: "meal_food_variety", label: "Distinct meal foods", unit: "count", field: "meal_food_variety", defaultRole: "disabled", direction: "higher", source: "Soma" },
+  { id: "meal_food_groups", label: "Meal food groups", unit: "count", field: "meal_food_groups", defaultRole: "disabled", direction: "higher", source: "Soma" },
 ] as const;
 
 export function metricRoleFor(id: string, preferences: ReadonlyMap<string, MetricRole>) {

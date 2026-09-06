@@ -89,7 +89,7 @@ export function mealToLegacyApi(meal: Meal) {
   const analysisRecord = meal.analysis?.result ? meal.analysis : meal.lastSuccessfulAnalysis;
   const analysis = analysisRecord?.result;
   const legacyAnalysis = analysis ? {
-    ingredients: analysis.foods.map((food, index) => ({ id: `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
+    ingredients: analysis.foods.map((food, index) => ({ id: `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
     dishType: analysis.dishType ?? null,
     calorieAnalysis: analysis.calorieAnalysis ?? null,
     calories: legacyRangeFromCanonical(analysis.totals.calories),

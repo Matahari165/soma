@@ -36,6 +36,8 @@ describe("meal domain", () => {
         kind: "ingredient",
         parentId: "dish-1",
         countedInTotals: true,
+        foodGroups: ["vegetable"],
+        varietyKey: "tomate",
         evidence: "inferred",
         evidenceSource: "photo",
         quantity: { value: null, unit: "g", basis: "unknown", grams: null },
@@ -52,6 +54,7 @@ describe("meal domain", () => {
     });
 
     expect(result.foods[0]).toMatchObject({ kind: "ingredient", evidence: "inferred", evidenceSource: "photo" });
+    expect(result.foods[0]).toMatchObject({ foodGroups: ["vegetable"], varietyKey: "tomate" });
     expect(result.foods[0]?.quantity?.grams).toBeNull();
   });
 

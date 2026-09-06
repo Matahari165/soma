@@ -18,6 +18,7 @@ import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals"
 import { analyzeMealInput, isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
+import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
 import {
   deleteMeal,
   deletePhoto,
@@ -410,7 +411,15 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
         images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
       }
-      const input = { mealType: currentMeal.mealType, mealDate: currentMeal.mealDate, note: note || null, images, ...(options.correction ? { correction: options.correction } : {}) };
+      const recipeReferences = await findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch(() => []);
+      const input = {
+        mealType: currentMeal.mealType,
+        mealDate: currentMeal.mealDate,
+        note: note || null,
+        images,
+        ...(options.correction ? { correction: options.correction } : {}),
+        ...(recipeReferences.length ? { recipeReferences } : {}),
+      };
       const analysed = await analyzeMealInput(input, options.provider);
       let canonicalResult;
       try {
@@ -476,6 +485,14 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
       fiberG: nutritionEstimate(totals.fiberGrams),
       sugarG: nutritionEstimate(totals.sugarGrams),
       addedSugarG: nutritionEstimate(totals.addedSugarGrams),
+      foods: meal.analysis.result.foods.map((food) => ({
+        name: food.name,
+        varietyKey: food.varietyKey ?? null,
+        foodGroups: food.foodGroups,
+        countedInTotals: food.countedInTotals,
+        confidence: food.confidence,
+      })),
+      analysisConfidence: meal.analysis.result.confidence,
       mouthHeat: meal.mouthWarmthIntensity,
       stomachOverfullness: meal.stomachOverfullIntensity,
       photoIds: meal.photos.map((photo) => photo.id),

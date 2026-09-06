@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { MealRecipeReference } from "@/domain/meal-recipes";
 import { mealAnalysisSchema, type MealAnalysis, type MealAnalysisCorrection, type MealOrigin, type MealType } from "@/domain/meals";
 import { requireServerEnv } from "@/lib/env";
 
@@ -16,6 +17,7 @@ export type MealVisionInput = {
   note: string | null;
   images: MealVisionImage[];
   correction?: MealAnalysisCorrection | null;
+  recipeReferences?: MealRecipeReference[];
 };
 
 export type MealVisionTextInput = {
@@ -23,6 +25,7 @@ export type MealVisionTextInput = {
   mealDate: string;
   note: string;
   correction?: MealAnalysisCorrection | null;
+  recipeReferences?: MealRecipeReference[];
 };
 
 /**
@@ -84,7 +87,7 @@ function mealAnalysisJsonSchema() {
   const food = {
     type: "object",
     additionalProperties: false,
-    required: ["name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "countedInTotals", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams", "confidence"],
+    required: ["name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "countedInTotals", "foodGroups", "varietyKey", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams", "confidence"],
     properties: {
       name: { type: "string", maxLength: 120 },
       preparation: { anyOf: [{ type: "string", maxLength: 240 }, { type: "null" }] },
@@ -93,6 +96,8 @@ function mealAnalysisJsonSchema() {
       kind: { type: "string", enum: ["dish", "component", "ingredient"] },
       parentId: { anyOf: [{ type: "string", maxLength: 120 }, { type: "null" }] },
       countedInTotals: { type: "boolean" },
+      foodGroups: { type: "array", maxItems: 4, items: { type: "string", enum: ["fruit", "vegetable", "legume", "whole_grain", "refined_grain", "potato", "animal_protein", "plant_protein", "egg", "dairy", "nuts_seeds", "added_fat", "sauce", "sweet", "beverage", "other"] } },
+      varietyKey: { anyOf: [{ type: "string", maxLength: 80 }, { type: "null" }] },
       evidence: { type: "string", enum: ["visible", "inferred", "unknown"] },
       evidenceSource: { type: "string", enum: ["photo", "note", "model"] },
       evidencePhotoIds: { type: "array", maxItems: 5, items: { type: "string", minLength: 1, maxLength: 120 } },
@@ -167,11 +172,21 @@ function responseText(result: unknown) {
   return fragments.join("\n") || null;
 }
 
+function recipeReferencesPrompt(recipeReferences: MealRecipeReference[] | undefined) {
+  if (!recipeReferences?.length) return "Aucune recette personnelle pertinente n'a été fournie.";
+  return [
+    "Références personnelles facultatives : elles décrivent des recettes récurrentes, mais leurs ingrédients et quantités sont variables et indicatifs.",
+    "Utilise-les seulement comme hypothèses de contexte. La photo et la description actuelles priment. Ne copie jamais un ingrédient, une préparation ou une quantité qui n'est pas visible ou explicitement décrit aujourd'hui. Si une référence contredit les preuves actuelles, ignore-la et conserve une incertitude.",
+    `Personal recipe references (context only): ${JSON.stringify(recipeReferences)}`,
+  ].join("\n");
+}
+
 export function makeTextPrompt(input: MealVisionTextInput) {
   return [
     "Analyse cette description libre d'un repas pour un journal alimentaire personnel. Réponds avec des libellés en français.",
     "Liste chaque aliment cité dans la description. Indique une quantité ou une portion seulement si l'utilisateur la donne explicitement (par exemple « 2 bananes ») ; sinon portion à null. Ne jamais inventer de grammes : estimatedGrams à null si la description ne permet pas une estimation responsable.",
     "Pour un plat composé, distingue le plat, ses composants et les ingrédients seulement si cela évite une ambiguïté. Ne double jamais un plat avec ses composants : countedInTotals doit être false pour le parent si ses composants sont comptés.",
+    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires justifiées par la description. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme éléments inferred/unknown structurés quand elles sont pertinentes, sans en inventer la quantité. Utilise kind, parentId, evidence, evidenceSource et quantity seulement quand ils sont justifiés.",
     "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
     "Estime séparément les sucres totaux et les sucres ajoutés lorsque la description le permet. Ne confonds jamais glucides et sucres ; utilise null si ce n’est pas estimable. Inclus sugarGrams et addedSugarGrams pour chaque aliment et dans totals.",
@@ -181,6 +196,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     `User description: ${input.note}`,
     input.correction ? `User correction: ${JSON.stringify(input.correction)}` : "No user correction was supplied.",
+    recipeReferencesPrompt(input.recipeReferences),
   ].join("\n");
 }
 
@@ -192,6 +208,7 @@ function makePrompt(input: MealVisionInput) {
     "dishType : nom du type de plat en français en 2-4 mots (par exemple « Salade composée », « Bowl de riz au poulet »), ou null si indéterminable (unclear).",
     "Pour chaque aliment : name en français ; portion/quantityLabel en français seulement si visuellement estimable (par exemple « 1 bol », « 2 tranches »), sinon null ; ne jamais deviner les grammes : estimatedGrams à null si non estimable.",
     "Pour un plat composé, utilise kind=dish pour le plat et kind=component ou ingredient pour ses éléments seulement si cela clarifie ce qui est visible. Ne double jamais le plat avec ses composants : si les composants sont comptés dans les totaux, countedInTotals=false pour le plat parent et parentId pour chaque enfant.",
+    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires visibles ou fortement inférées. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte son identifiant dans evidencePhotoIds. Ne les invente pas et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
     "Estimate total sugars and added sugars separately when the food or preparation supports it. Use null rather than guessing, and never treat all carbohydrates as sugar. Include sugarGrams and addedSugarGrams for every food and in totals.",
@@ -201,6 +218,7 @@ function makePrompt(input: MealVisionInput) {
     "Return a concise summary, itemized foods, total calories and macros, confidence, and concrete uncertainties.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     input.note ? `User note: ${input.note}` : "No user note was supplied.",
+    recipeReferencesPrompt(input.recipeReferences),
     origins,
   ].join("\n");
 }
@@ -208,13 +226,14 @@ function makePrompt(input: MealVisionInput) {
 function makeVerificationPrompt(input: MealVisionVerificationInput) {
   return [
     "Relis cette analyse primaire d'un repas avec bienveillance et précision pour un journal alimentaire personnel. Réponds avec des libellés en français.",
-    "Vérifie les quantités, les plats composés, les doublons entre un plat et ses composants, les sauces/préparations plausibles et la cohérence nutritionnelle avec les photos et la note. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
+    "Vérifie les quantités, les plats composés, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey et la cohérence nutritionnelle avec les photos et la note. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
     "Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds. Ne double jamais un plat avec ses composants : countedInTotals=false pour le parent lorsque les composants sont comptés.",
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence et uncertainties restent internes à l'analyse.",
     "Une correction utilisateur éventuelle est une indication légère et structurée, à appliquer seulement si elle est compatible avec les preuves.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     input.note ? `User note: ${input.note}` : "No user note was supplied.",
     input.correction ? `User correction: ${JSON.stringify(input.correction)}` : "No user correction was supplied.",
+    recipeReferencesPrompt(input.recipeReferences),
     `Primary analysis: ${JSON.stringify(input.primaryAnalysis)}`,
     input.images.length > 0 ? originsForVerification(input) : "No photo was supplied; verify only against the description and the primary analysis.",
   ].join("\n");
@@ -351,6 +370,7 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
  * provider's text-only method.
  */
 export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
+  const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primary = input.images.length > 0
     ? await provider.analyze(input)
     : await (async () => {
@@ -362,6 +382,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
         mealDate: input.mealDate,
         note,
         ...(input.correction ? { correction: input.correction } : {}),
+        ...recipeContext,
       });
     })();
 
