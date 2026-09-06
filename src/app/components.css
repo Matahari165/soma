@@ -786,6 +786,15 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .journal-date-strip button:last-child { border-right: 0; }
 .journal-date-strip button[aria-current="date"] { background: var(--ink); color: var(--canvas); }
 .journal-date-strip small { font-family: var(--font-soma-mono), monospace; }
+.personal-lab-day-strip { margin-top: 12px; }
+.personal-lab-day-strip__days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--ink); border-radius: var(--radius-surface); background: var(--paper); }
+.personal-lab-day-strip button { display: grid; min-width: 0; min-height: 56px; align-content: center; justify-items: center; gap: 3px; padding: 7px 8px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font-size: .66rem; text-align: center; }
+.personal-lab-day-strip button:last-child { border-right: 0; }
+.personal-lab-day-strip button:hover { background: var(--paper-strong); color: var(--ink); }
+.personal-lab-day-strip button[aria-current="date"] { background: var(--ink); color: var(--canvas); }
+.personal-lab-day-strip button:focus-visible { outline: 2px solid var(--focus-color); outline-offset: -3px; }
+.personal-lab-day-strip button > span:first-child { overflow-wrap: anywhere; line-height: 1.1; }
+.personal-lab-day-strip small { font-family: var(--font-soma-mono), monospace; font-size: .58rem; text-transform: uppercase; }
 .journal-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 8px; margin-top: 12px; border: 0; background: transparent; }
 .journal-period { min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--radius-surface); background: var(--paper); }
 .journal-period[data-period="other"] { grid-column: 1 / -1; }
@@ -1046,7 +1055,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .personal-lab-page .lab-header__row { display: grid; grid-template-columns: minmax(210px, max-content) minmax(0, 1fr); align-items: center; gap: clamp(20px, 4vw, 58px); }
 .personal-lab-page .lab-header__row h1 { min-width: 0; margin-top: 0; }
 .personal-lab-page .lab-header__signals { min-width: 0; }
-.personal-lab-page .lab-header__signals .lab-signals { grid-template-columns: repeat(3, minmax(0, 1fr)); border: 0; background: transparent; }
+.personal-lab-page .lab-header__signals .lab-signals { grid-template-columns: repeat(4, minmax(0, 1fr)); border: 0; background: transparent; }
 .personal-lab-page .lab-header__signals .lab-signals a { min-height: 64px; align-content: center; justify-items: center; padding: 7px 12px; border-right: 1px solid var(--line); text-align: center; }
 .personal-lab-page .lab-header__signals .lab-signals a:last-child { border-right: 0; }
 .personal-lab-page .lab-header__signals .lab-signals a > span { align-items: center; justify-content: center; gap: 8px; text-align: center; }
@@ -1101,6 +1110,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 @media (max-width: 700px) {
   .personal-lab-page .lab-header__row { grid-template-columns: 1fr; gap: 12px; }
   .personal-lab-page .lab-header__row h1 { font-size: 2.7rem; }
+  .personal-lab-page .lab-header__signals .lab-signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .personal-lab-page .lab-header__signals .lab-signals a { min-height: 58px; padding: 8px 6px; }
   .journal-card > header { gap: 10px; }
   .journal-card__actions { gap: 5px; }

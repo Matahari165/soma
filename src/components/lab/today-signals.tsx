@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
+
 export type TodaySignalValues = {
   sleepMinutes: number | null;
   sleepRegularity: number | null;
@@ -13,6 +15,8 @@ export type TodaySignalValues = {
   averageSleepRegularity?: number | null;
   averageRecoveryScore?: number | null;
   averageEffortScore?: number | null;
+  calorieProgress?: number | null;
+  calorieTarget?: number | null;
   overnightFingerprint: string | null;
 };
 
@@ -25,13 +29,17 @@ function AnimatedSignalNumber({
   format,
 }: {
   value: number | null;
-  format: "duration" | "number";
+  format: "duration" | "number" | "percentage";
 }) {
   const spanRef = useRef<HTMLSpanElement>(null);
   const mounted = useRef(false);
   const previousValue = useRef(value);
 
-  const formatted = value === null ? "—" : format === "duration" ? duration(value) : String(Math.round(value));
+  const formatted = value === null
+    ? "—"
+    : format === "duration"
+      ? duration(value)
+      : `${Math.round(value)}${format === "percentage" ? "%" : ""}`;
 
   useClientLayoutEffect(() => {
     const from = !mounted.current ? 0 : previousValue.current ?? 0;
@@ -57,7 +65,9 @@ function AnimatedSignalNumber({
       const eased = 1 - Math.pow(1 - progress, 3);
       const current = from + (target - from) * eased;
       if (spanRef.current) {
-        spanRef.current.textContent = format === "duration" ? duration(Math.round(current)) : String(Math.round(current));
+        spanRef.current.textContent = format === "duration"
+          ? duration(Math.round(current))
+          : `${Math.round(current)}${format === "percentage" ? "%" : ""}`;
       }
       if (progress < 1) frame = window.requestAnimationFrame(tick);
       else if (spanRef.current) spanRef.current.textContent = formatted;
@@ -79,9 +89,10 @@ function comparison(value: number | null, average: number | null) {
   return value > average ? "above" : "below";
 }
 
-function accessibleValue(key: "sleepMinutes" | "recoveryScore" | "effortScore", value: number | null) {
+function accessibleValue(key: "sleepMinutes" | "recoveryScore" | "effortScore" | "calorieProgress", value: number | null) {
   if (value === null) return "not available";
   if (key === "sleepMinutes") return duration(value);
+  if (key === "calorieProgress") return `${Math.round(value)}%`;
   return String(Math.round(value));
 }
 
@@ -98,6 +109,21 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [values]);
 
   useEffect(() => {
+    const onMealTotals = (event: Event) => {
+      const detail = (event as CustomEvent<MealTotalsEventDetail>).detail;
+      if (!detail?.isToday) return;
+      setValues((current) => ({
+        ...current,
+        calorieProgress: detail.calorieProgress,
+        calorieTarget: detail.calorieTarget,
+      }));
+    };
+    window.addEventListener(MEAL_TOTALS_EVENT, onMealTotals);
+    window.dispatchEvent(new Event(MEAL_TOTALS_REQUEST_EVENT));
+    return () => window.removeEventListener(MEAL_TOTALS_EVENT, onMealTotals);
+  }, []);
+
+  useEffect(() => {
     if (!announcedInitial.current) {
       announcedInitial.current = true;
       return;
@@ -105,7 +131,7 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
     setAnnouncement("Today values updated.");
     const timeout = window.setTimeout(() => setAnnouncement(""), 1200);
     return () => window.clearTimeout(timeout);
-  }, [values.effortScore, values.recoveryScore, values.sleepMinutes]);
+  }, [values.calorieProgress, values.effortScore, values.recoveryScore, values.sleepMinutes]);
 
   const refresh = useCallback(async () => {
     if (document.visibilityState !== "visible") return;
@@ -114,7 +140,12 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
       const response = await fetch("/api/lab/today", { cache: "no-store" });
       if (!response.ok) return;
       const next = await response.json() as TodaySignalValues;
-      setValues(next);
+      setValues((current) => ({
+        ...current,
+        ...next,
+        calorieProgress: "calorieProgress" in next ? next.calorieProgress : current.calorieProgress,
+        calorieTarget: "calorieTarget" in next ? next.calorieTarget : current.calorieTarget,
+      }));
       if (next.overnightFingerprint && next.overnightFingerprint !== valuesRef.current.overnightFingerprint) router.refresh();
     } finally {
       setRefreshing(false);
@@ -134,12 +165,13 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [refresh]);
 
   const signals = [
-    { key: "sleepMinutes" as const, label: "Sleep duration", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), average: values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes)), trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
-    { key: "recoveryScore" as const, label: "Recovery", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), average: values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : String(Math.round(values.averageRecoveryScore)), trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
-    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), average: values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : String(Math.round(values.averageEffortScore)), trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
+    { key: "sleepMinutes" as const, label: "Sleep duration", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), supporting: `30-day avg · ${values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes))}`, trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
+    { key: "recoveryScore" as const, label: "Recovery", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), supporting: `30-day avg · ${values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : Math.round(values.averageRecoveryScore)}`, trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
+    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), supporting: `30-day avg · ${values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : Math.round(values.averageEffortScore)}`, trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
+    { key: "calorieProgress" as const, label: "Calories", node: <AnimatedSignalNumber value={values.calorieProgress ?? null} format="percentage" />, finalValue: accessibleValue("calorieProgress", values.calorieProgress ?? null), supporting: `Cible · ${values.calorieTarget === null || values.calorieTarget === undefined ? "—" : `${Math.round(values.calorieTarget)} kcal`}`, trend: "neutral", href: "/meals" },
   ];
-  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, average, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
-    <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">30-day avg · {average}</small></span>
+  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, supporting, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
+    <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">{supporting}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{node}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;
 }

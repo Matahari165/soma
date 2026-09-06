@@ -9,6 +9,18 @@ const date = "2026-08-31";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
+  it("uses a compact home variant without moving the full calorie banner", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="home" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(html).toContain("Journal quotidien");
+    expect(html).toContain("Page dédiée");
+    expect(html).not.toContain("score-ring--large");
+    expect(html.match(/<textarea/g) ?? []).toHaveLength(0);
+    expect(html.match(/>Écrire<\/button>/g)).toHaveLength(4);
+    expect(html.match(/>Caméra<\/button>/g)).toHaveLength(4);
+    expect(html.match(/>Photos<\/button>/g)).toHaveLength(4);
+  });
+
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 

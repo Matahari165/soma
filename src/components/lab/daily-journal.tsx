@@ -335,7 +335,20 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-export function DailyJournal({ variables, entries, days, todayDate, onTodayBreakfastValidation, onTodayMorningValidation }: { variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; todayDate: string; onTodayBreakfastValidation?: (skipped: boolean) => void; onTodayMorningValidation?: (completed: boolean) => void }) {
+export type DailyJournalProps = {
+  variables: JournalVariable[];
+  entries: JournalEntry[];
+  days: JournalDay[];
+  todayDate: string;
+  selectedDate?: string;
+  onDateChange?: (date: string) => void;
+  showDateNavigation?: boolean;
+  availableDates?: readonly string[];
+  onTodayBreakfastValidation?: (skipped: boolean) => void;
+  onTodayMorningValidation?: (completed: boolean) => void;
+};
+
+export function DailyJournal({ variables, entries, days, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation }: DailyJournalProps) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
@@ -344,10 +357,12 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
     const periodVariables = activeVariables.filter((variable) => displayedDayPeriod(variable) === period.id);
     return periodVariables.length > 0 ? [{ ...period, variables: periodVariables }] : [];
   }), [activeVariables]);
-  const availableDates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(todayDate, -index)), [todayDate]);
-  const [entryDate, setEntryDate] = useState(todayDate);
-  const selectedDate = useRef(todayDate);
-  const initialDrafts = useMemo(() => journalDraftsForDates(availableDates, activeVariables, entries, days), [activeVariables, availableDates, days, entries]);
+  const defaultAvailableDates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(todayDate, -index)), [todayDate]);
+  const dateOptions = availableDates ?? defaultAvailableDates;
+  const [internalEntryDate, setInternalEntryDate] = useState(todayDate);
+  const entryDate = selectedDateProp ?? internalEntryDate;
+  const selectedDateRef = useRef(entryDate);
+  const initialDrafts = useMemo(() => journalDraftsForDates(dateOptions, activeVariables, entries, days), [activeVariables, dateOptions, days, entries]);
   const [draftsByDate, setDraftsByDate] = useState<JournalDraftsByDate>(initialDrafts);
   const drafts = useRef<JournalDraftsByDate>(initialDrafts);
   const pendingSavesByDate = useRef<Record<string, number>>({});
@@ -358,8 +373,8 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
   const [error, setError] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ fieldId: string; token: number } | null>(null);
-  const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(availableDates.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
-  const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(availableDates.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
+  const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
+  const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
   const feedbackSequence = useRef(0);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNumericFeedback = useRef(new Set<string>());
@@ -380,6 +395,14 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
     drafts.current = next;
     setDraftsByDate(next);
   }, [initialDrafts]);
+
+  useEffect(() => {
+    if (selectedDateRef.current === entryDate) return;
+    selectedDateRef.current = entryDate;
+    setSaveStatus("draft");
+    setError(null);
+    pendingNumericFeedback.current.clear();
+  }, [entryDate]);
 
   function triggerFeedback(fieldId: string) {
     feedbackSequence.current += 1;
@@ -411,14 +434,14 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
         const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
         const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDate === date;
         if (date === todayDate && breakfast && dayIsValidated) onTodayBreakfastValidation?.(draftValues[breakfast.id] === false);
-        if (date === selectedDate.current && pendingSavesByDate.current[date] === 1) {
+        if (date === selectedDateRef.current && pendingSavesByDate.current[date] === 1) {
           setSaveStatus("saved");
           setError(null);
           if (days.find((candidate) => candidate.entryDate === date)?.status === "validated") router.refresh();
         }
       })
       .catch((saveError) => {
-        if (date === selectedDate.current) {
+        if (date === selectedDateRef.current) {
           setSaveStatus("error");
           setError(saveError instanceof Error ? saveError.message : "Your journal could not be saved.");
         }
@@ -431,14 +454,14 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
   }
 
   async function validate() {
-    const date = selectedDate.current;
+    const date = selectedDateRef.current;
     pendingSavesByDate.current[date] = (pendingSavesByDate.current[date] ?? 0) + 1;
     setValidatingDate(date);
     setSaveStatus("saving");
     try {
       await saveQueue.current;
       await persist(date, "validate", drafts.current[date] ?? journalValuesForDate(activeVariables, entries, days, date));
-      if (date === selectedDate.current) {
+      if (date === selectedDateRef.current) {
         setValidatedDate(date);
         setSaveStatus("saved");
         setError(null);
@@ -453,7 +476,7 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
       }
       router.refresh();
     } catch (saveError) {
-      if (date === selectedDate.current) {
+      if (date === selectedDateRef.current) {
         setSaveStatus("error");
         setError(saveError instanceof Error ? saveError.message : "This day could not be validated.");
       }
@@ -466,8 +489,10 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
   }
 
   function changeDate(date: string) {
-    selectedDate.current = date;
-    setEntryDate(date);
+    if (!dateOptions.includes(date)) return;
+    selectedDateRef.current = date;
+    if (selectedDateProp === undefined) setInternalEntryDate(date);
+    onDateChange?.(date);
     if (!drafts.current[date]) {
       const next = { ...drafts.current, [date]: journalValuesForDate(activeVariables, entries, days, date) };
       drafts.current = next;
@@ -479,7 +504,7 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
   }
 
   function changeValue(variableId: string, value: DraftValue) {
-    const date = selectedDate.current;
+    const date = selectedDateRef.current;
     const variable = activeVariables.find((candidate) => candidate.id === variableId);
     const next = updateJournalDraft(drafts.current, date, variableId, value);
     drafts.current = next;
@@ -517,7 +542,7 @@ export function DailyJournal({ variables, entries, days, todayDate, onTodayBreak
     {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validating…</> : "Validate day"}</button>}
     {!managerOpen && <button className="text-link" type="button" aria-label="Edit journal fields" onClick={() => setManagerOpen(true)}>Edit</button>}
   </div></header>
-    <nav className="journal-date-strip" aria-label="Journal date">{availableDates.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>
+    {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>}
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => {
       const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
       const complete = completedCount === section.variables.length;

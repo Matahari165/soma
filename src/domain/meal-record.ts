@@ -4,6 +4,16 @@ export type MealOrigin = "homemade" | "prepared" | "mixed";
 export type MealStatus = "draft" | "analyzing" | "review" | "confirmed" | "error";
 export type Rating = 0 | 1 | 2 | 3 | 4 | 5;
 
+export const MEAL_TOTALS_EVENT = "soma:meal-totals";
+export const MEAL_TOTALS_REQUEST_EVENT = "soma:request-meal-totals";
+export type MealTotalsEventDetail = {
+  date: string;
+  isToday: boolean;
+  calories: number | null;
+  calorieTarget: number | null;
+  calorieProgress: number | null;
+};
+
 export type MealPhoto = {
   id: string;
   url: string;

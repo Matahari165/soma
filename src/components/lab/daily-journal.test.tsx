@@ -59,6 +59,12 @@ describe("journal motion states", () => {
     expect(html).not.toContain("Validate day");
   });
 
+  it("can hide its local date strip when the workspace provides a shared one", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: [], days: [], todayDate, showDateNavigation: false, selectedDate: todayDate }));
+
+    expect(html).not.toContain('class="journal-date-strip"');
+  });
+
   it("marks an explicit false entry as recorded", () => {
     const vacation = variables.find((variable) => variable.name === "Vacation");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
