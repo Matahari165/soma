@@ -50,7 +50,7 @@
   min-width: 0;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--metric-soft) 55%, var(--line-strong));
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--metric-soft) 28%, var(--canvas));
   color: var(--ink);
 }
@@ -143,7 +143,7 @@
   width: fit-content;
   padding: 3px 8px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-data);
+  border-radius: var(--radius-surface);
   color: var(--ink);
   font-size: 0.72rem;
   font-weight: 600;

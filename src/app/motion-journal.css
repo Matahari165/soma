@@ -70,7 +70,7 @@
   z-index: 1;
   inset: 4px;
   border: 1px solid var(--moss);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-surface);
   pointer-events: none;
   animation: journal-field-feedback 520ms var(--ease) both;
 }
