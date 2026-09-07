@@ -340,6 +340,7 @@ function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
 
 function statusLabel(meal: MealRecord | null) {
   if (!meal) return "";
+  if (meal.status === "confirmed") return "";
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
   if (meal.status === "error") return "À réessayer";

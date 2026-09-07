@@ -254,6 +254,7 @@ describe("MealJournal", () => {
     }
     expect(html).not.toContain("Confiance");
     expect(html).toContain("Résumé nutritionnel");
+    expect(html).not.toContain("Texte à compléter");
   });
 
   it("envoie les deux ressentis dans chaque sauvegarde d’un repas confirmé", async () => {
