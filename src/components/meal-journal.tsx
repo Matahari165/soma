@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 
 import { ScoreRing } from "@/components/dashboard/score-ring";
-import { MAX_MEAL_PHOTOS } from "@/domain/meals";
+import { MAX_MEAL_PHOTOS, type MealFoodCourse } from "@/domain/meals";
 import {
   apiMealToRecord,
   MEAL_TOTALS_EVENT,
@@ -44,7 +44,6 @@ import {
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
 import { normalizeMealImage } from "@/services/meal-image";
-import { MealDayTargets } from "./meal-day-targets";
 import styles from "./meal-journal.module.css";
 
 export { apiMealToRecord, MEAL_SLOTS };
@@ -62,6 +61,13 @@ export type {
   MealStatus,
   NutritionRange,
   Rating,
+};
+
+const COURSE_LABELS: Record<MealFoodCourse, string> = {
+  starter: "Entrée",
+  main: "Plat",
+  side: "Accompagnement",
+  dessert: "Dessert",
 };
 
 function formatIngredientLabel(ingredient: MealIngredient) {
@@ -115,8 +121,99 @@ function shiftIsoDate(date: string, days: number) {
 }
 
 export function mealHistoryDates(selectedDate: string, today = todayInLocalTime()) {
-  const end = selectedDate < shiftIsoDate(today, -3) ? shiftIsoDate(selectedDate, 3) : today;
-  return Array.from({ length: 7 }, (_, index) => shiftIsoDate(end, index - 6));
+  const start = selectedDate < shiftIsoDate(today, -3) ? shiftIsoDate(selectedDate, 3) : today;
+  return Array.from({ length: 7 }, (_, index) => shiftIsoDate(start, -index));
+}
+
+export function calorieProgressForDisplay(calories: number | null, target: number) {
+  if (calories === null) return null;
+  if (!Number.isFinite(target) || target <= 0) return 0;
+  return Math.max(0, Math.round((calories / target) * 100));
+}
+
+export type MealIngredientTree = {
+  ingredient: MealIngredient;
+  children: MealIngredientTree[];
+};
+
+export function groupMealIngredients(ingredients: readonly MealIngredient[]): MealIngredientTree[] {
+  const nodes = ingredients.map((ingredient) => ({ ingredient, children: [] as MealIngredientTree[] }));
+  const byId = new Map(nodes.map((node) => [node.ingredient.id, node]));
+  const roots: MealIngredientTree[] = [];
+
+  for (const node of nodes) {
+    const parentId = node.ingredient.parentId?.trim();
+    const parent = parentId ? byId.get(parentId) : undefined;
+    if (parent && parent !== node) parent.children.push(node);
+    else roots.push(node);
+  }
+  return roots;
+}
+
+function ingredientCourse(node: MealIngredientTree, inferUnparentedCourse: boolean): MealFoodCourse | null {
+  if (node.ingredient.course) return node.ingredient.course;
+  if (node.ingredient.kind === "dish") return "main";
+  if (!inferUnparentedCourse) return null;
+  return node.ingredient.foodGroups?.some((group) => group === "fruit" || group === "sweet") ? "dessert" : "side";
+}
+
+function groupIngredientSections(nodes: readonly MealIngredientTree[]) {
+  const sections: Array<{ key: string; course: MealFoodCourse | null; nodes: MealIngredientTree[] }> = [];
+  const hasDishRoot = nodes.some((node) => node.ingredient.kind === "dish");
+  for (const node of nodes) {
+    const course = ingredientCourse(node, hasDishRoot && !node.ingredient.parentId);
+    const section = course ? sections.find((candidate) => candidate.course === course) : undefined;
+    if (section) section.nodes.push(node);
+    else sections.push({ key: `${course ?? "unclassified"}-${node.ingredient.id}`, course, nodes: [node] });
+  }
+  return sections;
+}
+
+function hasNutritionValue(range: NutritionRange | undefined) {
+  return Boolean(range && (range.low !== null || range.likely !== null && range.likely !== undefined || range.high !== null));
+}
+
+function ingredientNutritionLabel(ingredient: MealIngredient) {
+  const parts = [
+    hasNutritionValue(ingredient.calories) ? `${likelyLabel(ingredient.calories)} kcal` : null,
+    hasNutritionValue(ingredient.proteinGrams) ? `${likelyLabel(ingredient.proteinGrams)} g prot.` : null,
+    hasNutritionValue(ingredient.carbohydratesGrams) ? `${likelyLabel(ingredient.carbohydratesGrams)} g gluc.` : null,
+    hasNutritionValue(ingredient.fatGrams) ? `${likelyLabel(ingredient.fatGrams)} g lip.` : null,
+    hasNutritionValue(ingredient.fiberGrams) ? `${likelyLabel(ingredient.fiberGrams)} g fibres` : null,
+    hasNutritionValue(ingredient.sugarGrams) ? `${likelyLabel(ingredient.sugarGrams)} g sucres` : null,
+    hasNutritionValue(ingredient.addedSugarGrams) ? `${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés` : null,
+  ];
+  return parts.filter((part): part is string => Boolean(part)).join(" · ");
+}
+
+function normalizedDisplayText(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").trim();
+}
+
+function IngredientTreeItem({ node }: { node: MealIngredientTree }) {
+  const nutrition = ingredientNutritionLabel(node.ingredient);
+  return <li className={styles.ingredientItem} data-kind={node.ingredient.kind ?? "unknown"} data-parent-id={node.ingredient.parentId ?? undefined}>
+    <strong>{formatIngredientLabel(node.ingredient)}</strong>
+    {nutrition && <small>{nutrition}</small>}
+    {node.children.length > 0 && <ul className={styles.ingredientChildren}>{node.children.map((child) => <IngredientTreeItem key={child.ingredient.id} node={child} />)}</ul>}
+  </li>;
+}
+
+function IngredientGroups({ analysis }: { analysis: MealAnalysis }) {
+  const roots = groupMealIngredients(analysis.ingredients);
+  if (roots.length === 0) return <p className={styles.ingredientsList}>Composition non détaillée</p>;
+  const sections = groupIngredientSections(roots);
+  const dishType = analysis.dishType?.trim();
+  const hasDishRoot = Boolean(dishType && roots.some((node) => node.ingredient.kind === "dish" && (normalizedDisplayText(dishType).includes(normalizedDisplayText(node.ingredient.name)) || normalizedDisplayText(node.ingredient.name).includes(normalizedDisplayText(dishType)))));
+  return <div className={styles.ingredientGroups} aria-label="Composition du repas">
+    {dishType && !hasDishRoot && <p className={styles.dishType}><strong>{dishType}</strong></p>}
+    <ul className={styles.ingredientSections}>
+      {sections.map((section) => <li className={styles.ingredientSection} data-course={section.course ?? "unclassified"} key={section.key}>
+        {section.course && <p className={styles.ingredientSectionLabel}>{COURSE_LABELS[section.course]}</p>}
+        <ul className={styles.ingredientList}>{section.nodes.map((node) => <IngredientTreeItem key={node.ingredient.id} node={node} />)}</ul>
+      </li>)}
+    </ul>
+  </div>;
 }
 
 function compactDayLabel(date: string) {
@@ -260,6 +357,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       estimatedGrams: ingredient.estimatedGrams ?? null,
       kind: ingredient.kind,
       parentId: ingredient.parentId ?? null,
+      course: ingredient.course ?? null,
       countedInTotals: ingredient.countedInTotals,
       foodGroups: ingredient.foodGroups,
       varietyKey: ingredient.varietyKey ?? null,
@@ -393,13 +491,10 @@ function AnalysisDisplay({ meal }: { meal: MealRecord }) {
     ...(sugarRange && sugarLabel ? [{ label: sugarLabel, unit: "g", range: sugarRange, metric: "sugar" }] : []),
   ];
   return <div className={styles.analysisDisplay}>
-    {analysis.dishType && <p className={styles.dishType}><strong>{analysis.dishType}</strong></p>}
     <div className={styles.confirmedNutrition}>
       {nutritionMetrics.map(({ label, unit, range, metric }) => <span data-metric={metric} key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}, estimation ${formatLowHigh(range)}`} title={`Estimation ${formatLowHigh(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
     </div>
-    {analysis.ingredients.length > 0
-      ? <ul className={styles.ingredientsList}>{analysis.ingredients.map((ingredient) => <li key={ingredient.id}><strong>{formatIngredientLabel(ingredient)}</strong>{(ingredient.calories || ingredient.proteinGrams || ingredient.carbohydratesGrams || ingredient.fatGrams || ingredient.fiberGrams || ingredient.sugarGrams || ingredient.addedSugarGrams) && <small>{ingredient.calories && `${likelyLabel(ingredient.calories)} kcal`}{ingredient.proteinGrams && ` · ${likelyLabel(ingredient.proteinGrams)} g prot.`}{ingredient.carbohydratesGrams && ` · ${likelyLabel(ingredient.carbohydratesGrams)} g gluc.`}{ingredient.fatGrams && ` · ${likelyLabel(ingredient.fatGrams)} g lip.`}{ingredient.fiberGrams && ` · ${likelyLabel(ingredient.fiberGrams)} g fibres`}{ingredient.sugarGrams && ` · ${likelyLabel(ingredient.sugarGrams)} g sucres`}{ingredient.addedSugarGrams && ` · ${likelyLabel(ingredient.addedSugarGrams)} g sucres ajoutés`}</small>}</li>)}</ul>
-      : <p className={styles.ingredientsList}>Composition non détaillée</p>}
+    <IngredientGroups analysis={analysis} />
   </div>;
 }
 
@@ -608,8 +703,7 @@ function MealPageHeader({ totals, targets }: { totals: DayTotal | null; targets:
   const calorieTarget = targets.caloriesKcal.likely;
   const protein = totals?.protein ?? null;
   const proteinTarget = targets.proteinG.likely;
-  const calorieProgress = calories === null || calorieTarget <= 0 ? 0 : Math.min(100, Math.max(0, calories / calorieTarget * 100));
-  const calorieProgressValue = calories === null ? null : Math.round(calorieProgress);
+  const calorieProgressValue = calorieProgressForDisplay(calories, calorieTarget);
 
   return <header className={styles.pageHeader}>
     <div><h1 id="meal-journal-title">Repas</h1></div>
@@ -749,9 +843,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!publishMealTotals || typeof window === "undefined") return;
     const calorieTarget = targets.caloriesKcal.likely > 0 ? targets.caloriesKcal.likely : null;
     const calories = currentDayTotal?.calories ?? null;
-    const calorieProgress = calories === null || calorieTarget === null
-      ? null
-      : Math.min(100, Math.max(0, Math.round((calories / calorieTarget) * 100)));
+    const calorieProgress = calorieProgressForDisplay(calories, calorieTarget ?? 0);
     window.dispatchEvent(new CustomEvent(MEAL_TOTALS_EVENT, {
       detail: { date: selectedDate, isToday: selectedDate === today, calories, calorieTarget, calorieProgress },
     }));
@@ -974,11 +1066,12 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   if (loadState === "error") return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Impossible de charger les repas</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div></section>;
 
   const readyData = data ?? emptyData(selectedDate);
-  const dayTotal = currentDayTotal;
   return <section className={`${styles.root} ${className ?? ""}`} aria-labelledby="meal-journal-title">
     {pageHeader}
     {dateNavigation}
-    <MealDayTargets compact={variant === "home"} totals={dayTotal ? { caloriesKcal: dayTotal.calories, proteinG: dayTotal.protein, fatG: dayTotal.fat, carbsG: dayTotal.carbs, fiberG: dayTotal.fiber } : null} targets={targets} headerAction={<button className={styles.targetEditButton} type="button" aria-label="Modifier les cibles du jour" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={() => setTargetsExpanded((expanded) => !expanded)}><Pencil size={16} aria-hidden="true" /></button>} />
+    <div className={styles.targetControls}>
+      <button className={styles.targetEditButton} type="button" aria-label="Modifier les cibles du jour" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={() => setTargetsExpanded((expanded) => !expanded)}><Pencil size={16} aria-hidden="true" /></button>
+    </div>
     {targetsExpanded && <div id="meal-target-editor" className={styles.targetEditor}>
       <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories likely" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
       <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines likely" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>

@@ -9,13 +9,17 @@ export type JournalCaptureMode = (typeof journalCaptureModes)[number];
 export const journalTrackingCadences = ["daily", "weekly"] as const;
 export type JournalTrackingCadence = (typeof journalTrackingCadences)[number];
 
-export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime"] as const;
+export const ADDED_SUGAR_AUTOMATIC_METRIC_ID = "meal_added_sugar" as const;
+export const ADDED_SUGAR_GOAL_G = 0;
+export const ADDED_SUGAR_GOAL_TOLERANCE_G = 4;
+
+export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime", ADDED_SUGAR_AUTOMATIC_METRIC_ID] as const;
 export type JournalAutomaticMetricId = (typeof journalAutomaticMetricIds)[number];
 
 export type JournalAutomaticSource = {
   id: JournalAutomaticMetricId;
   label: string;
-  source: "Google Health";
+  source: "Google Health" | "Soma meals";
   variableType: JournalVariableType;
   unit: string | null;
   dayPeriod: JournalDayPeriod;
@@ -26,6 +30,7 @@ export const journalAutomaticSources: readonly JournalAutomaticSource[] = [
   { id: "run_day", label: "Running détecté", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "day", defaultTrackingCadence: "weekly" },
   { id: "bedtime_before_23", label: "Coucher avant 23 h", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
   { id: "bedtime", label: "Début du sommeil détecté", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
+  { id: ADDED_SUGAR_AUTOMATIC_METRIC_ID, label: "Sucres ajoutés des repas", source: "Soma meals", variableType: "number", unit: "g", dayPeriod: "day", defaultTrackingCadence: "daily" },
 ] as const;
 
 export function journalAutomaticSource(id: unknown) {
@@ -65,6 +70,29 @@ export type JournalDayStatus = "draft" | "validated";
 export type JournalDay = { entryDate: string; status: JournalDayStatus; validatedAt: string | null; omittedVariableIds: string[] };
 
 export type JournalDayPeriod = "context" | "morning" | "day" | "evening" | "sleep" | "other";
+
+function normalizedJournalVariableName(name: string) {
+  return name.trim().toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function isAddedSugarVariable(variable: Pick<JournalVariable, "name" | "automaticMetricId">) {
+  const name = normalizedJournalVariableName(variable.name);
+  return variable.automaticMetricId === ADDED_SUGAR_AUTOMATIC_METRIC_ID || name === "added sugar" || name === "sucres ajoutes";
+}
+
+/** Values at or below the tolerance are recorded as the achieved 0 g goal. */
+export function normalizedAddedSugarJournalValue(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
+  if (value <= ADDED_SUGAR_GOAL_TOLERANCE_G) return ADDED_SUGAR_GOAL_G;
+  return Math.round(value * 10) / 10;
+}
+
+export function journalValueMeetsGoal(variable: Pick<JournalVariable, "name" | "automaticMetricId">, value: JournalEntryValue) {
+  if (isAddedSugarVariable(variable)) return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= ADDED_SUGAR_GOAL_TOLERANCE_G;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value > 0;
+  return value.trim().length > 0;
+}
 
 export const journalDayPeriods: ReadonlyArray<{ id: JournalDayPeriod; label: string }> = [
   { id: "context", label: "Day context" },
@@ -251,13 +279,15 @@ function normalizeDinnerTimeValue(variable: JournalVariable, value: JournalEntry
   return normalizeDinnerTimeInput(value) ?? value;
 }
 
-export const defaultJournalVariables = [
+type DefaultJournalVariable = { name: string; emoji: string; variableType: JournalVariableType; unit: string | null; options: readonly string[]; position: number; dayPeriod: JournalDayPeriod; defaultValue: JournalEntryValue | null; captureMode?: JournalCaptureMode; automaticMetricId?: string | null; trackingCadence?: JournalTrackingCadence };
+
+export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
   { name: "Vacation", emoji: "🏖️", variableType: "boolean", unit: null, options: [], position: 0, dayPeriod: "context", defaultValue: false },
   { name: "Illness", emoji: "🤒", variableType: "boolean", unit: null, options: [], position: 5, dayPeriod: "context", defaultValue: false },
   { name: "Breakfast", emoji: "🍳", variableType: "boolean", unit: null, options: [], position: 10, dayPeriod: "morning", defaultValue: false },
   { name: "WHM", emoji: "🫁", variableType: "count", unit: "rounds", options: [], position: 20, dayPeriod: "morning", defaultValue: 0 },
   { name: "Caffeine", emoji: "☕", variableType: "number", unit: "mg", options: [], position: 30, dayPeriod: "day", defaultValue: 0 },
-  { name: "Added sugar", emoji: "🍬", variableType: "number", unit: "g", options: [], position: 40, dayPeriod: "day", defaultValue: 0 },
+  { name: "Added sugar", emoji: "🍬", variableType: "number", unit: "g", options: [], position: 40, dayPeriod: "day", defaultValue: null, captureMode: "automatic", automaticMetricId: ADDED_SUGAR_AUTOMATIC_METRIC_ID, trackingCadence: "daily" },
   { name: "Masturbation", emoji: "✋", variableType: "boolean", unit: null, options: [], position: 50, dayPeriod: "day", defaultValue: false },
   { name: "Alcohol", emoji: "🍷", variableType: "count", unit: "drinks", options: [], position: 60, dayPeriod: "evening", defaultValue: 0 },
   { name: "Strength training", emoji: "🏋️", variableType: "boolean", unit: null, options: [], position: 65, dayPeriod: "day", defaultValue: false },
@@ -266,7 +296,7 @@ export const defaultJournalVariables = [
   { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },
   { name: "Reading for 30 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },
   { name: "Dark room", emoji: "🌑", variableType: "boolean", unit: null, options: [], position: 110, dayPeriod: "evening", defaultValue: true },
-] as const satisfies ReadonlyArray<{ name: string; emoji: string; variableType: JournalVariableType; unit: string | null; options: readonly string[]; position: number; dayPeriod: JournalDayPeriod; defaultValue: JournalEntryValue | null }>;
+];
 
 export const journalVariableSuggestions = [
   { name: "Late meal", variableType: "boolean", unit: null, options: [] },

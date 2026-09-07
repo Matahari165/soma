@@ -1,8 +1,9 @@
 import type { LabObservation } from "@/domain/lab/observation";
+import { automaticJournalEntriesFor } from "@/domain/lab/journal-automatic";
 import { journalAchievementsFor, type JournalAchievement } from "@/domain/lab/journal-achievement";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
-import { mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
+import { aggregateConfirmedMeals, mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -712,7 +713,7 @@ function previewData() {
       deep_work_minutes_override: null,
     });
   }
-  const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: variable.position, isActive: true, emoji: variable.emoji, defaultValue: variable.defaultValue, dayPeriod: variable.dayPeriod }));
+  const variables = defaultJournalVariables.map((variable, index): JournalVariable => ({ id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, name: variable.name, variableType: variable.variableType, unit: variable.unit, options: [...variable.options], position: variable.position, isActive: true, emoji: variable.emoji, defaultValue: variable.defaultValue, dayPeriod: variable.dayPeriod, captureMode: variable.captureMode, automaticMetricId: variable.automaticMetricId ?? null, trackingCadence: variable.trackingCadence ?? "daily" }));
   const yesterday = addDays(dateInTimezone("Europe/Paris"), -1);
   const entry = (name: string, value: JournalEntry["value"]): JournalEntry => ({ variableId: variables.find((variable) => variable.name === name)?.id as string, entryDate: yesterday, value });
   const journal = { variables, entries: [entry("Breakfast", true), entry("Added sugar", 18), entry("Alcohol", 0), entry("Dark room", true)], days: [{ entryDate: yesterday, status: "validated" as const, validatedAt: new Date().toISOString(), omittedVariableIds: [] }] };
@@ -754,15 +755,18 @@ function buildJournalView(timeZone: string, journal: {
   variables: JournalVariable[];
   entries: JournalEntry[];
   days: import("@/domain/lab/journal").JournalDay[];
-}): PersonalLabJournal {
+}, meals: readonly ConfirmedMealRecord[] = []): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
   const earliestDate = addDays(todayDate, -4);
-  const achievements = journalAchievementsFor({ variables: journal.variables, entries: journal.entries, days: journal.days, todayDate });
+  const mealAddedSugarByDate = new Map(aggregateConfirmedMeals(meals).map((day) => [day.date, day.addedSugarG]));
+  const automaticEntries = automaticJournalEntriesFor({ variables: journal.variables, health: [], mealAddedSugarByDate, existingEntries: journal.entries });
+  const entries = [...journal.entries, ...automaticEntries];
+  const achievements = journalAchievementsFor({ variables: journal.variables, entries, days: journal.days, todayDate });
   return {
     todayDate,
     journal: {
       variables: journal.variables,
-      entries: journal.entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
+      entries: entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
       days: journal.days.filter((day) => day.entryDate >= earliestDate && day.entryDate <= todayDate),
       achievements,
     },
@@ -948,13 +952,13 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const includeAnalysis = options.includeAnalysis !== false;
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    const input = { user, timeZone: "Europe/Paris", ...preview, meals: includeAnalysis ? loadPreviewConfirmedMealRecords(user.id) : [], requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
+    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
     return {
       overview: Promise.resolve(buildOverview(input)),
-      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal)),
+      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals)),
       analysis: includeAnalysis ? Promise.resolve().then(() => buildSnapshot(input)) : null,
     };
   }
@@ -997,11 +1001,12 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const calendarPromise = calendarQuery.then((result) => result);
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
-  const journalPromise = profilePromise.then((profileResult) => loadJournalData(user.id, {
+  const mealPromise = loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const journalPromise = Promise.all([profilePromise, mealPromise]).then(([profileResult, mealRecords]) => loadJournalData(user.id, {
     ...(analysisWindow ? { from: analysisWindow.start } : {}),
     timeZone: profileResult.data?.timezone ?? "Europe/Paris",
+    mealRecords,
   }));
-  const mealPromise = includeAnalysis ? loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {}) : Promise.resolve([]);
   const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
     const failed = results.find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
@@ -1028,9 +1033,9 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   }) : null;
 
   const overview = corePromise.then((core) => buildOverview(core));
-  const journal = Promise.all([profilePromise, journalPromise]).then(([profileResult, journalData]) => {
+  const journal = Promise.all([profilePromise, journalPromise, mealPromise]).then(([profileResult, journalData, meals]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData);
+    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals);
   });
   const analysis = includeAnalysis ? Promise.all([corePromise, journalPromise, mealPromise, detailPromise!]).then(async ([core, journalData, meals, detail]) => {
     const queryCompletedAt = Date.now();

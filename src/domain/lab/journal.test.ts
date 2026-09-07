@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalVariableSuggestions, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -154,5 +154,15 @@ describe("journal values", () => {
 
   it("keeps the added sugar unit", () => {
     expect(defaultJournalVariables.find((item) => item.name === "Added sugar")?.unit).toBe("g");
+  });
+
+  it("normalizes the added sugar objective with a 4 g tolerance", () => {
+    const sugar = { ...variable("number"), name: "Added sugar", unit: "g" };
+    expect(normalizedAddedSugarJournalValue(0)).toBe(0);
+    expect(normalizedAddedSugarJournalValue(4)).toBe(0);
+    expect(normalizedAddedSugarJournalValue(4.1)).toBe(4.1);
+    expect(normalizedAddedSugarJournalValue(null)).toBeNull();
+    expect(journalValueMeetsGoal(sugar, 4)).toBe(true);
+    expect(journalValueMeetsGoal(sugar, 4.1)).toBe(false);
   });
 });

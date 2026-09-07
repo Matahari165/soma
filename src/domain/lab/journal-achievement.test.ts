@@ -74,4 +74,16 @@ describe("journalAchievementsFor", () => {
     });
     expect(result[0]).toMatchObject({ percentage: 0, successPeriods: 0, observedPeriods: 1 });
   });
+
+  it("treats up to 4 g of added sugar as success for the zero-goal objective", () => {
+    const sugar = variable({ name: "Added sugar", variableType: "number", unit: "g", captureMode: "automatic", automaticMetricId: "meal_added_sugar" });
+    const result = journalAchievementsFor({
+      variables: [sugar],
+      entries: [entry("2026-09-01", 0), entry("2026-09-02", 5)],
+      days: [],
+      todayDate: "2026-09-02",
+      windowDays: 2,
+    });
+    expect(result[0]).toMatchObject({ percentage: 50, successPeriods: 1, observedPeriods: 2 });
+  });
 });

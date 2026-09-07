@@ -507,6 +507,18 @@
 .ingredientsList li { padding-left: 2px; }
 .ingredientsList li strong { color: var(--ink); font-weight: 650; }
 .ingredientsList li small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.35; }
+.ingredientGroups { display: grid; gap: 10px; }
+.ingredientSections,
+.ingredientList,
+.ingredientChildren { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ingredientSection { min-width: 0; padding: 9px 10px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: color-mix(in srgb, var(--line) 12%, var(--paper)); }
+.ingredientSectionLabel { margin: 0 0 7px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; }
+.ingredientItem { min-width: 0; padding: 0 0 0 12px; border-left: 2px solid var(--line-strong); color: var(--ink-soft); font-size: .8rem; }
+.ingredientItem[data-kind="dish"] { padding-left: 0; border-left: 0; color: var(--ink); font-size: .88rem; }
+.ingredientItem > strong { color: var(--ink); font-weight: 650; }
+.ingredientItem small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.35; }
+.ingredientChildren { margin-top: 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.ingredientChildren .ingredientItem { padding-left: 10px; border-left: 0; }
 .confirmError { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); color: var(--danger); font-size: .76rem; }
 .uncertainties { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: .74rem; }
 .uncertaintiesDetails { border-top: 1px solid var(--line); padding-top: 10px; }
@@ -540,6 +552,7 @@
   color: var(--ink-soft);
   font-size: .76rem;
 }
+.targetControls { display: flex; justify-content: flex-end; margin: 8px 0 8px; }
 .targetEditButton {
   display: grid;
   width: 44px;

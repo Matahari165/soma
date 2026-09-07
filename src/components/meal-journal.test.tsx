@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, defaultAnalyze, defaultSave, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, groupMealIngredients, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -50,6 +50,7 @@ describe("MealJournal", () => {
     expect(html).toContain('score-ring--large');
     expect(html).toContain('aria-label="Modifier les cibles du jour"');
     expect(html).toContain('aria-expanded="false"');
+    expect(html).not.toContain(">Cibles du jour<");
   });
 
   it("shows an analyze button for a text-only draft", () => {
@@ -209,11 +210,39 @@ describe("MealJournal", () => {
   });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
-      "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29", "2026-08-30", "2026-08-31",
+      "2026-08-31", "2026-08-30", "2026-08-29", "2026-08-28", "2026-08-27", "2026-08-26", "2026-08-25",
     ]);
     expect(mealHistoryDates("2026-08-10", "2026-08-31")).toEqual([
-      "2026-08-07", "2026-08-08", "2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13",
+      "2026-08-13", "2026-08-12", "2026-08-11", "2026-08-10", "2026-08-09", "2026-08-08", "2026-08-07",
     ]);
+  });
+
+  it("keeps a composed dish distinct from side and dessert items", () => {
+    const ingredients = [
+      { id: "dish", name: "Pâtes aux légumes", portion: "", kind: "dish" as const, course: "main" as const },
+      { id: "spaghetti", name: "Spaghettis", portion: "2 assiettes", kind: "component" as const, parentId: "dish" },
+      { id: "carrot", name: "Carotte", portion: "1", kind: "ingredient" as const, foodGroups: ["vegetable" as const] },
+      { id: "peaches", name: "Pêches", portion: "3", kind: "ingredient" as const, foodGroups: ["fruit" as const] },
+    ];
+    const roots = groupMealIngredients(ingredients);
+    expect(roots).toHaveLength(3);
+    expect(roots[0]?.children.map((node) => node.ingredient.name)).toEqual(["Spaghettis"]);
+
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {
+      dinner: { id: "meal-composed", date, slot: "dinner", note: "Pâtes, carotte à côté, pêches en dessert", photos: [], analysis: { ingredients, calories: { low: 700, likely: 900, high: 1100 }, proteinGrams: { low: 25, likely: 35, high: 45 } }, mouthHeat: null, stomachLoad: null, status: "confirmed" },
+    } }} />);
+
+    expect(html).toContain(">Plat<");
+    expect(html).toContain(">Accompagnement<");
+    expect(html).toContain(">Dessert<");
+    expect(html).toContain('data-parent-id="dish"');
+    expect(html.indexOf("Pâtes aux légumes")).toBeLessThan(html.indexOf("Spaghettis"));
+    expect(html.indexOf("Spaghettis")).toBeLessThan(html.indexOf("Carotte"));
+  });
+
+  it("keeps calorie percentages realistic above the target", () => {
+    expect(calorieProgressForDisplay(4500, 3000)).toBe(150);
+    expect(calorieProgressForDisplay(6000, 3000)).toBe(200);
   });
 
   it("keeps one origin control and the two compact feelings per meal", () => {
@@ -347,7 +376,7 @@ describe("apiMealToRecord", () => {
         status: "completed",
         error: null,
         result: {
-          foods: [{ name: "Yaourt", portion: "1 pot", estimatedGrams: 125, preparation: "nature", sugarGrams: { low: 8, likely: 10, high: 12 }, confidence: "high" }],
+          foods: [{ name: "Yaourt", portion: "1 pot", estimatedGrams: 125, preparation: "nature", course: "dessert", sugarGrams: { low: 8, likely: 10, high: 12 }, confidence: "high" }],
           totals: { calories: { low: 120, likely: 150, high: 180 }, proteinGrams: null, sugarGrams: { low: 8, likely: 10, high: 12 } },
           confidence: "high",
           summary: "Petit déjeuner simple.",
@@ -361,7 +390,7 @@ describe("apiMealToRecord", () => {
     expect(meal.analysis?.calories).toEqual({ low: 120, likely: 150, high: 180 });
     expect(meal.analysis?.proteinGrams).toEqual({ low: null, likely: null, high: null });
     expect(meal.analysis?.sugarGrams).toEqual({ low: 8, likely: 10, high: 12 });
-    expect(meal.analysis?.ingredients[0]).toMatchObject({ estimatedGrams: 125, preparation: "nature", sugarGrams: { low: 8, likely: 10, high: 12 } });
+    expect(meal.analysis?.ingredients[0]).toMatchObject({ estimatedGrams: 125, preparation: "nature", course: "dessert", sugarGrams: { low: 8, likely: 10, high: 12 } });
   });
 
   it("keeps the last successful analysis visible after a failed retry", () => {

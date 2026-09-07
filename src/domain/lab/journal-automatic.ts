@@ -1,4 +1,4 @@
-import { journalAutomaticSource, journalCaptureMode, journalAutomaticMetricId, type JournalEntry, type JournalEntryValue, type JournalVariable } from "./journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, journalAutomaticSource, journalCaptureMode, journalAutomaticMetricId, normalizedAddedSugarJournalValue, type JournalEntry, type JournalEntryValue, type JournalVariable } from "./journal";
 
 export type AutomaticJournalHealthDay = {
   metric_date: string;
@@ -43,11 +43,13 @@ function localClock(isoDate: string, timeZone: string) {
   return { hour, minute, value: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
 }
 
-function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDay, timeZone: string): JournalEntryValue | null {
+function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDay | undefined, timeZone: string, mealAddedSugarG?: number | null): JournalEntryValue | null {
   if (journalCaptureMode(variable) !== "automatic") return null;
   const source = journalAutomaticSource(journalAutomaticMetricId(variable));
   if (!source) return null;
 
+  if (source.id === ADDED_SUGAR_AUTOMATIC_METRIC_ID) return normalizedAddedSugarJournalValue(mealAddedSugarG);
+  if (!day) return null;
   if (source.id === "run_day") return hasReliableActivityCoverage(day) ? hasRecordedRun(day) : null;
   if (!day.bedtime) return null;
   const clock = localClock(day.bedtime, timeZone);
@@ -61,6 +63,7 @@ function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDa
 export function automaticJournalEntriesFor(input: {
   variables: readonly JournalVariable[];
   health: readonly AutomaticJournalHealthDay[];
+  mealAddedSugarByDate?: ReadonlyMap<string, number | null>;
   existingEntries: readonly JournalEntry[];
   omittedVariableIdsByDate?: ReadonlyMap<string, ReadonlySet<string>>;
   from?: string;
@@ -70,22 +73,24 @@ export function automaticJournalEntriesFor(input: {
   const timeZone = input.timeZone ?? "Europe/Paris";
   const existing = new Set(input.existingEntries.map((entry) => `${entry.variableId}:${entry.entryDate}`));
   const automaticVariables = input.variables.filter((variable) => journalCaptureMode(variable) === "automatic");
+  const healthByDate = new Map(input.health.map((day) => [day.metric_date, day]));
+  const dates = new Set([...healthByDate.keys(), ...(input.mealAddedSugarByDate?.keys() ?? [])]);
   const entries: JournalEntry[] = [];
 
   for (const variable of automaticVariables) {
-    for (const day of input.health) {
-      if (input.from && day.metric_date < input.from) continue;
-      if (input.to && day.metric_date > input.to) continue;
-      if (input.omittedVariableIdsByDate?.get(day.metric_date)?.has(variable.id)) continue;
-      if (existing.has(`${variable.id}:${day.metric_date}`)) continue;
-      const value = automaticValue(variable, day, timeZone);
-      if (value !== null) entries.push({ variableId: variable.id, entryDate: day.metric_date, value });
+    for (const date of [...dates].sort()) {
+      if (input.from && date < input.from) continue;
+      if (input.to && date > input.to) continue;
+      if (input.omittedVariableIdsByDate?.get(date)?.has(variable.id)) continue;
+      if (existing.has(`${variable.id}:${date}`)) continue;
+      const value = automaticValue(variable, healthByDate.get(date), timeZone, input.mealAddedSugarByDate?.get(date));
+      if (value !== null) entries.push({ variableId: variable.id, entryDate: date, value });
     }
   }
 
   return entries;
 }
 
-export function automaticJournalValueForTests(variable: JournalVariable, day: AutomaticJournalHealthDay, timeZone = "Europe/Paris") {
-  return automaticValue(variable, day, timeZone);
+export function automaticJournalValueForTests(variable: JournalVariable, day: AutomaticJournalHealthDay, timeZone = "Europe/Paris", mealAddedSugarG?: number | null) {
+  return automaticValue(variable, day, timeZone, mealAddedSugarG);
 }

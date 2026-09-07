@@ -38,4 +38,9 @@ describe("journal variable compatibility", () => {
     const running = variableFromRow(row({ name: "Running", capture_mode: "automatic", automatic_metric_id: "run_day" }));
     expect(running.trackingCadence).toBe("weekly");
   });
+
+  it("upgrades the legacy added sugar field to the meal-derived source", () => {
+    const sugar = variableFromRow(row({ name: "Added sugar", variable_type: "number", unit: "g", default_value: 0, is_active: true }));
+    expect(sugar).toMatchObject({ captureMode: "automatic", automaticMetricId: "meal_added_sugar", defaultValue: null, unit: "g" });
+  });
 });

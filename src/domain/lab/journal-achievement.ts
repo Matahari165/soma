@@ -1,4 +1,4 @@
-import { journalAutomaticSource, journalCaptureMode, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalTrackingCadence, type JournalVariable } from "@/domain/lab/journal";
+import { journalAutomaticSource, journalCaptureMode, journalValueMeetsGoal, type JournalDay, type JournalEntry, type JournalTrackingCadence, type JournalVariable } from "@/domain/lab/journal";
 
 export const JOURNAL_ACHIEVEMENT_WINDOW_DAYS = 28;
 
@@ -37,12 +37,6 @@ function periodEnd(periodStart: string) {
   return addDays(periodStart, 6);
 }
 
-function hasAchievementValue(value: JournalEntryValue) {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value > 0;
-  return value.trim().length > 0;
-}
-
 function effectiveCadence(variable: JournalVariable): JournalTrackingCadence {
   if (variable.trackingCadence) return variable.trackingCadence;
   return journalAutomaticSource(variable.automaticMetricId)?.defaultTrackingCadence ?? "daily";
@@ -79,7 +73,7 @@ function achievementForVariable(variable: JournalVariable, input: AchievementInp
       const observed = value !== undefined || (!automatic && (omitted || validatedDays.some((day) => day.entryDate === date)));
       if (!observed) continue;
       observedPeriods += 1;
-      if (value !== undefined && hasAchievementValue(value)) successPeriods += 1;
+      if (value !== undefined && journalValueMeetsGoal(variable, value)) successPeriods += 1;
     }
     return {
       variableId: variable.id,
@@ -105,7 +99,7 @@ function achievementForVariable(variable: JournalVariable, input: AchievementInp
   for (const [date, value] of variableEntries) {
     const state = ensurePeriod(mondayFor(date));
     state.observed = true;
-    state.success ||= hasAchievementValue(value);
+    state.success ||= journalValueMeetsGoal(variable, value);
   }
   if (!automatic) {
     for (const day of validatedDays) {

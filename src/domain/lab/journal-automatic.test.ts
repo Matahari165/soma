@@ -40,4 +40,20 @@ describe("automatic journal values", () => {
     expect(automaticJournalEntriesFor({ variables: [run], health, existingEntries: [{ variableId: run.id, entryDate: "2026-09-01", value: false }] })).toEqual([]);
     expect(automaticJournalEntriesFor({ variables: [run], health, existingEntries: [], omittedVariableIdsByDate: new Map([["2026-09-01", new Set([run.id])]]) })).toEqual([]);
   });
+
+  it("fills added sugar from meal totals and applies the zero-goal tolerance", () => {
+    const sugar = variable({ name: "Added sugar", variableType: "number", unit: "g", captureMode: "automatic", automaticMetricId: "meal_added_sugar" });
+    expect(automaticJournalValueForTests(sugar, { metric_date: "2026-09-01" }, "Europe/Paris", 4)).toBe(0);
+    expect(automaticJournalValueForTests(sugar, { metric_date: "2026-09-01" }, "Europe/Paris", 4.1)).toBe(4.1);
+    expect(automaticJournalValueForTests(sugar, { metric_date: "2026-09-01" }, "Europe/Paris", null)).toBeNull();
+    expect(automaticJournalEntriesFor({
+      variables: [sugar],
+      health: [],
+      mealAddedSugarByDate: new Map([["2026-09-01", 3], ["2026-09-02", 5], ["2026-09-03", null]]),
+      existingEntries: [],
+    })).toEqual([
+      { variableId: sugar.id, entryDate: "2026-09-01", value: 0 },
+      { variableId: sugar.id, entryDate: "2026-09-02", value: 5 },
+    ]);
+  });
 });

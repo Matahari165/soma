@@ -51,6 +51,10 @@ export type NutritionRange = z.infer<typeof nutritionRangeSchema>;
 export const mealFoodKindSchema = z.enum(["dish", "component", "ingredient"]);
 export type MealFoodKind = z.infer<typeof mealFoodKindSchema>;
 
+/** The meal course is a display relationship, not a nutrition judgement. */
+export const mealFoodCourseSchema = z.enum(["starter", "main", "side", "dessert"]);
+export type MealFoodCourse = z.infer<typeof mealFoodCourseSchema>;
+
 /** Broad food groups used for auditable balance and variety signals. */
 export const mealFoodGroupSchema = z.enum([
   "fruit",
@@ -134,6 +138,7 @@ export const mealFoodItemSchema = z.object({
   /** Internal provenance fields; they are intentionally optional for old analyses. */
   kind: mealFoodKindSchema.optional(),
   parentId: z.string().trim().max(120).nullable().optional(),
+  course: mealFoodCourseSchema.nullable().optional(),
   countedInTotals: z.boolean().optional(),
   /** Optional on old analyses; new model responses should provide both fields. */
   foodGroups: z.array(mealFoodGroupSchema).max(4).optional(),

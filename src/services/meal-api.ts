@@ -55,7 +55,7 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
     if (!name) return [];
     const sugar = legacyRange(item.sugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
     const addedSugar = legacyRange(item.addedSugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
-    return [{ name, preparation: null, portion: typeof item.portion === "string" ? item.portion.trim() || null : null, estimatedGrams: null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: sugar === "invalid" ? null : sugar, addedSugarGrams: addedSugar === "invalid" ? null : addedSugar, confidence: item.confidence === "high" || item.confidence === "medium" ? item.confidence : "low" } satisfies MealAnalysis["foods"][number]];
+    return [{ name, preparation: null, portion: typeof item.portion === "string" ? item.portion.trim() || null : null, estimatedGrams: null, kind: item.kind === "dish" || item.kind === "component" || item.kind === "ingredient" ? item.kind : undefined, parentId: typeof item.parentId === "string" ? item.parentId : null, course: item.course === "starter" || item.course === "main" || item.course === "side" || item.course === "dessert" ? item.course : null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: sugar === "invalid" ? null : sugar, addedSugarGrams: addedSugar === "invalid" ? null : addedSugar, confidence: item.confidence === "high" || item.confidence === "medium" ? item.confidence : "low" } satisfies MealAnalysis["foods"][number]];
   });
   const range = (inputValue: unknown) => legacyRange(inputValue as { low?: unknown; high?: unknown } | null);
   const calories = range(input.calories);
@@ -89,7 +89,7 @@ export function mealToLegacyApi(meal: Meal) {
   const analysisRecord = meal.analysis?.result ? meal.analysis : meal.lastSuccessfulAnalysis;
   const analysis = analysisRecord?.result;
   const legacyAnalysis = analysis ? {
-    ingredients: analysis.foods.map((food, index) => ({ id: `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
+    ingredients: analysis.foods.map((food, index) => ({ id: `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
     dishType: analysis.dishType ?? null,
     calorieAnalysis: analysis.calorieAnalysis ?? null,
     calories: legacyRangeFromCanonical(analysis.totals.calories),

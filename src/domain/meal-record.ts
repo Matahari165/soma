@@ -1,4 +1,4 @@
-import type { MealFoodGroup } from "@/domain/meals";
+import type { MealFoodCourse, MealFoodGroup } from "@/domain/meals";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
@@ -57,6 +57,7 @@ export type MealIngredient = {
   confidence?: "low" | "medium" | "high";
   kind?: MealFoodKind;
   parentId?: string | null;
+  course?: MealFoodCourse | null;
   countedInTotals?: boolean;
   foodGroups?: MealFoodGroup[];
   varietyKey?: string | null;
@@ -161,6 +162,10 @@ function mealFoodKind(value: unknown): MealFoodKind | undefined {
   return value === "dish" || value === "component" || value === "ingredient" ? value : undefined;
 }
 
+function mealFoodCourse(value: unknown): MealFoodCourse | null {
+  return value === "starter" || value === "main" || value === "side" || value === "dessert" ? value : null;
+}
+
 function mealFoodEvidence(value: unknown): MealFoodEvidence | undefined {
   return value === "visible" || value === "inferred" || value === "unknown" ? value : undefined;
 }
@@ -207,6 +212,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
       confidence: confidence(rawFood.confidence),
       kind: mealFoodKind(rawFood.kind),
       parentId: typeof rawFood.parentId === "string" ? rawFood.parentId : null,
+      course: mealFoodCourse(rawFood.course),
       countedInTotals: typeof rawFood.countedInTotals === "boolean" ? rawFood.countedInTotals : undefined,
       foodGroups: Array.isArray(rawFood.foodGroups)
         ? rawFood.foodGroups.filter((group): group is MealFoodGroup => group === "fruit" || group === "vegetable" || group === "legume" || group === "whole_grain" || group === "refined_grain" || group === "potato" || group === "animal_protein" || group === "plant_protein" || group === "egg" || group === "dairy" || group === "nuts_seeds" || group === "added_fat" || group === "sauce" || group === "sweet" || group === "beverage" || group === "other").slice(0, 4)

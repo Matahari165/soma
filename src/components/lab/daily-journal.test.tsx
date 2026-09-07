@@ -129,9 +129,10 @@ describe("journal motion states", () => {
 
   it("marks a fully recorded period without displaying a counter", () => {
     const dayVariables = variables.filter((variable) => variable.dayPeriod === "day");
+    const addedSugar = dayVariables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
-      entries: dayVariables.flatMap((variable) => variable.defaultValue === null ? [] : [{ variableId: variable.id, entryDate: todayDate, value: variable.defaultValue }]),
+      entries: [...dayVariables.flatMap((variable) => variable.defaultValue === null ? [] : [{ variableId: variable.id, entryDate: todayDate, value: variable.defaultValue }]), ...(addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 0 as const }] : [])],
       days: [],
       todayDate,
     }));

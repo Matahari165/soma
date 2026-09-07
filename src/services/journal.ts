@@ -1,8 +1,10 @@
 import "server-only";
 
+import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
-import { defaultJournalVariables, journalAutomaticSource, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, isAddedSugarVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { loadConfirmedMealRecords } from "@/services/meals";
 
 export type JournalVariableRow = {
   id: string;
@@ -23,7 +25,7 @@ export type JournalVariableRow = {
 type JournalEntryRow = { variable_id: string; entry_date: string; value: unknown };
 
 export function variableFromRow(row: JournalVariableRow): JournalVariable {
-  return {
+  const variable: JournalVariable = {
     id: row.id,
     name: row.name,
     variableType: row.variable_type,
@@ -40,6 +42,11 @@ export function variableFromRow(row: JournalVariableRow): JournalVariable {
     automaticMetricId: typeof row.automatic_metric_id === "string" ? row.automatic_metric_id : null,
     trackingCadence: row.tracking_cadence === "weekly" ? "weekly" : row.tracking_cadence === "daily" ? "daily" : journalAutomaticSource(row.automatic_metric_id)?.defaultTrackingCadence ?? "daily",
   };
+  // Existing installations already have this field as a manual number. Keep
+  // the row and its history, but give it the new meal-derived source without a
+  // destructive migration or a page-load write.
+  if (!isAddedSugarVariable(variable)) return variable;
+  return { ...variable, variableType: "number", unit: variable.unit ?? "g", defaultValue: null, captureMode: "automatic", automaticMetricId: ADDED_SUGAR_AUTOMATIC_METRIC_ID, trackingCadence: "daily" };
 }
 
 function entryFromRow(row: JournalEntryRow): JournalEntry | null {
@@ -64,15 +71,15 @@ export async function ensureJournalVariables(userId: string) {
     emoji: variable.emoji,
     default_value: variable.defaultValue,
     day_period: variable.dayPeriod,
-    capture_mode: "manual",
-    automatic_metric_id: null,
-    tracking_cadence: "daily",
+    capture_mode: variable.captureMode ?? "manual",
+    automatic_metric_id: variable.automaticMetricId ?? null,
+    tracking_cadence: variable.trackingCadence ?? "daily",
     is_active: true,
   })));
   if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
 }
 
-export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean } = {}) {
+export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[] } = {}) {
   if (options.ensureDefaults !== false) await ensureJournalVariables(userId);
   const admin = createCloudflareAdminClient();
   let entryQuery = admin.from("journal_entries").select("variable_id,entry_date,value").eq("user_id", userId).order("entry_date", { ascending: true });
@@ -99,23 +106,35 @@ export async function loadJournalData(userId: string, options: { from?: string; 
     omittedVariableIds: Array.isArray(row.omitted_variables) ? row.omitted_variables.filter((value: unknown): value is string => typeof value === "string") : [],
   }));
   let automaticEntries: JournalEntry[] = [];
-  if (options.includeAutomaticEntries !== false && variables.some((variable) => variable.captureMode === "automatic")) {
-    let healthQuery = admin.from("daily_health_metrics").select("metric_date,bedtime,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality").eq("user_id", userId).order("metric_date", { ascending: true });
-    if (options.from) healthQuery = healthQuery.gte("metric_date", options.from);
-    if (options.to) healthQuery = healthQuery.lte("metric_date", options.to);
-    const healthResult = await healthQuery;
-    if (!healthResult.error) {
-      const omittedByDate = new Map(days.map((day) => [day.entryDate, new Set(day.omittedVariableIds)]));
-      automaticEntries = automaticJournalEntriesFor({
-        variables,
-        health: (healthResult.data ?? []) as AutomaticJournalHealthDay[],
-        existingEntries: entries,
-        omittedVariableIdsByDate: omittedByDate,
-        from: options.from,
-        to: options.to,
-        timeZone: options.timeZone,
-      });
+  const automaticVariables = variables.filter((variable) => journalCaptureMode(variable) === "automatic");
+  if (options.includeAutomaticEntries !== false && automaticVariables.length > 0) {
+    const needsHealth = automaticVariables.some((variable) => journalAutomaticMetricId(variable) !== ADDED_SUGAR_AUTOMATIC_METRIC_ID);
+    const needsMealSugar = automaticVariables.some((variable) => journalAutomaticMetricId(variable) === ADDED_SUGAR_AUTOMATIC_METRIC_ID);
+    let health: AutomaticJournalHealthDay[] = [];
+    if (needsHealth) {
+      let healthQuery = admin.from("daily_health_metrics").select("metric_date,bedtime,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality").eq("user_id", userId).order("metric_date", { ascending: true });
+      if (options.from) healthQuery = healthQuery.gte("metric_date", options.from);
+      if (options.to) healthQuery = healthQuery.lte("metric_date", options.to);
+      const healthResult = await healthQuery;
+      if (!healthResult.error) health = (healthResult.data ?? []) as AutomaticJournalHealthDay[];
     }
+    const mealRecords = needsMealSugar
+      ? options.mealRecords ?? await loadConfirmedMealRecords(userId, { from: options.from, to: options.to })
+      : [];
+    const mealAddedSugarByDate = needsMealSugar
+      ? new Map(aggregateConfirmedMeals(mealRecords).map((day) => [day.date, day.addedSugarG]))
+      : undefined;
+    const omittedByDate = new Map(days.map((day) => [day.entryDate, new Set(day.omittedVariableIds)]));
+    automaticEntries = automaticJournalEntriesFor({
+      variables,
+      health,
+      mealAddedSugarByDate,
+      existingEntries: entries,
+      omittedVariableIdsByDate: omittedByDate,
+      from: options.from,
+      to: options.to,
+      timeZone: options.timeZone,
+    });
   }
   return {
     variables,

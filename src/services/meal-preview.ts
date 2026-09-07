@@ -211,7 +211,7 @@ export function clearPreviewUserData(userId: string) {
   return removed;
 }
 
-function previewNutrition(value: NutritionEstimate | null): NutritionEstimate | null {
+function previewNutrition(value: NutritionEstimate | null | undefined): NutritionEstimate | null {
   return value ? { ...value } : null;
 }
 
@@ -221,6 +221,6 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
     const origins = new Set(meal.photos.map((photo) => photo.origin));
     const origin = origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
     const totals = meal.analysis.result.totals;
-    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals.calories), proteinG: previewNutrition(totals.proteinGrams), carbsG: previewNutrition(totals.carbohydrateGrams), fatG: previewNutrition(totals.fatGrams), fiberG: previewNutrition(totals.fiberGrams), foods: meal.analysis.result.foods.map((food) => ({ name: food.name, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: meal.analysis.result.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
+    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals.calories), proteinG: previewNutrition(totals.proteinGrams), carbsG: previewNutrition(totals.carbohydrateGrams), fatG: previewNutrition(totals.fatGrams), fiberG: previewNutrition(totals.fiberGrams), sugarG: previewNutrition(totals.sugarGrams), addedSugarG: previewNutrition(totals.addedSugarGrams), foods: meal.analysis.result.foods.map((food) => ({ name: food.name, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: meal.analysis.result.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
 }
