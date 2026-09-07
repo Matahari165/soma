@@ -1,4 +1,6 @@
-import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, journalAutomaticSource, journalCaptureMode, journalAutomaticMetricId, normalizedAddedSugarJournalValue, type JournalEntry, type JournalEntryValue, type JournalVariable } from "./journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, journalAutomaticSource, journalCaptureMode, journalAutomaticMetricId, normalizedAddedSugarJournalValue, type JournalEntry, type JournalEntryValue, type JournalVariable } from "./journal";
+import { lightBreakfastValue } from "./journal-meal-automatic";
+import type { ConfirmedMealRecord } from "./meals";
 
 export type AutomaticJournalHealthDay = {
   metric_date: string;
@@ -43,12 +45,13 @@ function localClock(isoDate: string, timeZone: string) {
   return { hour, minute, value: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
 }
 
-function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDay | undefined, timeZone: string, mealAddedSugarG?: number | null): JournalEntryValue | null {
+function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDay | undefined, timeZone: string, mealAddedSugarG?: number | null, meals?: readonly ConfirmedMealRecord[], explicitlyNoBreakfast?: boolean, dailyTargetKcal?: number | null): JournalEntryValue | null {
   if (journalCaptureMode(variable) !== "automatic") return null;
   const source = journalAutomaticSource(journalAutomaticMetricId(variable));
   if (!source) return null;
 
   if (source.id === ADDED_SUGAR_AUTOMATIC_METRIC_ID) return normalizedAddedSugarJournalValue(mealAddedSugarG);
+  if (source.id === LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID) return lightBreakfastValue({ meals, explicitlyNoBreakfast, dailyTargetKcal });
   if (!day) return null;
   if (source.id === "run_day") return hasReliableActivityCoverage(day) ? hasRecordedRun(day) : null;
   if (!day.bedtime) return null;
@@ -64,6 +67,9 @@ export function automaticJournalEntriesFor(input: {
   variables: readonly JournalVariable[];
   health: readonly AutomaticJournalHealthDay[];
   mealAddedSugarByDate?: ReadonlyMap<string, number | null>;
+  mealRecordsByDate?: ReadonlyMap<string, readonly ConfirmedMealRecord[]>;
+  explicitlyNoBreakfastByDate?: ReadonlySet<string>;
+  dailyTargetKcal?: number | null;
   existingEntries: readonly JournalEntry[];
   omittedVariableIdsByDate?: ReadonlyMap<string, ReadonlySet<string>>;
   from?: string;
@@ -74,7 +80,12 @@ export function automaticJournalEntriesFor(input: {
   const existing = new Set(input.existingEntries.map((entry) => `${entry.variableId}:${entry.entryDate}`));
   const automaticVariables = input.variables.filter((variable) => journalCaptureMode(variable) === "automatic");
   const healthByDate = new Map(input.health.map((day) => [day.metric_date, day]));
-  const dates = new Set([...healthByDate.keys(), ...(input.mealAddedSugarByDate?.keys() ?? [])]);
+  const dates = new Set([
+    ...healthByDate.keys(),
+    ...(input.mealAddedSugarByDate?.keys() ?? []),
+    ...(input.mealRecordsByDate?.keys() ?? []),
+    ...(input.explicitlyNoBreakfastByDate ?? []),
+  ]);
   const entries: JournalEntry[] = [];
 
   for (const variable of automaticVariables) {
@@ -83,7 +94,15 @@ export function automaticJournalEntriesFor(input: {
       if (input.to && date > input.to) continue;
       if (input.omittedVariableIdsByDate?.get(date)?.has(variable.id)) continue;
       if (existing.has(`${variable.id}:${date}`)) continue;
-      const value = automaticValue(variable, healthByDate.get(date), timeZone, input.mealAddedSugarByDate?.get(date));
+      const value = automaticValue(
+        variable,
+        healthByDate.get(date),
+        timeZone,
+        input.mealAddedSugarByDate?.get(date),
+        input.mealRecordsByDate?.get(date),
+        input.explicitlyNoBreakfastByDate?.has(date),
+        input.dailyTargetKcal,
+      );
       if (value !== null) entries.push({ variableId: variable.id, entryDate: date, value });
     }
   }
@@ -91,6 +110,6 @@ export function automaticJournalEntriesFor(input: {
   return entries;
 }
 
-export function automaticJournalValueForTests(variable: JournalVariable, day: AutomaticJournalHealthDay, timeZone = "Europe/Paris", mealAddedSugarG?: number | null) {
-  return automaticValue(variable, day, timeZone, mealAddedSugarG);
+export function automaticJournalValueForTests(variable: JournalVariable, day: AutomaticJournalHealthDay, timeZone = "Europe/Paris", mealAddedSugarG?: number | null, meals?: readonly ConfirmedMealRecord[], explicitlyNoBreakfast?: boolean, dailyTargetKcal?: number | null) {
+  return automaticValue(variable, day, timeZone, mealAddedSugarG, meals, explicitlyNoBreakfast, dailyTargetKcal);
 }

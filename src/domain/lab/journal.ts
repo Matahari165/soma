@@ -12,8 +12,9 @@ export type JournalTrackingCadence = (typeof journalTrackingCadences)[number];
 export const ADDED_SUGAR_AUTOMATIC_METRIC_ID = "meal_added_sugar" as const;
 export const ADDED_SUGAR_GOAL_G = 0;
 export const ADDED_SUGAR_GOAL_TOLERANCE_G = 4;
+export const LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID = "light_breakfast" as const;
 
-export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime", ADDED_SUGAR_AUTOMATIC_METRIC_ID] as const;
+export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime", ADDED_SUGAR_AUTOMATIC_METRIC_ID, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID] as const;
 export type JournalAutomaticMetricId = (typeof journalAutomaticMetricIds)[number];
 
 export type JournalAutomaticSource = {
@@ -31,6 +32,7 @@ export const journalAutomaticSources: readonly JournalAutomaticSource[] = [
   { id: "bedtime_before_23", label: "Coucher avant 23 h", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
   { id: "bedtime", label: "Début du sommeil détecté", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
   { id: ADDED_SUGAR_AUTOMATIC_METRIC_ID, label: "Sucres ajoutés des repas", source: "Soma meals", variableType: "number", unit: "g", dayPeriod: "day", defaultTrackingCadence: "daily" },
+  { id: LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, label: "Petit-déjeuner léger", source: "Soma meals", variableType: "boolean", unit: null, dayPeriod: "morning", defaultTrackingCadence: "daily" },
 ] as const;
 
 export function journalAutomaticSource(id: unknown) {
