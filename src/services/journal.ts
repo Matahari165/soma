@@ -72,8 +72,8 @@ export async function ensureJournalVariables(userId: string) {
   if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
 }
 
-export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean } = {}) {
-  await ensureJournalVariables(userId);
+export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean } = {}) {
+  if (options.ensureDefaults !== false) await ensureJournalVariables(userId);
   const admin = createCloudflareAdminClient();
   let entryQuery = admin.from("journal_entries").select("variable_id,entry_date,value").eq("user_id", userId).order("entry_date", { ascending: true });
   if (options.from) entryQuery = entryQuery.gte("entry_date", options.from);

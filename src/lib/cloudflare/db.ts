@@ -72,6 +72,7 @@ const conflictKeys: Record<string, string[]> = {
   journal_entries: ["user_id", "variable_id", "entry_date"],
   lab_narratives: ["user_id"],
   lab_narrative_history: ["user_id", "analysis_date"],
+  journal_imports: ["id"],
   journal_days: ["user_id", "entry_date"],
   lab_metric_preferences: ["user_id", "metric_id"],
   daily_calendar_metrics: ["user_id", "metric_date"],
