@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   importedVariableForMetric,
+  journalSheetImportMetrics,
   planJournalImport,
   type JournalImportPlan,
   type JournalImportResolutionMap,
@@ -103,6 +104,23 @@ async function ensureImportVariables(userId: string, plan: JournalImportPlan) {
   for (const variableId of plan.reactivateVariableIds) {
     const { error } = await admin.from("journal_variables").update({ is_active: true }).eq("id", variableId).eq("user_id", userId);
     if (error) throw new Error("An archived journal measure could not be reactivated.");
+  }
+  const definitions = new Map(journalSheetImportMetrics().map((metric) => [metric.key, metric]));
+  for (const metric of plan.metrics.filter((candidate) => candidate.variableId && candidate.canonicalizeExisting)) {
+    const definition = definitions.get(metric.key);
+    if (!definition || !metric.variableId) continue;
+    const canonical = importedVariableForMetric(definition);
+    const { error } = await admin.from("journal_variables").update({
+      name: canonical.name,
+      variable_type: canonical.variableType,
+      unit: canonical.unit,
+      day_period: canonical.dayPeriod,
+      capture_mode: canonical.captureMode,
+      automatic_metric_id: canonical.automaticMetricId,
+      tracking_cadence: canonical.trackingCadence,
+      emoji: canonical.emoji,
+    }).eq("id", metric.variableId).eq("user_id", userId);
+    if (error) throw new Error("The existing journal measure could not be updated to its canonical meaning.");
   }
 }
 

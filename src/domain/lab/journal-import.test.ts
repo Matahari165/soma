@@ -32,6 +32,26 @@ describe("journal sheet import", () => {
     expect(plan.metrics.find((metric) => metric.key === "whm")?.target).toBe("1");
   });
 
+  it("maps the old reading and strength labels to their canonical meanings", () => {
+    const canonicalSource = {
+      ...source([null, null, null]),
+      headers: [null, "🍳 Breakfast", "🧘‍♂️ WHM", "📖 Lecture", "💪 Muscu"],
+      targets: [null, "Light", "5 min", "20", "5 min"],
+      rows: [{ sourceRow: 4, date: "2026-09-04", values: [null, null, null, null] as Array<0 | 1 | null> }],
+    } satisfies JournalImportSource;
+    const plan = planJournalImport({
+      source: canonicalSource,
+      variables: [
+        variable("44444444-4444-4444-8444-444444444444", "Reading for 30 minutes", "boolean"),
+        variable("55555555-5555-4555-8555-555555555555", "Strength training", "boolean"),
+      ],
+      entries: [],
+    });
+
+    expect(plan.metrics.find((metric) => metric.key === "reading")).toMatchObject({ variableName: "Reading for 30 minutes", canonicalizeExisting: true });
+    expect(plan.metrics.find((metric) => metric.key === "strength")).toMatchObject({ variableName: "Strength training", canonicalizeExisting: true });
+  });
+
   it("keeps the existing Soma breakfast semantics without creating a conflict", () => {
     const plan = planJournalImport({
       source: source([1, 1, null]),

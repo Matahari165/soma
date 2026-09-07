@@ -57,12 +57,13 @@ export type JournalSheetImportMetric = {
   automaticMetricId: string | null;
   trackingCadence: "daily" | "weekly";
   behaviour: ImportMetricBehaviour;
+  canonicalizeExisting?: boolean;
 };
 
 const sheetMetrics: readonly JournalSheetImportMetric[] = [
   { key: "wake", sourceHeader: "⏰ Réveil", sourceLabel: "Réveil", canonicalName: "Réveil", aliases: ["réveil", "wake", "wake up"], emoji: "⏰", variableType: "boolean", unit: null, dayPeriod: "morning", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
   { key: "breakfast", sourceHeader: "🍳 Breakfast", sourceLabel: "Breakfast", canonicalName: "Light breakfast", aliases: ["breakfast", "light breakfast", "petit déjeuner", "petit dejeuner"], emoji: "🍳", variableType: "boolean", unit: null, dayPeriod: "morning", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "breakfast_skipped" },
-  { key: "strength", sourceHeader: "💪 Muscu", sourceLabel: "Muscu", canonicalName: "Strength training", aliases: ["muscu", "strength", "strength training", "musculation"], emoji: "💪", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
+  { key: "strength", sourceHeader: "💪 Muscu", sourceLabel: "Muscu", canonicalName: "Morning muscle activation", aliases: ["muscu", "strength", "strength training", "musculation", "morning muscle activation", "éveil musculaire"], emoji: "💪", variableType: "boolean", unit: null, dayPeriod: "morning", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct", canonicalizeExisting: true },
   { key: "whm", sourceHeader: "🧘‍♂️ WHM", sourceLabel: "WHM", canonicalName: "WHM", aliases: ["whm", "wim hof", "wim hof method", "respiration wim hof"], emoji: "🧘‍♂️", variableType: "count", unit: "rounds", dayPeriod: "morning", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "whm_presence" },
   { key: "english", sourceHeader: "🇬🇧 Anglais", sourceLabel: "Anglais", canonicalName: "Anglais", aliases: ["anglais", "english"], emoji: "🇬🇧", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
   { key: "podcasts", sourceHeader: "🎧 Podcasts", sourceLabel: "Podcasts", canonicalName: "Podcasts", aliases: ["podcasts", "podcast"], emoji: "🎧", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
@@ -72,7 +73,7 @@ const sheetMetrics: readonly JournalSheetImportMetric[] = [
   { key: "tid", sourceHeader: "✍️ TID", sourceLabel: "TID", canonicalName: "TID", aliases: ["tid"], emoji: "✍️", variableType: "boolean", unit: null, dayPeriod: "evening", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
   { key: "lab", sourceHeader: "Lab", sourceLabel: "Lab", canonicalName: "Lab", aliases: ["lab", "habits"], emoji: "🧪", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
   { key: "floss", sourceHeader: "🦷 Floss", sourceLabel: "Floss", canonicalName: "Floss", aliases: ["floss", "dental floss", "fil dentaire"], emoji: "🦷", variableType: "boolean", unit: null, dayPeriod: "evening", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
-  { key: "reading", sourceHeader: "📖 Lecture", sourceLabel: "Lecture", canonicalName: "Reading for 30 minutes", aliases: ["lecture", "reading", "reading for 30 minutes"], emoji: "📖", variableType: "boolean", unit: null, dayPeriod: "evening", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct" },
+  { key: "reading", sourceHeader: "📖 Lecture", sourceLabel: "Lecture", canonicalName: "Reading for 20 minutes", aliases: ["lecture", "reading", "reading for 20 minutes", "reading for 30 minutes"], emoji: "📖", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily", behaviour: "direct", canonicalizeExisting: true },
   { key: "bedtime", sourceHeader: "💤 Sommeil", sourceLabel: "Sommeil", canonicalName: "Coucher avant 23 h", aliases: ["sommeil", "sleep", "bedtime", "coucher avant 23 h", "bedtime before 23"], emoji: "💤", variableType: "boolean", unit: null, dayPeriod: "evening", captureMode: "automatic", automaticMetricId: "bedtime_before_23", trackingCadence: "daily", behaviour: "direct" },
   { key: "running", sourceHeader: "🏃‍♂️ Running", sourceLabel: "Running", canonicalName: "Running", aliases: ["running", "run", "course", "courir"], emoji: "🏃‍♂️", variableType: "boolean", unit: null, dayPeriod: "day", captureMode: "automatic", automaticMetricId: "run_day", trackingCadence: "weekly", behaviour: "direct" },
 ] as const;
@@ -119,6 +120,7 @@ export type JournalImportMetricPlan = {
   variableType: JournalVariableType;
   captureMode: "manual" | "automatic";
   trackingCadence: "daily" | "weekly";
+  canonicalizeExisting: boolean;
   action: "existing" | "create" | "reactivate" | "canonical_only";
 };
 
@@ -203,6 +205,7 @@ export function planJournalImport(input: {
       variableType: variable?.variableType ?? metric.variableType,
       captureMode: variable?.captureMode ?? metric.captureMode,
       trackingCadence: variable?.trackingCadence ?? metric.trackingCadence,
+      canonicalizeExisting: metric.canonicalizeExisting === true,
       action: metric.behaviour === "whm_presence" ? "canonical_only" : variable ? variable.isActive ? "existing" : "reactivate" : "create",
     } satisfies JournalImportMetricPlan;
   });
