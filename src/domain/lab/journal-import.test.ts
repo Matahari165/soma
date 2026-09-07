@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planJournalImport, type JournalImportSource } from "./journal-import";
+import { journalImportSourceSchema, planJournalImport, type JournalImportSource } from "./journal-import";
 import type { JournalEntry, JournalVariable } from "./journal";
 
 const ids = {
@@ -24,6 +24,14 @@ function source(values: Array<0 | 1 | null>): JournalImportSource {
 }
 
 describe("journal sheet import", () => {
+  it("accepts numeric Google Sheets targets while preserving the normalized mapping", () => {
+    const parsed = journalImportSourceSchema.parse({ ...source([1, null, null]), targets: [null, "Light", 1, 20] });
+    const plan = planJournalImport({ source: parsed, variables: [], entries: [] });
+
+    expect(parsed.targets[2]).toBe(1);
+    expect(plan.metrics.find((metric) => metric.key === "whm")?.target).toBe("1");
+  });
+
   it("keeps the existing Soma breakfast semantics without creating a conflict", () => {
     const plan = planJournalImport({
       source: source([1, 1, null]),

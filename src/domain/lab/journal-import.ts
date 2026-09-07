@@ -8,7 +8,7 @@ export const journalImportSourceSchema = z.object({
   spreadsheetId: z.string().trim().min(1).max(200),
   sheetName: z.literal("Goose"),
   headers: z.array(z.string().nullable()).min(2).max(27),
-  targets: z.array(z.string().nullable()).min(2).max(27),
+  targets: z.array(z.union([z.string(), z.number().finite()]).nullable()).min(2).max(27),
   rows: z.array(z.object({
     sourceRow: z.number().int().positive().max(10000),
     date: z.iso.date(),
@@ -188,7 +188,7 @@ export function planJournalImport(input: {
   resolutions?: JournalImportResolutionMap;
 }): JournalImportPlan {
   const resolutions = input.resolutions ?? {};
-  const columns = input.source.headers.slice(1).map((header, index) => ({ header, target: input.source.targets[index + 1] ?? null, index, metric: importMetricForHeader(header) }));
+  const columns = input.source.headers.slice(1).map((header, index) => ({ header, target: input.source.targets[index + 1] === null || input.source.targets[index + 1] === undefined ? null : String(input.source.targets[index + 1]), index, metric: importMetricForHeader(header) }));
   const unknownHeaders = columns.flatMap((column) => column.header && !column.metric ? [column.header] : []);
   const metricColumns = columns.flatMap((column) => column.metric ? [{ ...column, metric: column.metric }] : []);
   const metrics = metricColumns.map(({ metric, header, target }) => {
