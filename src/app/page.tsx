@@ -6,7 +6,6 @@ import {
   PersonalLabOverviewLoading,
   PersonalLabOverviewSection,
 } from "@/components/lab/personal-lab";
-import { DeferredPersonalLabAnalysis } from "@/components/lab/deferred-personal-lab-analysis";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createPersonalLabStream, type PersonalLabStream } from "@/services/personal-lab";
@@ -32,6 +31,5 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return <div id="main-page-content" className="personal-lab-page lab-entry">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
     <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>
-    <DeferredPersonalLabAnalysis />
   </div>;
 }

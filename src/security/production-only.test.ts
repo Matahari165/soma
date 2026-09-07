@@ -41,13 +41,13 @@ describe("production-only application contract", () => {
     expect(loginPage).toContain('if (user) redirect("/")');
   });
 
-  it("streams the authenticated Lab sections independently from expensive statistics", () => {
+  it("keeps the authenticated home focused on daily sections", () => {
     const page = readFileSync(`${sourceRoot}/app/page.tsx`, "utf8");
     expect(page).toContain("createPersonalLabStream");
     expect(page).toContain("<Suspense fallback={<PersonalLabOverviewLoading />}");
     expect(page).toContain("<Suspense fallback={<PersonalLabJournalLoading />}");
     expect(page).toContain("includeAnalysis: false");
-    expect(page).toContain("<DeferredPersonalLabAnalysis />");
+    expect(page).not.toContain("DeferredPersonalLabAnalysis");
   });
 
   it("loads the latest Coach conversation with the initial history request", () => {

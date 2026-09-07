@@ -7,8 +7,7 @@
 
 .lab-entry__header { --entry-delay: 0ms; }
 .lab-entry__journal { --entry-delay: 150ms; }
-.lab-entry__insight,
-.lab-entry__analysis-deferred { --entry-delay: 300ms; }
+.lab-entry__insight { --entry-delay: 300ms; }
 .lab-entry__relations { --entry-delay: 450ms; }
 .lab-entry__registry { --entry-delay: 600ms; }
 
