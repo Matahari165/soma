@@ -4,6 +4,15 @@
   padding: clamp(28px, 5vw, 72px);
 }
 
+.embedded {
+  width: min(100%, 1480px);
+  margin-top: 28px;
+  padding: clamp(28px, 4.5vw, 72px);
+  border-top: 1px solid var(--ink);
+}
+
+.embedded .heading h2 { font-size: clamp(1.9rem, 3.5vw, 3.4rem); }
+
 .header {
   display: flex;
   align-items: end;
@@ -14,7 +23,8 @@
 }
 
 .heading { max-width: 680px; }
-.heading h1 { margin-top: 8px; font-size: clamp(2.35rem, 5vw, 5rem); }
+.heading h1,
+.heading h2 { margin-top: 8px; font-size: clamp(2.35rem, 5vw, 5rem); }
 .heading p { max-width: 58ch; margin-top: 18px; color: var(--ink-soft); font-size: .95rem; }
 .header > button { flex: 0 0 auto; }
 
@@ -39,7 +49,7 @@
 .ingredients legend { padding: 0; color: var(--ink); font-size: .8rem; font-weight: 600; }
 .ingredients legend small { margin-left: 6px; color: var(--muted); font-size: .68rem; font-weight: 400; }
 .ingredientList { display: grid; gap: 12px; margin-top: 14px; }
-.ingredientRow { position: relative; display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(90px, .8fr) minmax(130px, 1fr) minmax(110px, 1fr) 34px; gap: 8px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ingredientRow { position: relative; display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(130px, .8fr) minmax(160px, 1fr) 34px; gap: 8px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .ingredientRow .field { min-width: 0; }
 .removeIngredient { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--line); background: transparent; color: var(--muted); }
 .removeIngredient:hover { border-color: var(--danger); color: var(--danger); }
@@ -78,11 +88,13 @@
 
 @media (max-width: 700px) {
   .page { padding: 24px 20px 40px; }
+  .embedded { margin-top: 20px; padding: 24px 20px 40px; }
   .header { display: grid; align-items: start; gap: 20px; }
   .header > button { justify-self: start; }
   .formGrid { grid-template-columns: 1fr; }
   .formGrid :global(.field--wide) { grid-column: auto; }
-  .ingredientRow { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-right: 42px; }
+  .ingredientRow { grid-template-columns: minmax(0, 1fr) minmax(110px, .8fr); padding-right: 42px; }
+  .ingredientRow .field:nth-child(3) { grid-column: 1 / -1; }
   .removeIngredient { position: absolute; top: 0; right: 0; }
   .formActions { justify-content: stretch; }
   .formActions button { flex: 1; justify-content: center; }

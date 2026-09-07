@@ -3,7 +3,6 @@
 import {
   Activity,
   BedDouble,
-  BookOpen,
   HeartPulse,
   LayoutDashboard,
   MessageCircle,
@@ -27,7 +26,6 @@ const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((mod
 const navigation = [
   { label: "Lab", href: "/", icon: LayoutDashboard },
   { label: "Repas", href: "/meals", icon: Utensils },
-  { label: "Recettes", href: "/meal-recipes", icon: BookOpen },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
@@ -70,7 +68,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
 
   if (
-    ((pathname === "/" || pathname.startsWith("/meals") || pathname.startsWith("/meal-recipes")) && !user) ||
+    ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/onboarding") ||

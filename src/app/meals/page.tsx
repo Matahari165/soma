@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 
 import MealJournal from "@/components/meal-journal";
+import { MealRecipeLibrary } from "@/components/meal-recipe-library";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
+import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
 import { mealToApi } from "@/services/meal-api";
 import { listPreviewMeals } from "@/services/meal-preview";
+import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes";
 import { listMeals } from "@/services/meals";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
@@ -33,9 +36,19 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
 
-  const rawMeals = isLocalPreviewMode()
-    ? listPreviewMeals(user.id, { from: requestedDate, to: requestedDate })
-    : await listMeals(user.id, { from: requestedDate, to: requestedDate }).catch(() => []);
+  const [rawMeals, recipeResult] = await Promise.all([
+    isLocalPreviewMode()
+      ? listPreviewMeals(user.id, { from: requestedDate, to: requestedDate })
+      : listMeals(user.id, { from: requestedDate, to: requestedDate }).catch(() => []),
+    listMealRecipes(user.id)
+      .then((value) => ({ recipes: value, error: undefined }))
+      .catch((error) => ({
+        recipes: [] as MealRecipe[],
+        error: error instanceof MealRecipeServiceError
+          ? error.message
+          : "Les recettes personnelles sont momentanément indisponibles.",
+      })),
+  ]);
 
   const records = rawMeals.map((meal) => apiMealToRecord(mealToApi(meal)));
   const initialData: MealJournalData = {
@@ -43,5 +56,10 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
     meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, records.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
   };
 
-  return <div id="main-page-content"><MealJournal date={requestedDate} today={today} initialData={initialData} /></div>;
+  return (
+    <div id="main-page-content">
+      <MealJournal date={requestedDate} today={today} initialData={initialData} />
+      <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded />
+    </div>
+  );
 }

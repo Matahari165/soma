@@ -10,54 +10,64 @@ import styles from "./meal-recipe-library.module.css";
 type DraftIngredient = {
   id: string;
   name: string;
-  varietyKey: string;
   usualAmount: string;
-  alternatives: string;
+  information: string;
+  legacyVarietyKey: string | null;
+  legacyAlternatives: string[];
 };
 
 type Draft = {
   name: string;
-  dishType: string;
   description: string;
   ingredients: DraftIngredient[];
-  aliases: string;
   commonVariations: string;
+  legacyDishType: string | null;
+  legacyAliases: string[];
 };
 
 type MealRecipeLibraryProps = {
   initialRecipes: MealRecipeView[];
   initialError?: string;
+  embedded?: boolean;
 };
 
 type RecipeResponse = { recipe: MealRecipeView };
 
-const emptyIngredient = (id = "ingredient-0"): DraftIngredient => ({ id, name: "", varietyKey: "", usualAmount: "", alternatives: "" });
+const emptyIngredient = (id = "ingredient-0"): DraftIngredient => ({
+  id,
+  name: "",
+  usualAmount: "",
+  information: "",
+  legacyVarietyKey: null,
+  legacyAlternatives: [],
+});
 
 const emptyDraft = (): Draft => ({
   name: "",
-  dishType: "",
   description: "",
   ingredients: [emptyIngredient()],
-  aliases: "",
   commonVariations: "",
+  legacyDishType: null,
+  legacyAliases: [],
 });
 
 function recipeToDraft(recipe: MealRecipeView): Draft {
   return {
     name: recipe.name,
-    dishType: recipe.dishType ?? "",
     description: recipe.description ?? "",
     ingredients: recipe.ingredients.length > 0
       ? recipe.ingredients.map((ingredient, index) => ({
           id: `ingredient-${index}`,
           name: ingredient.name,
-          varietyKey: ingredient.varietyKey ?? "",
           usualAmount: ingredient.usualAmount ?? "",
-          alternatives: ingredient.alternatives.join(", "),
+          information: ingredient.preparation ?? "",
+          legacyVarietyKey: ingredient.varietyKey ?? null,
+          legacyAlternatives: [...ingredient.alternatives],
         }))
       : [emptyIngredient()],
-    aliases: recipe.aliases.join("\n"),
     commonVariations: recipe.commonVariations.join("\n"),
+    legacyDishType: recipe.dishType ?? null,
+    legacyAliases: [...recipe.aliases],
   };
 }
 
@@ -68,18 +78,18 @@ function lines(value: string) {
 function draftToInput(draft: Draft): MealRecipeInput {
   return {
     name: draft.name.trim(),
-    dishType: draft.dishType.trim() || null,
+    dishType: draft.legacyDishType,
     description: draft.description.trim() || null,
     ingredients: draft.ingredients
       .filter((ingredient) => ingredient.name.trim())
       .map((ingredient) => ({
         name: ingredient.name.trim(),
-        varietyKey: ingredient.varietyKey.trim() || null,
+        varietyKey: ingredient.legacyVarietyKey,
         usualAmount: ingredient.usualAmount.trim() || null,
-        preparation: null,
-        alternatives: lines(ingredient.alternatives),
+        preparation: ingredient.information.trim() || null,
+        alternatives: ingredient.legacyAlternatives,
       })),
-    aliases: lines(draft.aliases),
+    aliases: draft.legacyAliases,
     commonVariations: lines(draft.commonVariations),
   };
 }
@@ -90,7 +100,8 @@ async function readResponse<T>(response: Response) {
   return body;
 }
 
-export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLibraryProps) {
+export function MealRecipeLibrary({ initialRecipes, initialError, embedded = false }: MealRecipeLibraryProps) {
+  const Heading = embedded ? "h2" : "h1";
   const [recipes, setRecipes] = useState(initialRecipes);
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -149,7 +160,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
   async function saveRecipe() {
     setError("");
     setStatus("");
-    const filledIngredients = draft.ingredients.filter((ingredient) => ingredient.name.trim() || ingredient.varietyKey.trim() || ingredient.usualAmount.trim() || ingredient.alternatives.trim());
+    const filledIngredients = draft.ingredients.filter((ingredient) => ingredient.name.trim() || ingredient.usualAmount.trim() || ingredient.information.trim());
     if (!draft.name.trim()) {
       setError("Donne un nom à cette recette.");
       return;
@@ -193,11 +204,11 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
   }
 
   return (
-    <main className={styles.page}>
+    <section className={[styles.page, embedded ? styles.embedded : ""].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title">
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className="eyebrow">Repères personnels</span>
-          <h1>Recettes habituelles</h1>
+          <Heading id="recipe-library-title">Recettes habituelles</Heading>
           <p>Une base variable pour reconnaître tes plats récurrents — jamais une mesure du repas du jour.</p>
         </div>
         {!formOpen && <button className="primary-button" type="button" onClick={openCreate}><Plus size={17} aria-hidden="true" />Nouvelle recette</button>}
@@ -212,12 +223,11 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
               <div><span className="eyebrow">{editingId ? "Modifier" : "Nouveau repère"}</span><h2 id="recipe-form-title">{editingId ? "Modifier la recette" : "Décrire un plat récurrent"}</h2></div>
               <button className="icon-button" type="button" onClick={closeForm} aria-label="Fermer le formulaire"><X size={18} aria-hidden="true" /></button>
             </div>
-            <p className={styles.explainer}>Les quantités restent indicatives. Lors d’une analyse, la photo et ta note du jour passent toujours avant cette fiche.</p>
-            <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void saveRecipe(); }}>
+            <p id="recipe-form-explainer" className={styles.explainer}>Les quantités restent indicatives. La photo et ta note du jour passent toujours avant cette fiche.</p>
+            <form className={styles.form} aria-describedby="recipe-form-explainer" onSubmit={(event) => { event.preventDefault(); void saveRecipe(); }}>
               <div className={styles.formGrid}>
                 <label className="field"><span>Nom de la recette <b aria-hidden="true">*</b></span><input required value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Ex. pâtes au pesto" /></label>
-                <label className="field"><span>Type de plat</span><input value={draft.dishType} onChange={(event) => updateDraft("dishType", event.target.value)} placeholder="Ex. dîner, salade, tarte" /></label>
-                <label className="field field--wide"><span>Description courte</span><textarea rows={2} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder="Ce qui caractérise généralement ce plat" /></label>
+                <label className="field field--wide"><span>Description courte <small>(facultative)</small></span><textarea rows={2} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder="Ce qui caractérise généralement ce plat" /></label>
               </div>
 
               <fieldset className={styles.ingredients}>
@@ -226,9 +236,8 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
                   {draft.ingredients.map((ingredient, index) => (
                     <div className={styles.ingredientRow} key={ingredient.id}>
                       <label className="field"><span>Ingrédient {index + 1}</span><input value={ingredient.name} onChange={(event) => updateIngredient(ingredient.id, "name", event.target.value)} placeholder="Ex. pâtes" /></label>
-                      <label className="field"><span>Variété</span><input value={ingredient.varietyKey} onChange={(event) => updateIngredient(ingredient.id, "varietyKey", event.target.value)} placeholder="Ex. complètes" /></label>
                       <label className="field"><span>Quantité habituelle <small>(indicative)</small></span><input value={ingredient.usualAmount} onChange={(event) => updateIngredient(ingredient.id, "usualAmount", event.target.value)} placeholder="Ex. une portion" /></label>
-                      <label className="field"><span>Alternatives</span><input value={ingredient.alternatives} onChange={(event) => updateIngredient(ingredient.id, "alternatives", event.target.value)} placeholder="Ex. riz, semoule" /></label>
+                      <label className="field"><span>Informations</span><input value={ingredient.information} onChange={(event) => updateIngredient(ingredient.id, "information", event.target.value)} placeholder="Ex. précuites, selon les courses" /></label>
                       <button className={styles.removeIngredient} type="button" onClick={() => removeIngredient(ingredient.id)} aria-label={`Retirer l’ingrédient ${index + 1}`}><Trash2 size={16} aria-hidden="true" /></button>
                     </div>
                   ))}
@@ -236,10 +245,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
                 <button className={styles.addIngredient} type="button" onClick={addIngredient} disabled={draft.ingredients.length >= 30}><Plus size={15} aria-hidden="true" />Ajouter une ligne</button>
               </fieldset>
 
-              <div className={styles.formGrid}>
-                <label className="field"><span>Autres noms</span><textarea rows={3} value={draft.aliases} onChange={(event) => updateDraft("aliases", event.target.value)} placeholder="Un nom par ligne ou séparé par des virgules" /></label>
-                <label className="field"><span>Variations fréquentes</span><textarea rows={3} value={draft.commonVariations} onChange={(event) => updateDraft("commonVariations", event.target.value)} placeholder="Ex. avec poulet, sans fromage" /></label>
-              </div>
+              <label className="field"><span>Variations fréquentes <small>(facultatives)</small></span><textarea rows={3} value={draft.commonVariations} onChange={(event) => updateDraft("commonVariations", event.target.value)} placeholder="Ex. avec poulet, sans fromage" /></label>
               <div className={styles.formActions}>
                 <button className="secondary-button" type="button" onClick={closeForm}>Annuler</button>
                 <button className="primary-button" type="submit" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}{busy ? "Enregistrement…" : "Enregistrer"}</button>
@@ -267,13 +273,13 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
                 <li key={recipe.id}>
                   <article className={styles.recipe}>
                     <div className={styles.recipeBody}>
-                      <div className={styles.recipeTitle}><h3>{recipe.name}</h3>{recipe.dishType && <span>{recipe.dishType}</span>}</div>
+                      <div className={styles.recipeTitle}><h3>{recipe.name}</h3></div>
                       {recipe.description && <p>{recipe.description}</p>}
                       <ul className={styles.ingredientSummary} aria-label={`Ingrédients habituels de ${recipe.name}`}>
                         {recipe.ingredients.slice(0, 6).map((ingredient) => <li key={`${recipe.id}-${ingredient.name}`}>{ingredient.name}{ingredient.usualAmount ? ` · ${ingredient.usualAmount}` : ""}</li>)}
                         {recipe.ingredients.length > 6 && <li>+ {recipe.ingredients.length - 6} autres</li>}
                       </ul>
-                      {(recipe.aliases.length > 0 || recipe.commonVariations.length > 0) && <p className={styles.recipeMeta}>{[...recipe.aliases, ...recipe.commonVariations].slice(0, 3).join(" · ")}</p>}
+                      {recipe.commonVariations.length > 0 && <p className={styles.recipeMeta}>Variations : {recipe.commonVariations.slice(0, 3).join(" · ")}</p>}
                     </div>
                     <div className={styles.recipeActions}>
                       <button className="icon-button" type="button" onClick={() => openEdit(recipe)} aria-label={`Modifier ${recipe.name}`}><Pencil size={16} aria-hidden="true" /></button>
@@ -286,6 +292,6 @@ export function MealRecipeLibrary({ initialRecipes, initialError }: MealRecipeLi
           )}
         </section>
       </div>
-    </main>
+    </section>
   );
 }
