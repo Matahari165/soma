@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, defaultAnalyze, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, defaultAnalyze, defaultSave, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -13,7 +13,7 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal variant="home" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
 
     expect(html).toContain("Journal quotidien");
-    expect(html).toContain("Page dédiée");
+    expect(html).not.toContain("Page dédiée");
     expect(html).not.toContain("score-ring--large");
     expect(html.match(/<textarea/g) ?? []).toHaveLength(0);
     expect(html.match(/>Écrire<\/button>/g)).toHaveLength(4);
@@ -36,8 +36,11 @@ describe("MealJournal", () => {
     expect(html).toContain('for="meal-breakfast-note"');
     expect(html).toContain("Ex. 2 bananes et un café.");
     expect(html).not.toContain("À commencer");
+    expect(html).not.toContain("À remplir");
     expect(html).not.toContain("Avancement des repas");
     expect(html).not.toContain("confirmés");
+    expect(html).not.toContain("Confirmé");
+    expect(html).not.toMatch(/MATIN|MIDI|SOIR/);
     expect(html).toContain("Calories : indisponibles sur 3000 kilocalories");
     expect(html).toContain('capture="environment"');
     expect(html).toContain('aria-label="Historique des repas"');
@@ -93,6 +96,8 @@ describe("MealJournal", () => {
     }} />);
 
     expect(html).toContain("Résultats de l’analyse");
+    expect(html).toContain("Résumé nutritionnel");
+    expect(html).toContain("Ressentis");
     expect(html).toContain("<details");
     expect(html).toContain("open=\"\"");
     expect(html.match(/Résultats de l’analyse/g)).toHaveLength(1);
@@ -248,6 +253,19 @@ describe("MealJournal", () => {
       expect(html).toContain(`data-metric="${metric}"`);
     }
     expect(html).not.toContain("Confiance");
+    expect(html).toContain("Résumé nutritionnel");
+  });
+
+  it("envoie les deux ressentis dans chaque sauvegarde d’un repas confirmé", async () => {
+    let payload: Record<string, unknown> | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({});
+    }));
+
+    await defaultSave({ id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [], analysis: null, mouthHeat: 3, stomachLoad: 4, status: "confirmed", error: null, confirmedAt: null });
+
+    expect(payload).toMatchObject({ status: "confirmed", mouthWarmthIntensity: 3, stomachOverfullIntensity: 4 });
   });
 
   it("shows each ingredient quantity once in parentheses", () => {

@@ -611,7 +611,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .journal-clock input { width: 100% !important; min-width: 0; padding-inline: 8px; border: 0; outline: 0; background: transparent; text-align: center; }
 .journal-clock > span { color: var(--ink-soft); }
 .journal-number span { position: absolute; top: 50%; right: 10px; color: var(--muted); font-size: .65rem; transform: translateY(-50%); }
-.journal-choice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line-strong); }
+.journal-choice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-control); }
 .journal-choice--scale { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .journal-choice button { min-height: 40px; border: 0; border-right: 1px solid var(--line); background: transparent; font-family: var(--font-soma-mono), monospace; font-size: .7rem; }
 .journal-choice button:last-child { border-right: 0; }

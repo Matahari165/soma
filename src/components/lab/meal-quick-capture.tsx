@@ -12,10 +12,10 @@ type SlotState = { state: CaptureState; file: File | null; origin: MealOrigin | 
 type QuickMealRecord = { status?: unknown; photos?: unknown[] };
 
 const slots: Array<{ id: MealType; label: string }> = [
-  { id: "breakfast", label: "Matin" },
-  { id: "lunch", label: "Midi" },
+  { id: "breakfast", label: "Petit déjeuner" },
+  { id: "lunch", label: "Déjeuner" },
   { id: "snack", label: "Collation" },
-  { id: "dinner", label: "Soir" },
+  { id: "dinner", label: "Dîner" },
 ];
 const origins: Array<{ id: MealOrigin; label: string }> = [
   { id: "homemade", label: "Maison" },

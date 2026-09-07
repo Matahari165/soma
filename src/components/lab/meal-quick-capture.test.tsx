@@ -13,10 +13,13 @@ describe("MealQuickCapture", () => {
     expect(html).toContain('id="meal-quick-title">Repas</h2>');
     expect(html).not.toContain("Repas aujourd’hui");
     expect(html).not.toContain("Photos des repas");
-    expect(html).toContain("Matin");
-    expect(html).toContain("Midi");
-    expect(html).toContain("Soir");
+    expect(html).toContain("Petit déjeuner");
+    expect(html).toContain("Déjeuner");
+    expect(html).toContain("Dîner");
     expect(html).toContain("Collation");
+    expect(html).not.toContain("Matin");
+    expect(html).not.toContain("Midi");
+    expect(html).not.toContain("Soir");
     expect(html.match(/>Photo</g)).toHaveLength(4);
   });
 

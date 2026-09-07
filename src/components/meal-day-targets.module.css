@@ -138,33 +138,6 @@
   background: var(--line-strong);
 }
 
-.status {
-  display: inline-block;
-  width: fit-content;
-  padding: 3px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-surface);
-  color: var(--ink);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.status[data-state="ok"] {
-  border-color: var(--moss-dark);
-  color: var(--moss-dark);
-}
-
-.status[data-state="below"],
-.status[data-state="above"] {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.status[data-state="pending"] {
-  border-color: var(--line-strong);
-  color: var(--ink-soft);
-}
-
 @media (max-width: 1020px) {
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -189,7 +162,6 @@
   }
 
   .target,
-  .status,
   .track {
     position: absolute;
     width: 1px;
@@ -305,29 +277,6 @@
 
 .rootCompact .fill {
   border-radius: var(--radius-round);
-}
-
-.rootCompact .status {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  color: var(--muted);
-  font-family: var(--font-soma-mono), monospace;
-  font-size: .54rem;
-  font-weight: 500;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-}
-
-.rootCompact .status[data-state="ok"] {
-  border: 0;
-  color: var(--moss-dark);
-}
-
-.rootCompact .status[data-state="below"],
-.rootCompact .status[data-state="above"] {
-  border: 0;
-  color: var(--ink-soft);
 }
 
 @media (max-width: 640px) {

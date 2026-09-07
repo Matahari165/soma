@@ -54,13 +54,6 @@ function stateOf(value: number | null, low: number, high: number): CardState {
   return "ok";
 }
 
-function statusText(state: CardState): string {
-  if (state === "below") return "En dessous";
-  if (state === "above") return "Au-dessus";
-  if (state === "pending") return "En attente";
-  return "Dans la cible";
-}
-
 function formatValue(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
@@ -99,14 +92,11 @@ export function MealDayTargets({ totals, targets, className, headerAction, compa
                 aria-label={`${card.label} : ${valueText} ${card.unit}, cible ${range.low} à ${range.high} ${card.unit}`}
                 aria-valuemin={0}
                 aria-valuemax={max}
-                aria-valuenow={Math.round(clamped)}
-                aria-valuetext={`${valueText} ${card.unit} sur cible ${range.low} à ${range.high} ${card.unit} — ${statusText(state)}`}
+                aria-valuenow={value === null ? undefined : Math.round(clamped)}
+                aria-valuetext={`${valueText} ${card.unit} sur cible ${range.low} à ${range.high} ${card.unit}`}
               >
                 <div className={styles.fill} data-state={state} style={{ width: `${percent}%` }} />
               </div>
-              <span className={styles.status} data-state={state}>
-                {statusText(state)}
-              </span>
             </li>
           );
         })}

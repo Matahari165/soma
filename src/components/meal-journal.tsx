@@ -11,7 +11,6 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 
 import { ScoreRing } from "@/components/dashboard/score-ring";
@@ -96,13 +95,6 @@ const SLOT_LABELS: Record<MealSlot, string> = {
   lunch: "Déjeuner",
   dinner: "Dîner",
   snack: "Collation",
-};
-
-const SLOT_SHORT_LABELS: Record<MealSlot, string> = {
-  breakfast: "Matin",
-  lunch: "Midi",
-  snack: "Collation",
-  dinner: "Soir",
 };
 
 const ORIGIN_LABELS: Record<MealOrigin, string> = {
@@ -212,7 +204,7 @@ export async function defaultAnalyze({ date, slot, meal, files, correction }: An
   return apiMealToRecord(body.meal);
 }
 
-async function defaultSave(meal: MealRecord) {
+export async function defaultSave(meal: MealRecord) {
   let mealId = meal.id;
   if (mealId.startsWith("meal-")) {
     const createResponse = await fetch("/api/meals", {
@@ -350,7 +342,6 @@ function statusLabel(meal: MealRecord | null) {
   if (!meal) return "";
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
-  if (meal.status === "confirmed") return "Confirmé";
   if (meal.status === "error") return "À réessayer";
   if (meal.photos.some((photo) => photo.storageStatus !== "purged")) return "Photos à analyser";
   if (meal.note.trim()) return "Texte à compléter";
@@ -411,6 +402,22 @@ function AnalysisDisplay({ meal }: { meal: MealRecord }) {
   </div>;
 }
 
+function AnalysisSummary({ meal }: { meal: MealRecord }) {
+  const analysis = meal.analysis;
+  if (!analysis) return null;
+  const metrics = [
+    { label: "Calories", unit: "kcal", range: analysis.calories, metric: "calories" },
+    { label: "Protéines", unit: "g", range: analysis.proteinGrams, metric: "protein" },
+    { label: "Sucres ajoutés", unit: "g", range: analysis.addedSugarGrams, metric: "sugar" },
+  ];
+  return <div className={styles.analysisSummary} aria-label="Résumé nutritionnel">
+    {metrics.map(({ label, unit, range, metric }) => <span data-metric={metric} key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}`}>
+      <small>{label}</small>
+      <strong>{likelyLabel(range)} <small>{unit}</small></strong>
+    </span>)}
+  </div>;
+}
+
 export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: MealRecord; onCorrection: (correction: MealCorrection) => void; onCancel: () => void }) {
   const [missingFood, setMissingFood] = useState("");
   const ingredients = meal.analysis?.ingredients ?? [];
@@ -441,20 +448,14 @@ export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: Me
   </div>;
 }
 
-function MealCompletionControls({ meal, status, saving, mutationBusy, onEdit, onConfirm, onRating }: {
-  meal: MealRecord;
+function MealCompletionControls({ status, saving, mutationBusy, onEdit, onConfirm }: {
   status: "review" | "confirmed";
   saving: boolean;
   mutationBusy: boolean;
   onEdit: () => void;
   onConfirm: () => void;
-  onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void;
 }) {
   return <div className={styles.mealCompletionControls}>
-    <details className={styles.ratingsDetails}>
-      <summary>Ressentis</summary>
-      <div className={styles.ratings}><RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} /><RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} /></div>
-    </details>
     <div className={styles.reviewActions}>
       <button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button>
       {status === "review" && <button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saving ? <LoaderCircle className={styles.spin} size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer</button>}
@@ -462,17 +463,27 @@ function MealCompletionControls({ meal, status, saving, mutationBusy, onEdit, on
   </div>;
 }
 
-function MealAnalysisDisclosure({ meal, status, correctionMode, onCorrection, onCancel }: {
+function MealAnalysisDisclosure({ meal, status, correctionMode, ratingSaveState, onRating, onCorrection, onCancel }: {
   meal: MealRecord;
   status: "review" | "confirmed";
   correctionMode: boolean;
+  ratingSaveState: "idle" | "saving" | "saved" | "error";
+  onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void | Promise<boolean>;
   onCorrection: (correction: MealCorrection) => void;
   onCancel: () => void;
 }) {
-  return <details className={styles.analysisDetails} open={status === "review"}>
+  return <details className={styles.analysisDetails} open={status === "review" || correctionMode}>
     <summary>Résultats de l’analyse</summary>
     <div className={styles.analysisDetailsBody}>
       <AnalysisDisplay meal={meal} />
+      <h4 className={styles.ratingsHeading}>Ressentis</h4>
+      <div className={styles.ratings}>
+        <RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} />
+        <RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} />
+      </div>
+      {ratingSaveState !== "idle" && <p className={styles.ratingSaveStatus} role={ratingSaveState === "error" ? "alert" : "status"} aria-live="polite">
+        {ratingSaveState === "saving" ? "Enregistrement du ressenti…" : ratingSaveState === "saved" ? "Ressenti enregistré" : "Le ressenti n’a pas pu être enregistré. Réessaie."}
+      </p>}
       {correctionMode && <MealCorrectionPanel meal={meal} onCorrection={onCorrection} onCancel={onCancel} />}
     </div>
   </details>;
@@ -521,13 +532,14 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   onOrigin: (photoId: string, origin: MealOrigin) => void;
   onAnalyze: () => void;
   onConfirm: () => void;
-  onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void;
+  onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void | Promise<boolean>;
   onRetry: () => void;
   onNote: (note: string) => void;
   onCorrection: (correction: MealCorrection) => void;
   confirmError?: string | null;
 }) {
   const [correctionMode, setCorrectionMode] = useState(false);
+  const [ratingSaveState, setRatingSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [entryStarted, setEntryStarted] = useState(false);
   const headingId = `meal-${slot}-title`;
   const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
@@ -544,14 +556,30 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     return onFiles(files);
   };
 
+  const handleRating = async (key: "mouthHeat" | "stomachLoad", value: Rating | null): Promise<boolean> => {
+    if (status === "confirmed") {
+      setRatingSaveState("saving");
+      try {
+        const saved = await onRating(key, value);
+        const didSave = saved !== false;
+        setRatingSaveState(didSave ? "saved" : "error");
+        return didSave;
+      } catch {
+        setRatingSaveState("error");
+        return false;
+      }
+    }
+    onRating(key, value);
+    return true;
+  };
+
   return <article className={`${styles.mealCard} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
-      <div className={styles.mealTitle}><span className={styles.mealIndex}>{MEAL_SLOTS.indexOf(slot) + 1}</span><div><span className={styles.eyebrow}>{SLOT_SHORT_LABELS[slot]}</span><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div></div>
+      <div className={styles.mealTitle}><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div>
       {visibleStatus && <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
-    {compactEmptyState && <div className={styles.emptyMealPrompt}>
-      <div><strong>À remplir</strong><span>Une note ou une photo suffit pour commencer.</span></div>
+    {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
       <div className={styles.emptyMealActions}>
         <button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact />
@@ -568,8 +596,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         </button>
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-      {status === "review" && meal?.analysis && <><MealAnalysisDisclosure meal={meal} status="review" correctionMode={correctionMode} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls meal={meal} status="review" saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} onRating={onRating} /></>}
-      {status === "confirmed" && meal && <><MealAnalysisDisclosure meal={meal} status="confirmed" correctionMode={correctionMode} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} /><MealCompletionControls meal={meal} status="confirmed" saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} onRating={onRating} /></>}
+      {(status === "review" || status === "confirmed") && meal?.analysis && <><AnalysisSummary meal={meal} /><MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} /></>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Réanalyse interrompue. L’analyse précédente reste conservée. {visibleAnalysisError(meal.error)}</p>}
     </div>}
   </article>;
@@ -594,7 +621,6 @@ function MealPageHeader({ totals, targets }: { totals: DayTotal | null; targets:
 function MealHomeHeader() {
   return <header className={styles.homeHeader}>
     <div><span className={styles.eyebrow}>Journal quotidien</span><h2 id="meal-journal-title">Repas</h2></div>
-    <Link className={styles.homePageLink} href="/meals">Page dédiée <span aria-hidden="true">↗</span></Link>
   </header>;
 }
 
@@ -620,6 +646,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const targetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRequestId = useRef(0);
   const mutationInFlight = useRef(false);
+  const ratingSaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const ratingValues = useRef<Partial<Record<string, { mouthHeat: Rating | null; stomachLoad: Rating | null }>>>({});
   const navigationDisabled = processingFiles || deletingPhotoId !== null || savingSlot !== null || Object.values(data?.meals ?? {}).some((meal) => meal?.status === "analyzing");
 
   const selectDate = useCallback((nextDate: string) => {
@@ -851,8 +879,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     updateMeal(slot, (current) => ({ ...current, note: note.slice(0, 500), error: null }));
   };
 
-  const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed") => {
-    if (mutationInFlight.current) return;
+  const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed", options: { queued?: boolean } = {}): Promise<boolean> => {
+    if (!options.queued && mutationInFlight.current) return false;
     mutationInFlight.current = true;
     setSavingSlot(meal.slot);
     setConfirmError((previous) => ({ ...previous, [meal.slot]: null }));
@@ -860,9 +888,11 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       const saved = await (api?.save ? api.save({ ...meal, status }) : defaultSave({ ...meal, status }));
       const nextMeal = normalizeMeal({ ...meal, ...saved, note: typeof saved.note === "string" ? saved.note : meal.note, status }, selectedDate, meal.slot);
       setData((current) => current ? { ...current, meals: { ...current.meals, [meal.slot]: nextMeal } } : current);
+      return true;
     } catch (error) {
       setConfirmError((previous) => ({ ...previous, [meal.slot]: error instanceof Error ? error.message : "Le repas n’a pas pu être enregistré." }));
       updateMeal(meal.slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: error instanceof Error ? error.message : "Le repas n’a pas pu être enregistré." }));
+      return false;
     } finally {
       mutationInFlight.current = false;
       setSavingSlot(null);
@@ -894,16 +924,27 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     }
   };
 
-  const setRating = (slot: MealSlot, key: "mouthHeat" | "stomachLoad", value: Rating | null) => {
-    if (mutationInFlight.current) return;
+  const setRating = async (slot: MealSlot, key: "mouthHeat" | "stomachLoad", value: Rating | null) => {
     const meal = data?.meals[slot];
-    if (!meal) return;
-    const next = { ...meal, [key]: value } as MealRecord;
-    updateMeal(slot, () => next);
+    if (!meal) return false;
+    const ratingKey = `${selectedDate}:${slot}`;
+    const currentRatings = ratingValues.current[ratingKey] ?? { mouthHeat: meal.mouthHeat, stomachLoad: meal.stomachLoad };
+    const nextRatings = { ...currentRatings, [key]: value };
+    ratingValues.current[ratingKey] = nextRatings;
+    const next = { ...meal, ...nextRatings } as MealRecord;
+    updateMeal(slot, (current) => ({ ...current, ...nextRatings }));
     if (next.mouthHeat !== null && next.stomachLoad !== null) {
       setConfirmError((previous) => previous[slot] ? { ...previous, [slot]: null } : previous);
     }
-    if (meal.status === "confirmed") void saveMeal(next);
+    if (meal.status === "confirmed") {
+      const previous = ratingSaveQueue.current;
+      const request = previous.catch(() => false).then(() => saveMeal(next, "confirmed", { queued: true }));
+      ratingSaveQueue.current = request;
+      const saved = await request;
+      if (ratingSaveQueue.current === request) ratingSaveQueue.current = Promise.resolve(saved);
+      return saved;
+    }
+    return true;
   };
 
   const handleConfirm = (slot: MealSlot, meal: MealRecord) => {

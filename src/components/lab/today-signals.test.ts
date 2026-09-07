@@ -23,6 +23,7 @@ describe("Today signals", () => {
     expect(html).toContain('aria-label="Recovery: 72"');
     expect(html).toContain('aria-label="Effort: 63"');
     expect(html).toContain('aria-label="Calories: 72%"');
+    expect(html).toContain('lab-signal__value lab-signal__value--below');
     expect(html).toContain("Cible · 3000 kcal");
     expect(html).not.toContain('aria-live="polite" aria-busy');
   });
