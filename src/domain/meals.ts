@@ -90,20 +90,8 @@ export const mealQuantitySchema = z.object({
 });
 export type MealQuantity = z.infer<typeof mealQuantitySchema>;
 
-export const mealAnalysisCorrectionSchema = z.object({
-  action: z.enum(["remove", "smaller", "larger", "add"]),
-  foodName: z.string().trim().min(1).max(120).optional(),
-  foodIndex: z.number().int().min(0).max(29).optional(),
-  /** A name is useful for an added item, but the user may only request a size change. */
-  name: z.string().trim().min(1).max(120).optional(),
-}).superRefine((correction, context) => {
-  if (correction.action !== "add" && !correction.foodName && correction.foodIndex === undefined) {
-    context.addIssue({ code: "custom", path: ["foodName"], message: "A correction must identify an existing food by name or index." });
-  }
-  if (correction.action === "add" && !correction.name) {
-    context.addIssue({ code: "custom", path: ["name"], message: "An added food must have a name." });
-  }
-});
+/** A correction is deliberately free-form: Grok can interpret the user's wording in context. */
+export const mealAnalysisCorrectionSchema = z.string().trim().min(1).max(500);
 export type MealAnalysisCorrection = z.infer<typeof mealAnalysisCorrectionSchema>;
 
 type NutritionInvariantTarget = {

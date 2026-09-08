@@ -405,13 +405,14 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       completed_at: null,
     });
     try {
-      const images = [];
-      for (const photo of availablePhotos) {
-        const object = await getR2MealPhotoObject(photo.objectPath);
-        if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
-        images.push({ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() });
-      }
-      const recipeReferences = await findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch(() => []);
+      const [images, recipeReferences] = await Promise.all([
+        Promise.all(availablePhotos.map(async (photo) => {
+          const object = await getR2MealPhotoObject(photo.objectPath);
+          if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
+          return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() };
+        })),
+        findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch(() => []),
+      ]);
       const input = {
         mealType: currentMeal.mealType,
         mealDate: currentMeal.mealDate,

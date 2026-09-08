@@ -189,8 +189,7 @@ export async function deleteMealRecipe(userId: string, recipeId: string) {
 export async function findRelevantMealRecipeReferences(userId: string, input: { note?: string | null; correction?: MealAnalysisCorrection | null } = {}) {
   const query = [
     input.note ?? "",
-    input.correction?.foodName ?? "",
-    input.correction?.name ?? "",
+    input.correction ?? "",
   ].filter(Boolean).join(" ");
   if (!query.trim()) return [] as MealRecipeReference[];
   const recipes = await listMealRecipes(userId);

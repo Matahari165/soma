@@ -103,18 +103,15 @@ export type MealJournalData = {
   meals: Partial<Record<MealSlot, MealRecord | null>>;
 };
 
-export type MealCorrection = {
-  action: "remove" | "smaller" | "larger" | "add";
-  foodName?: string;
-  foodIndex?: number;
-  name?: string;
-};
+export type MealCorrection = string;
 
 export type AnalyzeMealInput = {
   date: string;
   slot: MealSlot;
   meal: MealRecord;
   files: File[];
+  /** Keeps local files tied to their photo records even when filenames repeat. */
+  photoFiles?: Array<{ photoId: string; file: File }>;
   correction?: MealCorrection;
 };
 

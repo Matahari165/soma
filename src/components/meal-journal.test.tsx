@@ -162,7 +162,7 @@ describe("MealJournal", () => {
     ]);
   });
 
-  it("sends a structured correction with the forced second analysis", async () => {
+  it("sends a natural-language correction with the forced analysis", async () => {
     let analyzeBody: unknown;
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -175,13 +175,50 @@ describe("MealJournal", () => {
       slot: "lunch",
       files: [],
       meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-      correction: { action: "smaller", foodName: "Pâtes", foodIndex: 0 },
+      correction: "Il y avait une petite portion de pâtes, pas une grande.",
     });
 
-    expect(analyzeBody).toEqual({ force: true, correction: { action: "smaller", foodName: "Pâtes", foodIndex: 0 } });
+    expect(analyzeBody).toEqual({ force: true, correction: "Il y avait une petite portion de pâtes, pas une grande." });
   });
 
-  it("renders compact accessible correction actions without an uncertainty block", () => {
+  it("keeps duplicate filenames tied to the right photo and makes upload retries safe", async () => {
+    const first = new File(["one"], "IMG_0001.jpg", { type: "image/jpeg" });
+    const second = new File(["two"], "IMG_0001.jpg", { type: "image/jpeg" });
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      requests.push({ url, init });
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "lunch", note: null, status: "draft", photos: [], analysis: null } });
+    }));
+
+    await defaultAnalyze({
+      date,
+      slot: "lunch",
+      files: [first, second],
+      photoFiles: [{ photoId: "photo-1", file: first }, { photoId: "photo-2", file: second }],
+      meal: {
+        id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee",
+        date,
+        slot: "lunch",
+        note: "Pâtes",
+        photos: [
+          { id: "photo-1", url: "blob:one", filename: "IMG_0001.jpg", origin: "homemade" },
+          { id: "photo-2", url: "blob:two", filename: "IMG_0001.jpg", origin: "prepared" },
+        ],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "draft",
+      },
+    });
+
+    const upload = requests.find((request) => request.url.includes("/photos"));
+    expect(upload?.init?.headers).toEqual({ "Idempotency-Key": "meal-0199a111-b222-7ccc-8ddd-eeeeeeeeeeee-photos-photo-1-photo-2" });
+    expect((upload?.init?.body as FormData).get("origins")).toBe(JSON.stringify(["homemade", "prepared"]));
+    expect((upload?.init?.body as FormData).getAll("photos")).toEqual([first, second]);
+  });
+
+  it("renders one accessible natural-language correction field", () => {
     const meal: NonNullable<MealJournalData["meals"]["lunch"]> = {
       id: "meal-review",
       date,
@@ -200,12 +237,13 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealCorrectionPanel meal={meal} onCorrection={() => undefined} onCancel={() => undefined} />);
 
-    expect(html).toContain("Retirer Riz");
-    expect(html).toContain("Portion plus petite de Riz");
-    expect(html).toContain("Portion plus grande de Riz");
-    expect(html).toContain('aria-label="Corrections rapides"');
-    expect(html).toContain("Aliment manquant");
-    expect(html).toContain('type="text"');
+    expect(html).toContain('aria-label="Correction de l’analyse"');
+    expect(html).toContain("Correction en langage naturel");
+    expect(html).toContain('id="meal-correction-meal-review"');
+    expect(html).toContain("Réanalyser");
+    expect(html).toContain("Annuler");
+    expect(html).not.toContain("Retirer Riz");
+    expect(html).not.toContain("Aliment manquant");
     expect(html).not.toContain("Incertitudes");
   });
   it("shows seven navigable dates without offering a future day", () => {

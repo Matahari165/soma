@@ -19,6 +19,9 @@ describe("xAI meal vision contract", () => {
     delete process.env.XAI_API_KEY;
     delete process.env.XAI_MEAL_VISION_MODEL;
     delete process.env.XAI_MEAL_VALIDATOR_MODEL;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_MEAL_VALIDATOR_MODEL;
+    delete process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT;
   });
 
   it("sends the note and all photos in one structured vision request", async () => {
@@ -35,11 +38,12 @@ describe("xAI meal vision contract", () => {
       ],
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; store: boolean; input: Array<{ content: Array<{ type: string; text?: string; image_url?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; store: boolean; input: Array<{ content: Array<{ type: string; text?: string; image_url?: string; detail?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
     expect(body).toMatchObject({ model: "grok-test", store: false, text: { format: { type: "json_schema", name: "soma_meal_analysis", strict: true } } });
     expect(body.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(2);
     expect(body.input[0]?.content[0]?.text).toContain("Bol de riz avec légumes");
     expect(body.input[0]?.content[1]?.image_url).toMatch(/^data:image\/jpeg;base64,/);
+    expect(body.input[0]?.content[1]?.detail).toBe("auto");
     expect(result.totals.calories?.likely).toBe(500);
   });
 
@@ -94,7 +98,7 @@ describe("xAI meal vision contract", () => {
       .rejects.toMatchObject({ code: "provider_rate_limited", message: "Grok est momentanément sollicité. Réessaie dans quelques instants." });
   });
 
-  it("runs the dedicated validator with the primary analysis and a structured correction", async () => {
+  it("uses the primary model and validator for a natural-language correction by default", async () => {
     process.env.XAI_API_KEY = "test-key";
     process.env.XAI_MEAL_VISION_MODEL = "grok-primary";
     process.env.XAI_MEAL_VALIDATOR_MODEL = "grok-validator";
@@ -103,22 +107,47 @@ describe("xAI meal vision contract", () => {
       mealType: "lunch",
       mealDate: "2026-08-31",
       note: "Bol de riz avec légumes",
-      correction: { action: "smaller", foodIndex: 0 },
+      correction: "La portion de riz était plus petite que prévu.",
       images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const primaryBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string };
-    const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; input: Array<{ content: Array<{ text?: string }> }> };
+    const primaryBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; input: Array<{ content: Array<{ text?: string; detail?: string }> }> };
+    const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; input: Array<{ content: Array<{ text?: string; detail?: string }> }> };
     expect(primaryBody.model).toBe("grok-primary");
+    expect(primaryBody.input[0]?.content[0]?.text).toContain("Bol de riz");
+    expect(primaryBody.input[0]?.content[0]?.text).toContain("La portion de riz était plus petite que prévu.");
+    expect(primaryBody.input[0]?.content[1]?.detail).toBe("auto");
     expect(validatorBody.model).toBe("grok-validator");
-    expect(validatorBody.input[0]?.content[0]?.text).toContain("Primary analysis");
-    expect(validatorBody.input[0]?.content[0]?.text).toContain("Bol de riz");
-    expect(validatorBody.input[0]?.content[0]?.text).toContain('"action":"smaller"');
+    expect(validatorBody.input[0]?.content[0]?.text).toContain("La portion de riz était plus petite que prévu.");
+    expect(validatorBody.input[0]?.content[1]?.detail).toBe("auto");
     expect(result.result.summary).toBe(structuredAnalysis().summary);
   });
 
-  it("keeps the primary result when optional verification fails", async () => {
+  it("uses GPT-5.6 Sol with low reasoning as the configured validator", async () => {
+    process.env.XAI_API_KEY = "xai-test-key";
+    process.env.OPENAI_API_KEY = "openai-test-key";
+    process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT = "low";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+
+    await analyzeMealInput({
+      mealType: "lunch",
+      mealDate: "2026-08-31",
+      note: "Bol de riz avec légumes",
+      images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.x.ai/v1/responses");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
+    const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; reasoning: { effort: string }; input: Array<{ content: Array<{ detail?: string }> }> };
+    expect(validatorBody).toMatchObject({ model: "gpt-5.6-sol", reasoning: { effort: "low" } });
+    expect(validatorBody.input[0]?.content[1]?.detail).toBe("auto");
+  });
+
+  it("keeps the primary result when the default verification fails", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }))
@@ -144,9 +173,9 @@ describe("xAI meal vision contract", () => {
     expect(result).toEqual({ result: primary, provider: "test", model: "test-model" });
   });
 
-  it("passes a structured correction through the text-only verification path", async () => {
+  it("passes a natural-language correction through the text-only verification path", async () => {
     const primary = structuredAnalysis();
-    const correction = { action: "add" as const, name: "Huile d'olive" };
+    const correction = "Il y avait aussi un filet d'huile d'olive.";
     const provider = {
       name: "test",
       model: "test-model",

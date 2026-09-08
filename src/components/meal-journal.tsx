@@ -272,7 +272,7 @@ async function defaultLoad(date: string) {
   return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
 }
 
-export async function defaultAnalyze({ date, slot, meal, files, correction }: AnalyzeMealInput) {
+export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput) {
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
   if (isNewMeal) {
@@ -284,17 +284,26 @@ export async function defaultAnalyze({ date, slot, meal, files, correction }: An
     const created = await readJson(createResponse) as { meal: { id: string } };
     mealId = created.meal.id;
   }
-  const newPhotos = meal.photos.filter((photo) => files.some((file) => file === filesByFilename(files, photo.filename)));
+  const uploadEntries = photoFiles?.length
+    ? photoFiles
+      .map(({ photoId, file }) => ({ photo: meal.photos.find((candidate) => candidate.id === photoId), file }))
+      .filter((entry): entry is { photo: MealPhoto; file: File } => Boolean(entry.photo))
+    : meal.photos.flatMap((photo) => {
+      const file = filesByFilename(files, photo.filename);
+      return file ? [{ photo, file }] : [];
+    });
   if (!isNewMeal && meal.note.trim()) {
     await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }));
   }
   if (files.length > 0) {
-    const origins = newPhotos.map((photo) => photo.origin ?? "unknown");
-    if (origins.length !== files.length) throw new Error("Les photos sélectionnées ne correspondent plus au repas.");
+    const uploadFiles = uploadEntries.map((entry) => entry.file);
+    const origins = uploadEntries.map((entry) => entry.photo.origin ?? "unknown");
+    if (uploadFiles.length !== files.length) throw new Error("Les photos sélectionnées ne correspondent plus au repas.");
     const form = new FormData();
     form.set("origins", JSON.stringify(origins));
-    files.forEach((file) => form.append("photos", file, file.name));
-    await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", body: form }));
+    uploadFiles.forEach((file) => form.append("photos", file, file.name));
+    const uploadKey = `meal-${mealId}-photos-${uploadEntries.map((entry) => entry.photo.id).join("-")}`;
+    await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }));
   }
   const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true, ...(correction ? { correction } : {}) }) });
   const body = await readJson(response);
@@ -515,31 +524,20 @@ function AnalysisSummary({ meal }: { meal: MealRecord }) {
 }
 
 export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: MealRecord; onCorrection: (correction: MealCorrection) => void; onCancel: () => void }) {
-  const [missingFood, setMissingFood] = useState("");
-  const ingredients = meal.analysis?.ingredients ?? [];
-  const submitMissingFood = () => {
-    const name = missingFood.trim();
-    if (!name) return;
-    onCorrection({ action: "add", name: name.slice(0, 120) });
+  const [correctionText, setCorrectionText] = useState("");
+  const submitCorrection = () => {
+    const text = correctionText.trim();
+    if (!text) return;
+    onCorrection(text.slice(0, 500));
   };
-  return <div className={styles.analysisDisplay} aria-label="Corrections rapides">
-    {ingredients.length > 0 && <ul className={styles.ingredientsList}>
-      {ingredients.map((ingredient, index) => <li key={ingredient.id}>
-        <strong>{formatIngredientLabel(ingredient)}</strong>
-        <div className={styles.reviewActions} role="group" aria-label={`Modifier ${ingredient.name}`}>
-          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "remove", foodName: ingredient.name, foodIndex: index })} aria-label={`Retirer ${ingredient.name}`}>Retirer</button>
-          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "smaller", foodName: ingredient.name, foodIndex: index })} aria-label={`Portion plus petite de ${ingredient.name}`}>Moins</button>
-          <button className={styles.secondaryButton} type="button" onClick={() => onCorrection({ action: "larger", foodName: ingredient.name, foodIndex: index })} aria-label={`Portion plus grande de ${ingredient.name}`}>Plus</button>
-        </div>
-      </li>)}
-    </ul>}
+  return <div className={styles.analysisDisplay} aria-label="Correction de l’analyse">
     <div className={styles.textInput}>
-      <label htmlFor={`missing-food-${meal.id}`}>Aliment manquant</label>
-      <input id={`missing-food-${meal.id}`} type="text" value={missingFood} maxLength={120} placeholder="Ex. sauce tomate" onChange={(event) => setMissingFood(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitMissingFood(); } }} />
-      <button className={styles.secondaryButton} type="button" disabled={!missingFood.trim()} onClick={submitMissingFood}>Ajouter</button>
-    </div>
-    <div className={styles.reviewActions}>
-      <button className={styles.secondaryButton} type="button" onClick={onCancel}>Fermer</button>
+      <label htmlFor={`meal-correction-${meal.id}`}>Correction en langage naturel</label>
+      <textarea id={`meal-correction-${meal.id}`} rows={3} value={correctionText} maxLength={500} placeholder="Ex. Il y avait deux œufs, pas un, et une petite portion de riz." onChange={(event) => setCorrectionText(event.target.value)} />
+      <div className={styles.reviewActions}>
+        <button className={styles.analyzeButton} type="button" disabled={!correctionText.trim()} onClick={submitCorrection}>Réanalyser</button>
+        <button className={styles.secondaryButton} type="button" onClick={onCancel}>Annuler</button>
+      </div>
     </div>
   </div>;
 }
@@ -999,16 +997,20 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasNoteForAnalyze = Boolean(meal.note.trim());
     if (correction) {
-      // A correction is already grounded in the current analysis; the second
-      // pass decides the new quantities and totals.
+      // Grok receives the correction together with the current evidence and
+      // recalculates the complete analysis in one request.
     } else if (hasPhotosForAnalyze) {
       if (activePhotos.length > MAX_MEAL_PHOTOS) return;
     } else if (!hasNoteForAnalyze) return;
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
     try {
-      const files = meal.photos.map((photo) => filesByPhotoId[photo.id]).filter((file): file is File => Boolean(file));
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, ...(correction ? { correction } : {}) }));
+      const photoFiles = meal.photos.map((photo) => {
+        const file = filesByPhotoId[photo.id];
+        return file ? { photoId: photo.id, file } : null;
+      }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
+      const files = photoFiles.map((entry) => entry.file);
+      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }));
       updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, selectedDate, slot), status: "review" }));
     } catch (error) {
       updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));

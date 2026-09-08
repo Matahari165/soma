@@ -197,7 +197,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "confidence à low par défaut, sauf si la description est très précise (aliments, quantités et préparation explicites).",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     `User description: ${input.note}`,
-    input.correction ? `User correction: ${JSON.stringify(input.correction)}` : "No user correction was supplied.",
+    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
     recipeReferencesPrompt(input.recipeReferences),
   ].join("\n");
 }
@@ -221,6 +221,7 @@ function makePrompt(input: MealVisionInput) {
     "Return a concise summary, itemized foods, total calories and macros, confidence, and concrete uncertainties.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     input.note ? `User note: ${input.note}` : "No user note was supplied.",
+    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
     recipeReferencesPrompt(input.recipeReferences),
     origins,
   ].join("\n");
@@ -232,10 +233,10 @@ function makeVerificationPrompt(input: MealVisionVerificationInput) {
     "Vérifie les quantités, les plats composés, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey et la cohérence nutritionnelle avec les photos et la note. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
     "Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds. Ne double jamais un plat avec ses composants : countedInTotals=false pour le parent lorsque les composants sont comptés.",
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence et uncertainties restent internes à l'analyse.",
-    "Une correction utilisateur éventuelle est une indication légère et structurée, à appliquer seulement si elle est compatible avec les preuves.",
+    "Une correction utilisateur éventuelle est une indication en langage naturel, à appliquer seulement si elle est compatible avec les preuves.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     input.note ? `User note: ${input.note}` : "No user note was supplied.",
-    input.correction ? `User correction: ${JSON.stringify(input.correction)}` : "No user correction was supplied.",
+    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
     recipeReferencesPrompt(input.recipeReferences),
     `Primary analysis: ${JSON.stringify(input.primaryAnalysis)}`,
     input.images.length > 0 ? originsForVerification(input) : "No photo was supplied; verify only against the description and the primary analysis.",
@@ -278,7 +279,8 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
           },
         },
       }),
-      signal: AbortSignal.timeout(45_000),
+      // Two sequential calls (primary + validator) must fit the 50s route budget.
+      signal: AbortSignal.timeout(20_000),
     });
   } catch (error) {
     throw new MealVisionError("provider_unavailable", "Grok est momentanément indisponible.", { cause: error });
@@ -314,9 +316,72 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
   }
 }
 
+async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string) {
+  let response: Response;
+  try {
+    const apiKey = requireServerEnv("OPENAI_API_KEY");
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        store: false,
+        reasoning: { effort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low" },
+        max_output_tokens: 4_000,
+        instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
+        input: [{
+          role: "user",
+          content: [{ type: "input_text", text: makeVerificationPrompt(input) }, ...input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" }))],
+        }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "soma_meal_analysis",
+            strict: true,
+            schema: mealAnalysisJsonSchema(),
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    throw new MealVisionError("provider_unavailable", "Le validateur OpenAI est momentanément indisponible.", { cause: error });
+  }
+  if (!response.ok) {
+    const code = response.status === 401 || response.status === 403
+      ? "provider_auth"
+      : response.status === 429
+        ? "provider_rate_limited"
+        : response.status >= 500
+          ? "provider_unavailable"
+          : "provider_request";
+    const message = code === "provider_auth"
+      ? "La configuration du validateur OpenAI est invalide."
+      : code === "provider_rate_limited"
+        ? "OpenAI est momentanément sollicité."
+        : code === "provider_request"
+          ? "La demande du validateur OpenAI est invalide."
+          : "Le validateur OpenAI est momentanément indisponible.";
+    throw new MealVisionError(code, message);
+  }
+  let text: string | null;
+  try {
+    text = responseText(await response.json());
+  } catch (error) {
+    throw new MealVisionError("invalid_response", "La réponse du validateur OpenAI est illisible.", { cause: error });
+  }
+  if (!text) throw new MealVisionError("invalid_response", "Le validateur OpenAI n’a pas retourné d’analyse structurée.");
+  try {
+    return mealAnalysisSchema.parse(JSON.parse(text));
+  } catch (error) {
+    throw new MealVisionError("invalid_response", "Le validateur OpenAI a retourné une analyse structurée invalide.", { cause: error });
+  }
+}
+
 export function createXaiMealVisionProvider(): MealVisionProvider {
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
-  const validatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
+  const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
+  const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   return {
     name: "xai",
     model,
@@ -325,7 +390,7 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         model,
         instructions: "You are a careful food-photo analyst. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high and nulls when not estimable. Labels in French. Return only the requested JSON object.",
         promptText: makePrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" })),
         maxOutputTokens: 4_000,
       });
     },
@@ -339,11 +404,12 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
       });
     },
     async verify(input) {
+      if (process.env.OPENAI_API_KEY) return requestOpenAiMealValidation(input, openAiValidatorModel);
       return requestGrokAnalysis({
-        model: validatorModel,
+        model: xaiValidatorModel,
         instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
         promptText: makeVerificationPrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" })),
         maxOutputTokens: 4_000,
       });
     },
@@ -370,9 +436,10 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
  *
  * A meal with at least one available image always uses the vision method once;
  * its note is part of that same request. Only a note-only meal uses the
- * provider's text-only method.
+ * provider's text-only method. The optional validator runs by default and
+ * falls back to the primary result when it fails.
  */
-export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { verify?: boolean } = {}) {
   const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primary = input.images.length > 0
     ? await provider.analyze(input)
@@ -390,7 +457,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
     })();
 
   let result = primary;
-  if (provider.verify) {
+  if (options.verify !== false && provider.verify) {
     try {
       result = await provider.verify({ ...input, primaryAnalysis: primary });
     } catch {

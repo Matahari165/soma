@@ -1,5 +1,6 @@
-const MAX_IMAGE_EDGE = 2048;
-const IMAGE_QUALITY = 0.85;
+const MAX_IMAGE_EDGE = 1600;
+const IMAGE_QUALITY = 0.8;
+const REENCODE_AFTER_BYTES = 2 * 1024 * 1024;
 
 function imageExtension(name: string) {
   const extension = name.lastIndexOf(".");
@@ -13,6 +14,13 @@ function needsJpegNormalization(file: File) {
 function supportedPhoto(file: File) {
   const extension = imageExtension(file.name);
   return file.type === "image/jpeg" || file.type === "image/png" || needsJpegNormalization(file) || extension === ".jpg" || extension === ".jpeg" || extension === ".png";
+}
+
+function shouldReencode(file: File, scale: number) {
+  return needsJpegNormalization(file)
+    || scale < 1
+    || file.size > REENCODE_AFTER_BYTES
+    || (file.type !== "image/jpeg" && file.type !== "image/png");
 }
 
 async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; close?: () => void }> {
@@ -46,7 +54,7 @@ export async function normalizeMealImage(file: File) {
   const decoded = await decodeImage(file).catch(() => null);
   if (!decoded || decoded.width <= 0 || decoded.height <= 0) throw new Error("Cette photo n’a pas pu être lue. Prends-la à nouveau en JPEG ou PNG.");
   const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(decoded.width, decoded.height));
-  if (!needsJpegNormalization(file) && scale === 1) {
+  if (!shouldReencode(file, scale)) {
     decoded.close?.();
     return file;
   }
