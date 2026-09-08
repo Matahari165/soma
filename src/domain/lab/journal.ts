@@ -296,7 +296,7 @@ export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
   { name: "Dinner end time", emoji: "🍽️", variableType: "time", unit: null, options: [], position: 70, dayPeriod: "evening", defaultValue: null },
   { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "morning", defaultValue: 0 },
   { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },
-  { name: "Reading for 30 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },
+  { name: "Reading for 20 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },
   { name: "Dark room", emoji: "🌑", variableType: "boolean", unit: null, options: [], position: 110, dayPeriod: "evening", defaultValue: true },
 ];
 

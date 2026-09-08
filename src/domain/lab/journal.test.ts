@@ -136,7 +136,7 @@ describe("journal values", () => {
       "Dinner end time",
       "Magnesium",
       "Breathing exercise",
-      "Reading for 30 minutes",
+      "Reading for 20 minutes",
       "Dark room",
     ]);
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.unit).toBe("mg");
