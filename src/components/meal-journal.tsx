@@ -272,7 +272,13 @@ async function defaultLoad(date: string) {
   return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
 }
 
-export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput) {
+type UploadedPhotoPair = { localPhotoId: string; photo: MealPhoto };
+
+type DefaultAnalyzeOptions = {
+  onPhotosUploaded?: (photos: UploadedPhotoPair[]) => void;
+};
+
+export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
   if (isNewMeal) {
@@ -303,7 +309,10 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     form.set("origins", JSON.stringify(origins));
     uploadFiles.forEach((file) => form.append("photos", file, file.name));
     const uploadKey = `meal-${mealId}-photos-${uploadEntries.map((entry) => entry.photo.id).join("-")}`;
-    await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }));
+    const uploadedBody = await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form })) as { photos?: MealPhoto[] };
+    if (Array.isArray(uploadedBody.photos) && uploadedBody.photos.length === uploadEntries.length) {
+      options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
+    }
   }
   const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true, ...(correction ? { correction } : {}) }) });
   const body = await readJson(response);
@@ -1005,12 +1014,31 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
     try {
+      const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
+        const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));
+        pairs.forEach(({ localPhotoId }) => {
+          const localPhoto = meal.photos.find((photo) => photo.id === localPhotoId);
+          if (localPhoto && objectUrls.current.has(localPhoto.url)) {
+            URL.revokeObjectURL(localPhoto.url);
+            objectUrls.current.delete(localPhoto.url);
+          }
+        });
+        setFilesByPhotoId((current) => {
+          const next = { ...current };
+          pairs.forEach(({ localPhotoId }) => delete next[localPhotoId]);
+          return next;
+        });
+        updateMeal(slot, (current) => ({
+          ...current,
+          photos: current.photos.map((photo) => uploadedByLocalId.get(photo.id) ?? photo),
+        }));
+      };
       const photoFiles = meal.photos.map((photo) => {
         const file = filesByPhotoId[photo.id];
         return file ? { photoId: photo.id, file } : null;
       }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
       const files = photoFiles.map((entry) => entry.file);
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onPhotosUploaded: reconcileUploadedPhotos }));
       updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, selectedDate, slot), status: "review" }));
     } catch (error) {
       updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));

@@ -218,6 +218,37 @@ describe("MealJournal", () => {
     expect((upload?.init?.body as FormData).getAll("photos")).toEqual([first, second]);
   });
 
+  it("returns uploaded photo records before analysis so a failed retry does not resend them", async () => {
+    const file = new File(["one"], "lunch.jpg", { type: "image/jpeg" });
+    const uploadedPhoto = { id: "0199a111-b222-7ccc-8ddd-ffffffffffff", mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "homemade" as const, mimeType: "image/jpeg", bytes: file.size, filename: file.name, createdAt: `${date}T12:00:00.000Z`, url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/photos/0199a111-b222-7ccc-8ddd-ffffffffffff" };
+    const uploadPairs: unknown[] = [];
+    let analysisCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("/photos")) return Response.json({ photos: [uploadedPhoto] }, { status: 201 });
+      if (url.includes("/analyze")) {
+        analysisCalls += 1;
+        return analysisCalls === 1
+          ? Response.json({ error: "Le service d’analyse est momentanément indisponible." }, { status: 503 })
+          : Response.json({ meal: { id: uploadedPhoto.mealId, mealDate: date, mealType: "lunch", note: "Pâtes", status: "draft", photos: [uploadedPhoto], analysis: null } });
+      }
+      return Response.json({ meal: { id: uploadedPhoto.mealId, mealDate: date, mealType: "lunch", note: "Pâtes", status: "draft", photos: [], analysis: null } });
+    }));
+    const input = {
+      date,
+      slot: "lunch" as const,
+      files: [file],
+      photoFiles: [{ photoId: "photo-local-1", file }],
+      meal: { id: uploadedPhoto.mealId, date, slot: "lunch" as const, note: "Pâtes", photos: [{ id: "photo-local-1", url: "blob:one", filename: file.name, origin: "homemade" as const }], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" as const },
+    };
+
+    await expect(defaultAnalyze(input, { onPhotosUploaded: (pairs) => uploadPairs.push(...pairs) })).rejects.toThrow("Le service d’analyse est momentanément indisponible.");
+    expect(uploadPairs).toEqual([{ localPhotoId: "photo-local-1", photo: uploadedPhoto }]);
+
+    await defaultAnalyze({ ...input, files: [], photoFiles: [], meal: { ...input.meal, photos: [uploadedPhoto] } });
+    expect(analysisCalls).toBe(2);
+  });
+
   it("renders one accessible natural-language correction field", () => {
     const meal: NonNullable<MealJournalData["meals"]["lunch"]> = {
       id: "meal-review",

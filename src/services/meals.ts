@@ -272,69 +272,71 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
 
 export async function addMealPhotos(userId: string, mealId: string, files: Array<{ id?: string; filename?: string | null; mimeType: MealPhotoMime; size: number; data: ArrayBuffer; origin: MealOrigin }>, options: { idempotencyKey?: string } = {}) {
   assertMealId(mealId);
-  const meal = await findMeal(userId, mealId);
-  if (!meal) throw new MealServiceError("not_found", "Meal not found.");
+  if (!await findMeal(userId, mealId)) throw new MealServiceError("not_found", "Meal not found.");
   if (files.length < 1) throw new MealServiceError("invalid", "Add at least one photo.");
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
   if (totalBytes > MAX_MEAL_PHOTOS_BYTES) throw new MealServiceError("invalid", "The selected photos are too large together.");
   files.forEach((file) => assertPhotoSize(file.size));
 
-  const uploadLock = options.idempotencyKey ? `meal-photos:${userId}:${mealId}:${options.idempotencyKey}` : null;
-  if (uploadLock) {
-    const claimed = await claimCloudflareLock(uploadLock, userId, 60_000);
-    if (!claimed) {
-      const existing = await findPhotosByUploadIdempotencyKey(userId, mealId, options.idempotencyKey as string);
+  // Serialize every upload for a meal, not only retries with the same key.
+  // Otherwise two requests can both observe four photos and each pass the
+  // five-photo check before either request writes its metadata.
+  const uploadLock = `meal-photos:${userId}:${mealId}`;
+  const claimed = await claimCloudflareLock(uploadLock, userId, 60_000);
+  if (!claimed) {
+    if (options.idempotencyKey) {
+      const existing = await findPhotosByUploadIdempotencyKey(userId, mealId, options.idempotencyKey);
       if (existing.length) return existing;
-      throw new MealServiceError("conflict", "This photo upload is already being processed.");
     }
-    const existing = await findPhotosByUploadIdempotencyKey(userId, mealId, options.idempotencyKey as string);
-    if (existing.length) {
-      await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
-      return existing;
-    }
+    throw new MealServiceError("conflict", "This photo upload is already being processed.");
   }
-  const storedPhotoCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged").length;
-  if (storedPhotoCount + files.length > MAX_MEAL_PHOTOS) {
-    if (uploadLock) await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
-    throw new MealServiceError("invalid", `A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
-  }
-
-  const stored: string[] = [];
-  const insertedIds: string[] = [];
   try {
-    const photos = [];
-    for (const file of files) {
-      const id = file.id ?? crypto.randomUUID();
-      const objectPath = mealPhotoObjectPath(userId, mealId, id, file.mimeType);
-      await putR2MealPhotoObject(objectPath, file.data, file.mimeType);
-      stored.push(objectPath);
-      insertedIds.push(id);
-      photos.push(await insertPhoto({
-        id,
-        user_id: userId,
-        meal_id: mealId,
-        origin: file.origin,
-        object_path: objectPath,
-        mime_type: file.mimeType,
-        bytes: file.size,
-        created_at: new Date().toISOString(),
-        upload_idempotency_key: options.idempotencyKey ?? null,
-        filename: file.filename ?? null,
-        storage_status: "available",
-        purged_at: null,
-      }));
+    if (options.idempotencyKey) {
+      const existing = await findPhotosByUploadIdempotencyKey(userId, mealId, options.idempotencyKey);
+      if (existing.length) return existing;
     }
-    if (meal.status === "confirmed") await updateMeal(userId, mealId, { status: "draft" });
-    return photos;
-  } catch (error) {
-    // Metadata and R2 are kept together as far as possible. A failed D1 write
-    // must not leave an inaccessible private photo behind.
-    await Promise.all(stored.map((path) => deleteR2MealPhotoObject(path).catch(() => undefined)));
-    await Promise.all(insertedIds.map((id) => deletePhoto(userId, mealId, id).catch(() => undefined)));
-    if (error instanceof MealServiceError) throw error;
-    throw new MealServiceError("unavailable", "The meal photos could not be saved.");
+    const meal = await findMeal(userId, mealId);
+    if (!meal) throw new MealServiceError("not_found", "Meal not found.");
+    const storedPhotoCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged").length;
+    if (storedPhotoCount + files.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
+
+    const stored: string[] = [];
+    const insertedIds: string[] = [];
+    try {
+      const photos = [];
+      for (const file of files) {
+        const id = file.id ?? crypto.randomUUID();
+        const objectPath = mealPhotoObjectPath(userId, mealId, id, file.mimeType);
+        await putR2MealPhotoObject(objectPath, file.data, file.mimeType);
+        stored.push(objectPath);
+        insertedIds.push(id);
+        photos.push(await insertPhoto({
+          id,
+          user_id: userId,
+          meal_id: mealId,
+          origin: file.origin,
+          object_path: objectPath,
+          mime_type: file.mimeType,
+          bytes: file.size,
+          created_at: new Date().toISOString(),
+          upload_idempotency_key: options.idempotencyKey ?? null,
+          filename: file.filename ?? null,
+          storage_status: "available",
+          purged_at: null,
+        }));
+      }
+      if (meal.status === "confirmed") await updateMeal(userId, mealId, { status: "draft" });
+      return photos;
+    } catch (error) {
+      // Metadata and R2 are kept together as far as possible. A failed D1 write
+      // must not leave an inaccessible private photo behind.
+      await Promise.all(stored.map((path) => deleteR2MealPhotoObject(path).catch(() => undefined)));
+      await Promise.all(insertedIds.map((id) => deletePhoto(userId, mealId, id).catch(() => undefined)));
+      if (error instanceof MealServiceError) throw error;
+      throw new MealServiceError("unavailable", "The meal photos could not be saved.");
+    }
   } finally {
-    if (uploadLock) await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
+    await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
   }
 }
 
