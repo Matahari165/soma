@@ -43,7 +43,7 @@ describe("xAI meal vision contract", () => {
     expect(body.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(2);
     expect(body.input[0]?.content[0]?.text).toContain("Bol de riz avec légumes");
     expect(body.input[0]?.content[1]?.image_url).toMatch(/^data:image\/jpeg;base64,/);
-    expect(body.input[0]?.content[1]?.detail).toBe("auto");
+    expect(body.input[0]?.content[1]?.detail).toBe("high");
     expect(result.totals.calories?.likely).toBe(500);
   });
 
@@ -117,10 +117,10 @@ describe("xAI meal vision contract", () => {
     expect(primaryBody.model).toBe("grok-primary");
     expect(primaryBody.input[0]?.content[0]?.text).toContain("Bol de riz");
     expect(primaryBody.input[0]?.content[0]?.text).toContain("La portion de riz était plus petite que prévu.");
-    expect(primaryBody.input[0]?.content[1]?.detail).toBe("auto");
+    expect(primaryBody.input[0]?.content[1]?.detail).toBe("high");
     expect(validatorBody.model).toBe("grok-validator");
     expect(validatorBody.input[0]?.content[0]?.text).toContain("La portion de riz était plus petite que prévu.");
-    expect(validatorBody.input[0]?.content[1]?.detail).toBe("auto");
+    expect(validatorBody.input[0]?.content[1]?.detail).toBe("high");
     expect(result.result.summary).toBe(structuredAnalysis().summary);
   });
 
@@ -136,7 +136,7 @@ describe("xAI meal vision contract", () => {
       mealType: "lunch",
       mealDate: "2026-08-31",
       note: "Bol de riz avec légumes",
-      images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+      images: Array.from({ length: 4 }, (_, index) => ({ id: `photo-${index + 1}`, mimeType: "image/jpeg", origin: "homemade" as const, data: new Uint8Array([index + 1]).buffer })),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -144,7 +144,26 @@ describe("xAI meal vision contract", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
     const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; reasoning: { effort: string }; input: Array<{ content: Array<{ detail?: string }> }> };
     expect(validatorBody).toMatchObject({ model: "gpt-5.6-sol", reasoning: { effort: "low" } });
-    expect(validatorBody.input[0]?.content[1]?.detail).toBe("auto");
+    expect(validatorBody.input[0]?.content[1]?.detail).toBe("low");
+    expect(validatorBody.input[0]?.content.filter((item) => item.detail === "low")).toHaveLength(4);
+  });
+
+  it("keeps four photos in one high-detail primary request", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+    const images = Array.from({ length: 4 }, (_, index) => ({ id: `photo-${index + 1}`, mimeType: "image/jpeg", origin: "homemade" as const, data: new Uint8Array([index + 1]).buffer }));
+
+    await createXaiMealVisionProvider().analyze({ mealType: "dinner", mealDate: "2026-08-31", note: "Repas avec quatre angles", images });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { input: Array<{ content: Array<{ type: string; detail?: string }> }> };
+    const imageParts = body.input[0]?.content.filter((item) => item.type === "input_image") ?? [];
+    expect(imageParts).toHaveLength(4);
+    expect(imageParts.every((item) => item.detail === "high")).toBe(true);
+  });
+
+  it("reports a missing Grok key as configuration instead of transient unavailability", async () => {
+    await expect(createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" }))
+      .rejects.toMatchObject({ code: "provider_auth", message: "La configuration de l’analyse Grok est invalide." });
   });
 
   it("keeps the primary result when the default verification fails", async () => {

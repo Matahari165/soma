@@ -64,6 +64,15 @@ export function isXaiVisionMimeType(mimeType: string) {
   return mimeType === "image/jpeg" || mimeType === "image/png";
 }
 
+// Meal analysis is allowed to spend more time on the primary vision pass than
+// on the optional validator. Four photos can take longer to inspect than one,
+// while the route still has to finish well inside its 50s platform budget.
+const PRIMARY_VISION_TIMEOUT_MS = 30_000;
+const TEXT_ANALYSIS_TIMEOUT_MS = 15_000;
+const VALIDATOR_TIMEOUT_MS = 12_000;
+
+type VisionImageDetail = "low" | "high";
+
 function imageDataUri(image: MealVisionImage) {
   return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
 }
@@ -247,16 +256,23 @@ function originsForVerification(input: MealVisionVerificationInput) {
   return input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
 }
 
-async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens }: {
+async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, timeoutMs }: {
   model: string;
   instructions: string;
   promptText: string;
   imageContents: Array<{ type: string; image_url: string; detail: string }>;
   maxOutputTokens: number;
+  timeoutMs: number;
 }) {
+  const imageCount = imageContents.length;
+  let apiKey: string;
+  try {
+    apiKey = requireServerEnv("XAI_API_KEY");
+  } catch (error) {
+    throw new MealVisionError("provider_auth", "La configuration de l’analyse Grok est invalide.", { cause: error });
+  }
   let response: Response;
   try {
-    const apiKey = requireServerEnv("XAI_API_KEY");
     response = await fetch(process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -279,10 +295,15 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
           },
         },
       }),
-      // Two sequential calls (primary + validator) must fit the 50s route budget.
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
+    console.error("[meal-vision] xAI request failed", {
+      model,
+      imageCount,
+      timeoutMs,
+      reason: error instanceof Error ? error.name : "unknown",
+    });
     throw new MealVisionError("provider_unavailable", "Grok est momentanément indisponible.", { cause: error });
   }
   if (!response.ok) {
@@ -300,6 +321,7 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
         : code === "provider_request"
           ? "La demande d’analyse Grok est invalide."
           : "Grok est momentanément indisponible.";
+    console.error("[meal-vision] xAI returned an error", { model, imageCount, status: response.status, code });
     throw new MealVisionError(code, message);
   }
   let text: string | null;
@@ -317,9 +339,15 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
 }
 
 async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string) {
+  const imageCount = input.images.length;
+  let apiKey: string;
+  try {
+    apiKey = requireServerEnv("OPENAI_API_KEY");
+  } catch (error) {
+    throw new MealVisionError("provider_auth", "La configuration du validateur OpenAI est invalide.", { cause: error });
+  }
   let response: Response;
   try {
-    const apiKey = requireServerEnv("OPENAI_API_KEY");
     response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -331,7 +359,10 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
         instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
         input: [{
           role: "user",
-          content: [{ type: "input_text", text: makeVerificationPrompt(input) }, ...input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" }))],
+          // The primary Grok pass keeps the detailed images. The validator only
+          // needs enough resolution to challenge obvious visual mistakes, which
+          // keeps this second request lighter without removing the evidence.
+          content: [{ type: "input_text", text: makeVerificationPrompt(input) }, ...input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" }))],
         }],
         text: {
           format: {
@@ -342,9 +373,15 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
           },
         },
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(VALIDATOR_TIMEOUT_MS),
     });
   } catch (error) {
+    console.error("[meal-vision] OpenAI validator request failed", {
+      model,
+      imageCount,
+      timeoutMs: VALIDATOR_TIMEOUT_MS,
+      reason: error instanceof Error ? error.name : "unknown",
+    });
     throw new MealVisionError("provider_unavailable", "Le validateur OpenAI est momentanément indisponible.", { cause: error });
   }
   if (!response.ok) {
@@ -362,6 +399,7 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
         : code === "provider_request"
           ? "La demande du validateur OpenAI est invalide."
           : "Le validateur OpenAI est momentanément indisponible.";
+    console.error("[meal-vision] OpenAI validator returned an error", { model, imageCount, status: response.status, code });
     throw new MealVisionError(code, message);
   }
   let text: string | null;
@@ -390,8 +428,9 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         model,
         instructions: "You are a careful food-photo analyst. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high and nulls when not estimable. Labels in French. Return only the requested JSON object.",
         promptText: makePrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
+        timeoutMs: PRIMARY_VISION_TIMEOUT_MS,
       });
     },
     async analyzeText(input) {
@@ -401,6 +440,7 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         promptText: makeTextPrompt(input),
         imageContents: [],
         maxOutputTokens: 1_500,
+        timeoutMs: TEXT_ANALYSIS_TIMEOUT_MS,
       });
     },
     async verify(input) {
@@ -409,8 +449,9 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         model: xaiValidatorModel,
         instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
         promptText: makeVerificationPrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
+        timeoutMs: VALIDATOR_TIMEOUT_MS,
       });
     },
   };

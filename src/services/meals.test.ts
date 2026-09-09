@@ -273,15 +273,19 @@ describe("meal text-only analysis", () => {
     expect(analyzeText).not.toHaveBeenCalled();
   });
 
-  it("sends a note and all photos together in one vision call", async () => {
+  it("sends a note and four photos together in one vision call", async () => {
     const photos = [
       { id: "photo-1", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-1", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const },
       { id: "photo-2", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-2", mimeType: "image/png" as const, bytes: 3, createdAt: "2026-08-31T10:00:01.000Z", storageStatus: "available" as const },
+      { id: "photo-3", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-3", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:02.000Z", storageStatus: "available" as const },
+      { id: "photo-4", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-4", mimeType: "image/png" as const, bytes: 3, createdAt: "2026-08-31T10:00:03.000Z", storageStatus: "available" as const },
     ];
     state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: "Pâtes avec sauce tomate", status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos, analysis: null });
     vi.mocked(getR2MealPhotoObject)
       .mockResolvedValueOnce(new Response(Uint8Array.from([1, 2, 3])))
-      .mockResolvedValueOnce(new Response(Uint8Array.from([4, 5, 6])));
+      .mockResolvedValueOnce(new Response(Uint8Array.from([4, 5, 6])))
+      .mockResolvedValueOnce(new Response(Uint8Array.from([7, 8, 9])))
+      .mockResolvedValueOnce(new Response(Uint8Array.from([10, 11, 12])));
     const analyze = vi.fn().mockResolvedValue(textOnlyAnalysis);
     const analyzeText = vi.fn().mockResolvedValue(textOnlyAnalysis);
 
@@ -291,6 +295,8 @@ describe("meal text-only analysis", () => {
     expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: "Pâtes avec sauce tomate", images: [
       { id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: expect.any(ArrayBuffer) },
       { id: "photo-2", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
+      { id: "photo-3", mimeType: "image/jpeg", origin: "homemade", data: expect.any(ArrayBuffer) },
+      { id: "photo-4", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
     ] });
     expect(analyzeText).not.toHaveBeenCalled();
   });

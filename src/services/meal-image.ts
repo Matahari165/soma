@@ -1,5 +1,8 @@
-const MAX_IMAGE_EDGE = 1600;
-const IMAGE_QUALITY = 0.8;
+// Four photos are sent to the primary model and, when configured, to the
+// validator. A readable 1280px JPEG keeps that multimodal payload comfortably
+// below the Worker memory ceiling on mobile uploads.
+const MAX_IMAGE_EDGE = 1280;
+const IMAGE_QUALITY = 0.76;
 const REENCODE_AFTER_BYTES = 2 * 1024 * 1024;
 
 function imageExtension(name: string) {
