@@ -186,25 +186,72 @@ export function mealAnalysisJsonSchema() {
 
 function responseText(result: unknown) {
   if (!result || typeof result !== "object") return null;
-  const direct = (result as { output_text?: unknown }).output_text;
-  if (typeof direct === "string" && direct.trim()) return direct;
-  const output = (result as { output?: unknown }).output;
-  if (!Array.isArray(output)) return null;
-  const fragments = output.flatMap((item) => {
-    if (!item || typeof item !== "object") return [];
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) return [];
-    return content.flatMap((part) => {
-      if (!part || typeof part !== "object") return [];
-      const typed = part as { type?: unknown; text?: unknown; refusal?: unknown };
-      return typed.type === "output_text" && typeof typed.text === "string"
-        ? [typed.text]
-        : typed.type === "refusal" && typeof typed.refusal === "string"
-          ? []
-          : [];
+  const fragments: string[] = [];
+  const addFragment = (value: unknown) => {
+    if (typeof value === "string" && value.trim()) fragments.push(value);
+  };
+  const response = result as { output_text?: unknown; output?: unknown; choices?: unknown; output_parsed?: unknown };
+  addFragment(response.output_text);
+
+  const output = response.output;
+  if (Array.isArray(output)) output.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const typedItem = item as { type?: unknown; text?: unknown; content?: unknown };
+    if (typedItem.type !== "reasoning" && typedItem.type !== "summary") addFragment(typedItem.text);
+    if (!Array.isArray(typedItem.content)) return;
+    typedItem.content.forEach((part) => {
+      if (!part || typeof part !== "object") return;
+      const typedPart = part as { type?: unknown; text?: unknown; refusal?: unknown };
+      if (typedPart.type === "refusal" || typedPart.type === "reasoning" || typedPart.type === "summary") return;
+      // xAI documents `output_text`, while compatible Responses handlers may
+      // expose the same final block as `text` or omit the type in mocks.
+      addFragment(typedPart.text);
     });
   });
+
+  // Keep compatibility with OpenAI-compatible Responses payloads. This is
+  // intentionally limited to assistant message content, never arbitrary
+  // nested strings from the provider response.
+  if (Array.isArray(response.choices)) response.choices.forEach((choice) => {
+    if (!choice || typeof choice !== "object") return;
+    const message = (choice as { message?: unknown }).message;
+    if (!message || typeof message !== "object") return;
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") addFragment(content);
+    if (Array.isArray(content)) content.forEach((part) => {
+      if (part && typeof part === "object") addFragment((part as { text?: unknown }).text);
+    });
+  });
+
+  if (!fragments.length && response.output_parsed && typeof response.output_parsed === "object") {
+    addFragment(JSON.stringify(response.output_parsed));
+  }
   return fragments.join("\n") || null;
+}
+
+function responseDiagnostics(result: unknown) {
+  if (!result || typeof result !== "object") return {};
+  const response = result as { id?: unknown; status?: unknown; incomplete_details?: unknown; usage?: unknown; output?: unknown };
+  const incompleteDetails = response.incomplete_details && typeof response.incomplete_details === "object"
+    ? response.incomplete_details as { reason?: unknown }
+    : null;
+  const usage = response.usage && typeof response.usage === "object"
+    ? response.usage as { output_tokens?: unknown; output_tokens_details?: unknown }
+    : null;
+  const outputDetails = usage?.output_tokens_details && typeof usage.output_tokens_details === "object"
+    ? usage.output_tokens_details as { reasoning_tokens?: unknown }
+    : null;
+  const outputTypes = Array.isArray(response.output)
+    ? response.output.map((item) => item && typeof item === "object" ? (item as { type?: unknown }).type : null).filter((type): type is string => typeof type === "string").slice(0, 8)
+    : undefined;
+  return {
+    responseId: typeof response.id === "string" ? response.id : undefined,
+    responseStatus: typeof response.status === "string" ? response.status : undefined,
+    incompleteReason: typeof incompleteDetails?.reason === "string" ? incompleteDetails.reason : undefined,
+    outputTokens: typeof usage?.output_tokens === "number" ? usage.output_tokens : undefined,
+    reasoningTokens: typeof outputDetails?.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : undefined,
+    outputTypes,
+  };
 }
 
 function balancedJsonCandidates(text: string) {
@@ -416,29 +463,34 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   } catch (error) {
     throw new MealVisionError("provider_auth", providerMessage(request.provider, "provider_auth"), { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
   }
-  const payload = {
-    model: request.model,
-    store: false,
-    reasoning: { effort: request.reasoningEffort || "low" },
-    max_output_tokens: request.maxOutputTokens,
-    instructions: request.instructions,
-    input: [{
-      role: "user",
-      content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
-    }],
-    text: {
-      format: {
-        type: "json_schema",
-        name: "soma_meal_analysis",
-        strict: true,
-        schema: mealAnalysisJsonSchema(),
-      },
-    },
-  };
-  const payloadBytes = JSON.stringify(payload).length;
   let lastError: unknown;
+  let retryWithLargerBudget = false;
   const maxAttempts = request.maxAttempts ?? MAX_PROVIDER_ATTEMPTS;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    // A truncated structured response cannot be repaired by sending the same
+    // request again. Give only a retry explicitly marked as token-truncated a
+    // larger completion budget while keeping network/rate-limit retries lean.
+    const maxOutputTokens = retryWithLargerBudget ? Math.min(request.maxOutputTokens * 2, 12_000) : request.maxOutputTokens;
+    const payload = {
+      model: request.model,
+      store: false,
+      reasoning: { effort: request.reasoningEffort || "low" },
+      max_output_tokens: maxOutputTokens,
+      instructions: request.instructions,
+      input: [{
+        role: "user",
+        content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
+      }],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "soma_meal_analysis",
+          strict: true,
+          schema: mealAnalysisJsonSchema(),
+        },
+      },
+    };
+    const payloadBytes = JSON.stringify(payload).length;
     const startedAt = Date.now();
     let response: Response;
     try {
@@ -530,7 +582,73 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const responseStatus = body && typeof body === "object" && typeof (body as { status?: unknown }).status === "string"
       ? (body as { status: string }).status
       : undefined;
+    const incompleteReason = body && typeof body === "object" && (body as { incomplete_details?: unknown }).incomplete_details && typeof (body as { incomplete_details?: unknown }).incomplete_details === "object"
+      ? (body as { incomplete_details: { reason?: unknown } }).incomplete_details.reason
+      : undefined;
+    const text = responseText(body);
+
+    // Some Responses-compatible payloads can carry a complete JSON object
+    // even when the top-level status is marked incomplete. Parse and validate
+    // it first; the schema remains the final guard before persistence.
+    if (text) {
+      let parsed: unknown;
+      try {
+        parsed = structuredJson(text);
+      } catch (error) {
+        if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
+          console.error("[meal-analysis] provider content was not parseable JSON", {
+            requestId: request.requestId,
+            provider: request.provider,
+            model: request.model,
+            stage: "response_parse",
+            attempt,
+            imageCount,
+            payloadBytes,
+            durationMs,
+            code: "response_parse_error",
+            reason: error instanceof Error ? error.name : "unknown",
+          });
+          if (error instanceof MealVisionError) throw new MealVisionError("response_parse_error", error.message, { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+          throw error;
+        }
+      }
+
+      if (parsed !== undefined) {
+        try {
+          const result = mealAnalysisSchema.parse(parsed);
+          console.info("[meal-analysis] provider succeeded", {
+            requestId: request.requestId,
+            provider: request.provider,
+            model: request.model,
+            stage: "provider_success",
+            attempt,
+            imageCount,
+            payloadBytes,
+            durationMs,
+          });
+          return result;
+        } catch (error) {
+          if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
+            console.error("[meal-analysis] provider content failed schema validation", {
+              requestId: request.requestId,
+              provider: request.provider,
+              model: request.model,
+              stage: "response_schema",
+              attempt,
+              imageCount,
+              payloadBytes,
+              durationMs,
+              code: "response_schema_error",
+              reason: error instanceof Error ? error.name : "unknown",
+            });
+            throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+          }
+        }
+      }
+    }
+
     if (responseStatus === "incomplete") {
+      const outputLimitReached = incompleteReason === "max_output_tokens" || incompleteReason === "max_tokens";
       console.error("[meal-analysis] provider returned an incomplete response", {
         requestId: request.requestId,
         provider: request.provider,
@@ -540,17 +658,20 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         imageCount,
         payloadBytes,
         durationMs,
+        reason: typeof incompleteReason === "string" ? incompleteReason : "unknown",
+        retryMaxOutputTokens: maxOutputTokens,
+        ...responseDiagnostics(body),
         code: "provider_empty_response",
       });
       const incompleteError = new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId });
       lastError = incompleteError;
       if (attempt < maxAttempts) {
+        retryWithLargerBudget = outputLimitReached;
         await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
         continue;
       }
       throw incompleteError;
     }
-    const text = responseText(body);
     if (!text) {
       console.error("[meal-analysis] provider returned no structured content", {
         requestId: request.requestId,
@@ -561,6 +682,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         imageCount,
         payloadBytes,
         durationMs,
+        ...responseDiagnostics(body),
         code: "provider_empty_response",
       });
       const emptyError = new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId });
@@ -570,53 +692,6 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         continue;
       }
       throw emptyError;
-    }
-    let parsed: unknown;
-    try {
-      parsed = structuredJson(text);
-    } catch (error) {
-      console.error("[meal-analysis] provider content was not parseable JSON", {
-        requestId: request.requestId,
-        provider: request.provider,
-        model: request.model,
-        stage: "response_parse",
-        attempt,
-        imageCount,
-        payloadBytes,
-        durationMs,
-        code: "response_parse_error",
-        reason: error instanceof Error ? error.name : "unknown",
-      });
-      if (error instanceof MealVisionError) throw new MealVisionError("response_parse_error", error.message, { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
-      throw error;
-    }
-    try {
-      const result = mealAnalysisSchema.parse(parsed);
-      console.info("[meal-analysis] provider succeeded", {
-        requestId: request.requestId,
-        provider: request.provider,
-        model: request.model,
-        stage: "provider_success",
-        attempt,
-        imageCount,
-        payloadBytes,
-        durationMs,
-      });
-      return result;
-    } catch (error) {
-      console.error("[meal-analysis] provider content failed schema validation", {
-        requestId: request.requestId,
-        provider: request.provider,
-        model: request.model,
-        stage: "response_schema",
-        attempt,
-        imageCount,
-        payloadBytes,
-        durationMs,
-        code: "response_schema_error",
-        reason: error instanceof Error ? error.name : "unknown",
-      });
-      throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
     }
   }
   throw lastError instanceof Error ? lastError : new MealVisionError("provider_unavailable", providerMessage(request.provider, "provider_unavailable"), { provider: request.provider, requestId: request.requestId });

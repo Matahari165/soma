@@ -277,7 +277,7 @@ describe("meal text-only analysis", () => {
       const analyzeText = vi.fn().mockReturnValue(new Promise<typeof textOnlyAnalysis>((resolve) => { resolveAnalysis = resolve; }));
 
       const pending = analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze: vi.fn(), analyzeText } });
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.waitFor(() => expect(analyzeText).toHaveBeenCalledTimes(1), { interval: 1, timeout: 1_000 });
       await vi.advanceTimersByTimeAsync(30_000);
 
       expect(refreshCloudflareLockWithToken).toHaveBeenCalledWith(`meal-analysis:user-1:${baseId}`, "user-1", "analysis-lease-token", 120_000);

@@ -121,6 +121,20 @@ describe("xAI meal vision contract", () => {
       .rejects.toMatchObject({ code: "provider_rate_limited", message: "Grok est momentanément sollicité. Réessaie dans quelques instants." });
   });
 
+  it("keeps the normal output budget for a transient provider retry", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
+
+    await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
+
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number };
+    const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { max_output_tokens: number };
+    expect(firstBody.max_output_tokens).toBe(1_500);
+    expect(retryBody.max_output_tokens).toBe(1_500);
+  });
+
   it("retries an empty Grok response once", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch")
@@ -130,6 +144,24 @@ describe("xAI meal vision contract", () => {
     await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a truncated four-photo response with a larger budget and accepts text content variants", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const images = Array.from({ length: 4 }, (_, index) => ({ id: `photo-${index + 1}`, mimeType: "image/jpeg", origin: "homemade" as const, data: new Uint8Array([index + 1]).buffer }));
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "completed", output: [{ type: "message", content: [{ type: "text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider().analyze({ mealType: "dinner", mealDate: "2026-08-31", note: "Repas avec quatre photos", images });
+
+    expect(result.totals.calories?.likely).toBe(500);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string }> }> };
+    const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string }> }> };
+    expect(firstBody.max_output_tokens).toBe(4_000);
+    expect(retryBody.max_output_tokens).toBe(8_000);
+    expect(retryBody.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(4);
   });
 
   it("uses the primary model and validator for a natural-language correction by default", async () => {
