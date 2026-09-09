@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // The meal multipart parser accepts up to 41 MiB. Next's proxy otherwise
+    // truncates the request at its 10 MiB default before the route can reject
+    // or parse it, which is especially damaging for six-photo submissions.
+    proxyClientMaxBodySize: 41 * 1024 * 1024,
   },
 };
 

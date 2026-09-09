@@ -1,9 +1,10 @@
-// Four photos are sent to the primary model and, when configured, to the
+// Up to six photos are sent to the primary model and, when configured, to the
 // validator. A readable 1280px JPEG keeps that multimodal payload comfortably
 // below the Worker memory ceiling on mobile uploads.
 const MAX_IMAGE_EDGE = 1280;
 const IMAGE_QUALITY = 0.76;
 const REENCODE_AFTER_BYTES = 2 * 1024 * 1024;
+const MAX_NORMALIZED_BYTES = 10 * 1024 * 1024;
 
 function imageExtension(name: string) {
   const extension = name.lastIndexOf(".");
@@ -29,7 +30,7 @@ function shouldReencode(file: File, scale: number) {
 async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; close?: () => void }> {
   if (typeof createImageBitmap === "function") {
     try {
-      const bitmap = await createImageBitmap(file);
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
       return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close() };
     } catch {
       // Fall back to the browser image decoder when createImageBitmap cannot read HEIC.
@@ -72,8 +73,12 @@ export async function normalizeMealImage(file: File) {
   context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
   decoded.close?.();
   const mimeType = needsJpegNormalization(file) ? "image/jpeg" : file.type === "image/png" ? "image/png" : "image/jpeg";
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, IMAGE_QUALITY));
+  let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, IMAGE_QUALITY));
   if (!blob) throw new Error("Cette photo n’a pas pu être convertie. Prends-la à nouveau en JPEG ou PNG.");
+  if (blob.size > MAX_NORMALIZED_BYTES && mimeType === "image/jpeg") {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, 0.62));
+  }
+  if (!blob || blob.size > MAX_NORMALIZED_BYTES) throw new Error("Cette photo est trop lourde après conversion. Choisis une photo plus légère.");
   const baseName = file.name.replace(/\.[^.]+$/, "") || "repas";
   const extension = mimeType === "image/png" ? "png" : "jpg";
   return new File([blob], `${baseName}.${extension}`, { type: mimeType, lastModified: file.lastModified });

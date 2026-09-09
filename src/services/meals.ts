@@ -15,14 +15,16 @@ import {
   type UpdateMealInput,
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
-import { analyzeMealInput, isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
-import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
+import { isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
+import { analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider } from "@/integrations/meal-analysis/provider-chain";
+import * as cloudflareDb from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
 import {
   deleteMeal,
   deletePhoto,
   findLatestMealAnalysis,
+  findMealAnalysisByRequestId,
   findMeal,
   findMealByIdempotencyKey,
   findMealForSlot,
@@ -40,14 +42,32 @@ import {
   upsertMealFeelings,
 } from "@/repositories/meals";
 
+const { claimCloudflareLock, claimCloudflareLockWithToken, releaseCloudflareLock, releaseCloudflareLockWithToken } = cloudflareDb;
+
 export class MealServiceError extends Error {
-  constructor(readonly code: "not_found" | "invalid" | "conflict" | "unavailable", message: string, readonly diagnosticCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_unavailable" | "invalid_response" | "source_unavailable" | "photo_purge_pending") {
+  constructor(readonly code: "not_found" | "invalid" | "conflict" | "unavailable", message: string, readonly diagnosticCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_timeout" | "provider_unavailable" | "provider_empty_response" | "response_parse_error" | "response_schema_error" | "invalid_response" | "source_unavailable" | "storage_error" | "unknown_analysis_error" | "photo_purge_pending") {
     super(message);
     this.name = "MealServiceError";
   }
 }
 
 const PHOTO_PURGE_ERROR = "Les photos du repas n’ont pas pu être purgées. Réessaie pour terminer la confirmation.";
+
+async function claimMealLease(lockKey: string, userId: string, ttlMs: number) {
+  if (typeof claimCloudflareLockWithToken === "function") {
+    const token = await claimCloudflareLockWithToken(lockKey, userId, ttlMs);
+    // Older test/runtime adapters may expose the original boolean lock only.
+    // The production token implementation returns null on contention, never
+    // undefined, so undefined is a safe compatibility signal here.
+    if (token !== undefined) return { claimed: Boolean(token), token };
+  }
+  return { claimed: await claimCloudflareLock(lockKey, userId, ttlMs), token: null };
+}
+
+async function releaseMealLease(lockKey: string, userId: string, token: string | null) {
+  if (token && typeof releaseCloudflareLockWithToken === "function") return releaseCloudflareLockWithToken(lockKey, userId, token);
+  return releaseCloudflareLock(lockKey, userId);
+}
 
 function photoPurgeError() {
   return new MealServiceError("unavailable", PHOTO_PURGE_ERROR, "photo_purge_pending");
@@ -57,7 +77,8 @@ async function setPhotoStorageState(userId: string, mealId: string, photoId: str
   try {
     const updated = await updatePhotoStorage(userId, mealId, photoId, { storageStatus, purgedAt });
     if (!updated) throw photoPurgeError();
-  } catch {
+  } catch (error) {
+    console.error("[meal-analysis] photo storage state update failed", { mealId, photoId, storageStatus, stage: "photo_storage", reason: error instanceof Error ? error.name : "unknown" });
     throw photoPurgeError();
   }
 }
@@ -100,10 +121,11 @@ async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photo
   try {
     await deleteR2MealPhotoObject(photo.objectPath);
     await setPhotoStorageState(userId, mealId, photo.id, "purged", new Date().toISOString());
-  } catch {
+  } catch (error) {
     // The successful pending write remains the durable recovery marker. The
     // binary may or may not have been removed when the final D1 write failed,
     // so retries must reconcile from this state rather than guess.
+    console.error("[meal-analysis] photo purge did not finish", { mealId, photoId: photo.id, stage: "photo_purge", reason: error instanceof Error ? error.name : "unknown" });
     throw photoPurgeError();
   }
 }
@@ -179,7 +201,13 @@ export async function createMeal(userId: string, input: CreateMealInput) {
   if (!meal) throw new MealServiceError("unavailable", "The meal was saved but could not be reloaded.");
   return { meal, created: true };
   } finally {
-    if (idempotencyLock && lockClaimed) await releaseCloudflareLock(idempotencyLock, userId).catch(() => undefined);
+    if (idempotencyLock && lockClaimed) {
+      try {
+        await releaseCloudflareLock(idempotencyLock, userId);
+      } catch (error) {
+        console.error("[meal-analysis] meal creation lock release failed", { stage: "meal_create_lock_release", reason: error instanceof Error ? error.name : "unknown" });
+      }
+    }
   }
 }
 
@@ -274,15 +302,18 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
   assertMealId(mealId);
   if (!await findMeal(userId, mealId)) throw new MealServiceError("not_found", "Meal not found.");
   if (files.length < 1) throw new MealServiceError("invalid", "Add at least one photo.");
+  if (files.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
+  if (files.some((file) => !isXaiVisionMimeType(file.mimeType))) throw new MealServiceError("invalid", "Les photos doivent être en JPEG ou PNG avant l’analyse.");
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
   if (totalBytes > MAX_MEAL_PHOTOS_BYTES) throw new MealServiceError("invalid", "The selected photos are too large together.");
   files.forEach((file) => assertPhotoSize(file.size));
 
   // Serialize every upload for a meal, not only retries with the same key.
   // Otherwise two requests can both observe four photos and each pass the
-  // five-photo check before either request writes its metadata.
+  // six-photo check before either request writes its metadata.
   const uploadLock = `meal-photos:${userId}:${mealId}`;
-  const claimed = await claimCloudflareLock(uploadLock, userId, 60_000);
+  const lease = await claimMealLease(uploadLock, userId, 90_000);
+  const claimed = lease.claimed;
   if (!claimed) {
     if (options.idempotencyKey) {
       const existing = await findPhotosByUploadIdempotencyKey(userId, mealId, options.idempotencyKey);
@@ -330,13 +361,17 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
     } catch (error) {
       // Metadata and R2 are kept together as far as possible. A failed D1 write
       // must not leave an inaccessible private photo behind.
-      await Promise.all(stored.map((path) => deleteR2MealPhotoObject(path).catch(() => undefined)));
-      await Promise.all(insertedIds.map((id) => deletePhoto(userId, mealId, id).catch(() => undefined)));
+      await Promise.all(stored.map((path) => deleteR2MealPhotoObject(path).catch((cleanupError) => {
+        console.error("[meal-analysis] orphaned photo cleanup failed", { mealId, stage: "photo_r2_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
+      })));
+      await Promise.all(insertedIds.map((id) => deletePhoto(userId, mealId, id).catch((cleanupError) => {
+        console.error("[meal-analysis] photo metadata cleanup failed", { mealId, photoId: id, stage: "photo_d1_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
+      })));
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", "The meal photos could not be saved.");
     }
   } finally {
-    await releaseCloudflareLock(uploadLock, userId).catch(() => undefined);
+    await releaseMealLease(uploadLock, userId, lease.token).catch((error) => console.error("[meal-analysis] photo lock release failed", { mealId, stage: "photo_lock_release", reason: error instanceof Error ? error.name : "unknown" }));
   }
 }
 
@@ -363,12 +398,13 @@ export async function removeMealPhoto(userId: string, mealId: string, photoId: s
   await updateMeal(userId, mealId, { status: "draft" });
 }
 
-export async function analyzeMeal(userId: string, mealId: string, options: { force?: boolean; correction?: MealAnalysisCorrection; provider?: MealVisionProvider } = {}) {
+export async function analyzeMeal(userId: string, mealId: string, options: { force?: boolean; correction?: MealAnalysisCorrection; provider?: MealVisionProvider; analysisRequestId?: string } = {}) {
   assertMealId(mealId);
   const meal = await findMeal(userId, mealId);
   if (!meal) throw new MealServiceError("not_found", "Meal not found.");
   const lockKey = `meal-analysis:${userId}:${mealId}`;
-  const claimed = await claimCloudflareLock(lockKey, userId, 120_000);
+  const lease = await claimMealLease(lockKey, userId, 180_000);
+  const claimed = lease.claimed;
   if (!claimed) throw new MealServiceError("conflict", "This meal is already being analysed.");
   try {
     const currentMeal = await findMeal(userId, mealId);
@@ -380,13 +416,22 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
     const availablePhotos = currentMeal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
     const hasPhotos = availablePhotos.length > 0;
     const sourceFingerprint = await computeMealSourceFingerprint({ note: currentMeal.note, photos: currentMeal.photos });
-    const current = await findLatestMealAnalysis(userId, mealId);
+    const [current, requestMatch] = await Promise.all([
+      findLatestMealAnalysis(userId, mealId),
+      options.analysisRequestId ? findMealAnalysisByRequestId(userId, mealId, options.analysisRequestId) : Promise.resolve(null),
+    ]);
+    if (requestMatch) {
+      if (requestMatch.status === "completed" && requestMatch.result) return { analysis: requestMatch, fresh: false };
+      if (requestMatch.status === "failed") throw new MealServiceError("unavailable", requestMatch.error ?? "L’analyse du repas a échoué. Réessaie.", requestMatch.errorCode ?? "unknown_analysis_error");
+      throw new MealServiceError("conflict", "Cette analyse est déjà en cours.");
+    }
     const lastSuccessful = currentMeal.lastSuccessfulAnalysis ?? (current?.status === "completed" && current.result ? current : null);
     if (!hasPhotos && !note) {
       if (lastSuccessful) return { analysis: lastSuccessful, fresh: false };
       throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
     }
-    if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Grok analyse actuellement les photos JPEG et PNG uniquement.");
+    if (availablePhotos.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `Un repas ne peut pas contenir plus de ${MAX_MEAL_PHOTOS} photos pour l’analyse.`);
+    if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Les photos de ce repas doivent être en JPEG ou PNG avant l’analyse.");
     if (!options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false };
     if (!hasPhotos && !note && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
     const sourcePhotoIds = availablePhotos.map((photo) => photo.id);
@@ -397,8 +442,9 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       user_id: userId,
       meal_id: mealId,
       status: "running",
-      provider: options.provider?.name ?? "xai",
-      model: options.provider?.model ?? process.env.XAI_MEAL_VISION_MODEL ?? "grok-4.6",
+      provider: options.provider?.name ?? getConfiguredMealAnalysisProvider().name,
+      model: options.provider?.model ?? getConfiguredMealAnalysisProvider().model,
+      analysis_request_id: options.analysisRequestId ?? null,
       result: null,
       error: null,
       source_fingerprint: sourceFingerprint,
@@ -413,7 +459,10 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
           if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
           return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() };
         })),
-        findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch(() => []),
+        findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch((error) => {
+          console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId: options.analysisRequestId, mealId, stage: "recipe_context", reason: error instanceof Error ? error.name : "unknown" });
+          return [];
+        }),
       ]);
       const input = {
         mealType: currentMeal.mealType,
@@ -423,7 +472,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         ...(options.correction ? { correction: options.correction } : {}),
         ...(recipeReferences.length ? { recipeReferences } : {}),
       };
-      const analysed = await analyzeMealInput(input, options.provider);
+      const analysed = await analyzeMealInputWithFallback(input, { provider: options.provider, requestId: options.analysisRequestId });
       let canonicalResult;
       try {
         canonicalResult = validateMealAnalysis(analysed.result);
@@ -442,17 +491,36 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       return { analysis: completed, fresh: true };
     } catch (error) {
       const visionError = error instanceof MealVisionError ? error : null;
-      const safeError = error instanceof MealServiceError ? error.message : visionError?.message ?? "Grok est momentanément indisponible.";
-      const errorCode = error instanceof MealServiceError ? error.diagnosticCode ?? "source_unavailable" : visionError?.code ?? "provider_unavailable";
+      const safeError = error instanceof MealServiceError ? error.message : visionError?.message ?? "L’analyse du repas a échoué. Réessaie.";
+      const errorCode = error instanceof MealServiceError ? error.diagnosticCode ?? "source_unavailable" : visionError?.code ?? "unknown_analysis_error";
       let failed = null;
       for (let attempt = 0; attempt < 2 && !failed; attempt += 1) {
-        failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, completed_at: new Date().toISOString() }).catch(() => null);
+        try {
+          failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, completed_at: new Date().toISOString() });
+        } catch (persistError) {
+          console.error("[meal-analysis] failed analysis could not be persisted", {
+            requestId: options.analysisRequestId,
+            mealId,
+            analysisId,
+            stage: "failure_persistence",
+            reason: persistError instanceof Error ? persistError.name : "unknown",
+          });
+        }
       }
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", failed?.error ?? safeError, errorCode);
     }
   } finally {
-    await releaseCloudflareLock(lockKey, userId).catch(() => undefined);
+    try {
+      await releaseMealLease(lockKey, userId, lease.token);
+    } catch (error) {
+      console.error("[meal-analysis] analysis lock release failed", {
+        requestId: options.analysisRequestId,
+        mealId,
+        stage: "lock_release",
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+    }
   }
 }
 

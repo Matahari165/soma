@@ -44,6 +44,7 @@ type AnalysisRow = Row & {
   id: string;
   user_id: string;
   meal_id: string;
+  analysis_request_id?: string | null;
   status: MealAnalysisRecord["status"];
   provider: string;
   model: string;
@@ -73,6 +74,18 @@ function asFeeling(value: unknown): MealFeeling {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 5 ? value : null;
 }
 
+const mealAnalysisErrorCodes = new Set<NonNullable<MealAnalysisRecord["errorCode"]>>([
+  "provider_auth", "provider_rate_limited", "provider_request", "provider_timeout", "provider_unavailable",
+  "provider_empty_response", "response_parse_error", "response_schema_error", "invalid_response", "source_unavailable",
+  "storage_error", "unknown_analysis_error", "photo_purge_pending",
+]);
+
+function analysisErrorCode(value: unknown): MealAnalysisRecord["errorCode"] {
+  return typeof value === "string" && mealAnalysisErrorCodes.has(value as NonNullable<MealAnalysisRecord["errorCode"]>)
+    ? value as NonNullable<MealAnalysisRecord["errorCode"]>
+    : null;
+}
+
 function photoFromRow(row: PhotoRow): MealPhoto {
   return {
     id: row.id,
@@ -98,7 +111,7 @@ function analysisFromRow(row: AnalysisRow): MealAnalysisRecord {
     result: row.result && typeof row.result === "object" ? row.result : null,
     error: asNullableString(row.error),
     sourceFingerprint: asNullableString(row.source_fingerprint),
-    errorCode: row.error_code === "provider_auth" || row.error_code === "provider_rate_limited" || row.error_code === "provider_request" || row.error_code === "provider_unavailable" || row.error_code === "invalid_response" || row.error_code === "source_unavailable" ? row.error_code : null,
+    errorCode: analysisErrorCode(row.error_code),
     sourcePhotoIds: Array.isArray(row.source_photo_ids) ? row.source_photo_ids.filter((id): id is string => typeof id === "string") : [],
     createdAt: row.created_at,
     completedAt: asNullableString(row.completed_at),
@@ -326,6 +339,12 @@ export async function findLatestMealAnalysis(userId: string, mealId: string) {
   const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
   const latest = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
   return latest ? analysisFromRow(latest) : null;
+}
+
+export async function findMealAnalysisByRequestId(userId: string, mealId: string, requestId: string) {
+  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
+  const match = rows.find((row) => row.analysis_request_id === requestId);
+  return match ? analysisFromRow(match) : null;
 }
 
 export async function insertMealAnalysis(row: AnalysisRow) {

@@ -18,6 +18,8 @@ export type MealVisionInput = {
   images: MealVisionImage[];
   correction?: MealAnalysisCorrection | null;
   recipeReferences?: MealRecipeReference[];
+  /** Correlation only; never included in the model prompt. */
+  requestId?: string;
 };
 
 export type MealVisionTextInput = {
@@ -26,6 +28,7 @@ export type MealVisionTextInput = {
   note: string;
   correction?: MealAnalysisCorrection | null;
   recipeReferences?: MealRecipeReference[];
+  requestId?: string;
 };
 
 /**
@@ -37,14 +40,34 @@ export type MealVisionErrorCode =
   | "provider_auth"
   | "provider_rate_limited"
   | "provider_request"
+  | "provider_timeout"
   | "provider_unavailable"
+  | "provider_empty_response"
+  | "response_parse_error"
+  | "response_schema_error"
   | "invalid_response";
 
 export class MealVisionError extends Error {
-  constructor(readonly code: MealVisionErrorCode, message: string, options?: { cause?: unknown }) {
+  readonly retryable: boolean;
+
+  constructor(
+    readonly code: MealVisionErrorCode,
+    message: string,
+    options?: { cause?: unknown; provider?: string; status?: number; retryable?: boolean; retryAfterMs?: number; requestId?: string },
+  ) {
     super(message, options);
     this.name = "MealVisionError";
+    this.provider = options?.provider;
+    this.status = options?.status;
+    this.retryAfterMs = options?.retryAfterMs;
+    this.requestId = options?.requestId;
+    this.retryable = options?.retryable ?? (code === "provider_timeout" || code === "provider_rate_limited" || code === "provider_unavailable");
   }
+
+  readonly provider?: string;
+  readonly status?: number;
+  readonly retryAfterMs?: number;
+  readonly requestId?: string;
 }
 
 export type MealVisionProvider = {
@@ -67,17 +90,18 @@ export function isXaiVisionMimeType(mimeType: string) {
 // Meal analysis is allowed to spend more time on the primary vision pass than
 // on the optional validator. Four photos can take longer to inspect than one,
 // while the route still has to finish well inside its 50s platform budget.
-const PRIMARY_VISION_TIMEOUT_MS = 30_000;
-const TEXT_ANALYSIS_TIMEOUT_MS = 15_000;
-const VALIDATOR_TIMEOUT_MS = 12_000;
+const PRIMARY_VISION_TIMEOUT_MS = Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || 15_000);
+const TEXT_ANALYSIS_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 12_000);
+const VALIDATOR_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 8_000);
+const MAX_PROVIDER_ATTEMPTS = 2;
 
 type VisionImageDetail = "low" | "high";
 
-function imageDataUri(image: MealVisionImage) {
+export function imageDataUri(image: MealVisionImage) {
   return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
 }
 
-function mealAnalysisJsonSchema() {
+export function mealAnalysisJsonSchema() {
   const range = {
     anyOf: [
       { type: "null" },
@@ -110,7 +134,7 @@ function mealAnalysisJsonSchema() {
       varietyKey: { anyOf: [{ type: "string", maxLength: 80 }, { type: "null" }] },
       evidence: { type: "string", enum: ["visible", "inferred", "unknown"] },
       evidenceSource: { type: "string", enum: ["photo", "note", "model"] },
-      evidencePhotoIds: { type: "array", maxItems: 5, items: { type: "string", minLength: 1, maxLength: 120 } },
+      evidencePhotoIds: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 120 } },
       quantity: {
         anyOf: [
           { type: "null" },
@@ -167,6 +191,9 @@ function mealAnalysisJsonSchema() {
 }
 
 function responseText(result: unknown) {
+  if (!result || typeof result !== "object") return null;
+  const direct = (result as { output_text?: unknown }).output_text;
+  if (typeof direct === "string" && direct.trim()) return direct;
   const output = (result as { output?: unknown }).output;
   if (!Array.isArray(output)) return null;
   const fragments = output.flatMap((item) => {
@@ -175,11 +202,128 @@ function responseText(result: unknown) {
     if (!Array.isArray(content)) return [];
     return content.flatMap((part) => {
       if (!part || typeof part !== "object") return [];
-      const typed = part as { type?: unknown; text?: unknown };
-      return typed.type === "output_text" && typeof typed.text === "string" ? [typed.text] : [];
+      const typed = part as { type?: unknown; text?: unknown; refusal?: unknown };
+      return typed.type === "output_text" && typeof typed.text === "string"
+        ? [typed.text]
+        : typed.type === "refusal" && typeof typed.refusal === "string"
+          ? []
+          : [];
     });
   });
   return fragments.join("\n") || null;
+}
+
+function balancedJsonCandidates(text: string) {
+  const candidates: string[] = [];
+  for (let start = 0; start < text.length; start += 1) {
+    if (text[start] !== "{") continue;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index += 1) {
+      const character = text[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') {
+        inString = true;
+        continue;
+      }
+      if (character === "{") depth += 1;
+      if (character === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          candidates.push(text.slice(start, index + 1));
+          break;
+        }
+      }
+    }
+  }
+  return candidates;
+}
+
+function normalizeNumericFields(value: unknown): unknown {
+  if (typeof value !== "string" || !value.trim()) return value;
+  const numeric = Number(value.trim());
+  return Number.isFinite(numeric) ? numeric : value;
+}
+
+function normalizeRange(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const range = value as Record<string, unknown>;
+  return {
+    ...range,
+    low: normalizeNumericFields(range.low),
+    likely: normalizeNumericFields(range.likely),
+    high: normalizeNumericFields(range.high),
+  };
+}
+
+function normalizeStructuredAnalysis(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const source = value as Record<string, unknown>;
+  const normalizeFood = (food: unknown) => {
+    if (!food || typeof food !== "object" || Array.isArray(food)) return food;
+    const item = food as Record<string, unknown>;
+    const quantity = item.quantity && typeof item.quantity === "object" && !Array.isArray(item.quantity)
+      ? { ...(item.quantity as Record<string, unknown>), value: normalizeNumericFields((item.quantity as Record<string, unknown>).value), grams: normalizeNumericFields((item.quantity as Record<string, unknown>).grams) }
+      : item.quantity;
+    return {
+      ...item,
+      estimatedGrams: normalizeNumericFields(item.estimatedGrams),
+      calories: normalizeRange(item.calories),
+      proteinGrams: normalizeRange(item.proteinGrams),
+      carbohydrateGrams: normalizeRange(item.carbohydrateGrams),
+      fatGrams: normalizeRange(item.fatGrams),
+      fiberGrams: normalizeRange(item.fiberGrams),
+      sugarGrams: normalizeRange(item.sugarGrams),
+      addedSugarGrams: normalizeRange(item.addedSugarGrams),
+      quantity,
+    };
+  };
+  return {
+    ...source,
+    foods: Array.isArray(source.foods) ? source.foods.map(normalizeFood) : source.foods,
+    totals: source.totals && typeof source.totals === "object" && !Array.isArray(source.totals)
+      ? Object.fromEntries(Object.entries(source.totals as Record<string, unknown>).map(([key, entry]) => [key, key.endsWith("Grams") || key === "calories" ? normalizeRange(entry) : entry]))
+      : source.totals,
+  };
+}
+
+function structuredJson(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1]?.trim();
+  const candidates = [fenced, trimmed, ...balancedJsonCandidates(trimmed)].filter((candidate, index, all): candidate is string => Boolean(candidate) && all.indexOf(candidate) === index);
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return normalizeStructuredAnalysis(JSON.parse(candidate) as unknown);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new MealVisionError("response_parse_error", "La réponse du provider n’est pas un JSON valide.", { cause: lastError });
+}
+
+function retryAfterMs(response: Response) {
+  const value = response.headers.get("retry-after")?.trim();
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.min(5_000, Math.max(0, seconds * 1_000));
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.min(5_000, Math.max(0, timestamp - Date.now())) : undefined;
+}
+
+function providerMessage(provider: "xai" | "openai", code: MealVisionErrorCode) {
+  if (code === "provider_auth") return provider === "xai" ? "La configuration de l’analyse Grok est invalide." : "La configuration de l’analyse ChatGPT est invalide.";
+  if (code === "provider_rate_limited") return provider === "xai" ? "Grok est momentanément sollicité. Réessaie dans quelques instants." : "ChatGPT est momentanément sollicité. Réessaie dans quelques instants.";
+  if (code === "provider_timeout") return provider === "xai" ? "Grok n’a pas répondu à temps." : "ChatGPT n’a pas répondu à temps.";
+  if (code === "provider_request") return provider === "xai" ? "La demande d’analyse Grok est invalide." : "La demande d’analyse ChatGPT est invalide.";
+  if (code === "provider_empty_response") return provider === "xai" ? "Grok n’a pas retourné d’analyse structurée." : "ChatGPT n’a pas retourné d’analyse structurée.";
+  return provider === "xai" ? "Grok est momentanément indisponible." : "ChatGPT est momentanément indisponible.";
 }
 
 function recipeReferencesPrompt(recipeReferences: MealRecipeReference[] | undefined) {
@@ -211,7 +355,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
   ].join("\n");
 }
 
-function makePrompt(input: MealVisionInput) {
+export function makePrompt(input: MealVisionInput) {
   const origins = input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
   return [
     "Analyse these photos as one meal for a personal food journal. Réponds avec des libellés en français.",
@@ -256,167 +400,267 @@ function originsForVerification(input: MealVisionVerificationInput) {
   return input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
 }
 
-async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, timeoutMs }: {
+type StructuredRequest = {
+  provider: "xai" | "openai";
+  endpoint: string;
+  apiKeyEnv: "XAI_API_KEY" | "OPENAI_API_KEY";
   model: string;
   instructions: string;
   promptText: string;
   imageContents: Array<{ type: string; image_url: string; detail: string }>;
   maxOutputTokens: number;
   timeoutMs: number;
-}) {
-  const imageCount = imageContents.length;
+  requestId?: string;
+  reasoningEffort?: string;
+  maxAttempts?: number;
+};
+
+export async function requestStructuredMealAnalysis(request: StructuredRequest) {
+  const imageCount = request.imageContents.length;
   let apiKey: string;
   try {
-    apiKey = requireServerEnv("XAI_API_KEY");
+    apiKey = requireServerEnv(request.apiKeyEnv);
   } catch (error) {
-    throw new MealVisionError("provider_auth", "La configuration de l’analyse Grok est invalide.", { cause: error });
+    throw new MealVisionError("provider_auth", providerMessage(request.provider, "provider_auth"), { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
   }
-  let response: Response;
-  try {
-    response = await fetch(process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: maxOutputTokens,
-        instructions,
-        input: [{
-          role: "user",
-          content: [{ type: "input_text", text: promptText }, ...imageContents],
-        }],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "soma_meal_analysis",
-            strict: true,
-            schema: mealAnalysisJsonSchema(),
-          },
-        },
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (error) {
-    console.error("[meal-vision] xAI request failed", {
-      model,
-      imageCount,
-      timeoutMs,
-      reason: error instanceof Error ? error.name : "unknown",
-    });
-    throw new MealVisionError("provider_unavailable", "Grok est momentanément indisponible.", { cause: error });
+  const payload = {
+    model: request.model,
+    store: false,
+    reasoning: { effort: request.reasoningEffort || "low" },
+    max_output_tokens: request.maxOutputTokens,
+    instructions: request.instructions,
+    input: [{
+      role: "user",
+      content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
+    }],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "soma_meal_analysis",
+        strict: true,
+        schema: mealAnalysisJsonSchema(),
+      },
+    },
+  };
+  const payloadBytes = JSON.stringify(payload).length;
+  let lastError: unknown;
+  const maxAttempts = request.maxAttempts ?? MAX_PROVIDER_ATTEMPTS;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const startedAt = Date.now();
+    let response: Response;
+    try {
+      response = await fetch(request.endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(request.timeoutMs),
+      });
+    } catch (error) {
+      const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      const code: MealVisionErrorCode = timeout ? "provider_timeout" : "provider_unavailable";
+      const classified = new MealVisionError(code, providerMessage(request.provider, code), { cause: error, provider: request.provider, requestId: request.requestId, retryable: true });
+      console.error("[meal-analysis] provider request failed", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "provider_request",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs: Date.now() - startedAt,
+        code,
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+      lastError = classified;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
+        continue;
+      }
+      throw classified;
+    }
+    const durationMs = Date.now() - startedAt;
+    if (!response.ok) {
+      const retryable = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
+      const code: MealVisionErrorCode = response.status === 401 || response.status === 403
+        ? "provider_auth"
+        : response.status === 429
+          ? "provider_rate_limited"
+          : response.status === 408 || response.status === 425
+            ? "provider_timeout"
+            : response.status >= 500
+              ? "provider_unavailable"
+              : "provider_request";
+      const classified = new MealVisionError(code, providerMessage(request.provider, code), {
+        provider: request.provider,
+        status: response.status,
+        requestId: request.requestId,
+        retryable,
+        retryAfterMs: retryAfterMs(response),
+      });
+      console.error("[meal-analysis] provider returned an error", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "provider_response",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        status: response.status,
+        code,
+      });
+      lastError = classified;
+      if (retryable && attempt < maxAttempts) {
+        const delay = classified.retryAfterMs ?? (250 + Math.floor(Math.random() * 500));
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw classified;
+    }
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch (error) {
+      console.error("[meal-analysis] provider response could not be decoded", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "response_decode",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        code: "response_parse_error",
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+      throw new MealVisionError("response_parse_error", "La réponse du provider est illisible.", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+    }
+    const responseStatus = body && typeof body === "object" && typeof (body as { status?: unknown }).status === "string"
+      ? (body as { status: string }).status
+      : undefined;
+    if (responseStatus === "incomplete") {
+      console.error("[meal-analysis] provider returned an incomplete response", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "response_incomplete",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        code: "provider_empty_response",
+      });
+      throw new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId, retryable: false });
+    }
+    const text = responseText(body);
+    if (!text) {
+      console.error("[meal-analysis] provider returned no structured content", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "response_empty",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        code: "provider_empty_response",
+      });
+      throw new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId, retryable: false });
+    }
+    let parsed: unknown;
+    try {
+      parsed = structuredJson(text);
+    } catch (error) {
+      console.error("[meal-analysis] provider content was not parseable JSON", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "response_parse",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        code: "response_parse_error",
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+      if (error instanceof MealVisionError) throw new MealVisionError("response_parse_error", error.message, { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+      throw error;
+    }
+    try {
+      const result = mealAnalysisSchema.parse(parsed);
+      console.info("[meal-analysis] provider succeeded", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "provider_success",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+      });
+      return result;
+    } catch (error) {
+      console.error("[meal-analysis] provider content failed schema validation", {
+        requestId: request.requestId,
+        provider: request.provider,
+        model: request.model,
+        stage: "response_schema",
+        attempt,
+        imageCount,
+        payloadBytes,
+        durationMs,
+        code: "response_schema_error",
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+      throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+    }
   }
-  if (!response.ok) {
-    const code = response.status === 401 || response.status === 403
-      ? "provider_auth"
-      : response.status === 429
-        ? "provider_rate_limited"
-        : response.status >= 500
-          ? "provider_unavailable"
-          : "provider_request";
-    const message = code === "provider_auth"
-      ? "La configuration de l’analyse Grok est invalide."
-      : code === "provider_rate_limited"
-        ? "Grok est momentanément sollicité. Réessaie dans quelques instants."
-        : code === "provider_request"
-          ? "La demande d’analyse Grok est invalide."
-          : "Grok est momentanément indisponible.";
-    console.error("[meal-vision] xAI returned an error", { model, imageCount, status: response.status, code });
-    throw new MealVisionError(code, message);
-  }
-  let text: string | null;
-  try {
-    text = responseText(await response.json());
-  } catch (error) {
-    throw new MealVisionError("invalid_response", "La réponse de Grok est illisible.", { cause: error });
-  }
-  if (!text) throw new MealVisionError("invalid_response", "Grok n’a pas retourné d’analyse structurée.");
-  try {
-    return mealAnalysisSchema.parse(JSON.parse(text));
-  } catch (error) {
-    throw new MealVisionError("invalid_response", "Grok a retourné une analyse structurée invalide (invalid structured meal analysis).", { cause: error });
-  }
+  throw lastError instanceof Error ? lastError : new MealVisionError("provider_unavailable", providerMessage(request.provider, "provider_unavailable"), { provider: request.provider, requestId: request.requestId });
+}
+
+async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, timeoutMs, requestId, maxAttempts }: {
+  model: string;
+  instructions: string;
+  promptText: string;
+  imageContents: Array<{ type: string; image_url: string; detail: string }>;
+  maxOutputTokens: number;
+  timeoutMs: number;
+  requestId?: string;
+  maxAttempts?: number;
+}) {
+  return requestStructuredMealAnalysis({
+    provider: "xai",
+    endpoint: process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses",
+    apiKeyEnv: "XAI_API_KEY",
+    model,
+    instructions,
+    promptText,
+    imageContents,
+    maxOutputTokens,
+    timeoutMs,
+    requestId,
+    maxAttempts,
+  });
 }
 
 async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string) {
-  const imageCount = input.images.length;
-  let apiKey: string;
-  try {
-    apiKey = requireServerEnv("OPENAI_API_KEY");
-  } catch (error) {
-    throw new MealVisionError("provider_auth", "La configuration du validateur OpenAI est invalide.", { cause: error });
-  }
-  let response: Response;
-  try {
-    response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low" },
-        max_output_tokens: 4_000,
-        instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
-        input: [{
-          role: "user",
-          // The primary Grok pass keeps the detailed images. The validator only
-          // needs enough resolution to challenge obvious visual mistakes, which
-          // keeps this second request lighter without removing the evidence.
-          content: [{ type: "input_text", text: makeVerificationPrompt(input) }, ...input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" }))],
-        }],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "soma_meal_analysis",
-            strict: true,
-            schema: mealAnalysisJsonSchema(),
-          },
-        },
-      }),
-      signal: AbortSignal.timeout(VALIDATOR_TIMEOUT_MS),
-    });
-  } catch (error) {
-    console.error("[meal-vision] OpenAI validator request failed", {
-      model,
-      imageCount,
-      timeoutMs: VALIDATOR_TIMEOUT_MS,
-      reason: error instanceof Error ? error.name : "unknown",
-    });
-    throw new MealVisionError("provider_unavailable", "Le validateur OpenAI est momentanément indisponible.", { cause: error });
-  }
-  if (!response.ok) {
-    const code = response.status === 401 || response.status === 403
-      ? "provider_auth"
-      : response.status === 429
-        ? "provider_rate_limited"
-        : response.status >= 500
-          ? "provider_unavailable"
-          : "provider_request";
-    const message = code === "provider_auth"
-      ? "La configuration du validateur OpenAI est invalide."
-      : code === "provider_rate_limited"
-        ? "OpenAI est momentanément sollicité."
-        : code === "provider_request"
-          ? "La demande du validateur OpenAI est invalide."
-          : "Le validateur OpenAI est momentanément indisponible.";
-    console.error("[meal-vision] OpenAI validator returned an error", { model, imageCount, status: response.status, code });
-    throw new MealVisionError(code, message);
-  }
-  let text: string | null;
-  try {
-    text = responseText(await response.json());
-  } catch (error) {
-    throw new MealVisionError("invalid_response", "La réponse du validateur OpenAI est illisible.", { cause: error });
-  }
-  if (!text) throw new MealVisionError("invalid_response", "Le validateur OpenAI n’a pas retourné d’analyse structurée.");
-  try {
-    return mealAnalysisSchema.parse(JSON.parse(text));
-  } catch (error) {
-    throw new MealVisionError("invalid_response", "Le validateur OpenAI a retourné une analyse structurée invalide.", { cause: error });
-  }
+  return requestStructuredMealAnalysis({
+    provider: "openai",
+    endpoint: process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses",
+    apiKeyEnv: "OPENAI_API_KEY",
+    model,
+    instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
+    promptText: makeVerificationPrompt(input),
+    imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" })),
+    maxOutputTokens: 4_000,
+    timeoutMs: VALIDATOR_TIMEOUT_MS,
+    reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low",
+    requestId: input.requestId,
+    maxAttempts: 1,
+  });
 }
 
-export function createXaiMealVisionProvider(): MealVisionProvider {
+export function createXaiMealVisionProvider(options: { maxAttempts?: number } = {}): MealVisionProvider {
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
   const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
@@ -431,6 +675,8 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
         timeoutMs: PRIMARY_VISION_TIMEOUT_MS,
+        requestId: input.requestId,
+        maxAttempts: options.maxAttempts,
       });
     },
     async analyzeText(input) {
@@ -441,6 +687,8 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         imageContents: [],
         maxOutputTokens: 1_500,
         timeoutMs: TEXT_ANALYSIS_TIMEOUT_MS,
+        requestId: input.requestId,
+        maxAttempts: options.maxAttempts,
       });
     },
     async verify(input) {
@@ -452,6 +700,8 @@ export function createXaiMealVisionProvider(): MealVisionProvider {
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
         timeoutMs: VALIDATOR_TIMEOUT_MS,
+        requestId: input.requestId,
+        maxAttempts: 1,
       });
     },
   };
@@ -480,10 +730,11 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
  * provider's text-only method. The optional validator runs by default and
  * falls back to the primary result when it fails.
  */
-export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { verify?: boolean } = {}) {
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { verify?: boolean; requestId?: string } = {}) {
+  const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
   const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primary = input.images.length > 0
-    ? await provider.analyze(input)
+    ? await provider.analyze(providerInput)
     : await (async () => {
       const note = input.note?.trim() ?? "";
       if (!note) throw new Error("A meal needs a note or at least one image before analysis.");
@@ -493,6 +744,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
         mealDate: input.mealDate,
         note,
         ...(input.correction ? { correction: input.correction } : {}),
+        ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
         ...recipeContext,
       });
     })();
@@ -500,9 +752,15 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
   let result = primary;
   if (options.verify !== false && provider.verify) {
     try {
-      result = await provider.verify({ ...input, primaryAnalysis: primary });
-    } catch {
-      // The primary analysis is still useful when the optional verification pass fails.
+      result = await provider.verify({ ...providerInput, primaryAnalysis: primary });
+    } catch (error) {
+      console.warn("[meal-analysis] optional verification failed; primary result preserved", {
+        requestId: providerInput.requestId,
+        provider: provider.name,
+        model: provider.model,
+        stage: "verification",
+        code: error instanceof MealVisionError ? error.code : "unknown",
+      });
       result = primary;
     }
   }

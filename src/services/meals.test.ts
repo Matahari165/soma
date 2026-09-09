@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   findMeal: vi.fn(),
+  findMealAnalysisByRequestId: vi.fn(),
   findMealForSlot: vi.fn(),
   insertMeal: vi.fn(),
   insertMealAnalysis: vi.fn(),
@@ -14,13 +15,13 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/meals", () => ({
-  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
+  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
 }));
-vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn() }));
+vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn(), claimCloudflareLockWithToken: vi.fn(), releaseCloudflareLockWithToken: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 
-import { computeMealSourceFingerprint, createMeal, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
+import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject } from "@/lib/r2";
@@ -236,6 +237,7 @@ describe("meal text-only analysis", () => {
     vi.mocked(claimCloudflareLock).mockResolvedValue(true);
     vi.mocked(releaseCloudflareLock).mockResolvedValue(undefined);
     vi.mocked(findLatestMealAnalysis).mockResolvedValue(null);
+    state.findMealAnalysisByRequestId.mockResolvedValue(null);
     vi.mocked(updateMealAnalysis).mockImplementation(async (_userId: string, id: string, values: Record<string, unknown>) => ({
       id,
       mealId: baseId,
@@ -257,6 +259,20 @@ describe("meal text-only analysis", () => {
     expect(analyzeText).toHaveBeenCalledWith({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
     expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ status: "running", source_photo_ids: [] }));
     expect(result).toMatchObject({ fresh: true, analysis: { status: "completed", result: textOnlyAnalysis } });
+  });
+
+  it("returns the completed result for a repeated analysis request id", async () => {
+    state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "snack" as const, note: "2 bananes", status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [], analysis: null });
+    const analyzeText = vi.fn().mockResolvedValue(textOnlyAnalysis);
+    const provider = { name: "stub", model: "stub-1", analyze: vi.fn(), analyzeText };
+
+    await analyzeMeal("user-1", baseId, { provider, analysisRequestId: "analysis-request-1" });
+    state.findMealAnalysisByRequestId.mockResolvedValue({ id: "analysis-requested", mealId: baseId, status: "completed", provider: "stub", model: "stub-1", result: textOnlyAnalysis, error: null, sourcePhotoIds: [], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" });
+
+    const repeated = await analyzeMeal("user-1", baseId, { provider, force: true, analysisRequestId: "analysis-request-1" });
+
+    expect(repeated).toMatchObject({ fresh: false, analysis: { id: "analysis-requested", result: textOnlyAnalysis } });
+    expect(analyzeText).toHaveBeenCalledTimes(1);
   });
 
   it("analyses an image-only meal with one vision call", async () => {
@@ -299,6 +315,35 @@ describe("meal text-only analysis", () => {
       { id: "photo-4", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
     ] });
     expect(analyzeText).not.toHaveBeenCalled();
+  });
+
+  it("sends six photos together in one vision call", async () => {
+    const photos = Array.from({ length: 6 }, (_, index) => ({
+      id: `photo-${index + 1}`,
+      mealId: baseId,
+      origin: "homemade" as const,
+      objectPath: `private/photo-${index + 1}`,
+      mimeType: index % 2 === 0 ? "image/jpeg" as const : "image/png" as const,
+      bytes: 3,
+      createdAt: `2026-08-31T10:00:0${index}.000Z`,
+      storageStatus: "available" as const,
+    }));
+    state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: "Six vues du repas", status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos, analysis: null });
+    for (let index = 0; index < 6; index += 1) vi.mocked(getR2MealPhotoObject).mockResolvedValueOnce(new Response(Uint8Array.from([index + 1])));
+    const analyze = vi.fn().mockResolvedValue(textOnlyAnalysis);
+
+    await analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze } });
+
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(analyze.mock.calls[0]?.[0].images).toHaveLength(6);
+  });
+
+  it("rejects seven photos before writing any file", async () => {
+    const currentMeal = { id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [], analysis: null };
+    state.findMeal.mockResolvedValue(currentMeal);
+    const files = Array.from({ length: 7 }, (_, index) => ({ filename: `photo-${index}.jpg`, mimeType: "image/jpeg" as const, size: 1, data: new Uint8Array([index]).buffer, origin: "unknown" as const }));
+
+    await expect(addMealPhotos("user-1", baseId, files)).rejects.toMatchObject({ code: "invalid", message: "A meal can contain at most 6 photos." });
   });
 
   it("rejects analysis without photo and without note", async () => {

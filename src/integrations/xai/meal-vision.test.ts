@@ -47,6 +47,19 @@ describe("xAI meal vision contract", () => {
     expect(result.totals.calories?.likely).toBe(500);
   });
 
+  it("extracts JSON wrapped in provider prose and normalizes numeric strings", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const wrapped = JSON.stringify(structuredAnalysis())
+      .replace('"estimatedGrams":250', '"estimatedGrams":"250"')
+      .replace('"low":400,"likely":500,"high":650', '"low":"400","likely":"500","high":"650"');
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: `Voici le résultat :\n\n\`\`\`json\n${wrapped}\n\`\`\`\nFin.` }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider().analyze({ mealType: "lunch", mealDate: "2026-08-31", note: "Un bol", images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }] });
+
+    expect(result.foods[0]?.estimatedGrams).toBe(250);
+    expect(result.totals.calories?.likely).toBe(500);
+  });
+
   it("rejects an invalid provider response instead of persisting guesses", async () => {
     process.env.XAI_API_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ summary: "bad", foods: [], totals: {}, confidence: "medium", uncertainties: [] }) }] }] }), { status: 200 }));
@@ -159,6 +172,27 @@ describe("xAI meal vision contract", () => {
     const imageParts = body.input[0]?.content.filter((item) => item.type === "input_image") ?? [];
     expect(imageParts).toHaveLength(4);
     expect(imageParts.every((item) => item.detail === "high")).toBe(true);
+  });
+
+  it("supports every vision count from one through six in one request per meal", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));
+    const provider = createXaiMealVisionProvider();
+
+    for (let count = 1; count <= 6; count += 1) {
+      await provider.analyze({
+        mealType: "lunch",
+        mealDate: "2026-08-31",
+        note: count % 2 === 0 ? "Photo avec une note" : null,
+        images: Array.from({ length: count }, (_, index) => ({ id: `photo-${count}-${index}`, mimeType: "image/jpeg", origin: "unknown" as const, data: new Uint8Array([index + 1]).buffer })),
+      });
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    fetchMock.mock.calls.forEach((call, index) => {
+      const body = JSON.parse(String(call[1]?.body)) as { input: Array<{ content: Array<{ type: string }> }> };
+      expect(body.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(index + 1);
+    });
   });
 
   it("reports a missing Grok key as configuration instead of transient unavailability", async () => {

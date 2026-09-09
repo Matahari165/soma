@@ -133,7 +133,7 @@ export const mealFoodItemSchema = z.object({
   varietyKey: z.string().trim().max(80).nullable().optional(),
   evidence: mealEvidenceSchema.optional(),
   evidenceSource: mealEvidenceSourceSchema.optional(),
-  evidencePhotoIds: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
+  evidencePhotoIds: z.array(z.string().trim().min(1).max(120)).max(6).optional(),
   quantity: mealQuantitySchema.nullable().optional(),
   calories: nutritionRangeSchema.nullable(),
   proteinGrams: nutritionRangeSchema.nullable(),
@@ -255,16 +255,18 @@ export type MealAnalysisRecord = {
   /** Optional provenance of the source snapshot; old analysis rows omit it. */
   sourceFingerprint?: string | null;
   /** Stable, non-sensitive diagnostic category for UI/log correlation. */
-  errorCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_unavailable" | "invalid_response" | "source_unavailable" | null;
+  errorCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_timeout" | "provider_unavailable" | "provider_empty_response" | "response_parse_error" | "response_schema_error" | "invalid_response" | "source_unavailable" | "storage_error" | "unknown_analysis_error" | "photo_purge_pending" | null;
   sourcePhotoIds: string[];
   createdAt: string;
   completedAt: string | null;
 };
 
-export const MAX_MEAL_PHOTOS = 5;
+export const MAX_MEAL_PHOTOS = 6;
 export const MAX_MEAL_PHOTO_BYTES = 12 * 1024 * 1024;
 export const MAX_MEAL_PHOTOS_BYTES = 40 * 1024 * 1024;
 /** Allows multipart framing/metadata around the 40 MiB photo payload. */
 export const MAX_MEAL_MULTIPART_BYTES = MAX_MEAL_PHOTOS_BYTES + 1 * 1024 * 1024;
 
 export const allowedMealPhotoMimeTypes = new Set<string>(mealPhotoMimeSchema.options);
+/** Canonical formats stored by new analysis uploads and accepted by both providers. */
+export const mealAnalysisPhotoMimeTypes = new Set<string>(["image/jpeg", "image/png"]);

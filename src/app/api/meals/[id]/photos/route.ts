@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { allowedMealPhotoMimeTypes, MAX_MEAL_PHOTOS, mealOriginSchema } from "@/domain/meals";
+import { mealAnalysisPhotoMimeTypes, MAX_MEAL_PHOTOS, mealOriginSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { addPreviewMealPhotos, findPreviewMeal } from "@/services/meal-preview";
@@ -28,9 +28,12 @@ function originsFromForm(form: FormData, count: number) {
 }
 
 function errorResponse(error: unknown) {
-  if (!(error instanceof MealServiceError)) return NextResponse.json({ error: "Meal photos are temporarily unavailable." }, { status: 500 });
+  if (!(error instanceof MealServiceError)) {
+    console.error("[meal-analysis] photo route failed outside service taxonomy", { stage: "photo_route", reason: error instanceof Error ? error.name : "unknown" });
+    return NextResponse.json({ error: "Les photos du repas n’ont pas pu être enregistrées.", code: "IMAGE_UPLOAD_FAILED" }, { status: 503 });
+  }
   const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
-  return NextResponse.json({ error: error.message }, { status });
+  return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code }, { status });
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -58,14 +61,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     form = await parseMealMultipart(request);
   } catch (error) {
-    if (error instanceof MealMultipartError) return NextResponse.json({ error: error.message }, { status: error.code === "too_large" ? 413 : 400 });
-    return NextResponse.json({ error: "Send the photos as multipart form data." }, { status: 400 });
+    if (error instanceof MealMultipartError) return NextResponse.json({ error: error.message, code: error.code === "too_large" ? "IMAGE_UPLOAD_FAILED" : "INVALID_MEAL_INPUT" }, { status: error.code === "too_large" ? 413 : 400 });
+    return NextResponse.json({ error: "Send the photos as multipart form data.", code: "INVALID_MEAL_INPUT" }, { status: 400 });
   }
   const files = filesFromForm(form);
   if (files.length < 1 || files.length > MAX_MEAL_PHOTOS) return NextResponse.json({ error: `Select between 1 and ${MAX_MEAL_PHOTOS} photos.` }, { status: 400 });
   const origins = originsFromForm(form, files.length);
   if (origins.some((origin) => !origin)) return NextResponse.json({ error: "Choose homemade, prepared / bought, or mixed for every photo." }, { status: 400 });
-  if (files.some((file) => !allowedMealPhotoMimeTypes.has(file.type))) return NextResponse.json({ error: "Only JPEG, PNG, WebP, GIF, HEIC, and HEIF photos are supported." }, { status: 400 });
+  if (!isLocalPreviewMode() && files.some((file) => !mealAnalysisPhotoMimeTypes.has(file.type))) return NextResponse.json({ error: "Les photos doivent être envoyées en JPEG ou PNG. Les photos HEIC, HEIF et WebP doivent être converties avant l’envoi." }, { status: 400 });
   if (isLocalPreviewMode()) {
     try {
       const photos = addPreviewMealPhotos(user.id, id, await Promise.all(files.map(async (file, index) => ({ filename: file.name, mimeType: file.type as Parameters<typeof addPreviewMealPhotos>[2][number]["mimeType"], size: file.size, data: await file.arrayBuffer(), origin: origins[index] as NonNullable<typeof origins[number]> }))));

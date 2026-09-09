@@ -46,29 +46,44 @@ export function breakfastIsExplicitlySkipped(input: { todayDate: string; variabl
 
 async function responseJson(response: Response) {
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "La photo n’a pas pu être enregistrée.");
+  if (!response.ok) {
+    const error = new Error(typeof body.error === "string" ? body.error : "La photo n’a pas pu être enregistrée.");
+    Object.assign(error, { code: typeof body.code === "string" ? body.code : "UNKNOWN_ANALYSIS_ERROR", requestId: typeof body.requestId === "string" ? body.requestId : response.headers.get("X-Analysis-Request-Id") });
+    throw error;
+  }
   return body as Record<string, unknown>;
+}
+
+async function quickFetch(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function uploadAndAnalyze(date: string, slot: MealType, file: File, origin: MealOrigin) {
   const key = `quick-${date}-${slot}`;
-  const created = await responseJson(await fetch("/api/meals", {
+  const created = await responseJson(await quickFetch("/api/meals", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Idempotency-Key": key },
     body: JSON.stringify({ mealDate: date, mealType: slot, status: "draft" }),
-  }));
+  }, 15_000));
   const meal = created.meal as { id?: unknown } | undefined;
   if (typeof meal?.id !== "string") throw new Error("Le repas n’a pas pu être créé.");
   const form = new FormData();
   form.append("photos", file, file.name);
   form.set("origin", origin);
   const uploadKey = `quick-${date}-${slot}-${file.name}-${file.size}-${file.lastModified}`;
-  await responseJson(await fetch(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }));
-  await responseJson(await fetch(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+  await responseJson(await quickFetch(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000));
+  const analysisRequestId = `analysis-${crypto.randomUUID()}`;
+  await responseJson(await quickFetch(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ force: true }),
-  }));
+    headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
+    body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
+  }, 60_000));
 }
 
 export function MealQuickCapture({ todayDate, variables, entries, days, breakfastDisabledOverride, morningJournalCompletedOverride }: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; breakfastDisabledOverride?: boolean; morningJournalCompletedOverride?: boolean }) {

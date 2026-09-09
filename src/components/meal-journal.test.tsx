@@ -178,7 +178,8 @@ describe("MealJournal", () => {
       correction: "Il y avait une petite portion de pâtes, pas une grande.",
     });
 
-    expect(analyzeBody).toEqual({ force: true, correction: "Il y avait une petite portion de pâtes, pas une grande." });
+    expect(analyzeBody).toMatchObject({ force: true, correction: "Il y avait une petite portion de pâtes, pas une grande." });
+    expect(typeof (analyzeBody as { idempotencyKey?: unknown }).idempotencyKey).toBe("string");
   });
 
   it("keeps duplicate filenames tied to the right photo and makes upload retries safe", async () => {
@@ -188,6 +189,10 @@ describe("MealJournal", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       requests.push({ url, init });
+      if (url.includes("/photos")) return Response.json({ photos: [
+        { id: "server-photo-1", mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "homemade", mimeType: "image/jpeg", bytes: first.size, filename: first.name, createdAt: `${date}T12:00:00.000Z` },
+        { id: "server-photo-2", mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "prepared", mimeType: "image/jpeg", bytes: second.size, filename: second.name, createdAt: `${date}T12:00:00.000Z` },
+      ] }, { status: 201 });
       return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "lunch", note: null, status: "draft", photos: [], analysis: null } });
     }));
 

@@ -261,8 +261,22 @@ function normalizeData(raw: MealJournalData, date: string): MealJournalData {
 
 async function readJson(response: Response) {
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof body?.error === "string" ? body.error : "Les repas ne sont pas disponibles pour le moment.");
+  if (!response.ok) {
+    const error = new Error(typeof body?.error === "string" ? body.error : "Les repas ne sont pas disponibles pour le moment.");
+    Object.assign(error, { code: typeof body?.code === "string" ? body.code : "UNKNOWN_ANALYSIS_ERROR", requestId: typeof body?.requestId === "string" ? body.requestId : response.headers.get("X-Analysis-Request-Id") });
+    throw error;
+  }
   return body;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function defaultLoad(date: string) {
@@ -279,14 +293,15 @@ type DefaultAnalyzeOptions = {
 };
 
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
+  const analysisRequestId = randomId("analysis");
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
   if (isNewMeal) {
-    const createResponse = await fetch("/api/meals", {
+    const createResponse = await fetchWithTimeout("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
       body: JSON.stringify({ mealDate: date, mealType: slot, status: "draft", ...(meal.note.trim() ? { note: meal.note.trim().slice(0, 500) } : {}) }),
-    });
+    }, 15_000);
     const created = await readJson(createResponse) as { meal: { id: string } };
     mealId = created.meal.id;
   }
@@ -298,8 +313,8 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       const file = filesByFilename(files, photo.filename);
       return file ? [{ photo, file }] : [];
     });
-  if (!isNewMeal && meal.note.trim()) {
-    await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }));
+  if (!isNewMeal) {
+    await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }, 15_000));
   }
   if (files.length > 0) {
     const uploadFiles = uploadEntries.map((entry) => entry.file);
@@ -309,13 +324,13 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     form.set("origins", JSON.stringify(origins));
     uploadFiles.forEach((file) => form.append("photos", file, file.name));
     const uploadKey = `meal-${mealId}-photos-${uploadEntries.map((entry) => entry.photo.id).join("-")}`;
-    const uploadedBody = await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form })) as { photos?: MealPhoto[] };
-    if (Array.isArray(uploadedBody.photos) && uploadedBody.photos.length === uploadEntries.length) {
-      options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
-    }
+    const uploadedBody = await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000)) as { photos?: MealPhoto[] };
+    if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("Le serveur n’a pas confirmé toutes les photos du repas.");
+    options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true, ...(correction ? { correction } : {}) }) });
+  const response = await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, 60_000);
   const body = await readJson(response);
+  if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("Le serveur n’a pas retourné le repas analysé.");
   return apiMealToRecord(body.meal);
 }
 
@@ -466,7 +481,7 @@ function statusLabel(meal: MealRecord | null) {
 }
 
 function visibleAnalysisError(message: string | null | undefined) {
-  return message?.replace(/Grok/gi, "le service d’analyse") ?? "L’analyse n’a pas abouti. Vérifie ta connexion puis réessaie.";
+  return message ?? "L’analyse n’a pas abouti. Vérifie ta connexion puis réessaie.";
 }
 
 function MealTextInput({ slot, meal, disabled, onNote }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; onNote: (note: string) => void }) {
@@ -903,32 +918,28 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     mutationInFlight.current = true;
     setProcessingFiles(true);
     setFileError(null);
-    let prepared: File[];
+    const prepared: File[] = [];
     try {
-      prepared = await Promise.all(incoming.map((file) => normalizeMealImage(file)));
+      for (const file of incoming) prepared.push(await normalizeMealImage(file));
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Cette photo n’a pas pu être préparée. Prends-la à nouveau en JPEG ou PNG.");
       setProcessingFiles(false);
       mutationInFlight.current = false;
       return;
     }
-    setData((current) => {
-      const next = current ?? emptyData(selectedDate);
-      const meal = next.meals[slot] ?? emptyMeal(selectedDate, slot);
-      const activePhotoCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
-      const remaining = Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount);
-      const accepted = prepared.slice(0, remaining);
-      const newPhotos = accepted.map((file) => {
-        const id = randomId("photo");
-        const url = URL.createObjectURL(file);
-        objectUrls.current.add(url);
-        // L’origine reste inconnue tant que l’utilisateur ne l’a pas choisie.
-        return { id, url, filename: file.name, origin: null } satisfies MealPhoto;
-      });
-      if (accepted.length === 0) return next;
-      setFilesByPhotoId((files) => ({ ...files, ...Object.fromEntries(newPhotos.map((photo, index) => [photo.id, accepted[index]])) }));
-      return { ...next, meals: { ...next.meals, [slot]: { ...meal, photos: [...meal.photos, ...newPhotos], status: "draft", error: null } } };
+    const currentMeal = data?.meals[slot] ?? emptyMeal(selectedDate, slot);
+    const activePhotoCount = currentMeal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+    const accepted = prepared.slice(0, Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount));
+    const newPhotos = accepted.map((file) => {
+      const id = randomId("photo");
+      const url = URL.createObjectURL(file);
+      objectUrls.current.add(url);
+      return { id, url, filename: file.name, origin: null } satisfies MealPhoto;
     });
+    if (newPhotos.length) {
+      setFilesByPhotoId((files) => ({ ...files, ...Object.fromEntries(newPhotos.map((photo, index) => [photo.id, accepted[index]])) }));
+      updateMeal(slot, (meal) => ({ ...meal, photos: [...meal.photos, ...newPhotos], status: "draft", error: null }));
+    }
     setProcessingFiles(false);
     mutationInFlight.current = false;
   };
@@ -976,7 +987,24 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   };
 
   const setNote = (slot: MealSlot, note: string) => {
-    updateMeal(slot, (current) => ({ ...current, note: note.slice(0, 500), error: null }));
+    updateMeal(slot, (current) => ({ ...current, note: note.slice(0, 500), status: "draft", error: null }));
+  };
+
+  const setPhotoOrigin = async (slot: MealSlot, photoId: string, origin: MealOrigin) => {
+    const meal = data?.meals[slot];
+    updateMeal(slot, (current) => ({
+      ...current,
+      photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo),
+      status: "draft",
+      error: null,
+    }));
+    if (!meal || meal.id.startsWith("meal-") || photoId.startsWith("photo-")) return;
+    try {
+      if (api?.updatePhotoOrigin) await api.updatePhotoOrigin(meal.id, photoId, origin);
+      else await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photoId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin }) }, 15_000));
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "L’origine de la photo n’a pas pu être enregistrée.");
+    }
   };
 
   const saveMeal = async (meal: MealRecord, status: MealStatus = "confirmed", options: { queued?: boolean } = {}): Promise<boolean> => {
@@ -1113,7 +1141,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-      return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty={variant === "home"} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => updateMeal(slot, (current) => ({ ...current, photos: current.photos.map((photo) => photo.id === photoId ? { ...photo, origin } : photo), status: "draft", error: null }))} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
+      return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty={variant === "home"} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
     })}</div>
   </section>;
 }

@@ -1,4 +1,4 @@
-import type { MealFoodCourse, MealFoodGroup } from "@/domain/meals";
+import { MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup } from "@/domain/meals";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
@@ -120,6 +120,7 @@ export type MealJournalApi = {
   analyze?: (input: AnalyzeMealInput) => Promise<MealRecord>;
   save?: (meal: MealRecord) => Promise<MealRecord>;
   removePhoto?: (mealId: string, photoId: string) => Promise<void>;
+  updatePhotoOrigin?: (mealId: string, photoId: string, origin: MealOrigin) => Promise<void>;
 };
 
 export function todayInLocalTime() {
@@ -217,7 +218,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
       varietyKey: typeof rawFood.varietyKey === "string" && rawFood.varietyKey.trim() ? rawFood.varietyKey.trim().slice(0, 80) : null,
       evidence: mealFoodEvidence(rawFood.evidence),
       evidenceSource: mealFoodEvidenceSource(rawFood.evidenceSource),
-      evidencePhotoIds: Array.isArray(rawFood.evidencePhotoIds) ? rawFood.evidencePhotoIds.filter((id): id is string => typeof id === "string").slice(0, 5) : undefined,
+      evidencePhotoIds: Array.isArray(rawFood.evidencePhotoIds) ? rawFood.evidencePhotoIds.filter((id): id is string => typeof id === "string").slice(0, MAX_MEAL_PHOTOS) : undefined,
       quantity: isRecord(rawFood.quantity) ? {
         value: typeof rawFood.quantity.value === "number" ? rawFood.quantity.value : null,
         unit: typeof rawFood.quantity.unit === "string" ? rawFood.quantity.unit : null,

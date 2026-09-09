@@ -247,6 +247,29 @@ export async function releaseCloudflareLock(lockKey: string, userId: string) {
   if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
 }
 
+/**
+ * Lease variant for long-running meal operations. The owner token prevents a
+ * worker whose lease expired from deleting a newer worker's lock.
+ */
+export async function claimCloudflareLockWithToken(lockKey: string, userId: string, ttlMs = 60_000) {
+  const db = cloudflareDb();
+  const now = Date.now();
+  await db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND CAST(json_extract(json_data, '$.expires_at_ms') AS INTEGER) < ?")
+    .bind("operation_locks", lockKey, now).run();
+  const token = crypto.randomUUID();
+  const row = { user_id: userId, token, expires_at_ms: now + ttlMs };
+  const result = await db.prepare("INSERT OR IGNORE INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind("operation_locks", lockKey, userId, JSON.stringify(row), new Date(now).toISOString(), new Date(now).toISOString()).run();
+  if (!result.success) throw new Error(result.error ?? "The operation lock could not be acquired.");
+  return Number(result.meta?.changes ?? 0) > 0 ? token : null;
+}
+
+export async function releaseCloudflareLockWithToken(lockKey: string, userId: string, token: string) {
+  const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ? AND json_extract(json_data, '$.token') = ?")
+    .bind("operation_locks", lockKey, userId, token).run();
+  if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
+}
+
 export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {
   if (!dataTypes.length) return [] as Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>;
   const placeholders = dataTypes.map(() => "?").join(", ");
