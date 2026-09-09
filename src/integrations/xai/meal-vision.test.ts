@@ -111,6 +111,17 @@ describe("xAI meal vision contract", () => {
       .rejects.toMatchObject({ code: "provider_rate_limited", message: "Grok est momentanément sollicité. Réessaie dans quelques instants." });
   });
 
+  it("retries an empty Grok response once", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
+
+    await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("uses the primary model and validator for a natural-language correction by default", async () => {
     process.env.XAI_API_KEY = "test-key";
     process.env.XAI_MEAL_VISION_MODEL = "grok-primary";
@@ -200,8 +211,18 @@ describe("xAI meal vision contract", () => {
       .rejects.toMatchObject({ code: "provider_auth", message: "La configuration de l’analyse Grok est invalide." });
   });
 
+  it("does not add a second Grok request when no validator is configured", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
+
+    await analyzeMealInput({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the primary result when the default verification fails", async () => {
     process.env.XAI_API_KEY = "test-key";
+    process.env.XAI_MEAL_VALIDATOR_MODEL = "grok-validator";
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }))
       .mockResolvedValueOnce(new Response("validator unavailable", { status: 503 }));

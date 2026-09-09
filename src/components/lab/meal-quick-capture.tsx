@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type { JournalDay, JournalEntry, JournalVariable } from "@/domain/lab/journal";
 import { MAX_MEAL_PHOTOS, type MealOrigin, type MealType } from "@/domain/meals";
+import { fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 
 type CaptureState = "idle" | "choosing-origin" | "uploading" | "done" | "error";
@@ -54,36 +55,26 @@ async function responseJson(response: Response) {
   return body as Record<string, unknown>;
 }
 
-async function quickFetch(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function uploadAndAnalyze(date: string, slot: MealType, file: File, origin: MealOrigin) {
   const key = `quick-${date}-${slot}`;
-  const created = await responseJson(await quickFetch("/api/meals", {
+  const analysisRequestId = `analysis-${crypto.randomUUID()}`;
+  const created = await responseJson(await fetchMealWithTimeout("/api/meals", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Idempotency-Key": key },
     body: JSON.stringify({ mealDate: date, mealType: slot, status: "draft" }),
-  }, 15_000));
+  }, 15_000, { operation: "create", requestId: analysisRequestId }));
   const meal = created.meal as { id?: unknown } | undefined;
   if (typeof meal?.id !== "string") throw new Error("Le repas n’a pas pu être créé.");
   const form = new FormData();
   form.append("photos", file, file.name);
   form.set("origin", origin);
   const uploadKey = `quick-${date}-${slot}-${file.name}-${file.size}-${file.lastModified}`;
-  await responseJson(await quickFetch(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000));
-  const analysisRequestId = `analysis-${crypto.randomUUID()}`;
-  await responseJson(await quickFetch(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+  await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId }));
+  await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
     body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
-  }, 60_000));
+  }, 60_000, { operation: "analyze", requestId: analysisRequestId }));
 }
 
 export function MealQuickCapture({ todayDate, variables, entries, days, breakfastDisabledOverride, morningJournalCompletedOverride }: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; breakfastDisabledOverride?: boolean; morningJournalCompletedOverride?: boolean }) {
@@ -102,7 +93,7 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/meals?from=${encodeURIComponent(todayDate)}&to=${encodeURIComponent(todayDate)}`, { cache: "no-store" })
+    fetchMealWithTimeout(`/api/meals?from=${encodeURIComponent(todayDate)}&to=${encodeURIComponent(todayDate)}`, { cache: "no-store" }, 15_000, { operation: "load" })
       .then(responseJson)
       .then((body) => {
         if (!active || !Array.isArray(body.meals)) return;

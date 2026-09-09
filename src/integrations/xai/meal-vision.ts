@@ -61,7 +61,7 @@ export class MealVisionError extends Error {
     this.status = options?.status;
     this.retryAfterMs = options?.retryAfterMs;
     this.requestId = options?.requestId;
-    this.retryable = options?.retryable ?? (code === "provider_timeout" || code === "provider_rate_limited" || code === "provider_unavailable");
+    this.retryable = options?.retryable ?? (code === "provider_timeout" || code === "provider_rate_limited" || code === "provider_unavailable" || code === "provider_empty_response");
   }
 
   readonly provider?: string;
@@ -90,8 +90,13 @@ export function isXaiVisionMimeType(mimeType: string) {
 // Meal analysis is allowed to spend more time on the primary vision pass than
 // on the optional validator. Four photos can take longer to inspect than one,
 // while the route still has to finish well inside its 50s platform budget.
-const PRIMARY_VISION_TIMEOUT_MS = Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || 15_000);
-const TEXT_ANALYSIS_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 12_000);
+function configuredTimeout(name: string, fallback: number, maximum: number) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) ? Math.min(maximum, Math.max(5_000, value)) : fallback;
+}
+
+const PRIMARY_VISION_TIMEOUT_MS = configuredTimeout("MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS", 20_000, 25_000);
+const TEXT_ANALYSIS_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 15_000);
 const VALIDATOR_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 8_000);
 const MAX_PROVIDER_ATTEMPTS = 2;
 
@@ -550,7 +555,13 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         durationMs,
         code: "provider_empty_response",
       });
-      throw new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId, retryable: false });
+      const incompleteError = new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId });
+      lastError = incompleteError;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
+        continue;
+      }
+      throw incompleteError;
     }
     const text = responseText(body);
     if (!text) {
@@ -565,7 +576,13 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         durationMs,
         code: "provider_empty_response",
       });
-      throw new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId, retryable: false });
+      const emptyError = new MealVisionError("provider_empty_response", providerMessage(request.provider, "provider_empty_response"), { provider: request.provider, requestId: request.requestId });
+      lastError = emptyError;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
+        continue;
+      }
+      throw emptyError;
     }
     let parsed: unknown;
     try {
@@ -664,6 +681,20 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
   const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
+  const validator: MealVisionProvider["verify"] = process.env.OPENAI_API_KEY
+    ? (input) => requestOpenAiMealValidation(input, openAiValidatorModel)
+    : process.env.XAI_MEAL_VALIDATOR_MODEL
+      ? (input) => requestGrokAnalysis({
+        model: xaiValidatorModel,
+        instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
+        promptText: makeVerificationPrompt(input),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
+        maxOutputTokens: 4_000,
+        timeoutMs: VALIDATOR_TIMEOUT_MS,
+        requestId: input.requestId,
+        maxAttempts: 1,
+      })
+      : undefined;
   return {
     name: "xai",
     model,
@@ -691,19 +722,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         maxAttempts: options.maxAttempts,
       });
     },
-    async verify(input) {
-      if (process.env.OPENAI_API_KEY) return requestOpenAiMealValidation(input, openAiValidatorModel);
-      return requestGrokAnalysis({
-        model: xaiValidatorModel,
-        instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie quantités, plats composés, doublons, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues et les nulls quand une donnée ne peut pas être estimée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
-        promptText: makeVerificationPrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
-        maxOutputTokens: 4_000,
-        timeoutMs: VALIDATOR_TIMEOUT_MS,
-        requestId: input.requestId,
-        maxAttempts: 1,
-      });
-    },
+    ...(validator ? { verify: validator } : {}),
   };
 }
 

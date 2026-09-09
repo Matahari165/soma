@@ -43,6 +43,7 @@ import {
   saveNutritionTargets,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
+import { fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import styles from "./meal-journal.module.css";
 
@@ -269,18 +270,8 @@ async function readJson(response: Response) {
   return body;
 }
 
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function defaultLoad(date: string) {
-  const response = await fetch(`/api/meals?from=${encodeURIComponent(date)}&to=${encodeURIComponent(date)}`, { cache: "no-store" });
+  const response = await fetchMealWithTimeout(`/api/meals?from=${encodeURIComponent(date)}&to=${encodeURIComponent(date)}`, { cache: "no-store" }, 15_000, { operation: "load" });
   const body = await readJson(response) as { meals?: unknown[] };
   const meals = Array.isArray(body.meals) ? body.meals.map(apiMealToRecord) : [];
   return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
@@ -297,11 +288,11 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
   if (isNewMeal) {
-    const createResponse = await fetchWithTimeout("/api/meals", {
+    const createResponse = await fetchMealWithTimeout("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
       body: JSON.stringify({ mealDate: date, mealType: slot, status: "draft", ...(meal.note.trim() ? { note: meal.note.trim().slice(0, 500) } : {}) }),
-    }, 15_000);
+    }, 15_000, { operation: "create", requestId: analysisRequestId });
     const created = await readJson(createResponse) as { meal: { id: string } };
     mealId = created.meal.id;
   }
@@ -314,7 +305,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       return file ? [{ photo, file }] : [];
     });
   if (!isNewMeal) {
-    await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }, 15_000));
+    await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500) }) }, 15_000, { operation: "update", requestId: analysisRequestId }));
   }
   if (files.length > 0) {
     const uploadFiles = uploadEntries.map((entry) => entry.file);
@@ -324,11 +315,11 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     form.set("origins", JSON.stringify(origins));
     uploadFiles.forEach((file) => form.append("photos", file, file.name));
     const uploadKey = `meal-${mealId}-photos-${uploadEntries.map((entry) => entry.photo.id).join("-")}`;
-    const uploadedBody = await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000)) as { photos?: MealPhoto[] };
+    const uploadedBody = await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId })) as { photos?: MealPhoto[] };
     if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("Le serveur n’a pas confirmé toutes les photos du repas.");
     options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetchWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, 60_000);
+  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, 60_000, { operation: "analyze", requestId: analysisRequestId });
   const body = await readJson(response);
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("Le serveur n’a pas retourné le repas analysé.");
   return apiMealToRecord(body.meal);
@@ -1001,7 +992,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!meal || meal.id.startsWith("meal-") || photoId.startsWith("photo-")) return;
     try {
       if (api?.updatePhotoOrigin) await api.updatePhotoOrigin(meal.id, photoId, origin);
-      else await readJson(await fetchWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photoId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin }) }, 15_000));
+      else await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photoId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin }) }, 15_000, { operation: "update" }));
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "L’origine de la photo n’a pas pu être enregistrée.");
     }
