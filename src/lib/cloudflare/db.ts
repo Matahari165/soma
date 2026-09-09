@@ -264,6 +264,17 @@ export async function claimCloudflareLockWithToken(lockKey: string, userId: stri
   return Number(result.meta?.changes ?? 0) > 0 ? token : null;
 }
 
+export async function refreshCloudflareLockWithToken(lockKey: string, userId: string, token: string, ttlMs = 60_000) {
+  const now = Date.now();
+  const result = await cloudflareDb().prepare(`
+    UPDATE soma_rows
+    SET json_data = json_set(json_data, '$.expires_at_ms', ?), updated_at = ?
+    WHERE table_name = ? AND row_key = ? AND user_id = ? AND json_extract(json_data, '$.token') = ?
+  `).bind(now + ttlMs, new Date(now).toISOString(), "operation_locks", lockKey, userId, token).run();
+  if (!result.success) throw new Error(result.error ?? "The operation lock could not be refreshed.");
+  return Number(result.meta?.changes ?? 0) > 0;
+}
+
 export async function releaseCloudflareLockWithToken(lockKey: string, userId: string, token: string) {
   const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ? AND json_extract(json_data, '$.token') = ?")
     .bind("operation_locks", lockKey, userId, token).run();

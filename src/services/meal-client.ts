@@ -60,16 +60,16 @@ export function classifyMealClientError(error: unknown, operation: MealRequestOp
   return new MealClientError(safeMessage, code, operation, requestId, { cause: error });
 }
 
-export async function fetchMealWithTimeout(
+async function requestMeal(
   input: RequestInfo | URL,
   init: RequestInit,
-  timeoutMs: number,
   options: { operation: MealRequestOperation; requestId?: string },
+  timeoutMs?: number,
 ) {
-  const controller = new AbortController();
-  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  const controller = timeoutMs === undefined ? null : new AbortController();
+  const timer = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    return await fetch(input, controller ? { ...init, signal: controller.signal } : init);
   } catch (error) {
     const classified = classifyMealClientError(error, options.operation, options.requestId);
     console.warn("[meal-analysis] client request failed", {
@@ -80,6 +80,28 @@ export async function fetchMealWithTimeout(
     });
     throw classified;
   } finally {
-    globalThis.clearTimeout(timer);
+    if (timer !== null) globalThis.clearTimeout(timer);
   }
+}
+
+/**
+ * Runs a meal request without imposing a client-side deadline. Analysis may
+ * legitimately take longer than a fixed browser timeout, especially when the
+ * primary model is followed by the validator.
+ */
+export async function fetchMeal(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  options: { operation: MealRequestOperation; requestId?: string },
+) {
+  return requestMeal(input, init, options);
+}
+
+export async function fetchMealWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+  options: { operation: MealRequestOperation; requestId?: string },
+) {
+  return requestMeal(input, init, options, timeoutMs);
 }

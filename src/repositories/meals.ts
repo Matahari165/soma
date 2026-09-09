@@ -54,6 +54,7 @@ type AnalysisRow = Row & {
   source_fingerprint?: string | null;
   source_photo_ids?: unknown;
   created_at: string;
+  updated_at?: string | null;
   completed_at?: string | null;
 };
 type FeelingsRow = Row & {
@@ -150,14 +151,17 @@ const STALE_ANALYSIS_AFTER_MS = 15 * 60 * 1000;
 async function reconcileStaleAnalyses(userId: string, rows: AnalysisRow[]) {
   const cutoff = Date.now() - STALE_ANALYSIS_AFTER_MS;
   for (const row of rows) {
-    if (row.status !== "running" || Date.parse(row.created_at) >= cutoff) continue;
+    if (row.status !== "running" || Date.parse(row.updated_at ?? row.created_at) >= cutoff) continue;
     const completedAt = new Date().toISOString();
     const result = await createCloudflareAdminClient()
       .from("meal_analyses")
       .update({ status: "failed", error: "L’analyse a été interrompue. Relance-la pour réessayer.", error_code: "provider_unavailable", completed_at: completedAt })
       .eq("user_id", userId)
-      .eq("id", row.id);
-    if (!result.error) {
+      .eq("id", row.id)
+      .eq("status", "running")
+      .select("*")
+      .maybeSingle();
+    if (!result.error && result.data) {
       row.status = "failed";
       row.error = "L’analyse a été interrompue. Relance-la pour réessayer.";
       row.error_code = "provider_unavailable";
@@ -353,10 +357,24 @@ export async function insertMealAnalysis(row: AnalysisRow) {
   return analysisFromRow(data as AnalysisRow);
 }
 
-export async function updateMealAnalysis(userId: string, analysisId: string, values: Row) {
-  const { data, error } = await createCloudflareAdminClient().from("meal_analyses").update(values).eq("user_id", userId).eq("id", analysisId).select("*").maybeSingle();
+export async function updateMealAnalysis(userId: string, analysisId: string, values: Row, expectedStatus?: MealAnalysisRecord["status"]) {
+  const query = createCloudflareAdminClient().from("meal_analyses").update(values).eq("user_id", userId).eq("id", analysisId);
+  if (expectedStatus) query.eq("status", expectedStatus);
+  const { data, error } = await query.select("*").maybeSingle();
   if (error || !data) throw new Error("The meal analysis could not be updated.");
   return analysisFromRow(data as AnalysisRow);
+}
+
+export async function touchMealAnalysis(userId: string, analysisId: string) {
+  const { data, error } = await createCloudflareAdminClient()
+    .from("meal_analyses")
+    .update({ heartbeat_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("id", analysisId)
+    .eq("status", "running")
+    .maybeSingle();
+  if (error) throw new Error("The meal analysis heartbeat could not be saved.");
+  return Boolean(data);
 }
 
 export type { AnalysisRow, MealRow, PhotoRow };

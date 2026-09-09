@@ -43,7 +43,7 @@ import {
   saveNutritionTargets,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
-import { fetchMealWithTimeout } from "@/services/meal-client";
+import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import styles from "./meal-journal.module.css";
 
@@ -319,7 +319,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("Le serveur n’a pas confirmé toutes les photos du repas.");
     options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, 60_000, { operation: "analyze", requestId: analysisRequestId });
+  const response = await fetchMeal(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, { operation: "analyze", requestId: analysisRequestId });
   const body = await readJson(response);
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("Le serveur n’a pas retourné le repas analysé.");
   return apiMealToRecord(body.meal);

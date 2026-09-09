@@ -12,18 +12,19 @@ const state = vi.hoisted(() => ({
   updatePhotoStorage: vi.fn(),
   upsertMealFeelings: vi.fn(),
   findRelevantMealRecipeReferences: vi.fn(),
+  touchMealAnalysis: vi.fn(),
 }));
 
 vi.mock("@/repositories/meals", () => ({
-  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
+  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, touchMealAnalysis: state.touchMealAnalysis, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
 }));
-vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn(), claimCloudflareLockWithToken: vi.fn(), releaseCloudflareLockWithToken: vi.fn() }));
+vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn(), claimCloudflareLockWithToken: vi.fn(), refreshCloudflareLockWithToken: vi.fn(), releaseCloudflareLockWithToken: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 
 import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
-import { findLatestMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
-import { claimCloudflareLock, releaseCloudflareLock } from "@/lib/cloudflare/db";
+import { findLatestMealAnalysis, touchMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
+import { claimCloudflareLock, claimCloudflareLockWithToken, refreshCloudflareLockWithToken, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject } from "@/lib/r2";
 
 const canonicalCorrection = {
@@ -231,6 +232,10 @@ describe("meal text-only analysis", () => {
     uncertainties: ["Estimation à partir de la seule description, sans photo."],
   };
 
+  function textMeal(note: string) {
+    return { id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "snack" as const, note, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [], analysis: null };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     state.findRelevantMealRecipeReferences.mockResolvedValue([]);
@@ -259,6 +264,29 @@ describe("meal text-only analysis", () => {
     expect(analyzeText).toHaveBeenCalledWith({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
     expect(state.insertMealAnalysis).toHaveBeenCalledWith(expect.objectContaining({ status: "running", source_photo_ids: [] }));
     expect(result).toMatchObject({ fresh: true, analysis: { status: "completed", result: textOnlyAnalysis } });
+  });
+
+  it("renews a long-running analysis lease while the provider is still working", async () => {
+    vi.useFakeTimers();
+    try {
+      state.findMeal.mockResolvedValue(textMeal("Trois croissants et une banane"));
+      vi.mocked(claimCloudflareLockWithToken).mockResolvedValue("analysis-lease-token");
+      vi.mocked(refreshCloudflareLockWithToken).mockResolvedValue(true);
+      state.touchMealAnalysis.mockResolvedValue(true);
+      let resolveAnalysis!: (value: typeof textOnlyAnalysis) => void;
+      const analyzeText = vi.fn().mockReturnValue(new Promise<typeof textOnlyAnalysis>((resolve) => { resolveAnalysis = resolve; }));
+
+      const pending = analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze: vi.fn(), analyzeText } });
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(refreshCloudflareLockWithToken).toHaveBeenCalledWith(`meal-analysis:user-1:${baseId}`, "user-1", "analysis-lease-token", 120_000);
+      expect(touchMealAnalysis).toHaveBeenCalledWith("user-1", expect.any(String));
+      resolveAnalysis(textOnlyAnalysis);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("returns the completed result for a repeated analysis request id", async () => {

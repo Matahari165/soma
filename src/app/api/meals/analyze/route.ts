@@ -9,8 +9,6 @@ import { MealMultipartError, parseMealMultipart } from "@/services/meal-multipar
 import { addPreviewMealPhotos, analyzePreviewMeal, createPreviewMeal, findPreviewMeal, updatePreviewMeal } from "@/services/meal-preview";
 import { addMealPhotos, analyzeMeal, createMeal, findMeal, MealServiceError, updateMealPhotoOrigins, updateMealRecord } from "@/services/meals";
 
-export const maxDuration = 50;
-
 function formFiles(form: FormData) {
   return form.getAll("photos").filter((value): value is File => typeof File !== "undefined" && value instanceof File);
 }

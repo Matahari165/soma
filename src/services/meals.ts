@@ -39,10 +39,11 @@ import {
   updateMealAnalysis,
   updatePhotoOrigin,
   updatePhotoStorage,
+  touchMealAnalysis,
   upsertMealFeelings,
 } from "@/repositories/meals";
 
-const { claimCloudflareLock, claimCloudflareLockWithToken, releaseCloudflareLock, releaseCloudflareLockWithToken } = cloudflareDb;
+const { claimCloudflareLock, claimCloudflareLockWithToken, refreshCloudflareLockWithToken, releaseCloudflareLock, releaseCloudflareLockWithToken } = cloudflareDb;
 
 export class MealServiceError extends Error {
   constructor(readonly code: "not_found" | "invalid" | "conflict" | "unavailable", message: string, readonly diagnosticCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_timeout" | "provider_unavailable" | "provider_empty_response" | "response_parse_error" | "response_schema_error" | "invalid_response" | "source_unavailable" | "storage_error" | "unknown_analysis_error" | "photo_purge_pending") {
@@ -52,6 +53,8 @@ export class MealServiceError extends Error {
 }
 
 const PHOTO_PURGE_ERROR = "Les photos du repas n’ont pas pu être purgées. Réessaie pour terminer la confirmation.";
+const ANALYSIS_LEASE_TTL_MS = 120_000;
+const ANALYSIS_HEARTBEAT_MS = 30_000;
 
 async function claimMealLease(lockKey: string, userId: string, ttlMs: number) {
   if (typeof claimCloudflareLockWithToken === "function") {
@@ -403,7 +406,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
   const meal = await findMeal(userId, mealId);
   if (!meal) throw new MealServiceError("not_found", "Meal not found.");
   const lockKey = `meal-analysis:${userId}:${mealId}`;
-  const lease = await claimMealLease(lockKey, userId, 180_000);
+  const lease = await claimMealLease(lockKey, userId, ANALYSIS_LEASE_TTL_MS);
   const claimed = lease.claimed;
   if (!claimed) throw new MealServiceError("conflict", "This meal is already being analysed.");
   try {
@@ -452,6 +455,25 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       created_at: createdAt,
       completed_at: null,
     });
+    // Provider latency is intentionally unbounded. Renew the lease and the
+    // persisted liveness marker while this request remains connected so a
+    // slow but healthy analysis cannot be duplicated or marked stale.
+    const analysisLeaseToken = lease.token;
+    let heartbeatInFlight = false;
+    const heartbeat = analysisLeaseToken ? setInterval(() => {
+      if (heartbeatInFlight) return;
+      heartbeatInFlight = true;
+      Promise.all([
+        refreshCloudflareLockWithToken(lockKey, userId, analysisLeaseToken, ANALYSIS_LEASE_TTL_MS),
+        touchMealAnalysis(userId, analysisId),
+      ]).then(([lockRefreshed]) => {
+        if (!lockRefreshed) console.warn("[meal-analysis] analysis lease was lost", { requestId: options.analysisRequestId, mealId, stage: "lease_refresh" });
+      }).catch((error) => {
+        console.warn("[meal-analysis] analysis heartbeat failed", { requestId: options.analysisRequestId, mealId, stage: "heartbeat", reason: error instanceof Error ? error.name : "unknown" });
+      }).finally(() => {
+        heartbeatInFlight = false;
+      });
+    }, ANALYSIS_HEARTBEAT_MS) : null;
     try {
       const [images, recipeReferences] = await Promise.all([
         Promise.all(availablePhotos.map(async (photo) => {
@@ -487,7 +509,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         source_fingerprint: sourceFingerprint,
         error: null,
         completed_at: new Date().toISOString(),
-      });
+      }, "running");
       return { analysis: completed, fresh: true };
     } catch (error) {
       const visionError = error instanceof MealVisionError ? error : null;
@@ -496,7 +518,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       let failed = null;
       for (let attempt = 0; attempt < 2 && !failed; attempt += 1) {
         try {
-          failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, completed_at: new Date().toISOString() });
+          failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, completed_at: new Date().toISOString() }, "running");
         } catch (persistError) {
           console.error("[meal-analysis] failed analysis could not be persisted", {
             requestId: options.analysisRequestId,
@@ -509,6 +531,8 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       }
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", failed?.error ?? safeError, errorCode);
+    } finally {
+      if (heartbeat !== null) clearInterval(heartbeat);
     }
   } finally {
     try {

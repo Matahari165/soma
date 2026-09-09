@@ -7,8 +7,6 @@ import { mealToApi } from "@/services/meal-api";
 import { analyzePreviewMeal, findPreviewMeal } from "@/services/meal-preview";
 import { analyzeMeal, findMeal, MealServiceError } from "@/services/meals";
 
-export const maxDuration = 50;
-
 function analysisRequestId(request: Request, fallback?: string) {
   const supplied = request.headers.get("x-analysis-request-id") ?? fallback;
   return supplied && /^[a-zA-Z0-9._:-]{8,160}$/.test(supplied) ? supplied : crypto.randomUUID();

@@ -87,6 +87,16 @@ describe("xAI meal vision contract", () => {
     expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
   });
 
+  it("does not abort a provider request after a fixed client-side delay", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
+
+    await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "Trois croissants et une banane" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("signal");
+  });
+
   it("uses personal recipes only as variable context", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(structuredAnalysis()) }] }] }), { status: 200 }));

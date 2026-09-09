@@ -10,8 +10,6 @@ import {
   type MealVisionTextInput,
 } from "@/integrations/xai/meal-vision";
 
-const primaryTimeoutMs = Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || 15_000);
-
 /**
  * OpenAI adapter for the same Responses + strict JSON contract as the xAI
  * adapter. Keeping it independent makes a real provider fallback possible and
@@ -34,7 +32,6 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number }
         promptText: makePrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
         maxOutputTokens: 4_000,
-        timeoutMs: primaryTimeoutMs,
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
@@ -50,7 +47,6 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number }
         promptText: makeTextPrompt(input),
         imageContents: [],
         maxOutputTokens: 1_500,
-        timeoutMs: Math.min(primaryTimeoutMs, 12_000),
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,

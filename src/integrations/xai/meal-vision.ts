@@ -87,17 +87,6 @@ export function isXaiVisionMimeType(mimeType: string) {
   return mimeType === "image/jpeg" || mimeType === "image/png";
 }
 
-// Meal analysis is allowed to spend more time on the primary vision pass than
-// on the optional validator. Four photos can take longer to inspect than one,
-// while the route still has to finish well inside its 50s platform budget.
-function configuredTimeout(name: string, fallback: number, maximum: number) {
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) ? Math.min(maximum, Math.max(5_000, value)) : fallback;
-}
-
-const PRIMARY_VISION_TIMEOUT_MS = configuredTimeout("MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS", 20_000, 25_000);
-const TEXT_ANALYSIS_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 15_000);
-const VALIDATOR_TIMEOUT_MS = Math.min(PRIMARY_VISION_TIMEOUT_MS, 8_000);
 const MAX_PROVIDER_ATTEMPTS = 2;
 
 type VisionImageDetail = "low" | "high";
@@ -414,7 +403,6 @@ type StructuredRequest = {
   promptText: string;
   imageContents: Array<{ type: string; image_url: string; detail: string }>;
   maxOutputTokens: number;
-  timeoutMs: number;
   requestId?: string;
   reasoningEffort?: string;
   maxAttempts?: number;
@@ -458,7 +446,6 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(request.timeoutMs),
       });
     } catch (error) {
       const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
@@ -635,13 +622,12 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   throw lastError instanceof Error ? lastError : new MealVisionError("provider_unavailable", providerMessage(request.provider, "provider_unavailable"), { provider: request.provider, requestId: request.requestId });
 }
 
-async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, timeoutMs, requestId, maxAttempts }: {
+async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, requestId, maxAttempts }: {
   model: string;
   instructions: string;
   promptText: string;
   imageContents: Array<{ type: string; image_url: string; detail: string }>;
   maxOutputTokens: number;
-  timeoutMs: number;
   requestId?: string;
   maxAttempts?: number;
 }) {
@@ -654,7 +640,6 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
     promptText,
     imageContents,
     maxOutputTokens,
-    timeoutMs,
     requestId,
     maxAttempts,
   });
@@ -670,7 +655,6 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
     promptText: makeVerificationPrompt(input),
     imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" })),
     maxOutputTokens: 4_000,
-    timeoutMs: VALIDATOR_TIMEOUT_MS,
     reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low",
     requestId: input.requestId,
     maxAttempts: 1,
@@ -690,7 +674,6 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         promptText: makeVerificationPrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
-        timeoutMs: VALIDATOR_TIMEOUT_MS,
         requestId: input.requestId,
         maxAttempts: 1,
       })
@@ -705,7 +688,6 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         promptText: makePrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 4_000,
-        timeoutMs: PRIMARY_VISION_TIMEOUT_MS,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
       });
@@ -717,7 +699,6 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         promptText: makeTextPrompt(input),
         imageContents: [],
         maxOutputTokens: 1_500,
-        timeoutMs: TEXT_ANALYSIS_TIMEOUT_MS,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
       });

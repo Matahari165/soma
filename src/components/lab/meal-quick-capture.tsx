@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type { JournalDay, JournalEntry, JournalVariable } from "@/domain/lab/journal";
 import { MAX_MEAL_PHOTOS, type MealOrigin, type MealType } from "@/domain/meals";
-import { fetchMealWithTimeout } from "@/services/meal-client";
+import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 
 type CaptureState = "idle" | "choosing-origin" | "uploading" | "done" | "error";
@@ -70,11 +70,11 @@ async function uploadAndAnalyze(date: string, slot: MealType, file: File, origin
   form.set("origin", origin);
   const uploadKey = `quick-${date}-${slot}-${file.name}-${file.size}-${file.lastModified}`;
   await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId }));
-  await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+  await responseJson(await fetchMeal(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
     body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
-  }, 60_000, { operation: "analyze", requestId: analysisRequestId }));
+  }, { operation: "analyze", requestId: analysisRequestId }));
 }
 
 export function MealQuickCapture({ todayDate, variables, entries, days, breakfastDisabledOverride, morningJournalCompletedOverride }: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; breakfastDisabledOverride?: boolean; morningJournalCompletedOverride?: boolean }) {
