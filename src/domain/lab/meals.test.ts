@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aggregateConfirmedMeals, mealDailySeries, type ConfirmedMealRecord } from "./meals";
+import { aggregateConfirmedMeals, mealDailySeries, mealNutritionHistory, type ConfirmedMealRecord } from "./meals";
 
 function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "id">): ConfirmedMealRecord {
   return {
@@ -14,6 +14,8 @@ function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "i
     carbsG: input.carbsG === undefined ? { low: 40, likely: 50, high: 60 } : input.carbsG,
     fatG: input.fatG === undefined ? { low: 10, likely: 15, high: 20 } : input.fatG,
     fiberG: input.fiberG === undefined ? { low: 4, likely: 5, high: 6 } : input.fiberG,
+    sugarG: input.sugarG,
+    addedSugarG: input.addedSugarG,
     foods: input.foods,
     analysisConfidence: input.analysisConfidence,
     mouthHeat: input.mouthHeat === undefined ? 0 : input.mouthHeat,
@@ -110,5 +112,24 @@ describe("confirmed meal daily series", () => {
     expect(aggregate).toMatchObject({ analysisCoverage: 100, analysisConfidence: 67, foodVarietyCount: 2, foodGroupCount: 2 });
     expect(mealDailySeries(records).meal_analysis_coverage.points).toEqual([{ date: "2026-08-25", value: 100 }]);
     expect(mealDailySeries([meal({ id: "meal-empty", foods: [] })]).meal_food_variety.points).toEqual([]);
+  });
+
+  it("aligns nutrition trends to every calendar day without turning gaps into zero", () => {
+    const history = mealNutritionHistory([
+      meal({ id: "meal-early", mealDate: "2026-08-27", addedSugarG: { low: 1, likely: 2, high: 3 } }),
+      meal({ id: "meal-late", mealDate: "2026-08-29", caloriesKcal: { low: 700, likely: 800, high: 900 } }),
+    ], "2026-08-31", 7);
+
+    expect(history).toHaveLength(5);
+    expect(history.find((metric) => metric.id === "caloriesKcal")?.points).toEqual([
+      { date: "2026-08-25", value: null },
+      { date: "2026-08-26", value: null },
+      { date: "2026-08-27", value: 500 },
+      { date: "2026-08-28", value: null },
+      { date: "2026-08-29", value: 800 },
+      { date: "2026-08-30", value: null },
+      { date: "2026-08-31", value: null },
+    ]);
+    expect(history.find((metric) => metric.id === "addedSugarG")?.points[2]).toEqual({ date: "2026-08-27", value: 2 });
   });
 });

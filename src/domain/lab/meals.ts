@@ -80,6 +80,18 @@ export type MealDailyAggregate = {
   stomachOverfullnessMaximum: number | null;
 };
 
+export type MealNutritionTrendMetricId = "caloriesKcal" | "proteinG" | "addedSugarG" | "fatG" | "carbsG";
+
+export type MealNutritionTrendPoint = {
+  date: string;
+  value: number | null;
+};
+
+export type MealNutritionTrendMetric = {
+  id: MealNutritionTrendMetricId;
+  points: MealNutritionTrendPoint[];
+};
+
 export type MealMetricId =
   | "meal_calories"
   | "meal_protein"
@@ -250,6 +262,38 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       stomachOverfullnessMaximum: maximum(meals.map((meal) => intensity(meal.stomachOverfullness))),
     };
   });
+}
+
+const nutritionTrendSpecs: ReadonlyArray<{ id: MealNutritionTrendMetricId; read: (day: MealDailyAggregate) => number | null }> = [
+  { id: "caloriesKcal", read: (day) => day.caloriesKcal },
+  { id: "proteinG", read: (day) => day.proteinG },
+  { id: "addedSugarG", read: (day) => day.addedSugarG },
+  { id: "fatG", read: (day) => day.fatG },
+  { id: "carbsG", read: (day) => day.carbsG },
+];
+
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+/**
+ * Build calendar-aligned daily nutrition points for the meal history UI.
+ * Missing calendar days and incomplete nutrition estimates remain null: they
+ * are not observations and must not be rendered as zero.
+ */
+export function mealNutritionHistory(records: readonly ConfirmedMealRecord[], endDate: string, days = 30): MealNutritionTrendMetric[] {
+  const safeDays = Math.max(1, Math.floor(days));
+  const byDate = new Map(aggregateConfirmedMeals(records).map((day) => [day.date, day]));
+  const dates = Array.from({ length: safeDays }, (_, index) => addDays(endDate, index - (safeDays - 1)));
+  return nutritionTrendSpecs.map((spec) => ({
+    id: spec.id,
+    points: dates.map((date) => {
+      const day = byDate.get(date);
+      return { date, value: day ? spec.read(day) : null };
+    }),
+  }));
 }
 
 const seriesSpec: ReadonlyArray<{ id: MealMetricId; label: string; unit: string; read: (day: MealDailyAggregate) => number | null }> = [

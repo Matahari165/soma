@@ -1,0 +1,324 @@
+.root {
+  width: min(100%, 1480px);
+  margin: 30px auto 0;
+  padding: 0 clamp(28px, 4.5vw, 72px) 30px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ink);
+}
+
+.sectionHeader h2 {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: clamp(1.7rem, 3vw, 2.7rem);
+  line-height: 1.08;
+}
+
+.sectionHeader p {
+  max-width: 46rem;
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+.eyebrow,
+.metricLabel,
+.periodPicker legend {
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.periodPicker {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.periodPicker legend {
+  padding: 0;
+}
+
+.periodOptions {
+  display: flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+}
+
+.periodOptions button {
+  min-width: 88px;
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: .7rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.periodOptions button:last-child {
+  border-right: 0;
+}
+
+.periodOptions button:hover {
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+
+.periodOptions button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+.periodOptions button:focus-visible,
+.bar:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--ink);
+  border-radius: var(--radius-surface);
+}
+
+.card {
+  --metric-color: var(--moss);
+  display: grid;
+  min-width: 0;
+  min-height: 292px;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  padding: 20px;
+  border-right: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  background: var(--paper);
+}
+
+.card[data-metric="caloriesKcal"] {
+  --metric-color: var(--ochre);
+}
+
+.card[data-metric="proteinG"] {
+  --metric-color: var(--moss);
+}
+
+.card[data-metric="addedSugarG"] {
+  --metric-color: color-mix(in srgb, var(--nutrition-sugar-soft) 35%, var(--ink));
+}
+
+.card[data-metric="fatG"] {
+  --metric-color: var(--clay);
+}
+
+.card[data-metric="carbsG"] {
+  --metric-color: var(--cobalt);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardHeader > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.metricLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: clamp(1.55rem, 2.35vw, 2.35rem);
+  font-weight: 500;
+  letter-spacing: -.045em;
+  line-height: .95;
+  font-variant-numeric: tabular-nums;
+}
+
+.value small {
+  color: var(--muted);
+  font-size: .65rem;
+  font-weight: 500;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.average {
+  min-width: 0;
+  padding-top: 1px;
+  color: var(--ink-soft);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .65rem;
+  line-height: 1.35;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chartFrame {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-content: end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.barChart {
+  display: grid;
+  min-width: 0;
+  min-height: 142px;
+  grid-template-columns: repeat(var(--point-count), minmax(0, 1fr));
+  align-items: end;
+  gap: clamp(2px, .55vw, 7px);
+  padding: 10px 2px 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: linear-gradient(to bottom, transparent 32%, var(--line) 32%, transparent 33%, transparent 65%, var(--line) 65%, transparent 66%);
+}
+
+.barColumn {
+  display: flex;
+  min-width: 0;
+  height: 132px;
+  align-items: end;
+  justify-content: center;
+}
+
+.bar {
+  display: block;
+  width: min(100%, 22px);
+  min-height: 4px;
+  border-radius: 2px 2px 0 0;
+}
+
+.bar {
+  height: max(4px, var(--bar-height));
+  padding: 0;
+  border: 0;
+  background: var(--metric-color);
+  cursor: pointer;
+  transition: height var(--normal) var(--ease), opacity var(--fast) ease;
+}
+
+.bar:hover,
+.barActive {
+  opacity: .7;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  padding: 3px 5px;
+  background: var(--ink);
+  color: var(--canvas);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .68rem;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+.axis,
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .64rem;
+  line-height: 1.3;
+}
+
+.cardFooter {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.emptyState {
+  display: grid;
+  min-height: 180px;
+  place-content: center;
+  padding: 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-surface);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1240px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .root {
+    margin-top: 20px;
+    padding-inline: 14px;
+  }
+
+  .sectionHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .periodPicker,
+  .periodOptions {
+    width: 100%;
+  }
+
+  .periodOptions button {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 280px;
+    padding: 18px 16px;
+  }
+
+  .barChart {
+    min-height: 132px;
+  }
+
+  .barColumn {
+    height: 122px;
+  }
+}

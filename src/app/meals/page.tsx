@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import MealJournal from "@/components/meal-journal";
+import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
+import { mealNutritionHistory } from "@/domain/lab/meals";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
 import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
 import { PublicHome } from "@/components/public-home";
@@ -9,9 +11,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
 import { mealToApi } from "@/services/meal-api";
-import { listPreviewMeals } from "@/services/meal-preview";
+import { listPreviewMeals, loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes";
-import { listMeals } from "@/services/meals";
+import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
 
@@ -22,6 +24,12 @@ function isIsoDate(value: string) {
 
 function todayIn(timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
 }
 
 export default async function MealsPage({ searchParams }: { searchParams: Promise<{ date?: string | string[] }> }) {
@@ -36,7 +44,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
 
-  const [rawMeals, recipeResult] = await Promise.all([
+  const [rawMeals, recipeResult, nutritionRecords] = await Promise.all([
     isLocalPreviewMode()
       ? listPreviewMeals(user.id, { from: requestedDate, to: requestedDate })
       : listMeals(user.id, { from: requestedDate, to: requestedDate }).catch(() => []),
@@ -48,6 +56,9 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           ? error.message
           : "Les recettes personnelles sont momentanément indisponibles.",
       })),
+    isLocalPreviewMode()
+      ? Promise.resolve(loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
+      : loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate }).catch(() => []),
   ]);
 
   const records = rawMeals.map((meal) => apiMealToRecord(mealToApi(meal)));
@@ -59,6 +70,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   return (
     <div id="main-page-content">
       <MealJournal date={requestedDate} today={today} initialData={initialData} />
+      <MealNutritionTrends metrics={mealNutritionHistory(nutritionRecords, requestedDate)} />
       <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded />
     </div>
   );
