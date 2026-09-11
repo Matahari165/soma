@@ -1364,6 +1364,16 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
     min-height: 52px;
   }
 
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper {
+    width: min(164px, 48vw);
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper > button {
+    width: 44px;
+    min-width: 44px;
+  }
+
   .personal-lab-journal-column .journal-card--personal-lab .journal-choice--binary button,
   .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper > button,
   .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper .journal-number__value input {
