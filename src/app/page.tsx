@@ -31,7 +31,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const stream = createPersonalLabStream(user, { periods: [90], includeAnalysis: false });
   return <div id="main-page-content" className="personal-lab-page lab-entry" lang="fr">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
-    <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>
     <StrongestEffectsPanel />
+    <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>
   </div>;
 }
