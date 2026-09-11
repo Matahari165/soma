@@ -110,8 +110,6 @@
   .mobile-header .brand-symbol { width: 30px; height: 30px; }
   .mobile-header .soma-logo { gap: 5px; }
   .mobile-header .soma-wordmark strong { font-size: .8rem; }
-  .mobile-header__actions { display: flex; }
-  .mobile-header .icon-button { width: 44px; min-width: 44px; min-height: 44px; }
   .mobile-header-nav {
     display: flex;
     gap: 2px;
@@ -163,15 +161,6 @@
   .settings-layout { grid-template-columns: 1fr; gap: 18px; }
   .settings-layout > nav { display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); }
   .settings-layout > nav button { flex: 0 0 auto; white-space: nowrap; }
-
-  .coach-page { min-height: calc(100dvh - 136px); grid-template-columns: 1fr; }
-  .coach-history { position: static; width: auto; height: auto; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--ink); }
-  .coach-history > div { display: none; }
-  .coach-history-toggle { display: flex !important; margin-top: 0 !important; }
-  .coach-history > button:not(.coach-history-toggle), .coach-history nav { display: none; }
-  .coach-history.is-open > button, .coach-history.is-open nav { display: grid; }
-  .coach-history.is-open .coach-history-toggle { display: flex; }
-  .coach-workspace { height: calc(100dvh - 136px); }
 
   .onboarding-shell { grid-template-columns: 1fr; }
   .onboarding-aside { padding: 20px; border-right: 0; border-bottom: 1px solid var(--ink); }
@@ -283,9 +272,6 @@
   .auth-card-wrap { padding: 28px 20px; }
   .auth-intro::before, .auth-intro::after { display: none; }
 
-  .chat-bubble { max-width: 92%; }
-  .chat-messages { padding: 18px 12px; }
-  .chat-composer { padding-inline: 10px; }
 }
 
 @media (max-width: 380px) {

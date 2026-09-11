@@ -67,7 +67,6 @@ const conflictKeys: Record<string, string[]> = {
   insights: ["user_id", "deduplication_key"],
   correlation_results: ["user_id", "variable_x", "variable_y", "lag_days", "date_start", "date_end"],
   briefs: ["user_id", "kind", "brief_date"],
-  agent_action_proposals: ["user_id", "idempotency_key"],
   journal_variables: ["user_id", "name"],
   journal_entries: ["user_id", "variable_id", "entry_date"],
   lab_narratives: ["user_id"],

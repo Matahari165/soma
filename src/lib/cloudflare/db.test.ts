@@ -178,6 +178,5 @@ describe("Personal Lab matrix revision", () => {
     expect(affectsLabMatrixRevision("daily_health_metrics")).toBe(true);
     expect(affectsLabMatrixRevision("journal_entries")).toBe(true);
     expect(affectsLabMatrixRevision("meal_analyses")).toBe(true);
-    expect(affectsLabMatrixRevision("coach_messages")).toBe(false);
   });
 });

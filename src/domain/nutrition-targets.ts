@@ -15,8 +15,8 @@ export type NutritionTargets = {
 
 /**
  * Runtime validation shared by the server route and client consumers.
- * Ranges are deliberately ordered so progress and Coach advice never use an
- * inverted target by accident.
+ * Ranges are deliberately ordered so progress and downstream guidance never
+ * use an inverted target by accident.
  */
 export function parseNutritionTargets(value: unknown): NutritionTargets | null {
   if (!value || typeof value !== "object") return null;

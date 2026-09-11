@@ -1,4 +1,4 @@
--- Soma phases 2–9: health ingestion, analytics, Coach, workouts, and privacy.
+-- Soma phases 2–9: health ingestion, analytics, workouts, and privacy.
 
 create type public.import_range_type as enum ('90_days', 'all_history');
 create type public.score_kind as enum ('sleep', 'recovery', 'effort');
@@ -6,7 +6,6 @@ create type public.job_status as enum ('queued', 'running', 'completed', 'failed
 create type public.connection_status as enum ('connected', 'expired', 'revoked', 'error');
 create type public.insight_category as enum ('positive', 'attention', 'information');
 create type public.brief_kind as enum ('morning', 'evening', 'weekly');
-create type public.action_status as enum ('proposed', 'confirmed', 'executed', 'rejected', 'failed');
 
 alter table public.profiles
   add column import_range public.import_range_type not null default '90_days',
@@ -189,45 +188,6 @@ create table public.briefs (
   unique (user_id, kind, brief_date)
 );
 
-create table public.coach_threads (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  title text not null default 'New conversation' check (char_length(title) <= 120),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table public.coach_messages (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  thread_id uuid not null references public.coach_threads(id) on delete cascade,
-  role text not null check (role in ('user', 'assistant')),
-  content text not null check (char_length(content) <= 12000),
-  evidence_refs jsonb not null default '[]'::jsonb,
-  model text,
-  token_usage jsonb,
-  created_at timestamptz not null default now()
-);
-
-create index coach_messages_thread_time_idx
-  on public.coach_messages (thread_id, created_at);
-
-create table public.agent_action_proposals (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  thread_id uuid references public.coach_threads(id) on delete cascade,
-  tool_name text not null,
-  arguments jsonb not null,
-  preview text not null,
-  status public.action_status not null default 'proposed',
-  idempotency_key text not null,
-  receipt jsonb,
-  confirmed_at timestamptz,
-  executed_at timestamptz,
-  created_at timestamptz not null default now(),
-  unique (user_id, idempotency_key)
-);
-
 create table public.exercise_library (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid references auth.users(id) on delete cascade,
@@ -329,8 +289,6 @@ create trigger health_records_set_updated_at before update on public.health_reco
 for each row execute function public.set_updated_at();
 create trigger daily_health_metrics_set_updated_at before update on public.daily_health_metrics
 for each row execute function public.set_updated_at();
-create trigger coach_threads_set_updated_at before update on public.coach_threads
-for each row execute function public.set_updated_at();
 create trigger workout_programs_set_updated_at before update on public.workout_programs
 for each row execute function public.set_updated_at();
 create trigger workout_sessions_set_updated_at before update on public.workout_sessions
@@ -347,9 +305,6 @@ alter table public.daily_scores enable row level security;
 alter table public.insights enable row level security;
 alter table public.correlation_results enable row level security;
 alter table public.briefs enable row level security;
-alter table public.coach_threads enable row level security;
-alter table public.coach_messages enable row level security;
-alter table public.agent_action_proposals enable row level security;
 alter table public.exercise_library enable row level security;
 alter table public.workout_programs enable row level security;
 alter table public.workout_program_exercises enable row level security;
@@ -375,11 +330,6 @@ create policy correlations_owner on public.correlation_results for all to authen
 using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy briefs_owner on public.briefs for all to authenticated
 using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
-create policy coach_threads_owner on public.coach_threads for all to authenticated
-using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
-create policy coach_messages_owner on public.coach_messages for all to authenticated
-using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
--- Agent proposals are server-only because confirmed payloads can trigger writes.
 create policy workout_programs_owner on public.workout_programs for all to authenticated
 using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy workout_program_exercises_owner on public.workout_program_exercises for all to authenticated
@@ -401,13 +351,12 @@ using ((select auth.uid()) = owner_user_id) with check ((select auth.uid()) = ow
 -- Webhook and audit inserts are server-only through the service role.
 
 grant usage on type public.import_range_type, public.score_kind, public.job_status,
-  public.connection_status, public.insight_category, public.brief_kind, public.action_status
+  public.connection_status, public.insight_category, public.brief_kind
   to authenticated;
 
 grant select on public.sync_jobs, public.ingestion_checkpoints, public.health_records,
   public.daily_health_metrics, public.daily_scores, public.insights,
-  public.correlation_results, public.briefs, public.coach_threads,
-  public.coach_messages, public.workout_programs, public.workout_program_exercises,
+  public.correlation_results, public.briefs, public.workout_programs, public.workout_program_exercises,
   public.workout_sessions, public.workout_session_sets, public.consent_events to authenticated;
 grant select on public.exercise_library to authenticated;
 grant select on public.audit_events to authenticated;

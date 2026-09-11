@@ -7,12 +7,8 @@ drop policy if exists webhook_events_server_only on public.webhook_events;
 create policy webhook_events_server_only on public.webhook_events
 for all to authenticated using (false) with check (false);
 
-drop policy if exists agent_action_proposals_server_only on public.agent_action_proposals;
-create policy agent_action_proposals_server_only on public.agent_action_proposals
-for all to authenticated using (false) with check (false);
-
-revoke all on public.provider_connections, public.webhook_events,
-  public.agent_action_proposals from anon, authenticated;
+revoke all on public.provider_connections, public.webhook_events
+  from anon, authenticated;
 
 -- Supabase creates this helper when automatic RLS is enabled. It must never be
 -- callable through PostgREST by anonymous or signed-in application users.

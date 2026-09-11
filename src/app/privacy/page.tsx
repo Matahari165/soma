@@ -14,11 +14,11 @@ export default function PrivacyPage() {
         <h1>Your health data stays yours.</h1>
         <p>Last updated August 31, 2026.</p>
         <h2>What Soma stores</h2>
-        <p>Your Google account identifier, manually entered profile information, authorized Google Health data, derived scores and insights, Coach conversations, workouts, meal entries, meal photos, nutrition estimates, and the two meal feelings you choose to record.</p>
+        <p>Your Google account identifier, manually entered profile information, authorized Google Health data, derived scores and insights, workouts, meal entries, meal photos, nutrition estimates, and the two meal feelings you choose to record.</p>
         <h2>Why Soma uses it</h2>
-        <p>To show your dashboard, keep your meal history, calculate personal wellness trends and relationships, answer Coach questions, and run the features you explicitly request.</p>
+        <p>To show your dashboard, keep your meal history, calculate personal wellness trends and relationships, and run the features you explicitly request.</p>
         <h2>AI processing</h2>
-        <p>Soma sends a limited summary of relevant metrics to xAI when you use Coach or request an analysis summary. When you explicitly analyse a meal, Soma sends the selected meal photos, their origin labels, and your optional note to the configured analysis provider (Grok by default, with ChatGPT 5.6 Sol available as a configured fallback or primary provider). OAuth tokens are never included. Requests use store: false.</p>
+        <p>Soma sends a limited summary of relevant metrics to xAI when you request an analysis summary. When you explicitly analyse a meal, Soma sends the selected meal photos, their origin labels, and your optional note to the configured analysis provider (Grok by default, with ChatGPT 5.6 Sol available as a configured fallback or primary provider). OAuth tokens are never included. Requests use store: false.</p>
         <h2>Retention and control</h2>
         <p>Soma keeps your history and private meal photos until you delete them or delete your account. You can export your data, delete individual meals, disconnect Google Health, or permanently delete everything from Settings.</p>
         <h2>Important limit</h2>

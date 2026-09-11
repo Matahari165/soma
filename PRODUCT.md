@@ -29,12 +29,11 @@ Les calculs statistiques sont déterministes. L’IA peut expliquer des résulta
 - Ajout des repas par photo et/ou note, puis revue et confirmation de l’analyse.
 - Import optionnel et révocable de données Google Health.
 - Consultation de `Strongest Effects`, des relations détaillées et des vues Sommeil, Récupération et Effort.
-- Utilisation du Coach pour interroger les données ; toute action d’écriture proposée par le Coach demande une confirmation explicite.
 - Mode local avec données de démonstration clairement signalé.
 
 ## Capabilities and Constraints
 
-- Routes principales : Personal Lab (`/`), Repas (`/meals`), Sommeil (`/sleep`), Récupération (`/recovery`), Effort (`/activity`), Coach (`/coach`) et Réglages (`/settings`).
+- Routes principales : Personal Lab (`/`), Repas (`/meals`), Sommeil (`/sleep`), Récupération (`/recovery`), Effort (`/activity`) et Réglages (`/settings`).
 - Le journal accepte des variables booléennes, numériques, temporelles, catégorielles et graduées ; les mesures peuvent être créées, réordonnées ou archivées sans perdre leur historique.
 - Seuls les jours validés entrent dans l’analyse des relations. Les jours validés peuvent être corrigés et recalculés.
 - Les relations peuvent couvrir 15, 30, 90 jours ou tout l’historique et distinguer le même jour, le lendemain et deux jours plus tard.

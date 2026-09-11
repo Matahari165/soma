@@ -5,7 +5,7 @@ const schema = readFileSync(new URL("../../supabase/migrations/20260808000000_co
 const hardening = readFileSync(new URL("../../supabase/migrations/20260808130000_production_hardening.sql", import.meta.url), "utf8");
 const serviceRolePrivileges = readFileSync(new URL("../../supabase/migrations/20260808143000_restore_service_role_privileges.sql", import.meta.url), "utf8");
 const atomicProfileUpdates = readFileSync(new URL("../../supabase/migrations/20260819211500_atomic_profile_updates.sql", import.meta.url), "utf8");
-const atomicWorkoutAndCoachWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_and_coach_writes.sql", import.meta.url), "utf8");
+const atomicWorkoutWrites = readFileSync(new URL("../../supabase/migrations/20260819213000_atomic_workout_writes.sql", import.meta.url), "utf8");
 const googleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260820090000_google_health_reconciliation.sql", import.meta.url), "utf8");
 const optimizedGoogleHealthReconciliation = readFileSync(new URL("../../supabase/migrations/20260823093000_optimize_google_health_reconciliation.sql", import.meta.url), "utf8");
 const dailyGoogleHealthSync = readFileSync(new URL("../../supabase/migrations/20260820110000_daily_google_health_sync.sql", import.meta.url), "utf8");
@@ -16,15 +16,13 @@ const cloudflareR2Archives = readFileSync(new URL("../../supabase/migrations/202
 const schedule = readFileSync(new URL("../../supabase/setup/schedule_sync.sql", import.meta.url), "utf8");
 
 describe("database security contract", () => {
-  it("keeps OAuth connections and executable agent proposals server-only", () => {
+  it("keeps OAuth connections server-only", () => {
     expect(schema).not.toMatch(/grant .*provider_connections.* to authenticated/i);
-    expect(schema).not.toMatch(/grant .*agent_action_proposals.* to authenticated/i);
     expect(schema).not.toMatch(/policy provider_connections_owner/i);
-    expect(schema).not.toMatch(/policy agent_actions_owner/i);
   });
 
   it("enables RLS on every health and workout table", () => {
-    for (const table of ["health_records", "daily_health_metrics", "daily_scores", "insights", "correlation_results", "coach_threads", "workout_programs", "workout_sessions"]) {
+    for (const table of ["health_records", "daily_health_metrics", "daily_scores", "insights", "correlation_results", "workout_programs", "workout_sessions"]) {
       expect(schema).toContain(`alter table public.${table} enable row level security;`);
     }
   });
@@ -38,7 +36,7 @@ describe("database security contract", () => {
   });
 
   it("explicitly denies application roles access to service-only resources", () => {
-    for (const policy of ["provider_connections_server_only", "webhook_events_server_only", "agent_action_proposals_server_only"]) {
+    for (const policy of ["provider_connections_server_only", "webhook_events_server_only"]) {
       expect(hardening).toContain(`create policy ${policy}`);
     }
     expect(hardening).toMatch(/revoke execute on function public\.rls_auto_enable\(\) from public, anon, authenticated/i);
@@ -80,13 +78,12 @@ describe("database security contract", () => {
     expect(atomicProfileUpdates).toContain("insert into public.health_goals");
   });
 
-  it("keeps workout and confirmed Coach multi-table writes atomic and service-only", () => {
-    for (const functionName of ["create_soma_workout_program", "start_soma_workout_session", "execute_soma_proposal", "persist_soma_coach_exchange"]) {
-      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`create or replace function public\\.${functionName}`, "i"));
-      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`revoke all on function public\\.${functionName}[\\s\\S]*from public, anon, authenticated`, "i"));
-      expect(atomicWorkoutAndCoachWrites).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
+  it("keeps workout multi-table writes atomic and service-only", () => {
+    for (const functionName of ["create_soma_workout_program", "start_soma_workout_session"]) {
+      expect(atomicWorkoutWrites).toMatch(new RegExp(`create or replace function public\\.${functionName}`, "i"));
+      expect(atomicWorkoutWrites).toMatch(new RegExp(`revoke all on function public\\.${functionName}[\\s\\S]*from public, anon, authenticated`, "i"));
+      expect(atomicWorkoutWrites).toMatch(new RegExp(`grant execute on function public\\.${functionName}[\\s\\S]*to service_role`, "i"));
     }
-    expect(atomicWorkoutAndCoachWrites).toContain("extensions.digest(");
   });
 
   it("keeps Google Health reconciliation atomic and service-only", () => {

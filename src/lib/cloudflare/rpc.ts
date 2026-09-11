@@ -101,58 +101,6 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
       return { data: sessionId, error: null };
     }
 
-    if (name === "persist_soma_coach_exchange") {
-      const threadId = input.p_thread_id ?? crypto.randomUUID();
-      if (!input.p_thread_id) await client.from("coach_threads").insert({ id: threadId, user_id: input.p_user_id, title: String(input.p_title).slice(0, 120) });
-      else {
-        const { data: thread } = await client.from("coach_threads").select("id").eq("id", threadId).eq("user_id", input.p_user_id).maybeSingle();
-        if (!thread) return { data: null, error: { message: "Conversation not found.", code: "P0002" } };
-      }
-      await client.from("coach_messages").insert({ user_id: input.p_user_id, thread_id: threadId, role: "user", content: input.p_user_message });
-      const assistantId = crypto.randomUUID();
-      await client.from("coach_messages").insert({ id: assistantId, user_id: input.p_user_id, thread_id: threadId, role: "assistant", content: input.p_assistant_message, evidence_refs: input.p_evidence ?? [], model: input.p_model, token_usage: input.p_token_usage ?? null });
-      let proposalId: string | null = null;
-      if (input.p_action_tool_name) {
-        proposalId = crypto.randomUUID();
-        await client.from("agent_action_proposals").insert({
-          id: proposalId,
-          user_id: input.p_user_id,
-          thread_id: threadId,
-          tool_name: input.p_action_tool_name,
-          arguments: input.p_action_arguments ?? {},
-          preview: input.p_action_preview,
-          status: "proposed",
-          idempotency_key: `${threadId}:${assistantId}:${input.p_action_tool_name}`,
-        });
-      }
-      await client.from("coach_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId).eq("user_id", input.p_user_id);
-      return { data: { threadId, proposalId }, error: null };
-    }
-
-    if (name === "execute_soma_proposal") {
-      const { data: proposal } = await client.from("agent_action_proposals").select("*").eq("id", input.p_proposal_id).eq("user_id", input.p_user_id).eq("status", "proposed").maybeSingle();
-      if (!proposal) return { data: null, error: { message: "Proposal unavailable.", code: "P0002" } };
-      let receipt: Row;
-      if (proposal.tool_name === "update_sleep_target") {
-        const target = Number(proposal.arguments.sleepTargetMinutes);
-        await client.from("sleep_preferences").update({ base_target_minutes: target }).eq("user_id", input.p_user_id);
-        receipt = { executed: true, sleepTargetMinutes: target };
-      } else if (proposal.tool_name === "update_primary_goal") {
-        await client.from("health_goals").update({ ended_on: new Date().toISOString().slice(0, 10) }).eq("user_id", input.p_user_id).eq("priority", 1).is("ended_on", null);
-        await client.from("health_goals").insert({ user_id: input.p_user_id, goal_type: proposal.arguments.goal, priority: 1 });
-        receipt = { executed: true, goal: proposal.arguments.goal };
-      } else if (proposal.tool_name === "customize_dashboard") {
-        const { data: layout } = await client.from("dashboard_layouts").select("layout").eq("user_id", input.p_user_id).single();
-        if (!layout) return { data: null, error: { message: "Dashboard layout not found.", code: "P0002" } };
-        const widgets = (layout.layout?.widgets ?? []).map((widget: Row) => widget.id === proposal.arguments.widgetId ? { ...widget, visible: proposal.arguments.visible } : widget);
-        await client.from("dashboard_layouts").update({ layout: { ...layout.layout, widgets } }).eq("user_id", input.p_user_id);
-        receipt = { executed: true, widgetId: proposal.arguments.widgetId, visible: proposal.arguments.visible };
-      } else return { data: null, error: { message: "Unsupported action type.", code: "22023" } };
-      receipt.at = new Date().toISOString();
-      await client.from("agent_action_proposals").update({ status: "executed", confirmed_at: receipt.at, executed_at: receipt.at, receipt }).eq("id", input.p_proposal_id).eq("user_id", input.p_user_id);
-      return { data: receipt, error: null };
-    }
-
     if (name === "reconcile_google_health_window") {
       const { data: staged, error } = await client.from("google_health_reconciliation_stage").select("*").eq("reconciliation_token", input.p_reconciliation_token).eq("user_id", input.p_user_id).eq("data_type", input.p_data_type);
       if (error) return { data: null, error };

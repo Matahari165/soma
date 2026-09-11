@@ -396,38 +396,6 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .consent-preview, .scope-note { display: flex; gap: 12px; margin-top: 18px; padding: 14px; border-left: 1px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); font-size: .75rem; }
 .onboarding-finish-actions { display: flex; align-items: center; gap: 10px; }
 
-/* Coach */
-.coach-page { display: grid; min-height: 100vh; grid-template-columns: 280px minmax(0, 1fr); }
-.coach-history { display: flex; height: 100vh; flex-direction: column; padding: 28px 20px; border-right: 1px solid var(--ink); background: var(--paper); }
-.coach-history h1 { font-size: 2.8rem; }
-.coach-history > button { display: flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 18px; padding: 9px; border: 1px solid var(--line); background: transparent; text-align: left; }
-.coach-history-toggle { display: none !important; }
-.coach-history nav { display: grid; gap: 3px; margin-top: 30px; overflow-y: auto; }
-.coach-history nav > span { margin-bottom: 8px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .62rem; text-transform: uppercase; }
-.coach-history nav button { min-height: 42px; padding: 8px; overflow: hidden; border: 0; background: transparent; color: var(--ink-soft); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.coach-history nav button:hover, .coach-history nav button.is-active { background: var(--ink); color: var(--canvas); }
-.coach-workspace { display: grid; min-width: 0; height: 100vh; grid-template-rows: auto 1fr; background: var(--canvas); }
-.coach-workspace > header { display: flex; min-height: 70px; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid var(--ink); background: var(--paper); }
-.coach-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 110; display: grid; width: min(480px, 100%); grid-template-rows: auto 1fr; border-left: 1px solid var(--ink); background: var(--paper); box-shadow: var(--shadow); }
-.coach-panel__header { display: flex; min-height: 80px; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
-.coach-panel__header h2 { margin-top: 5px; font-size: 1.6rem; }
-.chat { display: grid; min-height: 0; grid-template-rows: 1fr auto auto; }
-.chat-messages { display: flex; min-height: 0; flex-direction: column; gap: 18px; overflow-y: auto; padding: clamp(18px, 4vw, 46px); }
-.chat-bubble { display: grid; max-width: min(78%, 680px); grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
-.chat-bubble > div { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-surface); background: var(--paper); }
-.chat-bubble--user { align-self: end; grid-template-columns: 1fr; }
-.chat-bubble--user > div { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
-.chat-avatar { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--line); border-radius: 50%; }
-.chat-avatar svg { width: 24px; height: 24px; }
-.evidence-list { margin: 14px 0 0; padding: 0; list-style: none; }
-.evidence-list li { padding: 8px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: .7rem; }
-.action-preview { margin-top: 14px; padding: 14px; border: 1px solid var(--ochre); border-radius: var(--radius-surface); background: var(--ochre-soft); }
-.action-preview h3 { margin-block: 7px; }
-.action-preview > div { display: flex; gap: 8px; margin-top: 12px; }
-.chat-suggestions { display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto; border-top: 1px solid var(--line); }
-.chat-suggestions button { min-height: 38px; padding: 7px 11px; border: 1px solid var(--line); background: var(--paper); white-space: nowrap; }
-.chat-composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 14px 16px; border-top: 1px solid var(--ink); background: var(--paper); }
-.chat-thinking, .coach-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--muted); }
 .load-error { display: grid; max-width: 560px; place-items: start; gap: 10px; margin: auto; padding: 24px; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); }
 .system-state { display: grid; max-width: 680px; min-height: 420px; align-content: center; justify-items: start; gap: 12px; margin: 0 auto; padding: 40px 24px; }
 .system-state h1 { max-width: 12ch; }
@@ -1233,7 +1201,6 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
   .modal-confirmation,
   .lab-notice,
   .matrix-disclosure,
-  .action-preview,
   .load-error,
   .selected-exercises article,
   .journal-new-variable,
@@ -1271,8 +1238,6 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 :where(
   .recovery-score-popover header button,
   .health-explanation-popover header button,
-  .coach-history > button,
-  .chat-suggestions button,
   .exercise-picker button,
   .program-icon,
   .connection-logo,

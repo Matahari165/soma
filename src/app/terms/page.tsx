@@ -17,8 +17,6 @@ export default function TermsPage() {
         <p>Soma helps you understand general sleep, recovery, activity, and training patterns from data you authorize.</p>
         <h2>Your responsibility</h2>
         <p>Device readings can be incomplete or inaccurate. Consider how you feel and seek qualified medical advice for symptoms, diagnoses, treatment, or urgent concerns.</p>
-        <h2>Coach actions</h2>
-        <p>Soma Coach may prepare changes, but write actions always require your explicit confirmation. You remain responsible for reviewing the preview.</p>
         <h2>Availability</h2>
         <p>Google Health, xAI, and hosting services can be interrupted or change their interfaces. Soma shows missing or stale states instead of presenting absent data as current.</p>
         <h2>Account control</h2>

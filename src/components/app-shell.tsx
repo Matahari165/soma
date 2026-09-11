@@ -7,25 +7,19 @@ import {
   Heart,
   HeartPulse,
   LayoutDashboard,
-  MessageCircle,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Utensils,
-  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 
-import { useDialogLayer } from "@/components/use-dialog-layer";
 import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
 import type { SomaUser } from "@/lib/auth";
-
-const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Ouverture du coach…</div> });
 
 const navigation = [
   { label: "Laboratoire", href: "/", icon: LayoutDashboard },
@@ -33,13 +27,11 @@ const navigation = [
   { label: "Sommeil", href: "/sleep", icon: BedDouble },
   { label: "Récupération", href: "/recovery", icon: HeartPulse },
   { label: "Effort", href: "/activity", icon: Activity },
-  { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
-// The logo is the home affordance and Coach keeps its dedicated panel action.
 // Show the remaining product destinations directly on mobile instead of hiding
 // them behind a second menu.
-const mobileNavigation = navigation.filter(({ href }) => href !== "/" && href !== "/coach");
+const mobileNavigation = navigation.filter(({ href }) => href !== "/");
 const personalLabNavigation = [
   { label: "Laboratoire", href: "/", icon: Beaker },
   { label: "Repas", href: "/meals", icon: Utensils },
@@ -48,39 +40,15 @@ const personalLabNavigation = [
   { label: "Effort", href: "/activity", icon: Zap },
 ];
 
-function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
-  return (
-    <aside ref={panelRef} className="coach-panel" role="dialog" aria-modal="true" aria-labelledby="coach-panel-title">
-      <div className="coach-panel__header">
-        <div>
-          <span className="eyebrow">Coach Soma</span>
-          <h2 id="coach-panel-title">Parler de ma journée</h2>
-        </div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="Fermer le coach">
-          <X size={20} />
-        </button>
-      </div>
-
-      <PanelCoachChat compact />
-    </aside>
-  );
-}
-
 export function AppShell({ children, user, localPreview = false }: { children: React.ReactNode; user: SomaUser | null; localPreview?: boolean }) {
   const pathname = usePathname();
-  const [coachOpen, setCoachOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const coachPanelRef = useRef<HTMLElement>(null);
-  const closeCoach = useCallback(() => setCoachOpen(false), []);
   const displayName = user?.displayName ?? "Utilisateur Soma";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
-  const onCoachPage = pathname.startsWith("/coach");
   const isPersonalLab = pathname === "/";
   const isStitchWorkspace = ["/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
   const activeNavigation = isStitchWorkspace ? personalLabNavigation : navigation;
   const activeMobileNavigation = isStitchWorkspace ? personalLabNavigation.slice(1) : mobileNavigation;
-
-  useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
 
   if (
     ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
@@ -161,21 +129,9 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             </Link>
           ))}
         </nav>
-        <div className="mobile-header__actions">
-          {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Ouvrir le coach Soma">
-            <MessageCircle size={19} strokeWidth={1.8} aria-hidden="true" />
-          </button>}
-        </div>
       </header>
 
       <main className="main-content">{children}</main>
-
-      {coachOpen && (
-        <>
-          <button className="panel-backdrop" type="button" onClick={() => setCoachOpen(false)} aria-label="Fermer le panneau du coach" />
-          <CoachPanel onClose={closeCoach} panelRef={coachPanelRef} />
-        </>
-      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ describe("server nutrition targets", () => {
     delete process.env.SOMA_LOCAL_PREVIEW;
   });
 
-  it("persists preview targets and exposes scalar values for Coach", async () => {
+  it("persists preview targets and exposes scalar values for guidance", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     const targets = { ...DEFAULT_NUTRITION_TARGETS, caloriesKcal: { low: 3000, likely: 3200, high: 3400 } };
     await saveNutritionTargetsForUser("preview-target-user", targets);
