@@ -5,6 +5,7 @@ import { MetricRegistry } from "./metric-registry";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { NarrativeRefresh } from "./narrative-refresh";
 import { PersonalLabMetrics } from "./today-signals";
+import { isLocalPreviewMode } from "@/lib/env";
 
 export function PersonalLabOverviewSection({ data, connectionNotice = null }: { data: PersonalLabOverview; connectionNotice?: "health" | "calendar" | null }) {
   return <>
@@ -16,6 +17,7 @@ export function PersonalLabOverviewSection({ data, connectionNotice = null }: { 
           <PersonalLabMetrics data={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} />
         </div>
       </div>
+      {isLocalPreviewMode() && <nav className="dark-lab-shortcuts" aria-label="Saisie quotidienne"><a href="#daily-journal">Journal</a><a href="#meal-journal-title">Repas</a></nav>}
     </header>
   </>;
 }

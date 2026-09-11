@@ -3,6 +3,7 @@ import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
+import { DarkThemeSwitcher } from "@/components/lab/dark-theme-switcher";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -15,6 +16,7 @@ import "./health-redesign.css";
 import "./motion-entry.css";
 import "./motion-journal.css";
 import "./motion-matrix.css";
+import "./dark-lab-preview.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
@@ -47,8 +49,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "light",
-  themeColor: "#F4F6F2",
+  colorScheme: isLocalPreviewMode() ? "dark" : "light",
+  themeColor: isLocalPreviewMode() ? "#141619" : "#F4F6F2",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -59,10 +61,11 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={localPreview ? "graphite" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
+        {localPreview && <DarkThemeSwitcher />}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

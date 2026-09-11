@@ -708,7 +708,7 @@
 .labHeader button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-brand); }
 .labHeader button:hover { background: var(--lab-brand); color: var(--lab-surface); }
 .labHeader button:disabled { cursor: not-allowed; opacity: .38; }
-.labHeader button:focus-visible { outline: 2px solid #264d38; outline-offset: 3px; }
+.labHeader button:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
 .labRoot .mealList { display: grid; gap: 16px; border-top: 0; }
 .labRoot .mealCard { min-height: 130px; padding: 0 16px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); }
 .labRoot .mealCardConfirmed { border-color: var(--lab-border-strong); background: var(--lab-surface); }
@@ -1650,4 +1650,14 @@
   .mealsJournalPanel .captureButtonCompact {
     height: 100%;
   }
+}
+
+/* Local dark proposals reuse meal slots as unboxed capture rows. */
+:global(html[data-lab-theme]) .labRoot .mealCard,
+:global(html[data-lab-theme]) .labRoot .mealCardConfirmed {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
 }
