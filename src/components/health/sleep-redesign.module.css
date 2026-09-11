@@ -236,34 +236,34 @@
 .root :global(.health-detail-page--sleep) :global(.health-signal-meta) { margin-top: 0; border-color: var(--sleep-border); border-radius: 4px; background: var(--sleep-surface); font-family: inherit; font-size: 11px; }
 
 @media (max-width: 1100px) {
-  :global(.health-detail-page--sleep) { padding: 0 20px 24px; }
-  :global(.health-detail-page--sleep) :global(.health-detail-hero) { margin-inline: -20px; }
+  .root :global(.health-detail-page--sleep) { padding: 0 20px 24px; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { margin-inline: -20px; }
   .columns { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 800px) {
-  :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 16px; }
-  :global(.health-detail-page--sleep) :global(.health-hero-score),
-  :global(.health-detail-page--sleep) :global(.health-hero-stat),
-  :global(.health-detail-page--sleep) :global(.sleep-header-duration) { height: 68px; min-height: 68px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 16px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) { height: 68px; min-height: 68px; }
   .timingRow { grid-template-columns: minmax(100px, 1fr) auto; }
   .timingRow small { grid-column: 2; }
   .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
-  :global(.health-detail-page--sleep) { gap: 20px; padding: 0 14px 20px; }
-  :global(.health-detail-page--sleep) :global(.health-detail-hero) { margin-inline: -14px; }
-  :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child { min-height: 64px; padding-inline: 16px; }
-  :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 { font-size: 24px; }
-  :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px 14px; }
-  :global(.health-detail-page--sleep) :global(.health-hero-score),
-  :global(.health-detail-page--sleep) :global(.health-hero-stat),
-  :global(.health-detail-page--sleep) :global(.sleep-header-duration) { height: 64px; min-height: 64px; }
-  :global(.health-detail-page--sleep) :global(.health-hero-stat) { padding: 6px 8px; }
-  :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
-  :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: 9px; }
-  :global(.health-detail-page--sleep) :global(.sleep-header-duration) strong { font-size: 22px; }
+  .root :global(.health-detail-page--sleep) { gap: 20px; padding: 0 14px 20px; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { margin-inline: -14px; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child { min-height: 64px; padding-inline: 16px; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 { font-size: 24px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px 14px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) { height: 64px; min-height: 64px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { padding: 6px 8px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: 9px; }
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) strong { font-size: 22px; }
   .column { gap: 20px; }
   .panel { padding: 16px; }
   .panelHeader { align-items: flex-start; }
