@@ -101,7 +101,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
 
-  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HeaderScoreMetric label="Sleep score" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
+  return <div className={styles.root}><HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HeaderScoreMetric label="Sleep score" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
     <div className={`sleep-header-duration metric-tone--${sleepTone}`}><span>SLEEP DURATION</span><strong>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}<small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><em>30d average · {formatDurationMinutes(averageSleep)}</em></div>
     <div className="health-hero-stat health-hero-stat--regularity"><HeaderScoreMetric label="Regularity" value={regularity} average={averageRegularity} values={recentRegularityValues} tone={regularityTone} /></div>
     <div className={`health-hero-stat health-hero-stat--debt metric-tone--${debtTone}`}><span>Sleep debt</span><strong className={`metric-reading metric-reading--${debtTone}`}><span>{formatDurationMinutes(debt)}</span></strong></div>
@@ -158,5 +158,5 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
         </div>
       </div> : <section className={`${styles.panel} ${styles.empty}`}><MoonStar size={24} aria-hidden="true" /><div><span className={styles.eyebrow}>NO DATA</span><h2>No sleep data yet</h2><p>Sync one complete sleep session to begin.</p></div></section>}
     </div>
-  </HealthPageShell>;
+  </HealthPageShell></div>;
 }

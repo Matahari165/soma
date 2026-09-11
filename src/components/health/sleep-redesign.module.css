@@ -2,7 +2,7 @@
    existing health components; these rules only align it to the validated Figma
    reference and avoid changing the shared shell for other health pages. */
 
-:global(.health-detail-page--sleep) {
+.root :global(.health-detail-page--sleep) {
   --sleep-canvas: #f4f6f2;
   --sleep-surface: #ffffff;
   --sleep-subtle: #f2f5f0;
@@ -23,7 +23,7 @@
   font-family: "Geist", var(--font-soma-sans), system-ui, sans-serif;
 }
 
-:global(.health-detail-page--sleep) :global(.health-detail-hero) {
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) {
   grid-template-columns: 152px minmax(0, 1fr);
   min-height: 87px;
   margin-inline: -24px;
@@ -33,14 +33,14 @@
   box-shadow: 0 1px 4px rgba(40, 52, 45, .03);
 }
 
-:global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child {
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child {
   display: flex;
   align-items: center;
   min-height: 87px;
   padding: 0 24px;
 }
 
-:global(.health-detail-page--sleep) :global(.health-detail-hero) h1 {
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 {
   color: var(--sleep-primary);
   font-size: 26px;
   font-weight: 700;
@@ -48,7 +48,7 @@
   line-height: 39px;
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-metrics) {
+.root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
   display: grid;
   grid-template-columns: repeat(4, minmax(170px, 1fr));
   gap: 8px;
@@ -57,9 +57,9 @@
   border-top: 0;
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-score),
-:global(.health-detail-page--sleep) :global(.health-hero-stat),
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+.root :global(.health-detail-page--sleep) :global(.health-hero-score),
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
   min-width: 0;
   box-sizing: border-box;
   height: 75px;
@@ -70,7 +70,7 @@
   box-shadow: 0 1px 1px rgba(0, 0, 0, .05);
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-score) {
+.root :global(.health-detail-page--sleep) :global(.health-hero-score) {
   order: 2;
   display: grid;
   padding: 7px 9px;
@@ -78,7 +78,7 @@
   background: var(--sleep-surface);
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-stat) {
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat) {
   order: 3;
   display: flex;
   align-items: center;
@@ -88,9 +88,9 @@
   text-align: left;
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-stat--regularity) { order: 3; }
-:global(.health-detail-page--sleep) :global(.health-hero-stat--debt) { order: 4; }
-:global(.health-detail-page--sleep) :global(.health-hero-stat) > span {
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat--regularity) { order: 3; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat--debt) { order: 4; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span {
   align-self: start;
   color: var(--sleep-secondary);
   font-family: inherit;
@@ -99,8 +99,8 @@
   letter-spacing: .8px;
 }
 
-:global(.health-detail-page--sleep) :global(.health-hero-stat--debt) { background: var(--sleep-surface); }
-:global(.health-detail-page--sleep) :global(.health-hero-stat--debt) :global(.metric-reading) { font-family: inherit; font-size: 24px; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat--debt) { background: var(--sleep-surface); }
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat--debt) :global(.metric-reading) { font-family: inherit; font-size: 24px; }
 
 .heroRing {
   display: flex;
@@ -141,9 +141,9 @@
 .headerScoreMetric.heroMetricPositive { color: var(--sleep-signal); }
 .headerScoreMetric.heroMetricNegative { color: var(--sleep-error); }
 .headerScoreMetric.heroMetricNeutral { color: var(--sleep-brand); }
-:global(.health-detail-page--sleep) :global(.health-hero-stat--regularity) { padding: 0; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-stat--regularity) { padding: 0; }
 
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
   order: 1;
   display: flex;
   flex-direction: column;
@@ -151,20 +151,20 @@
   padding: 7px 9px;
 }
 
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) span,
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) em {
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span,
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) em {
   color: var(--sleep-secondary);
   font-size: 10px;
   font-style: normal;
   line-height: 14px;
 }
 
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-weight: 600; letter-spacing: .8px; }
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) strong { color: var(--sleep-brand); font-size: 28px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
-:global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--positive) > strong { color: var(--sleep-signal); }
-:global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--negative) > strong { color: var(--sleep-error); }
-:global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--neutral) > strong { color: var(--sleep-brand); }
-:global(.health-detail-page--sleep) :global(.sleep-header-duration) small { color: var(--sleep-secondary); font-size: 11px; font-weight: 400; }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-weight: 600; letter-spacing: .8px; }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) strong { color: var(--sleep-brand); font-size: 28px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--positive) > strong { color: var(--sleep-signal); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--negative) > strong { color: var(--sleep-error); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration.metric-tone--neutral) > strong { color: var(--sleep-brand); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) small { color: var(--sleep-secondary); font-size: 11px; font-weight: 400; }
 
 .redesign { min-width: 0; }
 .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start; }
@@ -233,7 +233,7 @@
 .empty h2 { margin-top: 4px; color: var(--sleep-brand); font-family: inherit; font-size: 22px; font-weight: 500; }
 .empty p { margin-top: 4px; color: var(--sleep-secondary); font-size: 13px; }
 
-:global(.health-detail-page--sleep) :global(.health-signal-meta) { margin-top: 0; border-color: var(--sleep-border); border-radius: 4px; background: var(--sleep-surface); font-family: inherit; font-size: 11px; }
+.root :global(.health-detail-page--sleep) :global(.health-signal-meta) { margin-top: 0; border-color: var(--sleep-border); border-radius: 4px; background: var(--sleep-surface); font-family: inherit; font-size: 11px; }
 
 @media (max-width: 1100px) {
   :global(.health-detail-page--sleep) { padding: 0 20px 24px; }
