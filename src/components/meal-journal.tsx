@@ -652,18 +652,21 @@ function MealAnalysisDisclosure({ meal, status, correctionMode, ratingSaveState,
   </details>;
 }
 
-function PhotoInput({ slot, onFiles, disabled = false, compact = false }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean; compact?: boolean }) {
+function PhotoInput({ slot, onFiles, disabled = false, compact = false, single = false }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean; compact?: boolean; single?: boolean }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const readFiles = (event: ChangeEvent<HTMLInputElement>) => {
     onFiles(Array.from(event.target.files ?? []).filter((file) => file.type.startsWith("image/")));
     event.target.value = "";
   };
-  return <div className={`${styles.photoInput} ${compact ? styles.photoInputCompact : ""}`}>
+  return <div className={`${styles.photoInput} ${compact ? styles.photoInputCompact : ""} ${single ? styles.photoInputSingle : ""}`}>
     <input ref={cameraRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" capture="environment" aria-label={`Prendre une photo pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
     <input ref={galleryRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" multiple aria-label={`Choisir des photos pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
-    <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
-    <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
+    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />Ajouter une photo</button> : <>
+      <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
+      <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
+    </>}
   </div>;
 }
 
@@ -716,6 +719,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
   const compactEmptyState = compactEmpty && !meal && !skipped && !entryOpen;
+  const integratedEmpty = mealsCompact;
 
   useEffect(() => {
     if (!openRequest || skipped) return;
@@ -758,9 +762,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
     {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
+      {integratedEmpty ? <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} onNote={onNote} /> : null}
       <div className={styles.emptyMealActions}>
-        <button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button>
-        <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact />
+        {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
       </div>
     </div>}
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={22} aria-hidden="true" /><strong>Analyse en cours</strong></div>}

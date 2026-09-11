@@ -67,7 +67,7 @@ export function formatAnimatedValue(value: number | null, format: AnimatedValueF
     return `${Math.floor(absolute / 60)}h ${absolute % 60}m`;
   }
   if (format === "decimal") return value.toFixed(decimals);
-  return Math.round(value).toLocaleString("en-US");
+  return Math.round(value).toLocaleString("fr-FR");
 }
 
 export function AnimatedValueText({
@@ -94,7 +94,7 @@ export function AnimatedValueText({
 
   const prefix = showPlus && value !== null && value > 0 ? "+" : "";
   const initialFormatted = `${prefix}${formatAnimatedValue(value, format, decimals)}${suffix}`;
-  const finalText = value === null ? "Not available" : initialFormatted;
+  const finalText = value === null ? "Indisponible" : initialFormatted;
 
   useClientLayoutEffect(() => {
     const previous = previousTarget.current;

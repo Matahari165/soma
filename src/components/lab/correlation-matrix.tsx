@@ -14,6 +14,17 @@ export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "All" : `${period}d`;
 }
 
+function periodDisplayLabel(period: AnalysisPeriod) {
+  return period === "all" ? "Tout" : `${period} j`;
+}
+
+function strongestUncertaintyLabel(relation: MatrixRelation) {
+  if (relation.effectConfidenceLow === null || relation.effectConfidenceHigh === null) return "incertitude indisponible";
+  const low = effectText({ effect: relation.effectConfidenceLow, outcomeUnit: relation.outcomeUnit });
+  const high = effectText({ effect: relation.effectConfidenceHigh, outcomeUnit: relation.outcomeUnit });
+  return `intervalle 95 % ${low} à ${high}`;
+}
+
 export function defaultAnalysisPeriod(periods: readonly AnalysisPeriod[]) {
   return periods.includes(90) ? 90 : periods[0] ?? 30;
 }
@@ -369,11 +380,12 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
 
   return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
-      <div>{standalone ? <h2 id="strongest-effects-title">Strongest Effects</h2> : <h3 id="strongest-effects-title">Strongest effects</h3>}</div>
-      <div className="strongest-effects__axis" aria-label="Chart legend"><span><b className="effect-legend__swatch effect-legend__swatch--negative" />↓ Result decreases</span><span>↑ Result increases <b className="effect-legend__swatch effect-legend__swatch--positive" /></span></div>
+      <div>
+        {standalone ? <h2 id="strongest-effects-title">Strongest Effects</h2> : <h3 id="strongest-effects-title">Strongest Effects</h3>}
+      </div>
       {periodControl}
     </header>
-    {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : meaningfulGroups.map(([group, influences]) => {
+    {!meaningful.length ? <p className="strongest-effects__empty" role="status">Aucune association n’est à la fois fiable et suffisamment marquée sur cette période.</p> : meaningfulGroups.map(([group, influences]) => {
       const groupId = group.replaceAll(" ", "-").toLowerCase();
       return <section className="strongest-effects__group" aria-labelledby={`strongest-${groupId}`} key={group}>
       <h4 id={`strongest-${groupId}`}>{group}</h4>
@@ -408,7 +420,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
           width: `${Math.max(1, (high - low) * 46)}%`,
           "--matrix-interval-origin": intervalOrigin,
         } as CSSProperties;
-        const relationLabel = `${relation.predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${relation.outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}`;
+        const relationLabel = `${relation.predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${relation.outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}, période ${periodDisplayLabel(relation.period)}, échantillon de ${relation.sampleSize} jours, ${strongestUncertaintyLabel(relation)}`;
         return <li
           className="strongest-effects__row"
           data-matrix-effect-key={rowKey}
@@ -416,7 +428,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
           ref={(node) => setRowRef(rowKey, node)}
           style={rowStyle}
         >
-          <button type="button" onClick={() => onSelect(relation)} aria-label={`Open ${relationLabel}`}>
+          <button type="button" onClick={() => onSelect(relation)} aria-label={`Ouvrir la relation : ${relationLabel}`}>
             <span className={`strongest-effects__plot ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`} aria-hidden="true">
               <i className="strongest-effects__zero" />
               <i className="strongest-effects__interval" style={intervalStyle} />
@@ -484,8 +496,8 @@ export function StrongestEffectsPanel() {
 
   const rows = rowsByPeriod[period] ?? [];
   const relations = rows.flatMap((row) => row.relations);
-  const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Analysis period">
-    {strongestEffectPeriods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}
+  const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Période d’analyse">
+    {strongestEffectPeriods.map((value) => <button type="button" aria-label={`Afficher les relations sur ${value === "all" ? "toute la période" : `${value} jours`}`} aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodDisplayLabel(value)}</button>)}
   </div>;
 
   if (!outcomes.length || loadingPeriod === period || (loadError && !rowsByPeriod[period])) return <section className="strongest-effects-panel lab-entry__section" aria-labelledby="strongest-effects-loading-title" aria-busy={loadingPeriod !== null}>
@@ -494,8 +506,8 @@ export function StrongestEffectsPanel() {
       {periodControl}
     </header>
     {loadError
-      ? <p className="strongest-effects-panel__state" role="alert">Relationships could not be loaded. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Retry</button></p>
-      : <p className="strongest-effects-panel__state" role="status">Loading relationships…</p>}
+      ? <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>
+      : <p className="strongest-effects-panel__state" role="status">Chargement des relations…</p>}
   </section>;
 
   return <div className="strongest-effects-panel lab-entry__section" aria-busy={loadingPeriod !== null}>
@@ -506,8 +518,8 @@ export function StrongestEffectsPanel() {
       periodControl={periodControl}
       standalone
     />
-    {loadingPeriod === period && <p className="strongest-effects-panel__state" role="status">Loading relationships…</p>}
-    {loadError && <p className="strongest-effects-panel__state" role="alert">Relationships could not be loaded. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Retry</button></p>}
+    {loadingPeriod === period && <p className="strongest-effects-panel__state" role="status">Chargement des relations…</p>}
+    {loadError && <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>}
     {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
   </div>;
 }

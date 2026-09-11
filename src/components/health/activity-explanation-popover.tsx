@@ -11,7 +11,7 @@ import type { HealthMetricTone } from "./health-metric-utils";
 function ExplanationPopover({ open, panelId, title, subtitle, rows, onClose }: { open: boolean; panelId: string; title: string; subtitle: string; rows: Array<{ label: string; value: string; detail: string }>; onClose: () => void }) {
   if (!open) return null;
   return <div className="health-explanation-popover" id={panelId} role="dialog" aria-label={title}>
-    <header><div><small>How it works</small><strong>{title}</strong></div><button type="button" aria-label={`Close ${title}`} onClick={onClose}><X size={16} aria-hidden="true" /></button></header>
+    <header><div><small>Fonctionnement</small><strong>{title}</strong></div><button type="button" aria-label={`Fermer ${title}`} onClick={onClose}><X size={16} aria-hidden="true" /></button></header>
     <p>{subtitle}</p>
     <dl>{rows.map((row) => <div key={row.label}><dt>{row.label}<small>{row.detail}</small></dt><dd>{row.value}</dd></div>)}</dl>
   </div>;
@@ -50,17 +50,17 @@ export function ActivityScorePopover({ score, zoneMinutes, exerciseMinutes, acti
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popover = usePopover(rootRef, triggerRef);
   const rows = [
-    { label: "Heart-rate zones", value: zoneMinutes === null ? "Unavailable" : `${Math.round(zoneMinutes)} min`, detail: "50% · reference 75 min" },
-    { label: "Exercise", value: exerciseMinutes === null ? "Unavailable" : `${Math.round(exerciseMinutes)} min`, detail: "25% · reference 60 min" },
-    { label: "Active calories", value: activeEnergyKcal === null ? "Unavailable" : `${Math.round(activeEnergyKcal)} kcal`, detail: "15% · reference 700 kcal" },
-    { label: "Steps", value: steps === null ? "Unavailable" : Math.round(steps).toLocaleString("en-US"), detail: "10% · reference 12,000" },
+    { label: "Zones cardiaques", value: zoneMinutes === null ? "Indisponible" : `${Math.round(zoneMinutes)} min`, detail: "50 % · référence 75 min" },
+    { label: "Exercice", value: exerciseMinutes === null ? "Indisponible" : `${Math.round(exerciseMinutes)} min`, detail: "25 % · référence 60 min" },
+    { label: "Calories actives", value: activeEnergyKcal === null ? "Indisponible" : `${Math.round(activeEnergyKcal)} kcal`, detail: "15 % · référence 700 kcal" },
+    { label: "Pas", value: steps === null ? "Indisponible" : Math.round(steps).toLocaleString("fr-FR"), detail: "10 % · référence 12 000" },
   ];
   return <div className="activity-score-control" ref={rootRef}>
     <button ref={triggerRef} type="button" className="health-score-trigger" aria-expanded={popover.open} aria-controls={popover.panelId} aria-haspopup="dialog" onClick={() => popover.setOpen((value) => !value)}>
       <ScoreRing kind="effort" label="Score" score={score} animate decorative />
-      <span className="sr-only">{popover.open ? "Close" : "Open"} activity score calculation</span>
+      <span className="sr-only">{popover.open ? "Fermer" : "Ouvrir"} le calcul du score d’effort</span>
     </button>
-    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Activity score" subtitle="Soma combines four signals with diminishing returns. Missing inputs are removed and the remaining weights are rebalanced." rows={rows} onClose={popover.close} />
+    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Score d’effort" subtitle="Soma combine quatre signaux avec des rendements décroissants. Les données absentes sont retirées et les pondérations restantes sont rééquilibrées." rows={rows} onClose={popover.close} />
   </div>;
 }
 
@@ -68,13 +68,13 @@ export function ActivityRegularityCard({ value, average, tone, observedDays }: {
   const rootRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popover = usePopover(rootRef, triggerRef);
-  const visibleContent: ReactNode = <><span>Activity regularity</span><AnimatedMetricReading value={value} format="number" decimals={0} unit={value === null ? undefined : "%"} className={`metric-reading--${tone}`} /><p className="health-primary-card__average">30-day average · {average}%</p></>;
+  const visibleContent: ReactNode = <><span>Régularité de l’effort</span><AnimatedMetricReading value={value} format="number" decimals={0} unit={value === null ? undefined : "%"} className={`metric-reading--${tone}`} /><p className="health-primary-card__average">Moy. 30 j · {average}&nbsp;%</p></>;
   return <article className={`health-primary-card health-primary-card--interactive metric-tone--${tone}`} ref={rootRef}>
-    <button ref={triggerRef} type="button" className="health-primary-card__trigger" aria-expanded={popover.open} aria-controls={popover.panelId} aria-haspopup="dialog" onClick={() => popover.setOpen((current) => !current)}>{visibleContent}<span className="health-primary-card__hint">View calculation</span></button>
-    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Activity regularity" subtitle="This score measures how stable your daily activity effort has been, not whether you trained every day." rows={[
-      { label: "Period", value: `${observedDays} days`, detail: "Up to the latest 28 measured days" },
-      { label: "Daily input", value: "Effort score", detail: "One score for each measured day" },
-      { label: "Variation", value: "Lower is better", detail: "Less variation brings the result closer to 100%" },
+    <button ref={triggerRef} type="button" className="health-primary-card__trigger" aria-expanded={popover.open} aria-controls={popover.panelId} aria-haspopup="dialog" onClick={() => popover.setOpen((current) => !current)}>{visibleContent}<span className="health-primary-card__hint">Voir le calcul</span></button>
+    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Régularité de l’effort" subtitle="Ce score mesure la stabilité de votre effort quotidien, et non le fait de vous être entraîné chaque jour." rows={[
+      { label: "Période", value: `${observedDays} jours`, detail: "Jusqu’à 28 jours mesurés" },
+      { label: "Donnée quotidienne", value: "Score d’effort", detail: "Un score par jour mesuré" },
+      { label: "Variation", value: "Moins est mieux", detail: "Moins de variation rapproche le résultat de 100 %" },
     ]} onClose={popover.close} />
   </article>;
 }

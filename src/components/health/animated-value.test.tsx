@@ -16,7 +16,7 @@ describe("animated health values", () => {
     const html = renderToStaticMarkup(createElement(AnimatedValueText, { value: null, suffix: "%" }));
 
     expect(html).toContain('aria-hidden="true">—%</span>');
-    expect(html).toContain('class="sr-only">Not available</span>');
+    expect(html).toContain('class="sr-only">Indisponible</span>');
   });
 
   it("preserves the sleep duration display while values are interpolated", () => {

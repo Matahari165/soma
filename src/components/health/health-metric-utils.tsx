@@ -38,5 +38,5 @@ export function formatAverage(value: number | null, format: "number" | "decimal"
   if (value === null) return "—";
   if (format === "duration") return formatDurationMinutes(value);
   if (format === "decimal") return value.toFixed(decimals);
-  return Math.round(value).toLocaleString("en-US");
+  return Math.round(value).toLocaleString("fr-FR");
 }

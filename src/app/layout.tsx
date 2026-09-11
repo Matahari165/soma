@@ -48,7 +48,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   colorScheme: "light",
-  themeColor: "#F2EFE6",
+  themeColor: "#F4F6F2",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -59,10 +59,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
-        {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo Data · Nothing is sent or saved</span></div>}
+        {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

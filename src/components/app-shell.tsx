@@ -25,13 +25,13 @@ import { useDialogLayer } from "@/components/use-dialog-layer";
 import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
 import type { SomaUser } from "@/lib/auth";
 
-const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
+const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Ouverture du coach…</div> });
 
 const navigation = [
-  { label: "Lab", href: "/", icon: LayoutDashboard },
+  { label: "Laboratoire", href: "/", icon: LayoutDashboard },
   { label: "Repas", href: "/meals", icon: Utensils },
-  { label: "Sleep", href: "/sleep", icon: BedDouble },
-  { label: "Recovery", href: "/recovery", icon: HeartPulse },
+  { label: "Sommeil", href: "/sleep", icon: BedDouble },
+  { label: "Récupération", href: "/recovery", icon: HeartPulse },
   { label: "Effort", href: "/activity", icon: Activity },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
@@ -41,10 +41,10 @@ const navigation = [
 // them behind a second menu.
 const mobileNavigation = navigation.filter(({ href }) => href !== "/" && href !== "/coach");
 const personalLabNavigation = [
-  { label: "Lab", href: "/", icon: Beaker },
+  { label: "Laboratoire", href: "/", icon: Beaker },
   { label: "Repas", href: "/meals", icon: Utensils },
-  { label: "Sleep", href: "/sleep", icon: Moon },
-  { label: "Recovery", href: "/recovery", icon: Heart },
+  { label: "Sommeil", href: "/sleep", icon: Moon },
+  { label: "Récupération", href: "/recovery", icon: Heart },
   { label: "Effort", href: "/activity", icon: Zap },
 ];
 
@@ -53,10 +53,10 @@ function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: Reac
     <aside ref={panelRef} className="coach-panel" role="dialog" aria-modal="true" aria-labelledby="coach-panel-title">
       <div className="coach-panel__header">
         <div>
-          <span className="eyebrow">Soma Coach</span>
-          <h2 id="coach-panel-title">Ask about your day</h2>
+          <span className="eyebrow">Coach Soma</span>
+          <h2 id="coach-panel-title">Parler de ma journée</h2>
         </div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="Close coach">
+        <button className="icon-button" type="button" onClick={onClose} aria-label="Fermer le coach">
           <X size={20} />
         </button>
       </div>
@@ -72,7 +72,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const coachPanelRef = useRef<HTMLElement>(null);
   const closeCoach = useCallback(() => setCoachOpen(false), []);
-  const displayName = user?.displayName ?? "Soma user";
+  const displayName = user?.displayName ?? "Utilisateur Soma";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const onCoachPage = pathname.startsWith("/coach");
   const isPersonalLab = pathname === "/";
@@ -98,9 +98,9 @@ export function AppShell({ children, user, localPreview = false }: { children: R
 
   return (
     <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed", isStitchWorkspace && "app-shell--personal-lab"].filter(Boolean).join(" ")}>
-      <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
+      <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Navigation principale">
         <div className="sidebar__header">
-          <Link className="brand" href="/" aria-label="Soma home">
+          <Link className="brand" href="/" aria-label="Accueil Soma">
             <SomaLogo compact={sidebarCollapsed} />
           </Link>
         </div>
@@ -126,18 +126,18 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             className="icon-button sidebar-toggle"
             type="button"
             onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
             aria-controls="primary-sidebar"
             aria-pressed={sidebarCollapsed}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
           >
             {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
           </button>
-          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
+          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Ouvrir les réglages de ${displayName}`} title={sidebarCollapsed ? `Ouvrir les réglages de ${displayName}` : undefined}>
             <span className="avatar">{initials}</span>
             <span>
               <strong>{displayName}</strong>
-              <small>Settings</small>
+              <small>Réglages</small>
             </span>
             <Settings size={17} aria-hidden="true" />
           </Link>
@@ -145,10 +145,10 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       </aside>
 
       <header className="mobile-header">
-        <Link className="brand" href="/" aria-label="Soma home">
+        <Link className="brand" href="/" aria-label="Accueil Soma">
           <SomaLogo />
         </Link>
-        <nav className="mobile-header-nav" aria-label="Mobile primary navigation">
+        <nav className="mobile-header-nav" aria-label="Navigation principale mobile">
           {activeMobileNavigation.map(({ label, href, icon: Icon }) => (
             <Link
               href={href}
@@ -162,7 +162,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           ))}
         </nav>
         <div className="mobile-header__actions">
-          {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Open Soma Coach">
+          {!onCoachPage && <button className="icon-button" type="button" onClick={() => setCoachOpen(true)} aria-label="Ouvrir le coach Soma">
             <MessageCircle size={19} strokeWidth={1.8} aria-hidden="true" />
           </button>}
         </div>
@@ -172,7 +172,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
 
       {coachOpen && (
         <>
-          <button className="panel-backdrop" type="button" onClick={() => setCoachOpen(false)} aria-label="Close coach panel" />
+          <button className="panel-backdrop" type="button" onClick={() => setCoachOpen(false)} aria-label="Fermer le panneau du coach" />
           <CoachPanel onClose={closeCoach} panelRef={coachPanelRef} />
         </>
       )}

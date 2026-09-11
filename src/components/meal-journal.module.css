@@ -533,7 +533,7 @@
 .ratingFieldset legend { margin-bottom: 7px; color: var(--ink-soft); font-size: .74rem; }
 .ratingScale { display: grid; grid-template-columns: minmax(68px, 1.4fr) repeat(5, minmax(30px, 1fr)); gap: 4px; }
 .ratingChoice,
-.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 4px; background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
+.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
 .ratingChoice:hover { border-color: var(--ink); color: var(--ink); }
 .ratingSelected { border-color: var(--clay); background: var(--clay-soft); color: var(--clay); font-weight: 700; }
 
@@ -649,9 +649,9 @@
   min-width: 0;
   margin: 0;
   padding: 24px;
-  border: 1px solid #dfe5dc;
-  border-radius: 4px;
-  background: #ffffff;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
   box-shadow: 0 1px 2px rgba(28, 37, 32, .05);
 }
 
@@ -665,9 +665,9 @@
   border: 0;
 }
 
-.labHeader h2 { color: #1c2520; font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
-.labHeader button { display: grid; width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: 2px; background: #e8f0e6; color: #264d38; }
-.labHeader button:hover { background: #264d38; color: #ffffff; }
+.labHeader h2 { color: var(--lab-text-primary); font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
+.labHeader button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-brand); }
+.labHeader button:hover { background: var(--lab-brand); color: var(--lab-surface); }
 .labHeader button:disabled { cursor: not-allowed; opacity: .38; }
 .labHeader button:focus-visible { outline: 2px solid #264d38; outline-offset: 3px; }
 .labRoot .mealList { display: grid; gap: 16px; border-top: 0; }
@@ -677,7 +677,7 @@
 .labRoot .mealHeader { min-height: 42px; padding: 8px 0; border-bottom: 1px solid #e0e8de; }
 .labRoot .mealTitle { gap: 8px; }
 .labRoot .mealTitle h3 { color: #1c2520; font-size: 14px; font-weight: 560; line-height: 20px; }
-.labRoot .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: 2px; background: #e6ede5; color: #59665e; font-size: 10px; }
+.labRoot .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-text-secondary); font-size: 12px; }
 .labRoot .mealBody { padding: 10px 0 12px; }
 .labRoot .draftMeal { display: grid; min-height: 0; grid-template-columns: 1fr; gap: 10px; padding: 10px 0 12px; }
 .labRoot .draftMeal .textInput textarea { min-height: 84px; border-color: #d5ddd3; border-radius: 2px; background: #ffffff; color: #1c2520; font-size: 12px; }
@@ -685,7 +685,7 @@
 .labRoot .draftMeal .photoInput { display: contents; }
 .labRoot .draftMeal .captureButton,
 .labRoot .draftMeal .galleryButton,
-.labRoot .draftMeal .analyzeButton { min-height: 44px; padding: 7px 8px; border-radius: 2px; font-size: 10px; }
+.labRoot .draftMeal .analyzeButton { min-height: 44px; padding: 7px 8px; border-radius: var(--lab-radius-xs); font-size: 12px; }
 .labRoot .draftMeal .captureButton,
 .labRoot .draftMeal .analyzeButton { border-color: #264d38; background: #264d38; color: #ffffff; }
 .labRoot .draftMeal .galleryButton { border-color: #d5ddd3; background: #ffffff; color: #59665e; }
@@ -693,17 +693,17 @@
 .labRoot .emptyMealPrompt { min-height: 74px; padding: 8px 0 12px; border-top: 0; }
 .labRoot .emptyMealActions { width: 100%; gap: 8px; }
 .labRoot .photoInputCompact { display: contents; }
-.labRoot .emptyNoteButton, .labRoot .captureButtonCompact, .labRoot .galleryButtonCompact { min-height: 32px; padding: 6px 8px; border-radius: 2px; font-size: 10px; }
+.labRoot .emptyNoteButton, .labRoot .captureButtonCompact, .labRoot .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-xs); font-size: 12px; }
 .labRoot .captureButtonCompact { border-color: #264d38; background: #264d38; }
 .labRoot .emptyNoteButton, .labRoot .galleryButtonCompact { border-color: #e0e8de; background: #ffffff; color: #59665e; }
 .labRoot .labMealSummary { display: grid; gap: 4px; padding-top: 1px; }
 .labRoot .labMealSummary p { overflow: hidden; color: #1c2520; font-size: 13px; line-height: 18px; text-overflow: ellipsis; }
 .labRoot .labMealSummary small { color: #59665e; font-size: 12px; line-height: 16px; }
 .labRoot .analysisDetails { margin-top: 10px; border-color: #e0e8de; border-radius: 2px; }
-.labRoot .analysisDetails > summary { min-height: 30px; padding-inline: 0; color: #59665e; font-size: 10px; }
+.labRoot .analysisDetails > summary { min-height: 44px; padding-inline: 0; color: var(--lab-text-secondary); font-size: 12px; }
 .labRoot .analysisDetailsBody { padding: 8px 0 0; }
 .labRoot .mealCompletionControls { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e8de; }
-.labRoot .mealCompletionControls .secondaryButton { min-height: 24px; padding: 4px 8px; border-color: #e0e8de; border-radius: 2px; background: transparent; color: #59665e; font-size: 10px; }
+.labRoot .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); background: transparent; color: var(--lab-text-secondary); font-size: 12px; }
 .labRoot .mealCompletionControls .secondaryButton:hover { border-color: #264d38; color: #264d38; }
 
 @media (max-width: 700px) {
@@ -711,6 +711,26 @@
   .labRoot .mealCard { padding-inline: 12px; }
   .labRoot .emptyMealActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Empty slots are capture surfaces: the note stays in the row and the photo
+   action opens the camera/library choice without multiplying competing CTAs. */
+.emptyMealPrompt { align-items: stretch; }
+.emptyMealPrompt .textInput { min-width: 0; flex: 1 1 auto; }
+.emptyMealPrompt .textInput textarea { width: 100%; min-height: 64px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--paper); color: var(--ink); font-size: .8rem; line-height: 1.35; resize: vertical; }
+.emptyMealActions { align-self: center; }
+.photoInputSingle { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px; }
+.photoInputSingle > button { min-height: 44px; }
+.photoInputSingle > button:first-child { flex: 1 1 140px; }
+.emptyMealPrompt .photoInputSingle { flex: 0 0 auto; }
+
+.root:global(.meal-journal-home) .emptyMealPrompt,
+.mealsJournalPanel .emptyMealPrompt { align-items: stretch; }
+.root:global(.meal-journal-home) .emptyMealPrompt .textInput,
+.mealsJournalPanel .emptyMealPrompt .textInput { min-width: 0; flex: 1 1 auto; }
+.root:global(.meal-journal-home) .emptyMealPrompt .textInput textarea,
+.mealsJournalPanel .emptyMealPrompt .textInput textarea { min-height: 64px; }
+.root:global(.meal-journal-home) .emptyMealPrompt .photoInputSingle,
+.mealsJournalPanel .emptyMealPrompt .photoInputSingle { min-width: 140px; }
 
 /* Home composition: the daily page is a quiet list, while /meals remains the
    full framed editing surface. */
@@ -723,7 +743,8 @@
 
 .root:global(.meal-journal-home) .homeHeader h2 {
   margin-top: 3px;
-  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-size: var(--lab-type-section);
+  line-height: 28px;
 }
 
 .root:global(.meal-journal-home) .mealList {
@@ -931,7 +952,7 @@
 .headerMetric > span {
   overflow: hidden;
   color: var(--lab-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 650;
   letter-spacing: .8px;
   line-height: 14px;
@@ -1047,7 +1068,7 @@
   border-right: 1px solid var(--lab-border);
   background: transparent;
   color: var(--lab-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 14px;
   white-space: nowrap;
 }
@@ -1057,7 +1078,7 @@
 .mealsPageRoot .mealsWeekStrip .weekDay:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .mealsPageRoot .mealsWeekStrip .weekDaySelected { background: var(--lab-brand); color: var(--lab-surface); }
 .mealsPageRoot .mealsWeekStrip .weekDay span,
-.mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-family: var(--font-soma-mono), monospace; font-size: 10px; text-transform: uppercase; }
+.mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-family: var(--font-soma-mono), monospace; font-size: 12px; text-transform: uppercase; }
 .mealsPageRoot .mealsWeekStrip .weekDay strong,
 .mealsPageRoot .mealsWeekStrip .weekDaySelected strong { font-size: 11px; font-weight: 560; }
 .mealsPageRoot .mealsWeekStrip .weekDaySelected:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: -2px; }
@@ -1092,7 +1113,6 @@
 }
 
 .mealsJournalPanel {
-  min-height: 912px;
   padding: 16px 24px 24px;
 }
 
@@ -1328,24 +1348,168 @@
 .mealsPageRoot .historyNavigation { grid-template-columns: 44px minmax(0, 1fr) 44px; }
 .mealsPageRoot .historyArrow { min-width: 44px; }
 
-.labRoot .labHeader button,
-.labRoot .mealStatus,
-.labRoot .draftMeal .textInput textarea,
-.labRoot .draftMeal .captureButton,
-.labRoot .draftMeal .galleryButton,
-.labRoot .draftMeal .analyzeButton,
-.labRoot .emptyNoteButton,
-.labRoot .captureButtonCompact,
-.labRoot .galleryButtonCompact,
-.labRoot .analysisDetails,
-.labRoot .analysisDetails > summary,
-.labRoot .mealCompletionControls .secondaryButton,
+/* FINAL header contract: Meals uses the validated Redesign V1 content, with
+   the same title/KPI geometry as the health routes. */
+.mealsPageRoot .mealsPageHeader {
+  height: var(--lab-header-height);
+  min-height: var(--lab-header-height);
+  grid-template-columns: var(--lab-header-title-width) minmax(0, 1fr);
+  gap: var(--lab-header-gap);
+}
+
+.mealsPageRoot .mealsPageHeader h1 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-page);
+  line-height: 32px;
+}
+
+.mealsPageRoot .headerMetrics {
+  height: var(--lab-header-kpi-height);
+  min-height: var(--lab-header-kpi-height);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.mealsPageRoot .headerMetric {
+  min-height: var(--lab-header-kpi-height);
+  padding: 10px 16px;
+  border: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+  box-shadow: var(--lab-shadow-subtle);
+}
+
+.mealsPageRoot .headerMetric > span {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+.mealsPageRoot .headerMetric > strong {
+  font-family: var(--lab-data-font);
+  font-size: 18px;
+  line-height: 24px;
+}
+.mealsPageRoot .headerMetric > strong small {
+  font-family: var(--lab-data-font);
+  font-size: var(--lab-type-label);
+}
+
+.mealsJournalPanel .mealTitle h3 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-group);
+  line-height: 24px;
+}
 .mealsJournalPanel .mealStatus,
-.mealsJournalPanel .draftMeal .textInput textarea,
-.mealsJournalPanel .draftMeal .captureButton,
-.mealsJournalPanel .draftMeal .galleryButton,
-.mealsJournalPanel .draftMeal .analyzeButton,
-.mealsJournalPanel .analysisDetails,
 .mealsJournalPanel .analysisDetails > summary,
-.mealsJournalPanel .confirmButton,
-.mealsJournalPanel .secondaryButton { border-radius: var(--lab-radius-sm); }
+.mealsJournalPanel .mealsMealDetails span {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+.mealsJournalPanel .mealsMealDetails strong,
+.mealsJournalPanel .mealsMealFooter,
+.mealsJournalPanel .analysisDetailsBody {
+  font-family: var(--font-soma-ui);
+  font-size: 14px;
+  line-height: 20px;
+}
+.mealsJournalPanel .mealCalories { font-family: var(--lab-data-font); }
+.mealsJournalPanel .captureButton,
+.mealsJournalPanel .galleryButton,
+.mealsJournalPanel .analyzeButton,
+.mealsJournalPanel .emptyNoteButton,
+.mealsJournalPanel .captureButtonCompact,
+.mealsJournalPanel .galleryButtonCompact,
+.mealsJournalPanel .mealCompletionControls .secondaryButton {
+  font-family: var(--font-soma-ui);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .mealsPageRoot .mealsPageHeader {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mealsPageRoot .headerMetrics {
+    height: auto;
+    min-height: var(--lab-header-kpi-height);
+  }
+}
+
+@media (max-width: 900px) {
+  .mealsPageRoot .headerMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+}
+
+@media (max-width: 700px) {
+  .mealsPageRoot .mealsPageHeader h1 { font-size: 24px; line-height: 30px; }
+  .mealsPageRoot .headerMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mealsPageRoot .headerMetric { min-height: 68px; padding: 8px 12px; }
+  .mealsPageRoot .headerMetric > strong { font-size: 16px; line-height: 22px; }
+}
+
+@media (max-width: 390px) {
+  .mealsPageRoot {
+    padding: 12px;
+    min-width: 0;
+  }
+  .mealsPageRoot .mealsPageHeader {
+    min-width: 0;
+    padding-right: 28px;
+  }
+  .mealsPageRoot .headerMetrics {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mealsPageRoot .headerMetric {
+    min-width: 0;
+    min-height: 64px;
+    padding: 8px;
+  }
+  .mealsPageRoot .headerMetric > span,
+  .mealsPageRoot .headerMetric > strong small {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .mealsPageRoot .headerMetric > strong small { white-space: normal; }
+  .mealsPageRoot .historyNavigation {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+  .mealsPageRoot .historyArrow {
+    min-width: 44px;
+  }
+  .mealsPageRoot .mealsWeekStrip .weekDay,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+    min-width: 52px;
+    min-height: 44px;
+  }
+  .mealsJournalPanel .mealCardEmpty {
+    min-height: 0;
+  }
+  .mealsJournalPanel .emptyMealPrompt {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 8px;
+  }
+  .mealsJournalPanel .emptyMealActions {
+    display: block;
+    width: 100%;
+  }
+  .mealsJournalPanel .photoInputSingle {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mealsJournalPanel .photoInputSingle > button {
+    min-width: 0;
+    min-height: 44px;
+  }
+  .mealsJournalPanel .photoInputSingle > button:only-child {
+    grid-column: 1 / -1;
+  }
+}

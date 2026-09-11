@@ -19,7 +19,7 @@ describe("MetricTrendCard", () => {
     }));
 
     expect(markup).toContain('href="/sleep"');
-    expect(markup).toContain("30-day");
+    expect(markup).toContain("30 jours");
     expect(markup).not.toContain("30d variability:");
   });
 });

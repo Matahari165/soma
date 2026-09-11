@@ -1,33 +1,73 @@
 @import "tailwindcss";
 
-/* SOMA — PHYSIOLOGICAL ATLAS
-   An editorial instrument for reading a personal body history. */
+/* SOMA — PERSONAL LAB
+   A calm, precise surface for reading a personal body history. */
 
 :root {
   color-scheme: light;
-  --canvas: #f2efe6;
-  --paper: #fbf8ef;
-  --paper-strong: #fffdf7;
-  --ink: #1c211a;
-  --ink-soft: #4e564a;
-  --muted: #737a6d;
-  --faint: #9ba092;
-  --line: #d5d0c2;
-  --line-strong: #aaa697;
-  --canvas-muted: #e7e3d8;
-  --moss: #506b52;
-  --moss-dark: #344b38;
-  --moss-signal: #2d7541;
-  --moss-soft: #dfe6d8;
-  --cobalt: #45627e;
-  --cobalt-alt: #5c7892;
-  --cobalt-soft: #dce5e9;
-  --clay: #a8563f;
-  --clay-soft: #f0ded4;
-  --ochre: #a17835;
-  --ochre-soft: #eee4cb;
-  --danger: #9f4036;
-  --danger-soft: #f2ded9;
+  /* Personal Lab is the source of truth. The names below are temporary
+     compatibility aliases for older components still being migrated. */
+  --lab-canvas: #f4f6f2;
+  --lab-surface: #ffffff;
+  --lab-surface-subtle: #f2f5f0;
+  --lab-surface-selected: #e8f0e6;
+  --lab-control-track: #e6ede5;
+  --lab-border: #e0e8de;
+  --lab-border-strong: #dfe5dc;
+  --lab-text-primary: #1c2520;
+  --lab-text-secondary: #59665e;
+  --lab-brand: #264d38;
+  --lab-signal: #2e7a4f;
+  --lab-error: #c45442;
+  --lab-error-soft: #f7e8e4;
+  --lab-warning: #896f32;
+  --lab-warning-soft: #f3eedf;
+  --lab-info: #536f87;
+  --lab-info-soft: #e7eef2;
+  --lab-sidebar: #ebf0ea;
+  --lab-radius-xs: 4px;
+  --lab-radius-sm: 6px;
+  --lab-radius-md: 10px;
+  --lab-journal-control-width: 104px;
+  --lab-journal-control-height: 36px;
+  --lab-journal-stepper-action-width: 24px;
+  --lab-journal-control-inset: 3px;
+  --lab-journal-control-text-size: 14px;
+  --lab-journal-control-value-size: 16px;
+  --lab-journal-actions-inline-end: 8px;
+  --lab-sidebar-nav-offset: 42px;
+  --lab-sidebar-nav-gap: 4px;
+  --lab-sidebar-width: 64px;
+  --lab-content-top: 100px;
+  --lab-card-padding: 24px;
+  --lab-column-gap: 32px;
+  --lab-shadow-subtle: 0 1px 2px rgba(28, 37, 32, .05);
+
+  --canvas: var(--lab-canvas);
+  --paper: var(--lab-surface);
+  --paper-strong: var(--lab-surface);
+  --ink: var(--lab-text-primary);
+  --ink-soft: var(--lab-text-secondary);
+  --muted: var(--lab-text-secondary);
+  --faint: color-mix(in srgb, var(--lab-text-secondary) 68%, var(--lab-surface));
+  --line: var(--lab-border);
+  --line-strong: var(--lab-border-strong);
+  --canvas-muted: var(--lab-surface-subtle);
+  --moss: var(--lab-brand);
+  --moss-dark: var(--lab-brand);
+  --moss-signal: var(--lab-signal);
+  --moss-soft: var(--lab-surface-selected);
+  /* Semantic accents remain named until their consumers move to --lab-*.
+     They now use the same mineral palette rather than the Atlas palette. */
+  --cobalt: var(--lab-info);
+  --cobalt-alt: #6a8499;
+  --cobalt-soft: var(--lab-info-soft);
+  --clay: var(--lab-error);
+  --clay-soft: var(--lab-error-soft);
+  --ochre: var(--lab-warning);
+  --ochre-soft: var(--lab-warning-soft);
+  --danger: var(--lab-error);
+  --danger-soft: var(--lab-error-soft);
   /* Nutrition identifiers: pale surfaces, never a replacement for text or status. */
   --nutrition-calories-soft: var(--ochre-soft);
   --nutrition-protein-soft: var(--moss-soft);
@@ -36,23 +76,24 @@
   --nutrition-fiber-soft: #e3e9df;
   --nutrition-sugar-soft: #e9e1eb;
   --overlay: rgba(20, 23, 18, .62);
-  --shadow: 0 18px 48px rgba(42, 39, 31, .09);
-  --sidebar-width: 224px;
+  --shadow: var(--lab-shadow-subtle);
+  --sidebar-width: var(--lab-sidebar-width);
+  --sidebar-expanded-width: 224px;
   /* One visible geometry for every Soma surface. Circles remain explicit exceptions. */
-  --radius-surface: 10px;
-  --radius-data: var(--radius-surface);
-  --radius-control: var(--radius-surface);
+  --radius-surface: var(--lab-radius-sm);
+  --radius-data: var(--lab-radius-sm);
+  --radius-control: var(--lab-radius-sm);
   --radius-round: 999px;
-  --radius-xs: var(--radius-data);
-  --radius-sm: var(--radius-control);
-  --radius-md: var(--radius-control);
-  --radius-lg: var(--radius-control);
+  --radius-xs: var(--lab-radius-xs);
+  --radius-sm: var(--lab-radius-sm);
+  --radius-md: var(--lab-radius-md);
+  --radius-lg: var(--lab-radius-md);
   --widget-border: 1px solid var(--line-strong);
   --widget-border-strong: 1px solid var(--ink);
   --widget-divider: 1px solid var(--line);
   --control-height: 44px;
   --control-height-compact: 40px;
-  --focus-color: var(--moss-dark);
+  --focus-color: var(--lab-brand);
   --fast: 150ms;
   --normal: 240ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
@@ -62,7 +103,7 @@
   --soma-depth: var(--paper);
   --soma-surface: var(--paper-strong);
   --soma-raised: var(--moss-soft);
-  --soma-glass: rgba(251, 248, 239, .94);
+  --soma-glass: rgba(255, 255, 255, .94);
   --soma-text: var(--ink);
   --soma-text-soft: var(--ink-soft);
   --soma-text-muted: var(--muted);
@@ -71,7 +112,7 @@
   --soma-emerald: var(--moss);
   --soma-emerald-dim: var(--moss-dark);
   --soma-emerald-soft: var(--moss-soft);
-  --soma-emerald-glow: rgba(80, 107, 82, .15);
+  --soma-emerald-glow: rgba(38, 77, 56, .15);
   --soma-iris: var(--cobalt);
   --soma-iris-soft: var(--cobalt-soft);
   --soma-coral: var(--clay);
@@ -103,68 +144,39 @@
   --zone-vigorous: #b28648;
   --zone-peak: #a8563f;
   --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
+  /* Final visual contract: one Schibsted family across language and data. */
+  --lab-type-page: 26px;
+  --lab-type-section: 22px;
+  --lab-type-group: 16px;
+  --lab-type-body: 16px;
+  --lab-type-label: 12px;
+  --lab-data-font: var(--font-soma-ui), system-ui, sans-serif;
+  --lab-header-height: 87px;
+  --lab-header-kpi-height: 75px;
+  --lab-header-title-width: 158px;
+  --lab-header-gap: 32px;
 
-  /* Personal Lab / Stitch tokens. Kept separate from the legacy surfaces so
-     the validated page can become the seed of Soma's next system without
-     changing the visual language of the other routes. */
-  --lab-canvas: #f4f6f2;
-  --lab-surface: #ffffff;
-  --lab-surface-subtle: #f2f5f0;
-  --lab-surface-selected: #e8f0e6;
-  --lab-control-track: #e6ede5;
-  --lab-border: #e0e8de;
-  --lab-border-strong: #dfe5dc;
-  --lab-text-primary: #1c2520;
-  --lab-text-secondary: #59665e;
-  --lab-brand: #264d38;
-  --lab-signal: #2e7a4f;
-  --lab-error: #c45442;
-  --lab-sidebar: #ebf0ea;
-  --lab-radius-xs: 2px;
-  --lab-radius-sm: 4px;
-  --lab-radius-md: 8px;
-  --lab-journal-control-width: 104px;
-  --lab-journal-control-height: 36px;
-  --lab-journal-stepper-action-width: 24px;
-  --lab-journal-control-inset: 3px;
-  --lab-journal-control-text-size: 14px;
-  --lab-journal-control-value-size: 16px;
-  --lab-journal-actions-inline-end: 8px;
-  --lab-sidebar-nav-offset: 42px;
-  --lab-sidebar-nav-gap: 4px;
-  --lab-sidebar-width: 64px;
-  --lab-content-top: 100px;
-  --lab-card-padding: 24px;
-  --lab-column-gap: 32px;
-  --lab-shadow-subtle: 0 1px 2px rgba(28, 37, 32, .05);
 }
 
 * { box-sizing: border-box; }
-html { min-width: 0; background: var(--canvas); scroll-behavior: smooth; }
+html { min-width: 0; background: var(--lab-canvas); scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background: var(--canvas);
-  color: var(--ink);
+  background: var(--lab-canvas);
+  color: var(--lab-text-primary);
   font-family: var(--font-soma-ui);
   font-size: 16px;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
 }
 
-body::before {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image: radial-gradient(color-mix(in srgb, var(--ink) 11%, transparent) .6px, transparent .6px);
-  background-size: 7px 7px;
-  content: "";
-  opacity: .14;
-  pointer-events: none;
-}
+/* The surface is intentionally flat and mineral. The previous warm Atlas
+   texture made every route feel like a different product. */
+body::before { display: none; }
 
-::selection { background: var(--moss); color: var(--paper-strong); }
+::selection { background: var(--lab-brand); color: var(--lab-surface); }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { color: inherit; font: inherit; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
@@ -180,10 +192,10 @@ h1, h2 {
   letter-spacing: -.035em;
   text-wrap: balance;
 }
-h1 { font-size: clamp(2.6rem, 5vw, 5.4rem); line-height: .92; }
-h2 { font-size: clamp(1.6rem, 2.7vw, 2.5rem); line-height: 1; }
-h3 { font-size: 1rem; line-height: 1.25; }
-small { line-height: 1.35; }
+h1 { font-size: var(--lab-type-page); line-height: 32px; }
+h2 { font-size: var(--lab-type-section); line-height: 28px; }
+h3 { font-family: var(--font-soma-ui); font-size: var(--lab-type-group); line-height: 24px; }
+small { font-size: var(--lab-type-label); line-height: 1.35; }
 
 button:focus-visible,
 a:focus-visible,
@@ -223,31 +235,31 @@ textarea:focus-visible,
   position: fixed;
   top: 0;
   right: 0;
-  left: var(--sidebar-width);
+  left: var(--sidebar-expanded-width);
   z-index: 70;
   display: flex;
   min-height: 28px;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-bottom: 1px solid var(--ochre);
-  background: var(--ochre-soft);
-  color: var(--ink);
+  border-bottom: 1px solid var(--lab-warning);
+  background: var(--lab-warning-soft);
+  color: var(--lab-text-primary);
   font-family: var(--font-soma-mono), monospace;
-  font-size: .65rem;
+  font-size: .75rem;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
 .preview-banner strong { font-weight: 600; }
+.app-shell--sidebar-collapsed .preview-banner { left: var(--sidebar-width); }
 
 .app-shell { min-height: 100vh; }
 .main-content {
   min-height: 100vh;
-  margin-left: var(--sidebar-width);
+  margin-left: var(--sidebar-expanded-width);
   padding-top: 0;
-  transition: margin-left var(--normal) var(--ease);
 }
-.app-shell--sidebar-collapsed .main-content { margin-left: 76px; }
+.app-shell--sidebar-collapsed .main-content { margin-left: var(--sidebar-width); }
 .app-shell--preview .main-content { padding-top: 28px; }
 
 .sidebar {
@@ -255,16 +267,15 @@ textarea:focus-visible,
   inset: 0 auto 0 0;
   z-index: 60;
   display: flex;
-  width: var(--sidebar-width);
+  width: var(--sidebar-expanded-width);
   flex-direction: column;
   padding: 24px 18px 18px;
-  border-right: 1px solid var(--line);
-  background: var(--paper);
-  transition: width var(--normal) var(--ease), padding var(--normal) var(--ease);
+  border-right: 1px solid var(--lab-border);
+  background: var(--lab-surface);
 }
 .sidebar__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-.sidebar-toggle { width: 36px; min-width: 36px; min-height: 36px; }
-.sidebar--collapsed { width: 76px; padding-inline: 12px; }
+.sidebar-toggle { width: 44px; min-width: 44px; min-height: 44px; }
+.sidebar--collapsed { width: var(--sidebar-width); padding-inline: 12px; }
 .sidebar--collapsed .sidebar__header { grid-template-columns: 1fr; justify-items: center; }
 .brand {
   display: inline-flex;
@@ -287,13 +298,13 @@ textarea:focus-visible,
   gap: 11px;
   padding: 9px 10px;
   border: 1px solid transparent;
-  color: var(--ink-soft);
-  font-size: .9rem;
+  color: var(--lab-text-secondary);
+  font-size: .875rem;
   transition: color var(--fast), background var(--fast), border-color var(--fast);
 }
-.nav-link svg { width: 18px; color: var(--muted); stroke-width: 1.45; }
-.nav-link:hover { border-color: var(--line); background: var(--paper-strong); color: var(--ink); }
-.nav-link--active { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
+.nav-link svg { width: 18px; color: currentColor; stroke-width: 1.45; }
+.nav-link:hover { border-color: var(--lab-border); background: var(--lab-surface-subtle); color: var(--lab-text-primary); }
+.nav-link--active { border-color: var(--lab-brand); background: var(--lab-brand); color: var(--lab-surface); }
 .nav-link--active svg { color: inherit; }
 .sidebar--collapsed .sidebar-nav { width: 100%; }
 .sidebar--collapsed .nav-link { justify-content: center; padding-inline: 0; }
@@ -308,7 +319,7 @@ textarea:focus-visible,
   min-height: 56px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--lab-border);
 }
 .avatar {
   display: grid;
@@ -322,8 +333,8 @@ textarea:focus-visible,
 }
 .profile-card > span:nth-child(2) { min-width: 0; display: grid; }
 .profile-card strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
-.profile-card small { color: var(--muted); font-size: .66rem; }
-.profile-card--active { color: var(--moss-dark); }
+.profile-card small { color: var(--muted); font-size: var(--lab-type-label); }
+.profile-card--active { color: var(--lab-brand); }
 .sidebar-secondary > .sidebar-toggle { display: grid; margin: 0 auto 8px; }
 .sidebar--collapsed .sidebar-secondary { justify-items: center; }
 .sidebar--collapsed .profile-card { display: flex; width: 44px; min-height: 56px; justify-content: center; padding-top: 12px; }
@@ -334,9 +345,9 @@ textarea:focus-visible,
 
 .eyebrow,
 .quality-pill {
-  color: var(--muted);
+  color: var(--lab-text-secondary);
   font-family: var(--font-soma-ui);
-  font-size: .67rem;
+  font-size: .75rem;
   font-weight: 500;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -352,37 +363,37 @@ textarea:focus-visible,
   justify-content: center;
   gap: 8px;
   padding: 10px 16px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--lab-brand);
   border-radius: var(--radius-control);
-  background: var(--ink);
-  color: var(--canvas);
-  font-size: .82rem;
+  background: var(--lab-brand);
+  color: var(--lab-surface);
+  font-size: .875rem;
   font-weight: 650;
   transition: background var(--fast), color var(--fast), border-color var(--fast);
 }
-.primary-button:hover, .google-button:hover { background: var(--moss-dark); border-color: var(--moss-dark); }
-.secondary-button { background: transparent; color: var(--ink); }
-.secondary-button:hover { background: var(--ink); color: var(--canvas); }
-.danger-button { border-color: var(--danger); background: var(--danger); color: #fff; }
+.primary-button:hover, .google-button:hover { background: var(--lab-text-primary); border-color: var(--lab-text-primary); }
+.secondary-button { border-color: var(--lab-border-strong); background: transparent; color: var(--lab-text-primary); }
+.secondary-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); }
+.danger-button { border-color: var(--lab-error); background: var(--lab-error); color: #fff; }
 .icon-button {
   display: inline-grid;
   width: var(--control-height);
   height: var(--control-height);
   place-items: center;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--lab-border-strong);
   border-radius: var(--radius-control);
-  background: transparent;
+  background: var(--lab-surface);
   color: currentColor;
 }
-.icon-button:hover { border-color: var(--ink); background: var(--paper-strong); }
+.icon-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-subtle); }
 .text-link {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
   gap: 5px;
   border-bottom: 1px solid currentColor;
-  color: var(--moss-dark);
-  font-size: .8rem;
+  color: var(--lab-brand);
+  font-size: .875rem;
   font-weight: 650;
 }
 
@@ -409,4 +420,10 @@ textarea:focus-visible,
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* One visible typeface across the authenticated daily experience. Numerical
+   alignment comes from tabular numerals instead of a competing font family. */
+.app-shell--personal-lab :where(*) {
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
 }

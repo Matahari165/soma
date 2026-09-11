@@ -89,12 +89,12 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-page .personal-lab-metric:hover { border-color: var(--lab-brand); background: var(--lab-surface-subtle); }
 .personal-lab-metric__copy { display: grid; min-width: 0; align-content: center; gap: 1px; }
-.personal-lab-metric__label { overflow: hidden; color: var(--lab-text-secondary); font-size: 10px; font-weight: 650; letter-spacing: .8px; line-height: 14px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.personal-lab-metric__label { overflow: hidden; color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .8px; line-height: 16px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .personal-lab-metric__value { color: var(--lab-brand); font-size: 28px; font-weight: 560; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; }
 .personal-lab-metric--below .personal-lab-metric__value { color: var(--lab-error); }
 .personal-lab-metric--above .personal-lab-metric__value { color: var(--lab-brand); }
 .personal-lab-metric--neutral .personal-lab-metric__value { color: var(--lab-text-primary); }
-.personal-lab-metric__average { overflow: hidden; color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.personal-lab-metric__average { overflow: hidden; color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .personal-lab-metric__bars { display: flex; height: 30px; align-items: end; justify-content: end; gap: 8px; }
 .personal-lab-metric__bar { display: block; width: 12px; min-height: 4px; border-radius: 2px 2px 0 0; background: var(--lab-signal); }
 .personal-lab-metric--below .personal-lab-metric__bar { background: var(--lab-error); }
@@ -130,16 +130,17 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   border-right: 1px solid var(--lab-border);
   background: transparent;
   color: var(--lab-text-secondary);
-  font-size: 11px;
-  line-height: 14px;
+  font-size: var(--lab-type-label);
+  line-height: 16px;
   text-align: center;
   white-space: nowrap;
 }
 .personal-lab-page .personal-lab-day-strip button:last-of-type { border-right: 0; }
 .personal-lab-page .personal-lab-day-strip button:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-brand); color: var(--lab-surface); }
+.personal-lab-page .personal-lab-day-strip button[aria-current="date"] { border-radius: var(--lab-radius-sm); box-shadow: inset 0 0 0 2px var(--lab-surface-selected); }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(255, 255, 255, .82); }
-.personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: 10px; line-height: 14px; text-transform: none; }
+.personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: var(--lab-type-label); line-height: 16px; text-transform: none; }
 .personal-lab-day-strip__check { margin-left: 4px; color: var(--lab-signal); font-weight: 700; }
 .personal-lab-day-strip button[aria-current="date"] .personal-lab-day-strip__check { color: var(--lab-surface); }
 
@@ -160,8 +161,8 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-card__heading { display: none; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-card__actions { gap: 8px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: 10px; }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: 10px; font-weight: 650; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
+.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: 14px; font-weight: 650; }
 .personal-lab-journal-column .journal-card--personal-lab .primary-button:hover { background: #1e402e; }
 .personal-lab-journal-column .journal-card--personal-lab .text-link { position: absolute; width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0; opacity: 0; }
 .personal-lab-journal-column .journal-card--personal-lab .text-link:focus-visible { position: static; width: auto; height: 24px; padding: 4px 8px; border: 1px solid var(--lab-border); opacity: 1; }
@@ -185,7 +186,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 { display: flex; min-width: 0; align-items: baseline; gap: 10px; color: var(--lab-text-primary); font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 button { display: flex; min-height: 32px; align-items: baseline; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { color: var(--lab-text-secondary); font-size: 10px; font-weight: 650; letter-spacing: .8px; line-height: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .8px; line-height: 16px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 0; margin-top: 12px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field { min-height: 44px; gap: 8px; padding: 8px 4px; border: 0; border-bottom: 1px solid #edf1ec; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field:nth-child(n + 2) { border-top: 0; }
@@ -196,12 +197,12 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
 .personal-lab-journal-column .journal-card--personal-lab .journal-number,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field > select { width: 92px; min-height: 24px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); font-size: 10px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { min-height: 22px; border-radius: var(--lab-radius-xs); font-size: 10px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field > select { width: 92px; min-height: 24px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); font-size: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { min-height: 22px; border-radius: var(--lab-radius-xs); font-size: 14px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice button[aria-pressed="true"] { background: var(--lab-brand); color: var(--lab-surface); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-number { display: flex; align-items: center; padding-left: 8px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number input { min-height: 22px; padding: 3px 4px; border: 0; background: transparent; font-size: 10px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number span { padding-right: 6px; color: var(--lab-text-secondary); font-size: 10px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-number input { min-height: 22px; padding: 3px 4px; border: 0; background: transparent; font-size: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-number span { padding-right: 6px; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed { background: transparent; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed .journal-choice,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed .journal-number,
@@ -212,22 +213,22 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-correlations { padding: var(--lab-card-padding); border: 1px solid var(--lab-border-strong); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); }
 .personal-lab-correlations__header { display: flex; min-height: 32px; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 16px; }
 .personal-lab-correlations__header h2 { color: var(--lab-text-primary); font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
-.personal-lab-correlations__meta { color: var(--lab-text-secondary); font-size: 10px; letter-spacing: .22px; }
+.personal-lab-correlations__meta { color: var(--lab-text-secondary); font-size: var(--lab-type-label); letter-spacing: .22px; }
 .personal-lab-correlations__list { display: grid; gap: 16px; }
 .personal-lab-correlation { padding: 16px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface-subtle); }
 .personal-lab-correlation > header { display: flex; min-height: 32px; align-items: start; justify-content: space-between; gap: 12px; }
 .personal-lab-correlation > header > div { display: grid; min-width: 0; gap: 2px; }
 .personal-lab-correlation > header strong { overflow: hidden; color: var(--lab-text-primary); font-size: 14px; font-weight: 560; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
-.personal-lab-correlation > header small { color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; }
-.personal-lab-correlation__tone { padding: 3px 7px; border-radius: var(--lab-radius-xs); font-size: 10px; font-weight: 650; letter-spacing: .6px; line-height: 14px; }
+.personal-lab-correlation > header small { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
+.personal-lab-correlation__tone { padding: 3px 7px; border-radius: var(--lab-radius-xs); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .6px; line-height: 16px; }
 .personal-lab-correlation__tone--positive { background: var(--lab-surface-selected); color: var(--lab-signal); }
 .personal-lab-correlation__tone--negative { background: #f8e5e0; color: var(--lab-error); }
 .personal-lab-correlation__tone--neutral { background: var(--lab-control-track); color: var(--lab-text-secondary); }
 .personal-lab-correlation__outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .personal-lab-correlation__outcome { display: grid; min-height: 58px; align-content: center; gap: 2px; padding: 8px 10px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); }
-.personal-lab-correlation__outcome > span { overflow: hidden; color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.personal-lab-correlation__outcome > span { overflow: hidden; color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .personal-lab-correlation__outcome > strong { color: var(--lab-text-primary); font-size: 18px; font-weight: 700; line-height: 24px; }
-.personal-lab-correlation__outcome > small { color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; }
+.personal-lab-correlation__outcome > small { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
 .personal-lab-correlations__empty { padding: 16px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface-subtle); color: var(--lab-text-secondary); font-size: 13px; line-height: 18px; }
 
 @media (max-width: 1100px) {
@@ -246,7 +247,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 @media (min-width: 1101px) and (max-width: 1300px) {
   .personal-lab-page .personal-lab-metric { grid-template-columns: minmax(0, 1fr) 82px; padding-left: 12px; padding-right: 10px; }
-  .personal-lab-metric__label { font-size: 9px; letter-spacing: .55px; }
+  .personal-lab-metric__label { font-size: var(--lab-type-label); letter-spacing: .55px; }
   .personal-lab-metric__bars { gap: 6px; }
   .personal-lab-metric__bar { width: 10px; }
 }
@@ -910,17 +911,187 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   }
 }
 
-/* Keep final interaction geometry after every legacy and responsive override. */
-.personal-lab-page .personal-lab-day-strip { min-height: 58px; }
-.personal-lab-page .personal-lab-day-strip::before,
-.personal-lab-page .personal-lab-day-strip__days { height: 44px; min-height: 44px; }
-.personal-lab-page .personal-lab-day-strip button { min-height: 44px; border-radius: 0; }
-.personal-lab-page .personal-lab-day-strip button[aria-current="date"] { border-radius: var(--lab-radius-sm); }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 44px; border-radius: var(--lab-radius-sm); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period,
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__header,
+/* LOT 2: journal and strongest evidence share the first desktop viewport. The
+   DOM order stays journal -> analysis so keyboard and assistive-technology
+   navigation keep the existing capture-first sequence. */
+@media (min-width: 1101px) {
+  .personal-lab-page {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: var(--lab-column-gap);
+    row-gap: var(--lab-section-space);
+  }
+
+  .personal-lab-page > .lab-notice {
+    flex: 0 0 100%;
+  }
+
+  .personal-lab-page > .lab-workspace {
+    flex: 1 1 calc(68% - (var(--lab-column-gap) / 2));
+    min-width: 0;
+  }
+
+  .personal-lab-page > .strongest-effects-panel {
+    flex: 1 1 calc(32% - (var(--lab-column-gap) / 2));
+    min-width: 320px;
+    align-self: flex-start;
+  }
+}
+
+/* FINAL typography and interaction contract for the daily lab. */
+.personal-lab-page .lab-header__row {
+  grid-template-columns: var(--lab-header-title-width) minmax(0, 1fr);
+  gap: var(--lab-header-gap);
+  height: var(--lab-header-kpi-height);
+}
+
+.personal-lab-page .lab-header h1 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-page);
+  line-height: 32px;
+}
+
+.personal-lab-page .personal-lab-metrics { gap: 8px; }
+.personal-lab-page .personal-lab-metric {
+  height: var(--lab-header-kpi-height);
+  min-height: var(--lab-header-kpi-height);
+  border-radius: var(--lab-radius-sm);
+}
+
+.personal-lab-page .personal-lab-metric__label,
+.personal-lab-page .personal-lab-metric__average,
+.personal-lab-page .personal-lab-day-strip small,
+.personal-lab-page .personal-lab-correlation > header small,
+.personal-lab-page .personal-lab-correlation__tone,
+.personal-lab-page .personal-lab-correlation__outcome > span,
+.personal-lab-page .personal-lab-correlation__outcome > small {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+
+.personal-lab-page .personal-lab-metric__value,
+.personal-lab-page .personal-lab-correlation__outcome > strong,
+.personal-lab-page .personal-lab-day-strip__check,
+.personal-lab-page .journal-period__index {
+  font-family: var(--lab-data-font);
+}
+
+.personal-lab-page .personal-lab-day-strip { min-height: var(--lab-header-kpi-height); }
+.personal-lab-page .personal-lab-day-strip__days {
+  height: 44px;
+  min-height: 44px;
+  border-radius: var(--lab-radius-sm);
+}
+.personal-lab-page .personal-lab-day-strip__arrow {
+  width: 44px;
+  min-width: 44px;
+  flex-basis: 44px;
+  min-height: 44px;
+}
+.personal-lab-page .personal-lab-day-strip button {
+  min-height: 44px;
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-group);
+  line-height: 24px;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__label {
+  font-family: var(--font-soma-ui);
+  font-size: 14px;
+  line-height: 20px;
+}
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
 .personal-lab-journal-column .journal-card--personal-lab .journal-number,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > select,
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { border-radius: var(--lab-radius-sm); }
+.personal-lab-journal-column .journal-card--personal-lab .journal-choice button,
+.personal-lab-journal-column .journal-card--personal-lab .journal-number input {
+  min-height: 44px;
+  font-family: var(--font-soma-ui);
+  font-size: 14px;
+  line-height: 20px;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-number input {
+  font-family: var(--lab-data-font);
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-number span {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-save-status {
+  min-height: 44px;
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+}
+.personal-lab-journal-column .journal-card--personal-lab .primary-button {
+  min-height: 44px;
+  font-family: var(--font-soma-ui);
+  padding: 6px 10px;
+  border-radius: var(--lab-radius-xs);
+  font-size: 12px;
+}
+
+.personal-lab-correlations__header h2 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-section);
+  line-height: 28px;
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page .lab-header h1 { font-size: 24px; line-height: 30px; }
+  .personal-lab-page .personal-lab-metric { height: 64px; min-height: 64px; }
+  .personal-lab-page .personal-lab-day-strip__arrow { display: grid; }
+  .personal-lab-page .personal-lab-day-strip button { min-height: 44px; }
+}
+
+/* iPhone 13 contract: reserve the absolute header and keep the KPI copy
+   readable after the later mobile composition overrides. */
+@media (max-width: 700px) {
+  .personal-lab-page {
+    padding: 204px 12px 24px;
+    min-width: 0;
+    overflow-x: clip;
+  }
+  .personal-lab-page .lab-header {
+    height: 204px;
+    padding: 12px;
+  }
+  .personal-lab-page .lab-header__row {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .personal-lab-page .personal-lab-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .personal-lab-page .personal-lab-metric {
+    min-width: 0;
+    min-height: 64px;
+    height: 64px;
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+  .personal-lab-page .personal-lab-metric__label,
+  .personal-lab-page .personal-lab-metric__average {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .personal-lab-page .personal-lab-day-strip__days {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .personal-lab-page .personal-lab-day-strip button { min-height: 44px; }
+  .personal-lab-journal-column .journal-card--personal-lab .journal-choice button,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper > button {
+    min-height: 44px;
+  }
+}

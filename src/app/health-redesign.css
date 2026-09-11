@@ -1,5 +1,38 @@
 /* Sleep, recovery and effort — shared visual system derived from FINAL references. */
 .app-shell--personal-lab .health-detail-page {
+  /* Route modules may still expose sleep/recovery/activity aliases. Keep
+     them pointed at the canonical Personal Lab values while they migrate. */
+  --sleep-canvas: var(--lab-canvas);
+  --sleep-surface: var(--lab-surface);
+  --sleep-subtle: var(--lab-surface-subtle);
+  --sleep-track: var(--lab-control-track);
+  --sleep-border: var(--lab-border);
+  --sleep-border-strong: var(--lab-border-strong);
+  --sleep-primary: var(--lab-text-primary);
+  --sleep-secondary: var(--lab-text-secondary);
+  --sleep-brand: var(--lab-brand);
+  --sleep-signal: var(--lab-signal);
+  --sleep-error: var(--lab-error);
+  --recovery-canvas: var(--lab-canvas);
+  --recovery-surface: var(--lab-surface);
+  --recovery-subtle: var(--lab-surface-subtle);
+  --recovery-border: var(--lab-border);
+  --recovery-border-strong: var(--lab-border-strong);
+  --recovery-text: var(--lab-text-primary);
+  --recovery-muted: var(--lab-text-secondary);
+  --recovery-brand: var(--lab-brand);
+  --recovery-signal: var(--lab-signal);
+  --recovery-error: var(--lab-error);
+  --activity-canvas: var(--lab-canvas);
+  --activity-surface: var(--lab-surface);
+  --activity-subtle: var(--lab-surface-subtle);
+  --activity-border: var(--lab-border);
+  --activity-border-strong: var(--lab-border-strong);
+  --activity-text: var(--lab-text-primary);
+  --activity-text-secondary: var(--lab-text-secondary);
+  --activity-brand: var(--lab-brand);
+  --activity-signal: var(--lab-signal);
+  --activity-error: var(--lab-error);
   --domain-color: var(--lab-brand);
   --domain-soft: var(--lab-surface-subtle);
   width: 100%;
@@ -10,7 +43,7 @@
   gap: 24px;
   background: var(--lab-canvas);
   color: var(--lab-text-primary);
-  font-family: var(--font-soma-ui);
+  font-family: var(--font-soma-ui) !important;
 }
 
 .app-shell--personal-lab .health-detail-hero {
@@ -62,7 +95,7 @@
 .app-shell--personal-lab .health-primary-card__trigger > span:first-child {
   color: var(--lab-text-secondary);
   font-family: var(--font-soma-ui);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 650;
   letter-spacing: .8px;
   line-height: 14px;
@@ -123,7 +156,7 @@
   letter-spacing: -.5px;
   line-height: 30px;
 }
-.app-shell--personal-lab .metric-reading small { color: var(--lab-text-secondary); font-family: inherit; font-size: 11px; }
+.app-shell--personal-lab .metric-reading small { color: var(--lab-text-secondary); font-family: var(--lab-data-font); font-size: 12px; }
 .app-shell--personal-lab .metric-reading--positive { color: var(--lab-signal); }
 .app-shell--personal-lab .metric-reading--negative { color: var(--lab-error); }
 .app-shell--personal-lab .metric-reading--neutral { color: var(--lab-brand); }
@@ -140,7 +173,7 @@
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-subtle);
   color: var(--lab-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .app-shell--personal-lab .quality-pill--good { border-color: color-mix(in srgb, var(--lab-signal) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-signal) 8%, white); }
 .app-shell--personal-lab .quality-pill--poor { border-color: color-mix(in srgb, var(--lab-error) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-error) 8%, white); }
@@ -154,7 +187,7 @@
   background: var(--lab-surface);
   color: var(--lab-text-secondary);
   font-family: var(--font-soma-ui);
-  font-size: 11px;
+  font-size: 12px;
 }
 .app-shell--personal-lab .health-signal-meta strong { border-radius: 2px; background: var(--lab-surface-selected); color: var(--lab-brand); }
 
@@ -170,6 +203,14 @@
   outline: 2px solid var(--lab-brand);
   outline-offset: 2px;
 }
+
+/* The collapsed rail remains compact, but its controls keep a 44px target. */
+.app-shell--personal-lab .sidebar.sidebar--collapsed .sidebar-toggle {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.app-shell--personal-lab .sidebar.sidebar--collapsed .nav-link { min-height: 44px; }
 
 @media (max-width: 900px) {
   .app-shell--personal-lab .health-detail-page { padding: 12px 16px 20px; gap: 20px; }
@@ -190,4 +231,114 @@
   .app-shell--personal-lab .health-hero-score,
   .app-shell--personal-lab .health-hero-stat { min-height: 68px; }
   .app-shell--personal-lab .health-panel { padding: 16px; }
+}
+
+/* FINAL shared contract for Sleep, Recovery and Effort headers. Route modules
+   keep their semantic colors and content, but inherit one geometry and type
+   scale so switching routes does not feel like switching products. */
+.app-shell--personal-lab .health-detail-hero,
+.app-shell--personal-lab .health-detail-hero--with-metrics {
+  height: var(--lab-header-height);
+  min-height: var(--lab-header-height);
+  grid-template-columns: var(--lab-header-title-width) minmax(0, 1fr);
+  gap: var(--lab-header-gap);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell--personal-lab .health-detail-hero > div:first-child,
+.app-shell--personal-lab .health-detail-hero--with-metrics > div:first-child {
+  min-height: var(--lab-header-kpi-height);
+  align-content: center;
+}
+
+.app-shell--personal-lab .health-detail-hero h1,
+.app-shell--personal-lab .health-detail-hero--with-metrics h1 {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-page);
+  line-height: 32px;
+}
+
+.app-shell--personal-lab .health-hero-metrics {
+  min-height: var(--lab-header-kpi-height);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.app-shell--personal-lab .health-hero-score,
+.app-shell--personal-lab .health-hero-stat {
+  height: var(--lab-header-kpi-height);
+  min-height: var(--lab-header-kpi-height);
+  border: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+  box-shadow: var(--lab-shadow-subtle);
+}
+
+.app-shell--personal-lab .health-hero-stat > span,
+.app-shell--personal-lab .health-hero-score .headerScoreMetric > span,
+.app-shell--personal-lab .health-hero-stat__average,
+.app-shell--personal-lab .health-hero-score small {
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+
+/* Every measured value is mono; prose and labels remain Schibsted. */
+.app-shell--personal-lab .metric-reading,
+.app-shell--personal-lab .score-ring__value strong,
+.app-shell--personal-lab .health-hero-stat strong,
+.app-shell--personal-lab .health-hero-score strong {
+  font-family: var(--lab-data-font) !important;
+}
+
+.app-shell--personal-lab .health-section-heading h2,
+.app-shell--personal-lab .health-panel h2,
+.app-shell--personal-lab .health-panel h3 {
+  font-family: var(--font-soma-ui);
+}
+
+@media (max-width: 900px) {
+  .app-shell--personal-lab .health-detail-hero,
+  .app-shell--personal-lab .health-detail-hero--with-metrics {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .app-shell--personal-lab .health-detail-hero > div:first-child,
+  .app-shell--personal-lab .health-detail-hero--with-metrics > div:first-child {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell--personal-lab .health-detail-hero h1,
+  .app-shell--personal-lab .health-detail-hero--with-metrics h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .app-shell--personal-lab .health-hero-score,
+  .app-shell--personal-lab .health-hero-stat {
+    height: 68px;
+    min-height: 68px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell--personal-lab .health-detail-page {
+    min-width: 0;
+    overflow-x: clip;
+  }
+  .app-shell--personal-lab .health-signal-meta {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    overflow-wrap: anywhere;
+  }
 }
