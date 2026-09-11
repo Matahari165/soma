@@ -1543,3 +1543,16 @@
     height: 100%;
   }
 }
+
+/* BOLDER — meals read as a daily editorial record, not a repeated card grid. */
+.mealsPageRoot .mealsPageHeader { border-bottom: 2px solid var(--lab-brand); }
+.mealsPageRoot .headerMetric:first-child { border-color: var(--lab-brand); background: var(--lab-brand); }
+.mealsPageRoot .headerMetric:first-child > span,
+.mealsPageRoot .headerMetric:first-child > strong,
+.mealsPageRoot .headerMetric:first-child > strong small { color: var(--lab-surface); }
+.mealsJournalPanel { border-top: 2px solid var(--lab-brand); }
+.mealsJournalPanel > .mealList { gap: 0; }
+.mealsJournalPanel > .mealList > div + div { padding-top: 20px; border-top: 1px solid var(--lab-border-strong); }
+.mealsJournalPanel .mealCard { border-inline: 0; border-radius: 0; box-shadow: none; }
+.mealsJournalPanel .mealCardEmpty { border: 1px dashed var(--lab-border-strong); border-radius: var(--lab-radius-sm); }
+.mealsJournalPanel .captureButtonCompact { box-shadow: 0 8px 18px rgba(38, 77, 56, .16); }

@@ -456,3 +456,15 @@
   .root:global(.meals-page-trends) .barChart { min-height: 88px; }
   .root:global(.meals-page-trends) .barColumn { height: 78px; }
 }
+
+/* BOLDER — one continuous analytical field with stronger data scale. */
+.root:global(.meals-page-trends) { border-top: 2px solid var(--lab-brand); }
+.root:global(.meals-page-trends) .grid { gap: 0; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); overflow: hidden; }
+.root:global(.meals-page-trends) .card { border: 0; border-radius: 0; background: var(--lab-surface); }
+.root:global(.meals-page-trends) .card:nth-child(odd) { border-right: 1px solid var(--lab-border); }
+.root:global(.meals-page-trends) .card:nth-child(n + 3) { border-top: 1px solid var(--lab-border); }
+.root:global(.meals-page-trends) .value { font-size: 32px; line-height: 34px; }
+@media (max-width: 700px) {
+  .root:global(.meals-page-trends) .card:nth-child(odd) { border-right: 0; }
+  .root:global(.meals-page-trends) .card + .card { border-top: 1px solid var(--lab-border); }
+}

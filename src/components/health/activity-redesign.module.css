@@ -705,3 +705,20 @@
     white-space: nowrap;
   }
 }
+
+/* BOLDER — effort uses a stronger performance band and more decisive plots. */
+.root :global(.health-detail-hero) { border-bottom: 2px solid var(--activity-brand); }
+.root :global(.health-hero-metrics > :first-child) { border-color: var(--activity-brand); background: var(--activity-brand); color: var(--activity-surface); }
+.root :global(.health-hero-metrics > :first-child) :is(span, strong, small, p) { color: var(--activity-surface); }
+.root :global(.health-primary-grid) { gap: 0; overflow: hidden; border: 1px solid var(--activity-border-strong); border-radius: var(--lab-radius-sm); }
+.root :global(.health-primary-card),
+.root :global(.health-primary-card__trigger) { border: 0; border-right: 1px solid var(--activity-border); border-radius: 0; box-shadow: none; }
+.root :global(.health-primary-card:last-child),
+.root :global(.health-primary-card__trigger:last-child) { border-right: 0; }
+.root :global(.health-chart-line) { stroke-width: 2.5; }
+@media (max-width: 640px) {
+  .root :global(.health-primary-card),
+  .root :global(.health-primary-card__trigger) { border-right: 0; border-bottom: 1px solid var(--activity-border); }
+  .root :global(.health-primary-card:last-child),
+  .root :global(.health-primary-card__trigger:last-child) { border-bottom: 0; }
+}

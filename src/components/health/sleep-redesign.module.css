@@ -414,3 +414,16 @@
     line-height: 24px;
   }
 }
+
+/* BOLDER — sleep gains a clear nocturnal focal plane without introducing a second palette. */
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) { border-bottom: 2px solid var(--sleep-brand); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) { border-color: var(--sleep-brand); background: var(--sleep-brand); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) :is(span, strong, small, em) { color: var(--sleep-surface); }
+.panel:first-child { border-color: var(--sleep-brand); }
+.architecturePanel { background: color-mix(in srgb, var(--sleep-brand) 7%, var(--sleep-surface)); }
+.recommendation { min-height: 168px; padding: 24px; box-shadow: 0 16px 34px rgba(28, 37, 32, .14); }
+.recommendation strong { font-size: var(--lab-type-page); line-height: 32px; }
+@media (max-width: 640px) {
+  .recommendation { min-height: 0; padding: 20px; }
+  .recommendation strong { font-size: 24px; line-height: 28px; }
+}

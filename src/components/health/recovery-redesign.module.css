@@ -338,3 +338,13 @@
     white-space: nowrap;
   }
 }
+
+/* BOLDER — recovery foregrounds readiness and drivers as one instrument. */
+.header { border-bottom: 2px solid var(--recovery-brand); }
+.headerMetric:first-child { border-color: var(--recovery-brand); background: var(--recovery-brand); }
+.headerMetric:first-child :is(.metricLabel, strong, small, p) { color: var(--recovery-surface); }
+.workbench { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); }
+.column:first-child > .panel:first-child { border-color: var(--recovery-brand); background: color-mix(in srgb, var(--recovery-brand) 6%, var(--recovery-surface)); }
+.column:first-child > .panel:first-child .statBox { background: var(--recovery-surface); }
+.heartPanel :global(.health-chart-line) { stroke-width: 2.5; }
+@media (max-width: 760px) { .workbench { grid-template-columns: 1fr; } }
