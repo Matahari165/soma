@@ -573,7 +573,6 @@ function LabMealSummary({ meal }: { meal: MealRecord }) {
     .filter((node) => node !== mainRoot && ["side", "dessert"].includes(ingredientCourse(node, false) ?? ""))
     .map((node) => node.ingredient.name.trim())
     .filter(Boolean);
-  const secondary = accompaniments.length ? accompaniments.join(", ") : "—";
   const nutrition = [
     ["Calories", "kcal", analysis.calories, "calories"],
     ["Protéines", "g", analysis.proteinGrams, "protein"],
@@ -582,10 +581,7 @@ function LabMealSummary({ meal }: { meal: MealRecord }) {
     ["Sucres ajoutés", "g", analysis.addedSugarGrams, "sugar"],
   ] as const;
   return <div className={styles.labMealSummary} aria-label={`Résumé du ${SLOT_LABELS[meal.slot]}`}>
-    <div className={styles.labMealDetails}>
-      <div><span>Plat</span><strong>{main}</strong></div>
-      <div><span>Accompagnement / dessert</span><strong>{secondary}</strong></div>
-    </div>
+    <div className={styles.labMealDetails}><p className={styles.labMealDishes}>{main}</p>{accompaniments.length > 0 && <span className={styles.labMealSides}>{accompaniments.join(" · ")}</span>}</div>
     <div className={styles.labMealNutrition} aria-label="Valeurs nutritionnelles estimées">
       {nutrition.map(([label, unit, range, metric]) => <span data-metric={metric} key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
     </div>
@@ -838,7 +834,18 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
       {status === "confirmed" && meal && <MealSourceEvidence meal={meal} />}
-      {(status === "review" || status === "confirmed") && meal?.analysis && <>{mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}<MealAnalysisDisclosure meal={meal} status={status} showExplanation={labCompact} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} /></>}
+      {(status === "review" || status === "confirmed") && meal?.analysis && <>
+        {mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}
+        {labCompact ? <div className={styles.labAnalysisRow}>
+          <MealAnalysisDisclosure meal={meal} status={status} showExplanation correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
+          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} />
+        </div> : <>
+          <MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} />
+        </>}
+        {labCompact && confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+      </>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Réanalyse interrompue. L’analyse précédente reste conservée. {visibleAnalysisError(meal.error)}</p>}
     </div>}
   </article>;

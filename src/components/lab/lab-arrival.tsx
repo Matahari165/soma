@@ -12,9 +12,8 @@ export function LabArrival({ theme, date, radar }: { theme: string; date: string
   };
   const title = titles[theme] || titles.observatory;
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Accueil Personal Lab" key={artwork}>
-    <header className="arrival-masthead"><span>Soma</span><time>{date}</time></header>
     <div className="arrival-composition">
-      <div className="arrival-heading"><span className="arrival-kicker">Personal Lab</span><h1 id="arrival-title" tabIndex={-1}>{title[0]}<br />{title[1]}</h1></div>
+      <div className="arrival-heading"><h1 id="arrival-title" tabIndex={-1}><span className="arrival-title-line"><span>{title[0]}</span></span><span className="arrival-title-line"><span>{title[1]}</span></span></h1><time className="arrival-date">{date}</time></div>
       <div className="arrival-art">{artwork === "radar" ? radar : <ObservatoryGeometry />}</div>
     </div>
 

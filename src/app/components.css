@@ -923,7 +923,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .strongest-effects__relation strong { font-size: .78rem; }
 .strongest-effects__relation small { margin-top: 3px; color: var(--ink-soft); font-size: .66rem; }
 .strongest-effects__plot { position: relative; display: block; height: 20px; }
-.strongest-effects__plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 2px; background: var(--line-strong); content: ""; transform: translateY(-50%); }
+.strongest-effects__plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 2px; background: var(--effect-track, var(--line-strong)); content: ""; transform: translateY(-50%); }
 .strongest-effects__zero { position: absolute; z-index: 1; top: 50%; left: 50%; width: 1px; height: 12px; background: var(--line-strong); transform: translateY(-50%); }
 .strongest-effects__interval { position: absolute; z-index: 2; top: 50%; height: 5px; background: var(--ink-soft); transform: translateY(-50%); }
 .strongest-effects__point { position: absolute; z-index: 3; top: 50%; width: 11px; height: 11px; border: 2px solid var(--paper); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--ink); transform: translate(-50%, -50%); }
@@ -1434,7 +1434,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 }
 .strongest-effects li > button:hover { background: var(--lab-surface-subtle); }
 .strongest-effects__plot { position: relative; display: block; height: 20px; }
-.strongest-effects__plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 2px; background: var(--lab-border-strong); content: ""; transform: translateY(-50%); }
+.strongest-effects__plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 2px; background: var(--effect-track, var(--lab-border-strong)); content: ""; transform: translateY(-50%); }
 .strongest-effects__zero { position: absolute; z-index: 1; top: 50%; left: 50%; width: 1px; height: 12px; background: var(--lab-text-secondary); transform: translateY(-50%); }
 .strongest-effects__interval { position: absolute; z-index: 2; top: 50%; height: 5px; background: var(--lab-text-secondary); transform: translateY(-50%); }
 .strongest-effects__point { position: absolute; z-index: 3; top: 50%; width: 11px; height: 11px; border: 2px solid var(--lab-surface); border-radius: 50%; background: var(--lab-text-primary); box-shadow: 0 0 0 2px var(--lab-text-primary); transform: translate(-50%, -50%); }

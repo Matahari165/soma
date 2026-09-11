@@ -1787,7 +1787,7 @@
   border-radius: 0;
   background: #192022;
   color: var(--lab-text-primary);
-  font-size: 12px;
+  font-size: var(--lab-type-label);
   line-height: 17px;
 }
 :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealActions,
@@ -1831,3 +1831,206 @@
 :global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition > span[data-metric="calories"] strong { font-size: 28px; line-height: 1.2; }
 
 .analysisExplanation { color: var(--lab-text-secondary); font-size: 13px; line-height: 1.6; }
+
+/* Observatory refinement: capture stays nearly black and evidence reads as one
+   compact block. The production meal surfaces keep their existing tokens. */
+:global(html[data-lab-theme="observatory"]) .labRoot .mealCard,
+:global(html[data-lab-theme="observatory"]) .labRoot .mealCardConfirmed {
+  background: var(--lab-canvas);
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt {
+  grid-template-columns: minmax(0, 1fr) 148px;
+  gap: 12px;
+  padding: 6px 0 10px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt .textInput textarea {
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 0;
+  outline-offset: 3px;
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-label);
+  line-height: 17px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt .textInput textarea::placeholder {
+  color: var(--lab-text-secondary);
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact {
+  min-height: 56px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-label);
+  font-weight: 650;
+  transition: background-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact:hover:not(:disabled) {
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+  transform: translateY(-1px);
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealSummary {
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealDetails {
+  display: block;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealDishes {
+  margin: 0;
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-ui);
+  font-weight: 560;
+  line-height: 19px;
+  overflow-wrap: anywhere;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition > span {
+  padding: 4px 0 0;
+  background: transparent;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition > span[data-metric="calories"] {
+  grid-column: 1 / -1;
+  padding: 0 0 6px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition > span[data-metric="calories"] strong {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealNutrition > span:not([data-metric="calories"]) strong {
+  font-size: 13px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .analysisDetails {
+  min-width: 0;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .analysisDetails > summary {
+  min-height: 44px;
+  padding: 0;
+  border-bottom: 0;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-label);
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .analysisDetails[open] > summary {
+  border-bottom: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .analysisDetailsBody {
+  padding: 10px 0 2px;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .mealCompletionControls {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .reviewActions {
+  justify-content: flex-end;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .secondaryButton,
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .confirmButton {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--lab-brand);
+  color: var(--lab-canvas);
+  font-size: var(--lab-type-label);
+  font-weight: 650;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow :is(.secondaryButton, .confirmButton):hover:not(:disabled) {
+  border: 0;
+  background: var(--lab-text-primary);
+  color: var(--lab-canvas);
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .secondaryButton {
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-weight: 500;
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .secondaryButton:hover:not(:disabled) {
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+}
+
+@media (min-width: 701px) {
+  :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealActions,
+  :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle {
+    width: auto;
+  }
+
+  :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact {
+    width: auto;
+    min-width: 76px;
+    padding-inline: 10px;
+    background: transparent;
+    color: var(--lab-text-secondary);
+  }
+
+  :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact:hover:not(:disabled) {
+    background: var(--lab-surface);
+    color: var(--lab-text-primary);
+  }
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt { grid-template-columns: 1fr; }
+  :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact { min-height: 48px; }
+  :global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow { gap: 8px; }
+  :global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .secondaryButton,
+  :global(html[data-lab-theme="observatory"]) .labRoot .labAnalysisRow .confirmButton { padding-inline: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact { transition: none; }
+}
+
+:global(html[data-lab-theme="observatory"]) .labRoot .mealHeader { min-height:38px; padding:4px 0; }
+:global(html[data-lab-theme="observatory"]) .labRoot .sourceDetails { margin:0; padding:0; }
+:global(html[data-lab-theme="observatory"]) .labRoot .labMealSides { display:block; color:var(--lab-text-secondary); font-size:12px; line-height:1.5; font-weight:400; }
+@media(max-width:700px) {
+ :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt { grid-template-columns:minmax(0,1fr) 88px; gap:8px; align-items:center; }
+ :global(html[data-lab-theme="observatory"]) .labRoot .emptyMealPrompt .textInput textarea { min-height:60px; }
+ :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact { padding:8px; }
+}

@@ -10,5 +10,5 @@ export function useLabTheme() {
 }
 
 export function useLabArtwork() {
-  return useSyncExternalStore(subscribe, () => document.documentElement.dataset.labArt || "geometry", () => "geometry");
+  return useSyncExternalStore(subscribe, () => document.documentElement.dataset.labArt || "radar", () => "radar");
 }
