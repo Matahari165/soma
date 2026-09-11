@@ -114,7 +114,7 @@ describe("MealJournal", () => {
     expect(html).toContain('>—<small>kcal');
   });
 
-  it("requires a photo before analyzing a draft and keeps the note optional", () => {
+  it("allows analyzing a draft with text-only, photo-only, or both", () => {
     const draft: MealJournalData = {
       date,
       meals: {
@@ -134,10 +134,31 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
 
     expect(html).toContain("<textarea");
-    expect(html).toContain("Ajoute une photo pour lancer l’analyse. La note est optionnelle.");
-    expect(html).toContain('disabled=""');
-    expect(html).not.toContain("Grok");
-    expect(html).not.toContain("aria-describedby");
+    expect(html).not.toContain("Ajoute une photo pour lancer l’analyse");
+    expect(html).toContain("Analyser");
+    expect(html).toContain("Texte à analyser");
+  });
+
+  it("disables analysis when neither photo nor text is provided", () => {
+    const draft: MealJournalData = {
+      date,
+      meals: {
+        lunch: {
+          id: "meal-draft-empty",
+          date,
+          slot: "lunch",
+          note: "",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "draft",
+        },
+      },
+    };
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
+
+    expect(html).toContain("Ajoute une photo ou décris ton repas pour lancer l’analyse.");
   });
 
   it("keeps analysis results available behind a compact disclosure", () => {
@@ -177,43 +198,70 @@ describe("MealJournal", () => {
     expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
   });
 
-  it("rejects a new text-only meal before creating it", async () => {
-    const requests: Array<{ url: string; method: string }> = [];
+  it("creates and analyzes a new text-only meal without requiring photos", async () => {
+    const requests: Array<{ url: string; method: string; body?: unknown }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       const method = init?.method ?? (input instanceof Request ? input.method : "GET");
-      requests.push({ url, method });
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      requests.push({ url, method, body });
       if (url === "/api/meals") {
         return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee" } }, { status: 201 });
       }
-      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "review", photos: [], analysis: { calories: { likely: 210 } } } });
     }));
 
-    await expect(defaultAnalyze({
+    const result = await defaultAnalyze({
       date,
       slot: "breakfast",
       files: [],
       meal: { id: "meal-new", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-    })).rejects.toThrow("Ajoute au moins une photo");
+    });
 
-    expect(requests).toEqual([]);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({ url: "/api/meals", method: "POST", body: { mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft" } });
+    expect(requests[1]?.url).toBe("/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze");
+    expect(result.id).toBe("0199a111-b222-7ccc-8ddd-eeeeeeeeeeee");
   });
 
-  it("rejects an existing text-only meal before updating it", async () => {
+  it("updates and analyzes an existing text-only meal without requiring photos", async () => {
+    const requests: Array<{ url: string; method: string; body?: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      requests.push({ url, method, body });
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "review", photos: [], analysis: { calories: { likely: 210 } } } });
+    }));
+
+    const result = await defaultAnalyze({
+      date,
+      slot: "breakfast",
+      files: [],
+      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({ url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", method: "PATCH", body: { note: "2 bananes" } });
+    expect(requests[1]?.url).toBe("/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze");
+    expect(result.id).toBe("0199a111-b222-7ccc-8ddd-eeeeeeeeeeee");
+  });
+
+  it("rejects analysis when neither photo nor note is provided", async () => {
     const requests: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       const method = init?.method ?? (input instanceof Request ? input.method : "GET");
       requests.push({ url, method });
-      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
+      return Response.json({});
     }));
 
     await expect(defaultAnalyze({
       date,
       slot: "breakfast",
       files: [],
-      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-    })).rejects.toThrow("Ajoute au moins une photo");
+      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "   ", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+    })).rejects.toThrow("Ajoute une photo ou une description");
 
     expect(requests).toEqual([]);
   });

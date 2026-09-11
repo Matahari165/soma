@@ -10,7 +10,7 @@ import { normalizeMealImage } from "@/services/meal-image";
 
 type CaptureState = "idle" | "choosing-origin" | "uploading" | "done" | "error";
 type SlotState = { state: CaptureState; file: File | null; origin: MealOrigin | null; message: string | null; photoCount: number; filled: boolean };
-type QuickMealRecord = { status?: unknown; photos?: unknown[] };
+type QuickMealRecord = { status?: unknown; photos?: unknown[]; note?: unknown };
 
 const slots: Array<{ id: MealType; label: string }> = [
   { id: "breakfast", label: "Petit déjeuner" },
@@ -27,7 +27,7 @@ const origins: Array<{ id: MealOrigin; label: string }> = [
 const emptySlot = (): SlotState => ({ state: "idle", file: null, origin: null, message: null, photoCount: 0, filled: false });
 
 export function mealQuickSlotIsFilled(meal: QuickMealRecord | null | undefined) {
-  return Boolean(meal && (meal.status === "confirmed" || (Array.isArray(meal.photos) && meal.photos.length > 0)));
+  return Boolean(meal && (meal.status === "confirmed" || (Array.isArray(meal.photos) && meal.photos.length > 0) || (typeof meal.note === "string" && meal.note.trim().length > 0)));
 }
 
 export function morningJournalIsConfirmed(input: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[] }) {

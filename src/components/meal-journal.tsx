@@ -305,7 +305,8 @@ type DefaultAnalyzeOptions = {
 
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
   const hasPhotoEvidence = files.length > 0 || meal.photos.some((photo) => photo.storageStatus !== "purged");
-  if (!hasPhotoEvidence) throw new Error("Ajoute au moins une photo du repas avant de lancer l’analyse.");
+  const hasTextEvidence = Boolean(meal.note.trim());
+  if (!hasPhotoEvidence && !hasTextEvidence) throw new Error("Ajoute une photo ou une description du repas avant de lancer l’analyse.");
   const analysisRequestId = randomId("analysis");
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
@@ -491,8 +492,11 @@ function statusLabel(meal: MealRecord | null) {
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
   if (meal.status === "error") return "À réessayer";
-  if (meal.photos.some((photo) => photo.storageStatus !== "purged")) return "Photos à analyser";
-  if (meal.note.trim()) return "Texte à compléter";
+  const hasPhotos = meal.photos.some((photo) => photo.storageStatus !== "purged");
+  const hasText = Boolean(meal.note.trim());
+  if (hasPhotos && hasText) return "À analyser";
+  if (hasPhotos) return "Photos à analyser";
+  if (hasText) return "Texte à analyser";
   return "";
 }
 
@@ -500,10 +504,16 @@ function visibleAnalysisError(message: string | null | undefined) {
   return message ?? "L’analyse n’a pas abouti. Vérifie ta connexion puis réessaie.";
 }
 
-function MealTextInput({ slot, meal, disabled, placeholder = "Ex. 2 bananes et un café.", onNote }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; placeholder?: string; onNote: (note: string) => void }) {
+function MealTextInput({ slot, meal, disabled, placeholder = "Ex. 2 bananes et un café.", onNote, onAnalyze }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; placeholder?: string; onNote: (note: string) => void; onAnalyze?: () => void }) {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      onAnalyze?.();
+    }
+  };
   return <div className={styles.textInput}>
     <label className={styles.visuallyHidden} htmlFor={`meal-${slot}-note`}>Décrire : {SLOT_LABELS[slot]}</label>
-    <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder={placeholder} disabled={disabled} onChange={(event) => onNote(event.target.value)} />
+    <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder={placeholder} disabled={disabled} onChange={(event) => onNote(event.target.value)} onKeyDown={handleKeyDown} />
   </div>;
 }
 
@@ -784,7 +794,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const headingId = `meal-${slot}-title`;
   const analysisContentId = `meal-${slot}-analysis-content`;
   const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
-  const canAnalyze = Boolean(meal) && hasPhotos && status === "draft";
+  const hasText = Boolean(meal && meal.note.trim().length > 0);
+  const hasEvidence = hasPhotos || hasText;
+  const canAnalyze = Boolean(meal) && hasEvidence && status === "draft";
   const skipped = disabled && !meal;
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
@@ -836,7 +848,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
     {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
-      {integratedEmpty ? <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} /> : null}
+      {integratedEmpty ? <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} /> : null}
       <div className={styles.emptyMealActions}>
         {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
       </div>
@@ -844,13 +856,13 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
     {!skipped && !compactEmptyState && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
-      {status !== "confirmed" && <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} />}
+      {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
       {status === "draft" && <div className={styles.actionsRow}>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />
         <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
           <Sparkles size={17} aria-hidden="true" />Analyser
         </button>
-        {!hasPhotos && <p className={styles.photoRequired}>Ajoute une photo pour lancer l’analyse. La note est optionnelle.</p>}
+        {!hasEvidence && <p className={styles.photoRequired}>Ajoute une photo ou décris ton repas pour lancer l’analyse.</p>}
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
       {status === "confirmed" && !labCompact && meal && <MealSourceEvidence meal={meal} />}
@@ -1222,6 +1234,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!meal || mutationInFlight.current) return;
     const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
     const hasPhotosForAnalyze = activePhotos.length > 0;
+    const hasTextForAnalyze = Boolean(meal.note.trim());
     if (correction) {
       // Grok receives the correction together with the current evidence and
       // recalculates the complete analysis in one request.
@@ -1230,8 +1243,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         setFileError(`Ce repas contient ${activePhotos.length} photos, mais ${MAX_MEAL_PHOTOS} au maximum sont autorisées. Retire-en avant de relancer l’analyse.`);
         return;
       }
-    } else if (!hasPhotosForAnalyze) {
-      setFileError("Ajoute au moins une photo du repas avant de lancer l’analyse.");
+    } else if (!hasTextForAnalyze) {
+      setFileError("Ajoute une photo ou décris ton repas avant de lancer l’analyse.");
       return;
     }
     mutationInFlight.current = true;
@@ -1295,7 +1308,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   const handleConfirm = (slot: MealSlot, meal: MealRecord) => {
     if (!meal.analysis) {
-      setConfirmError((previous) => ({ ...previous, [slot]: "Ajoute une photo et analyse le repas avant de le valider." }));
+      setConfirmError((previous) => ({ ...previous, [slot]: "Ajoute une photo ou décris le repas, puis lance l’analyse avant de le valider." }));
       return;
     }
     // Ressentis optionnels : ne plus bloquer la validation

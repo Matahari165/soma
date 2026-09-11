@@ -40,6 +40,7 @@ describe("MealQuickCapture", () => {
   it("marks a confirmed meal or a validated morning journal as filled without requiring a photo", () => {
     expect(mealQuickSlotIsFilled({ status: "confirmed", photos: [] })).toBe(true);
     expect(mealQuickSlotIsFilled({ status: "draft", photos: [] })).toBe(false);
+    expect(mealQuickSlotIsFilled({ status: "draft", photos: [], note: "2 bananes" })).toBe(true);
     expect(mealQuickSlotIsFilled({ status: "draft", photos: [{ id: "photo-1" }] })).toBe(true);
     expect(morningJournalIsConfirmed({
       todayDate,
