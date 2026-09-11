@@ -7,7 +7,7 @@ import { ObservatoryPageMotion } from "@/components/lab/observatory-page-motion"
 import { LabGlobalNavigation } from "@/components/lab/lab-global-navigation";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
-import { isLocalPreviewMode } from "@/lib/env";
+import { isLocalPreviewMode, isObservatoryMode } from "@/lib/env";
 
 import "./globals.css";
 import "./components.css";
@@ -75,13 +75,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   await connection();
   const user = await getCurrentUser();
   const localPreview = isLocalPreviewMode();
+  const observatoryMode = isObservatoryMode() && Boolean(user);
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={localPreview ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className={localPreview ? "local-preview" : undefined}>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={observatoryMode ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <body className={[localPreview && "local-preview", observatoryMode && "observatory-mode"].filter(Boolean).join(" ") || undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
-        {localPreview && <><LabGlobalNavigation /><ObservatoryPageMotion /></>}
+        {observatoryMode && <><LabGlobalNavigation /><ObservatoryPageMotion /></>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

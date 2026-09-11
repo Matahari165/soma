@@ -30,7 +30,8 @@
   },
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://soma.hthv4f94vw.workers.dev",
-    "SOMA_LOCAL_PREVIEW": "false"
+    "SOMA_LOCAL_PREVIEW": "false",
+    "SOMA_OBSERVATORY_MODE": "true"
   },
   "triggers": {
     "crons": ["* * * * *"]

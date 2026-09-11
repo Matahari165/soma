@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-type CloudflareRuntimeEnv = { NEXT_PUBLIC_SITE_URL?: unknown };
+type CloudflareRuntimeEnv = { NEXT_PUBLIC_SITE_URL?: unknown; SOMA_OBSERVATORY_MODE?: unknown };
 
 function getCloudflareSiteUrl() {
   if (process.env.NODE_ENV !== "production") return undefined;
@@ -19,6 +19,19 @@ export function hasCloudflareConfig() {
 
 export function isLocalPreviewMode() {
   return process.env.NODE_ENV !== "production" && process.env.SOMA_LOCAL_PREVIEW === "true";
+}
+
+/** Enables the production Observatoire shell while keeping production data-backed. */
+export function isObservatoryMode() {
+  if (isLocalPreviewMode()) return true;
+  if (process.env.SOMA_OBSERVATORY_MODE === "true") return true;
+  if (process.env.NODE_ENV !== "production") return false;
+
+  try {
+    return (getCloudflareContext().env as CloudflareRuntimeEnv).SOMA_OBSERVATORY_MODE === "true";
+  } catch {
+    return false;
+  }
 }
 
 export function requireServerEnv(name: string) {

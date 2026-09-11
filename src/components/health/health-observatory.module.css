@@ -6,7 +6,7 @@
  * those hooks are the only route-specific selectors used here. This keeps
  * CSS-module hashes from being mistaken for global class names.
  */
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-route) {
+:global(html[data-lab-theme="observatory"]) .observatory {
   --health-canvas: #050505;
   --health-surface: transparent;
   --health-subtle: #0b0b0b;
@@ -747,13 +747,13 @@
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-loading-content) { gap: 0; padding-top: 0; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-loading-panel) { min-height: 210px; border: 0; border-top: 1px solid var(--health-rule); border-radius: 0; background: transparent; }
 
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error) {
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error) {
   display: grid;
   min-height: 100vh;
   padding: 24px;
   place-items: center;
 }
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error-panel) {
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error-panel) {
   display: flex;
   width: min(100%, 640px);
   align-items: flex-start;
@@ -764,10 +764,10 @@
   border-radius: 0;
   background: transparent;
 }
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error-panel) svg { flex: 0 0 auto; color: var(--health-negative); }
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error-panel) h1 { margin: 0; color: var(--health-text); font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; line-height: 24px; }
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error-panel) p { margin: 8px 0 16px; color: var(--health-muted); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: 14px; line-height: 20px; }
-:global(html[data-lab-theme="observatory"]) :global(.health-observatory-error-panel) button { padding: 0 14px; border: 1px solid var(--health-rule-strong); background: transparent; color: var(--health-text); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error-panel) svg { flex: 0 0 auto; color: var(--health-negative); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error-panel) h1 { margin: 0; color: var(--health-text); font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; line-height: 24px; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error-panel) p { margin: 8px 0 16px; color: var(--health-muted); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: 14px; line-height: 20px; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error-panel) button { padding: 0 14px; border: 1px solid var(--health-rule-strong); background: transparent; color: var(--health-text); }
 
 @media (max-width: 900px) {
   :global(html[data-lab-theme="observatory"]) .observatory { padding-inline: 24px; }
@@ -797,7 +797,7 @@
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-row) small,
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-row) em { grid-column: 1 / -1; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.exercise-detail-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  :global(html[data-lab-theme="observatory"]) :global(.health-observatory-error) { padding: 16px; }
+  :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-error) { padding: 16px; }
 }
 
 @media (max-width: 390px) {

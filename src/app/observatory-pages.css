@@ -4,6 +4,12 @@ html[data-lab-theme="observatory"] {
  --line:transparent; --line-strong:transparent; --focus-color:#eee;
  --lab-surface:#050505; --lab-surface-subtle:#050505; --lab-surface-hover:#151515;
 }
+
+/* Production Observatoire keeps the same single navigation rail as the local
+   shell while authenticated content remains backed by the user's data. */
+html[data-lab-theme="observatory"] body.observatory-mode .app-shell .sidebar,
+html[data-lab-theme="observatory"] body.observatory-mode .app-shell .mobile-header { display:none; }
+html[data-lab-theme="observatory"] body.observatory-mode .app-shell .main-content { margin-left:0; padding-top:72px; }
 html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) { color:#eee; background:transparent; }
 html[data-lab-theme="observatory"] .settings-page { max-width:none; padding:32px 5vw 64px; }
 html[data-lab-theme="observatory"] .settings-page > header h1 { margin:0 0 32px; font:400 clamp(30px,3vw,40px)/1.2 Georgia,serif; letter-spacing:-.025em; }
