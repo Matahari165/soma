@@ -1661,3 +1661,11 @@
   box-shadow: none;
   padding-inline: 0;
 }
+
+/* Focus gives meal capture its own full-width workspace. */
+@media (min-width: 701px) {
+  :global(html[data-lab-theme="focus"]) .labRoot .mealList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 40px;
+  }
+}

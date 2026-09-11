@@ -9,6 +9,8 @@ import {
 import { StrongestEffectsPanel } from "@/components/lab/correlation-matrix";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
+import { isLocalPreviewMode } from "@/lib/env";
+import { LabWorldPreview } from "@/components/lab/lab-world-preview";
 import { createPersonalLabStream, type PersonalLabStream } from "@/services/personal-lab";
 
 type ConnectionNotice = "health" | "calendar" | null;
@@ -29,6 +31,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const connectionNotice = params.calendar === "connected" ? "calendar" : params.health === "connected" || params.health === "connected_partial" ? "health" : null;
   const stream = createPersonalLabStream(user, { periods: [90], includeAnalysis: false });
+  if (isLocalPreviewMode()) return <Suspense fallback={<div id="main-page-content" className="lab-world-loading" role="status">Chargement du laboratoire…</div>}><LabWorldPreview stream={stream} /></Suspense>;
   return <div id="main-page-content" className="personal-lab-page lab-entry" lang="fr">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
     <StrongestEffectsPanel />

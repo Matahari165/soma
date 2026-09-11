@@ -3,16 +3,16 @@
 import { useState } from "react";
 
 const themes = [
-  { id: "graphite", name: "Graphite" },
-  { id: "obsidian", name: "Obsidienne" },
-  { id: "slate", name: "Ardoise" },
-  { id: "mineral", name: "Minéral" },
-  { id: "ink", name: "Encre" },
+  { id: "observatory", name: "Observatoire" },
+  { id: "strata", name: "Strates" },
+  { id: "index", name: "Index" },
+  { id: "atelier", name: "Atelier" },
+  { id: "focus", name: "Focus" },
 ] as const;
 
 /** Local design comparison: changes tokens without remounting the workspace. */
 export function DarkThemeSwitcher() {
-  const [selected, setSelected] = useState<string>("graphite");
+  const [selected, setSelected] = useState<string>("observatory");
 
   return <div className="dark-theme-switcher" role="group" aria-label="Variantes du mode sombre">
     {themes.map((theme) => <button

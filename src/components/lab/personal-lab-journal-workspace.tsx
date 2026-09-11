@@ -37,7 +37,7 @@ export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completed
   </nav>;
 }
 
-export function PersonalLabJournalWorkspace({ data }: { data: PersonalLabJournal }) {
+export function PersonalLabJournalWorkspace({ data, recentDatesFirst = false }: { data: PersonalLabJournal; recentDatesFirst?: boolean }) {
   const dates = useMemo(() => Array.from({ length: 6 }, (_, index) => addDays(data.todayDate, index - 5)), [data.todayDate]);
   const [selectedDate, setSelectedDate] = useState(data.todayDate);
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
@@ -45,7 +45,7 @@ export function PersonalLabJournalWorkspace({ data }: { data: PersonalLabJournal
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
   const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);
 
-  const sharedDateNavigation = <PersonalLabDateStrip dates={dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
+  const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
 
   return <div className="personal-lab-workspace">

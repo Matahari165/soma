@@ -6,6 +6,7 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useSt
 
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
 import type { PersonalLabHistoryPoint } from "@/services/personal-lab";
+import { MetricHistoryTrace } from "./metric-history-trace";
 
 export type TodaySignalValues = {
   sleepMinutes: number | null;
@@ -274,13 +275,14 @@ function historyMax(key: PersonalLabMetricKey, history: PersonalLabHistoryPoint[
   return Math.max(2_500, ...values, 1);
 }
 
-function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href }: {
+function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href, showTrace = false }: {
   label: string;
   keyName: PersonalLabMetricKey;
   value: number | null;
   averageValue: number | null;
   history: PersonalLabHistoryPoint[];
   href: string;
+  showTrace?: boolean;
 }) {
   const max = historyMax(keyName, history);
   const trend = comparison(value, averageValue);
@@ -298,10 +300,11 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
         return <span className={`personal-lab-metric__bar${pointValue === null ? " is-empty" : ""}`} style={{ height: `${height}%` }} key={point.date} />;
       })}
     </span>
+    {showTrace && <MetricHistoryTrace values={history.map(point => valueForHistory(keyName, point))} maximum={max} />}
   </Link>;
 }
 
-export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) {
+export function PersonalLabMetrics({ data, presentation = "default" }: { data: PersonalLabMetricValues; presentation?: "default" | "worlds" }) {
   const router = useRouter();
   const [values, setValues] = useState(data);
   const valuesRef = useRef(values);
@@ -354,5 +357,5 @@ export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) 
     { label: "Effort", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
     { label: "Énergie", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals" },
   ];
-  return <section className="personal-lab-metrics" aria-label="Métriques du jour">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} key={metric.keyName} />)}</section>;
+  return <section className="personal-lab-metrics" aria-label="Métriques du jour">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} showTrace={presentation === "worlds"} key={metric.keyName} />)}</section>;
 }

@@ -17,6 +17,8 @@ import "./motion-entry.css";
 import "./motion-journal.css";
 import "./motion-matrix.css";
 import "./dark-lab-preview.css";
+import "./lab-worlds-observatory-strata.css";
+import "./lab-worlds-index-atelier.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
@@ -61,7 +63,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const localPreview = isLocalPreviewMode();
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={localPreview ? "graphite" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={localPreview ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
