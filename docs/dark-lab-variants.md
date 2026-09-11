@@ -52,3 +52,11 @@ Les états de chargement, vide, erreur, sélection de période et détail vienne
 - `src/components/lab/dark-theme-switcher.tsx` : IDs et bascule locale des cinq mondes.
 - `src/components/lab/today-signals.tsx` et `src/components/lab/metric-history-trace.tsx` : métriques et historique SVG.
 - `src/services/personal-lab.ts` : snapshots, historique de cinq jours et sémantique `null`.
+
+## Accueils artistiques et parcours quotidien
+
+Chaque variante possède désormais un accueil autonome : Observatoire orbital avec serif, Strates paysagères, Index typographique Swiss, Atelier sculptural charcoal et Focus instrumental. Les polices système Iowan Old Style, Georgia, Helvetica Neue et SFMono sont des essais locaux intentionnels, pas une migration du design system de production.
+
+Journal puis Repas sont les deux premiers accès ; Strongest Effects vient ensuite. Les trois espaces restent montés pour conserver les saisies. Le bouton Accueil et le retour navigateur permettent de revenir dans le parcours. Les formes SVG déterministes ont leurs mouvements dédiés ; entrées et survols utilisent opacity/transform, et prefers-reduced-motion les coupe.
+
+Fichiers : lab-arrival.tsx, lab-arrival-art.tsx, lab-arrival*.css ; orchestration dans lab-world-workspace.tsx. Aperçu local uniquement, avec données de démonstration.

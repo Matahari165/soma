@@ -23,6 +23,7 @@ export function DarkThemeSwitcher() {
       onClick={() => {
         document.documentElement.dataset.labTheme = theme.id;
         setSelected(theme.id);
+        window.dispatchEvent(new Event("lab-theme-change"));
       }}
     ><span className="dark-theme-switcher__swatch" aria-hidden="true" />{theme.name}</button>)}
   </div>;

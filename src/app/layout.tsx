@@ -19,6 +19,10 @@ import "./motion-matrix.css";
 import "./dark-lab-preview.css";
 import "./lab-worlds-observatory-strata.css";
 import "./lab-worlds-index-atelier.css";
+import "./lab-arrival.css";
+import "./lab-arrival-observatory-strata.css";
+import "./lab-arrival-index-atelier.css";
+import "./lab-arrival-art.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],

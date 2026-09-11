@@ -1,0 +1,66 @@
+/* Shared arrival roles and navigation; each world owns its composition. */
+html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .sidebar,
+html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .mobile-header { display:none; }
+html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .main-content { margin-left:0; padding-top:88px; }
+.lab-arrival { min-height:calc(100svh - 88px); padding:28px 5vw; color:var(--lab-text-primary); background:var(--lab-canvas); overflow:hidden; }
+.arrival-masthead { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+.arrival-masthead > span { font-size:24px; font-weight:600; letter-spacing:-.04em; }
+.arrival-masthead time,.arrival-kicker { font-size:12px; color:var(--lab-text-secondary); }
+.arrival-composition { position:relative; min-height:590px; }
+.arrival-heading h1 { font-size:clamp(48px,6vw,88px); line-height:1.02; letter-spacing:-.04em; font-weight:450; }
+.arrival-art { pointer-events:none; }
+.arrival-art svg { width:100%; height:100%; }
+.arrival-actions { position:relative; z-index:2; }
+.arrival-action { text-align:left; color:inherit; background:transparent; border:0; cursor:pointer; min-height:64px; }
+.arrival-action strong { font-weight:500; }
+.arrival-action-caption,.arrival-action-number { font-size:12px; color:var(--lab-text-secondary); }
+.arrival-action-arrow { transition:transform 220ms ease; }
+.arrival-action:hover .arrival-action-arrow { transform:translate(4px,-4px); }
+.arrival-footer { display:flex; gap:28px; position:relative; z-index:2; }
+.arrival-footer a { display:flex; align-items:center; min-height:44px; font-size:13px; color:var(--lab-text-secondary); }
+.arrival-footer a:hover { color:var(--lab-text-primary); }
+.lab-arrival .arrival-heading,.lab-arrival .arrival-actions { animation:arrival-enter 650ms cubic-bezier(.2,.7,.2,1) both; }
+.lab-arrival .arrival-actions { animation-delay:100ms; }
+@keyframes arrival-enter { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+/* Focus: a quiet central instrument with three compact access points. */
+.lab-arrival[data-arrival-theme="focus"] { background:#101715; }
+[data-arrival-theme="focus"] .arrival-composition { display:grid; grid-template-columns:1fr 1fr; align-content:center; max-width:1080px; margin:auto; min-height:650px; gap:42px; }
+[data-arrival-theme="focus"] .arrival-heading { grid-column:1; align-self:center; z-index:1; }
+[data-arrival-theme="focus"] .arrival-heading h1 { font-family:Georgia,serif; font-size:clamp(48px,5vw,72px); line-height:1.12; font-weight:400; letter-spacing:-.04em; margin-top:22px; }
+[data-arrival-theme="focus"] .arrival-art { grid-column:2; grid-row:1; width:100%; height:330px; color:#adccbe; }
+[data-arrival-theme="focus"] .arrival-actions { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; }
+[data-arrival-theme="focus"] .arrival-action { display:grid; grid-template-columns:1fr auto; gap:14px; padding:18px 0; border-top:1px solid #52645b; transition:background 200ms; }
+[data-arrival-theme="focus"] .arrival-action strong { font-size:24px; grid-column:1; }
+[data-arrival-theme="focus"] .arrival-action-number { grid-column:1 / -1; }
+[data-arrival-theme="focus"] .arrival-action-caption { grid-column:1; }
+[data-arrival-theme="focus"] .arrival-action-arrow { grid-column:2; grid-row:2; }
+/* The same mounted journal/meals/effects become accessible workspaces in every world. */
+html[data-lab-theme] .lab-experience .lab-world { display:flex; flex-direction:column; gap:24px; }
+html[data-lab-theme] .lab-experience .lab-world > * { width:100%; }
+html[data-lab-theme] .lab-experience .lab-world__header { display:flex; flex-wrap:wrap; align-items:center; }
+html[data-lab-theme] .lab-experience .lab-world__shortcuts { display:none; }
+html[data-lab-theme] .lab-experience .lab-world__modes { display:flex; gap:12px; flex-wrap:wrap; }
+html[data-lab-theme] .lab-experience .lab-world__modes button,.lab-back-home { min-height:44px; padding:8px 12px; background:transparent; border:0; color:var(--lab-text-secondary); }
+html[data-lab-theme] .lab-experience .lab-world__modes button[aria-pressed="true"] { color:var(--lab-text-primary); box-shadow:inset 0 -2px var(--lab-brand); }
+html[data-lab-theme] .lab-experience .lab-world__metrics { display:none; }
+html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="effects"] .lab-world__capture,
+html[data-lab-theme] .lab-experience .lab-world:not([data-workspace-view="effects"]) .lab-world__effects,
+html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="journal"] .personal-lab-meal-column,
+html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="meals"] .personal-lab-journal-column { display:none; }
+html[data-lab-theme] .lab-experience .personal-lab-workbench { grid-template-columns:minmax(0,1fr); }
+html[data-lab-theme] .lab-experience .lab-world__capture { animation:arrival-enter 350ms ease both; }
+@media(max-width:700px) {
+ .lab-arrival { padding:24px 22px; }
+ .arrival-masthead time { font-size:11px; }
+ [data-arrival-theme="focus"] .arrival-composition { display:flex; flex-direction:column; gap:20px; min-height:0; margin-block:32px; }
+ [data-arrival-theme="focus"] .arrival-heading { align-self:stretch; }
+ [data-arrival-theme="focus"] .arrival-heading h1 { font-size:46px; }
+ [data-arrival-theme="focus"] .arrival-art { height:180px; }
+ [data-arrival-theme="focus"] .arrival-actions { grid-template-columns:1fr; gap:0; }
+ [data-arrival-theme="focus"] .arrival-action { grid-template-columns:28px 1fr auto; gap:8px; padding:16px 0; }
+ [data-arrival-theme="focus"] .arrival-action-number { grid-column:1; grid-row:1; }
+ [data-arrival-theme="focus"] .arrival-action strong { grid-column:2; font-size:22px; }
+ [data-arrival-theme="focus"] .arrival-action-caption { grid-column:2; }
+ [data-arrival-theme="focus"] .arrival-action-arrow { grid-column:3; grid-row:1; }
+}
+@media(prefers-reduced-motion:reduce) { .lab-experience *, .lab-arrival * { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

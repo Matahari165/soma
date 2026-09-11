@@ -1,0 +1,112 @@
+/* Arrival worlds: two distinct first views for the local Personal Lab preview. */
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) {
+  --arrival-bg: #0b0d0e;
+  --arrival-surface: #14191a;
+  --arrival-ink: #edf1ed;
+  --arrival-muted: #aab5b1;
+  --arrival-line: #35403e;
+  --arrival-accent: #c7d8ce;
+  min-height: calc(100svh - 88px);
+  box-sizing: border-box;
+  overflow: clip;
+  padding: 26px clamp(20px, 5vw, 76px) 22px;
+  background: var(--arrival-bg);
+  color: var(--arrival-ink);
+}
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) *, :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) *::before, :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) *::after { box-sizing: border-box; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) button { appearance: none; font: inherit; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-masthead { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 36px; color: var(--arrival-muted); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-masthead > span { color: var(--arrival-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-masthead time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-composition { min-width: 0; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-heading { min-width: 0; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-kicker { display: block; margin-bottom: 18px; color: var(--arrival-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-heading h1 { margin: 0; color: var(--arrival-ink); font-weight: 650; letter-spacing: -.04em; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-art { position: relative; min-width: 0; display: grid; place-items: center; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-artwork { display: block; width: 100%; height: 100%; overflow: visible; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-actions { min-width: 0; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action { position: relative; display: grid; width: 100%; grid-template-columns: 30px minmax(0, 1fr) 24px; align-items: center; gap: 10px; min-height: 72px; padding: 12px 0; border: 0; border-top: 1px solid var(--arrival-line); background: transparent; color: var(--arrival-muted); text-align: left; cursor: pointer; transition: border-color 220ms ease-out, color 220ms ease-out, transform 220ms cubic-bezier(.16, 1, .3, 1), background-color 220ms ease-out; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:last-child { border-bottom: 1px solid var(--arrival-line); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-number, :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-caption { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-number { grid-column: 1; grid-row: 1 / span 2; align-self: start; padding-top: 3px; color: var(--arrival-muted); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action strong { display: block; grid-column: 2; grid-row: 1; color: var(--arrival-ink); font-size: 1.08rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.12; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-caption { display: block; grid-column: 2; grid-row: 2; margin-top: 5px; color: var(--arrival-muted); line-height: 1.35; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-arrow { grid-column: 3; grid-row: 1 / span 2; align-self: center; justify-self: end; color: var(--arrival-muted); font-size: 1.15rem; line-height: 1; transition: color 180ms ease-out, transform 180ms cubic-bezier(.16, 1, .3, 1); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:hover, :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:focus-visible { color: var(--arrival-ink); border-color: var(--arrival-accent); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:hover { transform: translateX(7px); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:hover .arrival-action-arrow { color: var(--arrival-accent); transform: translate(2px, -2px); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action:focus-visible { outline: 2px solid var(--arrival-accent); outline-offset: 4px; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-footer { display: flex; align-items: center; gap: 22px; min-height: 38px; color: var(--arrival-muted); }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-footer a { color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-underline-offset: 4px; }
+:is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-footer a:hover { color: var(--arrival-ink); }
+
+/* Observatory: an orbital instrument with a serif finding and a vertical action rail. */
+.lab-arrival[data-arrival-theme="observatory"] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #090b0c; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-masthead { border-bottom: 1px solid var(--arrival-line); }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-composition { display: grid; grid-template-columns: minmax(230px, .82fr) minmax(330px, 1.32fr) minmax(230px, .72fr); align-items: center; gap: clamp(28px, 5vw, 82px); min-height: min(620px, calc(100svh - 150px)); padding-block: clamp(34px, 6vh, 76px); }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-heading { align-self: center; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-heading h1 { max-width: 8ch; font-family: ui-serif, Iowan Old Style, Palatino Linotype, Book Antiqua, Georgia, serif; font-size: clamp(3.25rem, 6.2vw, 6rem); font-weight: 400; line-height: .88; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-art { width: min(100%, 590px); aspect-ratio: 1; justify-self: center; color: var(--arrival-accent); }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-art::before, .lab-arrival[data-arrival-theme="observatory"] .arrival-art::after { position: absolute; border: 1px solid var(--arrival-line); border-radius: 50%; content: ""; pointer-events: none; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-art::before { inset: 8%; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-art::after { inset: 20%; border-color: color-mix(in srgb, var(--arrival-accent) 52%, transparent); border-left-color: transparent; transform: rotate(-28deg); }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-artwork { position: relative; z-index: 1; width: 82%; height: 82%; animation: observatory-orbit-arrival 1100ms cubic-bezier(.16, 1, .3, 1) both; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-actions { align-self: center; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-action:nth-child(-n + 2) strong { font-size: 1.22rem; }
+.lab-arrival[data-arrival-theme="observatory"] .arrival-footer { border-top: 1px solid var(--arrival-line); }
+
+/* Strata: a mineral landscape organized as broad horizontal bands. */
+.lab-arrival[data-arrival-theme="strata"] { --arrival-bg: #2b302f; --arrival-surface: #353c3b; --arrival-ink: #f0f0e8; --arrival-muted: #bec6bf; --arrival-line: #68716d; --arrival-accent: #d7d7c7; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-inline: clamp(20px, 4vw, 58px); background: var(--arrival-bg); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-masthead { border-bottom: 2px solid var(--arrival-line); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-masthead > span { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: .18em; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-composition { display: grid; grid-template-columns: minmax(230px, .6fr) minmax(0, 1.4fr); grid-template-rows: minmax(310px, 1fr) auto; align-items: stretch; gap: 0 clamp(28px, 5vw, 78px); min-height: min(620px, calc(100svh - 150px)); padding-block: clamp(32px, 5vh, 68px); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-heading { align-self: center; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-heading h1 { max-width: 7ch; font-family: ui-sans-serif, system-ui, sans-serif; font-size: clamp(3.3rem, 7vw, 6rem); font-weight: 680; line-height: .82; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-art { min-height: 310px; align-self: stretch; aspect-ratio: 2.1 / 1; border-block: 1px solid var(--arrival-line); color: var(--arrival-accent); animation: strata-landscape-arrival 900ms cubic-bezier(.16, 1, .3, 1) both; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-artwork { width: 100%; height: 100%; padding-block: 18px; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--arrival-line); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-action { min-height: 92px; padding: 18px 20px; border-top: 0; border-right: 1px solid var(--arrival-line); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-action:last-child { border-right: 0; border-bottom: 0; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-action:hover { background: var(--arrival-surface); transform: translateY(-4px); }
+.lab-arrival[data-arrival-theme="strata"] .arrival-action:nth-child(-n + 2) strong { font-size: 1.2rem; }
+.lab-arrival[data-arrival-theme="strata"] .arrival-footer { border-top: 2px solid var(--arrival-line); }
+
+@keyframes observatory-orbit-arrival { from { opacity: 0; transform: scale(.9) rotate(-9deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes strata-landscape-arrival { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+
+@media (max-width: 900px) {
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-composition { grid-template-columns: minmax(0, .78fr) minmax(270px, 1fr); grid-template-areas: "heading art" "actions actions"; gap: 32px 42px; padding-block: 34px; }
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-heading { grid-area: heading; }
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-art { grid-area: art; width: min(100%, 420px); }
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-actions { grid-area: actions; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-action { border-bottom: 1px solid var(--arrival-line); }
+  .lab-arrival[data-arrival-theme="strata"] .arrival-composition { grid-template-columns: 1fr; grid-template-rows: auto minmax(270px, 1fr) auto; gap: 30px; padding-block: 32px; }
+  .lab-arrival[data-arrival-theme="strata"] .arrival-heading, .lab-arrival[data-arrival-theme="strata"] .arrival-art, .lab-arrival[data-arrival-theme="strata"] .arrival-actions { grid-column: 1; }
+  .lab-arrival[data-arrival-theme="strata"] .arrival-art { width: 100%; min-height: 270px; }
+}
+@media (max-width: 600px) {
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) { min-height: calc(100svh - 88px); padding: 18px 16px 18px; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-masthead { min-height: 32px; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-composition { display: flex !important; flex-direction: column; min-height: 0 !important; gap: 24px !important; padding-block: 34px 30px !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-heading h1 { max-width: 9ch !important; font-size: clamp(3rem, 13vw, 4.8rem) !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-kicker { margin-bottom: 14px; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-art { width: 100% !important; min-height: 220px !important; max-height: 38svh; aspect-ratio: 1.22 / 1 !important; }
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-art { aspect-ratio: 1 / 1 !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-artwork { width: 100% !important; height: 100% !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-actions { width: 100%; display: block !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action { min-height: 70px !important; padding: 12px 0 !important; }
+  .lab-arrival[data-arrival-theme="strata"] .arrival-action { padding-inline: 8px !important; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-footer { flex-wrap: wrap; gap: 12px 18px; padding-top: 12px; }
+  .lab-arrival[data-arrival-theme="strata"] .arrival-art { min-height: 180px !important; max-height: 180px; aspect-ratio: 1.4 / 1 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-arrival[data-arrival-theme="observatory"] .arrival-artwork,
+  .lab-arrival[data-arrival-theme="strata"] .arrival-art { animation: none; }
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action,
+  :is(.lab-arrival[data-arrival-theme="observatory"], .lab-arrival[data-arrival-theme="strata"]) .arrival-action-arrow { transition: none; }
+}
+
+@media (max-width: 700px) {
+ .lab-arrival[data-arrival-theme="observatory"] .arrival-art { min-height:170px !important; height:170px; max-height:170px; aspect-ratio:auto !important; }
+ .lab-arrival[data-arrival-theme="observatory"] .arrival-composition { gap:18px !important; padding-block:22px !important; }
+}
