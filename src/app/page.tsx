@@ -6,6 +6,7 @@ import {
   PersonalLabOverviewLoading,
   PersonalLabOverviewSection,
 } from "@/components/lab/personal-lab";
+import { StrongestEffectsPanel } from "@/components/lab/correlation-matrix";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 import { createPersonalLabStream, type PersonalLabStream } from "@/services/personal-lab";
@@ -31,5 +32,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return <div id="main-page-content" className="personal-lab-page lab-entry" lang="fr">
     <Suspense fallback={<PersonalLabOverviewLoading />}><LabOverview stream={stream} connectionNotice={connectionNotice} /></Suspense>
     <Suspense fallback={<PersonalLabJournalLoading />}><LabJournal stream={stream} /></Suspense>
+    <StrongestEffectsPanel />
   </div>;
 }

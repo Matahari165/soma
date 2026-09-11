@@ -17,5 +17,5 @@ export async function GET(request: NextRequest) {
   if (period === null) return NextResponse.json({ error: "Invalid analysis period." }, { status: 400 });
 
   const snapshot = await getPersonalLabSnapshot(user, { periods: [period] });
-  return NextResponse.json({ rows: snapshot.matrix.rows });
+  return NextResponse.json({ rows: snapshot.matrix.rows, outcomes: snapshot.matrix.outcomes, periods: snapshot.matrix.periods });
 }

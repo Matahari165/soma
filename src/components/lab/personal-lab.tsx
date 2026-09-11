@@ -20,10 +20,10 @@ export function PersonalLabOverviewSection({ data, connectionNotice = null }: { 
   </>;
 }
 
-export function PersonalLabJournalSection({ data, analysis = null }: { data: PersonalLabJournal; analysis?: PersonalLabSnapshot | null }) {
+export function PersonalLabJournalSection({ data }: { data: PersonalLabJournal }) {
   return (
     <div className="lab-workspace lab-entry__section lab-entry__journal">
-      <PersonalLabJournalWorkspace data={data} analysis={analysis} />
+      <PersonalLabJournalWorkspace data={data} />
     </div>
   );
 }

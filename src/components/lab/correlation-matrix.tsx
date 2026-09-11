@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 
 import { isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
@@ -305,10 +305,12 @@ export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outc
   }, []);
 }
 
-function StrongestEffects({ relations, outcomes, onSelect }: {
+function StrongestEffects({ relations, outcomes, onSelect, periodControl = null, standalone = false }: {
   relations: MatrixRelation[];
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
   onSelect: (relation: MatrixRelation) => void;
+  periodControl?: ReactNode;
+  standalone?: boolean;
 }) {
   const meaningful = useMemo(() => selectMeaningfulRelations(relations.filter((relation) => isPersonalLabPublishedRelation(relation)), relations.length), [relations]);
   const meaningfulGroups = useMemo(() => {
@@ -367,8 +369,9 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
 
   return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
-      <div><h3 id="strongest-effects-title">Strongest effects</h3></div>
+      <div>{standalone ? <h2 id="strongest-effects-title">Strongest Effects</h2> : <h3 id="strongest-effects-title">Strongest effects</h3>}</div>
       <div className="strongest-effects__axis" aria-label="Chart legend"><span><b className="effect-legend__swatch effect-legend__swatch--negative" />↓ Result decreases</span><span>↑ Result increases <b className="effect-legend__swatch effect-legend__swatch--positive" /></span></div>
+      {periodControl}
     </header>
     {!meaningful.length ? <p className="strongest-effects__empty" role="status">No relationship in this period is both statistically reliable and large enough to be practically meaningful.</p> : meaningfulGroups.map(([group, influences]) => {
       const groupId = group.replaceAll(" ", "-").toLowerCase();
@@ -429,6 +432,84 @@ function StrongestEffects({ relations, outcomes, onSelect }: {
     </section>;
     })}
   </section>;
+}
+
+const strongestEffectPeriods: AnalysisPeriod[] = [15, 30, 90, "all"];
+
+export function StrongestEffectsPanel() {
+  const [period, setPeriod] = useState<AnalysisPeriod>(90);
+  const [rowsByPeriod, setRowsByPeriod] = useState<Partial<Record<AnalysisPeriod, PersonalLabSnapshot["matrix"]["rows"]>>>({});
+  const [outcomes, setOutcomes] = useState<PersonalLabSnapshot["matrix"]["outcomes"]>([]);
+  const [loadingPeriod, setLoadingPeriod] = useState<AnalysisPeriod | null>(90);
+  const [loadError, setLoadError] = useState(false);
+  const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
+  const relationDetailRef = useRef<HTMLElement | null>(null);
+
+  const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod, force = false) => {
+    if (!force && rowsByPeriod[nextPeriod]) return;
+    setLoadingPeriod(nextPeriod);
+    setLoadError(false);
+    try {
+      const response = await fetch(`/api/lab/matrix?period=${nextPeriod}`, { cache: "no-store" });
+      const result = await response.json().catch(() => ({})) as Partial<Pick<PersonalLabSnapshot["matrix"], "rows" | "outcomes">>;
+      if (!response.ok || !Array.isArray(result.rows) || !Array.isArray(result.outcomes)) throw new Error("Matrix request failed");
+      setRowsByPeriod((current) => ({ ...current, [nextPeriod]: result.rows }));
+      setOutcomes(result.outcomes);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingPeriod(null);
+    }
+  }, [rowsByPeriod]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadPeriod(90), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadPeriod]);
+
+  useEffect(() => {
+    if (!selected) return;
+    window.requestAnimationFrame(() => {
+      relationDetailRef.current?.focus();
+      scrollToMatrixElement(relationDetailRef.current);
+    });
+  }, [selected]);
+
+  function selectPeriod(nextPeriod: AnalysisPeriod) {
+    setPeriod(nextPeriod);
+    setSelected(null);
+    setLoadError(false);
+    void loadPeriod(nextPeriod);
+  }
+
+  const rows = rowsByPeriod[period] ?? [];
+  const relations = rows.flatMap((row) => row.relations);
+  const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Analysis period">
+    {strongestEffectPeriods.map((value) => <button type="button" aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodLabel(value)}</button>)}
+  </div>;
+
+  if (!outcomes.length || loadingPeriod === period || (loadError && !rowsByPeriod[period])) return <section className="strongest-effects-panel lab-entry__section" aria-labelledby="strongest-effects-loading-title" aria-busy={loadingPeriod !== null}>
+    <header className="strongest-effects-panel__header">
+      <h2 id="strongest-effects-loading-title">Strongest Effects</h2>
+      {periodControl}
+    </header>
+    {loadError
+      ? <p className="strongest-effects-panel__state" role="alert">Relationships could not be loaded. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Retry</button></p>
+      : <p className="strongest-effects-panel__state" role="status">Loading relationships…</p>}
+  </section>;
+
+  return <div className="strongest-effects-panel lab-entry__section" aria-busy={loadingPeriod !== null}>
+    <StrongestEffects
+      relations={relations}
+      outcomes={outcomes}
+      onSelect={(relation) => setSelected(publishedRelationsForPair(relations, relation))}
+      periodControl={periodControl}
+      standalone
+    />
+    {loadingPeriod === period && <p className="strongest-effects-panel__state" role="status">Loading relationships…</p>}
+    {loadError && <p className="strongest-effects-panel__state" role="alert">Relationships could not be loaded. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Retry</button></p>}
+    {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
+  </div>;
 }
 
 function InsightCopy({ value }: { value: string }) {

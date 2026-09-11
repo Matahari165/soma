@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { PersonalLabJournal, PersonalLabSnapshot } from "@/services/personal-lab";
+import type { PersonalLabJournal } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
-import { PersonalLabCorrelations } from "./personal-lab-correlations";
 import MealJournal from "../meal-journal";
 
 function addDays(date: string, days: number) {
@@ -38,7 +37,7 @@ export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completed
   </nav>;
 }
 
-export function PersonalLabJournalWorkspace({ data, analysis = null }: { data: PersonalLabJournal; analysis?: PersonalLabSnapshot | null }) {
+export function PersonalLabJournalWorkspace({ data }: { data: PersonalLabJournal }) {
   const dates = useMemo(() => Array.from({ length: 6 }, (_, index) => addDays(data.todayDate, index - 5)), [data.todayDate]);
   const [selectedDate, setSelectedDate] = useState(data.todayDate);
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
@@ -57,7 +56,6 @@ export function PersonalLabJournalWorkspace({ data, analysis = null }: { data: P
       </div>
       <div className="personal-lab-meal-column">
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} />
-        <PersonalLabCorrelations analysis={analysis} />
       </div>
     </div>
   </div>;

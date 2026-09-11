@@ -47,6 +47,7 @@ describe("production-only application contract", () => {
     expect(page).toContain("<Suspense fallback={<PersonalLabOverviewLoading />}");
     expect(page).toContain("<Suspense fallback={<PersonalLabJournalLoading />}");
     expect(page).toContain("includeAnalysis: false");
+    expect(page).toContain("<StrongestEffectsPanel />");
     expect(page).not.toContain("DeferredPersonalLabAnalysis");
   });
 
