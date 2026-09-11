@@ -239,6 +239,20 @@ export function firstAvailableMealSlot(meals: MealJournalData["meals"], disabled
   return MEAL_SLOTS.find((slot) => !disabledSlots.includes(slot) && !meals[slot]) ?? null;
 }
 
+/**
+ * Returns the recovery copy for an over-limit selection without changing the
+ * accepted photos. Keeping this pure makes the boundary easy to test and
+ * keeps the client message in French even when the API is not reached.
+ */
+export function mealPhotoLimitMessage(activePhotoCount: number, incomingPhotoCount: number, maxPhotos = MAX_MEAL_PHOTOS) {
+  const available = Math.max(0, maxPhotos - Math.max(0, activePhotoCount));
+  const rejected = Math.max(0, incomingPhotoCount - available);
+  if (rejected === 0) return null;
+  if (available === 0) return `Maximum de ${maxPhotos} photos par repas atteint. Retire une photo avant d’en ajouter une autre.`;
+  const subject = `${rejected} photo${rejected > 1 ? "s" : ""}`;
+  return `${maxPhotos} photos maximum par repas. ${subject} ${rejected > 1 ? "n’ont pas été ajoutées" : "n’a pas été ajoutée"}.`;
+}
+
 function normalizeMeal(raw: MealRecord, date: string, slot: MealSlot): MealRecord {
   return {
     ...emptyMeal(date, slot),
@@ -684,6 +698,31 @@ function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; 
   </div>;
 }
 
+/**
+ * Confirmed meals keep their original evidence available without reopening
+ * the editable capture form. This is intentionally read-only: the existing
+ * "Modifier" action remains the single way to change a note or photo.
+ */
+function MealSourceEvidence({ meal }: { meal: MealRecord }) {
+  const photos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const note = meal.note.trim();
+  if (!photos.length && !note) return null;
+  return <details className={styles.sourceDetails}>
+    <summary>Photo et note du jour</summary>
+    <div className={styles.sourceDetailsBody}>
+      {photos.length > 0 && <div className={styles.sourcePhotoGrid} role="list" aria-label={`${photos.length} photo${photos.length > 1 ? "s" : ""} originale${photos.length > 1 ? "s" : ""} du repas`}>
+        {photos.map((photo, index) => <figure className={styles.sourcePhoto} role="listitem" key={photo.id}>
+          {/* Authenticated photo routes cannot use next/image's static loader. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo.url} alt={`Photo originale ${index + 1} du repas`} width={240} height={180} loading="lazy" decoding="async" />
+          <figcaption>Photo {index + 1}</figcaption>
+        </figure>)}
+      </div>}
+      {note && <p className={styles.sourceNote}><span>Note du jour</span>{note}</p>}
+    </div>
+  </details>;
+}
+
 function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onConfirm, onRating, onRetry, onNote, onCorrection, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
@@ -777,6 +816,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         </button>
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
+      {status === "confirmed" && meal && <MealSourceEvidence meal={meal} />}
       {(status === "review" || status === "confirmed") && meal?.analysis && <>{mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}<MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} /></>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Réanalyse interrompue. L’analyse précédente reste conservée. {visibleAnalysisError(meal.error)}</p>}
     </div>}
@@ -1029,7 +1069,9 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     }
     const currentMeal = data?.meals[slot] ?? emptyMeal(selectedDate, slot);
     const activePhotoCount = currentMeal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+    const limitMessage = mealPhotoLimitMessage(activePhotoCount, prepared.length);
     const accepted = prepared.slice(0, Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount));
+    if (limitMessage) setFileError(limitMessage);
     const newPhotos = accepted.map((file) => {
       const id = randomId("photo");
       const url = URL.createObjectURL(file);
@@ -1137,7 +1179,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       // Grok receives the correction together with the current evidence and
       // recalculates the complete analysis in one request.
     } else if (hasPhotosForAnalyze) {
-      if (activePhotos.length > MAX_MEAL_PHOTOS) return;
+      if (activePhotos.length > MAX_MEAL_PHOTOS) {
+        setFileError(`Ce repas contient ${activePhotos.length} photos, mais ${MAX_MEAL_PHOTOS} au maximum sont autorisées. Retire-en avant de relancer l’analyse.`);
+        return;
+      }
     } else if (!hasNoteForAnalyze) return;
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
@@ -1240,11 +1285,11 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       <button className={styles.targetEditButton} type="button" aria-label="Modifier les cibles du jour" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={() => setTargetsExpanded((expanded) => !expanded)}><Pencil size={16} aria-hidden="true" /></button>
     </div>}
     {variant !== "lab" && targetsExpanded && <div id="meal-target-editor" className={styles.targetEditor}>
-      <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories likely" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
-      <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines likely" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>
-      <label><span>Lipides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible lipides likely" value={targets.fatG.likely} onChange={(event) => updateTargetLikely("fatG", event.target.value)} /></label>
-      <label><span>Glucides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible glucides likely" value={targets.carbsG.likely} onChange={(event) => updateTargetLikely("carbsG", event.target.value)} /></label>
-      <label><span>Fibres (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible fibres likely" value={targets.fiberG.likely} onChange={(event) => updateTargetLikely("fiberG", event.target.value)} /></label>
+      <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories, valeur estimée" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
+      <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines, valeur estimée" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>
+      <label><span>Lipides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible lipides, valeur estimée" value={targets.fatG.likely} onChange={(event) => updateTargetLikely("fatG", event.target.value)} /></label>
+      <label><span>Glucides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible glucides, valeur estimée" value={targets.carbsG.likely} onChange={(event) => updateTargetLikely("carbsG", event.target.value)} /></label>
+      <label><span>Fibres (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible fibres, valeur estimée" value={targets.fiberG.likely} onChange={(event) => updateTargetLikely("fiberG", event.target.value)} /></label>
     </div>}
     {variant !== "lab" && targetError && <p className={styles.confirmError} role="status">{targetError}</p>}
     {fileError && <div className={styles.fileError} role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{fileError}</span><button className={styles.dismissError} type="button" onClick={() => setFileError(null)} aria-label="Fermer le message photo"><X size={16} aria-hidden="true" /></button></div>}

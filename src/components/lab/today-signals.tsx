@@ -248,12 +248,12 @@ function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
 }
 
 function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null) {
-  if (value === null || averageValue === null) return "30d avg —";
+  if (value === null || averageValue === null) return "Moy. 30 j —";
   const delta = value - averageValue;
-  if (key === "sleep") return `30d avg ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
-  if (key === "strain") return `30d avg ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
-  if (key === "energy") return `30d avg ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
-  return `30d avg ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
+  if (key === "sleep") return `Moy. 30 j ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
+  if (key === "strain") return `Moy. 30 j ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
+  if (key === "energy") return `Moy. 30 j ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
+  return `Moy. 30 j ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
 }
 
 function valueForHistory(key: PersonalLabMetricKey, point: PersonalLabHistoryPoint) {
@@ -345,10 +345,10 @@ export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) 
   }, []);
 
   const metrics = [
-    { label: "Sleep duration", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
-    { label: "Recovery index", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
-    { label: "Daily strain", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
-    { label: "Metabolic energy", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals" },
+    { label: "Sommeil", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
+    { label: "Récupération", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
+    { label: "Effort", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
+    { label: "Énergie", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals" },
   ];
-  return <section className="personal-lab-metrics" aria-label="Today metrics">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} key={metric.keyName} />)}</section>;
+  return <section className="personal-lab-metrics" aria-label="Métriques du jour">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} key={metric.keyName} />)}</section>;
 }

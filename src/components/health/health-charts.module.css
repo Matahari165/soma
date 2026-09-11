@@ -1,0 +1,11 @@
+.lineChart:focus-visible {
+  outline: 2px solid var(--lab-brand, #264d38);
+  outline-offset: 4px;
+  border-radius: var(--lab-radius-xs, 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lineChart {
+    scroll-behavior: auto;
+  }
+}

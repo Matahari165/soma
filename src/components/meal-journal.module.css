@@ -125,7 +125,7 @@
   border: 1px solid var(--danger);
   border-radius: var(--radius-surface);
   background: var(--danger-soft);
-  color: var(--danger);
+  color: var(--ink);
   font-size: .76rem;
 }
 
@@ -187,7 +187,7 @@
 
 .mealStatus[data-status="confirmed"] { border-color: var(--line-strong); background: var(--canvas); color: var(--muted); }
 .mealStatus[data-status="review"] { border-color: var(--ochre); background: var(--ochre-soft); color: var(--ink); }
-.mealStatus[data-status="error"] { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.mealStatus[data-status="error"] { border-color: var(--danger); background: var(--danger-soft); color: var(--ink); }
 
 .mealBody { padding: 18px; }
 
@@ -355,8 +355,8 @@
 .secondaryButton { background: transparent; color: var(--ink); }
 .galleryButton:hover,
 .secondaryButton:hover { background: var(--ink); color: var(--canvas); }
-.retryButton { border-color: var(--danger); background: transparent; color: var(--danger); }
-.retryButton:hover { background: var(--danger); color: var(--paper-strong); }
+.retryButton { border-color: var(--ink); background: transparent; color: var(--ink); }
+.retryButton:hover { border-color: var(--danger); background: var(--danger-soft); color: var(--ink); }
 
 .photoGrid {
   display: grid;
@@ -381,7 +381,36 @@
   color: var(--ink);
 }
 .photoRemove:hover { background: var(--danger-soft); color: var(--danger); }
-.photo figcaption { display: grid; gap: 6px; padding-top: 7px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .58rem; }
+.photo figcaption { display: grid; gap: 6px; padding-top: 7px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: 12px; }
+
+.sourceDetails {
+  margin-top: 8px;
+  border-top: 1px solid var(--lab-border);
+}
+
+.sourceDetails > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--lab-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.sourceDetails > summary::-webkit-details-marker { display: none; }
+.sourceDetails > summary::before { color: var(--lab-text-secondary); content: "▸"; font-size: 15px; }
+.sourceDetails[open] > summary::before { content: "▾"; }
+.sourceDetails > summary:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
+.sourceDetailsBody { display: grid; gap: 10px; padding: 0 0 4px; }
+.sourcePhotoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.sourcePhoto { min-width: 0; margin: 0; }
+.sourcePhoto img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface-subtle); }
+.sourcePhoto figcaption { margin-top: 4px; color: var(--lab-text-secondary); font-size: 12px; line-height: 16px; }
+.sourceNote { display: grid; gap: 2px; margin: 0; padding: 8px 10px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-primary); font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sourceNote > span { color: var(--lab-text-secondary); font-size: 12px; font-weight: 600; line-height: 16px; }
 
 .originFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .originFieldset legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -396,7 +425,7 @@
   background: transparent;
   color: var(--ink-soft);
   font-family: var(--font-soma-ui);
-  font-size: .63rem;
+  font-size: 12px;
   line-height: 1.1;
 }
 .originChoice:hover { border-color: var(--ink); color: var(--ink); }
@@ -426,7 +455,9 @@
 .analyzingState span,
 .errorState span { color: var(--ink-soft); font-size: .78rem; }
 .loadingState { justify-content: center; color: var(--muted); font-size: .8rem; }
-.errorState { flex-wrap: wrap; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); color: var(--danger); }
+.errorState { flex-wrap: wrap; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); color: var(--ink); }
+.errorState > svg,
+.fileError > svg { color: var(--danger); flex: 0 0 auto; }
 .errorState > div { flex: 1 1 180px; }
 
 .mealCompletionControls {
@@ -519,7 +550,7 @@
 .ingredientItem small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.35; }
 .ingredientChildren { margin-top: 8px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
 .ingredientChildren .ingredientItem { padding-left: 10px; border-left: 0; }
-.confirmError { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); color: var(--danger); font-size: .76rem; }
+.confirmError { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: var(--radius-surface); background: var(--danger-soft); color: var(--ink); font-size: .76rem; }
 .uncertainties { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: .74rem; }
 .uncertaintiesDetails { border-top: 1px solid var(--line); padding-top: 10px; }
 .uncertaintiesDetails summary { min-height: 44px; cursor: pointer; color: var(--ink-soft); font-size: .76rem; }
@@ -1092,7 +1123,7 @@
   background: var(--lab-surface);
 }
 
-.mealsPageRoot .fileError { margin-top: 12px; margin-bottom: 0; border-color: var(--lab-error); border-radius: var(--lab-radius-sm); background: color-mix(in srgb, var(--lab-error) 10%, var(--lab-surface)); color: var(--lab-error); }
+.mealsPageRoot .fileError { margin-top: 12px; margin-bottom: 0; border-color: var(--lab-error); border-radius: var(--lab-radius-sm); background: color-mix(in srgb, var(--lab-error) 10%, var(--lab-surface)); color: var(--lab-text-primary); }
 
 .mealsWorkbench {
   display: grid;
@@ -1136,9 +1167,9 @@
 
 .mealsJournalHeader button {
   display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   place-items: center;
   padding: 0;
   border: 1px solid var(--lab-border-strong);
@@ -1189,7 +1220,7 @@
 .mealCalories { color: var(--lab-text-secondary); font-family: var(--font-soma-mono), monospace; font-size: 12px; line-height: 16px; white-space: nowrap; }
 .mealsJournalPanel .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .mealsJournalPanel .mealStatus[data-status="review"] { background: var(--lab-surface-selected); color: var(--lab-brand); }
-.mealsJournalPanel .mealStatus[data-status="error"] { background: color-mix(in srgb, var(--lab-error) 12%, var(--lab-surface)); color: var(--lab-error); }
+.mealsJournalPanel .mealStatus[data-status="error"] { background: color-mix(in srgb, var(--lab-error) 12%, var(--lab-surface)); color: var(--lab-text-primary); }
 
 .mealsJournalPanel .mealBody {
   display: flex;
@@ -1594,16 +1625,16 @@
   .mealsPageRoot .mealsTargetButton { top: -4px; right: -4px; }
   .mealsPageRoot .headerMetrics { gap: 8px; }
   .mealsPageRoot .headerMetric { min-height: 64px; padding: 8px 10px; }
-  .mealsPageRoot .headerMetric > span { font-size: 11px; letter-spacing: .55px; line-height: 14px; }
+  .mealsPageRoot .headerMetric > span { font-size: 12px; letter-spacing: .55px; line-height: 16px; }
   .mealsPageRoot .headerMetric > strong { min-width: 0; font-size: 16px; line-height: 20px; }
-  .mealsPageRoot .headerMetric > strong small { font-size: 11px; line-height: 14px; }
+  .mealsPageRoot .headerMetric > strong small { font-size: 12px; line-height: 16px; }
   .mealsPageRoot .historyNavigation { margin-top: 12px; }
   .mealsPageRoot .mealsWeekStrip { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
   .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { display: none; }
   .mealsPageRoot .mealsWeekStrip .weekDay,
-  .mealsPageRoot .mealsWeekStrip .weekDaySelected { flex: 0 0 44px; flex-direction: column; gap: 0; padding-inline: 2px; font-size: 11px; }
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected { flex: 0 0 44px; flex-direction: column; gap: 0; padding-inline: 2px; font-size: 12px; }
   .mealsPageRoot .mealsWeekStrip .weekDay span,
-  .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-size: 10px; line-height: 14px; }
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-size: 12px; line-height: 16px; }
   .mealsPageRoot .mealsWeekStrip .weekDay strong,
   .mealsPageRoot .mealsWeekStrip .weekDaySelected strong { font-size: 13px; line-height: 16px; }
   .mealsWorkbench { gap: 20px; margin-top: 14px; }
@@ -1635,7 +1666,7 @@
   .mealsJournalPanel { padding-inline: 10px; }
   .mealsPageRoot .headerMetric { padding-inline: 8px; }
   .mealsPageRoot .headerMetric > span,
-  .mealsPageRoot .headerMetric > strong small { font-size: 10px; }
+  .mealsPageRoot .headerMetric > strong small { font-size: 12px; }
 }
 
 /* Readability floor: mobile labels and units remain functional text, not
