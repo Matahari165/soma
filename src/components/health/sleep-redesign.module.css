@@ -119,7 +119,7 @@
 .headerScoreBody small { margin-left: 4px; color: var(--sleep-secondary); font-size: 11px; letter-spacing: .22px; }
 .headerScoreBody p { overflow: hidden; color: var(--sleep-secondary); font-size: 12px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .headerScoreBars { display: flex; height: 44px; box-sizing: border-box; flex: 0 0 auto; align-items: end; justify-content: center; gap: 8px; overflow: hidden; padding-bottom: 6px; }
-.headerScoreBars i { display: block; width: 12px; min-height: 3px; border-radius: 1px; background: currentColor; }
+.headerScoreBars i { display: block; width: 12px; min-height: 3px; border-radius: var(--lab-radius-xs); background: currentColor; }
 .headerScoreMetric.heroMetricPositive { color: var(--sleep-signal); }
 .headerScoreMetric.heroMetricNegative { color: var(--sleep-error); }
 .headerScoreMetric.heroMetricNeutral { color: var(--sleep-brand); }
@@ -164,13 +164,13 @@
 .timingRows { display: grid; gap: 8px; }
 .timingRow { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; min-height: 47px; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--sleep-border); border-radius: 8px; background: var(--sleep-subtle); }
 .timingRow > span { font-size: 16px; font-weight: 500; line-height: 24px; }
-.timingRow strong { color: #1a3826; font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; }
+.timingRow strong { color: var(--lab-brand); font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; }
 .timingRow small { color: var(--sleep-secondary); font-size: 12px; letter-spacing: .22px; white-space: nowrap; }
-.recommendation { display: grid; min-height: 140px; gap: 6px; padding: 16px; border-radius: 8px; background: #1a3826; color: white; }
+.recommendation { display: grid; min-height: 140px; gap: 6px; padding: 16px; border-radius: 8px; background: var(--lab-brand); color: var(--lab-surface); }
 .recommendationEyebrow { color: var(--sleep-surface); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; }
-.recommendation h2 { color: white; font-family: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 24px; }
-.recommendation strong { color: white; font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
-.recommendation p { color: white; font-size: 13px; line-height: 18px; }
+.recommendation h2 { color: var(--lab-surface); font-family: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 24px; }
+.recommendation strong { color: var(--lab-surface); font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
+.recommendation p { color: var(--lab-surface); font-size: 13px; line-height: 18px; }
 .trendGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .trendGrid :global(.metric-trend-card) { min-height: 220px; padding: 16px; border: 1px solid var(--sleep-border); border-radius: 4px; background: var(--sleep-surface); }
 .trendGrid :global(.metric-trend-card header span),

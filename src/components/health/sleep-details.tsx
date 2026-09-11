@@ -5,7 +5,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 
 import styles from "./sleep-redesign.module.css";
 import { AnimatedMetricReading, AnimatedValueText } from "./animated-value";
-import { HealthPageShell } from "./health-page-shell";
+import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
 import { SleepStageDistribution, SleepStageTimeline } from "./health-charts";
 import { averageLast30Measured, formatAverage, formatDurationMinutes, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
@@ -53,21 +53,6 @@ function formatClockMinutes(value: number | null) {
   return new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function toneClass(tone: "positive" | "negative" | "neutral") {
-  if (tone === "positive") return styles.heroMetricPositive;
-  if (tone === "negative") return styles.heroMetricNegative;
-  return styles.heroMetricNeutral;
-}
-
-function HeaderScoreMetric({ label, value, average, values, tone }: { label: string; value: number | null; average: number | null; values: Array<number | null>; tone: "positive" | "negative" | "neutral" }) {
-  const measured = values.filter((item): item is number => item !== null && Number.isFinite(item));
-  const min = measured.length ? Math.min(...measured) : 0;
-  const max = measured.length ? Math.max(...measured) : 1;
-  return <div className={`${styles.headerScoreMetric} ${toneClass(tone)}`} role="group" aria-label={`${label} : ${value === null ? "indisponible" : `${Math.round(value)} %`}. Moyenne sur 30 jours : ${average === null ? "indisponible" : `${Math.round(average)} %`}.`}>
-    <span>{label}</span><div className={styles.headerScoreBody}><div><strong>{value === null ? "—" : Math.round(value)}</strong><small>%</small><p>Moy. 30 j · {average === null ? "—" : Math.round(average)}</p></div><div className={styles.headerScoreBars} aria-hidden="true">{values.map((item, index) => <i key={`${label}-${index}`} style={{ height: item === null ? "20%" : `${max === min ? 58 : 28 + ((item - min) / (max - min)) * 52}%` }} />)}</div></div>
-  </div>;
-}
-
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const latest = data.days.findLast((day) => day.sleep_minutes !== null && day.sleep_minutes > 0);
   const score = data.scores.findLast((item) => item.kind === "sleep" && item.score_date === latest?.metric_date)?.score ?? null;
@@ -81,7 +66,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const averageRegularity = latest ? averageLast30Measured(data.days, "sleep_regularity", latest.metric_date) : null;
   const regularity = latest?.sleep_regularity ?? null;
   const recentScoreValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "sleep" && item.score_date === day.metric_date)?.score ?? null);
-  const recentRegularityValues = data.days.slice(-5).map((day) => day.sleep_regularity);
   const scoreTone = metricTone(score, averageScore, "higher_is_better");
   const regularityTone = metricTone(regularity, averageRegularity, "higher_is_better");
   const sleepTone = metricTone(latest?.sleep_minutes ?? null, averageSleep, "higher_is_better");
@@ -93,10 +77,10 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
 
-  return <div className={styles.root}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, qualité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HeaderScoreMetric label="Score de sommeil" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
-    <div className={`sleep-header-duration metric-tone--${sleepTone}`}><span>DURÉE DE SOMMEIL</span><strong>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}<small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><em>Moy. 30 j · {formatDurationMinutes(averageSleep)}</em></div>
-    <div className="health-hero-stat health-hero-stat--regularity"><HeaderScoreMetric label="Régularité du sommeil" value={regularity} average={averageRegularity} values={recentRegularityValues} tone={regularityTone} /></div>
-    <div className={`health-hero-stat health-hero-stat--debt metric-tone--${debtTone}`}><span>Dette de sommeil</span><strong className={`metric-reading metric-reading--${debtTone}`}><span>{formatDurationMinutes(debt)}</span></strong></div>
+  return <div className={styles.root}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, qualité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score de sommeil" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
+    <div className={`health-hero-stat metric-tone--${sleepTone}`}><span>Durée de sommeil</span><strong className={`metric-reading metric-reading--${sleepTone}`}><span>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}</span><small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><small className="health-hero-stat__average">Moy. 30 j · {formatDurationMinutes(averageSleep)}</small></div>
+    <div className={`health-hero-stat metric-tone--${regularityTone}`}><span>Régularité du sommeil</span><AnimatedMetricReading value={regularity} format="decimal" unit="%" decimals={0} className={`metric-reading--${regularityTone}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averageRegularity, "decimal", 0)} %</small></div>
+    <div className={`health-hero-stat metric-tone--${debtTone}`}><span>Dette de sommeil</span><strong className={`metric-reading metric-reading--${debtTone}`}><span>{formatDurationMinutes(debt)}</span></strong><small className="health-hero-stat__average">Dernière nuit</small></div>
   </>}>
     <div className={styles.redesign}>
       {latest ? <div className={styles.columns}>

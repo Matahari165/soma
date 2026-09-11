@@ -30,11 +30,11 @@ export async function middleware(request: NextRequest) {
   const development = process.env.NODE_ENV !== "production";
   const contentSecurityPolicy = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval' http://localhost:8400" : " 'strict-dynamic'"}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://www.googleapis.com",
+    `connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://www.googleapis.com${development ? " http://localhost:8400" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -41,11 +41,11 @@
 .valueNeutral { color: var(--recovery-brand); }
 .historyBars, .trendBars { display: flex; height: 44px; align-items: end; justify-content: center; gap: 8px; overflow: hidden; }
 .historyBars { flex: 0 0 auto; }
-.historyBars i, .trendBars i { display: block; width: 12px; min-height: 3px; border-radius: 1px; }
+.historyBars i, .trendBars i { display: block; width: 12px; min-height: 3px; border-radius: var(--lab-radius-xs); }
 .barPositive { background: var(--recovery-brand); }
 .barNegative { background: var(--recovery-error); }
 .barNeutral { background: var(--recovery-brand); }
-.barMissing { background: #c0c8c3; }
+.barMissing { background: var(--lab-border); }
 
 .content { display: flex; min-width: 0; flex-direction: column; gap: 24px; padding: 12px 24px 24px; }
 
@@ -83,10 +83,10 @@
 .signalRow > div:last-child strong { font-size: 18px; font-weight: 700; line-height: 24px; }
 
 .supporting { margin-top: 8px; }
-.panel :global(.zone-distribution) { min-height: 32px; margin-top: 16px; border: 0; border-radius: 5px; overflow: hidden; }
-.panel :global(.zone-distribution__segment--light) { background: #dfe7e1; }
-.panel :global(.zone-distribution__segment--moderate) { background: #83a38e; }
-.panel :global(.zone-distribution__segment--vigorous) { background: #44765a; }
+.panel :global(.zone-distribution) { min-height: 32px; margin-top: 16px; border: 0; border-radius: var(--lab-radius-sm); overflow: hidden; }
+.panel :global(.zone-distribution__segment--light) { background: var(--lab-border); }
+.panel :global(.zone-distribution__segment--moderate) { background: color-mix(in srgb, var(--lab-signal) 50%, var(--lab-surface)); }
+.panel :global(.zone-distribution__segment--vigorous) { background: var(--lab-signal); }
 .panel :global(.zone-distribution__segment--peak) { background: var(--recovery-brand); }
 .panel :global(.stage-legend) { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; color: var(--recovery-muted); font-size: 12px; }
 .panel :global(.stage-legend li) { gap: 5px; }
@@ -124,7 +124,7 @@
 .calculationCard { padding: 16px; border: 1px solid var(--recovery-border); border-radius: 8px; background: var(--recovery-subtle); }
 .calculationHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .calculationHeader h3 { color: var(--recovery-text); font-size: 14px; font-weight: 500; line-height: 20px; }
-.calculationHeader span { padding: 2px 8px; border-radius: 2px; background: var(--recovery-brand); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
+.calculationHeader span { padding: 2px 8px; border-radius: var(--lab-radius-xs); background: var(--recovery-brand); color: var(--lab-surface); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
 .calculationStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .calculationStats .statBox { min-height: 58px; }
 .calculationPanel > p { margin-top: 16px; color: var(--recovery-text); font-size: 16px; line-height: 25px; }

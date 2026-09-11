@@ -4,7 +4,7 @@ import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { activityRegularity, completedActivityDays } from "@/domain/metrics/wellness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
-import { HealthPageShell } from "./health-page-shell";
+import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
 import { ZoneDistribution } from "./health-charts";
 import { ActivityRegularityCard, ActivityScorePopover } from "./activity-explanation-popover";
 import { AnimatedMetricReading } from "./animated-value";
@@ -61,10 +61,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     <div className={`health-hero-stat metric-tone--${tones.weeklyLoad}`}><span>Charge hebdomadaire</span><AnimatedMetricReading value={latest.weekly_load} format="number" decimals={0} className={`metric-reading--${tones.weeklyLoad}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.weeklyLoad, "number")}</small></div>
   </> : undefined;
   const recentEffortScores = activityDays.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "effort" && item.score_date === day.metric_date)?.score ?? null);
-  const measuredEffortScores = recentEffortScores.filter((item): item is number => item !== null && Number.isFinite(item));
-  const effortMin = measuredEffortScores.length ? Math.min(...measuredEffortScores) : 0;
-  const effortMax = measuredEffortScores.length ? Math.max(...measuredEffortScores) : 1;
-  return <div className={styles.root}><HealthPageShell kind="activity" title="Effort" description="Mouvement, charge d’entraînement et jours actifs." score={score} freshness={freshness} timezone={data.timezone} heroScore={<div className={`activity-score-tone activity-score-tone--${tones.dailyLoad} ${styles.headerScoreMetric}`}><span>Score d’effort</span><div className={styles.headerScoreBody}><div><strong>{score === null ? "—" : Math.round(score)}</strong><small>%</small><p>Moy. 30 j · {averages.dailyLoad === null ? "—" : Math.round(averages.dailyLoad)}</p></div><div className={styles.headerScoreBars} aria-hidden="true">{recentEffortScores.map((item, index) => <i key={`effort-${index}`} style={{ height: item === null ? "20%" : `${effortMax === effortMin ? 58 : 28 + ((item - effortMin) / (effortMax - effortMin)) * 52}%` }} />)}</div></div><div className={styles.headerScoreAction}><ActivityScorePopover score={score} zoneMinutes={latest?.zone_minutes ?? null} exerciseMinutes={latest?.exercise_minutes ?? null} activeEnergyKcal={latest?.active_energy_kcal ?? null} steps={latest?.steps ?? null} /></div></div>} heroMetrics={heroMetrics}>
+  return <div className={styles.root}><HealthPageShell kind="activity" title="Effort" description="Mouvement, charge d’entraînement et jours actifs." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score d’effort" value={score} average={averages.dailyLoad} values={recentEffortScores} tone={tones.dailyLoad} action={<ActivityScorePopover score={score} zoneMinutes={latest?.zone_minutes ?? null} exerciseMinutes={latest?.exercise_minutes ?? null} activeEnergyKcal={latest?.active_energy_kcal ?? null} steps={latest?.steps ?? null} />} />} heroMetrics={heroMetrics}>
     {latest ? <>
       <section className="health-primary-grid" aria-label="Résumé de l’activité récente">
         <article className={`health-primary-card health-primary-card--featured health-primary-card--centered metric-tone--${tones.steps}`}><span>Pas</span><AnimatedMetricReading value={latest.steps} format="number" decimals={0} className={`metric-reading--${tones.steps}`} /><p className="health-primary-card__average">Moyenne sur 30 jours · {formatAverage(averages.steps, "number")}</p></article>

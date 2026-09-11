@@ -219,7 +219,7 @@
   display: block;
   width: min(100%, 22px);
   min-height: 4px;
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0;
 }
 
 .bar {
@@ -327,7 +327,7 @@
   margin: 0;
   color: var(--lab-text-primary);
   font-family: var(--font-soma-ui);
-  font-size: 22px;
+  font-size: var(--lab-type-section);
   font-weight: 560;
   letter-spacing: -.33px;
   line-height: 28px;
@@ -361,7 +361,7 @@
   padding: 3px 8px;
   border-right-color: var(--lab-border);
   color: var(--lab-text-secondary);
-  font-size: 12px;
+  font-size: var(--lab-type-label);
   font-weight: 560;
   line-height: 14px;
 }
@@ -402,7 +402,7 @@
 .root:global(.meals-page-trends) .metricLabel {
   color: var(--lab-text-secondary);
   font-family: var(--font-soma-ui);
-  font-size: 12px;
+  font-size: var(--lab-type-label);
   font-weight: 650;
   letter-spacing: .8px;
   line-height: 14px;
@@ -417,23 +417,23 @@
   line-height: 30px;
 }
 
-.root:global(.meals-page-trends) .value small { color: var(--lab-text-secondary); font-size: 12px; letter-spacing: 0; }
-.root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-size: 12px; line-height: 16px; }
+.root:global(.meals-page-trends) .value small { color: var(--lab-text-secondary); font-size: var(--lab-type-label); letter-spacing: 0; }
+.root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
 
 .root:global(.meals-page-trends) .chartFrame { gap: 8px; padding-top: 0; }
 .root:global(.meals-page-trends) .barChart { position: relative; min-height: 108px; padding: 10px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
 .root:global(.meals-page-trends) .barChart::before { position: absolute; top: 46%; right: 2px; left: 2px; border-top: 1px dashed var(--lab-border-strong); content: ""; }
 .root:global(.meals-page-trends) .barColumn { position: relative; z-index: 1; height: 98px; }
-.root:global(.meals-page-trends) .barMissing { width: min(100%, 12px); max-width: 100%; border-radius: 2px 2px 0 0; }
+.root:global(.meals-page-trends) .barMissing { width: min(100%, 12px); max-width: 100%; border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0; }
 .root:global(.meals-page-trends) .bar {
   width: min(100%, 12px);
   height: max(4px, var(--bar-height));
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0;
   background: var(--metric-color);
 }
 .root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
 .root:global(.meals-page-trends) .axis,
-.root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-size: 12px; line-height: 16px; }
+.root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
 .root:global(.meals-page-trends) .cardFooter { padding-top: 8px; border-top-color: var(--lab-border); }
 .root:global(.meals-page-trends) .emptyState { min-height: 112px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); }
 

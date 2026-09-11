@@ -320,10 +320,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .field, .settings-form label, .builder-name { display: grid; gap: 7px; color: var(--ink-soft); font-size: .75rem; }
 .field--wide { grid-column: 1 / -1; }
 .field--secondary { padding-top: 14px; border-top: 1px solid var(--line); }
-.field--wake { padding-left: 14px; border-left: 3px solid var(--ochre); }
+.field--wake { padding-left: 14px; border-left: 1px solid var(--ochre); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .form-intro { margin: 8px 0 24px; color: var(--ink-soft); }
-.form-error, .field-error, .modal-error { padding: 8px 10px; border-left: 3px solid var(--danger); background: var(--danger-soft); color: var(--danger); font-size: .74rem; }
+.form-error, .field-error, .modal-error { padding: 8px 10px; border-left: 1px solid var(--danger); background: var(--danger-soft); color: var(--danger); font-size: .74rem; }
 .form-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 28px; }
 
 .auth-page {
@@ -393,7 +393,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .choice-card small, .import-card small { display: block; margin-top: 8px; color: var(--muted); }
 .sleep-target-control { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 20px; padding: 20px 0; border-block: 1px solid var(--line); }
 .sleep-target-control strong { font-family: var(--font-soma-mono), monospace; font-size: 2.2rem; }
-.consent-preview, .scope-note { display: flex; gap: 12px; margin-top: 18px; padding: 14px; border-left: 3px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); font-size: .75rem; }
+.consent-preview, .scope-note { display: flex; gap: 12px; margin-top: 18px; padding: 14px; border-left: 1px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); font-size: .75rem; }
 .onboarding-finish-actions { display: flex; align-items: center; gap: 10px; }
 
 /* Coach */
@@ -501,8 +501,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .live-workout > header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--line-strong); }
 .live-workout > header button { display: grid; width: var(--control-height); height: var(--control-height); place-items: center; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: transparent; color: inherit; }
 .live-workout-content { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(240px, .85fr); align-content: center; gap: 30px; padding: clamp(24px, 6vw, 80px); }
-.live-progress { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: #343a30; }
-.live-progress > span:last-child { display: block; height: 100%; background: #a8b99d; }
+.live-progress { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--lab-text-primary); }
+.live-progress > span:last-child { display: block; height: 100%; background: var(--lab-border); }
 .live-title h1 { margin-block: 12px; font-size: clamp(3rem, 7vw, 7rem); }
 .live-cues { display: grid; align-content: center; gap: 12px; margin: 0; padding: 20px 20px 20px 42px; border-block: 1px solid color-mix(in srgb, var(--paper) 25%, transparent); color: color-mix(in srgb, var(--paper) 82%, transparent); }
 .live-cues li { padding-left: 6px; }
@@ -549,7 +549,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .privacy-actions { display: grid; gap: 6px; }
 .danger-zone { padding: 16px !important; border: 1px solid var(--danger) !important; border-radius: var(--radius-surface); background: var(--danger-soft); }
 .sync-diagnostics { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-surface); font-family: var(--font-soma-mono), monospace; font-size: .68rem; }
-.sync-summary { display: grid; gap: 8px; padding: 12px 14px; border-left: 3px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); }
+.sync-summary { display: grid; gap: 8px; padding: 12px 14px; border-left: 1px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); }
 .sync-summary > div { display: flex; justify-content: space-between; gap: 12px; }
 .sync-summary progress { width: 100%; }
 .sync-summary--retrying, .sync-summary--partial { border-color: var(--ochre); background: var(--ochre-soft); }
@@ -563,7 +563,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .legal-page section { margin-top: 30px; }
 .legal-page h2 { margin-bottom: 12px; font-size: 1.7rem; }
 .legal-page p, .legal-page li { color: var(--ink-soft); }
-.medical-note { margin-top: 30px; padding: 14px; border-left: 3px solid var(--ochre); background: var(--ochre-soft); color: var(--ink-soft); font-size: .75rem; }
+.medical-note { margin-top: 30px; padding: 14px; border-left: 1px solid var(--ochre); background: var(--ochre-soft); color: var(--ink-soft); font-size: .75rem; }
 
 /* Personal Lab */
 .personal-lab-page {
@@ -575,7 +575,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .lab-notice { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid var(--moss); border-radius: var(--radius-surface); background: var(--moss-soft); font-size: .82rem; }
 .lab-header { display: grid; grid-template-columns: 1fr; padding: 2px 0 clamp(20px, 2.8vw, 36px); }
 .lab-header h1 { margin-top: 5px; font-size: clamp(3.2rem, 6.2vw, 6.5rem); }
-.lab-header > p { max-width: 36ch; padding-left: 18px; border-left: 2px solid var(--moss); color: var(--ink-soft); font-family: var(--font-soma-ui); font-size: clamp(1.15rem, 1.8vw, 1.6rem); line-height: 1.25; }
+.lab-header > p { max-width: 36ch; padding-left: 18px; border-left: 1px solid var(--moss); color: var(--ink-soft); font-family: var(--font-soma-ui); font-size: clamp(1.15rem, 1.8vw, 1.6rem); line-height: 1.25; }
 .lab-signals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--ink); border-top: 0; border-radius: var(--radius-surface); background: var(--paper); }
 .lab-signals a { display: grid; min-height: 145px; align-content: end; padding: 18px 20px; border-right: 1px solid var(--line); transition: background var(--fast); }
 .lab-signals a:last-child { border-right: 0; }

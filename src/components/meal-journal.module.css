@@ -513,7 +513,7 @@
 .ingredientChildren { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .ingredientSection { min-width: 0; padding: 9px 10px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: color-mix(in srgb, var(--line) 12%, var(--paper)); }
 .ingredientSectionLabel { margin: 0 0 7px; color: var(--muted); font-family: var(--font-soma-mono), monospace; font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; }
-.ingredientItem { min-width: 0; padding: 0 0 0 12px; border-left: 2px solid var(--line-strong); color: var(--ink-soft); font-size: .8rem; }
+.ingredientItem { min-width: 0; padding: 0 0 0 12px; border-left: 1px solid var(--lab-border); color: var(--ink-soft); font-size: .8rem; }
 .ingredientItem[data-kind="dish"] { padding-left: 0; border-left: 0; color: var(--ink); font-size: .88rem; }
 .ingredientItem > strong { color: var(--ink); font-weight: 650; }
 .ingredientItem small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; line-height: 1.35; }
@@ -671,40 +671,40 @@
 .labHeader button:disabled { cursor: not-allowed; opacity: .38; }
 .labHeader button:focus-visible { outline: 2px solid #264d38; outline-offset: 3px; }
 .labRoot .mealList { display: grid; gap: 16px; border-top: 0; }
-.labRoot .mealCard { min-height: 130px; padding: 0 16px; border: 1px solid #e0e8de; border-radius: 4px; background: #f2f5f0; }
-.labRoot .mealCardConfirmed { border-color: #e0e8de; background: #f2f5f0; }
+.labRoot .mealCard { min-height: 130px; padding: 0 16px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); }
+.labRoot .mealCardConfirmed { border-color: var(--lab-border-strong); background: var(--lab-surface); }
 .labRoot .mealCardEmpty { min-height: 112px; }
-.labRoot .mealHeader { min-height: 42px; padding: 8px 0; border-bottom: 1px solid #e0e8de; }
+.labRoot .mealHeader { min-height: 42px; padding: 8px 0; border-bottom: 1px solid var(--lab-border); }
 .labRoot .mealTitle { gap: 8px; }
-.labRoot .mealTitle h3 { color: #1c2520; font-size: 14px; font-weight: 560; line-height: 20px; }
-.labRoot .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-text-secondary); font-size: 12px; }
+.labRoot .mealTitle h3 { color: var(--lab-text-primary); font-size: var(--lab-type-ui); font-weight: 600; line-height: 20px; }
+.labRoot .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-brand); font-size: var(--lab-type-label); font-weight: 600; }
 .labRoot .mealBody { padding: 10px 0 12px; }
 .labRoot .draftMeal { display: grid; min-height: 0; grid-template-columns: 1fr; gap: 10px; padding: 10px 0 12px; }
-.labRoot .draftMeal .textInput textarea { min-height: 84px; border-color: #d5ddd3; border-radius: 2px; background: #ffffff; color: #1c2520; font-size: 12px; }
+.labRoot .draftMeal .textInput textarea { min-height: 84px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); background: var(--lab-surface); color: var(--lab-text-primary); font-size: var(--lab-type-label); }
 .labRoot .draftMeal .actionsRow { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .labRoot .draftMeal .photoInput { display: contents; }
 .labRoot .draftMeal .captureButton,
 .labRoot .draftMeal .galleryButton,
-.labRoot .draftMeal .analyzeButton { min-height: 44px; padding: 7px 8px; border-radius: var(--lab-radius-xs); font-size: 12px; }
+.labRoot .draftMeal .analyzeButton { min-height: 44px; padding: 7px 8px; border-radius: var(--lab-radius-xs); font-size: var(--lab-type-label); }
 .labRoot .draftMeal .captureButton,
-.labRoot .draftMeal .analyzeButton { border-color: #264d38; background: #264d38; color: #ffffff; }
-.labRoot .draftMeal .galleryButton { border-color: #d5ddd3; background: #ffffff; color: #59665e; }
-.labRoot .draftMeal .analyzeButton:disabled { border-color: #d5ddd3; background: #e6ebe4; color: #7c877f; opacity: 1; }
+.labRoot .draftMeal .analyzeButton { border-color: var(--lab-brand); background: var(--lab-brand); color: var(--lab-surface); }
+.labRoot .draftMeal .galleryButton { border-color: var(--lab-border); background: var(--lab-surface); color: var(--lab-text-secondary); }
+.labRoot .draftMeal .analyzeButton:disabled { border-color: var(--lab-border); background: var(--lab-surface-subtle); color: var(--lab-text-secondary); opacity: 1; }
 .labRoot .emptyMealPrompt { min-height: 74px; padding: 8px 0 12px; border-top: 0; }
 .labRoot .emptyMealActions { width: 100%; gap: 8px; }
 .labRoot .photoInputCompact { display: contents; }
-.labRoot .emptyNoteButton, .labRoot .captureButtonCompact, .labRoot .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-xs); font-size: 12px; }
-.labRoot .captureButtonCompact { border-color: #264d38; background: #264d38; }
-.labRoot .emptyNoteButton, .labRoot .galleryButtonCompact { border-color: #e0e8de; background: #ffffff; color: #59665e; }
-.labRoot .labMealSummary { display: grid; gap: 4px; padding-top: 1px; }
-.labRoot .labMealSummary p { overflow: hidden; color: #1c2520; font-size: 13px; line-height: 18px; text-overflow: ellipsis; }
-.labRoot .labMealSummary small { color: #59665e; font-size: 12px; line-height: 16px; }
-.labRoot .analysisDetails { margin-top: 10px; border-color: #e0e8de; border-radius: 2px; }
-.labRoot .analysisDetails > summary { min-height: 44px; padding-inline: 0; color: var(--lab-text-secondary); font-size: 12px; }
+.labRoot .emptyNoteButton, .labRoot .captureButtonCompact, .labRoot .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-xs); font-size: var(--lab-type-label); }
+.labRoot .captureButtonCompact { border-color: var(--lab-brand); background: var(--lab-brand); color: var(--lab-surface); }
+.labRoot .emptyNoteButton, .labRoot .galleryButtonCompact { border-color: var(--lab-border); background: var(--lab-surface); color: var(--lab-text-secondary); }
+.labRoot .labMealSummary { display: grid; gap: 6px; padding: 4px 0; }
+.labRoot .labMealSummary p { overflow: hidden; color: var(--lab-text-primary); font-family: var(--font-soma-ui); font-size: var(--lab-type-ui); font-weight: 600; line-height: 20px; text-overflow: ellipsis; margin: 0; }
+.labRoot .labMealSummary small { color: var(--lab-text-secondary); font-family: var(--lab-data-font); font-size: var(--lab-type-label); line-height: 16px; font-variant-numeric: tabular-nums; }
+.labRoot .analysisDetails { margin-top: 10px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); }
+.labRoot .analysisDetails > summary { min-height: 44px; padding-inline: 0; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .labRoot .analysisDetailsBody { padding: 8px 0 0; }
-.labRoot .mealCompletionControls { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e8de; }
-.labRoot .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); background: transparent; color: var(--lab-text-secondary); font-size: 12px; }
-.labRoot .mealCompletionControls .secondaryButton:hover { border-color: #264d38; color: #264d38; }
+.labRoot .mealCompletionControls { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--lab-border); }
+.labRoot .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
+.labRoot .mealCompletionControls .secondaryButton:hover { border-color: var(--lab-brand); color: var(--lab-brand); }
 
 @media (max-width: 700px) {
   .labRoot { padding: 16px; }
@@ -978,7 +978,7 @@
 
 .headerMetric > strong small {
   color: var(--lab-text-secondary);
-  font-size: 11px;
+  font-size: var(--lab-type-label);
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -1080,7 +1080,7 @@
 .mealsPageRoot .mealsWeekStrip .weekDay span,
 .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-family: var(--font-soma-mono), monospace; font-size: 12px; text-transform: uppercase; }
 .mealsPageRoot .mealsWeekStrip .weekDay strong,
-.mealsPageRoot .mealsWeekStrip .weekDaySelected strong { font-size: 11px; font-weight: 560; }
+.mealsPageRoot .mealsWeekStrip .weekDaySelected strong { font-size: var(--lab-type-label); font-weight: 560; }
 .mealsPageRoot .mealsWeekStrip .weekDaySelected:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: -2px; }
 
 .mealsPageRoot .targetEditor {
@@ -1186,7 +1186,7 @@
 .mealsJournalPanel .mealTitle h3 { overflow: hidden; margin: 0; color: var(--lab-text-primary); font-size: 18px; font-weight: 560; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
 .mealHeaderMeta { display: flex; min-width: 0; align-items: center; justify-content: end; gap: 8px; }
 .mealCalories { color: var(--lab-text-secondary); font-family: var(--font-soma-mono), monospace; font-size: 12px; line-height: 16px; white-space: nowrap; }
-.mealsJournalPanel .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); color: var(--lab-text-secondary); font-size: 10px; }
+.mealsJournalPanel .mealStatus { min-height: 20px; padding: 2px 6px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .mealsJournalPanel .mealStatus[data-status="review"] { background: var(--lab-surface-selected); color: var(--lab-brand); }
 .mealsJournalPanel .mealStatus[data-status="error"] { background: color-mix(in srgb, var(--lab-error) 12%, var(--lab-surface)); color: var(--lab-error); }
 
@@ -1231,7 +1231,7 @@
   min-height: 44px;
   padding: 7px 8px;
   border-radius: var(--lab-radius-xs);
-  font-size: 10px;
+  font-size: var(--lab-type-label);
 }
 
 .mealsJournalPanel .draftMeal .captureButton,
@@ -1263,15 +1263,15 @@
 .mealsMealSummary { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 12px; }
 .mealsMealDetails { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
 .mealsMealDetails > div { display: grid; min-width: 0; gap: 2px; }
-.mealsMealDetails span { color: var(--lab-text-secondary); font-size: 11px; font-weight: 650; letter-spacing: .22px; line-height: 14px; }
-.mealsMealDetails strong { overflow: hidden; color: var(--lab-text-primary); font-size: 13px; font-weight: 400; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
-.mealsMealFooter { display: flex; min-height: 16px; align-items: end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--lab-border); color: var(--lab-text-secondary); font-size: 12px; font-weight: 560; letter-spacing: .22px; line-height: 16px; }
+.mealsMealDetails span { color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .22px; line-height: 16px; }
+.mealsMealDetails strong { overflow: hidden; color: var(--lab-text-primary); font-size: var(--lab-type-ui); font-weight: 400; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.mealsMealFooter { display: flex; min-height: 16px; align-items: end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--lab-border); color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 560; letter-spacing: .22px; line-height: 16px; }
 
 .mealsJournalPanel .emptyMealPrompt { min-height: 0; flex: 1 1 auto; align-items: end; padding: 16px 0 0; border-top: 0; }
 .mealsJournalPanel .emptyMealActions { width: 100%; gap: 8px; }
 .mealsJournalPanel .emptyNoteButton,
 .mealsJournalPanel .captureButtonCompact,
-.mealsJournalPanel .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-sm); font-size: 10px; }
+.mealsJournalPanel .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-sm); font-size: var(--lab-type-label); }
 .mealsJournalPanel .emptyNoteButton,
 .mealsJournalPanel .galleryButtonCompact { border-color: var(--lab-border); background: var(--lab-surface); color: var(--lab-text-secondary); }
 .mealsJournalPanel .emptyNoteButton:hover,
@@ -1280,10 +1280,10 @@
 .mealsJournalPanel .captureButtonCompact:hover { border-color: var(--lab-text-primary); background: var(--lab-text-primary); }
 
 .mealsJournalPanel .analysisDetails { margin-top: 8px; border: 0; border-top: 1px solid var(--lab-border); border-radius: 0; }
-.mealsJournalPanel .analysisDetails > summary { min-height: 24px; padding: 0; color: var(--lab-text-secondary); font-size: 10px; }
+.mealsJournalPanel .analysisDetails > summary { min-height: 24px; padding: 0; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .mealsJournalPanel .analysisDetailsBody { padding: 8px 0 0; }
 .mealsJournalPanel .mealCompletionControls { margin-top: 8px; padding-top: 8px; border-top-color: var(--lab-border); }
-.mealsJournalPanel .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); background: transparent; color: var(--lab-text-secondary); font-size: 10px; }
+.mealsJournalPanel .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .mealsJournalPanel .mealCompletionControls .secondaryButton:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); color: var(--lab-brand); }
 
 @media (max-width: 1100px) {
@@ -1303,7 +1303,7 @@
   .mealsPageHeader h1 { font-size: 24px; line-height: 30px; }
   .headerMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
   .headerMetric > strong { font-size: 16px; line-height: 20px; }
-  .headerMetric > strong small { overflow: visible; font-size: 10px; white-space: normal; }
+  .headerMetric > strong small { overflow: visible; font-size: var(--lab-type-label); white-space: normal; }
   .mealsPageRoot .historyNavigation { grid-template-columns: 40px minmax(0, 1fr) 40px; overflow: hidden; }
   .mealsPageRoot .mealsWeekStrip { overflow-x: auto; }
   .mealsPageRoot .mealsWeekStrip .weekDay,

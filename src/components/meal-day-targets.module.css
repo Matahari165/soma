@@ -60,7 +60,7 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 3px;
+  height: 1px;
   background: var(--metric-soft);
   content: "";
 }

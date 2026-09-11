@@ -25,12 +25,18 @@
   --lab-info: #536f87;
   --lab-info-soft: #e7eef2;
   --lab-sidebar: #ebf0ea;
-  --lab-radius-xs: 4px;
-  --lab-radius-sm: 6px;
-  --lab-radius-md: 10px;
-  --lab-journal-control-width: 104px;
-  --lab-journal-control-height: 36px;
-  --lab-journal-stepper-action-width: 24px;
+  --lab-radius-xs: 2px;
+  --lab-radius-sm: 4px;
+  --lab-radius-md: 8px;
+  /* Spacing scale — matches DESIGN.md 4/8/16/24/32 rhythm */
+  --lab-sp-xs: 4px;
+  --lab-sp-sm: 8px;
+  --lab-sp-md: 16px;
+  --lab-sp-lg: 24px;
+  --lab-sp-xl: 32px;
+  --lab-journal-control-width: 124px;
+  --lab-journal-control-height: 40px;
+  --lab-journal-stepper-action-width: 30px;
   --lab-journal-control-inset: 3px;
   --lab-journal-control-text-size: 14px;
   --lab-journal-control-value-size: 16px;
@@ -149,6 +155,7 @@
   --lab-type-section: 22px;
   --lab-type-group: 16px;
   --lab-type-body: 16px;
+  --lab-type-ui: 14px;
   --lab-type-label: 12px;
   --lab-data-font: var(--font-soma-ui), system-ui, sans-serif;
   --lab-header-height: 87px;

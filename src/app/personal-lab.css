@@ -1,7 +1,7 @@
 /* Personal Lab — one calm daily workspace, with analysis kept secondary. */
 
 .personal-lab-page {
-  --lab-section-space: clamp(24px, 2.8vw, 38px);
+  --lab-section-space: clamp(24px, 2.8vw, var(--lab-sp-xl));
   max-width: 1500px;
 }
 
@@ -31,7 +31,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .app-shell--personal-lab .sidebar--collapsed .sidebar-secondary { gap: 8px; }
 .app-shell--personal-lab .sidebar--collapsed .sidebar-toggle { width: 36px; min-width: 36px; min-height: 36px; }
 .app-shell--personal-lab .sidebar--collapsed .profile-card { width: 36px; min-height: 36px; margin-top: 0; padding-top: 0; border-top: 0; }
-.app-shell--personal-lab .sidebar--collapsed .avatar { width: 32px; height: 32px; border: 0; border-radius: var(--lab-radius-sm); background: #28342d; color: var(--lab-surface); }
+.app-shell--personal-lab .sidebar--collapsed .avatar { width: 32px; height: 32px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); }
 .app-shell--personal-lab .main-content { margin-left: var(--lab-sidebar-width); background: var(--lab-canvas); }
 
 .personal-lab-page {
@@ -90,13 +90,13 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-page .personal-lab-metric:hover { border-color: var(--lab-brand); background: var(--lab-surface-subtle); }
 .personal-lab-metric__copy { display: grid; min-width: 0; align-content: center; gap: 1px; }
 .personal-lab-metric__label { overflow: hidden; color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .8px; line-height: 16px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.personal-lab-metric__value { color: var(--lab-brand); font-size: 28px; font-weight: 560; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; }
+.personal-lab-metric__value { color: var(--lab-brand); font-family: var(--lab-data-font); font-size: var(--lab-type-page); font-weight: 600; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .personal-lab-metric--below .personal-lab-metric__value { color: var(--lab-error); }
 .personal-lab-metric--above .personal-lab-metric__value { color: var(--lab-brand); }
 .personal-lab-metric--neutral .personal-lab-metric__value { color: var(--lab-text-primary); }
 .personal-lab-metric__average { overflow: hidden; color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .personal-lab-metric__bars { display: flex; height: 30px; align-items: end; justify-content: end; gap: 8px; }
-.personal-lab-metric__bar { display: block; width: 12px; min-height: 4px; border-radius: 2px 2px 0 0; background: var(--lab-signal); }
+.personal-lab-metric__bar { display: block; width: 12px; min-height: 4px; border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0; background: var(--lab-signal); }
 .personal-lab-metric--below .personal-lab-metric__bar { background: var(--lab-error); }
 .personal-lab-metric--above .personal-lab-metric__bar { background: var(--lab-brand); }
 .personal-lab-metric--neutral .personal-lab-metric__bar { background: var(--lab-text-secondary); }
@@ -162,8 +162,8 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-journal-column .journal-card--personal-lab .journal-card__heading { display: none; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-card__actions { gap: 8px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: 14px; font-weight: 650; }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button:hover { background: #1e402e; }
+.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: var(--lab-type-ui); font-weight: 650; }
+.personal-lab-journal-column .journal-card--personal-lab .primary-button:hover { background: color-mix(in srgb, var(--lab-brand) 80%, var(--lab-text-primary)); }
 .personal-lab-journal-column .journal-card--personal-lab .text-link { position: absolute; width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0; opacity: 0; }
 .personal-lab-journal-column .journal-card--personal-lab .text-link:focus-visible { position: static; width: auto; height: 24px; padding: 4px 8px; border: 1px solid var(--lab-border); opacity: 1; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-sections { display: flex; flex-direction: column; gap: var(--lab-column-gap); margin: 0; }
@@ -192,16 +192,16 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-journal-column .journal-card--personal-lab .journal-field:nth-child(n + 2) { border-top: 0; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field__heading { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field__emoji { display: none; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field__label { color: var(--lab-text-primary); font-size: 14px; line-height: 18px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__label { color: var(--lab-text-primary); font-size: var(--lab-type-ui); line-height: 18px; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field__label small { display: none; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
 .personal-lab-journal-column .journal-card--personal-lab .journal-number,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field > select { width: 92px; min-height: 24px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); font-size: 14px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { min-height: 22px; border-radius: var(--lab-radius-xs); font-size: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field > select { width: 92px; min-height: 24px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); font-size: var(--lab-type-ui); }
+.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { min-height: var(--lab-journal-control-height); border-radius: var(--lab-radius-xs); font-size: var(--lab-type-ui); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice button[aria-pressed="true"] { background: var(--lab-brand); color: var(--lab-surface); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-number { display: flex; align-items: center; padding-left: 8px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number input { min-height: 22px; padding: 3px 4px; border: 0; background: transparent; font-size: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-number input { min-height: var(--lab-journal-control-height); padding: 6px 8px; border: 0; background: transparent; font-size: var(--lab-type-ui); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-number span { padding-right: 6px; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed { background: transparent; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed .journal-choice,
@@ -218,11 +218,11 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-correlation { padding: 16px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface-subtle); }
 .personal-lab-correlation > header { display: flex; min-height: 32px; align-items: start; justify-content: space-between; gap: 12px; }
 .personal-lab-correlation > header > div { display: grid; min-width: 0; gap: 2px; }
-.personal-lab-correlation > header strong { overflow: hidden; color: var(--lab-text-primary); font-size: 14px; font-weight: 560; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.personal-lab-correlation > header strong { overflow: hidden; color: var(--lab-text-primary); font-size: var(--lab-type-ui); font-weight: 560; line-height: var(--lab-sp-md); text-overflow: ellipsis; white-space: nowrap; }
 .personal-lab-correlation > header small { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
-.personal-lab-correlation__tone { padding: 3px 7px; border-radius: var(--lab-radius-xs); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .6px; line-height: 16px; }
+.personal-lab-correlation__tone { padding: 3px var(--lab-sp-sm); border-radius: var(--lab-radius-xs); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .6px; line-height: 16px; }
 .personal-lab-correlation__tone--positive { background: var(--lab-surface-selected); color: var(--lab-signal); }
-.personal-lab-correlation__tone--negative { background: #f8e5e0; color: var(--lab-error); }
+.personal-lab-correlation__tone--negative { background: var(--lab-error-soft); color: var(--lab-error); }
 .personal-lab-correlation__tone--neutral { background: var(--lab-control-track); color: var(--lab-text-secondary); }
 .personal-lab-correlation__outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .personal-lab-correlation__outcome { display: grid; min-height: 58px; align-content: center; gap: 2px; padding: 8px 10px; border: 1px solid var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); }
@@ -258,7 +258,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-page .lab-header__row { gap: 8px; }
   .personal-lab-page .lab-header h1 { font-size: 22px; }
   .personal-lab-page .personal-lab-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
-  .personal-lab-page .personal-lab-metric { height: 64px; min-width: 0; grid-template-columns: minmax(0, 1fr) 50px; padding: 7px 8px 7px 10px; }
+  .personal-lab-page .personal-lab-metric { height: 64px; min-width: 0; grid-template-columns: minmax(0, 1fr) 50px; padding: var(--lab-sp-sm) 8px var(--lab-sp-sm) 10px; }
   .personal-lab-metric__value { font-size: 22px; line-height: 24px; }
   .personal-lab-metric__bars { gap: 3px; }
   .personal-lab-metric__bar { width: 7px; }
@@ -304,7 +304,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 .personal-lab-page .lab-header__signals {
   min-width: 0;
-  padding-left: clamp(14px, 2.4vw, 32px);
+  padding-left: clamp(var(--lab-sp-md), 2.4vw, 32px);
   border-left: 1px solid var(--line);
 }
 
@@ -314,7 +314,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 
 .personal-lab-page .lab-header__signals .lab-signals a > strong.lab-signal__value {
-  margin-top: 7px;
+  margin-top: var(--lab-sp-sm);
   line-height: .9;
 }
 
@@ -345,7 +345,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 .personal-lab-page .personal-lab-day-strip button {
   min-height: 52px;
-  padding: 7px 10px;
+  padding: var(--lab-sp-sm) 10px;
   color: var(--ink-soft);
   font-size: .64rem;
   transition: background var(--fast), color var(--fast), box-shadow var(--fast);
@@ -445,7 +445,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 .personal-lab-page .journal-field {
   min-height: 56px;
-  padding: 7px 10px;
+  padding: var(--lab-sp-sm) 10px;
   border-right: 0;
   border-bottom-color: var(--line);
   background: transparent;
@@ -526,32 +526,32 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-page .lab-header { position: absolute; inset: 0 0 auto; z-index: 2; height: var(--lab-content-top); padding: 12px 24px 0; border: 0; background: var(--lab-canvas); }
 .personal-lab-page .lab-header__signals { min-width: 0; padding: 0; border: 0; }
 .personal-lab-page .lab-workspace { position: relative; display: block; margin: 0; border: 0; border-radius: 0; }
-.personal-lab-page .personal-lab-day-strip { position: relative; height: 58px; margin: 0; padding-top: 12px; }
-.personal-lab-page .personal-lab-day-strip::before { position: absolute; inset: 12px 0 auto; height: 34px; border: 1px solid var(--lab-border-strong); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); content: ""; }
-.personal-lab-page .personal-lab-day-strip__days { position: relative; z-index: 1; display: flex; width: 50%; min-width: 560px; height: 34px; min-height: 34px; overflow: hidden; border: 0; border-radius: var(--lab-radius-sm); background: transparent; box-shadow: none; }
-.personal-lab-page .personal-lab-day-strip button { display: flex; min-width: 0; min-height: 28px; flex: 1 1 0; align-items: center; justify-content: center; gap: 6px; padding: 3px 8px; border: 0; border-right: 1px solid var(--lab-border); background: transparent; color: var(--lab-text-secondary); font-size: 11px; line-height: 14px; white-space: nowrap; }
+.personal-lab-page .personal-lab-day-strip { position: relative; min-height: 48px; margin: 0 0 16px; padding: 0; }
+.personal-lab-page .personal-lab-day-strip::before { display: none; }
+.personal-lab-page .personal-lab-day-strip__days { position: relative; z-index: 1; display: flex; width: 100%; max-width: 680px; height: 40px; min-height: 40px; overflow: hidden; border: 1px solid var(--lab-border-strong); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); }
+.personal-lab-page .personal-lab-day-strip button { display: flex; min-width: 0; min-height: 38px; flex: 1 1 0; align-items: center; justify-content: center; gap: 6px; padding: 4px 10px; border: 0; border-right: 1px solid var(--lab-border); background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-ui); line-height: 20px; white-space: nowrap; }
 .personal-lab-page .personal-lab-day-strip button:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .personal-lab-page .personal-lab-day-strip button:last-of-type { border-right: 0; }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-brand); color: var(--lab-surface); }
 .personal-lab-page .personal-lab-day-strip button[aria-current="date"] small { color: rgba(255, 255, 255, .82); }
-.personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: 10px; line-height: 14px; text-transform: none; }
+.personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: var(--lab-type-label); line-height: 16px; text-transform: none; }
 .personal-lab-journal-column .journal-card--personal-lab > .journal-card__header { z-index: 4; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: 10px; }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: 10px; font-weight: 650; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 32px; padding: 4px 8px; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
+.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 36px; padding: 8px 16px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: var(--lab-type-ui); font-weight: 600; }
 .personal-lab-journal-column .journal-card--personal-lab .text-link { position: absolute; width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0; opacity: 0; }
-.personal-lab-journal-column .journal-card--personal-lab .text-link:focus-visible { position: static; width: auto; height: 24px; padding: 4px 8px; border: 1px solid var(--lab-border); opacity: 1; }
+.personal-lab-journal-column .journal-card--personal-lab .text-link:focus-visible { position: static; width: auto; height: 32px; padding: 6px 10px; border: 1px solid var(--lab-border); opacity: 1; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-sections { align-items: stretch; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-period { width: 100%; }
 .personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 { align-items: center; font-family: var(--font-soma-ui); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { display: inline-flex; width: 24px; min-width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: var(--lab-radius-xs); background: var(--lab-brand); color: var(--lab-surface); font-size: 10px; font-weight: 650; letter-spacing: .8px; line-height: 14px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { display: inline-flex; width: 24px; min-width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: var(--lab-radius-xs); background: var(--lab-brand); color: var(--lab-surface); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .8px; line-height: 14px; }
 
 @media (max-width: 700px) {
   .personal-lab-page { padding-top: 204px; }
   .personal-lab-page .lab-header { height: 204px; }
-  .personal-lab-page .personal-lab-metric { height: 64px; min-width: 0; grid-template-columns: minmax(0, 1fr) 34px; gap: 4px; padding: 7px 8px 7px 10px; }
-  .personal-lab-metric__label { font-size: 8.5px; letter-spacing: .35px; }
-  .personal-lab-metric__value { font-size: 22px; line-height: 24px; }
-  .personal-lab-metric__average { font-size: 8px; letter-spacing: -.12px; }
+  .personal-lab-page .personal-lab-metric { height: 64px; min-width: 0; grid-template-columns: minmax(0, 1fr) 34px; gap: 4px; padding: var(--lab-sp-sm) 8px var(--lab-sp-sm) 10px; }
+  .personal-lab-metric__label { font-size: var(--lab-type-label); letter-spacing: .35px; }
+  .personal-lab-metric__value { font-size: 20px; line-height: 24px; }
+  .personal-lab-metric__average { font-size: var(--lab-type-label); letter-spacing: normal; }
   .personal-lab-metric__bars { gap: 3px; }
   .personal-lab-metric__bar { width: 4px; }
   .personal-lab-page .personal-lab-day-strip__days { width: 100%; min-width: 0; overflow-x: auto; }
@@ -625,7 +625,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > .journal-clock input {
   height: 22px;
-  min-height: 22px;
+  min-height: var(--lab-journal-control-height);
   padding-inline: 4px;
   font-size: 10px;
 }
@@ -785,7 +785,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   padding: 0;
   color: var(--lab-text-secondary);
   font-family: var(--font-soma-ui);
-  font-size: 12px;
+  font-size: var(--lab-type-ui);
   line-height: 1;
   white-space: nowrap;
   transform: none;
@@ -852,7 +852,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper .journal-number__value > span {
   display: inline-block;
-  font-size: 11px;
+  font-size: var(--lab-type-label);
   text-align: left;
 }
 
@@ -1004,7 +1004,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-field__label {
   font-family: var(--font-soma-ui);
-  font-size: 14px;
+  font-size: var(--lab-type-ui);
   line-height: 20px;
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
@@ -1015,7 +1015,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-journal-column .journal-card--personal-lab .journal-number input {
   min-height: 44px;
   font-family: var(--font-soma-ui);
-  font-size: 14px;
+  font-size: var(--lab-type-ui);
   line-height: 20px;
 }
 .personal-lab-journal-column .journal-card--personal-lab .journal-number input {
@@ -1035,7 +1035,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   font-family: var(--font-soma-ui);
   padding: 6px 10px;
   border-radius: var(--lab-radius-xs);
-  font-size: 12px;
+  font-size: var(--lab-type-ui);
 }
 
 .personal-lab-correlations__header h2 {
@@ -1081,7 +1081,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   }
   .personal-lab-page .personal-lab-metric__label,
   .personal-lab-page .personal-lab-metric__average {
-    font-size: 12px;
+    font-size: var(--lab-type-ui);
     line-height: 16px;
   }
   .personal-lab-page .personal-lab-day-strip__days {

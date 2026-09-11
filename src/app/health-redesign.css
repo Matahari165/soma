@@ -175,8 +175,8 @@
   color: var(--lab-text-secondary);
   font-size: 12px;
 }
-.app-shell--personal-lab .quality-pill--good { border-color: color-mix(in srgb, var(--lab-signal) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-signal) 8%, white); }
-.app-shell--personal-lab .quality-pill--poor { border-color: color-mix(in srgb, var(--lab-error) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-error) 8%, white); }
+.app-shell--personal-lab .quality-pill--good { border-color: color-mix(in srgb, var(--lab-signal) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-signal) 8%, var(--lab-surface)); }
+.app-shell--personal-lab .quality-pill--poor { border-color: color-mix(in srgb, var(--lab-error) 35%, var(--lab-border)); background: color-mix(in srgb, var(--lab-error) 8%, var(--lab-surface)); }
 
 .app-shell--personal-lab .health-signal-meta {
   min-height: 36px;
@@ -189,7 +189,7 @@
   font-family: var(--font-soma-ui);
   font-size: 12px;
 }
-.app-shell--personal-lab .health-signal-meta strong { border-radius: 2px; background: var(--lab-surface-selected); color: var(--lab-brand); }
+.app-shell--personal-lab .health-signal-meta strong { border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-brand); }
 
 .app-shell--personal-lab .inline-empty,
 .app-shell--personal-lab .health-empty {
@@ -284,6 +284,103 @@
   font-family: var(--font-soma-ui);
   font-size: var(--lab-type-label);
   line-height: 16px;
+}
+
+.health-hero-score-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-primary);
+}
+.health-hero-score-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.health-hero-score-card__header > span {
+  overflow: hidden;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  font-weight: 650;
+  letter-spacing: .8px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.health-hero-score-card__action {
+  flex-shrink: 0;
+}
+.health-hero-score-card__body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.health-hero-score-card__metric {
+  display: grid;
+  align-content: end;
+  line-height: 1;
+}
+.health-hero-score-card__number {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.health-hero-score-card__metric strong {
+  color: var(--lab-text-primary);
+  font-family: var(--lab-data-font) !important;
+  font-size: var(--lab-type-page);
+  font-weight: 600;
+  letter-spacing: -.5px;
+  line-height: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.health-hero-score-card--positive .health-hero-score-card__metric strong {
+  color: var(--lab-brand);
+}
+.health-hero-score-card--negative .health-hero-score-card__metric strong {
+  color: var(--lab-error);
+}
+.health-hero-score-card__metric small {
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-label);
+  font-weight: 400;
+}
+.health-hero-score-card__metric p {
+  margin: 2px 0 0;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-label);
+  line-height: 14px;
+}
+.health-hero-score-card__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 28px;
+}
+.health-hero-score-card__bars i {
+  display: block;
+  width: 6px;
+  min-height: 4px;
+  border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0;
+  background: var(--lab-signal);
+}
+.health-hero-score-card--negative .health-hero-score-card__bars i:not(.is-empty) {
+  background: var(--lab-error);
+}
+.health-hero-score-card--neutral .health-hero-score-card__bars i:not(.is-empty) {
+  background: var(--lab-brand);
+}
+.health-hero-score-card__bars i.is-empty {
+  background: var(--lab-control-track);
 }
 
 /* Every measured value is mono; prose and labels remain Schibsted. */

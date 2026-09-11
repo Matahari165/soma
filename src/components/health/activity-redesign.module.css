@@ -147,7 +147,7 @@
 .headerScoreBody small { margin-left: 4px; color: var(--activity-text-secondary); font-size: 11px; letter-spacing: .22px; }
 .headerScoreBody p { overflow: hidden; color: var(--activity-text-secondary); font-size: 10px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .headerScoreBars { display: flex; height: 44px; flex: 0 0 auto; align-items: end; justify-content: center; gap: 8px; overflow: hidden; }
-.headerScoreBars i { display: block; width: 12px; min-height: 3px; border-radius: 1px; background: currentColor; }
+.headerScoreBars i { display: block; width: 12px; min-height: 3px; border-radius: var(--lab-radius-xs); background: currentColor; }
 .headerScoreMetric:global(.activity-score-tone--positive) { color: var(--activity-signal); }
 .headerScoreMetric:global(.activity-score-tone--negative) { color: var(--activity-error); }
 .headerScoreMetric:global(.activity-score-tone--neutral) { color: var(--activity-text); }
@@ -155,7 +155,7 @@
 .headerScoreAction :global(.activity-score-control),
 .headerScoreAction :global(.health-score-trigger) { width: 100%; height: 100%; }
 .headerScoreAction :global(.score-ring) { opacity: 0; }
-.headerScoreAction :global(.health-score-trigger:focus-visible) { border-radius: 3px; outline: 2px solid var(--activity-brand); outline-offset: -3px; }
+.headerScoreAction :global(.health-score-trigger:focus-visible) { border-radius: var(--lab-radius-sm); outline: 2px solid var(--activity-brand); outline-offset: -3px; }
 
 .root :global(.health-hero-stat) {
   display: grid;
