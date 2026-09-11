@@ -33,8 +33,15 @@ const directionMap: Record<string, "higher_is_better" | "lower_is_better" | "con
   context: "context_only",
 };
 
+const visibleTrendKeys: TrendKind[] = ["hrv", "resting_heart_rate", "respiratory_rate", "oxygen_saturation"];
+
+function hasRecoveryMeasurement(day: HealthMetricDay) {
+  return [day.hrv_ms, day.resting_heart_rate, day.sleep_minutes, day.respiratory_rate, day.oxygen_saturation]
+    .some((value) => typeof value === "number" && Number.isFinite(value));
+}
+
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.findLast((day) => (day.hrv_ms !== null && day.hrv_ms > 0) || (day.resting_heart_rate !== null && day.resting_heart_rate > 0));
+  const latest = data.days.findLast(hasRecoveryMeasurement);
   const recoveryScore = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date);
   const score = recoveryScore?.score ?? null;
   const heartRates = data.heartRateSamples.map((sample) => sample.bpm);
@@ -45,13 +52,13 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const headerTones = { sleep: metricTone(headerValues.sleep, averages.sleep, "higher_is_better"), recovery: metricTone(headerValues.recovery, averages.recovery, "higher_is_better"), strain: metricTone(headerValues.strain, averages.strain, "context_only"), energy: metricTone(headerValues.energy, averages.energy, "higher_is_better") };
   const drivers = recoveryScore?.drivers;
   const driverCoverage = Number(drivers?.coverage);
-  const coverage = Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate].filter((value) => value !== null).length / 3 : 0;
-  const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
+  const coverage = Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes].filter((value) => value !== null).length / 3 : 0;
+  const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate", "sleep", "sleep-analysis"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
   const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage });
   const recoveryValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "recovery" && item.score_date === day.metric_date)?.score ?? null);
   const heroScoreTone = headerTones.recovery === "positive" ? "positive" : headerTones.recovery === "negative" ? "negative" : "neutral";
 
-  const heroMetrics = <>
+  const heroMetrics = latest ? <>
     <div className={`health-hero-stat metric-tone--${headerTones.sleep}`}>
       <span>Durée de sommeil</span>
       <strong className={`metric-reading metric-reading--${headerTones.sleep}`}>
@@ -76,7 +83,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       </strong>
       <small className="health-hero-stat__average">Moy. 30 j · {averages.energy === null ? "—" : `${formatAverage(averages.energy, "number")} kcal`}</small>
     </div>
-  </>;
+  </> : undefined;
 
   return <div className={styles.page}>
     <HealthPageShell
@@ -93,22 +100,22 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
           average={averages.recovery}
           values={recoveryValues}
           tone={heroScoreTone}
-          action={<RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} />}
+          action={latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined}
         />
       }
       heroMetrics={heroMetrics}
     >
-      <div className={styles.content}><div className={styles.workbench}>
+      {latest ? <div className={styles.content}><div className={styles.workbench}>
         <div className={styles.column}>
-          <section className={styles.panel} aria-labelledby="recovery-drivers-heading"><div className={styles.panelHeader}><h2 id="recovery-drivers-heading">Facteurs du score</h2><span className={styles.filters}>{Number.isFinite(driverCoverage) ? `${Math.round(driverCoverage * 100)} % couverts` : "Couverture indisponible"}</span></div><div className={styles.driverRows}><p>Variabilité nocturne · 40&nbsp;% <strong>{formatValue(scoreDriver(drivers, "hrv"))}</strong></p><p>Pouls au repos · 30&nbsp;% <strong>{formatValue(scoreDriver(drivers, "restingHeartRate"))}</strong></p><p>Contexte sommeil · 30&nbsp;% <strong>{formatValue(scoreDriver(drivers, "sleep"))}</strong></p></div></section>
+          <section className={styles.panel} aria-labelledby="recovery-drivers-heading"><div className={styles.panelHeader}><h2 id="recovery-drivers-heading">Facteurs du score</h2><span className={styles.filters}>{Number.isFinite(driverCoverage) ? `${Math.round(driverCoverage * 100)} % couverts` : `${Math.round(coverage * 100)} % couverts`}</span></div><p className={styles.calculatedBy}>Calcul Soma · facteurs pondérés selon les mesures disponibles.</p><div className={styles.driverRows}><p>Variabilité nocturne · 40&nbsp;% <strong>{formatValue(scoreDriver(drivers, "hrv"))}</strong></p><p>Pouls au repos · 30&nbsp;% <strong>{formatValue(scoreDriver(drivers, "restingHeartRate"))}</strong></p><p>Contexte sommeil · 30&nbsp;% <strong>{formatValue(scoreDriver(drivers, "sleep"))}</strong></p></div></section>
           <section className={styles.panel} aria-labelledby="latest-signals-heading"><div className={styles.panelHeader}><h2 id="latest-signals-heading">Derniers signaux</h2><span className={styles.filters}>Données de santé</span></div><div className={styles.signalRows}>{[["Variabilité nocturne", latest?.hrv_ms ?? null, averages.hrv, "ms", 0], ["Pouls au repos", latest?.resting_heart_rate ?? null, averages.restingHeartRate, "bpm", 0], ["Plage cardiaque", heartMinimum === null || heartMaximum === null ? null : `${heartMinimum}–${heartMaximum}`, null, "bpm", 0], ["Saturation en oxygène", latest?.oxygen_saturation ?? null, averages.oxygenSaturation, "%", 1], ["Fréquence respiratoire", latest?.respiratory_rate ?? null, averages.respiratoryRate, "rpm", 1]].map(([label, value, average, unit, decimals]) => <div className={styles.signalRow} key={String(label)}><div><span>{label}</span></div><div><strong>{typeof value === "string" ? value : formatValue(value as number | null, decimals as number)}</strong>{unit ? <small>{unit}</small> : null}<em>Moy. 30 j · {typeof average === "number" ? formatAverage(average, "decimal", decimals as number) : "—"}</em></div></div>)}</div></section>
           <section className={styles.panel} aria-labelledby="zones-heading"><div className={styles.panelHeader}><h2 id="zones-heading">Temps dans les zones cardiaques</h2></div><p className={styles.supporting}>Dernier jour complet · vide en l’absence de mesure</p><ZoneDistribution zones={[{ label: "Légère", minutes: latest?.light_zone_minutes ?? null, tone: "light" }, { label: "Modérée", minutes: latest?.moderate_zone_minutes ?? null, tone: "moderate" }, { label: "Vigoureuse", minutes: latest?.vigorous_zone_minutes ?? null, tone: "vigorous" }, { label: "Pic", minutes: latest?.peak_zone_minutes ?? null, tone: "peak" }]} /></section>
         </div>
         <div className={styles.column}>
-          <section className={`${styles.panel} ${styles.trendsPanel}`} aria-labelledby="recovery-trends-heading"><div className={styles.panelHeader}><h2 id="recovery-trends-heading">Tendances de récupération</h2><span className={styles.filters}>Fenêtre observée : 1 mois</span></div><div className="metric-trend-grid">{(Object.keys(trendLabels) as TrendKind[]).map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} animateCurrent />)}</div></section>
+          <section className={`${styles.panel} ${styles.trendsPanel}`} aria-labelledby="recovery-trends-heading"><div className={styles.panelHeader}><h2 id="recovery-trends-heading">Tendances de récupération</h2><span className={styles.filters}>4 signaux · 1 mois</span></div><div className="metric-trend-grid">{visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} animateCurrent />)}</div></section>
           <section className={`${styles.panel} ${styles.heartPanel}`} aria-labelledby="heart-rate-heading"><div className={styles.panelHeader}><h2 id="heart-rate-heading">Fréquence cardiaque au fil du jour</h2></div><HeartRateCurve samples={data.heartRateSamples} /></section>
         </div>
-      </div></div>
+      </div></div> : <section className={`${styles.panel} ${styles.empty}`} aria-labelledby="recovery-empty-heading"><strong aria-hidden="true">+</strong><div><h2 id="recovery-empty-heading">Aucune donnée de récupération</h2><p>Synchronisez vos signaux de santé pour calculer une récupération personnalisée.</p></div></section>}
     </HealthPageShell>
   </div>;
 }

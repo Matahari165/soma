@@ -150,14 +150,14 @@
   --zone-vigorous: #b28648;
   --zone-peak: #a8563f;
   --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
-  /* Final visual contract: one Schibsted family across language and data. */
+  /* Data keeps its own instrument voice, as documented in DESIGN.md. */
   --lab-type-page: 26px;
   --lab-type-section: 22px;
   --lab-type-group: 16px;
   --lab-type-body: 16px;
   --lab-type-ui: 14px;
   --lab-type-label: 12px;
-  --lab-data-font: var(--font-soma-ui), system-ui, sans-serif;
+  --lab-data-font: var(--font-soma-mono), monospace;
   --lab-header-height: 87px;
   --lab-header-kpi-height: 75px;
   --lab-header-title-width: 158px;
@@ -170,7 +170,6 @@ html { min-width: 0; background: var(--lab-canvas); scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
   background: var(--lab-canvas);
   color: var(--lab-text-primary);
   font-family: var(--font-soma-ui);
@@ -409,16 +408,10 @@ textarea:focus-visible,
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes atlas-draw { from { stroke-dashoffset: 360; } to { stroke-dashoffset: 0; } }
-@keyframes soma-soft-wait { from { opacity: .3; transform: scaleX(.25); } to { opacity: .72; transform: scaleX(1); } }
+@keyframes soma-spin { to { transform: rotate(360deg); } }
 svg.spin {
-  width: 20px;
-  height: 2px;
-  overflow: hidden;
-  background: currentColor;
-  border-radius: 0;
-  stroke: none;
-  transform-origin: left center;
-  animation: soma-soft-wait 420ms cubic-bezier(.16, 1, .3, 1) both;
+  transform-origin: center;
+  animation: soma-spin 800ms linear infinite;
 }
 
 .lab-entry__relations,
@@ -430,16 +423,5 @@ svg.spin {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: .01ms !important;
-  }
-}
-
-/* One visible typeface across the authenticated daily experience. Numerical
-   alignment comes from tabular numerals instead of a competing font family. */
-.app-shell--personal-lab :where(*) {
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  svg.spin { animation: none; }
 }

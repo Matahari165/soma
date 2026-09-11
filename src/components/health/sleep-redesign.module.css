@@ -136,7 +136,7 @@
 .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span,
 .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) em {
   color: var(--sleep-secondary);
-  font-size: 10px;
+  font-size: var(--lab-type-label);
   font-style: normal;
   line-height: 14px;
 }
@@ -266,7 +266,7 @@
   .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) { height: 64px; min-height: 64px; }
   .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { padding: 6px 8px; }
   .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
-  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: 9px; }
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: var(--lab-type-label); }
   .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) strong { font-size: 22px; }
   .column { gap: 20px; }
   .panel { padding: 16px; }
@@ -595,4 +595,26 @@
     height: auto;
     min-height: 0;
   }
+}
+
+/* Final accessibility floor for the rendered shell (the earlier legacy
+   selectors remain unused but no longer set the effective compact scale). */
+.root :global(.health-hero-score-card__header > span),
+.root :global(.health-hero-score-card__metric p),
+.root :global(.health-hero-score-card__number small),
+.root :global(.health-hero-stat > span),
+.root :global(.health-hero-stat__average),
+.root :global(.metric-trend-card header span),
+.root :global(.metric-trend-card footer),
+.root :global(.metric-trend-card .chart-axis),
+.root :global(.stage-legend),
+.root :global(.stage-legend strong),
+.root :global(.health-signal-meta) {
+  font-size: var(--lab-type-label, 12px);
+}
+.root :global(.health-line-chart) { min-height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.score-ring__progress),
+  .root :global(.score-ring--animated) { animation: none; transition: none; }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { AlertCircle, BookOpen, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import type { MealRecipeInput, MealRecipeView } from "@/domain/meal-recipes";
@@ -110,7 +110,15 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [error, setError] = useState(initialError ?? "");
+  const loadError = initialError ?? "";
+  const [retrying, setRetrying] = useState(false);
   const [status, setStatus] = useState("");
+
+  function retryLoad() {
+    if (retrying) return;
+    setRetrying(true);
+    window.location.reload();
+  }
 
   function openCreate() {
     setEditingId(null);
@@ -205,19 +213,25 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
   }
 
   return (
-    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title">
+    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title" aria-busy={retrying}>
       <header className={styles.header}>
         <div className={styles.heading}>
           {!embedded && <span className="eyebrow">Repères personnels</span>}
           <Heading id="recipe-library-title">Recettes habituelles</Heading>
-          {!embedded && <p>Une base variable pour reconnaître tes plats récurrents — jamais une mesure du repas du jour.</p>}
+          <p className={embedded ? styles.embeddedExplainer : undefined}>{embedded ? "Repères indicatifs : la photo et la note du jour priment." : "Une base variable pour reconnaître tes plats récurrents — jamais une mesure du repas du jour."}</p>
         </div>
-        {!formOpen && <button className="primary-button" type="button" onClick={openCreate}><Plus size={17} aria-hidden="true" />Nouvelle recette</button>}
+        {!formOpen && !loadError && <button className="primary-button" type="button" onClick={openCreate}><Plus size={17} aria-hidden="true" />Nouvelle recette</button>}
       </header>
 
-      <p className={styles.notice} role={error ? "alert" : "status"} aria-live="polite">{error || status}</p>
+      {loadError ? <div className={styles.loadError} role="alert" aria-live="assertive">
+        <AlertCircle size={18} aria-hidden="true" />
+        <div><strong>Recettes indisponibles</strong><span>{retrying ? "Nouvel essai de chargement…" : loadError}</span></div>
+        <button className={styles.retryButton} type="button" onClick={retryLoad} disabled={retrying}>
+          {retrying ? "Chargement…" : "Réessayer"}
+        </button>
+      </div> : <p className={styles.notice} role={error ? "alert" : "status"} aria-live={error ? "assertive" : "polite"}>{error || status}</p>}
 
-      <div className={styles.content}>
+      {!loadError && <div className={styles.content}>
         {formOpen && (
           <section className={styles.formPanel} aria-labelledby="recipe-form-title">
             <div className={styles.sectionHeading}>
@@ -292,7 +306,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
             </ul>
           )}
         </section>
-      </div>
+      </div>}
     </section>
   );
 }

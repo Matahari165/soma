@@ -39,7 +39,7 @@ describe("relation detail formatting", () => {
 
   it("uses a natural sentence for an overnight decrease", () => {
     expect(findingSentence(makeRelation())).toBe(
-      "Wake time (30 minutes later) is associated with a decrease of 16 minutes in Awake time during the same sleep episode (51.7% decrease compared with baseline).",
+      "L’heure de réveil (30 minutes plus tard) est associée à une baisse de 16 minutes pour le temps éveillé pendant le même épisode de sommeil (51,7 % de baisse par rapport à la référence).",
     );
   });
 
@@ -59,7 +59,7 @@ describe("relation detail formatting", () => {
       percentEffect: null,
       lagDays: 1,
     }))).toBe(
-      "Caffeine (20 mg on average rather than zero) is associated with an increase of 1.3 percentage points in Sleep efficiency during the following night.",
+      "La caféine (20 mg en moyenne plutôt que zéro) est associée à une hausse de 1,3 point de pourcentage pour l’efficacité du sommeil pendant la nuit suivante.",
     );
   });
 
@@ -79,7 +79,7 @@ describe("relation detail formatting", () => {
       percentEffect: null,
       lagDays: 1,
     }))).toBe(
-      "Steps (100 steps higher) are associated with an increase of 4 points in Recovery during the following night.",
+      "Les pas (100 pas de plus) sont associés à une hausse de 4 points pour la récupération pendant la nuit suivante.",
     );
   });
 
@@ -94,10 +94,10 @@ describe("relation detail formatting", () => {
     expect(html).not.toContain("Each percentage below is the relative change");
     expect(html).not.toContain("Compared days");
     expect(html).not.toContain("q &lt; 0.05");
-    expect(html).toContain("Relationship");
+    expect(html).toContain("Relation");
     expect(html).toContain("Influence");
-    expect(html).toContain("Result");
-    expect(html).toContain("during the same sleep episode");
+    expect(html).toContain("Résultat");
+    expect(html).toContain("pendant le même épisode de sommeil");
     expect(html).not.toContain("95% interval · tests");
   });
 });

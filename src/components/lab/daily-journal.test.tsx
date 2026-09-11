@@ -13,13 +13,13 @@ const variables: JournalVariable[] = defaultJournalVariables.map((variable, inde
 
 describe("journal motion states", () => {
   it("keeps save and validation language distinct", () => {
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Draft");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saving" })).toBe("Saving…");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saved" })).toBe("Draft saved");
-    expect(journalStatusText({ validated: true, validating: false, saveStatus: "saved" })).toBe("Validated");
-    expect(journalStatusText({ validated: false, validating: true, saveStatus: "saving" })).toBe("Validating…");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "error" })).toBe("Save failed");
-    expect(journalStatusText({ validated: true, validating: false, saveStatus: "error" })).toBe("Save failed");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Brouillon");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saving" })).toBe("Enregistrement…");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saved" })).toBe("Brouillon sauvegardé");
+    expect(journalStatusText({ validated: true, validating: false, saveStatus: "saved" })).toBe("Journée validée");
+    expect(journalStatusText({ validated: false, validating: true, saveStatus: "saving" })).toBe("Validation…");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "error" })).toBe("Échec de l’enregistrement");
+    expect(journalStatusText({ validated: true, validating: false, saveStatus: "error" })).toBe("Échec de l’enregistrement");
   });
 
   it("renders a stable draft status with an accessible live region", () => {
@@ -28,19 +28,19 @@ describe("journal motion states", () => {
     expect(html).toContain('class="checkin-state journal-save-status"');
     expect(html).toContain('class="journal-card__header"');
     expect(html).toContain('class="journal-card__heading"');
-    expect(html.indexOf("Draft")).toBeLessThan(html.indexOf("Validate day"));
-    expect(html.indexOf("Validate day")).toBeLessThan(html.indexOf("Edit journal fields"));
+    expect(html.indexOf("Brouillon")).toBeLessThan(html.indexOf("Valider la journée"));
+    expect(html.indexOf("Valider la journée")).toBeLessThan(html.indexOf("Modifier les champs du journal"));
     expect(html).toContain('aria-live="polite"');
-    expect(html).toContain(">Draft</span>");
-    expect(html).toContain("Validate day");
+    expect(html).toContain(">Brouillon</span>");
+    expect(html).toContain("Valider la journée");
     expect(html).not.toContain('button type="button">—</button>');
-    expect(html).not.toContain(">To confirm<");
+    expect(html).not.toContain(">À confirmer<");
     expect(html).not.toContain("0/2 recorded");
     expect(html).toContain('data-complete="false"');
-    expect(html).toContain('aria-label="Confirm the displayed value for Alcohol"');
-    expect(html).toContain('aria-label="Confirm the displayed value for Vacation"');
-    expect(html).toContain('aria-label="Confirm all displayed defaults for Morning"');
-    expect(html).toContain('aria-label="Confirm all displayed defaults for Day context"');
+    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Alcohol"');
+    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Vacation"');
+    expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Matin"');
+    expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Contexte de la journée"');
     expect(html).not.toContain('data-period="sleep"');
     expect(html.indexOf("Magnesium")).toBeLessThan(html.indexOf('data-period="day"'));
   });
@@ -53,10 +53,10 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain(">Validated</span>");
+    expect(html).toContain(">Journée validée</span>");
     expect(html).not.toContain("journal-save-status__icon--success");
-    expect(html).not.toContain(">Draft saved</span>");
-    expect(html).not.toContain("Validate day");
+    expect(html).not.toContain(">Brouillon sauvegardé</span>");
+    expect(html).not.toContain("Valider la journée");
   });
 
   it("can hide its local date strip when the workspace provides a shared one", () => {
@@ -76,8 +76,8 @@ describe("journal motion states", () => {
 
     expect(html).toContain('data-state="recorded"');
     expect(html).not.toContain("1/2 recorded");
-    expect(html).toContain('aria-label="Vacation: Recorded"');
-    expect(html).not.toContain('aria-label="Confirm the displayed value for Vacation"');
+    expect(html).toContain('aria-label="Vacation: Enregistrée"');
+    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Vacation"');
   });
 
   it("shows the achievement percentage without changing the field state", () => {
@@ -90,7 +90,7 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain("Achievement 75%");
+    expect(html).toContain("Progression 75%");
     expect(html).toContain('data-state="pending"');
   });
 
@@ -123,8 +123,8 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain('aria-label="Alcohol: Recorded"');
-    expect(html).not.toContain('aria-label="Confirm the displayed value for Alcohol"');
+    expect(html).toContain('aria-label="Alcohol: Enregistrée"');
+    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Alcohol"');
   });
 
   it("marks a fully recorded period without displaying a counter", () => {
@@ -138,7 +138,7 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain('class="journal-period journal-period--complete"');
-    expect(html).toContain('aria-label="Day, complete"');
+    expect(html).toContain('aria-label="Journée, complète"');
     expect(html).not.toContain("3/3 recorded");
   });
 });

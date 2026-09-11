@@ -13,14 +13,14 @@ export type GroupedMatrixRow = {
 const activityLoadIds = new Set(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max", "run_day"]);
 const dailyActivityIds = new Set(["steps", "active_minutes", "sedentary_minutes", "active_day"]);
 const sleepPatternIds = new Set(["bedtime", "wake_time", "sleep_regularity", "sleep_debt", "sleep_minutes"]);
-const influenceGroupOrder = ["Sleep pattern", "Daily activity", "Training & running", "Other influences", "Journal habits"];
+const influenceGroupOrder = ["Rythme du sommeil", "Activité quotidienne", "Entraînement et course", "Autres influences", "Habitudes du journal"];
 
 export function influenceGroup(predictorId: string) {
-  if (predictorId.startsWith("journal:")) return "Journal habits";
-  if (dailyActivityIds.has(predictorId)) return "Daily activity";
-  if (activityLoadIds.has(predictorId)) return "Training & running";
-  if (sleepPatternIds.has(predictorId)) return "Sleep pattern";
-  return "Other influences";
+  if (predictorId.startsWith("journal:")) return "Habitudes du journal";
+  if (dailyActivityIds.has(predictorId)) return "Activité quotidienne";
+  if (activityLoadIds.has(predictorId)) return "Entraînement et course";
+  if (sleepPatternIds.has(predictorId)) return "Rythme du sommeil";
+  return "Autres influences";
 }
 
 export function compareInfluenceGroups(first: string, second: string) {

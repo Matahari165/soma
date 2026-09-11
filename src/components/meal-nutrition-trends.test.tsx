@@ -40,4 +40,17 @@ describe("MealNutritionTrends", () => {
     expect(html).toContain("0/7 jours mesurés");
     expect(html).toContain("mercredi 26 août : aucune estimation disponible");
   });
+
+  it("keeps an explicit zero distinct from an unmeasured day", () => {
+    const zeroMetric: MealNutritionTrendMetric = {
+      id: "proteinG",
+      points: dates.map((date, index) => ({ date, value: index === 1 ? 0 : null })),
+    };
+    const html = renderToStaticMarkup(<MealNutritionTrends metrics={[zeroMetric]} />);
+
+    expect(html).toContain("0 g");
+    expect(html).toContain("1/7 jours mesurés");
+    expect(html).toMatch(/class="[^"]*barMissing[^"]*"/);
+    expect(html).toMatch(/class="[^"]*bar[^"]*" style="--bar-scale:0\.04"/);
+  });
 });

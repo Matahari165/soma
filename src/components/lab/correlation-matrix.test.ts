@@ -7,10 +7,10 @@ describe("relationship matrix motion helpers", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("formats the four analysis period labels", () => {
-    expect(periodLabel(15)).toBe("15d");
-    expect(periodLabel(30)).toBe("30d");
-    expect(periodLabel(90)).toBe("90d");
-    expect(periodLabel("all")).toBe("All");
+    expect(periodLabel(15)).toBe("15 j");
+    expect(periodLabel(30)).toBe("30 j");
+    expect(periodLabel(90)).toBe("90 j");
+    expect(periodLabel("all")).toBe("Tout");
   });
 
   it("defaults Personal Lab to the 90-day window when available", () => {
@@ -34,9 +34,9 @@ describe("relationship matrix motion helpers", () => {
       { id: "rhr", label: "Resting heart rate", unit: "bpm", direction: "lower" },
       { id: "respiratory", label: "Respiratory rate", unit: "/min", direction: "target" },
     ])).toEqual([
-      { label: "Sleep", count: 2 },
-      { label: "Cardio & recovery", count: 2 },
-      { label: "Breathing & oxygen", count: 1 },
+      { label: "Sommeil", count: 2 },
+      { label: "Cardio et récupération", count: 2 },
+      { label: "Respiration et oxygène", count: 1 },
     ]);
   });
 
@@ -108,7 +108,7 @@ describe("relationship matrix motion helpers", () => {
   it("explains the indicator definition and provenance", () => {
     expect(influenceExplanation("exercise_minutes", "Exercise time")).toMatchObject({
       source: "Google Health",
-      calculation: expect.stringContaining("daily exercise-minute"),
+      calculation: expect.stringContaining("minutes d’exercice"),
     });
     expect(influenceExplanation("sleep_regularity", "Sleep regularity")).toMatchObject({
       source: "Soma",
@@ -121,11 +121,11 @@ describe("relationship matrix motion helpers", () => {
   });
 
   it("explains the selected running and activity metrics", () => {
-    expect(influenceExplanation("running_distance", "Running distance")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("kilometres") });
-    expect(influenceExplanation("running_pace", "Running pace")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("seconds per kilometre") });
-    expect(influenceExplanation("running_average_heart_rate", "Running average heart rate")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("beats per minute") });
-    expect(influenceExplanation("vo2_max", "VO₂ max")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("oxygen") });
-    expect(influenceExplanation("sedentary_minutes", "Sedentary minutes")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("sedentary") });
-    expect(influenceExplanation("active_day", "Active day")).toMatchObject({ source: "Soma", calculation: expect.stringContaining("7,500 steps") });
+    expect(influenceExplanation("running_distance", "Running distance")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("kilomètres") });
+    expect(influenceExplanation("running_pace", "Running pace")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("secondes par kilomètre") });
+    expect(influenceExplanation("running_average_heart_rate", "Running average heart rate")).toMatchObject({ source: "Google Health", calculation: expect.stringContaining("battements par minute") });
+    expect(influenceExplanation("vo2_max", "VO₂ max")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("oxygène") });
+    expect(influenceExplanation("sedentary_minutes", "Sedentary minutes")).toMatchObject({ source: "Google Health", definition: expect.stringContaining("sédentaire") });
+    expect(influenceExplanation("active_day", "Active day")).toMatchObject({ source: "Soma", calculation: expect.stringContaining("7 500 pas") });
   });
 });

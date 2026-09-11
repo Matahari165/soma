@@ -12,7 +12,34 @@ import { MetricTrendCard } from "./metric-trend-card";
 
 const duration = (minutes: number) => formatDurationMinutes(minutes);
 const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
-const restorativeSleepPoints = (days: HealthMetricDay[]) => days.map((day) => ({ date: day.metric_date, value: day.sleep_rem_minutes === null && day.sleep_deep_minutes === null ? null : (day.sleep_rem_minutes ?? 0) + (day.sleep_deep_minutes ?? 0) }));
+const restorativeSleepPoints = (days: HealthMetricDay[]) => days.map((day) => ({
+  date: day.metric_date,
+  value: typeof day.sleep_rem_minutes === "number" && Number.isFinite(day.sleep_rem_minutes) && typeof day.sleep_deep_minutes === "number" && Number.isFinite(day.sleep_deep_minutes)
+    ? day.sleep_rem_minutes + day.sleep_deep_minutes
+    : null,
+}));
+
+function hasSleepMeasurement(day: HealthMetricDay) {
+  return [
+    day.sleep_minutes,
+    day.sleep_need_minutes,
+    day.sleep_efficiency,
+    day.sleep_regularity,
+    day.sleep_latency_minutes,
+    day.sleep_awake_minutes,
+    day.sleep_awake_percent,
+    day.sleep_awakenings,
+    day.sleep_fragmentation,
+    day.sleep_deep_minutes,
+    day.sleep_deep_percent,
+    day.sleep_rem_minutes,
+    day.sleep_rem_percent,
+    day.sleep_light_minutes,
+    day.sleep_light_percent,
+    day.daily_sleep_debt_minutes,
+    day.cumulative_sleep_debt_minutes,
+  ].some((value) => typeof value === "number" && Number.isFinite(value));
+}
 
 function clock(value: string | null, timeZone: string) {
   return value ? new Intl.DateTimeFormat("fr-FR", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value)) : "—";
@@ -54,7 +81,7 @@ function formatClockMinutes(value: number | null) {
 }
 
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
-  const latest = data.days.findLast((day) => day.sleep_minutes !== null && day.sleep_minutes > 0);
+  const latest = data.days.findLast(hasSleepMeasurement);
   const score = data.scores.findLast((item) => item.kind === "sleep" && item.score_date === latest?.metric_date)?.score ?? null;
   const recommendation = data.sleepRecommendation;
   const target = recommendation?.sleepNeedMinutes ?? latest?.sleep_need_minutes ?? null;
@@ -72,15 +99,15 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const debtTone = metricTone(debt, averageDebt, "lower_is_better");
   const bedtimeRegularity = timingRegularity(data.days, "bedtime", data.timezone);
   const wakeRegularity = timingRegularity(data.days, "wake_time", data.timezone);
-  const recommendedWakeMinutes = recommendation?.wakeTimeMinutes ?? clockMinutes(latest?.wake_time ?? null, data.timezone);
+  const recommendedWakeMinutes = recommendation?.wakeTimeMinutes ?? null;
   const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
 
-  return <div className={styles.root}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, qualité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score de sommeil" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
+  return <div className={styles.root}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, qualité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score de sommeil" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={latest ? <>
     <div className={`health-hero-stat metric-tone--${sleepTone}`}><span>Durée de sommeil</span><strong className={`metric-reading metric-reading--${sleepTone}`}><span>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}</span><small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><small className="health-hero-stat__average">Moy. 30 j · {formatDurationMinutes(averageSleep)}</small></div>
     <div className={`health-hero-stat metric-tone--${regularityTone}`}><span>Régularité du sommeil</span><AnimatedMetricReading value={regularity} format="decimal" unit="%" decimals={0} className={`metric-reading--${regularityTone}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averageRegularity, "decimal", 0)} %</small></div>
     <div className={`health-hero-stat metric-tone--${debtTone}`}><span>Dette de sommeil</span><strong className={`metric-reading metric-reading--${debtTone}`}><span>{formatDurationMinutes(debt)}</span></strong><small className="health-hero-stat__average">Dernière nuit</small></div>
-  </>}>
+  </> : undefined}>
     <div className={styles.redesign}>
       {latest ? <div className={styles.columns}>
         <div className={styles.column}>
@@ -95,7 +122,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           </section>
 
           <section className={styles.recommendation} aria-labelledby="sleep-tonight-heading">
-            <h2 id="sleep-tonight-heading">{tonightBedtime === null ? "Gardez votre fenêtre habituelle" : "Ce soir, protégez votre fenêtre"}</h2><strong>{target === null ? "Objectif indisponible" : `${formatDurationMinutes(target)} nécessaires`}</strong><p>{tonightBedtime === null || target === null ? "Un objectif de sommeil complet est nécessaire pour formuler une recommandation." : `Ralentissez dès ${formatClockMinutes(tonightBedtime - 30)} · éteignez vers ${formatClockMinutes(tonightBedtime)}${recommendedWakeMinutes === null ? "" : ` · réveil à ${formatClockMinutes(recommendedWakeMinutes)}`}`}</p>
+            <h2 id="sleep-tonight-heading">{tonightBedtime === null ? "Gardez votre fenêtre habituelle" : "Ce soir, protégez votre fenêtre"}</h2><strong>{target === null ? "Objectif indisponible" : `${formatDurationMinutes(target)} nécessaires`}</strong><p>{tonightBedtime === null ? "Aucune heure de coucher recommandée n’est disponible." : target === null ? "Objectif de sommeil indisponible." : recommendedWakeMinutes === null ? "Aucune heure de réveil recommandée n’est disponible." : `Ralentissez dès ${formatClockMinutes(tonightBedtime - 30)} · éteignez vers ${formatClockMinutes(tonightBedtime)} · réveil à ${formatClockMinutes(recommendedWakeMinutes)}`}</p>
           </section>
 
         </div>
@@ -104,11 +131,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           <section className={styles.panel} aria-labelledby="sleep-trends-heading">
             <header className={styles.panelHeader}><h2 id="sleep-trends-heading">Tendances · 30 jours</h2></header>
             <div className={styles.trendGrid}>
-              <MetricTrendCard label="Sommeil total" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={duration} target={target} animateCurrent animationFormat="duration" />
               <MetricTrendCard label="Efficacité" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
-              <MetricTrendCard label="Dette de sommeil" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" format={duration} animateCurrent animationFormat="duration" />
               <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" animateCurrent animationFormat="decimal" />
-              <MetricTrendCard label="Régularité" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
               <MetricTrendCard label="REM + sommeil profond" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={duration} animateCurrent animationFormat="duration" />
             </div>
           </section>

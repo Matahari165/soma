@@ -43,7 +43,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   const variability = trend.variability30d === null ? "indisponible" : format(trend.variability30d);
   const cardContent = <>
     <header><div><span>{label}</span>{animateCurrent ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} /> : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />}</div><span className={`metric-direction metric-direction--${favorable}`}><Icon size={15} aria-hidden="true" />{delta === null ? "Référence en attente" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)} % vs 7 j`}</span></header>
-    <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} /></div>
+    <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} /></div>
     <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     <div className="baseline-row">{trend.comparisons.map((item) => <span key={item.days}><small>moy. {item.days} j · {item.sampleSize}/{item.days}</small><strong>{item.average === null ? "—" : format(item.average)}</strong></span>)}</div>
     <footer><span>Dernière mesure&nbsp;{formatDate(trend.currentDate ?? undefined)} · {completeCount} jours mesurés</span>{href && <ArrowUpRight className="metric-card-cue" size={17} aria-hidden="true" />}</footer>

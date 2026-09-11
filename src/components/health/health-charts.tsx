@@ -30,8 +30,9 @@ export function LineTrendChart({ points, label, target, unit }: { points: Metric
   const available = dated.filter((point): point is typeof point & { value: number } => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp));
   const description = chartDescription(label, points, unit);
   if (available.length < 2) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
-  const rawMin = Math.min(...available.map((point) => point.value), target ?? Infinity);
-  const rawMax = Math.max(...available.map((point) => point.value), target ?? -Infinity);
+  const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
+  const rawMin = Math.min(...available.map((point) => point.value), measuredTarget ?? Infinity);
+  const rawMax = Math.max(...available.map((point) => point.value), measuredTarget ?? -Infinity);
   const average = available.reduce((sum, point) => sum + point.value, 0) / available.length;
   const range = Math.max(rawMax - rawMin, Math.abs(average) * 0.1, 1);
   const midpoint = (rawMin + rawMax) / 2;
@@ -44,7 +45,7 @@ export function LineTrendChart({ points, label, target, unit }: { points: Metric
   const segments: Array<typeof available> = [];
   let current: typeof available = [];
   for (const point of dated) {
-    if (point.value === null || !Number.isFinite(point.timestamp)) {
+    if (typeof point.value !== "number" || !Number.isFinite(point.value) || !Number.isFinite(point.timestamp)) {
       if (current.length) segments.push(current);
       current = [];
       continue;
@@ -69,7 +70,7 @@ export function LineTrendChart({ points, label, target, unit }: { points: Metric
   }}>
     <line x1="8" y1="92" x2="292" y2="92" className="health-chart-grid" />
     <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Moyenne ${average.toFixed(1)}`}</title></line>
-    {target !== null && target !== undefined && <line x1="8" y1={y(target)} x2="292" y2={y(target)} className="health-chart-target"><title>{`Objectif ${target}`}</title></line>}
+    {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${measuredTarget}`}</title></line>}
     {segments.map((segment, index) => {
       const line = segment.map((point) => `${x(point.timestamp)},${y(point.value)}`).join(" ");
       const area = `${x(segment[0].timestamp)},92 ${line} ${x(segment.at(-1)?.timestamp ?? segment[0].timestamp)},92`;
@@ -116,11 +117,11 @@ export function HeartRateCurve({ samples }: { samples: HeartRateSample[] }) {
 export function ZoneDistribution({ zones }: { zones: Array<{ label: string; minutes: number | null; tone: string }> }) {
   const measured = zones.some((zone) => typeof zone.minutes === "number" && Number.isFinite(zone.minutes));
   if (!measured) return <p className="health-empty">Aucun temps par zone cardiaque n’est disponible.</p>;
-  const positiveZones = zones.map((zone) => ({ ...zone, safeMinutes: typeof zone.minutes === "number" && Number.isFinite(zone.minutes) ? Math.max(0, zone.minutes) : 0 }));
-  const total = positiveZones.reduce((sum, zone) => sum + zone.safeMinutes, 0);
+  const measuredZones = zones.filter((zone): zone is typeof zone & { minutes: number } => typeof zone.minutes === "number" && Number.isFinite(zone.minutes));
+  const total = measuredZones.reduce((sum, zone) => sum + Math.max(0, zone.minutes), 0);
   const valueText = (minutes: number | null) => minutes === null || !Number.isFinite(minutes) ? "Indisponible" : `${Math.round(minutes)} min`;
   const description = `Temps dans les zones cardiaques : ${zones.map((zone) => `${zone.label} ${valueText(zone.minutes)}`).join(", ")}.`;
   return <div><div className="zone-distribution" role="img" aria-label={description}>
-    {positiveZones.filter((zone) => zone.safeMinutes > 0).map((zone) => <span key={zone.label} className={`zone-distribution__segment zone-distribution__segment--${zone.tone}`} style={{ width: `${total ? (zone.safeMinutes / total) * 100 : 0}%` }} />)}
+    {measuredZones.filter((zone) => zone.minutes > 0).map((zone) => <span key={zone.label} className={`zone-distribution__segment zone-distribution__segment--${zone.tone}`} style={{ width: `${total ? (Math.max(0, zone.minutes) / total) * 100 : 0}%` }} />)}
   </div><p className="sr-only">{description}</p><ul className="stage-legend">{zones.map((zone) => <li key={zone.label}><span className={`stage-dot stage-dot--${zone.tone}`} />{zone.label}<strong>{valueText(zone.minutes)}</strong></li>)}</ul></div>;
 }

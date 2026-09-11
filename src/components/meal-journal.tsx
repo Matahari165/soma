@@ -304,6 +304,8 @@ type DefaultAnalyzeOptions = {
 };
 
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
+  const hasPhotoEvidence = files.length > 0 || meal.photos.some((photo) => photo.storageStatus !== "purged");
+  if (!hasPhotoEvidence) throw new Error("Ajoute au moins une photo du repas avant de lancer l’analyse.");
   const analysisRequestId = randomId("analysis");
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
@@ -657,7 +659,7 @@ function MealAnalysisDisclosure({ meal, status, correctionMode, ratingSaveState,
         <RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} />
         <RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} />
       </div>
-      {ratingSaveState !== "idle" && <p className={styles.ratingSaveStatus} role={ratingSaveState === "error" ? "alert" : "status"} aria-live="polite">
+      {ratingSaveState !== "idle" && <p className={styles.ratingSaveStatus} role={ratingSaveState === "error" ? "alert" : "status"} aria-live={ratingSaveState === "error" ? "assertive" : "polite"}>
         {ratingSaveState === "saving" ? "Enregistrement du ressenti…" : ratingSaveState === "saved" ? "Ressenti enregistré" : "Le ressenti n’a pas pu être enregistré. Réessaie."}
       </p>}
       {correctionMode && <MealCorrectionPanel meal={meal} onCorrection={onCorrection} onCancel={onCancel} />}
@@ -750,9 +752,8 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const [entryStarted, setEntryStarted] = useState(false);
   const headingId = `meal-${slot}-title`;
   const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
-  const hasNote = Boolean(meal?.note.trim());
   const status = meal?.status ?? "draft";
-  const canAnalyze = Boolean(meal) && (hasPhotos || hasNote) && status === "draft";
+  const canAnalyze = Boolean(meal) && hasPhotos && status === "draft";
   const skipped = disabled && !meal;
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
@@ -814,6 +815,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
           <Sparkles size={17} aria-hidden="true" />Analyser
         </button>
+        {!hasPhotos && <p className={styles.photoRequired}>Ajoute une photo pour lancer l’analyse. La note est optionnelle.</p>}
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
       {status === "confirmed" && meal && <MealSourceEvidence meal={meal} />}
@@ -842,7 +844,7 @@ function MealPageHeader({ totals, targets, mealsVariant = false, targetsExpanded
   if (mealsVariant) {
     return <header className={`${styles.pageHeader} ${styles.mealsPageHeader}`}>
       <h1 id="meal-journal-title">Repas</h1>
-      <div className={styles.headerMetrics} aria-label="Synthèse nutritionnelle de la journée">
+      <div className={styles.headerMetrics} role="group" tabIndex={0} aria-label="Synthèse nutritionnelle de la journée">
         <MealHeaderMetric label="Calories" value={totals?.calories ?? null} unit="kcal" target={targets.caloriesKcal.likely} />
         <MealHeaderMetric label="Protéines" value={totals?.protein ?? null} unit="g" target={targets.proteinG.likely} />
         <MealHeaderMetric label="Sucres ajoutés" value={totals?.addedSugar ?? null} unit="g" target={null} />
@@ -1174,7 +1176,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!meal || mutationInFlight.current) return;
     const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
     const hasPhotosForAnalyze = activePhotos.length > 0;
-    const hasNoteForAnalyze = Boolean(meal.note.trim());
     if (correction) {
       // Grok receives the correction together with the current evidence and
       // recalculates the complete analysis in one request.
@@ -1183,7 +1184,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         setFileError(`Ce repas contient ${activePhotos.length} photos, mais ${MAX_MEAL_PHOTOS} au maximum sont autorisées. Retire-en avant de relancer l’analyse.`);
         return;
       }
-    } else if (!hasNoteForAnalyze) return;
+    } else if (!hasPhotosForAnalyze) {
+      setFileError("Ajoute au moins une photo du repas avant de lancer l’analyse.");
+      return;
+    }
     mutationInFlight.current = true;
     updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
     try {
@@ -1245,7 +1249,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   const handleConfirm = (slot: MealSlot, meal: MealRecord) => {
     if (!meal.analysis) {
-      setConfirmError((previous) => ({ ...previous, [slot]: "Analyse le repas (photo ou texte) avant de valider." }));
+      setConfirmError((previous) => ({ ...previous, [slot]: "Ajoute une photo et analyse le repas avant de le valider." }));
       return;
     }
     // Ressentis optionnels : ne plus bloquer la validation

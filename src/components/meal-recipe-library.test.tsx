@@ -37,4 +37,22 @@ describe("MealRecipeLibrary", () => {
     expect(html).toContain("Ajouter le premier repère");
     expect(html).not.toContain("Décrire un plat récurrent");
   });
+
+  it("keeps the compact day-priority explanation and a retryable loading error", () => {
+    const html = renderToStaticMarkup(createElement(MealRecipeLibrary, {
+      embedded: true,
+      className: "meals-page-recipes",
+      initialRecipes: [],
+      initialError: "Le service des recettes est momentanément indisponible.",
+    }));
+
+    expect(html).toContain("Repères indicatifs : la photo et la note du jour priment.");
+    expect(html).toContain("Recettes indisponibles");
+    expect(html).toContain("Le service des recettes est momentanément indisponible.");
+    expect(html).toContain("Réessayer");
+    expect(html).toContain('role="alert" aria-live="assertive"');
+    expect(html).not.toContain('role="alert" aria-live="polite"');
+    expect(html).not.toContain("Nouvelle recette");
+    expect(html).not.toContain("Aucune recette enregistrée");
+  });
 });

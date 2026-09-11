@@ -33,8 +33,8 @@ export function HealthHeroScore({
   const measured = values.filter((item): item is number => item !== null && Number.isFinite(item));
   const min = measured.length ? Math.min(...measured) : 0;
   const max = measured.length ? Math.max(...measured) : 1;
-  const formattedValue = value === null ? "—" : Math.round(value);
-  const formattedAverage = average === null ? "—" : Math.round(average);
+  const formattedValue = value === null || !Number.isFinite(value) ? "—" : Math.round(value);
+  const formattedAverage = average === null || !Number.isFinite(average) ? "—" : Math.round(average);
 
   return (
     <div
@@ -56,15 +56,16 @@ export function HealthHeroScore({
         </div>
         <div className="health-hero-score-card__bars" aria-hidden="true">
           {values.map((item, index) => {
-            const height = item === null
+            const normalized = typeof item === "number" && Number.isFinite(item) ? item : null;
+            const height = normalized === null
               ? 20
               : max === min
                 ? 58
-                : 28 + (((item ?? 0) - min) / Math.max(max - min, 1)) * 52;
+                : 28 + ((normalized - min) / Math.max(max - min, 1)) * 52;
             return (
               <i
                 key={index}
-                className={item === null ? "is-empty" : ""}
+                className={normalized === null ? "is-empty" : ""}
                 style={{ height: `${height}%` }}
               />
             );
@@ -75,9 +76,14 @@ export function HealthHeroScore({
   );
 }
 
+function localizedFreshnessMoment(value: string | null, timezone: string) {
+  const formatted = formatFreshnessMoment(value, timezone);
+  return formatted === "unknown" ? "Indisponible" : formatted;
+}
+
 export function HealthPageShell({ kind, title, description, score, freshness, timezone, heroScore, heroMetrics, children }: { kind: HealthPageKind; title: string; description: string; score: number | null; freshness: SignalFreshness; timezone: string; heroScore?: ReactNode; heroMetrics?: ReactNode; children: ReactNode }) {
   const scoreKind = kind === "activity" ? "effort" : kind;
   const scoreContent = heroScore ?? <ScoreRing kind={scoreKind} label="Score" score={score} animate />;
-  return <div className={`health-detail-page health-detail-page--${kind}`} id="main-page-content"><header className={`health-detail-hero${heroMetrics ? " health-detail-hero--with-metrics" : ""}`}><div><h1>{title}</h1><span className="sr-only">{description}</span></div>{heroMetrics ? <div className="health-hero-metrics"><div className="health-hero-score">{scoreContent}</div>{heroMetrics}</div> : <div className="health-hero-score">{scoreContent}</div>}</header>{children}<div className="health-signal-meta health-signal-meta--footer" aria-label={`${title} qualité des données`}><strong data-state={freshness.state}>{stateLabel[freshness.state]}</strong><span>Mesuré&nbsp;{formatFreshnessMoment(freshness.measuredAt, timezone)}</span><span>Importé&nbsp;{formatFreshnessMoment(freshness.importedAt, timezone)}</span><span>{Math.round(freshness.coverage * 100)}&nbsp;% de couverture du score</span></div></div>;
+  const coverage = Number.isFinite(freshness.coverage) ? Math.min(1, Math.max(0, freshness.coverage)) : 0;
+  return <div className={`health-detail-page health-detail-page--${kind}`} id="main-page-content"><header className={`health-detail-hero${heroMetrics ? " health-detail-hero--with-metrics" : ""}`}><div><h1>{title}</h1><span className="sr-only">{description}</span></div>{heroMetrics ? <div className="health-hero-metrics"><div className="health-hero-score">{scoreContent}</div>{heroMetrics}</div> : <div className="health-hero-score">{scoreContent}</div>}</header>{children}<div className="health-signal-meta health-signal-meta--footer" aria-label={`${title} qualité des données`}><strong data-state={freshness.state}>{stateLabel[freshness.state]}</strong><span>Mesuré&nbsp;{localizedFreshnessMoment(freshness.measuredAt, timezone)}</span><span>Importé&nbsp;{localizedFreshnessMoment(freshness.importedAt, timezone)}</span><span>{Math.round(coverage * 100)}&nbsp;% de couverture du score</span></div></div>;
 }
-

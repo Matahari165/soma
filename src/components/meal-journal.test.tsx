@@ -2,13 +2,49 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
+  it("expose la photo et la note originales après confirmation sans rouvrir le formulaire", () => {
+    const html = renderToStaticMarkup(<MealJournal initialData={{
+      date,
+      meals: {
+        lunch: {
+          id: "meal-confirmed-source",
+          date,
+          slot: "lunch",
+          note: "Déjeuner pris au calme.",
+          photos: [{ id: "photo-source", url: "/api/meals/meal-confirmed-source/photos/photo-source", filename: "lunch.jpg", origin: "homemade" }],
+          analysis: { ingredients: [], calories: { low: 400, likely: 500, high: 600 }, proteinGrams: { low: 20, likely: 25, high: 30 } },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+    const lunchStart = html.indexOf('id="meal-lunch-title"');
+    const snackStart = html.indexOf('id="meal-snack-title"');
+    const lunch = html.slice(lunchStart, snackStart);
+
+    expect(lunch).toContain("Photo et note du jour");
+    expect(lunch).toContain("Note du jour");
+    expect(lunch).toContain("Déjeuner pris au calme.");
+    expect(lunch).toContain('alt="Photo originale 1 du repas"');
+    expect(lunch).toContain("/api/meals/meal-confirmed-source/photos/photo-source");
+    expect(lunch).not.toContain("<textarea");
+    expect(lunch).not.toContain("Ajouter une photo");
+  });
+
+  it("explique clairement les photos refusées au-delà de la limite", () => {
+    expect(mealPhotoLimitMessage(5, 2, 6)).toBe("6 photos maximum par repas. 1 photo n’a pas été ajoutée.");
+    expect(mealPhotoLimitMessage(6, 1, 6)).toBe("Maximum de 6 photos par repas atteint. Retire une photo avant d’en ajouter une autre.");
+    expect(mealPhotoLimitMessage(4, 2, 6)).toBeNull();
+  });
+
   it("targets the first empty enabled slot when adding a meal", () => {
     const breakfast = {
       id: "breakfast",
@@ -71,7 +107,14 @@ describe("MealJournal", () => {
     expect(html).not.toContain(">Cibles du jour<");
   });
 
-  it("shows an analyze button for a text-only draft", () => {
+  it("expose la synthèse KPI mobile comme un rail parcourable au clavier", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="meals" date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(html).toContain('role="group" tabindex="0" aria-label="Synthèse nutritionnelle de la journée"');
+    expect(html).toContain('>—<small>kcal</small>');
+  });
+
+  it("requires a photo before analyzing a draft and keeps the note optional", () => {
     const draft: MealJournalData = {
       date,
       meals: {
@@ -91,7 +134,8 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
 
     expect(html).toContain("<textarea");
-    expect(html).toContain(">Analyser</button>");
+    expect(html).toContain("Ajoute une photo pour lancer l’analyse. La note est optionnelle.");
+    expect(html).toContain('disabled=""');
     expect(html).not.toContain("Grok");
     expect(html).not.toContain("aria-describedby");
   });
@@ -133,7 +177,7 @@ describe("MealJournal", () => {
     expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
   });
 
-  it("creates then analyzes a new text-only meal without a redundant update", async () => {
+  it("rejects a new text-only meal before creating it", async () => {
     const requests: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -145,20 +189,17 @@ describe("MealJournal", () => {
       return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
     }));
 
-    await defaultAnalyze({
+    await expect(defaultAnalyze({
       date,
       slot: "breakfast",
       files: [],
       meal: { id: "meal-new", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-    });
+    })).rejects.toThrow("Ajoute au moins une photo");
 
-    expect(requests).toEqual([
-      { url: "/api/meals", method: "POST" },
-      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze", method: "POST" },
-    ]);
+    expect(requests).toEqual([]);
   });
 
-  it("updates then analyzes an existing text-only meal", async () => {
+  it("rejects an existing text-only meal before updating it", async () => {
     const requests: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -167,17 +208,14 @@ describe("MealJournal", () => {
       return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "2 bananes", status: "draft", photos: [], analysis: null } });
     }));
 
-    await defaultAnalyze({
+    await expect(defaultAnalyze({
       date,
       slot: "breakfast",
       files: [],
       meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "2 bananes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-    });
+    })).rejects.toThrow("Ajoute au moins une photo");
 
-    expect(requests).toEqual([
-      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", method: "PATCH" },
-      { url: "/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze", method: "POST" },
-    ]);
+    expect(requests).toEqual([]);
   });
 
   it("sends a natural-language correction with the forced analysis", async () => {
@@ -192,7 +230,7 @@ describe("MealJournal", () => {
       date,
       slot: "lunch",
       files: [],
-      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+      meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [{ id: "photo-stored", url: "/api/meals/photo-stored", filename: "lunch.jpg", origin: "homemade" }], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
       correction: "Il y avait une petite portion de pâtes, pas une grande.",
     });
 

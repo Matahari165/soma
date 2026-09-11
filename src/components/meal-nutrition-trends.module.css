@@ -227,7 +227,9 @@
   padding: 0;
   border: 0;
   background: var(--metric-color);
-  transition: height var(--normal) var(--ease);
+  transform: scaleY(var(--bar-scale, 1));
+  transform-origin: bottom;
+  transition: transform var(--normal) var(--ease);
 }
 
 .axis,

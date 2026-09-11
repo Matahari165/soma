@@ -31,6 +31,41 @@
 .notice { min-height: 24px; margin-top: 12px; color: var(--moss-dark); font-size: .76rem; }
 .notice:empty { margin-top: 0; }
 
+.loadError {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-surface);
+  background: var(--danger-soft);
+  color: var(--ink);
+}
+
+.loadError > svg { flex: 0 0 auto; color: var(--danger); }
+.loadError > div { display: grid; flex: 1 1 auto; gap: 3px; min-width: 0; }
+.loadError span { color: var(--ink-soft); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.retryButton {
+  display: inline-flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+}
+.retryButton:hover { border-color: var(--moss-dark); background: var(--moss-soft); }
+.retryButton:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+.retryButton:disabled { cursor: wait; opacity: .65; }
+
 .content { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 42px; margin-top: 24px; align-items: start; }
 .formPanel { padding: 22px 0 28px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line-strong); }
 .listPanel { min-width: 0; }
@@ -125,13 +160,22 @@
 
 .page:global(.meals-page-recipes) .heading { max-width: none; }
 .page:global(.meals-page-recipes) .heading .eyebrow,
-.page:global(.meals-page-recipes) .heading p {
+.page:global(.meals-page-recipes) .heading > p:not(.embeddedExplainer) {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.page:global(.meals-page-recipes) .heading .embeddedExplainer {
+  display: block;
+  max-width: 52ch;
+  margin-top: 4px;
+  color: var(--lab-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .page:global(.meals-page-recipes) .heading h2 {
@@ -191,6 +235,8 @@
 .page:global(.meals-page-recipes) .ingredientSummary li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .page:global(.meals-page-recipes) .ingredientSummary li::before { color: var(--lab-brand); }
 .page:global(.meals-page-recipes) .recipeReference { grid-column: 3; grid-row: 1; margin: 0; overflow: hidden; color: var(--lab-text-secondary); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.page:global(.meals-page-recipes) .deleteConfirmation,
+.page:global(.meals-page-recipes) .deleteConfirmation button { font-size: 12px; line-height: 16px; }
 .page:global(.meals-page-recipes) .recipeActions { align-items: center; gap: 4px; }
 .page:global(.meals-page-recipes) .recipeTextAction {
   display: inline-flex;
@@ -211,6 +257,7 @@
 .page:global(.meals-page-recipes) .recipeTextAction svg { width: 12px; height: 12px; }
 .page:global(.meals-page-recipes) .recipeTextAction:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); color: var(--lab-brand); }
 .page:global(.meals-page-recipes) .empty { min-height: 232px; margin: 0; padding: 24px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); }
+.page:global(.meals-page-recipes) .empty p { font-size: 12px; line-height: 18px; }
 
 @media (max-width: 700px) {
   .page:global(.meals-page-recipes) { min-height: 0; padding: 16px 0 24px; }
@@ -255,7 +302,7 @@
   .page:global(.meals-page-recipes) .recipe { gap: 8px; padding: 10px; }
   .page:global(.meals-page-recipes) .recipeBody { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
   .page:global(.meals-page-recipes) .recipeTitle h3 { font-size: 16px; line-height: 22px; }
-  .page:global(.meals-page-recipes) .recipeReference { max-width: 112px; font-size: 11px; }
+  .page:global(.meals-page-recipes) .recipeReference { max-width: 112px; font-size: 12px; }
   .page:global(.meals-page-recipes) .ingredientSummary { font-size: 12px; line-height: 17px; }
   .page:global(.meals-page-recipes) .recipeActions { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .page:global(.meals-page-recipes) .recipeTextAction { width: 100%; min-height: 44px; font-size: 12px; }

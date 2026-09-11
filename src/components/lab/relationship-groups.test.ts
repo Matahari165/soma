@@ -23,14 +23,14 @@ function series(id: string, slope = 1): MatrixSeries {
 
 describe("groupMatrixRows", () => {
   it("groups related influences without merging their rows", () => {
-    expect(influenceGroup("effort")).toBe("Training & running");
-    expect(influenceGroup("exercise_minutes")).toBe("Training & running");
-    expect(influenceGroup("steps")).toBe("Daily activity");
-    expect(influenceGroup("journal:reading")).toBe("Journal habits");
+    expect(influenceGroup("effort")).toBe("Entraînement et course");
+    expect(influenceGroup("exercise_minutes")).toBe("Entraînement et course");
+    expect(influenceGroup("steps")).toBe("Activité quotidienne");
+    expect(influenceGroup("journal:reading")).toBe("Habitudes du journal");
   });
   it("uses the two activity groups that match the user's mental model", () => {
-    expect(["steps", "active_minutes", "sedentary_minutes"].every((id) => influenceGroup(id) === "Daily activity")).toBe(true);
-    expect(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"].every((id) => influenceGroup(id) === "Training & running")).toBe(true);
+    expect(["steps", "active_minutes", "sedentary_minutes"].every((id) => influenceGroup(id) === "Activité quotidienne")).toBe(true);
+    expect(["effort", "zone_minutes", "intense_minutes", "exercise_minutes", "running_distance", "running_pace", "running_average_heart_rate", "vo2_max"].every((id) => influenceGroup(id) === "Entraînement et course")).toBe(true);
   });
   it("keeps J+1 and J+2 in one predictor row and one outcome cell", () => {
     const predictor = series("caffeine");
@@ -89,10 +89,10 @@ describe("groupMatrixRows", () => {
     })) satisfies PersonalLabSnapshot["matrix"]["rows"];
 
     expect(groupMatrixRows(rows, ["hrv"]).map((row) => row.group)).toEqual([
-      "Sleep pattern",
-      "Daily activity",
-      "Training & running",
-      "Journal habits",
+      "Rythme du sommeil",
+      "Activité quotidienne",
+      "Entraînement et course",
+      "Habitudes du journal",
     ]);
   });
 });

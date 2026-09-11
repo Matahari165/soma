@@ -362,7 +362,7 @@
   gap: 16px;
   cursor: pointer;
   color: var(--activity-text);
-  font-size: var(--lab-type-title);
+  font-size: var(--lab-type-section);
   font-weight: 560;
   list-style-position: inside;
 }
@@ -818,6 +818,17 @@
   .root :global(.exercise-detail-grid) { grid-template-columns: 1fr; }
 }
 
+/* Activity keeps the chart and score controls operable at touch and keyboard
+   sizes even when the compact layout is active. */
+.root :global(.health-line-chart) { min-height: 44px; }
+.root :global(.activity-score-control .health-score-trigger),
+.root :global(.health-explanation-popover header button) { min-width: 44px; min-height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.score-ring__progress),
+  .root :global(.score-ring--animated) { animation: none; transition: none; }
+}
+
 /* BOLDER — effort uses a stronger performance band and more decisive plots. */
 .root :global(.health-detail-hero) { border-bottom: 2px solid var(--activity-brand); }
 .root :global(.health-hero-metrics > :first-child) {
@@ -856,6 +867,9 @@
 /* Readability floor: measurements and their labels remain usable at the
    compact breakpoint; color and spacing continue to carry the hierarchy. */
 .root :global(.health-primary-card__average),
+.root :global(.health-hero-metrics .score-ring__value small),
+.headerScoreMetric > span,
+.headerScoreBody p,
 .root :global(.health-detail-hero .eyebrow),
 .root :global(.health-hero-stat > span),
 .root :global(.health-hero-stat__average),
@@ -872,7 +886,8 @@
 .root :global(.exercise-table td),
 .root :global(.exercise-table tbody th small),
 .root :global(.health-signal-meta),
-.root :global(.health-signal-meta strong) {
+.root :global(.health-signal-meta strong),
+.root :global(.health-primary-card__hint) {
   font-size: var(--lab-type-label);
   line-height: 16px;
 }
@@ -919,4 +934,27 @@
     max-width: 100%;
     white-space: nowrap;
   }
+}
+
+/* Final accessibility floor for labels and controls at every breakpoint. */
+.root :global(.health-hero-score-card__header > span),
+.root :global(.health-hero-score-card__metric p),
+.root :global(.health-hero-score-card__number small),
+.root :global(.health-hero-stat > span),
+.root :global(.health-hero-stat__average),
+.root :global(.metric-trend-card header span),
+.root :global(.metric-trend-card footer),
+.root :global(.metric-trend-card .chart-axis),
+.root :global(.stage-legend),
+.root :global(.stage-legend strong),
+.root :global(.exercise-table th),
+.root :global(.exercise-table td),
+.root :global(.health-signal-meta) {
+  font-size: var(--lab-type-label, 12px);
+}
+.root :global(.health-line-chart) { min-height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.score-ring__progress),
+  .root :global(.score-ring--animated) { animation: none; transition: none; }
 }
