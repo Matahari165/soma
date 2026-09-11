@@ -1632,6 +1632,220 @@
   .mealsSecondary { min-width: 0; }
 }
 
+/* Observatoire route contract. These selectors intentionally live in the
+   module: every journal element below is CSS-module scoped and cannot be
+   reached reliably from a global class name. */
+:global(.meals-page) .mealsPageRoot {
+  padding: 32px 5vw 64px;
+  background: #050505;
+  color: #eee;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsPageHeader {
+  height: auto;
+  min-height: 96px;
+  grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr);
+  gap: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsPageHeader h1 {
+  color: #eee;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 40px;
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+
+:global(.meals-page) .mealsPageRoot .headerMetrics {
+  height: auto;
+  min-height: 72px;
+  gap: 24px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .headerMetric {
+  min-height: 72px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .headerMetric > span {
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 16px;
+  text-transform: none;
+}
+
+:global(.meals-page) .mealsPageRoot .headerMetric > strong {
+  color: #eee;
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+:global(.meals-page) .mealsPageRoot .headerMetric > strong small {
+  color: #aaa;
+  font: inherit;
+  font-size: 12px;
+}
+
+:global(.meals-page) .mealsPageRoot .historyNavigation {
+  height: 36px;
+  min-height: 36px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .historyArrow {
+  min-width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  background: #1c1c1c;
+  color: #eee;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip {
+  height: 36px;
+  border: 0;
+  border-radius: 0;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+  min-height: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+  background: #eee;
+  color: #050505;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends),
+:global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-recipes) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel {
+  border-top-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalHeader h2,
+:global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends) h2,
+:global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-recipes) h2 {
+  color: #eee;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealCard {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealTitle h3 {
+  color: #eee;
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealStatus,
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealCalories,
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealsMealDetails span,
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel .mealsMealFooter {
+  color: #aaa;
+  font-weight: 400;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton) {
+  min-height: 36px;
+  border: 0;
+  border-radius: 4px;
+  background: #1c1c1c;
+  color: #eee;
+  font-weight: 400;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton):hover:not(:disabled) {
+  background: #292929;
+  color: #fff;
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton):disabled {
+  border: 0;
+  background: #1c1c1c;
+  color: #aaa;
+}
+
+@media (max-width: 700px) {
+  :global(.meals-page) .mealsPageRoot {
+    padding: 24px 16px 48px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsPageHeader {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .headerMetrics {
+    min-height: 64px;
+    overflow-x: auto;
+    gap: 16px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .headerMetric {
+    min-height: 64px;
+    flex: 0 0 124px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .historyNavigation,
+  :global(.meals-page) .mealsPageRoot .historyArrow,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(.captureButton,.captureButtonCompact,.galleryButton,.galleryButtonCompact,.analyzeButton,.emptyNoteButton,.secondaryButton) {
+    min-height: 44px;
+  }
+}
+
 /* Local preview action hierarchy: camera first, library second, note tertiary. */
 :global(html[data-lab-theme]) .labRoot :is(.captureButton, .captureButtonCompact) {
   min-height: 44px;

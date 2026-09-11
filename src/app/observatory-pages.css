@@ -1,0 +1,114 @@
+/* Shared detail-page language, inherited from the Personal Lab. */
+html[data-lab-theme="observatory"] {
+ --canvas:#050505; --paper:#050505; --ink:#eee; --ink-soft:#bbb; --muted:#aaa;
+ --line:transparent; --line-strong:transparent; --focus-color:#eee;
+ --lab-surface:#050505; --lab-surface-subtle:#050505; --lab-surface-hover:#151515;
+}
+html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) { color:#eee; background:transparent; }
+html[data-lab-theme="observatory"] .settings-page { max-width:none; padding:32px 5vw 64px; }
+html[data-lab-theme="observatory"] .settings-page > header h1 { margin:0 0 32px; font:400 clamp(30px,3vw,40px)/1.2 Georgia,serif; letter-spacing:-.025em; }
+html[data-lab-theme="observatory"] .settings-layout { display:grid; grid-template-columns:180px minmax(0,760px); gap:clamp(32px,6vw,88px); align-items:start; }
+html[data-lab-theme="observatory"] .settings-layout > nav { border:0; background:transparent; display:grid; gap:6px; }
+html[data-lab-theme="observatory"] .settings-layout > nav button { border:0; min-height:36px; background:transparent; text-align:left; padding:8px 12px; font-size:14px; font-weight:400; color:#aaa; }
+html[data-lab-theme="observatory"] .settings-layout > nav button.is-active { color:#fff; background:#1c1c1c; border-radius:4px; }
+html[data-lab-theme="observatory"] .settings-page :is(.settings-card,.connection-card,.calendar-connection-card,.sync-summary,.privacy-card,.settings-content) { border:0; box-shadow:none; background:transparent; padding:0; }
+html[data-lab-theme="observatory"] .settings-card { display:grid; gap:24px; }
+html[data-lab-theme="observatory"] .settings-page :is(h2,h3) { color:#eee; font-size:20px; line-height:1.3; font-weight:400; }
+html[data-lab-theme="observatory"] .settings-page :is(h2,h3) { font-family:Georgia, "Times New Roman", serif; line-height:24px; }
+html[data-lab-theme="observatory"] .settings-page :is(p,label,button,input,select,strong,small) { font-weight:400; }
+html[data-lab-theme="observatory"] .settings-page p { color:#aaa; font-size:13px; line-height:1.6; max-width:65ch; }
+html[data-lab-theme="observatory"] .settings-form { gap:20px 28px; }
+html[data-lab-theme="observatory"] .settings-form label { display:grid; gap:8px; color:#bbb; font-size:13px; }
+html[data-lab-theme="observatory"] .settings-page :is(input,select) { min-height:36px; padding:8px 12px; border:0; border-radius:4px; background:#101010; color:#eee; font:400 14px var(--font-soma-mono),monospace; }
+html[data-lab-theme="observatory"] .settings-page :is(.primary-button,.secondary-button,.sync-now-button) { min-height:36px; border:0; border-radius:4px; background:#1c1c1c; color:#eee; padding:8px 16px; font-size:13px; font-weight:400; box-shadow:none; }
+html[data-lab-theme="observatory"] .settings-page .connection-card { padding:20px 0; }
+html[data-lab-theme="observatory"] .settings-page .connection-logo { background:transparent; color:#bbb; }
+html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) :focus-visible { outline:2px solid #eee; outline-offset:3px; }
+html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) button { transition:color 180ms ease,background-color 180ms ease; }
+html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) button:disabled { opacity:.45; }
+@media(max-width:700px) {
+ html[data-lab-theme="observatory"] .settings-page { padding:24px 16px 48px; }
+ html[data-lab-theme="observatory"] .settings-layout { grid-template-columns:minmax(0,1fr); gap:28px; }
+ html[data-lab-theme="observatory"] .settings-layout > nav { display:flex; overflow-x:auto; }
+ html[data-lab-theme="observatory"] .settings-layout > nav button { white-space:nowrap; flex-shrink:0; }
+}
+@media(prefers-reduced-motion:reduce) { html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) button { transition:none; } }
+html[data-lab-theme="observatory"] .settings-page > header { min-height:0; padding:0; margin:0 0 32px; border:0; }
+html[data-lab-theme="observatory"] .settings-page > header h1 { margin:0; }
+html[data-lab-theme="observatory"] .settings-card > .primary-button { justify-self:start; width:auto; min-width:168px; }
+html[data-lab-theme="observatory"] .settings-page :is(.scope-note,.sync-advanced,.sync-diagnostics,.privacy-actions article,.inline-confirmation,.inline-empty,.health-coverage-summary) { border:0; background:transparent; box-shadow:none; }
+html[data-lab-theme="observatory"] .settings-page :is(summary,.connection-actions button,.privacy-actions button,.privacy-actions a) { font-size:14px; font-weight:400; }
+html[data-lab-theme="observatory"] .settings-page :is(.scope-note,.privacy-actions article) { padding:16px 0; }
+html[data-lab-theme="observatory"] .settings-page .danger-zone { color:#e5b5b5; border:0 !important; padding:16px 0 !important; }
+html[data-lab-theme="observatory"] .settings-page .danger-zone input { color:#eee; }
+html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals-page) { font-family:var(--font-soma-ui),system-ui,sans-serif; }
+html[data-lab-theme="observatory"] .settings-page :is(.health-data-coverage,.health-data-coverage__status) { border:0; box-shadow:none; background:transparent; }
+html[data-lab-theme="observatory"] .settings-page .health-data-coverage dd { font-weight:400; }
+
+/* Repas uses the same title rail as the health observatories. The component
+   keeps its CSS-module classes; these route hooks make the shared contract
+   apply without coupling this sheet to generated class names. */
+html[data-lab-theme="observatory"] .meals-page > section {
+  max-width: none;
+  padding: 32px 5vw 64px;
+  background: transparent;
+  color: #eee;
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+}
+html[data-lab-theme="observatory"] .meals-page > section > header {
+  height: auto;
+  min-height: 96px;
+  grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr);
+  gap: 32px;
+  border: 0;
+  background: transparent;
+}
+html[data-lab-theme="observatory"] .meals-page > section > header h1 {
+  margin: 0;
+  color: #eee;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 40px;
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+html[data-lab-theme="observatory"] .meals-page > section :is(h2,h3) {
+  color: #eee;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+html[data-lab-theme="observatory"] .meals-page > section :is(.meals-page-trends,.meals-page-recipes) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+html[data-lab-theme="observatory"] .meals-page > section :is(button,input,select,textarea) {
+  border-radius: 4px;
+  font-weight: 400;
+}
+html[data-lab-theme="observatory"] .meals-page > section button { min-height: 36px; }
+html[data-lab-theme="observatory"] .meals-page > section :focus-visible { outline: 2px solid #eee; outline-offset: 3px; }
+
+/* Route-specific first-panel accents are useful in the light system but
+   contradict the borderless observatory surface contract. */
+html[data-lab-theme="observatory"] .health-detail-page .health-observatory-panel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html[data-lab-theme="observatory"] .health-detail-page .health-observatory-subpanel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html[data-lab-theme="observatory"] .health-detail-page .health-observatory-recommendation {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+@media (max-width: 700px) {
+  html[data-lab-theme="observatory"] .meals-page > section { padding: 24px 16px 48px; }
+  html[data-lab-theme="observatory"] .meals-page > section > header { min-height: 0; grid-template-columns: 1fr; gap: 16px; }
+  html[data-lab-theme="observatory"] .meals-page > section > header h1 { font-size: 30px; }
+}

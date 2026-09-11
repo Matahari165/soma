@@ -3,6 +3,7 @@ import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
+import { ObservatoryPageMotion } from "@/components/lab/observatory-page-motion";
 import { LabGlobalNavigation } from "@/components/lab/lab-global-navigation";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
@@ -31,6 +32,7 @@ import "./lab-final-focus.css";
 import "./lab-final-index.css";
 import "./observatory-geometry.css";
 import "./observatory-deep.css";
+import "./observatory-pages.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
@@ -79,7 +81,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
-        {localPreview && <LabGlobalNavigation />}
+        {localPreview && <><LabGlobalNavigation /><ObservatoryPageMotion /></>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

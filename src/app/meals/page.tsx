@@ -81,7 +81,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
     : null;
 
   return (
-    <div id="main-page-content" lang="fr">
+    <div id="main-page-content" className="meals-page" lang="fr">
       {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
         {nutritionResult.ok
           ? <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
