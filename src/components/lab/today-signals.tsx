@@ -91,7 +91,7 @@ function comparison(value: number | null, average: number | null) {
 }
 
 function accessibleValue(key: "sleepMinutes" | "recoveryScore" | "effortScore" | "calorieProgress", value: number | null) {
-  if (value === null) return "not available";
+  if (value === null) return "indisponible";
   if (key === "sleepMinutes") return duration(value);
   if (key === "calorieProgress") return `${Math.round(value)}%`;
   return String(Math.round(value));
@@ -129,7 +129,7 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
       announcedInitial.current = true;
       return;
     }
-    setAnnouncement("Today values updated.");
+    setAnnouncement("Valeurs du jour actualisées.");
     const timeout = window.setTimeout(() => setAnnouncement(""), 1200);
     return () => window.clearTimeout(timeout);
   }, [values.calorieProgress, values.effortScore, values.recoveryScore, values.sleepMinutes]);
@@ -166,12 +166,12 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [refresh]);
 
   const signals = [
-    { key: "sleepMinutes" as const, label: "Sleep duration", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), supporting: `30-day avg · ${values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes))}`, trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
-    { key: "recoveryScore" as const, label: "Recovery", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), supporting: `30-day avg · ${values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : Math.round(values.averageRecoveryScore)}`, trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
-    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), supporting: `30-day avg · ${values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : Math.round(values.averageEffortScore)}`, trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
+    { key: "sleepMinutes" as const, label: "Sommeil", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), supporting: `Moy. 30 j · ${values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes))}`, trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
+    { key: "recoveryScore" as const, label: "Récupération", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), supporting: `Moy. 30 j · ${values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : Math.round(values.averageRecoveryScore)}`, trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
+    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), supporting: `Moy. 30 j · ${values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : Math.round(values.averageEffortScore)}`, trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
     { key: "calorieProgress" as const, label: "Calories", node: <AnimatedSignalNumber value={values.calorieProgress ?? null} format="percentage" />, finalValue: accessibleValue("calorieProgress", values.calorieProgress ?? null), supporting: `Cible · ${values.calorieTarget === null || values.calorieTarget === undefined ? "—" : `${Math.round(values.calorieTarget)} kcal`}`, trend: values.calorieProgress !== null && values.calorieProgress !== undefined && values.calorieProgress < 100 ? "below" : "neutral", href: "/meals" },
   ];
-  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, supporting, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
+  return <section className="lab-signals" aria-label="Aujourd’hui" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, supporting, trend, href }) => <Link href={href} key={label} aria-label={`${label} : ${finalValue}`}>
     <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">{supporting}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{node}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;

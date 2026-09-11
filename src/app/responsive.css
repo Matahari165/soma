@@ -191,8 +191,6 @@
   .settings-page,
   .legal-page { padding-inline: 14px; }
   .system-loading { padding: 24px 14px; }
-  .system-loading__metrics { grid-template-columns: 1fr; }
-  .system-loading__metrics span { min-height: 132px; }
 
   .health-primary-card p,
   .health-timing-grid p,

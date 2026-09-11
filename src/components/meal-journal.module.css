@@ -538,7 +538,9 @@
 .ratingSelected { border-color: var(--clay); background: var(--clay-soft); color: var(--clay); font-weight: 700; }
 
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.spin { animation: spin 900ms linear infinite; }
+.progressTrace { display: inline-block; width: 22px; height: 2px; overflow: hidden; flex: 0 0 auto; background: currentColor; opacity: .34; }
+.progressTrace::after { display: block; width: 45%; height: 100%; background: currentColor; content: ""; opacity: 1; animation: meal-progress-open 1.8s cubic-bezier(.16, 1, .3, 1) infinite; }
+@keyframes meal-progress-open { from { transform: translateX(-110%); } to { transform: translateX(230%); } }
 
 .targetEditor {
   display: grid;
@@ -587,7 +589,6 @@
 
 .targetEditor input:focus { border-color: var(--moss-dark); }
 
-@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 680px) {
   .root { padding: 24px 14px 48px; }
@@ -639,7 +640,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spin { animation: none; }
+  .progressTrace::after { animation: none; transform: none; }
   .captureButton, .galleryButton, .captureButtonCompact, .galleryButtonCompact, .emptyNoteButton, .analyzeButton, .confirmButton, .secondaryButton, .retryButton, .originChoice, .originChoiceSelected, .ratingChoice, .ratingSelected { transition: none; }
 }
 
@@ -1096,7 +1097,7 @@
 .mealsWorkbench {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.16fr) minmax(360px, .84fr);
   align-items: start;
   gap: var(--lab-column-gap);
   margin-top: 16px;
@@ -1152,15 +1153,15 @@
 
 .mealsJournalPanel > .mealList {
   display: grid;
-  gap: 24px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .mealsJournalPanel > .mealList > div { min-width: 0; }
 
 .mealsJournalPanel .mealCard {
   display: flex;
-  min-height: 188px;
+  min-height: 156px;
   flex-direction: column;
   padding: 16px;
   border: 1px solid var(--lab-border);
@@ -1444,8 +1445,21 @@
 
 @media (max-width: 700px) {
   .mealsPageRoot .mealsPageHeader h1 { font-size: 24px; line-height: 30px; }
-  .mealsPageRoot .headerMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .mealsPageRoot .headerMetric { min-height: 68px; padding: 8px 12px; }
+  .mealsPageRoot .headerMetrics {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .mealsPageRoot .headerMetric {
+    min-width: 132px;
+    min-height: 60px;
+    flex: 1 0 132px;
+    padding: 8px 12px;
+    scroll-snap-align: start;
+  }
   .mealsPageRoot .headerMetric > strong { font-size: 16px; line-height: 22px; }
 }
 
@@ -1458,14 +1472,11 @@
     min-width: 0;
     padding-right: 28px;
   }
-  .mealsPageRoot .headerMetrics {
-    min-width: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
+  .mealsPageRoot .headerMetrics { min-width: 0; gap: 8px; }
   .mealsPageRoot .headerMetric {
-    min-width: 0;
-    min-height: 64px;
+    min-width: 124px;
+    min-height: 58px;
+    flex-basis: 124px;
     padding: 8px;
   }
   .mealsPageRoot .headerMetric > span,
@@ -1511,5 +1522,160 @@
   }
   .mealsJournalPanel .photoInputSingle > button:only-child {
     grid-column: 1 / -1;
+  }
+}
+
+/* DISTILL — meals read as one daily record, not a stack of framed widgets. */
+.mealsPageRoot .mealsPageHeader {
+  border-bottom: 1px solid var(--lab-border-strong);
+}
+
+.mealsPageRoot .headerMetrics {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+}
+
+.mealsPageRoot .headerMetric {
+  border: 0;
+  border-right: 1px solid var(--lab-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mealsPageRoot .headerMetric:last-child { border-right: 0; }
+
+.mealsJournalPanel {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
+.mealsJournalHeader { padding-inline: 0; }
+
+.mealsJournalPanel > .mealList {
+  gap: 0;
+}
+
+.mealsJournalPanel > .mealList > div + div {
+  padding-top: 20px;
+  border-top: 1px solid var(--lab-border-strong);
+}
+
+.mealsJournalPanel .mealCard {
+  border-inline: 0;
+  border-radius: var(--lab-radius-sm);
+  box-shadow: none;
+}
+
+.mealsJournalPanel .mealCardEmpty {
+  border-style: solid;
+}
+
+.mealsJournalPanel .captureButtonCompact {
+  box-shadow: none;
+}
+
+@media (max-width: 700px) {
+  .mealsPageRoot .headerMetrics { overflow-x: auto; }
+  .mealsPageRoot .headerMetric { border-right: 1px solid var(--lab-border); }
+  .mealsJournalPanel { padding-inline: 0; }
+}
+
+/* /meals mobile: keep the journal readable and thumb-friendly at 390px. */
+@media (max-width: 700px) {
+  .mealsPageRoot { overflow-x: clip; padding: 14px 12px max(24px, env(safe-area-inset-bottom)); }
+  .mealsPageRoot .mealsPageHeader { gap: 10px; padding-right: 0; }
+  .mealsPageRoot .mealsTargetButton { top: -4px; right: -4px; }
+  .mealsPageRoot .headerMetrics { gap: 8px; }
+  .mealsPageRoot .headerMetric { min-height: 64px; padding: 8px 10px; }
+  .mealsPageRoot .headerMetric > span { font-size: 11px; letter-spacing: .55px; line-height: 14px; }
+  .mealsPageRoot .headerMetric > strong { min-width: 0; font-size: 16px; line-height: 20px; }
+  .mealsPageRoot .headerMetric > strong small { font-size: 11px; line-height: 14px; }
+  .mealsPageRoot .historyNavigation { margin-top: 12px; }
+  .mealsPageRoot .mealsWeekStrip { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { display: none; }
+  .mealsPageRoot .mealsWeekStrip .weekDay,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected { flex: 0 0 44px; flex-direction: column; gap: 0; padding-inline: 2px; font-size: 11px; }
+  .mealsPageRoot .mealsWeekStrip .weekDay span,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-size: 10px; line-height: 14px; }
+  .mealsPageRoot .mealsWeekStrip .weekDay strong,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected strong { font-size: 13px; line-height: 16px; }
+  .mealsWorkbench { gap: 20px; margin-top: 14px; }
+  .mealsJournalPanel { padding: 14px 12px 16px; }
+  .mealsJournalHeader h2 { font-size: 20px; line-height: 26px; }
+  .mealsJournalPanel > .mealList > div + div { padding-top: 16px; }
+  .mealsJournalPanel .mealCard { padding: 12px 0; }
+  .mealsJournalPanel .mealCardEmpty { padding: 12px; }
+  .mealsJournalPanel .mealHeader { min-height: 0; align-items: flex-start; flex-wrap: wrap; gap: 7px 8px; padding-bottom: 8px; }
+  .mealsJournalPanel .mealTitle { flex: 1 1 130px; }
+  .mealsJournalPanel .mealHeaderMeta { flex: 0 1 auto; gap: 4px; }
+  .mealsJournalPanel .mealStatus { min-height: 24px; padding-inline: 5px; font-size: 12px; line-height: 16px; }
+  .mealsJournalPanel .mealBody { padding-top: 10px; }
+  .mealsJournalPanel .mealBody .textInput textarea,
+  .mealsJournalPanel .emptyMealPrompt .textInput textarea { min-height: 88px; font-size: 16px; line-height: 22px; }
+  .mealsJournalPanel .draftMeal { gap: 10px; padding-top: 10px; }
+  .mealsJournalPanel .draftMeal .actionsRow { gap: 8px; }
+  .mealsMealSummary { gap: 8px; }
+  .mealsMealDetails { gap: 7px; }
+  .mealsMealDetails strong { font-size: 16px; line-height: 22px; }
+  .mealsMealFooter { flex-wrap: wrap; font-size: 12px; line-height: 18px; }
+  .mealsJournalPanel .mealCompletionControls { justify-content: stretch; }
+  .mealsJournalPanel .reviewActions { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mealsJournalPanel .reviewActions button { width: 100%; }
+}
+
+@media (max-width: 380px) {
+  .mealsPageRoot { padding-inline: 10px; }
+  .mealsJournalPanel { padding-inline: 10px; }
+  .mealsPageRoot .headerMetric { padding-inline: 8px; }
+  .mealsPageRoot .headerMetric > span,
+  .mealsPageRoot .headerMetric > strong small { font-size: 10px; }
+}
+
+/* Readability floor: mobile labels and units remain functional text, not
+   decorative metadata. Keep the compact layout while preserving 12px type. */
+@media (max-width: 700px) {
+  .mealsPageRoot .headerMetric > span,
+  .mealsPageRoot .headerMetric > strong small,
+  .mealsPageRoot .mealsWeekStrip .weekDay,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected,
+  .mealsPageRoot .mealsWeekStrip .weekDay span,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-size: 12px; }
+}
+
+/* MacBook Air composition: keep the daily record comfortably wider than the
+   analytical rail while allowing both regions to remain visible together. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .mealsPageRoot { width: 100%; max-width: none; }
+  .mealsPageRoot .mealsPageHeader { grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .mealsPageRoot .headerMetric { min-width: 0; padding-inline: 12px; }
+  .mealsWorkbench { grid-template-columns: minmax(620px, 1.22fr) minmax(420px, .78fr); gap: 24px; }
+  .mealsJournalPanel .mealCard { min-height: 148px; }
+  .mealsSecondary { min-width: 0; }
+}
+
+/* POLISH — the note owns the row; the photo action no longer consumes the
+   full flex width and collapse the textarea to a sliver. */
+@media (min-width: 701px) {
+  .mealsJournalPanel .emptyMealPrompt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 216px;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .mealsJournalPanel .emptyMealActions,
+  .mealsJournalPanel .photoInputSingle {
+    width: auto;
+    min-width: 0;
+  }
+  .mealsJournalPanel .photoInputSingle,
+  .mealsJournalPanel .captureButtonCompact {
+    height: 100%;
   }
 }

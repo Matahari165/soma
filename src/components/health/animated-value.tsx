@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type AnimatedValueFormat = "number" | "decimal" | "duration";
 
-const ANIMATION_DURATION_MS = 1_020;
+const ANIMATION_DURATION_MS = 420;
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -167,6 +167,6 @@ export function AnimatedMetricReading({
 }) {
   return <strong className={`metric-reading ${className}`.trim()}>
     <AnimatedValueText value={value} format={format} decimals={decimals} animate={animate} showPlus={showPlus} />
-    {unit ? <small aria-hidden="true">{unit}</small> : null}
+    {unit ? <small>{unit}</small> : null}
   </strong>;
 }

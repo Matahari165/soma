@@ -151,7 +151,7 @@
 .redesign { min-width: 0; }
 .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start; }
 .column { display: grid; min-width: 0; gap: 24px; }
-.panel { min-width: 0; padding: 24px; border: 1px solid var(--sleep-border); border-radius: 8px; background: var(--sleep-surface); }
+.panel { min-width: 0; padding: 24px; border: 1px solid var(--sleep-border); border-radius: var(--lab-radius-sm); background: var(--sleep-surface); }
 .panelHeader { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .panelHeader h2 { color: var(--sleep-brand); font-family: inherit; font-size: 22px; font-weight: 500; letter-spacing: -.33px; line-height: 28px; }
 .eyebrow { color: var(--sleep-secondary); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
@@ -162,11 +162,11 @@
 .todaySignal :global(.metric-reading) { color: var(--sleep-primary); font-family: inherit; font-size: 27px; font-weight: 500; letter-spacing: -1.2px; line-height: 26px; }
 .todaySignal small { color: var(--sleep-secondary); font-size: 12px; line-height: 14px; }
 .timingRows { display: grid; gap: 8px; }
-.timingRow { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; min-height: 47px; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--sleep-border); border-radius: 8px; background: var(--sleep-subtle); }
+.timingRow { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; min-height: 47px; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--sleep-border); border-radius: var(--lab-radius-sm); background: var(--sleep-subtle); }
 .timingRow > span { font-size: 16px; font-weight: 500; line-height: 24px; }
 .timingRow strong { color: var(--lab-brand); font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; white-space: nowrap; }
 .timingRow small { color: var(--sleep-secondary); font-size: 12px; letter-spacing: .22px; white-space: nowrap; }
-.recommendation { display: grid; min-height: 140px; gap: 6px; padding: 16px; border-radius: 8px; background: var(--lab-brand); color: var(--lab-surface); }
+.recommendation { display: grid; min-height: 140px; gap: 6px; padding: 16px; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); }
 .recommendationEyebrow { color: var(--sleep-surface); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; }
 .recommendation h2 { color: var(--lab-surface); font-family: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 24px; }
 .recommendation strong { color: var(--lab-surface); font-size: 20px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
@@ -180,7 +180,7 @@
 .trendGrid :global(.metric-trend-card .chart-frame) { height: 128px; margin-top: 12px; }
 .trendGrid :global(.metric-trend-card .baseline-row) { display: none; }
 .trendGrid :global(.metric-trend-card footer) { display: none; }
-.architecturePanel, .distributionPanel { padding: 16px; border: 1px solid var(--sleep-border); border-radius: 8px; background: var(--sleep-subtle); }
+.architecturePanel, .distributionPanel { padding: 16px; border: 1px solid var(--sleep-border); border-radius: var(--lab-radius-sm); background: var(--sleep-subtle); }
 .architecturePanel { min-height: 190px; }
 .architectureTimeline { margin-top: 8px; padding-bottom: 12px; }
 .distributionPanel { min-height: 170px; margin-top: 16px; }
@@ -215,6 +215,44 @@
   .timingRow { grid-template-columns: minmax(100px, 1fr) auto; }
   .timingRow small { grid-column: 2; }
   .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* LAYOUT — one reading rail, then a primary/supporting split. */
+.root :global(.health-detail-page--sleep) {
+  max-width: 1376px;
+  margin-inline: auto;
+  gap: 24px;
+  padding-bottom: 40px;
+}
+
+.redesign { container-type: inline-size; }
+.columns {
+  grid-template-columns: minmax(320px, .88fr) minmax(0, 1.12fr);
+  gap: 32px;
+}
+.column { gap: 24px; }
+.panelHeader { margin-bottom: 20px; }
+.primarySignals { margin-top: 0; }
+.trendGrid { gap: 16px; }
+
+@container (max-width: 920px) {
+  .columns { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 800px) {
+  .root :global(.health-detail-page--sleep) { gap: 20px; }
+  .panelHeader { margin-bottom: 16px; }
+}
+
+@media (max-width: 640px) {
+  .root :global(.health-detail-page--sleep) { padding-bottom: 28px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span {
+    font-size: var(--lab-type-label);
+    line-height: 16px;
+  }
+  .primarySignals { gap: 8px; }
+  .todaySignal { padding-block: 8px; }
 }
 
 @media (max-width: 640px) {
@@ -365,8 +403,196 @@
   .headerScoreBars i { width: 8px; }
 }
 
+/* LAYOUT cascade guard: keep functional labels readable after legacy mobile rules. */
+@media (max-width: 640px) {
+  .root :global(.health-detail-page--sleep) {
+    padding-bottom: 28px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span {
+    font-size: var(--lab-type-label);
+    line-height: 16px;
+  }
+}
+
 @media (max-width: 640px) {
   .root :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 { font-size: 24px; line-height: 30px; }
   .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
   .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: var(--lab-type-label); }
+}
+
+/* Mobile pass: preserve the title and score context while making every
+   secondary block single-column and readable at thumb distance. */
+@media (max-width: 640px) {
+  .root :global(.health-detail-page--sleep) {
+    min-width: 0;
+    overflow-x: clip;
+    gap: 16px;
+    padding: 8px 12px 88px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) {
+    margin-inline: -12px;
+    gap: 8px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child {
+    min-height: 52px;
+    padding-inline: 12px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+    height: 72px;
+    min-height: 72px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card) {
+    padding: 8px 10px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__header) > span,
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span {
+    font-size: 11px;
+    line-height: 14px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) strong,
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading) {
+    font-size: 20px;
+    line-height: 24px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__bars) { height: 22px; }
+  .columns { grid-template-columns: 1fr; gap: 16px; }
+  .column { gap: 16px; }
+  .panel { padding: 16px; }
+  .panelHeader { align-items: flex-start; flex-wrap: wrap; gap: 6px 10px; }
+  .panelHeader > * { min-width: 0; }
+  .panelHeader h2 { font-size: 20px; line-height: 26px; }
+  .primarySignals { grid-template-columns: 1fr; gap: 0; }
+  .timingRow { grid-template-columns: minmax(0, 1fr) auto; min-height: 62px; }
+  .timingRow small { grid-column: 1 / -1; white-space: normal; }
+  .trendGrid { grid-template-columns: 1fr; gap: 10px; }
+  .trendGrid :global(.metric-trend-card) { min-height: 214px; }
+  .trendGrid :global(.metric-trend-card .chart-frame) { height: 108px; }
+  .architecturePanel,
+  .distributionPanel { padding: 12px; }
+  .architectureHeader { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .architectureHeader span { white-space: normal; }
+  .root :global(.health-detail-page--sleep) :global(.health-signal-meta) { gap: 6px 10px; overflow-wrap: anywhere; }
+}
+
+/* BOLDER — sleep gains a clear nocturnal focal plane without introducing a
+   second palette or reducing the legibility of stage data. */
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) { border-bottom: 2px solid var(--sleep-brand); }
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+  border-color: var(--sleep-brand);
+  background: var(--sleep-brand);
+}
+.root :global(.health-detail-page--sleep) :global(.sleep-header-duration) :is(span, strong, small, em) { color: var(--sleep-surface); }
+.panel:first-child { border-color: var(--sleep-brand); }
+.architecturePanel { background: color-mix(in srgb, var(--sleep-brand) 7%, var(--sleep-surface)); }
+.recommendation {
+  min-height: 168px;
+  padding: 24px;
+  box-shadow: var(--lab-shadow-subtle);
+}
+.recommendation strong { font-size: var(--lab-type-page); line-height: 32px; }
+
+@media (max-width: 640px) {
+  .recommendation { min-height: 0; padding: 20px; }
+  .recommendation strong { font-size: 24px; line-height: 28px; }
+}
+
+/* DISTILL — keep one concise reading path: nightly anchors, recommendation,
+   trends, then evidence. Existing responsive and bolder passes stay intact. */
+.column { gap: 16px; }
+.panelHeader > span { color: var(--sleep-secondary); font-size: var(--lab-type-label); line-height: 16px; }
+.timingRows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+.timingRow {
+  grid-template-columns: minmax(96px, 1fr) auto;
+  min-height: 66px;
+  gap: 2px 12px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--sleep-border);
+  border-radius: 0;
+  background: transparent;
+}
+.timingRow small { grid-column: 1 / -1; white-space: normal; }
+.recommendation { min-height: 148px; box-shadow: none; }
+.architecturePanel,
+.distributionPanel { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.distributionPanel { min-height: 146px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--sleep-border); }
+
+@media (max-width: 800px) {
+  .timingRows { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .architecturePanel,
+  .distributionPanel { padding-inline: 0; }
+}
+
+/* MacBook Air composition: protect the header summaries and give the trend
+   charts enough measure to keep labels and values intact. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .root :global(.health-detail-page--sleep) { max-width: none; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { height: 104px; min-height: 104px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { height: 88px; min-height: 88px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { height: 88px; min-height: 88px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: start; gap: 2px; text-align: left; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading) { white-space: nowrap; }
+  .columns { grid-template-columns: minmax(0, .9fr) minmax(560px, 1.1fr); gap: 24px; }
+  .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* POLISH — keep the four header readings legible on the 1440 px reference. */
+@media (min-width: 1101px) {
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 92px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+    height: 80px;
+    min-height: 80px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: center;
+    justify-items: start;
+    gap: 2px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading) {
+    font-size: 22px;
+    line-height: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 0;
+  }
 }

@@ -51,7 +51,7 @@
 
 .workbench { display: grid; min-width: 0; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 32px; align-items: start; }
 .column { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
-.panel { min-width: 0; padding: 24px; overflow: hidden; border: 1px solid var(--recovery-border-strong); border-radius: 8px; background: var(--recovery-surface); }
+.panel { min-width: 0; padding: 24px; overflow: hidden; border: 1px solid var(--recovery-border-strong); border-radius: var(--lab-radius-sm); background: var(--recovery-surface); }
 .panelHeader { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16px; }
 .panelHeader h2, .availability h2 { min-width: 0; color: var(--recovery-text); font-size: 22px; font-weight: 500; letter-spacing: -.33px; line-height: 28px; }
 .statGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
@@ -121,7 +121,7 @@
 .heartPanel :global(.health-chart-point) { display: none; }
 .heartPanel :global(.health-empty) { min-height: 200px; border: 0; }
 .calculationPanel { min-height: 142px; background: var(--recovery-surface); }
-.calculationCard { padding: 16px; border: 1px solid var(--recovery-border); border-radius: 8px; background: var(--recovery-subtle); }
+.calculationCard { padding: 16px; border: 1px solid var(--recovery-border); border-radius: var(--lab-radius-sm); background: var(--recovery-subtle); }
 .calculationHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .calculationHeader h3 { color: var(--recovery-text); font-size: 14px; font-weight: 500; line-height: 20px; }
 .calculationHeader span { padding: 2px 8px; border-radius: var(--lab-radius-xs); background: var(--recovery-brand); color: var(--lab-surface); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
@@ -136,7 +136,7 @@
 
 .availability { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
 .availabilityGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.availabilityGrid > div { min-width: 0; min-height: 154px; padding: 16px; border: 1px solid var(--recovery-border); border-radius: 8px; background: var(--recovery-subtle); }
+.availabilityGrid > div { min-width: 0; min-height: 154px; padding: 16px; border: 1px solid var(--recovery-border); border-radius: var(--lab-radius-sm); background: var(--recovery-subtle); }
 .availabilityGrid > div:nth-child(even) { background: var(--recovery-surface); }
 .availabilityGrid span { color: var(--recovery-muted); font-size: 11px; font-weight: 500; letter-spacing: .22px; line-height: 14px; text-transform: uppercase; }
 .availabilityGrid p { margin-top: 8px; color: var(--recovery-text); font-size: 16px; line-height: 25px; }
@@ -155,6 +155,46 @@
   .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .availabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* LAYOUT — readiness first, trends second, evidence last. */
+.page { container-type: inline-size; }
+.content {
+  width: min(100%, 1376px);
+  margin-inline: auto;
+  gap: 32px;
+  padding-top: 16px;
+  padding-bottom: 40px;
+}
+.workbench {
+  grid-template-columns: minmax(320px, .9fr) minmax(0, 1.1fr);
+  gap: 32px;
+}
+.column { gap: 24px; }
+.panelHeader { margin-bottom: 20px; }
+.statGrid,
+.signalRows,
+.trendGrid { margin-top: 0; }
+.trendsPanel { padding-bottom: 24px; }
+.availabilityGrid { gap: 12px; }
+
+@container (max-width: 920px) {
+  .workbench { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .content { gap: 24px; padding-top: 16px; padding-bottom: 28px; }
+  .column { gap: 20px; }
+  .panelHeader { margin-bottom: 16px; }
+}
+
+@media (max-width: 520px) {
+  .trendGrid,
+  .statGrid,
+  .calculationStats { grid-template-columns: 1fr; }
+  .availabilityGrid { grid-template-columns: 1fr; }
+  .signalRow { align-items: flex-start; padding-block: 12px; }
+}
+
 @media (max-width: 390px) {
   .headerMetrics { grid-template-columns: 1fr; }
   .dateScope > span { padding-inline: 0; font-size: 12px; }
@@ -255,6 +295,25 @@
   .headerMetricBody strong { font-size: 24px; line-height: 28px; }
 }
 
+/* BOLDER — recovery foregrounds readiness and drivers as one instrument. */
+.header { border-bottom: 2px solid var(--recovery-brand); }
+.headerMetric:first-child {
+  border-color: var(--recovery-brand);
+  background: var(--recovery-brand);
+}
+.headerMetric:first-child :is(.metricLabel, strong, small, p) { color: var(--recovery-surface); }
+.workbench { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); }
+.column:first-child > .panel:first-child {
+  border-color: var(--recovery-brand);
+  background: color-mix(in srgb, var(--recovery-brand) 6%, var(--recovery-surface));
+}
+.column:first-child > .panel:first-child .statBox { background: var(--recovery-surface); }
+.heartPanel :global(.health-chart-line) { stroke-width: 2.5; }
+
+@media (max-width: 760px) {
+  .workbench { grid-template-columns: 1fr; }
+}
+
 /* Recovery lot: readable data density without KPI overflow. */
 .header { overflow: visible; }
 .headerMetric { overflow: hidden; }
@@ -299,4 +358,132 @@
   .heartPanel { min-height: 360px; }
   .heartPanel :global(.health-line-chart-wrap) { height: 246px; }
   .heartPanel :global(.health-line-chart) { height: 214px; }
+}
+
+/* Mobile composition: keep the four shell KPIs in a predictable 2 × 2 grid,
+   then let the evidence panels read as one column. These overrides stay
+   scoped to Recovery because the shared shell is also used by Sleep/Effort. */
+.page :global(.health-detail-page--recovery) {
+  min-width: 0;
+  overflow-x: clip;
+}
+.page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
+    height: 80px;
+    min-height: 80px;
+    padding: 8px 12px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat .metric-reading),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card) {
+    padding: 8px 10px;
+  }
+}
+
+/* MacBook Air composition: reserve a stable title rail and prevent the four
+   summary metrics from collapsing into clipped cards. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .page :global(.health-detail-page--recovery) { max-width: none; }
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) { height: 112px; min-height: 112px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) { height: 96px; min-height: 96px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) { height: 96px; min-height: 96px; }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card) { position: relative; padding-block: 8px; }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action) { position: absolute; inset: 0; }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .recovery-score-control),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .health-score-trigger) { width: 100%; height: 100%; }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .score-ring) { opacity: 0; }
+  .workbench { grid-template-columns: minmax(0, 1.08fr) minmax(440px, .92fr); gap: 24px; }
+}
+
+@media (max-width: 640px) {
+  .page :global(.health-detail-page--recovery) {
+    gap: 16px;
+    padding: 8px 12px 88px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) > div:first-child {
+    min-height: 52px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  .content { padding: 0 0 20px; }
+  .workbench { gap: 16px; }
+  .panel { padding: 16px; }
+  .panelHeader { align-items: flex-start; flex-wrap: wrap; gap: 6px 10px; }
+  .panelHeader h2 { font-size: 20px; line-height: 26px; }
+  .panelHeader > * { min-width: 0; }
+  .signalRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 56px; }
+  .signalRow > div:last-child { min-width: 0; }
+  .trendGrid { grid-template-columns: 1fr; gap: 10px; }
+  .trendCard { min-height: 176px; }
+  .heartPanel { min-height: 0; }
+  .heartPanel :global(.health-line-chart-wrap) { height: 232px; margin-top: 16px; }
+  .heartPanel :global(.health-line-chart) { height: 202px; }
+  .provenancePanel { min-height: 0; }
+  .provenanceRow { align-items: flex-start; flex-direction: column; gap: 4px; }
+}
+
+/* LAYOUT cascade guard: the rendered trend component uses its shared class. */
+.trendsPanel :global(.metric-trend-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 520px) {
+  .trendsPanel :global(.metric-trend-grid) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* POLISH — reserve enough height for label, value and 30-day reference. */
+@media (min-width: 1101px) {
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 92px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
+    height: 80px;
+    min-height: 80px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
+    align-content: center;
+    justify-items: start;
+    gap: 2px;
+  }
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat .metric-reading),
+  .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
 }

@@ -8,7 +8,7 @@ import { PersonalLabMetrics } from "./today-signals";
 
 export function PersonalLabOverviewSection({ data, connectionNotice = null }: { data: PersonalLabOverview; connectionNotice?: "health" | "calendar" | null }) {
   return <>
-    {connectionNotice && <div className="lab-notice" role="status">{connectionNotice === "calendar" ? "Google Calendar connected." : "Google Health connected. Import in progress."}</div>}
+    {connectionNotice && <div className="lab-notice" role="status">{connectionNotice === "calendar" ? "Google Calendar connecté." : "Google Health connecté. Import en cours."}</div>}
     <header className="lab-header lab-entry__section lab-entry__header">
       <div className="lab-header__row">
         <h1>Personal Lab</h1>
@@ -38,24 +38,24 @@ export function PersonalLabAnalysisSection({ data, refreshNarrative = true }: { 
 }
 
 export function PersonalLabOverviewLoading() {
-  return <header className="lab-header lab-entry__section lab-entry__header lab-stream-loading" role="status" aria-live="polite" aria-label="Loading today's signals">
+  return <header className="lab-header lab-entry__section lab-entry__header lab-stream-loading" role="status" aria-live="polite" aria-label="Chargement des signaux du jour">
     <div className="lab-header__row">
       <h1>Personal Lab</h1>
-      <span className="system-loading__status" aria-hidden="true"><i /><i /><i /></span>
+      <span className="lab-loading-trace" aria-hidden="true" />
     </div>
-    <span className="sr-only">Loading today&apos;s signals…</span>
+    <span className="sr-only">Chargement des signaux du jour…</span>
   </header>;
 }
 
 export function PersonalLabJournalLoading() {
-  return <section className="lab-stream-placeholder lab-entry__section lab-entry__journal" role="status" aria-live="polite" aria-label="Loading daily workspace">
-    <span className="eyebrow">Journal &amp; repas</span><strong>Preparing today</strong>
+  return <section className="lab-stream-placeholder lab-entry__section lab-entry__journal" role="status" aria-live="polite" aria-label="Chargement du journal du jour">
+    <strong>Préparation du journal…</strong>
   </section>;
 }
 
 export function PersonalLabAnalysisLoading() {
-  return <section className="lab-stream-placeholder lab-stream-placeholder--analysis lab-entry__section lab-entry__insight" role="status" aria-live="polite" aria-label="Loading analysis">
-    <span className="eyebrow">Analysis</span><strong>Preparing signals</strong>
-    <span className="system-loading__status" aria-hidden="true"><i /><i /><i /></span>
+  return <section className="lab-stream-placeholder lab-stream-placeholder--analysis lab-entry__section lab-entry__insight" role="status" aria-live="polite" aria-label="Chargement de l’analyse">
+    <strong>Préparation de l’analyse…</strong>
+    <span className="lab-loading-trace" aria-hidden="true" />
   </section>;
 }

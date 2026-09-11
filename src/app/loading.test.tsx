@@ -13,5 +13,8 @@ describe("global loading state", () => {
     expect(html).toContain("Chargement de Soma");
     expect(html).not.toContain("Preparing");
     expect(html).not.toContain("system-loading__metrics");
+    expect(html).toContain("system-loading__canvas");
+    expect(html).not.toContain("system-loading__status");
+    expect(html).not.toContain("<i");
   });
 });

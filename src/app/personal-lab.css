@@ -1007,6 +1007,87 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   font-size: var(--lab-type-ui);
   line-height: 20px;
 }
+
+/* DISTILL — one daily instrument, then its strongest evidence. */
+.personal-lab-page .personal-lab-metrics {
+  gap: 0;
+  overflow: hidden;
+  border-block: 1px solid var(--lab-border-strong);
+}
+
+.personal-lab-page .personal-lab-metric {
+  border: 0;
+  border-right: 1px solid var(--lab-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.personal-lab-page .personal-lab-metric:last-child { border-right: 0; }
+.personal-lab-page .personal-lab-metric:hover { border-color: var(--lab-border); }
+
+.personal-lab-page .personal-lab-day-strip__days,
+.personal-lab-journal-column .journal-card--personal-lab .journal-period,
+.personal-lab-page .strongest-effects-panel,
+.personal-lab-page .strongest-effects,
+.personal-lab-page .strongest-effects-panel > .strongest-effects {
+  box-shadow: none;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-sections {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-period {
+  padding: var(--lab-sp-md);
+  border: 0;
+  border-bottom: 1px solid var(--lab-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-period:last-child { border-bottom: 0; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-period__header { min-height: 36px; padding: 0 4px 8px; background: transparent; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { display: none; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-grid { margin-top: 0; }
+
+.personal-lab-page .strongest-effects-panel,
+.personal-lab-page .strongest-effects-panel > .strongest-effects {
+  border-color: var(--lab-border-strong);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+}
+
+.personal-lab-page .strongest-effects-panel { border-top: 2px solid var(--lab-brand); }
+.personal-lab-page .strongest-effects-panel :is(h2, h3, strong) { color: var(--lab-text-primary); }
+.personal-lab-page .strongest-effects-panel :is(p, small, span) { color: var(--lab-text-secondary); }
+.personal-lab-page .strongest-effects-panel :is(button, a):focus-visible { outline-color: var(--lab-signal); }
+.personal-lab-page .strongest-effects > header,
+.personal-lab-page .strongest-effects__group > h4 { background: transparent; }
+.personal-lab-page .strongest-effects__group > h4 { padding-block: 10px; }
+.personal-lab-page .strongest-effects__influence-header { min-height: 36px; padding-block: 6px; }
+.personal-lab-page .strongest-effects__comparison-group + .strongest-effects__comparison-group { margin-top: 0; }
+.personal-lab-page .lab-workspace { border-top: 0; }
+
+@media (min-width: 1101px) {
+  .personal-lab-page > .lab-workspace { flex-basis: calc(60% - (var(--lab-column-gap) / 2)); }
+  .personal-lab-page > .strongest-effects-panel {
+    flex-basis: calc(40% - (var(--lab-column-gap) / 2));
+    min-width: 400px;
+  }
+}
+
+@media (max-width: 700px) {
+  .personal-lab-page .personal-lab-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .personal-lab-page .personal-lab-metric:nth-child(2) { border-right: 0; }
+  .personal-lab-page .personal-lab-metric:nth-child(-n + 2) { border-bottom: 1px solid var(--lab-border); }
+  .personal-lab-journal-column .journal-card--personal-lab .journal-period { padding: var(--lab-sp-md); }
+}
 .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
 .personal-lab-journal-column .journal-card--personal-lab .journal-number,
 .personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
@@ -1057,7 +1138,7 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-page {
     padding: 204px 12px 24px;
     min-width: 0;
-    overflow-x: clip;
+    overflow-x: visible;
   }
   .personal-lab-page .lab-header {
     height: 204px;
@@ -1093,5 +1174,482 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-journal-column .journal-card--personal-lab .journal-choice button,
   .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper > button {
     min-height: 44px;
+  }
+}
+
+/* Final mobile composition for iPhone-sized viewports. Keep the page itself
+   unconstrained so an accidental wide child remains diagnosable; only the
+   intentional date rail is horizontally scrollable. */
+@media (max-width: 700px) {
+  .personal-lab-page {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 0 12px calc(24px + env(safe-area-inset-bottom));
+    overflow-x: visible;
+  }
+
+  .personal-lab-page .lab-header {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 12px 0 16px;
+  }
+
+  .personal-lab-page .lab-header__row {
+    display: grid;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .personal-lab-page .lab-header h1 {
+    min-width: 0;
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .personal-lab-page .lab-header__signals {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .personal-lab-page .personal-lab-metrics {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .personal-lab-page .personal-lab-metric {
+    width: 100%;
+    min-width: 0;
+    min-height: 68px;
+    height: auto;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px 10px 10px;
+  }
+
+  .personal-lab-page .personal-lab-metric__copy,
+  .personal-lab-page .personal-lab-metric__label,
+  .personal-lab-page .personal-lab-metric__average {
+    min-width: 0;
+  }
+
+  .personal-lab-page .personal-lab-metric__label,
+  .personal-lab-page .personal-lab-metric__average {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .personal-lab-page .personal-lab-metric__value {
+    font-size: 20px;
+    line-height: 24px;
+  }
+
+  .personal-lab-page .personal-lab-metric__bars {
+    width: 34px;
+    gap: 3px;
+  }
+
+  .personal-lab-page .personal-lab-metric__bar { width: 4px; }
+
+  .personal-lab-page .lab-workspace {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .personal-lab-page .personal-lab-day-strip {
+    width: 100%;
+    min-width: 0;
+    min-height: 60px;
+    margin: 0 0 16px;
+    padding: 0;
+  }
+
+  .personal-lab-page .personal-lab-day-strip__days {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: 52px;
+    min-height: 52px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .personal-lab-page .personal-lab-day-strip button {
+    flex: 0 0 104px;
+    min-width: 104px;
+    min-height: 50px;
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .personal-lab-page .personal-lab-day-strip button > span:not(.sr-only),
+  .personal-lab-page .personal-lab-day-strip button > small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .personal-lab-workbench {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .personal-lab-journal-column,
+  .personal-lab-meal-column {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab > .journal-card__header {
+    position: static;
+    width: 100%;
+    min-height: 48px;
+    margin: 0 0 8px;
+    padding: 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-card__actions {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-right: 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-save-status {
+    min-width: 0;
+    min-height: 44px;
+    max-width: 42%;
+    overflow: hidden;
+    padding: 4px 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .primary-button,
+  .personal-lab-journal-column .journal-card--personal-lab .text-link {
+    min-height: 44px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .primary-button {
+    max-width: 100%;
+    padding-inline: 12px;
+    white-space: nowrap;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-sections {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-period {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-period__header {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 button {
+    min-width: 0;
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-grid {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin-top: 8px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field {
+    display: grid;
+    min-width: 0;
+    min-height: 60px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field__heading,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field__label {
+    min-width: 0;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field__label {
+    overflow-wrap: anywhere;
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-choice,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field > select,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field > .journal-clock {
+    width: min(148px, 46vw);
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-choice--binary,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper {
+    width: min(148px, 46vw);
+    min-height: 52px;
+  }
+
+  .personal-lab-journal-column .journal-card--personal-lab .journal-choice--binary button,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper > button,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-number--stepper .journal-number__value input {
+    min-height: 44px;
+  }
+
+  .personal-lab-meal-column { gap: 16px; }
+
+  .personal-lab-meal-column .meal-journal-lab {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .personal-lab-page > .strongest-effects-panel {
+    width: 100%;
+    min-width: 0;
+    margin-top: 16px;
+  }
+
+  .personal-lab-page > .strongest-effects-panel .strongest-effects-panel__header,
+  .personal-lab-page > .strongest-effects-panel .strongest-effects > header {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .personal-lab-page > .strongest-effects-panel .strongest-effects-panel__header h2,
+  .personal-lab-page > .strongest-effects-panel .strongest-effects h3 {
+    overflow-wrap: anywhere;
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  .personal-lab-page > .strongest-effects-panel .strongest-effects__periods {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .personal-lab-page > .strongest-effects-panel .strongest-effects__periods button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .personal-lab-page > .strongest-effects-panel .strongest-effects li > button,
+  .personal-lab-page > .strongest-effects-panel .strongest-effects__comparison-group li > button {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(104px, .72fr);
+    padding: 10px 12px;
+  }
+}
+
+/* Final spatial contract. Kept last because this stylesheet still contains
+   compatibility layers from the validated Personal Lab iterations. */
+.personal-lab-page {
+  max-width: 1480px;
+  margin-inline: auto;
+}
+
+@media (min-width: 1320px) {
+  .personal-lab-page {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(352px, 1fr);
+    align-content: start;
+    align-items: start;
+    column-gap: var(--lab-column-gap);
+    row-gap: var(--lab-section-space);
+  }
+
+  .personal-lab-page > .lab-notice,
+  .personal-lab-page > .lab-header {
+    grid-column: 1 / -1;
+  }
+
+  .personal-lab-page > .lab-workspace,
+  .personal-lab-page > .strongest-effects-panel {
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1101px) and (max-width: 1319px) {
+  .personal-lab-page {
+    display: block;
+  }
+
+  .personal-lab-page > .strongest-effects-panel {
+    width: 100%;
+    min-width: 0;
+    margin-top: var(--lab-section-space);
+  }
+}
+
+@media (max-width: 1100px) {
+  .personal-lab-page > .strongest-effects-panel {
+    margin-top: var(--lab-section-space);
+  }
+}
+
+/* BOLDER — make the evidence column the unmistakable destination while
+   preserving the capture-first DOM order and all existing interactions. */
+@media (min-width: 1320px) {
+  /* The page grid has two explicit columns; keep the two primary regions on
+     that grid instead of creating implicit columns that can compress the
+     evidence panel at wide desktop widths. */
+  .personal-lab-page > .lab-workspace { grid-column: 1; }
+  .personal-lab-page > .strongest-effects-panel {
+    grid-column: 2;
+    min-width: 0;
+  }
+}
+
+.personal-lab-page .strongest-effects-panel {
+  border-color: var(--lab-brand);
+  background: var(--lab-brand);
+  color: var(--lab-surface);
+  box-shadow: 0 18px 42px rgba(28, 37, 32, .14);
+}
+.personal-lab-page .strongest-effects-panel :is(h2, h3, strong) { color: var(--lab-surface); }
+.personal-lab-page .strongest-effects-panel :is(p, small, span) {
+  color: color-mix(in srgb, var(--lab-surface) 78%, var(--lab-brand));
+}
+.personal-lab-page .strongest-effects-panel :is(button, a):focus-visible { outline-color: var(--lab-surface); }
+.personal-lab-page .lab-workspace { border-top: 2px solid var(--lab-brand); }
+
+@media (max-width: 1100px) {
+  .personal-lab-page .strongest-effects-panel { box-shadow: 0 12px 30px rgba(28, 37, 32, .12); }
+}
+
+/* Polish: the evidence panel earns priority through placement and a clear
+   rule, not a saturated fill or a decorative shadow. */
+.personal-lab-page .strongest-effects-panel {
+  align-self: start;
+  border: 0;
+  background: transparent;
+  color: var(--lab-text-primary);
+  box-shadow: none;
+}
+
+.personal-lab-page .strongest-effects-panel > .strongest-effects {
+  border-top: 2px solid var(--lab-brand);
+  box-shadow: none;
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects h2,
+.personal-lab-page .strongest-effects-panel .strongest-effects h3,
+.personal-lab-page .strongest-effects-panel .strongest-effects h4,
+.personal-lab-page .strongest-effects-panel .strongest-effects__influence-header > strong,
+.personal-lab-page .strongest-effects-panel .strongest-effects__comparison-header > strong {
+  color: var(--lab-text-primary);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects__outcome > strong {
+  color: var(--lab-text-primary);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects__outcome.is-positive > strong {
+  color: var(--lab-signal);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects__outcome.is-negative > strong {
+  color: var(--lab-error);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects__outcome.is-neutral > strong {
+  color: var(--lab-text-secondary);
+}
+
+/* The earlier compatibility layer scoped this text rule broadly for a dark
+   treatment. Keep metadata readable on the now-flat evidence surface. */
+.personal-lab-page .strongest-effects-panel .strongest-effects :is(p, small) {
+  color: var(--lab-text-secondary);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects .strongest-effects__outcome > span {
+  color: var(--lab-text-primary);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects .strongest-effects__outcome > span small {
+  color: var(--lab-text-secondary);
+}
+
+.personal-lab-page .strongest-effects-panel .strongest-effects__group > h4 {
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-secondary);
+}
+
+.personal-lab-page .strongest-effects-panel :is(button, a):focus-visible {
+  outline-color: var(--lab-brand);
+}
+
+/* MacBook Air composition: use the available desktop width for the evidence
+   column before the narrower laptop layout falls back to a vertical flow. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .personal-lab-page {
+    display: grid;
+    grid-template-columns: minmax(0, 2.3fr) minmax(360px, 1fr);
+    column-gap: 24px;
+    row-gap: 24px;
+  }
+  .personal-lab-page > .lab-header { grid-column: 1 / -1; width: 100%; }
+  .personal-lab-page .lab-header__row { grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .personal-lab-page .personal-lab-metric { grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; padding-inline: 12px 10px; }
+  .personal-lab-page .personal-lab-metric__bars { gap: 4px; }
+  .personal-lab-page .personal-lab-metric__bar { width: 7px; }
+  .personal-lab-page > .lab-workspace { grid-column: 1; }
+  .personal-lab-page > .strongest-effects-panel { grid-column: 2; min-width: 0; margin-top: 0; }
+  .personal-lab-workbench { grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); gap: 24px; }
+}
+
+/* POLISH — give journal labels enough measure beside compact controls on the
+   1440 px reference without taking space from Strongest Effects. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .personal-lab-workbench {
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, .55fr);
+  }
+  .personal-lab-journal-column .journal-card--personal-lab {
+    --lab-journal-control-width: 104px;
+  }
+  .personal-lab-meal-column .meal-journal-lab .emptyMealActions { gap: 4px; }
+  .personal-lab-meal-column .meal-journal-lab :is(.emptyNoteButton, .captureButtonCompact, .galleryButtonCompact) {
+    padding-inline: 6px;
+    font-size: 12px;
   }
 }

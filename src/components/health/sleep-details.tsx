@@ -69,7 +69,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const scoreTone = metricTone(score, averageScore, "higher_is_better");
   const regularityTone = metricTone(regularity, averageRegularity, "higher_is_better");
   const sleepTone = metricTone(latest?.sleep_minutes ?? null, averageSleep, "higher_is_better");
-  const efficiencyTone = metricTone(latest?.sleep_efficiency ?? null, averageEfficiency, "higher_is_better");
   const debtTone = metricTone(debt, averageDebt, "lower_is_better");
   const bedtimeRegularity = timingRegularity(data.days, "bedtime", data.timezone);
   const wakeRegularity = timingRegularity(data.days, "wake_time", data.timezone);
@@ -85,32 +84,25 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     <div className={styles.redesign}>
       {latest ? <div className={styles.columns}>
         <div className={styles.column}>
-          <section className={styles.panel} aria-labelledby="sleep-overview-heading">
-            <header className={styles.panelHeader}><h2 id="sleep-overview-heading">Vue d’ensemble du sommeil</h2></header>
-            <div className={styles.primarySignals} aria-label="Derniers signaux de sommeil">
-              <div className={styles.todaySignal}><span>Efficacité</span><AnimatedMetricReading value={latest.sleep_efficiency} format="decimal" unit="%" className={`metric-reading--${efficiencyTone}`} /><small>Moyenne sur 30 jours · {formatAverage(averageEfficiency, "decimal", 0)} %</small></div>
-              <div className={styles.todaySignal}><span>Éveillé</span><AnimatedMetricReading value={latest.sleep_awake_minutes} format="number" unit="min" decimals={0} /><small>Dernière nuit complète</small></div>
-            </div>
-          </section>
-
           <section className={styles.panel} aria-labelledby="sleep-timing-heading">
-            <header className={styles.panelHeader}><h2 id="sleep-timing-heading">Horaires et régularité</h2><span className={styles.eyebrow}>14 DERNIERS JOURS</span></header>
+            <header className={styles.panelHeader}><h2 id="sleep-timing-heading">Repères de la nuit</h2><span>Régularité sur 14 jours</span></header>
             <div className={styles.timingRows}>
               <div className={styles.timingRow}><span>Coucher</span><strong>{clock(latest.bedtime, data.timezone)}</strong><small>{bedtimeRegularity === null ? "Régularité en attente" : <>fenêtre habituelle · ±{Math.max(0, Math.round((100 - bedtimeRegularity) * 1.2))} min</>}</small></div>
               <div className={styles.timingRow}><span>Réveil</span><strong>{clock(latest.wake_time, data.timezone)}</strong><small>{wakeRegularity === null ? "Régularité en attente" : <>fenêtre habituelle · ±{Math.max(0, Math.round((100 - wakeRegularity) * 1.2))} min</>}</small></div>
-              <div className={styles.timingRow}><span>Régularité globale</span><strong><AnimatedValueText value={latest.sleep_regularity} suffix="%" decimals={0} /></strong><small>{latest.sleep_regularity === null ? "Cohérence en attente" : "cohérence · en amélioration"}</small></div>
+              <div className={styles.timingRow}><span>Efficacité</span><strong><AnimatedValueText value={latest.sleep_efficiency} suffix="%" decimals={0} /></strong><small>Moy. 30 j · {formatAverage(averageEfficiency, "decimal", 0)} %</small></div>
+              <div className={styles.timingRow}><span>Éveillé</span><strong><AnimatedValueText value={latest.sleep_awake_minutes} suffix=" min" decimals={0} /></strong><small>Dernière nuit complète</small></div>
             </div>
           </section>
 
-          <section className={styles.panel} aria-labelledby="sleep-tonight-heading"><div className={styles.recommendation}>
-            <span className={styles.recommendationEyebrow}>CE SOIR</span><h2 id="sleep-tonight-heading">{tonightBedtime === null ? "Gardez votre fenêtre habituelle" : "Protégez la fenêtre établie"}</h2><strong>{target === null ? "Objectif indisponible" : `${formatDurationMinutes(target)} nécessaires`}</strong><p>{tonightBedtime === null || target === null ? "Un objectif de sommeil complet est nécessaire pour formuler une recommandation." : `Ralentissez dès ${formatClockMinutes(tonightBedtime - 30)} · éteignez vers ${formatClockMinutes(tonightBedtime)}${recommendedWakeMinutes === null ? "" : ` pour un réveil à ${formatClockMinutes(recommendedWakeMinutes)}`}`}</p>
-          </div></section>
+          <section className={styles.recommendation} aria-labelledby="sleep-tonight-heading">
+            <h2 id="sleep-tonight-heading">{tonightBedtime === null ? "Gardez votre fenêtre habituelle" : "Ce soir, protégez votre fenêtre"}</h2><strong>{target === null ? "Objectif indisponible" : `${formatDurationMinutes(target)} nécessaires`}</strong><p>{tonightBedtime === null || target === null ? "Un objectif de sommeil complet est nécessaire pour formuler une recommandation." : `Ralentissez dès ${formatClockMinutes(tonightBedtime - 30)} · éteignez vers ${formatClockMinutes(tonightBedtime)}${recommendedWakeMinutes === null ? "" : ` · réveil à ${formatClockMinutes(recommendedWakeMinutes)}`}`}</p>
+          </section>
 
         </div>
 
         <div className={styles.column}>
           <section className={styles.panel} aria-labelledby="sleep-trends-heading">
-            <header className={styles.panelHeader}><h2 id="sleep-trends-heading">Tendances du sommeil</h2><span className={styles.eyebrow}>30 JOURS · SIX SIGNAUX</span></header>
+            <header className={styles.panelHeader}><h2 id="sleep-trends-heading">Tendances · 30 jours</h2></header>
             <div className={styles.trendGrid}>
               <MetricTrendCard label="Sommeil total" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={duration} target={target} animateCurrent animationFormat="duration" />
               <MetricTrendCard label="Efficacité" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
@@ -123,11 +115,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
 
           <section className={styles.panel} aria-labelledby="sleep-architecture-heading">
             <header className={styles.panelHeader}><h2 id="sleep-architecture-heading">Dernière nuit</h2></header>
-            <div className={styles.architecturePanel}><div className={styles.architectureHeader}><strong>Architecture du sommeil</strong><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></div><div className={styles.architectureTimeline}><SleepStageTimeline stages={data.latestSleepStages} /></div></div>
-            <div className={styles.distributionPanel}><div className={styles.architectureHeader}><strong>Répartition des phases</strong><span>Dernière nuit complète</span></div><SleepStageDistribution stages={[{ label: "Profond", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Léger", value: latest.sleep_light_percent, tone: "light" }, { label: "Éveillé", value: latest.sleep_awake_percent, tone: "awake" }]} /><span className={styles.signalPositive}>Mesuré · phases importées, scores calculés par Soma</span></div>
+            <div className={styles.architecturePanel}><div className={styles.architectureHeader}><strong>Architecture</strong><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></div><div className={styles.architectureTimeline}><SleepStageTimeline stages={data.latestSleepStages} /></div></div>
+            <div className={styles.distributionPanel}><div className={styles.architectureHeader}><strong>Phases</strong></div><SleepStageDistribution stages={[{ label: "Profond", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Léger", value: latest.sleep_light_percent, tone: "light" }, { label: "Éveillé", value: latest.sleep_awake_percent, tone: "awake" }]} /><span className={styles.signalPositive}>Phases importées · scores calculés par Soma</span></div>
           </section>
         </div>
-      </div> : <section className={`${styles.panel} ${styles.empty}`}><MoonStar size={24} aria-hidden="true" /><div><span className={styles.eyebrow}>AUCUNE DONNÉE</span><h2>Aucune donnée de sommeil</h2><p>Synchronisez une nuit complète pour commencer.</p></div></section>}
+      </div> : <section className={`${styles.panel} ${styles.empty}`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">Aucune donnée de sommeil</h2><p>Synchronisez une nuit complète pour commencer.</p></div></section>}
     </div>
   </HealthPageShell></div>;
 }

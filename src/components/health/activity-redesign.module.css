@@ -314,9 +314,67 @@
   min-width: 0;
   padding: 24px;
   border: 1px solid var(--activity-border-strong);
-  border-radius: 8px;
+  border-radius: var(--lab-radius-sm);
   background: var(--activity-surface);
   box-shadow: 0 1px 2px rgba(28, 37, 32, 0.05);
+}
+
+.root :global(.health-key-readings) {
+  padding-block: 18px;
+}
+
+.root :global(.health-key-readings .health-section-heading) {
+  margin-bottom: 12px;
+}
+
+.root :global(.health-key-readings dl) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--activity-border);
+}
+
+.root :global(.health-key-readings dl > div) {
+  min-width: 0;
+  padding: 14px 16px 0 0;
+}
+
+.root :global(.health-key-readings dt),
+.root :global(.health-key-readings small) {
+  color: var(--activity-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.root :global(.health-key-readings dd) {
+  margin: 4px 0 2px;
+  color: var(--activity-text);
+  font-size: var(--lab-type-section);
+  font-weight: 620;
+  line-height: 28px;
+}
+
+.root :global(.health-session-details > summary) {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  color: var(--activity-text);
+  font-size: var(--lab-type-title);
+  font-weight: 560;
+  list-style-position: inside;
+}
+
+.root :global(.health-session-details > summary small) {
+  color: var(--activity-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.root :global(.health-session-details[open] > summary) {
+  margin-bottom: 16px;
 }
 
 .root :global(.health-section-heading) {
@@ -526,6 +584,8 @@
   .root :global(.health-primary-card__trigger) { min-height: 124px; padding: 14px; }
   .root :global(.metric-reading) { font-size: 24px; line-height: 28px; }
   .root :global(.health-panel) { padding: 16px; }
+  .root :global(.health-key-readings dl) { grid-template-columns: 1fr; }
+  .root :global(.health-key-readings dl > div) { padding-right: 0; }
   .root :global(.health-section-heading h2) { font-size: 20px; line-height: 26px; }
   .root :global(.metric-trend-grid) { grid-template-columns: 1fr; }
   .root :global(.metric-trend-card) { min-height: 270px; }
@@ -533,6 +593,42 @@
   .root :global(.exercise-detail-grid > div:nth-child(4n)) { border-right: 1px solid var(--activity-border); }
   .root :global(.exercise-detail-grid > div:nth-child(2n)) { border-right: 0; }
   .root :global(.health-signal-meta) { align-items: flex-start; flex-wrap: wrap; gap: 6px 10px; }
+}
+
+/* LAYOUT — daily summary leads, trends scan as a denser evidence field. */
+.root {
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+.root :global(.health-detail-page) { gap: 24px; }
+.root :global(.health-primary-grid) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.root :global(.health-section-heading) { margin-bottom: 20px; }
+.root :global(.metric-trend-grid) { gap: 16px; }
+.root :global(.health-more-metrics) { margin-top: 16px; }
+
+@media (max-width: 1080px) {
+  .root :global(.health-primary-grid),
+  .root :global(.metric-trend-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .root { padding-top: 16px; padding-bottom: 28px; }
+  .root :global(.health-detail-page) { gap: 20px; }
+  .root :global(.health-section-heading) { margin-bottom: 16px; }
+  .root :global(.health-primary-grid),
+  .root :global(.metric-trend-grid) { grid-template-columns: 1fr; }
+  .root :global(.health-primary-card),
+  .root :global(.health-primary-card__trigger) { min-height: 108px; }
+  .root :global(.health-primary-card > span),
+  .root :global(.health-primary-card__trigger > span:first-child),
+  .root :global(.eyebrow),
+  .root :global(.health-hero-stat > span),
+  .root :global(.health-hero-stat__average) {
+    font-size: var(--lab-type-label);
+    line-height: 16px;
+  }
 }
 
 .root :global(.metric-trend-card) {
@@ -661,4 +757,166 @@
   .root :global(.health-hero-metrics) { gap: 8px; }
   .root :global(.health-hero-metrics .health-hero-score),
   .root :global(.health-hero-stat) { height: 68px; min-height: 68px; padding: 8px 12px; }
+  .root :global(.health-hero-stat) {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .root :global(.health-hero-stat .metric-reading),
+  .root :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+}
+
+/* Mobile pass: keep summary metrics scannable in two columns from 360 px up,
+   while charts and the wide exercise table retain their accessible scroll path. */
+@media (max-width: 640px) {
+  .root { padding: 12px 0 20px; }
+  .root :global(.health-detail-page) {
+    min-width: 0;
+    overflow-x: clip;
+    gap: 16px;
+  }
+  .root :global(.health-detail-hero) {
+    height: auto;
+    min-height: 0;
+    gap: 8px;
+  }
+  .root :global(.health-detail-hero) > div:first-child { min-height: 52px; }
+  .root :global(.health-hero-metrics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .root :global(.health-hero-score-card) { padding: 8px 10px; }
+  .root :global(.health-hero-score-card__header) > span,
+  .root :global(.health-hero-stat > span) { font-size: 11px; line-height: 14px; }
+  .root :global(.health-hero-score-card__metric) strong,
+  .root :global(.health-hero-stat .metric-reading) { font-size: 20px; line-height: 24px; }
+  .root :global(.health-hero-score-card__bars) { height: 22px; }
+  .root :global(.health-primary-grid) { gap: 8px; border: 0; background: transparent; }
+  .root :global(.health-primary-card),
+  .root :global(.health-primary-card__trigger) { min-height: 118px; padding: 14px; }
+  .root :global(.health-primary-card--featured) { grid-column: 1 / -1; }
+  .root :global(.health-section-heading) { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .root :global(.health-section-heading > *) { min-width: 0; }
+  .root :global(.health-section-heading h2) { font-size: 20px; line-height: 26px; }
+  .root :global(.health-panel) { padding: 16px; }
+  .root :global(.metric-trend-grid) { grid-template-columns: 1fr; gap: 10px; }
+  .root :global(.metric-trend-card) { min-height: 236px; padding: 14px; }
+  .root :global(.metric-trend-card .chart-frame) { height: 108px; margin-top: 12px; }
+  .root :global(.health-more-metrics[open] > .metric-trend-grid) { padding: 10px; }
+  .root :global(.exercise-detail-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .root :global(.exercise-detail-grid > div) { padding: 12px; }
+  .root :global(.health-signal-meta) { gap: 6px 10px; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 359px) {
+  .root :global(.health-primary-grid) { grid-template-columns: 1fr; }
+  .root :global(.health-primary-card--featured) { grid-column: auto; }
+  .root :global(.exercise-detail-grid) { grid-template-columns: 1fr; }
+}
+
+/* BOLDER — effort uses a stronger performance band and more decisive plots. */
+.root :global(.health-detail-hero) { border-bottom: 2px solid var(--activity-brand); }
+.root :global(.health-hero-metrics > :first-child) {
+  border-color: var(--activity-brand);
+  background: var(--activity-brand);
+  color: var(--activity-surface);
+}
+.root :global(.health-hero-metrics > :first-child) :is(span, strong, small, p) { color: var(--activity-surface); }
+.root :global(.health-primary-grid) {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--activity-border-strong);
+  border-radius: var(--lab-radius-sm);
+}
+.root :global(.health-primary-card),
+.root :global(.health-primary-card__trigger) {
+  border: 0;
+  border-right: 1px solid var(--activity-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.root :global(.health-primary-card:last-child),
+.root :global(.health-primary-card__trigger:last-child) { border-right: 0; }
+.root :global(.health-chart-line) { stroke-width: 2.5; }
+
+@media (max-width: 640px) {
+  .root :global(.health-primary-card),
+  .root :global(.health-primary-card__trigger) {
+    border-right: 0;
+    border-bottom: 1px solid var(--activity-border);
+  }
+  .root :global(.health-primary-card:last-child),
+  .root :global(.health-primary-card__trigger:last-child) { border-bottom: 0; }
+}
+
+/* Readability floor: measurements and their labels remain usable at the
+   compact breakpoint; color and spacing continue to carry the hierarchy. */
+.root :global(.health-primary-card__average),
+.root :global(.health-detail-hero .eyebrow),
+.root :global(.health-hero-stat > span),
+.root :global(.health-hero-stat__average),
+.root :global(.quality-pill),
+.root :global(.metric-trend-card header span),
+.root :global(.metric-trend-card footer),
+.root :global(.metric-direction),
+.root :global(.metric-trend-card .chart-axis),
+.root :global(.metric-trend-card .baseline-row small),
+.root :global(.stage-legend),
+.root :global(.stage-legend strong),
+.root :global(.exercise-detail-grid dt),
+.root :global(.exercise-table th),
+.root :global(.exercise-table td),
+.root :global(.exercise-table tbody th small),
+.root :global(.health-signal-meta),
+.root :global(.health-signal-meta strong) {
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+}
+
+/* MacBook Air composition: the summary band stays readable without stealing
+   width from the evidence grids below it. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .root { padding-inline: 24px; }
+  .root :global(.health-detail-page) { width: 100%; max-width: none; }
+  .root :global(.health-detail-hero) { height: 112px; min-height: 112px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .root :global(.health-hero-metrics) { height: 96px; min-height: 96px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .root :global(.health-hero-metrics .health-hero-score),
+  .root :global(.health-hero-stat) { height: 96px; min-height: 96px; }
+  .root :global(.health-hero-score-card) { position: relative; padding-block: 8px; }
+  .root :global(.health-hero-score-card__action) { position: absolute; inset: 0; }
+  .root :global(.health-hero-score-card__action .activity-score-control),
+  .root :global(.health-hero-score-card__action .health-score-trigger) { width: 100%; height: 100%; }
+  .root :global(.health-hero-score-card__action .score-ring) { opacity: 0; }
+  .root :global(.health-primary-grid),
+  .root :global(.metric-trend-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* POLISH — keep the summary band readable instead of clipping three lines
+   into the former 75 px frame. */
+@media (min-width: 1101px) {
+  .root :global(.health-detail-hero),
+  .root :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 92px;
+  }
+  .root :global(.health-hero-metrics .health-hero-score),
+  .root :global(.health-hero-stat) {
+    height: 88px;
+    min-height: 88px;
+  }
+  .root :global(.health-hero-stat) {
+    align-content: center;
+    justify-items: start;
+    gap: 2px;
+    text-align: left;
+  }
+  .root :global(.health-hero-stat .metric-reading),
+  .root :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
 }

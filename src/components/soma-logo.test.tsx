@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 
 import { SomaLogo } from "./soma-logo";
 
-describe("Soma logo loading motion", () => {
-  it("renders a one-shot loading cue without changing the accessible brand", () => {
+describe("Soma logo", () => {
+  it("renders the stable accessible brand without a loading animation", () => {
     const html = renderToStaticMarkup(createElement(SomaLogo));
 
-    expect(html).toContain("soma-logo--loading");
+    expect(html).not.toContain("soma-logo--loading");
     expect(html).toContain("soma-symbol__liquid-fill");
     expect(html).toContain("soma-symbol__bubbles");
     expect(html.match(/<circle /g)).toHaveLength(3);

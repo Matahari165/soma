@@ -294,3 +294,11 @@
     padding-inline: 12px;
   }
 }
+
+/* Narrow screens keep all target values visible while reducing card chrome. */
+@media (max-width: 700px) {
+  .root:not(.rootCompact) { gap: 10px; padding-block: 12px; }
+  .root:not(.rootCompact) .header { align-items: flex-start; }
+  .root:not(.rootCompact) .grid { gap: 8px; }
+  .root:not(.rootCompact) .card { padding: 10px; }
+}

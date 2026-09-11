@@ -49,7 +49,7 @@ type SomaLogoProps = {
 };
 
 export function SomaLogo({ className, compact = false }: SomaLogoProps) {
-  const logoClassName = ["soma-logo", "soma-logo--loading", compact && "soma-logo--compact", className].filter(Boolean).join(" ");
+  const logoClassName = ["soma-logo", compact && "soma-logo--compact", className].filter(Boolean).join(" ");
 
   return (
     <span className={logoClassName}>

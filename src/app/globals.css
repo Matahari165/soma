@@ -409,8 +409,17 @@ textarea:focus-visible,
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes atlas-draw { from { stroke-dashoffset: 360; } to { stroke-dashoffset: 0; } }
-@keyframes spin { to { transform: rotate(360deg); } }
-.spin { animation: spin .8s linear infinite; }
+@keyframes soma-soft-wait { from { opacity: .3; transform: scaleX(.25); } to { opacity: .72; transform: scaleX(1); } }
+svg.spin {
+  width: 20px;
+  height: 2px;
+  overflow: hidden;
+  background: currentColor;
+  border-radius: 0;
+  stroke: none;
+  transform-origin: left center;
+  animation: soma-soft-wait 420ms cubic-bezier(.16, 1, .3, 1) both;
+}
 
 .lab-entry__relations,
 .lab-entry__registry,

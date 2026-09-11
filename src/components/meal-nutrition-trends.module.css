@@ -374,18 +374,18 @@
 .root:global(.meals-page-trends) .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 12px;
   border: 0;
 }
 
 .root:global(.meals-page-trends) .card {
   --metric-color: var(--lab-brand);
   display: grid;
-  min-height: 261px;
+  min-height: 236px;
   grid-template-rows: 48px 1fr auto;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border: 1px solid var(--lab-border);
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-subtle);
@@ -421,15 +421,18 @@
 .root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
 
 .root:global(.meals-page-trends) .chartFrame { gap: 8px; padding-top: 0; }
-.root:global(.meals-page-trends) .barChart { position: relative; min-height: 108px; padding: 10px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
+.root:global(.meals-page-trends) .barChart { position: relative; min-height: 96px; padding: 8px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
 .root:global(.meals-page-trends) .barChart::before { position: absolute; top: 46%; right: 2px; left: 2px; border-top: 1px dashed var(--lab-border-strong); content: ""; }
-.root:global(.meals-page-trends) .barColumn { position: relative; z-index: 1; height: 98px; }
+.root:global(.meals-page-trends) .barColumn { position: relative; z-index: 1; height: 86px; }
 .root:global(.meals-page-trends) .barMissing { width: min(100%, 12px); max-width: 100%; border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0; }
 .root:global(.meals-page-trends) .bar {
   width: min(100%, 12px);
-  height: max(4px, var(--bar-height));
+  height: 100%;
   border-radius: var(--lab-radius-xs) var(--lab-radius-xs) 0 0;
   background: var(--metric-color);
+  transform: scaleY(var(--bar-scale));
+  transform-origin: bottom;
+  transition: transform var(--normal) var(--ease);
 }
 .root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
 .root:global(.meals-page-trends) .axis,
@@ -449,4 +452,70 @@
   .root:global(.meals-page-trends) .periodOptions button { flex: 1; }
   .root:global(.meals-page-trends) .grid { grid-template-columns: 1fr; }
   .root:global(.meals-page-trends) .card { min-height: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root:global(.meals-page-trends) .bar { transition: none; }
+}
+
+/* DISTILL — one continuous analytical field instead of nested cards. */
+.root:global(.meals-page-trends) {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid var(--lab-border-strong);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.root:global(.meals-page-trends) .grid {
+  gap: 0;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  overflow: hidden;
+}
+
+.root:global(.meals-page-trends) .card {
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface);
+}
+
+.root:global(.meals-page-trends) .card:nth-child(odd) {
+  border-right: 1px solid var(--lab-border);
+}
+
+.root:global(.meals-page-trends) .card:nth-child(n + 3) {
+  border-top: 1px solid var(--lab-border);
+}
+
+.root:global(.meals-page-trends) .value {
+  font-size: 28px;
+  line-height: 30px;
+}
+
+@media (max-width: 700px) {
+  .root:global(.meals-page-trends) { padding-inline: 0; }
+  .root:global(.meals-page-trends) .card:nth-child(odd) { border-right: 0; }
+  .root:global(.meals-page-trends) .card + .card { border-top: 1px solid var(--lab-border); }
+}
+
+/* /meals mobile: preserve the chart signal without making each card tall. */
+@media (max-width: 700px) {
+  .root:global(.meals-page-trends) .sectionHeader { gap: 10px; }
+  .root:global(.meals-page-trends) .sectionHeader h2 { font-size: 20px; line-height: 26px; }
+  .root:global(.meals-page-trends) .periodOptions button { min-height: 44px; padding-inline: 6px; font-size: 12px; }
+  .root:global(.meals-page-trends) .grid { margin-top: 12px; }
+  .root:global(.meals-page-trends) .card { min-height: 198px; grid-template-rows: 42px 1fr auto; gap: 8px; padding: 12px; }
+  .root:global(.meals-page-trends) .value { font-size: 28px; line-height: 30px; }
+  .root:global(.meals-page-trends) .barChart { min-height: 88px; padding-top: 6px; }
+  .root:global(.meals-page-trends) .barColumn { height: 78px; }
+  .root:global(.meals-page-trends) .cardFooter { flex-wrap: wrap; }
+}
+
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .root:global(.meals-page-trends) .card { min-height: 220px; grid-template-rows: 44px 1fr auto; }
+  .root:global(.meals-page-trends) .metricLabel { overflow: visible; text-overflow: clip; white-space: normal; }
+  .root:global(.meals-page-trends) .barChart { min-height: 88px; }
+  .root:global(.meals-page-trends) .barColumn { height: 78px; }
 }

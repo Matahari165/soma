@@ -208,9 +208,9 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
     <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title">
       <header className={styles.header}>
         <div className={styles.heading}>
-          <span className="eyebrow">Repères personnels</span>
+          {!embedded && <span className="eyebrow">Repères personnels</span>}
           <Heading id="recipe-library-title">Recettes habituelles</Heading>
-          <p>Une base variable pour reconnaître tes plats récurrents — jamais une mesure du repas du jour.</p>
+          {!embedded && <p>Une base variable pour reconnaître tes plats récurrents — jamais une mesure du repas du jour.</p>}
         </div>
         {!formOpen && <button className="primary-button" type="button" onClick={openCreate}><Plus size={17} aria-hidden="true" />Nouvelle recette</button>}
       </header>
@@ -256,7 +256,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
         )}
 
         <section className={styles.listPanel} aria-labelledby="recipe-list-title">
-          <div className={styles.sectionHeading}>
+          <div className={embedded ? styles.visuallyHidden : styles.sectionHeading}>
             <div><span className="eyebrow">Bibliothèque</span><h2 id="recipe-list-title">Tes repères</h2></div>
             <span className={styles.count}>{recipes.length} {recipes.length === 1 ? "recette" : "recettes"}</span>
           </div>

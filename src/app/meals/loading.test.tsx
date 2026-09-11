@@ -14,5 +14,8 @@ describe("meals loading state", () => {
     expect(html).toContain("Chargement des repas");
     expect(html).not.toContain("style=");
     expect(html).not.toContain("system-loading__metrics");
+    expect(html).toContain("system-loading__canvas");
+    expect(html).not.toContain("system-loading__status");
+    expect(html).not.toContain("<i");
   });
 });
