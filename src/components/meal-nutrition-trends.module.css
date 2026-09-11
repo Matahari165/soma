@@ -450,3 +450,9 @@
   .root:global(.meals-page-trends) .grid { grid-template-columns: 1fr; }
   .root:global(.meals-page-trends) .card { min-height: 220px; }
 }
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .root:global(.meals-page-trends) .card { min-height: 220px; grid-template-rows: 44px 1fr auto; }
+  .root:global(.meals-page-trends) .metricLabel { overflow: visible; text-overflow: clip; white-space: normal; }
+  .root:global(.meals-page-trends) .barChart { min-height: 88px; }
+  .root:global(.meals-page-trends) .barColumn { height: 78px; }
+}

@@ -370,3 +370,47 @@
   .root :global(.health-detail-page--sleep) :global(.health-hero-stat) > span,
   .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) span { font-size: var(--lab-type-label); }
 }
+/* MacBook Air composition: protect the header summaries and give the trend
+   charts enough measure to keep labels and values intact. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .root :global(.health-detail-page--sleep) { max-width: none; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { height: 104px; min-height: 104px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { height: 88px; min-height: 88px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { height: 88px; min-height: 88px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: start; gap: 2px; text-align: left; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading) { white-space: nowrap; }
+  .columns { grid-template-columns: minmax(0, .9fr) minmax(560px, 1.1fr); gap: 24px; }
+  .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* POLISH — keep the four header readings legible on the 1440 px reference. */
+@media (min-width: 1101px) {
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 92px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
+  .root :global(.health-detail-page--sleep) :global(.sleep-header-duration) {
+    height: 80px;
+    min-height: 80px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat) {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: center;
+    justify-items: start;
+    gap: 2px;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading),
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-stat .metric-reading) {
+    font-size: 22px;
+    line-height: 24px;
+  }
+}

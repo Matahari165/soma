@@ -662,3 +662,46 @@
   .root :global(.health-hero-metrics .health-hero-score),
   .root :global(.health-hero-stat) { height: 68px; min-height: 68px; padding: 8px 12px; }
 }
+/* MacBook Air composition: the summary band stays readable without stealing
+   width from the evidence grids below it. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .root { padding-inline: 24px; }
+  .root :global(.health-detail-page) { width: 100%; max-width: none; }
+  .root :global(.health-detail-hero) { height: 112px; min-height: 112px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .root :global(.health-hero-metrics) { height: 96px; min-height: 96px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .root :global(.health-hero-metrics .health-hero-score),
+  .root :global(.health-hero-stat) { height: 96px; min-height: 96px; }
+  .root :global(.health-hero-score-card) { position: relative; padding-block: 8px; }
+  .root :global(.health-hero-score-card__action) { position: absolute; inset: 0; }
+  .root :global(.health-hero-score-card__action .activity-score-control),
+  .root :global(.health-hero-score-card__action .health-score-trigger) { width: 100%; height: 100%; }
+  .root :global(.health-hero-score-card__action .score-ring) { opacity: 0; }
+  .root :global(.health-primary-grid),
+  .root :global(.metric-trend-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* POLISH — keep the summary band readable instead of clipping three lines
+   into the former 75 px frame. */
+@media (min-width: 1101px) {
+  .root :global(.health-detail-hero),
+  .root :global(.health-hero-metrics) {
+    height: auto;
+    min-height: 92px;
+  }
+  .root :global(.health-hero-metrics .health-hero-score),
+  .root :global(.health-hero-stat) {
+    height: 88px;
+    min-height: 88px;
+  }
+  .root :global(.health-hero-stat) {
+    align-content: center;
+    justify-items: start;
+    gap: 2px;
+    text-align: left;
+  }
+  .root :global(.health-hero-stat .metric-reading),
+  .root :global(.health-hero-stat__average) {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+}

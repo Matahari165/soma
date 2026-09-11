@@ -1513,3 +1513,33 @@
     grid-column: 1 / -1;
   }
 }
+/* MacBook Air composition: keep the daily record comfortably wider than the
+   analytical rail while allowing both regions to remain visible together. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .mealsPageRoot { width: 100%; max-width: none; }
+  .mealsPageRoot .mealsPageHeader { grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .mealsPageRoot .headerMetric { min-width: 0; padding-inline: 12px; }
+  .mealsWorkbench { grid-template-columns: minmax(620px, 1.22fr) minmax(420px, .78fr); gap: 24px; }
+  .mealsJournalPanel .mealCard { min-height: 148px; }
+  .mealsSecondary { min-width: 0; }
+}
+
+/* POLISH — the note owns the row; the photo action no longer consumes the
+   full flex width and collapse the textarea to a sliver. */
+@media (min-width: 701px) {
+  .mealsJournalPanel .emptyMealPrompt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 216px;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .mealsJournalPanel .emptyMealActions,
+  .mealsJournalPanel .photoInputSingle {
+    width: auto;
+    min-width: 0;
+  }
+  .mealsJournalPanel .photoInputSingle,
+  .mealsJournalPanel .captureButtonCompact {
+    height: 100%;
+  }
+}

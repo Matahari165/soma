@@ -1095,3 +1095,37 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
     min-height: 44px;
   }
 }
+/* MacBook Air composition: use the available desktop width for the evidence
+   column before the narrower laptop layout falls back to a vertical flow. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .personal-lab-page {
+    display: grid;
+    grid-template-columns: minmax(0, 2.3fr) minmax(360px, 1fr);
+    column-gap: 24px;
+    row-gap: 24px;
+  }
+  .personal-lab-page > .lab-header { grid-column: 1 / -1; width: 100%; }
+  .personal-lab-page .lab-header__row { grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+  .personal-lab-page .personal-lab-metric { grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; padding-inline: 12px 10px; }
+  .personal-lab-page .personal-lab-metric__bars { gap: 4px; }
+  .personal-lab-page .personal-lab-metric__bar { width: 7px; }
+  .personal-lab-page > .lab-workspace { grid-column: 1; }
+  .personal-lab-page > .strongest-effects-panel { grid-column: 2; min-width: 0; margin-top: 0; }
+  .personal-lab-workbench { grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); gap: 24px; }
+}
+
+/* POLISH — give journal labels enough measure beside compact controls on the
+   1440 px reference without taking space from Strongest Effects. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .personal-lab-workbench {
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, .55fr);
+  }
+  .personal-lab-journal-column .journal-card--personal-lab {
+    --lab-journal-control-width: 104px;
+  }
+  .personal-lab-meal-column .meal-journal-lab .emptyMealActions { gap: 4px; }
+  .personal-lab-meal-column .meal-journal-lab :is(.emptyNoteButton, .captureButtonCompact, .galleryButtonCompact) {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+}
