@@ -54,14 +54,15 @@
 
 .periodOptions {
   display: flex;
+  min-height: 44px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--lab-radius-sm);
   background: var(--paper);
 }
 
 .periodOptions button {
   min-width: 88px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 7px 11px;
   border: 0;
   border-right: 1px solid var(--line);
@@ -86,8 +87,7 @@
   color: var(--canvas);
 }
 
-.periodOptions button:focus-visible,
-.bar:focus-visible {
+.periodOptions button:focus-visible {
   outline: 2px solid var(--focus-color);
   outline-offset: 3px;
 }
@@ -227,27 +227,7 @@
   padding: 0;
   border: 0;
   background: var(--metric-color);
-  cursor: pointer;
-  transition: height var(--normal) var(--ease), opacity var(--fast) ease;
-}
-
-.bar:hover,
-.barActive {
-  opacity: .7;
-}
-
-.tooltip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  padding: 3px 5px;
-  background: var(--ink);
-  color: var(--canvas);
-  font-family: var(--font-soma-mono), monospace;
-  font-size: .68rem;
-  line-height: 1.25;
-  pointer-events: none;
+  transition: height var(--normal) var(--ease);
 }
 
 .axis,
@@ -326,11 +306,11 @@
 /* Meals / Redesign V1 — compact trend cards. */
 .root:global(.meals-page-trends) {
   width: 100%;
-  min-height: 912px;
+  min-height: 0;
   margin: 0;
   padding: 16px 24px 24px;
   border: 1px solid var(--lab-border-strong);
-  border-radius: var(--lab-radius-md);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface);
   box-shadow: var(--lab-shadow-subtle);
 }
@@ -369,15 +349,15 @@
 }
 
 .root:global(.meals-page-trends) .periodOptions {
-  height: 24px;
+  min-height: 44px;
   border: 1px solid var(--lab-border);
-  border-radius: var(--lab-radius-xs);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-subtle);
 }
 
 .root:global(.meals-page-trends) .periodOptions button {
   min-width: 66px;
-  min-height: 22px;
+  min-height: 44px;
   padding: 3px 8px;
   border-right-color: var(--lab-border);
   color: var(--lab-text-secondary);
@@ -444,16 +424,17 @@
 .root:global(.meals-page-trends) .barChart { position: relative; min-height: 108px; padding: 10px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
 .root:global(.meals-page-trends) .barChart::before { position: absolute; top: 46%; right: 2px; left: 2px; border-top: 1px dashed var(--lab-border-strong); content: ""; }
 .root:global(.meals-page-trends) .barColumn { position: relative; z-index: 1; height: 98px; }
-.root:global(.meals-page-trends) .bar,
-.root:global(.meals-page-trends) .barMissing { width: 12px; border-radius: 2px 2px 0 0; }
-.root:global(.meals-page-trends) .bar { background: var(--metric-color); }
+.root:global(.meals-page-trends) .barMissing { width: min(100%, 12px); max-width: 100%; border-radius: 2px 2px 0 0; }
+.root:global(.meals-page-trends) .bar {
+  width: min(100%, 12px);
+  height: max(4px, var(--bar-height));
+  border-radius: 2px 2px 0 0;
+  background: var(--metric-color);
+}
 .root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
-.root:global(.meals-page-trends) .bar:hover,
-.root:global(.meals-page-trends) .barActive { opacity: .72; }
 .root:global(.meals-page-trends) .axis,
 .root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; }
 .root:global(.meals-page-trends) .cardFooter { padding-top: 8px; border-top-color: var(--lab-border); }
-.root:global(.meals-page-trends) .tooltip { top: -2px; background: var(--lab-brand); color: var(--lab-surface); font-size: 10px; }
 .root:global(.meals-page-trends) .emptyState { min-height: 180px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); }
 
 @media (max-width: 1100px) {

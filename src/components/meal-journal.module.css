@@ -650,7 +650,7 @@
   margin: 0;
   padding: 24px;
   border: 1px solid #dfe5dc;
-  border-radius: 8px;
+  border-radius: 4px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(28, 37, 32, .05);
 }
@@ -941,7 +941,10 @@
 }
 
 .headerMetric > strong {
-  overflow: hidden;
+  display: flex;
+  overflow: visible;
+  align-items: baseline;
+  gap: 3px;
   color: var(--lab-brand);
   font-family: var(--font-soma-mono), monospace;
   font-size: 18px;
@@ -964,8 +967,8 @@
   top: 0;
   right: 0;
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -990,11 +993,11 @@
 .mealsPageRoot .historyNavigation {
   display: grid;
   min-width: 0;
-  height: 34px;
-  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  height: 44px;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
   gap: 0;
   margin-top: 16px;
-  padding: 2px;
+  padding: 0;
   border: 1px solid var(--lab-border-strong);
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface);
@@ -1004,7 +1007,7 @@
 .mealsPageRoot .historyArrow {
   display: grid;
   min-width: 0;
-  height: 28px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -1025,7 +1028,7 @@
 .mealsPageRoot .mealsWeekStrip {
   display: flex;
   min-width: 0;
-  height: 28px;
+  height: 44px;
   border: 0;
   border-radius: 0;
 }
@@ -1034,7 +1037,7 @@
 .mealsPageRoot .mealsWeekStrip .weekDaySelected {
   display: flex;
   min-width: 0;
-  min-height: 28px;
+  min-height: 44px;
   flex: 1 1 0;
   flex-direction: row;
   align-items: center;
@@ -1083,7 +1086,7 @@
 .mealsSecondary :global(.meals-page-recipes) {
   min-width: 0;
   border: 1px solid var(--lab-border-strong);
-  border-radius: var(--lab-radius-md);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface);
   box-shadow: var(--lab-shadow-subtle);
 }
@@ -1149,6 +1152,9 @@
 
 .mealsJournalPanel .mealCardConfirmed,
 .mealsJournalPanel .mealCardConfirmed .mealHeader { border-color: var(--lab-border); background: var(--lab-surface-subtle); }
+
+.mealsJournalPanel .mealCardConfirmed { min-height: 0; }
+.mealsJournalPanel .mealCardConfirmed .mealHeader { background: transparent; }
 
 .mealsJournalPanel .mealHeader {
   min-height: 28px;
@@ -1235,7 +1241,7 @@
 }
 
 .mealsMealSummary { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 12px; }
-.mealsMealDetails { display: grid; gap: 8px; }
+.mealsMealDetails { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
 .mealsMealDetails > div { display: grid; min-width: 0; gap: 2px; }
 .mealsMealDetails span { color: var(--lab-text-secondary); font-size: 11px; font-weight: 650; letter-spacing: .22px; line-height: 14px; }
 .mealsMealDetails strong { overflow: hidden; color: var(--lab-text-primary); font-size: 13px; font-weight: 400; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
@@ -1245,7 +1251,7 @@
 .mealsJournalPanel .emptyMealActions { width: 100%; gap: 8px; }
 .mealsJournalPanel .emptyNoteButton,
 .mealsJournalPanel .captureButtonCompact,
-.mealsJournalPanel .galleryButtonCompact { min-height: 32px; padding: 6px 8px; border-radius: var(--lab-radius-xs); font-size: 10px; }
+.mealsJournalPanel .galleryButtonCompact { min-height: 44px; padding: 6px 8px; border-radius: var(--lab-radius-sm); font-size: 10px; }
 .mealsJournalPanel .emptyNoteButton,
 .mealsJournalPanel .galleryButtonCompact { border-color: var(--lab-border); background: var(--lab-surface); color: var(--lab-text-secondary); }
 .mealsJournalPanel .emptyNoteButton:hover,
@@ -1257,7 +1263,7 @@
 .mealsJournalPanel .analysisDetails > summary { min-height: 24px; padding: 0; color: var(--lab-text-secondary); font-size: 10px; }
 .mealsJournalPanel .analysisDetailsBody { padding: 8px 0 0; }
 .mealsJournalPanel .mealCompletionControls { margin-top: 8px; padding-top: 8px; border-top-color: var(--lab-border); }
-.mealsJournalPanel .mealCompletionControls .secondaryButton { min-height: 24px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-xs); background: transparent; color: var(--lab-text-secondary); font-size: 10px; }
+.mealsJournalPanel .mealCompletionControls .secondaryButton { min-height: 44px; padding: 4px 8px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); background: transparent; color: var(--lab-text-secondary); font-size: 10px; }
 .mealsJournalPanel .mealCompletionControls .secondaryButton:hover { border-color: var(--lab-brand); background: var(--lab-surface-selected); color: var(--lab-brand); }
 
 @media (max-width: 1100px) {
@@ -1277,7 +1283,8 @@
   .mealsPageHeader h1 { font-size: 24px; line-height: 30px; }
   .headerMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
   .headerMetric > strong { font-size: 16px; line-height: 20px; }
-  .mealsPageRoot .historyNavigation { grid-template-columns: 28px minmax(0, 1fr) 28px; overflow: hidden; }
+  .headerMetric > strong small { overflow: visible; font-size: 10px; white-space: normal; }
+  .mealsPageRoot .historyNavigation { grid-template-columns: 40px minmax(0, 1fr) 40px; overflow: hidden; }
   .mealsPageRoot .mealsWeekStrip { overflow-x: auto; }
   .mealsPageRoot .mealsWeekStrip .weekDay,
   .mealsPageRoot .mealsWeekStrip .weekDaySelected { flex: 1 1 0; min-width: 52px; padding-inline: 4px; }
@@ -1287,4 +1294,58 @@
   .mealsJournalPanel > .mealList { gap: 16px; }
   .mealsJournalPanel .draftMeal .actionsRow { grid-template-columns: 1fr; }
   .mealsJournalPanel .draftMeal .photoInput { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mealsMealDetails { grid-template-columns: 1fr; gap: 8px; }
 }
+
+/* Recorded meals keep the same compact 4px geometry as every other state. */
+.labRoot .mealCardConfirmed {
+  min-height: 0;
+  border: 1px solid var(--lab-border);
+  border-radius: 4px;
+  background: var(--lab-surface-subtle);
+}
+
+.labRoot .mealCardConfirmed .mealHeader { background: transparent; }
+.mealsJournalPanel .mealCompletionControls .secondaryButton { border-radius: var(--lab-radius-sm); }
+
+/* Accessible hit areas and the 4px rectangular geometry are invariant. */
+.labRoot .labHeader button,
+.labRoot .emptyNoteButton,
+.labRoot .captureButtonCompact,
+.labRoot .galleryButtonCompact,
+.labRoot .analysisDetails > summary,
+.labRoot .mealCompletionControls .secondaryButton,
+.mealsJournalHeader button,
+.mealsJournalPanel .analysisDetails > summary,
+.mealsJournalPanel .confirmButton,
+.mealsJournalPanel .secondaryButton,
+.mealsTargetButton {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--lab-radius-sm);
+}
+
+.mealsPageRoot .historyNavigation { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+.mealsPageRoot .historyArrow { min-width: 44px; }
+
+.labRoot .labHeader button,
+.labRoot .mealStatus,
+.labRoot .draftMeal .textInput textarea,
+.labRoot .draftMeal .captureButton,
+.labRoot .draftMeal .galleryButton,
+.labRoot .draftMeal .analyzeButton,
+.labRoot .emptyNoteButton,
+.labRoot .captureButtonCompact,
+.labRoot .galleryButtonCompact,
+.labRoot .analysisDetails,
+.labRoot .analysisDetails > summary,
+.labRoot .mealCompletionControls .secondaryButton,
+.mealsJournalPanel .mealStatus,
+.mealsJournalPanel .draftMeal .textInput textarea,
+.mealsJournalPanel .draftMeal .captureButton,
+.mealsJournalPanel .draftMeal .galleryButton,
+.mealsJournalPanel .draftMeal .analyzeButton,
+.mealsJournalPanel .analysisDetails,
+.mealsJournalPanel .analysisDetails > summary,
+.mealsJournalPanel .confirmButton,
+.mealsJournalPanel .secondaryButton { border-radius: var(--lab-radius-sm); }

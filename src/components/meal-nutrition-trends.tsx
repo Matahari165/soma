@@ -62,13 +62,11 @@ function pointDescription(point: MealNutritionTrendPoint, unit: string) {
 function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMetric; period: Period }) {
   const copy = metricCopy[metric.id];
   const points = metric.points.slice(-period);
-  const [activeDate, setActiveDate] = useState<string | null>(null);
   const available = points.filter((point): point is MealNutritionTrendPoint & { value: number } => point.value !== null && Number.isFinite(point.value));
   const current = latestPoint(points);
   const periodAverage = average(points);
   const maxValue = available.length ? Math.max(...available.map((point) => point.value)) : 1;
   const scaleMax = maxValue === 0 ? 1 : maxValue * 1.12;
-  const activePoint = points.find((point) => point.date === activeDate) ?? null;
   const firstDate = points[0]?.date;
   const lastDate = points.at(-1)?.date ?? firstDate;
   const summaryId = `nutrition-${metric.id}-summary`;
@@ -88,21 +86,10 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
           const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
           const barStyle = { "--bar-height": `${height}%` } as CSSProperties & { "--bar-height": string };
           return <div className={styles.barColumn} key={point.date}>
-            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : <button
-              type="button"
-              className={`${styles.bar}${activeDate === point.date ? ` ${styles.barActive}` : ""}`}
-              style={barStyle}
-              aria-label={pointDescription(point, copy.unit)}
-              title={pointDescription(point, copy.unit)}
-              onPointerEnter={() => setActiveDate(point.date)}
-              onPointerLeave={() => setActiveDate(null)}
-              onFocus={() => setActiveDate(point.date)}
-              onBlur={() => setActiveDate(null)}
-            ><span aria-hidden="true" /></button>}
+            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : <span className={styles.bar} style={barStyle} aria-hidden="true" />}
           </div>;
         })}
       </div>
-      {activePoint && <output className={styles.tooltip} aria-live="polite">{formatShortDate(activePoint.date)} · {formatValue(activePoint.value)} {copy.unit}</output>}
       <div className={styles.axis} aria-hidden="true"><span>{firstDate ? formatShortDate(firstDate) : ""}</span><span>{lastDate ? formatShortDate(lastDate) : ""}</span></div>
       <p id={summaryId} className="sr-only">{points.map((point) => pointDescription(point, copy.unit)).join(". ")}</p>
     </div>

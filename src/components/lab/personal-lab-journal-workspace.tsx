@@ -29,19 +29,17 @@ function formatDate(date: string) {
 export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completedDates = new Set<string>(), disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; completedDates?: ReadonlySet<string>; disabled?: boolean; onDateChange: (date: string) => void }) {
   return <nav className="personal-lab-day-strip" aria-label="Jour partagé entre les repas et le journal">
     <div className="personal-lab-day-strip__days" role="group" aria-label="Jours disponibles">
-      <span className="personal-lab-day-strip__arrow" aria-hidden="true">‹</span>
       {dates.map((date) => <button key={date} type="button" disabled={disabled} aria-current={date === selectedDate ? "date" : undefined} onClick={() => onDateChange(date)}>
         <span>{sharedDateLabel(date, todayDate)}</span>
         <small>{new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
         <span className="sr-only">{formatDate(date)}</span>
       </button>)}
-      <span className="personal-lab-day-strip__arrow" aria-hidden="true">›</span>
     </div>
   </nav>;
 }
 
 export function PersonalLabJournalWorkspace({ data, analysis = null }: { data: PersonalLabJournal; analysis?: PersonalLabSnapshot | null }) {
-  const dates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(data.todayDate, index - 4)), [data.todayDate]);
+  const dates = useMemo(() => Array.from({ length: 6 }, (_, index) => addDays(data.todayDate, index - 5)), [data.todayDate]);
   const [selectedDate, setSelectedDate] = useState(data.todayDate);
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
   const onDateChange = useCallback((date: string) => setSelectedDate(date), []);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
 import type { PersonalLabHistoryPoint } from "@/services/personal-lab";
@@ -192,6 +192,25 @@ export type PersonalLabMetricValues = {
   history: PersonalLabHistoryPoint[];
 };
 
+type PersonalLabMetricRefresh = Partial<PersonalLabMetricValues> & { overnightFingerprint?: string | null };
+
+export function applyMealTotals(values: PersonalLabMetricValues, detail: MealTotalsEventDetail) {
+  if (!detail.isToday) return values;
+  return {
+    ...values,
+    caloriesKcal: detail.calories,
+    history: values.history.map((point) => point.date === detail.date ? { ...point, caloriesKcal: detail.calories } : point),
+  };
+}
+
+export function mergePersonalLabMetricRefresh(values: PersonalLabMetricValues, next: PersonalLabMetricRefresh) {
+  return {
+    ...values,
+    ...next,
+    history: Array.isArray(next.history) ? next.history : values.history,
+  };
+}
+
 function strainScore(value: number | null) {
   return value === null ? null : value * 0.21;
 }
@@ -251,18 +270,18 @@ function historyMax(key: PersonalLabMetricKey, history: PersonalLabHistoryPoint[
   return Math.max(2_500, ...values, 1);
 }
 
-function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href, tone }: {
+function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href }: {
   label: string;
   keyName: PersonalLabMetricKey;
   value: number | null;
   averageValue: number | null;
   history: PersonalLabHistoryPoint[];
   href: string;
-  tone: "signal" | "error";
 }) {
   const max = historyMax(keyName, history);
+  const trend = comparison(value, averageValue);
   const accessibleHistory = history.map((point) => `${point.date}: ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
-  return <Link className={`personal-lab-metric personal-lab-metric--${tone}`} href={href} aria-label={`${label}: ${metricValue(keyName, value)}. Historique des cinq derniers jours: ${accessibleHistory}`}>
+  return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label}: ${metricValue(keyName, value)}. Historique des cinq derniers jours: ${accessibleHistory}`}>
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
       <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>
@@ -279,6 +298,7 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
 }
 
 export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) {
+  const router = useRouter();
   const [values, setValues] = useState(data);
   const valuesRef = useRef(values);
 
@@ -287,27 +307,31 @@ export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) 
   }, [values]);
 
   useEffect(() => {
+    startTransition(() => setValues(data));
+  }, [data]);
+
+  useEffect(() => {
     const onMealTotals = (event: Event) => {
       const detail = (event as CustomEvent<MealTotalsEventDetail>).detail;
       if (!detail?.isToday) return;
-      setValues((current) => ({
-        ...current,
-        caloriesKcal: detail.calories,
-        history: current.history.map((point) => point.date === detail.date ? { ...point, caloriesKcal: detail.calories } : point),
-      }));
+      setValues((current) => applyMealTotals(current, detail));
+      // The event has the current total, but the 30-day average only exists
+      // in the server-rendered Personal Lab snapshot. Refresh that snapshot
+      // so the comparison is recalculated immediately after a meal save.
+      router.refresh();
     };
     window.addEventListener(MEAL_TOTALS_EVENT, onMealTotals);
     window.dispatchEvent(new Event(MEAL_TOTALS_REQUEST_EVENT));
     return () => window.removeEventListener(MEAL_TOTALS_EVENT, onMealTotals);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const refresh = async () => {
       if (document.visibilityState !== "visible") return;
       const response = await fetch("/api/lab/today", { cache: "no-store" }).catch(() => null);
       if (!response?.ok) return;
-      const next = await response.json() as Partial<PersonalLabMetricValues> & { overnightFingerprint?: string | null };
-      setValues((current) => ({ ...current, ...next, history: current.history }));
+      const next = await response.json() as PersonalLabMetricRefresh;
+      setValues((current) => mergePersonalLabMetricRefresh(current, next));
       if (next.overnightFingerprint && next.overnightFingerprint !== valuesRef.current.overnightFingerprint) window.location.reload();
     };
     const interval = window.setInterval(() => void refresh(), 60_000);
@@ -321,10 +345,10 @@ export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) 
   }, []);
 
   const metrics = [
-    { label: "Sleep duration", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep", tone: "error" as const },
-    { label: "Recovery index", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery", tone: "signal" as const },
-    { label: "Daily strain", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity", tone: "signal" as const },
-    { label: "Metabolic energy", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals", tone: "error" as const },
+    { label: "Sleep duration", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
+    { label: "Recovery index", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
+    { label: "Daily strain", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
+    { label: "Metabolic energy", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals" },
   ];
   return <section className="personal-lab-metrics" aria-label="Today metrics">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} key={metric.keyName} />)}</section>;
 }

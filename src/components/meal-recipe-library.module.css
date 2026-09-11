@@ -51,9 +51,9 @@
 .ingredientList { display: grid; gap: 12px; margin-top: 14px; }
 .ingredientRow { position: relative; display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(130px, .8fr) minmax(160px, 1fr) 34px; gap: 8px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .ingredientRow .field { min-width: 0; }
-.removeIngredient { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--line); background: transparent; color: var(--muted); }
+.removeIngredient { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: var(--lab-radius-sm); background: transparent; color: var(--muted); }
 .removeIngredient:hover { border-color: var(--danger); color: var(--danger); }
-.addIngredient { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; margin-top: 12px; padding: 8px 0; border: 0; background: transparent; color: var(--moss-dark); font-size: .76rem; }
+.addIngredient { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; margin-top: 12px; padding: 8px 0; border: 0; border-radius: var(--lab-radius-sm); background: transparent; color: var(--moss-dark); font-size: .76rem; }
 .addIngredient:hover { color: var(--ink); }
 .formActions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
 
@@ -69,9 +69,9 @@
 .ingredientSummary li::before { margin-right: 6px; color: var(--moss); content: "·"; }
 .recipeMeta { color: var(--muted) !important; font-size: .68rem !important; }
 .recipeActions { display: flex; align-items: start; gap: 5px; }
-.recipeActions :global(.icon-button) { width: 36px; min-width: 36px; min-height: 36px; }
-.deleteConfirmation { display: flex; min-height: 36px; align-items: center; gap: 7px; padding-left: 6px; color: var(--danger); font-size: .68rem; }
-.deleteConfirmation button { min-height: 32px; padding: 4px 8px; border: 1px solid currentColor; background: transparent; font-size: .67rem; }
+.recipeActions :global(.icon-button) { width: 44px; min-width: 44px; min-height: 44px; border-radius: var(--lab-radius-sm); }
+.deleteConfirmation { display: flex; min-height: 44px; align-items: center; gap: 7px; padding-left: 6px; color: var(--danger); font-size: .68rem; }
+.deleteConfirmation button { min-height: 44px; padding: 4px 8px; border: 1px solid currentColor; border-radius: var(--lab-radius-sm); background: transparent; font-size: .67rem; }
 .confirmDelete { color: var(--danger); }
 .cancelDelete { color: var(--muted); }
 
@@ -106,11 +106,11 @@
 /* Meals / Redesign V1 — compact recipe references. */
 .page:global(.meals-page-recipes) {
   width: 100%;
-  min-height: 352px;
+  min-height: 0;
   margin: 24px 0 0;
   padding: 16px 24px 24px;
   border: 1px solid var(--lab-border-strong);
-  border-radius: var(--lab-radius-md);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface);
   box-shadow: var(--lab-shadow-subtle);
 }
@@ -144,10 +144,10 @@
 }
 
 .page:global(.meals-page-recipes) .header > .primary-button {
-  min-height: 24px;
+  min-height: 44px;
   padding: 4px 8px;
   border-color: var(--lab-brand);
-  border-radius: var(--lab-radius-xs);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-brand);
   color: var(--lab-surface);
   font-size: 10px;
@@ -171,7 +171,7 @@
   gap: 16px;
   padding: 8px 12px;
   border: 1px solid var(--lab-border);
-  border-radius: var(--lab-radius-xs);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface);
 }
 
@@ -194,13 +194,13 @@
 .page:global(.meals-page-recipes) .recipeTextAction {
   display: inline-flex;
   width: 80px;
-  min-height: 28px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 4px;
   padding: 4px 6px;
   border: 1px solid var(--lab-border);
-  border-radius: var(--lab-radius-xs);
+  border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-subtle);
   color: var(--lab-text-secondary);
   font-size: 10px;

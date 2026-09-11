@@ -156,7 +156,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   }
 
   const nonNegative = variable.variableType === "count" || variable.variableType === "duration" || ["caffeine", "added sugar", "magnesium"].includes(variable.name.toLocaleLowerCase("en"));
-  const input = <input disabled={disabled} id={inputId} aria-label={variable.name} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
+  const input = <input disabled={disabled} id={inputId} aria-label={variable.name} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} placeholder="—" value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
   if (presentation !== "personal-lab") return <div className="journal-number">{input}<span>{variable.unit}</span></div>;
 
   function adjustValue(direction: -1 | 1) {

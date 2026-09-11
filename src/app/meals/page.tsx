@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import MealJournal from "@/components/meal-journal";
 import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
+import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
 import { mealNutritionHistory } from "@/domain/lab/meals";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
 import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
@@ -16,6 +17,16 @@ import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes
 import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
+
+type LoadResult<T> = { ok: true; value: T } | { ok: false };
+
+async function loadSafely<T>(load: () => T | PromiseLike<T>): Promise<LoadResult<T>> {
+  try {
+    return { ok: true, value: await load() };
+  } catch {
+    return { ok: false };
+  }
+}
 
 function isIsoDate(value: string) {
   const parsed = new Date(`${value}T12:00:00`);
@@ -44,10 +55,10 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
 
-  const [rawMeals, recipeResult, nutritionRecords] = await Promise.all([
+  const [mealResult, recipeResult, nutritionResult] = await Promise.all([
     isLocalPreviewMode()
-      ? listPreviewMeals(user.id, { from: requestedDate, to: requestedDate })
-      : listMeals(user.id, { from: requestedDate, to: requestedDate }).catch(() => []),
+      ? loadSafely(() => listPreviewMeals(user.id, { from: requestedDate, to: requestedDate }))
+      : loadSafely(() => listMeals(user.id, { from: requestedDate, to: requestedDate })),
     listMealRecipes(user.id)
       .then((value) => ({ recipes: value, error: undefined }))
       .catch((error) => ({
@@ -57,22 +68,26 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           : "Les recettes personnelles sont momentanément indisponibles.",
       })),
     isLocalPreviewMode()
-      ? Promise.resolve(loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
-      : loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate }).catch(() => []),
+      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
+      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate })),
   ]);
 
-  const records = rawMeals.map((meal) => apiMealToRecord(mealToApi(meal)));
-  const initialData: MealJournalData = {
-    date: requestedDate,
-    meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, records.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
-  };
+  const records = mealResult.ok ? mealResult.value.map((meal) => apiMealToRecord(mealToApi(meal))) : [];
+  const initialData: MealJournalData | null = mealResult.ok
+    ? {
+      date: requestedDate,
+      meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, records.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
+    }
+    : null;
 
   return (
-    <div id="main-page-content">
-      <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
-        <MealNutritionTrends metrics={mealNutritionHistory(nutritionRecords, requestedDate)} className="meals-page-trends" />
+    <div id="main-page-content" lang="fr">
+      {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
+        {nutritionResult.ok
+          ? <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
+          : <MealsInitialLoadError kind="nutrition" />}
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
-      </MealJournal>
+      </MealJournal> : <MealsInitialLoadError kind="meals" />}
     </div>
   );
 }
