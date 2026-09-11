@@ -236,6 +236,10 @@ function emptyMeal(date: string, slot: MealSlot): MealRecord {
   return { id: randomId("meal"), date, slot, photos: [], note: "", analysis: null, mouthHeat: null, stomachLoad: null, status: "draft", error: null, confirmedAt: null };
 }
 
+export function firstAvailableMealSlot(meals: MealJournalData["meals"], disabledSlots: readonly MealSlot[] = []) {
+  return MEAL_SLOTS.find((slot) => !disabledSlots.includes(slot) && !meals[slot]) ?? null;
+}
+
 function normalizeMeal(raw: MealRecord, date: string, slot: MealSlot): MealRecord {
   return {
     ...emptyMeal(date, slot),
@@ -678,7 +682,7 @@ function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; 
   </div>;
 }
 
-function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, onFiles, onRemovePhoto, onOrigin, onAnalyze, onConfirm, onRating, onRetry, onNote, onCorrection, confirmError }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onConfirm, onRating, onRetry, onNote, onCorrection, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
   saving: boolean;
@@ -688,6 +692,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   compactEmpty?: boolean;
   labCompact?: boolean;
   mealsCompact?: boolean;
+  openRequest?: number;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onOrigin: (photoId: string, origin: MealOrigin) => void;
@@ -709,8 +714,17 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const canAnalyze = Boolean(meal) && (hasPhotos || hasNote) && status === "draft";
   const skipped = disabled && !meal;
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
-  const entryOpen = !compactEmpty || Boolean(meal) || entryStarted;
+  const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
   const compactEmptyState = compactEmpty && !meal && !skipped && !entryOpen;
+
+  useEffect(() => {
+    if (!openRequest || skipped) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`meal-${slot}-note`)?.focus({ preventScroll: true });
+      document.getElementById(`meal-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [openRequest, skipped, slot]);
 
   const handleFiles = (files: File[]) => {
     if (files.length > 0) setEntryStarted(true);
@@ -734,7 +748,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     return true;
   };
 
-  return <article className={`${styles.mealCard} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
+  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div>
       {mealsCompact ? <div className={styles.mealHeaderMeta}>
@@ -810,13 +824,10 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader() {
-  const focusFirstMeal = () => {
-    document.getElementById("meal-breakfast")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+function MealLabHeader({ onAddMeal, addDisabled }: { onAddMeal: () => void; addDisabled: boolean }) {
   return <header className={styles.labHeader}>
     <h2 id="meal-journal-title">Repas</h2>
-    <button type="button" aria-label="Ajouter un repas" onClick={focusFirstMeal}><Plus size={17} aria-hidden="true" /></button>
+    <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal}><Plus size={17} aria-hidden="true" /></button>
   </header>;
 }
 
@@ -837,6 +848,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const [savingSlot, setSavingSlot] = useState<MealSlot | null>(null);
   const [targets, setTargets] = useState<NutritionTargets>(DEFAULT_NUTRITION_TARGETS);
   const [targetsExpanded, setTargetsExpanded] = useState(false);
+  const [entryRequest, setEntryRequest] = useState<{ slot: MealSlot; sequence: number } | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const objectUrls = useRef(new Set<string>());
   const targetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -856,6 +868,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     setFilesByPhotoId({});
     setFileError(null);
     setConfirmError({});
+    setEntryRequest(null);
     setLoadState("loading");
     if (selectedDateProp === undefined) setInternalSelectedDate(nextDate);
     onDateChange?.(nextDate);
@@ -1205,7 +1218,12 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled || selectedDate >= today} aria-label="Jours suivants" onClick={() => selectDate(shiftIsoDate(selectedDate, 1))}>›</button>}
   </nav> : null;
   const dateNavigation = sharedDateNavigation ?? internalDateNavigation;
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader /> : <MealPageHeader totals={currentDayTotal} targets={targets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const availableMealSlot = data ? firstAvailableMealSlot(data.meals, disabledSlots) : null;
+  const openAvailableMeal = () => {
+    if (!availableMealSlot || navigationDisabled) return;
+    setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
+  };
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} /> : <MealPageHeader totals={currentDayTotal} targets={targets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><LoaderCircle className={styles.spin} size={21} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
@@ -1231,17 +1249,17 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       <section className={styles.mealsJournalPanel} aria-labelledby="meals-journal-panel-title">
         <header className={styles.mealsJournalHeader}>
           <h2 id="meals-journal-panel-title">Journal des repas</h2>
-          <button type="button" aria-label="Ajouter un repas" onClick={() => document.getElementById("meal-breakfast")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Plus size={17} aria-hidden="true" /></button>
+          <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={!availableMealSlot || navigationDisabled} onClick={openAvailableMeal}><Plus size={17} aria-hidden="true" /></button>
         </header>
         <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-          return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty mealsCompact disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
+          return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
         })}</div>
       </section>
       <div className={styles.mealsSecondary}>{children}</div>
     </div> : <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
         const meal = readyData.meals[slot] ?? null;
-        return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty={variant !== "page"} labCompact={variant === "lab"} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
+        return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty={variant !== "page"} labCompact={variant === "lab"} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={navigationDisabled} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => void removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} /></div>;
       })}</div>}
   </section>;
 }

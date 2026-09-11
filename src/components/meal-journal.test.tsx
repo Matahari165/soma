@@ -2,13 +2,31 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, groupMealIngredients, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
+  it("targets the first empty enabled slot when adding a meal", () => {
+    const breakfast = {
+      id: "breakfast",
+      date,
+      slot: "breakfast" as const,
+      note: "Café",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "draft" as const,
+    };
+
+    expect(firstAvailableMealSlot({ breakfast }, [])).toBe("lunch");
+    expect(firstAvailableMealSlot({ breakfast }, ["lunch"])).toBe("snack");
+    expect(firstAvailableMealSlot({ breakfast, lunch: breakfast, snack: breakfast, dinner: breakfast }, [])).toBeNull();
+  });
+
   it("uses a compact home variant without moving the full calorie banner", () => {
     const html = renderToStaticMarkup(<MealJournal variant="home" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
 
