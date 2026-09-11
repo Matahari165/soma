@@ -35,7 +35,6 @@ export function ObservatoryRadar({data}:{data:RadarData}) {
         return <g key={axis.label} className="radar-axis-label"><title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif de démonstration : ${axis.goal}.`}</title><text x={x} y={y-9} textAnchor="middle" className="radar-label">{axis.label}</text><text x={x} y={y+17} textAnchor="middle" className="radar-number">{axis.display}{axis.unit==="kcal"?" kcal":""} {trend}</text></g>;
       })}
     </svg>
-    <figcaption>Contour : objectif · ↑ ↓ Moyenne 30 j · Objectifs de démonstration</figcaption>
 
   </figure>;
 }

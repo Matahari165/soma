@@ -500,10 +500,10 @@ function visibleAnalysisError(message: string | null | undefined) {
   return message ?? "L’analyse n’a pas abouti. Vérifie ta connexion puis réessaie.";
 }
 
-function MealTextInput({ slot, meal, disabled, onNote }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; onNote: (note: string) => void }) {
+function MealTextInput({ slot, meal, disabled, placeholder = "Ex. 2 bananes et un café.", onNote }: { slot: MealSlot; meal: MealRecord | null; disabled: boolean; placeholder?: string; onNote: (note: string) => void }) {
   return <div className={styles.textInput}>
     <label className={styles.visuallyHidden} htmlFor={`meal-${slot}-note`}>Décrire : {SLOT_LABELS[slot]}</label>
-    <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder="Ex. 2 bananes et un café." disabled={disabled} onChange={(event) => onNote(event.target.value)} />
+    <textarea id={`meal-${slot}-note`} rows={3} value={meal?.note ?? ""} maxLength={500} placeholder={placeholder} disabled={disabled} onChange={(event) => onNote(event.target.value)} />
   </div>;
 }
 
@@ -651,7 +651,7 @@ function MealCompletionControls({ status, saving, mutationBusy, onEdit, onConfir
   </div>;
 }
 
-function MealAnalysisDisclosure({ meal, status, showExplanation = false, correctionMode, ratingSaveState, onRating, onCorrection, onCancel }: {
+type MealAnalysisDisclosureProps = {
   meal: MealRecord;
   status: "review" | "confirmed";
   showExplanation?: boolean;
@@ -660,26 +660,38 @@ function MealAnalysisDisclosure({ meal, status, showExplanation = false, correct
   onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void | Promise<boolean>;
   onCorrection: (correction: MealCorrection) => void;
   onCancel: () => void;
-}) {
-  return <details className={styles.analysisDetails} open={status === "review" || correctionMode}>
-    <summary>Résultats de l’analyse</summary>
-    <div className={styles.analysisDetailsBody}>
-      <AnalysisDisplay meal={meal} />
-      {showExplanation && meal.analysis && <div className={styles.analysisExplanation}>
-        {meal.analysis.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
-        {meal.analysis.uncertainties?.map((text) => <p key={text}>{text}</p>)}
-      </div>}
-      <h4 className={styles.ratingsHeading}>Ressentis</h4>
-      <div className={styles.ratings}>
-        <RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} />
-        <RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} />
-      </div>
-      {ratingSaveState !== "idle" && <p className={styles.ratingSaveStatus} role={ratingSaveState === "error" ? "alert" : "status"} aria-live={ratingSaveState === "error" ? "assertive" : "polite"}>
-        {ratingSaveState === "saving" ? "Enregistrement du ressenti…" : ratingSaveState === "saved" ? "Ressenti enregistré" : "Le ressenti n’a pas pu être enregistré. Réessaie."}
-      </p>}
-      {correctionMode && <MealCorrectionPanel meal={meal} onCorrection={onCorrection} onCancel={onCancel} />}
+};
+
+function MealAnalysisContent({ meal, showExplanation = false, correctionMode, ratingSaveState, onRating, onCorrection, onCancel }: MealAnalysisDisclosureProps) {
+  return <div className={styles.analysisDetailsBody}>
+    <AnalysisDisplay meal={meal} />
+    {showExplanation && meal.analysis && <div className={styles.analysisExplanation}>
+      {meal.analysis.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+      {meal.analysis.uncertainties?.map((text) => <p key={text}>{text}</p>)}
+    </div>}
+    <h4 className={styles.ratingsHeading}>Ressentis</h4>
+    <div className={styles.ratings}>
+      <RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} />
+      <RatingScale label={RATING_LABELS.stomachLoad} value={meal.stomachLoad} onChange={(value) => onRating("stomachLoad", value)} />
     </div>
+    {ratingSaveState !== "idle" && <p className={styles.ratingSaveStatus} role={ratingSaveState === "error" ? "alert" : "status"} aria-live={ratingSaveState === "error" ? "assertive" : "polite"}>
+      {ratingSaveState === "saving" ? "Enregistrement du ressenti…" : ratingSaveState === "saved" ? "Ressenti enregistré" : "Le ressenti n’a pas pu être enregistré. Réessaie."}
+    </p>}
+    {correctionMode && <MealCorrectionPanel meal={meal} onCorrection={onCorrection} onCancel={onCancel} />}
+  </div>;
+}
+
+function MealAnalysisDisclosure(props: MealAnalysisDisclosureProps) {
+  return <details className={styles.analysisDetails} open={props.status === "review" || props.correctionMode}>
+    <summary>Résultats de l’analyse</summary>
+    <MealAnalysisContent {...props} />
   </details>;
+}
+
+function MealAnalysisTrigger({ open, controlsId, onToggle }: { open: boolean; controlsId: string; onToggle: () => void }) {
+  return <button className={styles.analysisTrigger} type="button" aria-expanded={open} aria-controls={controlsId} onClick={onToggle}>
+    <span aria-hidden="true">{open ? "▾" : "▸"}</span>Résultats de l’analyse
+  </button>;
 }
 
 function PhotoInput({ slot, onFiles, disabled = false, compact = false, single = false }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean; compact?: boolean; single?: boolean }) {
@@ -762,12 +774,16 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   onCorrection: (correction: MealCorrection) => void;
   confirmError?: string | null;
 }) {
+  const status = meal?.status ?? "draft";
   const [correctionMode, setCorrectionMode] = useState(false);
   const [ratingSaveState, setRatingSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [analysisChoice, setAnalysisChoice] = useState<{ status: string; open: boolean } | null>(null);
+  const analysisOpen = analysisChoice?.status === status ? analysisChoice.open : status === "review";
+  const setAnalysisOpen = (next: boolean | ((previous: boolean) => boolean)) => setAnalysisChoice({ status, open: typeof next === "function" ? next(analysisOpen) : next });
   const [entryStarted, setEntryStarted] = useState(false);
   const headingId = `meal-${slot}-title`;
+  const analysisContentId = `meal-${slot}-analysis-content`;
   const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
-  const status = meal?.status ?? "draft";
   const canAnalyze = Boolean(meal) && hasPhotos && status === "draft";
   const skipped = disabled && !meal;
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
@@ -783,6 +799,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     });
     return () => cancelAnimationFrame(frame);
   }, [openRequest, skipped, slot]);
+
 
   const handleFiles = (files: File[]) => {
     if (files.length > 0) setEntryStarted(true);
@@ -809,14 +826,17 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div>
-      {mealsCompact ? <div className={styles.mealHeaderMeta}>
+      {labCompact && meal?.analysis && (status === "review" || status === "confirmed") ? <div className={styles.labHeaderActions}>
+        <MealAnalysisTrigger open={analysisOpen} controlsId={analysisContentId} onToggle={() => setAnalysisOpen((open) => !open)} />
+        <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} onConfirm={onConfirm} />
+      </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
         {visibleStatus && <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
       </div> : visibleStatus && <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
     {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
-      {integratedEmpty ? <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} onNote={onNote} /> : null}
+      {integratedEmpty ? <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} /> : null}
       <div className={styles.emptyMealActions}>
         {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
       </div>
@@ -824,7 +844,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
     {!skipped && !compactEmptyState && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
-      {status !== "confirmed" && <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} onNote={onNote} />}
+      {status !== "confirmed" && <MealTextInput slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} />}
       {status === "draft" && <div className={styles.actionsRow}>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />
         <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
@@ -833,13 +853,13 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         {!hasPhotos && <p className={styles.photoRequired}>Ajoute une photo pour lancer l’analyse. La note est optionnelle.</p>}
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
-      {status === "confirmed" && meal && <MealSourceEvidence meal={meal} />}
+      {status === "confirmed" && !labCompact && meal && <MealSourceEvidence meal={meal} />}
       {(status === "review" || status === "confirmed") && meal?.analysis && <>
         {mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}
-        {labCompact ? <div className={styles.labAnalysisRow}>
-          <MealAnalysisDisclosure meal={meal} status={status} showExplanation correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
-          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} />
-        </div> : <>
+        {labCompact && analysisOpen && <div id={analysisContentId} className={styles.labAnalysisContent}>
+          <MealAnalysisContent meal={meal} status={status} showExplanation correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
+        </div>}
+        {!labCompact && <>
           <MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
           <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} />

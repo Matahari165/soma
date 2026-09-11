@@ -4,7 +4,6 @@ import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
 import { LabGlobalNavigation } from "@/components/lab/lab-global-navigation";
-import { DarkThemeSwitcher } from "@/components/lab/dark-theme-switcher";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -80,7 +79,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
-        {localPreview && <><DarkThemeSwitcher /><LabGlobalNavigation /></>}
+        {localPreview && <LabGlobalNavigation />}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

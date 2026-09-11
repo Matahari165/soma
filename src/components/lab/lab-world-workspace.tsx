@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { useLabArtwork, useLabTheme } from "./lab-theme";
+import { useLabTheme } from "./lab-theme";
 import { LabArrival } from "./lab-arrival";
 
-export function LabWorldWorkspace({ date, metrics, effects, capture, radar }: {
-  date: string; radar: ReactNode; metrics: ReactNode; effects: ReactNode; capture: ReactNode;
+export function LabWorldWorkspace({ date, effects, capture, radar }: {
+  date: string; radar: ReactNode; effects: ReactNode; capture: ReactNode;
 }) {
   const theme = useLabTheme();
-  const artwork = useLabArtwork();
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const change = () => { window.scrollTo({ top: 0 }); };
@@ -16,13 +15,13 @@ export function LabWorldWorkspace({ date, metrics, effects, capture, radar }: {
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
   useEffect(() => {
-    const elements = root.current?.querySelectorAll<HTMLElement>(".lab-live-metrics .personal-lab-metric, .journal-period, .lab-world__effects");
+    const elements = root.current?.querySelectorAll<HTMLElement>(".lab-live-metrics .personal-lab-metric, .journal-period, .meal-journal-lab article");
     if (!elements || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (!entry.isIntersecting) return;
       const element = entry.target as HTMLElement;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { observer.unobserve(element); return; }
-      element.animate([{ opacity: .35, transform: theme === "index" ? "translateX(-16px)" : theme === "focus" ? "scale(.975)" : "translateY(32px)" }, { opacity: 1, transform: "none" }], { duration: theme === "index" ? 400 : 750, easing: "cubic-bezier(.2,.7,.2,1)" });
+      element.animate([{ opacity: .35, transform: theme === "index" ? "translateX(-16px)" : theme === "focus" ? "scale(.975)" : "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "cubic-bezier(.2,.7,.2,1)" });
       element.querySelectorAll(".metric-trace-line").forEach(line => line.animate([{ strokeDasharray: "500", strokeDashoffset: "500" }, { strokeDasharray: "500", strokeDashoffset: "0" }], { duration: 1000, easing: "ease-out" }));
       observer.unobserve(element);
     }), { threshold: .08 });
@@ -37,7 +36,6 @@ export function LabWorldWorkspace({ date, metrics, effects, capture, radar }: {
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
     <div className="lab-intro">
       <LabArrival theme={theme} date={date} radar={radar} />
-      {artwork !== "radar" && <section className="lab-live-metrics" aria-label="Mesures du jour">{metrics}</section>}
     </div>
     <div className="lab-world" lang="fr">
       <header className="lab-world__header"><h2>Au quotidien</h2></header>

@@ -110,3 +110,33 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
 .radar-grid:nth-child(3) { animation-delay:120ms; }
 @keyframes observatory-axis-draw { from { stroke-dashoffset:1100; opacity:.15; } to { stroke-dashoffset:0; opacity:1; } }
 @media(prefers-reduced-motion:reduce) { .radar-grid { animation:none; } }
+/* Single radar edition — common proportions for all daily controls. */
+html[data-lab-theme="observatory"] .lab-global-nav { inset:26px 0 auto; }
+html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:82px; }
+html[data-lab-theme="observatory"] .lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title,#world-effects) { scroll-margin-top:94px!important; }
+html[data-lab-theme="observatory"] .lab-global-nav a:hover { color:#fff; }
+html[data-lab-theme="observatory"] .arrival-title-line > span { animation-duration:1900ms; animation-timing-function:cubic-bezier(.22,.7,.24,1); }
+html[data-lab-theme="observatory"] .arrival-title-line:nth-child(2) > span { animation-delay:180ms; }
+@keyframes observatory-title-unfold { from { transform:translateY(30%); clip-path:inset(0 0 100% 0); opacity:.1; } to { transform:none; clip-path:inset(0); opacity:1; } }
+.observatory-radar { grid-template-rows:minmax(0,1fr); padding-bottom:0; }
+html[data-lab-theme="observatory"] .journal-save-status[data-draft="true"] { display:none; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__header h2 { font:400 clamp(30px,3vw,40px)/1.2 Georgia,serif!important; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-period__header h3,.journal-period__header h3 button) { font-size:20px!important; font-weight:400!important; text-transform:none; letter-spacing:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-sections :is(button,input,span,label,strong) { font-weight:400!important; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary,.journal-number--stepper,.journal-clock) { width:168px!important; min-width:168px; height:36px!important; min-height:36px!important; padding:0!important; box-sizing:border-box; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary button { min-height:36px!important; height:36px; padding:4px 12px; font-size:14px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; align-items:center; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper > button { width:32px; min-height:36px!important; padding:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value { display:flex; justify-content:center; align-items:baseline; gap:5px; min-width:0; padding:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value input { width:3ch!important; min-width:3ch; flex:0 0 auto; text-align:right; padding:0!important; font:400 14px var(--font-soma-mono),monospace; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value > span { color:#eee!important; font:400 14px var(--font-soma-mono),monospace; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock { display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock input { width:48px!important; min-height:36px!important; height:36px; background:transparent; font-weight:400; text-align:center; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-button--validate,.journal-card__actions > .primary-button) { min-height:36px; padding:8px 18px; background:#181818; color:#eee; font-weight:400; border-radius:4px; }
+@media(max-width:700px) { html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field { gap:8px; } }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value input { field-sizing:content; width:auto!important; min-width:1ch; max-width:6ch; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card__actions { margin-left:auto; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-button--validate,.journal-card__actions > .primary-button) { width:168px; }
+.radar-number,.radar-label { font-weight:400; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card__actions { justify-content:flex-end; width:100%; }

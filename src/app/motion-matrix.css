@@ -112,3 +112,134 @@
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+/* The local observatory treats Strongest Effects as a measured instrument:
+ * the selector is a quiet rule, and each finding resolves into the rail. */
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects :is(.strongest-effects-panel__header h2, .strongest-effects h2) {
+  color: var(--world-ink);
+  font-family: Georgia, ui-serif, serif;
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1.12;
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects .strongest-effects-panel .strongest-effects__periods {
+  display: inline-flex;
+  gap: 2px;
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid var(--world-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects .strongest-effects-panel .strongest-effects__periods button {
+  min-width: 48px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 0;
+  background: transparent !important;
+  color: var(--world-muted);
+  box-shadow: inset 0 -1px 0 transparent;
+  transition: color 320ms cubic-bezier(.16, 1, .3, 1), box-shadow 320ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects .strongest-effects-panel .strongest-effects__periods button:hover:not(:disabled) {
+  background: transparent !important;
+  color: var(--world-ink);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .lab-world__effects .strongest-effects-panel .strongest-effects__periods button[aria-pressed="true"] {
+  background: transparent !important;
+  color: var(--world-ink);
+  box-shadow: inset 0 -1px 0 var(--world-ink);
+}
+
+/* Keep the measurement complete if the observer cannot run or is disabled. */
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects .strongest-effects__interval {
+  opacity: 1;
+  transform: translateY(-50%) scaleX(1);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects .strongest-effects__point {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row:not(.is-visible) {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  filter: blur(2px);
+  transition: opacity 680ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1), filter 920ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--matrix-row-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: opacity 680ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1), filter 920ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--matrix-row-delay, 0ms);
+  will-change: auto;
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__plot::before {
+  opacity: .42;
+  transform: translateY(-50%) scaleX(.12);
+  transform-origin: center;
+  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 880ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--matrix-row-delay, 0ms);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible .strongest-effects__plot::before {
+  opacity: 1;
+  transform: translateY(-50%) scaleX(1);
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 80ms);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__interval {
+  opacity: .7;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: var(--matrix-interval-origin, center);
+  transition: opacity 520ms cubic-bezier(.16, 1, .3, 1), transform 920ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 160ms);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible .strongest-effects__interval {
+  opacity: 1;
+  transform: translateY(-50%) scaleX(1);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__point {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.35);
+  transition: opacity 460ms cubic-bezier(.16, 1, .3, 1), transform 700ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: calc(var(--matrix-row-delay, 0ms) + 460ms);
+}
+
+.lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__row.is-visible .strongest-effects__point {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] :is(.strongest-effects__row, .strongest-effects__plot::before, .strongest-effects__interval, .strongest-effects__point) {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition-duration: .01ms !important;
+    transition-delay: 0ms !important;
+    will-change: auto;
+  }
+
+  .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__plot::before {
+    transform: translateY(-50%) scaleX(1);
+  }
+
+  .lab-experience.lab-continuous[data-continuous-theme="observatory"] .strongest-effects[data-motion-ready="true"] .strongest-effects__point {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

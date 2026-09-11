@@ -359,14 +359,21 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
     for (const influence of influences) categories.set(influence.group, [...(categories.get(influence.group) ?? []), influence]);
     return [...categories.entries()];
   }, [meaningful]);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const setRowRef = useCallback((key: string, node: HTMLLIElement | null) => {
     if (node) rowRefs.current.set(key, node);
     else rowRefs.current.delete(key);
   }, []);
   useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const isLocalObservatory = section.closest('.lab-experience.lab-continuous[data-continuous-theme="observatory"]') !== null;
     const rows = meaningful.map((relation) => `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`);
-    if (!rows.length) return;
+    if (!rows.length) {
+      if (isLocalObservatory && section) delete section.dataset.motionReady;
+      return;
+    }
 
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     if (reduceMotion || typeof IntersectionObserver === "undefined") {
@@ -374,6 +381,10 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
       return;
     }
 
+    if (isLocalObservatory) {
+      section.dataset.motionReady = "true";
+      rowRefs.current.forEach((node) => node.classList.remove("is-visible"));
+    }
     const rowKeys = new Set(rows);
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -388,10 +399,13 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
       if (rowKeys.has(key)) observer.observe(node);
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (isLocalObservatory) delete section.dataset.motionReady;
+    };
   }, [meaningful]);
 
-  return <section className="strongest-effects" aria-labelledby="strongest-effects-title">
+  return <section ref={sectionRef} className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
       <div>
         {standalone ? <h2 id="strongest-effects-title">Effets les plus marquants</h2> : <h3 id="strongest-effects-title">Effets les plus marquants</h3>}

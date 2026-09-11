@@ -2,7 +2,7 @@
 
 Aperçu : `SOMA_LOCAL_PREVIEW=true node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000`.
 
-Deux bandeaux sont proposés : Orbites (géométrie animée) et Radar (sommeil, récupération, effort et calories). Le radar compare les mesures à des repères de démonstration explicitement affichés, pas aux objectifs personnels enregistrés. Une mesure absente reste absente et empêche de fermer le polygone.
+Un seul bandeau est proposé : Radar (sommeil, récupération, effort et calories). Le radar compare les mesures à des repères de démonstration explicitement affichés, pas aux objectifs personnels enregistrés. Une mesure absente reste absente et empêche de fermer le polygone.
 
 Le parcours reste continu : accueil, mesures, Journal et Repas, puis Strongest Effects. La navigation persistante donne accès aux autres pages. Les saisies ne sont pas démontées au changement de bandeau.
 
@@ -12,6 +12,8 @@ Les composants de géométrie et de radar sont distincts ; les formulaires et gr
 
 ## Affinement du radar
 
-Radar est désormais le bandeau par défaut. Une seule navigation précède le titre et sa date ; les métriques répétées et les pourcentages séparés ont été retirés. Les flèches comparent chaque valeur à sa moyenne sur 30 jours (égalité : ↔, moyenne absente : aucune flèche). Les objectifs de démonstration sont accessibles dans les libellés du graphique. Le radar conserve la proportion visuelle de réalisation.
+Radar est désormais le seul bandeau ; le sélecteur provisoire a été retiré. Une seule navigation précède le titre et sa date ; les métriques répétées et les pourcentages séparés ont été retirés. Les flèches comparent chaque valeur à sa moyenne sur 30 jours (égalité : ↔, moyenne absente : aucune flèche). Les objectifs de démonstration sont accessibles dans les libellés du graphique. Le radar conserve la proportion visuelle de réalisation.
 
 La palette et les contrôles sont monochromes. Les effets conservent leurs couleurs sémantiques sur une piste blanche couvrant leur axe. Le titre se dévoile ligne par ligne et se retire au défilement ; la réduction des animations reste respectée.
+
+Les commandes du journal partagent une largeur de 168 px et une hauteur visuelle de 36 px. Quantités, unités et choix utilisent une graisse normale. Les grands titres et sous-titres sont hiérarchisés sans gras. La légende visible du radar est supprimée ; ses objectifs et comparaisons restent dans son alternative accessible.

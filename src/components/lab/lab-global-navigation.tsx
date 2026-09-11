@@ -14,7 +14,7 @@ export function LabGlobalNavigation() {
     target.scrollIntoView({ block: "start", inline: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }
   return <nav className="lab-global-nav" aria-label="Navigation principale">
-    <Link href="/#arrival-title" onClick={scroll}>Personal Lab</Link>
+    <Link href="/" onClick={(event) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}>Personal Lab</Link>
     <Link href="/#daily-journal" onClick={scroll}>Journal</Link>
     <Link href="/#meal-journal-title" onClick={scroll}>Repas</Link>
     <Link href="/#world-effects" onClick={scroll}>Strongest Effects</Link>
