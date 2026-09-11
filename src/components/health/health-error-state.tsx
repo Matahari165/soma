@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 
+import observatoryStyles from "./health-observatory.module.css";
 import styles from "./health-error-state.module.css";
 
 type HealthRoute = "sleep" | "recovery" | "activity";
@@ -14,5 +15,5 @@ const copy: Record<HealthRoute, { title: string; description: string }> = {
 
 export function HealthErrorState({ route, reset }: { route: HealthRoute; reset: () => void }) {
   const routeCopy = copy[route];
-  return <main className={styles.root} aria-labelledby="health-error-title"><section className={styles.panel} role="alert"><AlertTriangle size={24} aria-hidden="true" /><div><h1 id="health-error-title">{routeCopy.title}</h1><p>{routeCopy.description}</p><button type="button" onClick={reset}>Réessayer</button></div></section></main>;
+  return <main className={`${styles.root} ${observatoryStyles.observatory} health-observatory-route health-observatory-error`} aria-labelledby="health-error-title"><section className={`${styles.panel} health-observatory-error-panel`} role="alert"><AlertTriangle size={24} aria-hidden="true" /><div><h1 id="health-error-title">{routeCopy.title}</h1><p>{routeCopy.description}</p><button type="button" onClick={reset}>Réessayer</button></div></section></main>;
 }

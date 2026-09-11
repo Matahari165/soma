@@ -1,3 +1,5 @@
+import observatoryStyles from "./health-observatory.module.css";
+
 type HealthLoadingShellProps = {
   kind: "sleep" | "recovery" | "activity";
   title: string;
@@ -7,7 +9,7 @@ type HealthLoadingShellProps = {
 export function HealthLoadingShell({ kind, title, labels }: HealthLoadingShellProps) {
   return (
     <div
-      className={`health-detail-page health-detail-page--${kind} health-detail-page--loading`}
+      className={`health-observatory-route ${observatoryStyles.observatory} health-detail-page health-detail-page--${kind} health-detail-page--loading`}
       id="main-page-content"
       role="status"
       aria-live="polite"
