@@ -23,6 +23,8 @@ import "./lab-arrival.css";
 import "./lab-arrival-observatory-strata.css";
 import "./lab-arrival-index-atelier.css";
 import "./lab-arrival-art.css";
+import "./lab-continuous.css";
+import "./lab-continuous-worlds.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],

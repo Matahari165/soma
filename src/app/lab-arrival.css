@@ -1,7 +1,7 @@
 /* Shared arrival roles and navigation; each world owns its composition. */
-html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .sidebar,
-html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .mobile-header { display:none; }
-html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .main-content { margin-left:0; padding-top:88px; }
+html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .sidebar,
+html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .mobile-header { display:none; }
+html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-content { margin-left:0; padding-top:88px; }
 .lab-arrival { min-height:calc(100svh - 88px); padding:28px 5vw; color:var(--lab-text-primary); background:var(--lab-canvas); overflow:hidden; }
 .arrival-masthead { display:flex; justify-content:space-between; align-items:center; gap:20px; }
 .arrival-masthead > span { font-size:24px; font-weight:600; letter-spacing:-.04em; }
@@ -35,20 +35,20 @@ html[data-lab-theme] .app-shell:has(.lab-experience[data-arrival="true"]) .main-
 [data-arrival-theme="focus"] .arrival-action-caption { grid-column:1; }
 [data-arrival-theme="focus"] .arrival-action-arrow { grid-column:2; grid-row:2; }
 /* The same mounted journal/meals/effects become accessible workspaces in every world. */
-html[data-lab-theme] .lab-experience .lab-world { display:flex; flex-direction:column; gap:24px; }
-html[data-lab-theme] .lab-experience .lab-world > * { width:100%; }
-html[data-lab-theme] .lab-experience .lab-world__header { display:flex; flex-wrap:wrap; align-items:center; }
-html[data-lab-theme] .lab-experience .lab-world__shortcuts { display:none; }
-html[data-lab-theme] .lab-experience .lab-world__modes { display:flex; gap:12px; flex-wrap:wrap; }
-html[data-lab-theme] .lab-experience .lab-world__modes button,.lab-back-home { min-height:44px; padding:8px 12px; background:transparent; border:0; color:var(--lab-text-secondary); }
-html[data-lab-theme] .lab-experience .lab-world__modes button[aria-pressed="true"] { color:var(--lab-text-primary); box-shadow:inset 0 -2px var(--lab-brand); }
-html[data-lab-theme] .lab-experience .lab-world__metrics { display:none; }
-html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="effects"] .lab-world__capture,
-html[data-lab-theme] .lab-experience .lab-world:not([data-workspace-view="effects"]) .lab-world__effects,
-html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="journal"] .personal-lab-meal-column,
-html[data-lab-theme] .lab-experience .lab-world[data-workspace-view="meals"] .personal-lab-journal-column { display:none; }
-html[data-lab-theme] .lab-experience .personal-lab-workbench { grid-template-columns:minmax(0,1fr); }
-html[data-lab-theme] .lab-experience .lab-world__capture { animation:arrival-enter 350ms ease both; }
+html[data-lab-theme] .lab-discrete .lab-world { display:flex; flex-direction:column; gap:24px; }
+html[data-lab-theme] .lab-discrete .lab-world > * { width:100%; }
+html[data-lab-theme] .lab-discrete .lab-world__header { display:flex; flex-wrap:wrap; align-items:center; }
+html[data-lab-theme] .lab-discrete .lab-world__shortcuts { display:none; }
+html[data-lab-theme] .lab-discrete .lab-world__modes { display:flex; gap:12px; flex-wrap:wrap; }
+html[data-lab-theme] .lab-discrete .lab-world__modes button,.lab-back-home { min-height:44px; padding:8px 12px; background:transparent; border:0; color:var(--lab-text-secondary); }
+html[data-lab-theme] .lab-discrete .lab-world__modes button[aria-pressed="true"] { color:var(--lab-text-primary); box-shadow:inset 0 -2px var(--lab-brand); }
+html[data-lab-theme] .lab-discrete .lab-world__metrics { display:none; }
+html[data-lab-theme] .lab-discrete .lab-world[data-workspace-view="effects"] .lab-world__capture,
+html[data-lab-theme] .lab-discrete .lab-world:not([data-workspace-view="effects"]) .lab-world__effects,
+html[data-lab-theme] .lab-discrete .lab-world[data-workspace-view="journal"] .personal-lab-meal-column,
+html[data-lab-theme] .lab-discrete .lab-world[data-workspace-view="meals"] .personal-lab-journal-column { display:none; }
+html[data-lab-theme] .lab-discrete .personal-lab-workbench { grid-template-columns:minmax(0,1fr); }
+html[data-lab-theme] .lab-discrete .lab-world__capture { animation:arrival-enter 350ms ease both; }
 @media(max-width:700px) {
  .lab-arrival { padding:24px 22px; }
  .arrival-masthead time { font-size:11px; }
@@ -63,4 +63,4 @@ html[data-lab-theme] .lab-experience .lab-world__capture { animation:arrival-ent
  [data-arrival-theme="focus"] .arrival-action-caption { grid-column:2; }
  [data-arrival-theme="focus"] .arrival-action-arrow { grid-column:3; grid-row:1; }
 }
-@media(prefers-reduced-motion:reduce) { .lab-experience *, .lab-arrival * { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+@media(prefers-reduced-motion:reduce) { .lab-discrete *, .lab-arrival * { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

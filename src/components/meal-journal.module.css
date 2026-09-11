@@ -1632,6 +1632,96 @@
   .mealsSecondary { min-width: 0; }
 }
 
+/* Local preview action hierarchy: camera first, library second, note tertiary. */
+:global(html[data-lab-theme]) .labRoot :is(.captureButton, .captureButtonCompact) {
+  min-height: 44px;
+  border: 1px solid var(--lab-brand);
+  border-radius: var(--lab-radius-xs);
+  background: var(--lab-brand);
+  color: var(--lab-surface);
+  font-size: var(--lab-type-ui);
+  font-weight: 650;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out;
+}
+
+:global(html[data-lab-theme]) .labRoot :is(.captureButton, .captureButtonCompact):hover:not(:disabled) {
+  border-color: var(--lab-text-primary);
+  background: var(--lab-text-primary);
+  color: var(--lab-canvas);
+  transform: translateY(-1px);
+}
+
+:global(html[data-lab-theme]) .labRoot :is(.galleryButton, .galleryButtonCompact) {
+  min-height: 44px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-ui);
+  font-weight: 500;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+}
+
+:global(html[data-lab-theme]) .labRoot :is(.galleryButton, .galleryButtonCompact):hover:not(:disabled) {
+  border-color: var(--lab-border-strong);
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-primary);
+}
+
+:global(html[data-lab-theme]) .labRoot .emptyNoteButton {
+  min-height: 44px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-ui);
+  font-weight: 500;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+}
+
+:global(html[data-lab-theme]) .labRoot .emptyNoteButton:hover:not(:disabled) {
+  border-color: var(--lab-border-strong);
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-primary);
+}
+
+:global(html[data-lab-theme]) .labRoot .emptyMealActions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .7fr);
+  gap: 8px;
+}
+
+:global(html[data-lab-theme]) .labRoot .emptyMealActions > .emptyNoteButton { grid-column: 3; grid-row: 1; }
+:global(html[data-lab-theme]) .labRoot .emptyMealActions .captureButtonCompact { grid-column: 1; grid-row: 1; }
+:global(html[data-lab-theme]) .labRoot .emptyMealActions .galleryButtonCompact { grid-column: 2; grid-row: 1; }
+:global(html[data-lab-theme]) .labRoot .emptyMealActions .photoInputSingle .captureButtonCompact { grid-column: 1 / -1; grid-row: 1; }
+
+:global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 8px;
+}
+
+:global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow > :is(.captureButton, .galleryButton, .analyzeButton) { width: 100%; }
+:global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow .analyzeButton { border: 1px solid var(--lab-brand); border-radius: var(--lab-radius-xs); background: transparent; color: var(--lab-brand); font-size: var(--lab-type-ui); }
+:global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow .analyzeButton:hover:not(:disabled) { background: var(--lab-brand); color: var(--lab-surface); }
+:global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow .analyzeButton:disabled { border-color: var(--lab-border); background: var(--lab-surface-subtle); color: var(--lab-text-secondary); }
+:global(html[data-lab-theme]) .labRoot :is(.captureButton, .captureButtonCompact, .galleryButton, .galleryButtonCompact, .emptyNoteButton, .analyzeButton):focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) .labRoot .emptyMealActions { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  :global(html[data-lab-theme]) .labRoot .emptyMealActions > .emptyNoteButton { grid-column: 1 / -1; grid-row: 2; }
+  :global(html[data-lab-theme]) .labRoot .emptyMealActions .captureButtonCompact { grid-column: 1; }
+  :global(html[data-lab-theme]) .labRoot .emptyMealActions .galleryButtonCompact { grid-column: 2; }
+  :global(html[data-lab-theme]) .labRoot .emptyMealActions .photoInputSingle .captureButtonCompact { grid-column: 1 / -1; }
+  :global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :global(html[data-lab-theme]) .labRoot .draftMeal .actionsRow .analyzeButton { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-lab-theme]) .labRoot :is(.captureButton, .captureButtonCompact, .galleryButton, .galleryButtonCompact, .emptyNoteButton) { transition: none; }
+}
+
 /* POLISH — the note owns the row; the photo action no longer consumes the
    full flex width and collapse the textarea to a sliver. */
 @media (min-width: 701px) {

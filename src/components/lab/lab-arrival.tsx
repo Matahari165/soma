@@ -9,7 +9,7 @@ const destinations = [
   { id: "effects", title: "Strongest Effects", caption: "Explorer mes corrélations" },
 ] as const;
 
-export function LabArrival({ theme, date, onOpen }: { theme: string; date: string; onOpen: (view: "journal" | "meals" | "effects") => void }) {
+export function LabArrival({ theme, date }: { theme: string; date: string }) {
   const titles: Record<string, [string, string]> = {
     observatory: ["Votre propre", "observatoire."], strata: ["Au fil", "des jours."],
     index: ["Le quotidien.", "En perspective."], atelier: ["La matière", "des jours."], focus: ["Un jour.", "Un peu plus clair."],
@@ -21,10 +21,10 @@ export function LabArrival({ theme, date, onOpen }: { theme: string; date: strin
       <div className="arrival-heading"><span className="arrival-kicker">Personal Lab</span><h1 id="arrival-title" tabIndex={-1}>{title[0]}<br />{title[1]}</h1></div>
       <div className="arrival-art"><LabArrivalArt theme={theme} /></div>
       <nav className="arrival-actions" aria-label="Commencer dans Personal Lab">{destinations.map((item, index) =>
-        <button className="arrival-action" data-destination={item.id} key={item.id} type="button" onClick={() => onOpen(item.id)}>
+        <a className="arrival-action" data-destination={item.id} key={item.id} href={item.id === "journal" ? "#daily-journal" : item.id === "meals" ? "#meal-journal-title" : "#world-effects"}>
           <span className="arrival-action-number">0{index + 1}</span><strong>{item.title}</strong>
           <span className="arrival-action-caption">{item.caption}</span><span className="arrival-action-arrow" aria-hidden="true">↗</span>
-        </button>)}</nav>
+        </a>)}</nav>
     </div>
     <footer className="arrival-footer"><Link href="/sleep">Sommeil</Link><Link href="/recovery">Récupération</Link><Link href="/activity">Effort</Link></footer>
   </section>;
