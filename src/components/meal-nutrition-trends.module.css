@@ -322,3 +322,150 @@
     height: 122px;
   }
 }
+
+/* Meals / Redesign V1 — compact trend cards. */
+.root:global(.meals-page-trends) {
+  width: 100%;
+  min-height: 912px;
+  margin: 0;
+  padding: 16px 24px 24px;
+  border: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-md);
+  background: var(--lab-surface);
+  box-shadow: var(--lab-shadow-subtle);
+}
+
+.root:global(.meals-page-trends) .sectionHeader {
+  min-height: 40px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.root:global(.meals-page-trends) .sectionHeader h2 {
+  margin: 0;
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-ui);
+  font-size: 22px;
+  font-weight: 560;
+  letter-spacing: -.33px;
+  line-height: 28px;
+}
+
+.root:global(.meals-page-trends) .eyebrow,
+.root:global(.meals-page-trends) .sectionHeader p,
+.root:global(.meals-page-trends) .periodPicker legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.root:global(.meals-page-trends) .periodPicker {
+  gap: 0;
+}
+
+.root:global(.meals-page-trends) .periodOptions {
+  height: 24px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: var(--lab-surface-subtle);
+}
+
+.root:global(.meals-page-trends) .periodOptions button {
+  min-width: 66px;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-right-color: var(--lab-border);
+  color: var(--lab-text-secondary);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 14px;
+}
+
+.root:global(.meals-page-trends) .periodOptions button:nth-child(2) { min-width: 94px; }
+.root:global(.meals-page-trends) .periodOptions button:hover { background: var(--lab-surface-selected); color: var(--lab-brand); }
+.root:global(.meals-page-trends) .periodOptions button[aria-pressed="true"] { background: var(--lab-brand); color: var(--lab-surface); }
+.root:global(.meals-page-trends) .periodOptions button:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
+
+.root:global(.meals-page-trends) .grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+  border: 0;
+}
+
+.root:global(.meals-page-trends) .card {
+  --metric-color: var(--lab-brand);
+  display: grid;
+  min-height: 261px;
+  grid-template-rows: 48px 1fr auto;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface-subtle);
+}
+
+.root:global(.meals-page-trends) .card[data-metric="caloriesKcal"] { --metric-color: var(--lab-error); }
+.root:global(.meals-page-trends) .card[data-metric="proteinG"],
+.root:global(.meals-page-trends) .card[data-metric="addedSugarG"],
+.root:global(.meals-page-trends) .card[data-metric="fatG"],
+.root:global(.meals-page-trends) .card[data-metric="carbsG"] { --metric-color: var(--lab-signal); }
+
+.root:global(.meals-page-trends) .cardHeader { min-width: 0; align-items: start; }
+.root:global(.meals-page-trends) .cardHeader > div { gap: 3px; }
+.root:global(.meals-page-trends) .metricLabel {
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .8px;
+  line-height: 14px;
+}
+
+.root:global(.meals-page-trends) .value {
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: 28px;
+  font-weight: 560;
+  letter-spacing: -.5px;
+  line-height: 30px;
+}
+
+.root:global(.meals-page-trends) .value small { color: var(--lab-text-secondary); font-size: 12px; letter-spacing: 0; }
+.root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; }
+
+.root:global(.meals-page-trends) .chartFrame { gap: 8px; padding-top: 0; }
+.root:global(.meals-page-trends) .barChart { position: relative; min-height: 108px; padding: 10px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
+.root:global(.meals-page-trends) .barChart::before { position: absolute; top: 46%; right: 2px; left: 2px; border-top: 1px dashed var(--lab-border-strong); content: ""; }
+.root:global(.meals-page-trends) .barColumn { position: relative; z-index: 1; height: 98px; }
+.root:global(.meals-page-trends) .bar,
+.root:global(.meals-page-trends) .barMissing { width: 12px; border-radius: 2px 2px 0 0; }
+.root:global(.meals-page-trends) .bar { background: var(--metric-color); }
+.root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
+.root:global(.meals-page-trends) .bar:hover,
+.root:global(.meals-page-trends) .barActive { opacity: .72; }
+.root:global(.meals-page-trends) .axis,
+.root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-size: 10px; line-height: 14px; }
+.root:global(.meals-page-trends) .cardFooter { padding-top: 8px; border-top-color: var(--lab-border); }
+.root:global(.meals-page-trends) .tooltip { top: -2px; background: var(--lab-brand); color: var(--lab-surface); font-size: 10px; }
+.root:global(.meals-page-trends) .emptyState { min-height: 180px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); }
+
+@media (max-width: 1100px) {
+  .root:global(.meals-page-trends) { min-height: 0; }
+}
+
+@media (max-width: 700px) {
+  .root:global(.meals-page-trends) { padding: 16px; }
+  .root:global(.meals-page-trends) .sectionHeader { align-items: start; flex-direction: column; gap: 12px; }
+  .root:global(.meals-page-trends) .periodPicker,
+  .root:global(.meals-page-trends) .periodOptions { width: 100%; }
+  .root:global(.meals-page-trends) .periodOptions button { flex: 1; }
+  .root:global(.meals-page-trends) .grid { grid-template-columns: 1fr; }
+  .root:global(.meals-page-trends) .card { min-height: 220px; }
+}

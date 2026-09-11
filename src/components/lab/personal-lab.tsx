@@ -4,7 +4,7 @@ import { MatrixDisclosure, TimeScaleSummary } from "./correlation-matrix";
 import { MetricRegistry } from "./metric-registry";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { NarrativeRefresh } from "./narrative-refresh";
-import { TodaySignals } from "./today-signals";
+import { PersonalLabMetrics } from "./today-signals";
 
 export function PersonalLabOverviewSection({ data, connectionNotice = null }: { data: PersonalLabOverview; connectionNotice?: "health" | "calendar" | null }) {
   return <>
@@ -13,17 +13,17 @@ export function PersonalLabOverviewSection({ data, connectionNotice = null }: { 
       <div className="lab-header__row">
         <h1>Personal Lab</h1>
         <div className="lab-header__signals">
-          <TodaySignals key={data.overnightFingerprint ?? "pending"} initial={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} />
+          <PersonalLabMetrics data={{ ...data.today, overnightFingerprint: data.overnightFingerprint }} />
         </div>
       </div>
     </header>
   </>;
 }
 
-export function PersonalLabJournalSection({ data }: { data: PersonalLabJournal }) {
+export function PersonalLabJournalSection({ data, analysis = null }: { data: PersonalLabJournal; analysis?: PersonalLabSnapshot | null }) {
   return (
     <div className="lab-workspace lab-entry__section lab-entry__journal">
-      <PersonalLabJournalWorkspace data={data} />
+      <PersonalLabJournalWorkspace data={data} analysis={analysis} />
     </div>
   );
 }

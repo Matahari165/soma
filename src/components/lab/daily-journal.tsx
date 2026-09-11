@@ -127,12 +127,13 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
   </div>;
 }
 
-function Field({ variable, value, draftKey, onChange, onCommit, disabled = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean }) {
+function Field({ variable, value, draftKey, onChange, onCommit, disabled = false, presentation = "default" }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean; presentation?: "default" | "personal-lab" }) {
   const inputId = `journal-${variable.id}`;
 
   if (variable.variableType === "boolean") {
-    return <div className="journal-choice" role="group" aria-label={variable.name}>
-      {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
+    const options = presentation === "personal-lab" ? [{ label: "Non", value: false }, { label: "Oui", value: true }] : [{ label: "Yes", value: true }, { label: "No", value: false }];
+    return <div className={`journal-choice${presentation === "personal-lab" ? " journal-choice--binary" : ""}`} role="group" aria-label={variable.name}>
+      {options.map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
   }
 
@@ -155,7 +156,21 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   }
 
   const nonNegative = variable.variableType === "count" || variable.variableType === "duration" || ["caffeine", "added sugar", "magnesium"].includes(variable.name.toLocaleLowerCase("en"));
-  return <div className="journal-number"><input disabled={disabled} id={inputId} aria-label={variable.name} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} /><span>{variable.unit}</span></div>;
+  const input = <input disabled={disabled} id={inputId} aria-label={variable.name} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
+  if (presentation !== "personal-lab") return <div className="journal-number">{input}<span>{variable.unit}</span></div>;
+
+  function adjustValue(direction: -1 | 1) {
+    const numericValue = typeof value === "number" ? value : Number(value);
+    const baseValue = Number.isFinite(numericValue) ? numericValue : 0;
+    const nextValue = baseValue + direction;
+    onChange(nonNegative ? Math.max(0, nextValue) : nextValue);
+  }
+
+  return <div className="journal-number journal-number--stepper">
+    <button type="button" disabled={disabled} aria-label={`Diminuer ${variable.name}`} aria-controls={inputId} onClick={() => adjustValue(-1)}>−</button>
+    <span className="journal-number__value">{input}<span>{variable.unit}</span></span>
+    <button type="button" disabled={disabled} aria-label={`Augmenter ${variable.name}`} aria-controls={inputId} onClick={() => adjustValue(1)}>+</button>
+  </div>;
 }
 
 function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, defaultValue, captureMode, automaticMetricId, trackingCadence, busy, onNameChange, onTypeChange, onUnitChange, onOptionsChange, onEmojiChange, onDayPeriodChange, onDefaultValueChange, onCaptureModeChange, onAutomaticMetricChange, onTrackingCadenceChange, onSave, onCancel }: {
@@ -348,7 +363,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
   </section>;
 }
 
-function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achievement, onChange, onCommit, feedbackToken, disabled }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; achievement?: JournalAchievement; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean }) {
+function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achievement, onChange, onCommit, feedbackToken, disabled, presentation = "default" }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; achievement?: JournalAchievement; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab" }) {
   const stateLabel = confirmed ? "Recorded" : skipped ? "Not recorded" : "To confirm";
   const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
@@ -360,8 +375,8 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achiev
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
     {variable.name.trim().toLocaleLowerCase("en") === "breakfast" && value === true
-      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} /><Link href="/meals#meal-breakfast" aria-label="Ajouter une photo du petit déjeuner"><ImagePlus size={15} aria-hidden="true" />Ajouter une photo</Link></div>
-      : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} />}
+      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} /><Link href="/meals#meal-breakfast" aria-label="Ajouter une photo du petit déjeuner"><ImagePlus size={15} aria-hidden="true" />Ajouter une photo</Link></div>
+      : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />}
   </div>;
 }
 
@@ -383,9 +398,10 @@ export type DailyJournalProps = {
   availableDates?: readonly string[];
   onTodayBreakfastValidation?: (skipped: boolean) => void;
   onTodayMorningValidation?: (completed: boolean) => void;
+  presentation?: "default" | "personal-lab";
 };
 
-export function DailyJournal({ variables, entries, days, achievements, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation }: DailyJournalProps) {
+export function DailyJournal({ variables, entries, days, achievements, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation, presentation = "default" }: DailyJournalProps) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const achievementsByVariable = useMemo(() => new Map((achievements ?? []).map((achievement) => [achievement.variableId, achievement])), [achievements]);
@@ -571,23 +587,30 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     }
   }
 
+  const isPersonalLab = presentation === "personal-lab";
   const statusClass = ["checkin-state", "journal-save-status", validated || saveStatus === "saved" ? "checkin-state--saved" : "", saveStatus === "error" ? "checkin-state--error" : ""].filter(Boolean).join(" ");
-  const statusText = journalStatusText({ validated, validating, saveStatus });
-  return <section className="checkin-card journal-card" aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Journal actions"><span className={statusClass} aria-live="polite" aria-atomic="true">
+  const statusText = isPersonalLab
+    ? validating ? "Validation…" : saveStatus === "saving" ? "Enregistrement…" : saveStatus === "error" ? "Échec de l’enregistrement" : validated ? "Journée validée" : saveStatus === "saved" ? "Brouillon sauvegardé" : "Brouillon"
+    : journalStatusText({ validated, validating, saveStatus });
+  const personalLabLabels: Record<string, string> = { morning: "Protocole Matinal", day: "Flux de Journée", evening: "Soirée & Phase de Repos", context: "Contexte & Modificateurs" };
+  const personalLabIndexes: Record<string, string> = { morning: "01", day: "02", evening: "03", context: "04" };
+  return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""}`} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Journal actions"><span className={statusClass} aria-live="polite" aria-atomic="true">
       {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
       <span>{statusText}</span>
     </span>
-    {!validated && <button className="primary-button" type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validating…</> : "Validate day"}</button>}
-    {!managerOpen && <button className="text-link" type="button" aria-label="Edit journal fields" onClick={() => setManagerOpen(true)}>Edit</button>}
+    {!validated && <button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />{isPersonalLab ? "Validation…" : "Validating…"}</> : isPersonalLab ? "Valider la journée" : "Validate day"}</button>}
+    {!managerOpen && <button className="text-link" type="button" aria-label={isPersonalLab ? "Modifier les champs du journal" : "Edit journal fields"} onClick={() => setManagerOpen(true)}>{isPersonalLab ? "Modifier" : "Edit"}</button>}
   </div></header>
     {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${date}T12:00:00`))}</span><small>{date.slice(8)}</small></button>)}</nav>}
     {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => {
       const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
       const complete = completedCount === section.variables.length;
       const canConfirmDefaults = section.variables.some((variable) => !recorded.has(variable.id) && !skipped.has(variable.id) && (values[variable.id] ?? null) !== null);
-      return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${section.label}${complete ? ", complete" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
-      <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirm all displayed defaults for ${section.label}`} onClick={() => confirmPeriodDefaults(section.variables)}>{section.label}</button> : section.label}</h3></header>
-      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
+      const sectionLabel = isPersonalLab ? personalLabLabels[section.id] ?? section.label : section.label;
+      const sectionIndex = isPersonalLab ? personalLabIndexes[section.id] : undefined;
+      return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complete" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
+      <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirm all displayed defaults for ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3></header>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>;
     })}</div> : <p className="journal-empty">Add your first tracked measure below.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}

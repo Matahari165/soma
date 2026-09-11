@@ -103,6 +103,40 @@
   --zone-vigorous: #b28648;
   --zone-peak: #a8563f;
   --font-soma-ui: var(--font-soma-sans), system-ui, sans-serif;
+
+  /* Personal Lab / Stitch tokens. Kept separate from the legacy surfaces so
+     the validated page can become the seed of Soma's next system without
+     changing the visual language of the other routes. */
+  --lab-canvas: #f4f6f2;
+  --lab-surface: #ffffff;
+  --lab-surface-subtle: #f2f5f0;
+  --lab-surface-selected: #e8f0e6;
+  --lab-control-track: #e6ede5;
+  --lab-border: #e0e8de;
+  --lab-border-strong: #dfe5dc;
+  --lab-text-primary: #1c2520;
+  --lab-text-secondary: #59665e;
+  --lab-brand: #264d38;
+  --lab-signal: #2e7a4f;
+  --lab-error: #c45442;
+  --lab-sidebar: #ebf0ea;
+  --lab-radius-xs: 2px;
+  --lab-radius-sm: 4px;
+  --lab-radius-md: 8px;
+  --lab-journal-control-width: 104px;
+  --lab-journal-control-height: 36px;
+  --lab-journal-stepper-action-width: 24px;
+  --lab-journal-control-inset: 3px;
+  --lab-journal-control-text-size: 14px;
+  --lab-journal-control-value-size: 16px;
+  --lab-journal-actions-inline-end: 8px;
+  --lab-sidebar-nav-offset: 42px;
+  --lab-sidebar-nav-gap: 4px;
+  --lab-sidebar-width: 64px;
+  --lab-content-top: 100px;
+  --lab-card-padding: 24px;
+  --lab-column-gap: 32px;
+  --lab-shadow-subtle: 0 1px 2px rgba(28, 37, 32, .05);
 }
 
 * { box-sizing: border-box; }

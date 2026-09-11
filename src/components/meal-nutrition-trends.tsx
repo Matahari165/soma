@@ -88,7 +88,7 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
           const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
           const barStyle = { "--bar-height": `${height}%` } as CSSProperties & { "--bar-height": string };
           return <div className={styles.barColumn} key={point.date}>
-            {point.value === null ? null : <button
+            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : <button
               type="button"
               className={`${styles.bar}${activeDate === point.date ? ` ${styles.barActive}` : ""}`}
               style={barStyle}
@@ -111,10 +111,10 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
   </article>;
 }
 
-export function MealNutritionTrends({ metrics }: { metrics: MealNutritionTrendMetric[] }) {
+export function MealNutritionTrends({ metrics, className }: { metrics: MealNutritionTrendMetric[]; className?: string }) {
   const [period, setPeriod] = useState<Period>(7);
 
-  return <section className={styles.root} aria-labelledby="meal-nutrition-trends-title">
+  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-nutrition-trends-title">
     <header className={styles.sectionHeader}>
       <div>
         <span className={styles.eyebrow}>Historique quotidien</span>

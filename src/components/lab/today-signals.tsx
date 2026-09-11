@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
+import type { PersonalLabHistoryPoint } from "@/services/personal-lab";
 
 export type TodaySignalValues = {
   sleepMinutes: number | null;
@@ -174,4 +175,156 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
     <span><span className="lab-signal__label">{label}</span><small className="lab-signal__average">{supporting}</small></span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{node}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;
+}
+
+type PersonalLabMetricKey = "sleep" | "recovery" | "strain" | "energy";
+
+export type PersonalLabMetricValues = {
+  overnightFingerprint?: string | null;
+  sleepMinutes: number | null;
+  recoveryScore: number | null;
+  effortScore: number | null;
+  caloriesKcal: number | null;
+  averageSleepMinutes: number | null;
+  averageRecoveryScore: number | null;
+  averageEffortScore: number | null;
+  averageCaloriesKcal: number | null;
+  history: PersonalLabHistoryPoint[];
+};
+
+function strainScore(value: number | null) {
+  return value === null ? null : value * 0.21;
+}
+
+function metricDuration(value: number | null) {
+  if (value === null) return "—";
+  return `${Math.floor(value / 60)}h ${Math.round(value % 60).toString().padStart(2, "0")}`;
+}
+
+function metricNumber(value: number | null) {
+  return value === null ? "—" : Math.round(value).toString();
+}
+
+function metricCalories(value: number | null) {
+  return value === null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
+function metricStrain(value: number | null) {
+  const score = strainScore(value);
+  return score === null ? "—" : `${score.toFixed(1)} / 21.0`;
+}
+
+function metricValue(key: PersonalLabMetricKey, value: number | null) {
+  if (key === "sleep") return metricDuration(value);
+  if (key === "recovery") return metricNumber(value);
+  if (key === "strain") return metricStrain(value);
+  return metricCalories(value);
+}
+
+function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
+  if (key !== "strain") return metricValue(key, value);
+  const score = strainScore(value);
+  if (score === null) return "—";
+  return <><span>{score.toFixed(1)}</span><small className="personal-lab-metric__denominator" aria-hidden="true">/21</small></>;
+}
+
+function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null) {
+  if (value === null || averageValue === null) return "30d avg —";
+  const delta = value - averageValue;
+  if (key === "sleep") return `30d avg ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
+  if (key === "strain") return `30d avg ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
+  if (key === "energy") return `30d avg ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
+  return `30d avg ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
+}
+
+function valueForHistory(key: PersonalLabMetricKey, point: PersonalLabHistoryPoint) {
+  if (key === "sleep") return point.sleepMinutes;
+  if (key === "recovery") return point.recoveryScore;
+  if (key === "strain") return point.effortScore;
+  return point.caloriesKcal;
+}
+
+function historyMax(key: PersonalLabMetricKey, history: PersonalLabHistoryPoint[]) {
+  const values = history.map((point) => valueForHistory(key, point)).filter((value): value is number => value !== null && Number.isFinite(value));
+  if (key === "sleep") return 600;
+  if (key === "recovery" || key === "strain") return 100;
+  return Math.max(2_500, ...values, 1);
+}
+
+function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href, tone }: {
+  label: string;
+  keyName: PersonalLabMetricKey;
+  value: number | null;
+  averageValue: number | null;
+  history: PersonalLabHistoryPoint[];
+  href: string;
+  tone: "signal" | "error";
+}) {
+  const max = historyMax(keyName, history);
+  const accessibleHistory = history.map((point) => `${point.date}: ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
+  return <Link className={`personal-lab-metric personal-lab-metric--${tone}`} href={href} aria-label={`${label}: ${metricValue(keyName, value)}. Historique des cinq derniers jours: ${accessibleHistory}`}>
+    <span className="personal-lab-metric__copy">
+      <span className="personal-lab-metric__label">{label}</span>
+      <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>
+      <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue)}</small>
+    </span>
+    <span className="personal-lab-metric__bars" aria-hidden="true">
+      {history.map((point) => {
+        const pointValue = valueForHistory(keyName, point);
+        const height = pointValue === null ? 7 : Math.max(12, Math.round(pointValue / max * 100));
+        return <span className={`personal-lab-metric__bar${pointValue === null ? " is-empty" : ""}`} style={{ height: `${height}%` }} key={point.date} />;
+      })}
+    </span>
+  </Link>;
+}
+
+export function PersonalLabMetrics({ data }: { data: PersonalLabMetricValues }) {
+  const [values, setValues] = useState(data);
+  const valuesRef = useRef(values);
+
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
+
+  useEffect(() => {
+    const onMealTotals = (event: Event) => {
+      const detail = (event as CustomEvent<MealTotalsEventDetail>).detail;
+      if (!detail?.isToday) return;
+      setValues((current) => ({
+        ...current,
+        caloriesKcal: detail.calories,
+        history: current.history.map((point) => point.date === detail.date ? { ...point, caloriesKcal: detail.calories } : point),
+      }));
+    };
+    window.addEventListener(MEAL_TOTALS_EVENT, onMealTotals);
+    window.dispatchEvent(new Event(MEAL_TOTALS_REQUEST_EVENT));
+    return () => window.removeEventListener(MEAL_TOTALS_EVENT, onMealTotals);
+  }, []);
+
+  useEffect(() => {
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") return;
+      const response = await fetch("/api/lab/today", { cache: "no-store" }).catch(() => null);
+      if (!response?.ok) return;
+      const next = await response.json() as Partial<PersonalLabMetricValues> & { overnightFingerprint?: string | null };
+      setValues((current) => ({ ...current, ...next, history: current.history }));
+      if (next.overnightFingerprint && next.overnightFingerprint !== valuesRef.current.overnightFingerprint) window.location.reload();
+    };
+    const interval = window.setInterval(() => void refresh(), 60_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+
+  const metrics = [
+    { label: "Sleep duration", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep", tone: "error" as const },
+    { label: "Recovery index", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery", tone: "signal" as const },
+    { label: "Daily strain", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity", tone: "signal" as const },
+    { label: "Metabolic energy", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals", tone: "error" as const },
+  ];
+  return <section className="personal-lab-metrics" aria-label="Today metrics">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} key={metric.keyName} />)}</section>;
 }

@@ -29,6 +29,7 @@ type MealRecipeLibraryProps = {
   initialRecipes: MealRecipeView[];
   initialError?: string;
   embedded?: boolean;
+  className?: string;
 };
 
 type RecipeResponse = { recipe: MealRecipeView };
@@ -100,7 +101,7 @@ async function readResponse<T>(response: Response) {
   return body;
 }
 
-export function MealRecipeLibrary({ initialRecipes, initialError, embedded = false }: MealRecipeLibraryProps) {
+export function MealRecipeLibrary({ initialRecipes, initialError, embedded = false, className }: MealRecipeLibraryProps) {
   const Heading = embedded ? "h2" : "h1";
   const [recipes, setRecipes] = useState(initialRecipes);
   const [draft, setDraft] = useState(emptyDraft);
@@ -204,7 +205,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
   }
 
   return (
-    <section className={[styles.page, embedded ? styles.embedded : ""].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title">
+    <section className={[styles.page, embedded ? styles.embedded : "", className].filter(Boolean).join(" ")} aria-labelledby="recipe-library-title">
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className="eyebrow">Repères personnels</span>
@@ -279,11 +280,11 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
                         {recipe.ingredients.slice(0, 6).map((ingredient) => <li key={`${recipe.id}-${ingredient.name}`}>{ingredient.name}{ingredient.usualAmount ? ` · ${ingredient.usualAmount}` : ""}</li>)}
                         {recipe.ingredients.length > 6 && <li>+ {recipe.ingredients.length - 6} autres</li>}
                       </ul>
-                      {recipe.commonVariations.length > 0 && <p className={styles.recipeMeta}>Variations : {recipe.commonVariations.slice(0, 3).join(" · ")}</p>}
+                      {embedded ? <p className={styles.recipeReference}>Repère personnel</p> : recipe.commonVariations.length > 0 && <p className={styles.recipeMeta}>Variations : {recipe.commonVariations.slice(0, 3).join(" · ")}</p>}
                     </div>
                     <div className={styles.recipeActions}>
-                      <button className="icon-button" type="button" onClick={() => openEdit(recipe)} aria-label={`Modifier ${recipe.name}`}><Pencil size={16} aria-hidden="true" /></button>
-                      {pendingDelete === recipe.id ? <div className={styles.deleteConfirmation} role="group" aria-label={`Confirmer la suppression de ${recipe.name}`}><span>Supprimer ?</span><button className={styles.confirmDelete} type="button" onClick={() => void deleteRecipe(recipe)} disabled={busy}>Oui</button><button className={styles.cancelDelete} type="button" onClick={() => setPendingDelete(null)}>Non</button></div> : <button className="icon-button" type="button" onClick={() => setPendingDelete(recipe.id)} aria-label={`Supprimer ${recipe.name}`}><Trash2 size={16} aria-hidden="true" /></button>}
+                      <button className={embedded ? styles.recipeTextAction : "icon-button"} type="button" onClick={() => openEdit(recipe)} aria-label={`Modifier ${recipe.name}`}><Pencil size={16} aria-hidden="true" />{embedded && <span>Modifier</span>}</button>
+                      {pendingDelete === recipe.id ? <div className={styles.deleteConfirmation} role="group" aria-label={`Confirmer la suppression de ${recipe.name}`}><span>Supprimer ?</span><button className={styles.confirmDelete} type="button" onClick={() => void deleteRecipe(recipe)} disabled={busy}>Oui</button><button className={styles.cancelDelete} type="button" onClick={() => setPendingDelete(null)}>Non</button></div> : <button className={embedded ? styles.recipeTextAction : "icon-button"} type="button" onClick={() => setPendingDelete(recipe.id)} aria-label={`Supprimer ${recipe.name}`}><Trash2 size={16} aria-hidden="true" />{embedded && <span>Supprimer</span>}</button>}
                     </div>
                   </article>
                 </li>

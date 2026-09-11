@@ -98,10 +98,13 @@ export type PersonalLabSnapshot = {
     sleepRegularity: number | null;
     recoveryScore: number | null;
     effortScore: number | null;
+    caloriesKcal: number | null;
     averageSleepMinutes: number | null;
     averageSleepRegularity: number | null;
     averageRecoveryScore: number | null;
     averageEffortScore: number | null;
+    averageCaloriesKcal: number | null;
+    history: PersonalLabHistoryPoint[];
     deepWorkMinutes: number | null;
     calendarDeepWorkMinutes: number | null;
     deepWorkSource: "calendar" | "corrected" | "missing";
@@ -146,6 +149,14 @@ export type PersonalLabSnapshot = {
     health: { connected: boolean; lastSyncedAt: string | null };
     calendar: { connected: boolean; lastSyncedAt: string | null };
   };
+};
+
+export type PersonalLabHistoryPoint = {
+  date: string;
+  sleepMinutes: number | null;
+  recoveryScore: number | null;
+  effortScore: number | null;
+  caloriesKcal: number | null;
 };
 
 export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
@@ -289,6 +300,50 @@ export function recentAverages(observations: LabObservation[], todayDate: string
     averageSleepRegularity: average(recent.map((day) => day.sleepRegularity)),
     averageRecoveryScore: average(recent.map((day) => day.recoveryScore)),
     averageEffortScore: average(recent.map((day) => day.effortScore)),
+  };
+}
+
+function buildTodayData(input: {
+  timeZone: string;
+  health: HealthDay[];
+  scores: ScoreDay[];
+  calendars: CalendarDay[];
+  checkins: DailyCheckin[];
+  meals?: readonly ConfirmedMealRecord[];
+}) {
+  const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
+  const todayDate = dateInTimezone(input.timeZone);
+  const todayObservation = observations.find((day) => day.date === todayDate);
+  const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
+  const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
+  const mealDays = aggregateConfirmedMeals(input.meals ?? []);
+  const mealByDate = new Map(mealDays.map((day) => [day.date, day]));
+  const recentMealDays = mealDays.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
+  const history = Array.from({ length: 5 }, (_, index): PersonalLabHistoryPoint => {
+    const date = addDays(todayDate, index - 4);
+    const observation = observations.find((day) => day.date === date);
+    return {
+      date,
+      sleepMinutes: observation?.sleepMinutes ?? null,
+      recoveryScore: observation?.recoveryScore ?? null,
+      effortScore: observation?.effortScore ?? null,
+      caloriesKcal: mealByDate.get(date)?.caloriesKcal ?? null,
+    };
+  });
+  return {
+    sleepMinutes: todayObservation?.sleepMinutes ?? null,
+    sleepRegularity: todayObservation?.sleepRegularity ?? null,
+    recoveryScore: todayObservation?.recoveryScore ?? null,
+    effortScore: todayObservation?.effortScore ?? null,
+    caloriesKcal: mealByDate.get(todayDate)?.caloriesKcal ?? null,
+    ...recentAverages(observations, todayDate),
+    averageCaloriesKcal: average(recentMealDays.map((day) => day.caloriesKcal)),
+    history,
+    deepWorkMinutes: todayObservation?.deepWorkMinutes ?? null,
+    calendarDeepWorkMinutes: todayCalendar?.deep_work_minutes ?? null,
+    deepWorkSource: checkin?.deep_work_minutes_override !== null && checkin?.deep_work_minutes_override !== undefined ? "corrected" as const : todayCalendar ? "calendar" as const : "missing" as const,
+    focus: todayObservation?.focus ?? null,
+    energy: todayObservation?.energy ?? null,
   };
 }
 
@@ -726,28 +781,14 @@ function buildOverview(input: {
   scores: ScoreDay[];
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
+  meals?: readonly ConfirmedMealRecord[];
 }): PersonalLabOverview {
-  const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
   const todayDate = dateInTimezone(input.timeZone);
-  const todayObservation = observations.find((day) => day.date === todayDate);
-  const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
-  const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const todayHealth = input.health.find((day) => day.metric_date === todayDate);
   return {
     todayDate,
     overnightFingerprint: overnightFingerprint(todayHealth),
-    today: {
-      sleepMinutes: todayObservation?.sleepMinutes ?? null,
-      sleepRegularity: todayObservation?.sleepRegularity ?? null,
-      recoveryScore: todayObservation?.recoveryScore ?? null,
-      effortScore: todayObservation?.effortScore ?? null,
-      ...recentAverages(observations, todayDate),
-      deepWorkMinutes: todayObservation?.deepWorkMinutes ?? null,
-      calendarDeepWorkMinutes: todayCalendar?.deep_work_minutes ?? null,
-      deepWorkSource: checkin?.deep_work_minutes_override !== null && checkin?.deep_work_minutes_override !== undefined ? "corrected" : todayCalendar ? "calendar" : "missing",
-      focus: todayObservation?.focus ?? null,
-      energy: todayObservation?.energy ?? null,
-    },
+    today: buildTodayData(input),
   };
 }
 
@@ -795,8 +836,7 @@ function buildSnapshot(input: {
   const metricPreferences = new Map((input.metricPreferences ?? []).map((item) => [item.metric_id, item.role]));
   const metricDefinitions = metricDefinitionsForHealth(input.health as unknown as Array<Record<string, unknown>>);
   const todayDate = dateInTimezone(input.timeZone);
-  const todayObservation = observations.find((day) => day.date === todayDate);
-  const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
+  const today = buildTodayData(input);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const mealSeries = mealDailySeries(input.meals ?? []);
@@ -913,18 +953,7 @@ function buildSnapshot(input: {
       days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -4) && day.entryDate <= todayDate),
       achievements: journalAchievementsFor({ variables: input.journal.variables, entries: input.journal.entries, days: input.journal.days, todayDate }),
     },
-    today: {
-      sleepMinutes: todayObservation?.sleepMinutes ?? null,
-      sleepRegularity: todayObservation?.sleepRegularity ?? null,
-      recoveryScore: todayObservation?.recoveryScore ?? null,
-      effortScore: todayObservation?.effortScore ?? null,
-      ...recentAverages(observations, todayDate),
-      deepWorkMinutes: todayObservation?.deepWorkMinutes ?? null,
-      calendarDeepWorkMinutes: todayCalendar?.deep_work_minutes ?? null,
-      deepWorkSource: checkin?.deep_work_minutes_override !== null && checkin?.deep_work_minutes_override !== undefined ? "corrected" as const : todayCalendar ? "calendar" as const : "missing" as const,
-      focus: todayObservation?.focus ?? null,
-      energy: todayObservation?.energy ?? null,
-    },
+    today,
     aiNarrative,
     needsNarrativeRefresh: Boolean(input.allowNarrativeRefresh !== false
       && hasReliableOvernightData(todayHealth)
@@ -1032,7 +1061,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
   }) : null;
 
-  const overview = corePromise.then((core) => buildOverview(core));
+  const overview = Promise.all([corePromise, mealPromise]).then(([core, meals]) => buildOverview({ ...core, meals }));
   const journal = Promise.all([profilePromise, journalPromise, mealPromise]).then(([profileResult, journalData, meals]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals);

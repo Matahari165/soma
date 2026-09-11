@@ -2,15 +2,19 @@
 
 import {
   Activity,
+  Beaker,
   BedDouble,
+  Heart,
   HeartPulse,
   LayoutDashboard,
   MessageCircle,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Utensils,
   X,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -18,7 +22,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { useDialogLayer } from "@/components/use-dialog-layer";
-import { SomaLogo } from "@/components/soma-logo";
+import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
 import type { SomaUser } from "@/lib/auth";
 
 const PanelCoachChat = dynamic(() => import("@/components/coach-chat").then((module) => module.CoachChat), { ssr: false, loading: () => <div className="coach-loading" role="status">Opening Coach…</div> });
@@ -36,6 +40,13 @@ const navigation = [
 // Show the remaining product destinations directly on mobile instead of hiding
 // them behind a second menu.
 const mobileNavigation = navigation.filter(({ href }) => href !== "/" && href !== "/coach");
+const personalLabNavigation = [
+  { label: "Lab", href: "/", icon: Beaker },
+  { label: "Repas", href: "/meals", icon: Utensils },
+  { label: "Sleep", href: "/sleep", icon: Moon },
+  { label: "Recovery", href: "/recovery", icon: Heart },
+  { label: "Activity", href: "/activity", icon: Zap },
+];
 
 function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
   return (
@@ -64,6 +75,10 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const displayName = user?.displayName ?? "Soma user";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const onCoachPage = pathname.startsWith("/coach");
+  const isPersonalLab = pathname === "/";
+  const isStitchWorkspace = isPersonalLab || pathname.startsWith("/meals");
+  const activeNavigation = isStitchWorkspace ? personalLabNavigation : navigation;
+  const activeMobileNavigation = isStitchWorkspace ? personalLabNavigation.slice(1) : mobileNavigation;
 
   useDialogLayer({ open: coachOpen, onClose: closeCoach, containerRef: coachPanelRef });
 
@@ -82,7 +97,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed"].filter(Boolean).join(" ")}>
+    <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed", isStitchWorkspace && "app-shell--personal-lab"].filter(Boolean).join(" ")}>
       <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
         <div className="sidebar__header">
           <Link className="brand" href="/" aria-label="Soma home">
@@ -91,15 +106,16 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </div>
 
         <nav className="sidebar-nav">
-          {navigation.map(({ label, href, icon: Icon }) => (
+          {activeNavigation.map(({ label, href, icon: Icon }) => (
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
               href={href}
               key={href}
               aria-current={isActive(href) ? "page" : undefined}
+              aria-label={label}
               title={sidebarCollapsed ? label : undefined}
             >
-              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+              {isStitchWorkspace && href === "/" ? <SomaSymbol className="nav-brand-symbol" /> : <Icon size={19} strokeWidth={1.8} aria-hidden="true" />}
               <span>{label}</span>
             </Link>
           ))}
@@ -133,7 +149,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           <SomaLogo />
         </Link>
         <nav className="mobile-header-nav" aria-label="Mobile primary navigation">
-          {mobileNavigation.map(({ label, href, icon: Icon }) => (
+          {activeMobileNavigation.map(({ label, href, icon: Icon }) => (
             <Link
               href={href}
               key={href}

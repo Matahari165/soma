@@ -69,9 +69,10 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div id="main-page-content">
-      <MealJournal date={requestedDate} today={today} initialData={initialData} />
-      <MealNutritionTrends metrics={mealNutritionHistory(nutritionRecords, requestedDate)} />
-      <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded />
+      <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
+        <MealNutritionTrends metrics={mealNutritionHistory(nutritionRecords, requestedDate)} className="meals-page-trends" />
+        <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
+      </MealJournal>
     </div>
   );
 }

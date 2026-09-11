@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { PersonalLabJournal } from "@/services/personal-lab";
+import type { PersonalLabJournal, PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
+import { PersonalLabCorrelations } from "./personal-lab-correlations";
 import MealJournal from "../meal-journal";
 
 function addDays(date: string, days: number) {
@@ -25,30 +26,41 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
-export function PersonalLabDateStrip({ dates, selectedDate, todayDate, disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; disabled?: boolean; onDateChange: (date: string) => void }) {
+export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completedDates = new Set<string>(), disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; completedDates?: ReadonlySet<string>; disabled?: boolean; onDateChange: (date: string) => void }) {
   return <nav className="personal-lab-day-strip" aria-label="Jour partagé entre les repas et le journal">
     <div className="personal-lab-day-strip__days" role="group" aria-label="Jours disponibles">
+      <span className="personal-lab-day-strip__arrow" aria-hidden="true">‹</span>
       {dates.map((date) => <button key={date} type="button" disabled={disabled} aria-current={date === selectedDate ? "date" : undefined} onClick={() => onDateChange(date)}>
         <span>{sharedDateLabel(date, todayDate)}</span>
-        <small>{new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</small>
+        <small>{new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
         <span className="sr-only">{formatDate(date)}</span>
       </button>)}
+      <span className="personal-lab-day-strip__arrow" aria-hidden="true">›</span>
     </div>
   </nav>;
 }
 
-export function PersonalLabJournalWorkspace({ data }: { data: PersonalLabJournal }) {
-  const dates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(data.todayDate, -index)), [data.todayDate]);
+export function PersonalLabJournalWorkspace({ data, analysis = null }: { data: PersonalLabJournal; analysis?: PersonalLabSnapshot | null }) {
+  const dates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(data.todayDate, index - 4)), [data.todayDate]);
   const [selectedDate, setSelectedDate] = useState(data.todayDate);
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
   const onDateChange = useCallback((date: string) => setSelectedDate(date), []);
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
+  const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);
 
-  const sharedDateNavigation = <PersonalLabDateStrip dates={dates} selectedDate={activeDate} todayDate={data.todayDate} onDateChange={onDateChange} />;
+  const sharedDateNavigation = <PersonalLabDateStrip dates={dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
 
-  return <>
-    <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-home" variant="home" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} sharedDateNavigation={sharedDateNavigation} publishMealTotals disabledSlots={disabledSlots} />
-    <div id="daily-journal"><DailyJournal variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} /></div>
-  </>;
+  return <div className="personal-lab-workspace">
+    {sharedDateNavigation}
+    <div className="personal-lab-workbench">
+      <div className="personal-lab-journal-column" id="daily-journal">
+        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} />
+      </div>
+      <div className="personal-lab-meal-column">
+        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} />
+        <PersonalLabCorrelations analysis={analysis} />
+      </div>
+    </div>
+  </div>;
 }
