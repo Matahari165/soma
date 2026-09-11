@@ -533,7 +533,7 @@
 .ratingFieldset legend { margin-bottom: 7px; color: var(--ink-soft); font-size: .74rem; }
 .ratingScale { display: grid; grid-template-columns: minmax(68px, 1.4fr) repeat(5, minmax(30px, 1fr)); gap: 4px; }
 .ratingChoice,
-.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
+.ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 4px; background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
 .ratingChoice:hover { border-color: var(--ink); color: var(--ink); }
 .ratingSelected { border-color: var(--clay); background: var(--clay-soft); color: var(--clay); font-weight: 700; }
 
