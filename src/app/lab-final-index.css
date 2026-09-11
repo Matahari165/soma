@@ -1,0 +1,121 @@
+html[data-lab-theme="index"] {
+  --index-bg: #090b0d;
+  --index-surface: #111619;
+  --index-surface-strong: #192023;
+  --index-ink: #eef2f1;
+  --index-muted: #a7b1b4;
+  --index-rule: #344045;
+  --index-accent: #d4dfe0;
+}
+
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] {
+  --world-bg: var(--index-bg);
+  --world-surface: var(--index-surface);
+  --world-surface-strong: var(--index-surface-strong);
+  --world-ink: var(--index-ink);
+  --world-muted: var(--index-muted);
+  --world-line: var(--index-rule);
+  --world-accent: var(--index-accent);
+  font-family: Helvetica Neue, Arial, sans-serif;
+  color: var(--index-ink);
+  background: var(--index-bg);
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-global-nav {
+  display: flex; align-items: center; gap: 22px; min-height: 44px; padding: 0 5vw;
+  border-bottom: 1px solid var(--index-rule); background: var(--index-bg); overflow-x: auto;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-global-nav a {
+  min-height: 44px; display: inline-flex; align-items: center; white-space: nowrap;
+  color: var(--index-muted); font: 12px/1 var(--font-soma-mono), ui-monospace, monospace;
+  text-decoration: none; text-transform: uppercase; letter-spacing: .04em;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-global-nav a:hover { color: var(--index-ink); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-intro {
+  display: grid; grid-template-columns: minmax(260px, .72fr) minmax(0, 1.28fr); gap: clamp(28px, 5vw, 76px);
+  padding: 24px 5vw 28px; border-bottom: 1px solid var(--index-rule); background: var(--index-bg);
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .arrival-heading h1 {
+  max-width: 20ch; color: var(--index-ink); font-family: Helvetica Neue, Arial, sans-serif;
+  font-size: clamp(42px, 5vw, 68px); font-weight: 650; line-height: .9; letter-spacing: -.065em;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-live-metrics { grid-column: 2; padding: 0; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-live-metrics .personal-lab-metrics {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--index-rule);
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric {
+  display: grid; grid-template-rows: auto auto 54px; gap: 7px; min-height: 124px; padding: 12px 14px;
+  border: 0; border-left: 1px solid var(--index-rule); border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric:first-child { border-left: 0; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__label,
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__average {
+  color: var(--index-muted); font-size: 12px; line-height: 1.3; letter-spacing: .01em;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__value {
+  color: var(--index-ink); font: 520 25px/1.1 var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__bars { display: none; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__trace {
+  display: block; width: 100%; height: 54px; color: var(--index-accent);
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__trace :is(.metric-trace-baseline, .metric-trace-line) {
+  fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin: miter; stroke-width: 1.25; vector-effect: non-scaling-stroke;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__trace .metric-trace-baseline { stroke: var(--index-rule); stroke-width: 1; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__trace .metric-trace-area { fill: none; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric__trace circle { fill: var(--index-bg); stroke: currentColor; stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world { gap: 24px; padding: 26px 5vw 64px; background: var(--index-bg); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world__header { padding-bottom: 14px; border-bottom: 1px solid var(--index-rule); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world__header h2,
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects :is(h2, h3) {
+  color: var(--index-ink); font: 560 16px/1.2 var(--font-soma-mono), ui-monospace, monospace; letter-spacing: .02em; text-transform: uppercase;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world__header nav a { color: var(--index-muted); font-size: 12px; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-day-strip { margin-bottom: 16px; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-day-strip__days { border-block: 1px solid var(--index-rule); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-day-strip button {
+  min-height: 52px; border: 0; border-right: 1px solid var(--index-rule); border-radius: 0; background: transparent; color: var(--index-muted);
+  font: 12px/1.2 var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums;
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-day-strip button[aria-current="date"] { background: var(--index-surface-strong); color: var(--index-ink); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-workbench { grid-template-columns: minmax(0, 1.45fr) minmax(240px, 1fr) !important; gap: 28px; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world__capture :is(.journal-card--personal-lab, .meal-journal-lab) { border: 0; border-top: 1px solid var(--index-rule); border-radius: 0; background: transparent; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .journal-card--personal-lab .journal-period { border-bottom: 1px solid var(--index-rule); padding-block: 8px; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .journal-card--personal-lab .journal-period__index { color: var(--index-accent); font-family: var(--font-soma-mono), ui-monospace, monospace; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .journal-card--personal-lab .journal-field { min-height: 52px; border-top: 1px solid color-mix(in srgb, var(--index-rule) 70%, transparent); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .journal-card--personal-lab :is(.journal-choice, .journal-number, .journal-clock) {
+  min-height: 44px; border: 1px solid var(--index-rule); border-radius: 0; background: var(--index-surface); color: var(--index-ink);
+}
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .journal-card--personal-lab :is(.journal-choice button, .journal-number--stepper > button) { min-height: 44px; border-radius: 0; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world__effects { padding-top: 24px; border-top: 1px solid var(--index-rule); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__periods { border: 1px solid var(--index-rule); border-radius: 0; background: var(--index-surface); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__periods button { min-width: 56px; min-height: 44px; border-radius: 0; color: var(--index-muted); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__periods button[aria-pressed="true"] { background: var(--index-accent); color: var(--index-bg); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__group > h4 { padding-block: 10px; border-bottom: 1px solid var(--index-rule); color: var(--index-muted); font: 12px/1.2 var(--font-soma-mono), ui-monospace, monospace; letter-spacing: .04em; text-transform: uppercase; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__comparison-header { padding: 9px 0; border-bottom: 1px solid var(--index-rule); background: transparent; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__comparison-header strong { color: var(--index-ink); font: 12px/1.2 var(--font-soma-mono), ui-monospace, monospace; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__comparison-group ol { margin: 0; padding: 0; list-style: none; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__row > button { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, .7fr); align-items: center; gap: 22px; width: 100%; min-height: 62px; padding: 10px 0; border: 0; border-bottom: 1px solid var(--index-rule); border-radius: 0; background: transparent; text-align: left; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__plot { height: 24px; border: 1px solid var(--index-rule); border-radius: 0; background: var(--index-bg); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__plot::before { height: 1px; background: var(--index-muted); }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__plot :is(.strongest-effects__zero, .strongest-effects__interval, .strongest-effects__point) { border-radius: 0; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__outcome { color: var(--index-ink); font-size: 12px; }
+html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--index-accent); outline-offset: 3px; }
+
+@media (max-width: 700px) {
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-global-nav { padding-inline: 16px; gap: 18px; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-intro { display: block; padding: 20px 16px 22px; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .arrival-heading h1 { max-width: 100%; font-size: clamp(42px, 13vw, 58px); }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-live-metrics { margin-top: 22px; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-live-metrics .personal-lab-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-metric { min-height: 112px; padding: 11px 10px; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .lab-world { padding: 22px 16px 46px; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .personal-lab-workbench { grid-template-columns: 1fr !important; }
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] .strongest-effects__row > button { grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] *, html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] *::before, html[data-lab-theme="index"] .lab-continuous[data-continuous-theme="index"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media(min-width:901px) { .lab-experience.lab-continuous[data-continuous-theme="index"] .arrival-heading h1 { max-width:none; font-size:clamp(40px,3.7vw,56px); } }
+.lab-experience.lab-continuous[data-continuous-theme="index"] .lab-live-metrics .personal-lab-metric { grid-template-rows:auto 60px; }

@@ -1,0 +1,33 @@
+/* Shared navigation and motion. Per-world controls follow in scoped sheets. */
+.lab-global-nav { position:sticky; top:88px; z-index:50; display:flex; align-items:center; gap:24px; padding:4px 5vw; background:var(--lab-sidebar); overflow-x:auto; scrollbar-width:thin; }
+.lab-global-nav a { flex-shrink:0; display:flex; align-items:center; min-height:44px; color:var(--lab-text-secondary); font-size:12px; white-space:nowrap; text-decoration:none; transition:color 180ms ease,background-color 180ms ease; }
+.lab-global-nav a:first-child { color:var(--lab-text-primary); font-weight:600; margin-right:auto; }
+.lab-global-nav a:hover { color:var(--lab-text-primary); }
+.lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title,#world-effects) { scroll-margin-top:160px!important; }
+.lab-rail-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.lab-rail-controls button { min-height:44px; padding:10px 18px; border:0; background:var(--lab-surface-selected); color:var(--lab-text-primary); cursor:pointer; }
+.lab-rail-controls span { color:var(--lab-text-secondary); font-size:12px; }
+.lab-continuous .lab-world__effects { animation:none; }
+.lab-continuous .arrival-masthead { animation:lab-final-arrive 650ms ease both; }
+.lab-continuous .arrival-heading { animation:lab-final-arrive 800ms cubic-bezier(.2,.7,.2,1) both; }
+.lab-continuous .arrival-artwork { animation:lab-final-art 900ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes lab-final-arrive { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes lab-final-art { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.lab-continuous :is(button,a,input,textarea):focus-visible { outline:2px solid var(--lab-brand); outline-offset:3px; }
+@media(max-width:700px) {
+ .lab-global-nav { gap:20px; padding-inline:18px; }
+ .lab-global-nav a:first-child { margin-right:0; }
+ .lab-rail-controls { flex-wrap:wrap; }
+ .lab-rail-controls span { order:3; width:100%; text-align:center; }
+}
+@media(prefers-reduced-motion:reduce) { .lab-continuous * { animation:none!important; transition:none!important; } }
+
+html[data-lab-theme] .lab-global-nav { position:fixed; inset:88px 0 auto; }
+html[data-lab-theme] body.local-preview :is(.sidebar,.mobile-header) { display:none; }
+html[data-lab-theme] body.local-preview .app-shell .main-content { margin-left:0; padding-top:144px; }
+.lab-global-nav a[aria-current="page"] { color:var(--lab-text-primary); box-shadow:inset 0 -2px var(--lab-brand); }
+
+html[data-lab-theme="index"] .lab-global-nav a { font-family:var(--font-soma-mono),monospace; text-transform:uppercase; font-size:11px; }
+html[data-lab-theme="index"] .lab-global-nav { border-bottom:1px solid var(--lab-border); }
+html[data-lab-theme="observatory"] .lab-global-nav a:hover { color:#b8dce5; }
+html[data-lab-theme="focus"] .lab-global-nav a:hover { color:#c0d8b8; }

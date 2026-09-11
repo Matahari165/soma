@@ -3,6 +3,7 @@ import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
+import { LabGlobalNavigation } from "@/components/lab/lab-global-navigation";
 import { DarkThemeSwitcher } from "@/components/lab/dark-theme-switcher";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,6 +26,10 @@ import "./lab-arrival-index-atelier.css";
 import "./lab-arrival-art.css";
 import "./lab-continuous.css";
 import "./lab-continuous-worlds.css";
+import "./lab-final.css";
+import "./lab-final-observatory.css";
+import "./lab-final-focus.css";
+import "./lab-final-index.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
@@ -73,7 +78,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className={localPreview ? "local-preview" : undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
-        {localPreview && <DarkThemeSwitcher />}
+        {localPreview && <><DarkThemeSwitcher /><LabGlobalNavigation /></>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

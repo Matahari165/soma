@@ -1,0 +1,86 @@
+/* Focus: a near-black pine instrument for quiet, continuous work. */
+html[data-lab-theme="focus"] {
+  color-scheme: dark;
+  --lab-canvas: #0b100f;
+  --lab-sidebar: #080c0b;
+  --lab-surface: #121a17;
+  --lab-surface-subtle: #18231e;
+  --lab-surface-selected: #284238;
+  --lab-control-track: #1c2a24;
+  --lab-border: #2b3b34;
+  --lab-border-strong: #4b6053;
+  --lab-text-primary: #edf4ee;
+  --lab-text-secondary: #b5c5b9;
+  --lab-brand: #c4dcc8;
+  --lab-signal: #91bda0;
+  --lab-error: #efb2aa;
+  --lab-warning: #d9c794;
+  --lab-radius-xs: 4px;
+  --lab-radius-sm: 4px;
+  --lab-radius-md: 4px;
+  --lab-card-padding: 16px;
+  --lab-column-gap: 16px;
+  scrollbar-color: var(--lab-border-strong) var(--lab-canvas);
+}
+
+html[data-lab-theme="focus"] body { background: var(--lab-canvas); color: var(--lab-text-primary); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] {
+  --world-bg: var(--lab-canvas); --world-surface: var(--lab-surface); --world-surface-strong: var(--lab-surface-subtle);
+  --world-ink: var(--lab-text-primary); --world-muted: var(--lab-text-secondary); --world-line: var(--lab-border); --world-accent: var(--lab-brand);
+  background: var(--world-bg); color: var(--world-ink); font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-intro {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 32px; align-items: end; width: min(100%, 1120px); margin-inline: auto; padding: 24px 32px 28px;
+}
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-arrival { text-align: left; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-composition { grid-template-columns: minmax(0, 1fr) minmax(150px, .42fr); gap: 20px 28px; padding-top: 18px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-heading h1 { max-width: 14ch; font-family: ui-serif, Georgia, serif; font-size: clamp(2.15rem, 4vw, 3.45rem); font-weight: 400; line-height: .98; letter-spacing: -.035em; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-art { min-height: 132px; color: var(--lab-brand); }
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics { min-width: 0; padding: 0; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics .personal-lab-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--lab-border); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics .personal-lab-metric { min-height: 82px; padding: 10px 12px; border: 0; border-right: 1px solid var(--lab-border); border-radius: 0; background: transparent; box-shadow: none; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics .personal-lab-metric:nth-child(even) { border-right: 0; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics .personal-lab-metric__value { font-size: 1.45rem; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-live-metrics .personal-lab-metric__trace { height: 42px; }
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world { width: min(100%, 1120px); margin-inline: auto; padding: 24px 32px 64px; gap: 24px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__header { align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--lab-border); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__header h2 { font-family: ui-serif, Georgia, serif; font-size: 1.55rem; font-weight: 400; letter-spacing: -.025em; }
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-global-nav,
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__header nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(.lab-global-nav, .lab-world__header nav) :is(a, button) { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--lab-text-secondary); text-underline-offset: 4px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(.lab-global-nav, .lab-world__header nav) :is(a, button):is(:hover, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"]) { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
+
+/* Both capture columns stay mounted and form a native horizontal rail. */
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-workbench { display: flex !important; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-color: var(--lab-border-strong) var(--lab-canvas); scrollbar-width: thin; touch-action: pan-x; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-workbench > :is(.personal-lab-journal-column, .personal-lab-meal-column) { display: block !important; flex: 0 0 min(100%, 680px); min-width: 0; scroll-snap-align: start; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__capture { display: block !important; min-width: 0; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__effects { display: block !important; padding-top: 24px; border-top: 1px solid var(--lab-border); }
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(.lab-rail-controls, .lab-motion-tabs, .strongest-effects__periods) { display: flex; align-items: center; gap: 4px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(.lab-rail-controls button, .lab-motion-tabs :is(a, button), .strongest-effects__periods button) { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--lab-border); border-radius: 4px; background: var(--lab-surface); color: var(--lab-text-secondary); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(.lab-rail-controls button, .lab-motion-tabs :is(a, button), .strongest-effects__periods button):is(:hover, [aria-selected="true"], [aria-pressed="true"]) { background: var(--lab-surface-selected); color: var(--lab-text-primary); border-color: var(--lab-border-strong); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-day-strip__days { border-bottom: 1px solid var(--lab-border); scrollbar-color: var(--lab-border-strong) var(--lab-canvas); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-day-strip button { min-height: 44px; border-radius: 4px; color: var(--lab-text-secondary); }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-surface-selected); color: var(--lab-text-primary); box-shadow: inset 0 -2px var(--lab-brand); }
+
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .journal-card--personal-lab :is(input, select, textarea, .journal-choice, .journal-number, .journal-clock),
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .journal-card--personal-lab :is(.journal-choice button, .journal-number--stepper > button, .journal-clock button) { min-height: 44px; border-radius: 4px; }
+html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
+
+@media (max-width: 700px) {
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-intro,
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world { display: block; padding-inline: 16px; }
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-composition { display: grid; grid-template-columns: 1fr minmax(96px, .5fr); gap: 12px; }
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-heading h1 { font-size: clamp(2rem, 10vw, 3rem); }
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .arrival-art { min-height: 96px; }
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .personal-lab-workbench > :is(.personal-lab-journal-column, .personal-lab-meal-column) { flex-basis: calc(100vw - 32px); }
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] .lab-world__header { align-items: flex-start; flex-direction: column; gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-lab-theme="focus"] .lab-experience.lab-continuous[data-continuous-theme="focus"] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
