@@ -35,6 +35,11 @@ typography:
     fontSize: "12px"
     fontWeight: 500
     lineHeight: 1.4
+  observatoryHeading:
+    fontFamily: "Georgia, Times New Roman, serif"
+    fontSize: "20–40px"
+    fontWeight: 400
+    lineHeight: 1.2
 rounded:
   xs: "2px"
   sm: "4px"
@@ -122,11 +127,12 @@ La palette est froide, végétale et minérale : blanc doux, gris-vert clair et 
 
 ## Typography
 
-**Display Font:** Schibsted Grotesk (system-ui en repli)  
-**Body Font:** Schibsted Grotesk (system-ui en repli)  
-**Data Font:** Azeret Mono (monospace en repli)
+- **Display Font:** Schibsted Grotesk (system-ui en repli)
+- **Body Font:** Schibsted Grotesk (system-ui en repli)
+- **Data Font:** Azeret Mono (monospace en repli)
+- **Observatory Heading (aperçu local uniquement):** Georgia (Times New Roman en repli)
 
-Schibsted donne une voix contemporaine, sobre et humaine. Azeret Mono distingue les données, dates, unités et preuves sans transformer toute l’interface en terminal. Newsreader et Geist ne font pas partie du système tant qu’ils ne sont pas réellement chargés et validés.
+Schibsted donne une voix contemporaine, sobre et humaine. Dans le mode `SOMA_LOCAL_PREVIEW`, Georgia porte les titres de l’Observatoire pour introduire une tension éditoriale discrète sans remplacer le système clair de production. Azeret Mono distingue les données, dates, unités et preuves sans transformer toute l’interface en terminal. Newsreader et Geist ne font pas partie du système tant qu’ils ne sont pas réellement chargés et validés.
 
 ### Hierarchy
 

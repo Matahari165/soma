@@ -45,6 +45,76 @@ html[data-lab-theme="observatory"] :is(.settings-page,.health-detail-page,.meals
 html[data-lab-theme="observatory"] .settings-page :is(.health-data-coverage,.health-data-coverage__status) { border:0; box-shadow:none; background:transparent; }
 html[data-lab-theme="observatory"] .settings-page .health-data-coverage dd { font-weight:400; }
 
+/* Loading states stay in the same quiet, borderless observatory surface as
+   their resolved routes. The status roles and live regions remain provided by
+   the existing React loading components. */
+html[data-lab-theme="observatory"] :is(.system-loading,.workout-loading) {
+  display: grid;
+  min-height: calc(100dvh - 88px);
+  align-content: start;
+  gap: 24px;
+  max-width: none;
+  padding: 32px 5vw 64px;
+  color: #eee;
+  background: transparent;
+}
+html[data-lab-theme="observatory"] .system-loading__header {
+  width: min(560px, 100%);
+  min-height: 96px;
+  align-content: end;
+  gap: 8px;
+}
+html[data-lab-theme="observatory"] .system-loading__header .eyebrow {
+  color: #aaa;
+  font: 400 12px/1.4 var(--font-soma-mono), monospace;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+html[data-lab-theme="observatory"] .system-loading__header strong {
+  color: #eee;
+  font: 400 clamp(30px, 3vw, 40px)/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.025em;
+}
+html[data-lab-theme="observatory"] .system-loading__canvas {
+  min-height: 220px;
+  gap: 24px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-lab-theme="observatory"] .system-loading__panel {
+  min-height: 96px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-lab-theme="observatory"] .system-loading__panel--wide { min-height: 112px; }
+html[data-lab-theme="observatory"] .system-loading__panel::before {
+  background: linear-gradient(90deg, transparent, rgba(238,238,238,.18), transparent);
+  opacity: .7;
+}
+html[data-lab-theme="observatory"] .system-loading__panel::after {
+  top: 16px;
+  left: 0;
+  width: min(180px, 42%);
+  height: 1px;
+  background: #aaa;
+  opacity: .6;
+}
+html[data-lab-theme="observatory"] .workout-loading {
+  place-items: start;
+  align-content: start;
+  min-height: calc(100dvh - 88px);
+  font: 400 14px/1.5 var(--font-soma-ui), system-ui, sans-serif;
+}
+html[data-lab-theme="observatory"] .workout-loading svg { color: #aaa; }
+@media (max-width: 700px) {
+  html[data-lab-theme="observatory"] :is(.system-loading,.workout-loading) { padding: 24px 16px 48px; }
+  html[data-lab-theme="observatory"] .system-loading__canvas { grid-template-columns: 1fr; min-height: 320px; }
+  html[data-lab-theme="observatory"] .system-loading__panel--wide { grid-column: auto; }
+}
+
 /* Repas uses the same title rail as the health observatories. The component
    keeps its CSS-module classes; these route hooks make the shared contract
    apply without coupling this sheet to generated class names. */
