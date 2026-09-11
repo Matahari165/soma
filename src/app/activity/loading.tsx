@@ -5,7 +5,7 @@ export default function Loading() {
     <div className="health-detail-page health-detail-page--activity health-detail-page--loading" id="main-page-content" role="status" aria-label="Loading activity data">
       <header className="health-detail-hero health-detail-hero--with-metrics">
         <div>
-          <h1>Activity</h1>
+          <h1>Effort</h1>
           <span className="system-loading__status" aria-hidden="true"><i /><i /><i /></span>
         </div>
         <div className="health-hero-metrics">

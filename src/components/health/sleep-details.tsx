@@ -1,12 +1,13 @@
-import { Clock3, MoonStar, Sunrise } from "lucide-react";
+import { MoonStar } from "lucide-react";
 
 import { ScoreRing } from "@/components/dashboard/score-ring";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
 
+import styles from "./sleep-redesign.module.css";
+import { AnimatedMetricReading, AnimatedValueText } from "./animated-value";
 import { HealthPageShell } from "./health-page-shell";
 import { SleepStageDistribution, SleepStageTimeline } from "./health-charts";
-import { AnimatedMetricReading, AnimatedValueText } from "./animated-value";
 import { averageLast30Measured, formatAverage, formatDurationMinutes, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 
@@ -17,6 +18,7 @@ const restorativeSleepPoints = (days: HealthMetricDay[]) => days.map((day) => ({
 function clock(value: string | null, timeZone: string) {
   return value ? new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value)) : "—";
 }
+
 function clockMinutes(value: string | null, timeZone: string) {
   if (!value) return null;
   const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
@@ -32,11 +34,46 @@ function timingRegularity(days: HealthMetricDay[], key: "bedtime" | "wake_time",
   return Math.round(Math.max(0, 100 - (averageDeviation / 120) * 100));
 }
 
+function averageScoreLast30(scores: HealthAnalytics["scores"], kind: HealthAnalytics["scores"][number]["kind"], endDate: string | undefined) {
+  if (!endDate) return null;
+  const end = new Date(`${endDate}T12:00:00.000Z`);
+  if (!Number.isFinite(end.getTime())) return null;
+  end.setUTCDate(end.getUTCDate() - 29);
+  const startDate = end.toISOString().slice(0, 10);
+  const values = scores
+    .filter((item) => item.kind === kind && item.score_date >= startDate && item.score_date <= endDate)
+    .map((item) => item.score)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
 function formatClockMinutes(value: number | null) {
   if (value === null) return "—";
   const normalized = ((value % 1440) + 1440) % 1440;
   const date = new Date(Date.UTC(2000, 0, 1, Math.floor(normalized / 60), normalized % 60));
   return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" }).format(date);
+}
+
+function coverageLabel(state: string) {
+  if (state === "current") return "Current";
+  if (state === "partial") return "Partial";
+  if (state === "stale") return "Out of date";
+  return "Unavailable";
+}
+
+function toneClass(tone: "positive" | "negative" | "neutral") {
+  if (tone === "positive") return styles.heroMetricPositive;
+  if (tone === "negative") return styles.heroMetricNegative;
+  return styles.heroMetricNeutral;
+}
+
+function HeaderScoreMetric({ label, value, average, values, tone }: { label: string; value: number | null; average: number | null; values: Array<number | null>; tone: "positive" | "negative" | "neutral" }) {
+  const measured = values.filter((item): item is number => item !== null && Number.isFinite(item));
+  const min = measured.length ? Math.min(...measured) : 0;
+  const max = measured.length ? Math.max(...measured) : 1;
+  return <div className={`${styles.headerScoreMetric} ${toneClass(tone)}`} aria-label={`${label} ${value === null ? "unavailable" : Math.round(value)}. 30-day average ${average === null ? "unavailable" : Math.round(average)}.`}>
+    <span>{label}</span><div className={styles.headerScoreBody}><div><strong>{value === null ? "—" : Math.round(value)}</strong><small>%</small><p>30d average · {average === null ? "—" : Math.round(average)}</p></div><div className={styles.headerScoreBars} aria-hidden="true">{values.map((item, index) => <i key={`${label}-${index}`} style={{ height: item === null ? "20%" : `${max === min ? 58 : 28 + ((item - min) / (max - min)) * 52}%` }} />)}</div></div>
+  </div>;
 }
 
 export function SleepDetails({ data }: { data: HealthAnalytics }) {
@@ -48,6 +85,13 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const averageSleep = latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null;
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
   const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
+  const averageScore = latest ? averageScoreLast30(data.scores, "sleep", latest.metric_date) : null;
+  const averageRegularity = latest ? averageLast30Measured(data.days, "sleep_regularity", latest.metric_date) : null;
+  const regularity = latest?.sleep_regularity ?? null;
+  const recentScoreValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "sleep" && item.score_date === day.metric_date)?.score ?? null);
+  const recentRegularityValues = data.days.slice(-5).map((day) => day.sleep_regularity);
+  const scoreTone = metricTone(score, averageScore, "higher_is_better");
+  const regularityTone = metricTone(regularity, averageRegularity, "higher_is_better");
   const sleepTone = metricTone(latest?.sleep_minutes ?? null, averageSleep, "higher_is_better");
   const efficiencyTone = metricTone(latest?.sleep_efficiency ?? null, averageEfficiency, "higher_is_better");
   const debtTone = metricTone(debt, averageDebt, "lower_is_better");
@@ -56,39 +100,63 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const recommendedWakeMinutes = recommendation?.wakeTimeMinutes ?? clockMinutes(latest?.wake_time ?? null, data.timezone);
   const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
-  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone} heroMetrics={<>
-    <div className="health-hero-stat health-hero-stat--regularity"><ScoreRing kind="sleep" label="Regularity" score={latest?.sleep_regularity ?? null} animate /></div>
-    <div className={`health-hero-stat health-hero-stat--debt metric-tone--${debtTone}`}><span>Sleep debt</span><AnimatedMetricReading value={debt} format="duration" className={`metric-reading--${debtTone}`} /><div className="health-debt-comparison"><span><small>Current</small><strong>{formatDurationMinutes(debt)}</strong></span><i aria-hidden="true">→</i><span><small>30d avg</small><strong>{formatDurationMinutes(averageDebt)}</strong></span></div></div>
+
+  return <HealthPageShell kind="sleep" title="Sleep" description="How long, how well, and how consistently you slept." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HeaderScoreMetric label="Sleep score" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={<>
+    <div className={`sleep-header-duration metric-tone--${sleepTone}`}><span>SLEEP DURATION</span><strong>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}<small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><em>30d average · {formatDurationMinutes(averageSleep)}</em></div>
+    <div className="health-hero-stat health-hero-stat--regularity"><HeaderScoreMetric label="Regularity" value={regularity} average={averageRegularity} values={recentRegularityValues} tone={regularityTone} /></div>
+    <div className={`health-hero-stat health-hero-stat--debt metric-tone--${debtTone}`}><span>Sleep debt</span><strong className={`metric-reading metric-reading--${debtTone}`}><span>{formatDurationMinutes(debt)}</span></strong></div>
   </>}>
-    {latest ? <>
-      <section className="health-primary-grid" aria-label="Latest sleep summary">
-        <article className={`health-primary-card health-primary-card--featured health-primary-card--centered metric-tone--${sleepTone}`}><span>Total sleep</span><AnimatedMetricReading value={latest.sleep_minutes} format="duration" className={`metric-reading--${sleepTone}`} /><p className="health-primary-card__average">30-day average · {formatDurationMinutes(averageSleep)}</p></article>
-        <article className={`health-primary-card health-primary-card--centered health-primary-card--connected health-primary-card--connected-start metric-tone--${efficiencyTone}`}><span>Efficiency</span><AnimatedMetricReading value={latest.sleep_efficiency} format="decimal" unit="%" className={`metric-reading--${efficiencyTone}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averageEfficiency, "decimal", 1)}%</p></article>
-        <article className={`health-primary-card health-primary-card--centered health-primary-card--connected health-primary-card--connected-end metric-tone--${efficiencyTone}`}><span>Awake</span><AnimatedMetricReading value={latest.sleep_awake_minutes} format="number" unit="min" decimals={0} /><p className="health-primary-card__average health-primary-card__average--spacer" aria-hidden="true">Linked to efficiency</p></article>
-        <article className="health-primary-card health-primary-card--centered health-primary-card--recommendation"><span>Tonight&apos;s optimal bedtime</span><strong className="metric-reading"><span>{formatClockMinutes(tonightBedtime)}</span></strong><p>{tonightBedtime === null || target === null ? "Target bedtime unavailable." : <>To wake at {formatClockMinutes(recommendedWakeMinutes)} and reach your {formatDurationMinutes(target)} target.</>}</p></article>
-      </section>
+    <div className={styles.redesign}>
+      {latest ? <div className={styles.columns}>
+        <div className={styles.column}>
+          <section className={styles.panel} aria-labelledby="sleep-overview-heading">
+            <header className={styles.panelHeader}><h2 id="sleep-overview-heading">Sleep overview</h2></header>
+            <div className={`${styles.scoreSummary} ${toneClass(scoreTone)}`}>
+              <ScoreRing kind="sleep" label="Score" score={score} size="compact" animate />
+              <div className={styles.scoreReading}><span className={styles.eyebrow}>Sleep score</span><strong>{score === null ? "—" : `${score} / 100`}</strong><p>Duration 70% · efficiency 10% · regularity 20%</p><span className={styles.signalPositive}>{score === null ? "Coverage unavailable" : `${coverageLabel(freshness.state)} · ${Math.round(freshness.coverage * 100)}% coverage`}</span></div>
+            </div>
+            <div className={styles.primarySignals} aria-label="Latest sleep signals">
+              <div className={styles.todaySignal}><span>Sleep duration</span><AnimatedMetricReading value={latest.sleep_minutes} format="duration" className={`metric-reading--${sleepTone}`} /><small>30-day avg · {formatDurationMinutes(averageSleep)}</small></div>
+              <div className={styles.todaySignal}><span>Efficiency</span><AnimatedMetricReading value={latest.sleep_efficiency} format="decimal" unit="%" className={`metric-reading--${efficiencyTone}`} /><small>30-day avg · {formatAverage(averageEfficiency, "decimal", 0)}%</small></div>
+              <div className={styles.todaySignal}><span>Awake</span><AnimatedMetricReading value={latest.sleep_awake_minutes} format="number" unit="min" decimals={0} /><small>Latest complete night</small></div>
+            </div>
+          </section>
 
-      <section className="health-timing-grid">
-        <article><MoonStar size={20} aria-hidden="true" /><span>Bedtime</span><strong>{clock(latest.bedtime, data.timezone)}</strong><p>{bedtimeRegularity === null ? "Regularity pending" : <><AnimatedValueText value={bedtimeRegularity} suffix="%" decimals={0} /> bedtime regularity</>}</p></article>
-        <article><Sunrise size={20} aria-hidden="true" /><span>Wake time</span><strong>{clock(latest.wake_time, data.timezone)}</strong><p>{wakeRegularity === null ? "Regularity pending" : <><AnimatedValueText value={wakeRegularity} suffix="%" decimals={0} /> wake-time regularity</>}</p></article>
-        <article><Clock3 size={20} aria-hidden="true" /><span>Combined timing</span><strong><AnimatedValueText value={latest.sleep_regularity} suffix="%" decimals={0} /></strong></article>
-      </section>
+          <section className={styles.panel} aria-labelledby="sleep-timing-heading">
+            <header className={styles.panelHeader}><h2 id="sleep-timing-heading">Timing &amp; regularity</h2><span className={styles.eyebrow}>LAST 14 DAYS</span></header>
+            <div className={styles.timingRows}>
+              <div className={styles.timingRow}><span>Bedtime</span><strong>{clock(latest.bedtime, data.timezone)}</strong><small>{bedtimeRegularity === null ? "Regularity pending" : <>usual window · ±{Math.max(0, Math.round((100 - bedtimeRegularity) * 1.2))} min</>}</small></div>
+              <div className={styles.timingRow}><span>Wake time</span><strong>{clock(latest.wake_time, data.timezone)}</strong><small>{wakeRegularity === null ? "Regularity pending" : <>usual window · ±{Math.max(0, Math.round((100 - wakeRegularity) * 1.2))} min</>}</small></div>
+              <div className={styles.timingRow}><span>Combined timing</span><strong><AnimatedValueText value={latest.sleep_regularity} suffix="%" decimals={0} /></strong><small>{latest.sleep_regularity === null ? "Consistency pending" : "consistency · improving"}</small></div>
+            </div>
+          </section>
 
-      <section className="health-trends-block" aria-labelledby="sleep-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="sleep-trends-heading">Sleep trends</h2></div></div><div className="metric-trend-grid">
-        <MetricTrendCard label="Total sleep" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={(value) => duration(value)} target={target} animateCurrent animationFormat="duration" />
-        <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Cumulative debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" format={(value) => duration(value)} animateCurrent animationFormat="duration" />
-        <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Sleep regularity" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="REM + deep sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={(value) => duration(value)} animateCurrent animationFormat="duration" />
-      </div></section>
+          <section className={styles.panel} aria-labelledby="sleep-tonight-heading"><div className={styles.recommendation}>
+            <span className={styles.recommendationEyebrow}>TONIGHT</span><h2 id="sleep-tonight-heading">{tonightBedtime === null ? "Keep your usual window" : "Protect the established window"}</h2><strong>{target === null ? "Target unavailable" : `${formatDurationMinutes(target)} needed`}</strong><p>{tonightBedtime === null || target === null ? "A complete sleep target is needed for a recommendation." : `Wind-down ${formatClockMinutes(tonightBedtime - 30)} · aim for lights out by ${formatClockMinutes(tonightBedtime)}${recommendedWakeMinutes === null ? "" : ` to wake at ${formatClockMinutes(recommendedWakeMinutes)}`}`}</p>
+          </div></section>
 
-      <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest night</span><h2>Sleep architecture</h2></div><span className="quality-pill">Measured stages</span></div><SleepStageTimeline stages={data.latestSleepStages} /><SleepStageDistribution stages={[
-        { label: "Deep", value: latest.sleep_deep_percent, tone: "deep" },
-        { label: "REM", value: latest.sleep_rem_percent, tone: "rem" },
-        { label: "Light", value: latest.sleep_light_percent, tone: "light" },
-        { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" },
-      ]} /></section>
-    </> : <section className="health-panel health-empty"><MoonStar size={24} aria-hidden="true" /><div><h2>No sleep data yet</h2><p>Sync one complete sleep session to begin.</p></div></section>}
+        </div>
+
+        <div className={styles.column}>
+          <section className={styles.panel} aria-labelledby="sleep-trends-heading">
+            <header className={styles.panelHeader}><h2 id="sleep-trends-heading">Sleep trends</h2><span className={styles.eyebrow}>30 DAYS · SIX SIGNALS</span></header>
+            <div className={styles.trendGrid}>
+              <MetricTrendCard label="Total sleep" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={duration} target={target} animateCurrent animationFormat="duration" />
+              <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
+              <MetricTrendCard label="Sleep debt" points={points(data.days, "cumulative_sleep_debt_minutes")} direction="lower_is_better" format={duration} animateCurrent animationFormat="duration" />
+              <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" animateCurrent animationFormat="decimal" />
+              <MetricTrendCard label="Regularity" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" animateCurrent animationFormat="decimal" />
+              <MetricTrendCard label="REM + deep sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={duration} animateCurrent animationFormat="duration" />
+            </div>
+          </section>
+
+          <section className={styles.panel} aria-labelledby="sleep-architecture-heading">
+            <header className={styles.panelHeader}><h2 id="sleep-architecture-heading">Latest night</h2></header>
+            <div className={styles.architecturePanel}><div className={styles.architectureHeader}><strong>Sleep architecture</strong><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></div><SleepStageTimeline stages={data.latestSleepStages} /></div>
+            <div className={styles.distributionPanel}><div className={styles.architectureHeader}><strong>Stage distribution</strong><span>Latest complete night</span></div><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /><span className={styles.signalPositive}>Measured · stage labels are imported, scores are calculated</span></div>
+          </section>
+        </div>
+      </div> : <section className={`${styles.panel} ${styles.empty}`}><MoonStar size={24} aria-hidden="true" /><div><span className={styles.eyebrow}>NO DATA</span><h2>No sleep data yet</h2><p>Sync one complete sleep session to begin.</p></div></section>}
+    </div>
   </HealthPageShell>;
 }

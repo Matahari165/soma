@@ -32,7 +32,7 @@ const navigation = [
   { label: "Repas", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
-  { label: "Activity", href: "/activity", icon: Activity },
+  { label: "Effort", href: "/activity", icon: Activity },
   { label: "Coach", href: "/coach", icon: MessageCircle },
 ];
 
@@ -45,7 +45,7 @@ const personalLabNavigation = [
   { label: "Repas", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: Moon },
   { label: "Recovery", href: "/recovery", icon: Heart },
-  { label: "Activity", href: "/activity", icon: Zap },
+  { label: "Effort", href: "/activity", icon: Zap },
 ];
 
 function CoachPanel({ onClose, panelRef }: { onClose: () => void; panelRef: React.RefObject<HTMLElement | null> }) {
@@ -76,7 +76,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const onCoachPage = pathname.startsWith("/coach");
   const isPersonalLab = pathname === "/";
-  const isStitchWorkspace = isPersonalLab || pathname.startsWith("/meals");
+  const isStitchWorkspace = ["/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
   const activeNavigation = isStitchWorkspace ? personalLabNavigation : navigation;
   const activeMobileNavigation = isStitchWorkspace ? personalLabNavigation.slice(1) : mobileNavigation;
 

@@ -1,15 +1,57 @@
 import { calculateSignalFreshness } from "@/domain/health/freshness";
-import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
+import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
-import { HealthPageShell } from "./health-page-shell";
 import { HeartRateCurve, ZoneDistribution } from "./health-charts";
-import { AnimatedMetricReading } from "./animated-value";
-import { averageLast30Measured, formatAverage, metricTone } from "./health-metric-utils";
-import { MetricReading } from "./metric-reading";
-import { MetricTrendCard } from "./metric-trend-card";
+import { averageLast30Measured, formatAverage, formatDurationMinutes, metricTone, type HealthMetricTone } from "./health-metric-utils";
 import { RecoveryScorePopover } from "./recovery-score-popover";
+import styles from "./recovery-redesign.module.css";
 
-const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
+type TrendKind = "hrv" | "resting_heart_rate" | "oxygen_saturation" | "respiratory_rate" | "skin_temperature_delta" | "vo2_max";
+const trendLabels: Record<TrendKind, { label: string; unit: string; direction: "higher" | "lower" | "context" }> = {
+  hrv: { label: "Overnight variability", unit: "ms", direction: "higher" }, resting_heart_rate: { label: "Resting pulse", unit: "bpm", direction: "lower" }, oxygen_saturation: { label: "Oxygen saturation", unit: "%", direction: "context" }, respiratory_rate: { label: "Breathing rate", unit: "rpm", direction: "context" }, skin_temperature_delta: { label: "Temperature delta", unit: "°", direction: "context" }, vo2_max: { label: "VO₂ max", unit: "ml/kg/min", direction: "higher" },
+};
+const metricKeys: Record<TrendKind, keyof HealthMetricDay> = { hrv: "hrv_ms", resting_heart_rate: "resting_heart_rate", oxygen_saturation: "oxygen_saturation", respiratory_rate: "respiratory_rate", skin_temperature_delta: "skin_temperature_delta", vo2_max: "vo2_max" };
+const points = (days: HealthMetricDay[], key: TrendKind) => days.map((day) => { const value = day[metricKeys[key]]; return { date: day.metric_date, value: typeof value === "number" ? value : null }; });
+function formatValue(value: number | null, decimals = 0) { return value === null || !Number.isFinite(value) ? "—" : value.toFixed(decimals).replace(/\.0+$/, ""); }
+function scoreDriver(drivers: Record<string, unknown> | undefined, key: string) { const value = drivers?.[key]; return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null; }
+function averageLast30Scores(scores: ScoreDay[], kind: ScoreDay["kind"], endDate: string | undefined) {
+  const latestDate = endDate ?? scores.filter((item) => item.kind === kind).map((item) => item.score_date).sort().at(-1);
+  if (!latestDate) return null;
+  const start = new Date(`${latestDate}T12:00:00.000Z`);
+  if (!Number.isFinite(start.getTime())) return null;
+  start.setUTCDate(start.getUTCDate() - 29);
+  const startDate = start.toISOString().slice(0, 10);
+  const values = scores.filter((item) => item.kind === kind && item.score_date >= startDate && item.score_date <= latestDate && typeof item.score === "number" && Number.isFinite(item.score)).map((item) => item.score as number);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
+function DataCard({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "positive" | "negative" }) {
+  return <div className={`${styles.statBox} ${tone === "positive" ? styles.statBoxPositive : tone === "negative" ? styles.statBoxNegative : ""}`}><span>{label}</span><strong>{value}</strong></div>;
+}
+function itemIsMissing(value: number | null) { return value === null || !Number.isFinite(value); }
+function HeaderMetric({ label, value, unit, values, average, tone }: { label: string; value: string; unit?: string; values: Array<number | null>; average: string; tone: HealthMetricTone }) {
+  const available = values.filter((candidate): candidate is number => candidate !== null && Number.isFinite(candidate));
+  const min = available.length ? Math.min(...available) : 0;
+  const max = available.length ? Math.max(...available) : 1;
+  const valueClass = tone === "negative" ? styles.valueNegative : tone === "positive" ? styles.valuePositive : styles.valueNeutral;
+  const barClass = tone === "negative" ? styles.barNegative : tone === "positive" ? styles.barPositive : styles.barNeutral;
+  return <article className={styles.headerMetric}><span className={styles.metricLabel}>{label}</span><div className={styles.headerMetricBody}><div><strong className={valueClass}>{value}</strong>{unit ? <small>{unit}</small> : null}<p>30d average · {average}</p></div><div className={styles.historyBars} aria-hidden="true">{values.map((item, index) => <i className={itemIsMissing(item) ? styles.barMissing : barClass} key={`${label}-${index}`} style={{ height: itemIsMissing(item) ? "20%" : `${max === min ? 58 : 28 + (((item ?? 0) - min) / (max - min)) * 52}%` }} />)}</div></div></article>;
+}
+function TrendCard({ label, unit, values, direction }: { label: string; unit: string; values: Array<{ date: string; value: number | null }>; direction: "higher" | "lower" | "context" }) {
+  const available = values.filter((item): item is { date: string; value: number } => item.value !== null && Number.isFinite(item.value));
+  const current = available.at(-1)?.value ?? null;
+  const average = available.length ? available.reduce((sum, item) => sum + item.value, 0) / available.length : null;
+  const min = available.length ? Math.min(...available.map((item) => item.value)) : 0;
+  const max = available.length ? Math.max(...available.map((item) => item.value)) : 1;
+  const averageHeight = average === null ? null : max === min ? 58 : 28 + ((average - min) / Math.max(max - min, 1)) * 68;
+  const averageDescription = average === null ? "30-day average unavailable" : `30-day average ${formatValue(average, 1)} ${unit}`;
+  return <article className={styles.trendCard} aria-label={`${label}. Current ${formatValue(current, 1)} ${unit}. ${averageDescription}. ${available.length} measured days.`}><div className={styles.trendHeader}><div><span className={styles.metricLabel}>{label}</span><strong className={available.length ? styles.valuePositive : styles.valueNegative}>{formatValue(current, 1)}</strong><small>{unit}</small></div><span className={styles.trendDirection}>{direction === "higher" ? "↑" : direction === "lower" ? "↓" : "—"}</span></div><div className={styles.trendBarArea} aria-hidden="true">{averageHeight === null ? null : <span className={styles.trendAverageLine} style={{ bottom: `${averageHeight}%` }} /> }<div className={styles.trendBars}>{values.map((item, index) => <i key={`${item.date}-${index}`} className={item.value === null ? styles.barMissing : styles.barPositive} style={{ height: item.value === null ? "12%" : `${28 + ((item.value - min) / Math.max(max - min, 1)) * 68}%` }} />)}</div></div></article>;
+}
+function DateScope({ latestDate }: { latestDate: string | undefined }) {
+  const anchor = latestDate ? new Date(`${latestDate}T12:00:00`) : new Date();
+  const labels = Array.from({ length: 7 }, (_, index) => { const date = new Date(anchor); date.setDate(date.getDate() - (6 - index)); const [weekday, day, month] = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(date).replace(/\./g, "").split(" "); return `${weekday[0]?.toUpperCase() ?? ""}${weekday.slice(1)} ${day} ${month.toUpperCase()}`; });
+  return <div className={styles.dateScope} aria-label="Recovery date scope"><span className={styles.dateArrow} aria-hidden="true">‹</span>{labels.map((label, index) => <span className={index === labels.length - 1 ? styles.dateCurrent : ""} key={label}>{index === labels.length - 1 ? `Aujourd'hui · ${label}` : label}</span>)}<span className={styles.dateArrow} aria-hidden="true">›</span></div>;
+}
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const latest = data.days.findLast((day) => (day.hrv_ms !== null && day.hrv_ms > 0) || (day.resting_heart_rate !== null && day.resting_heart_rate > 0));
@@ -18,45 +60,30 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const heartRates = data.heartRateSamples.map((sample) => sample.bpm);
   const heartMinimum = heartRates.length ? Math.min(...heartRates) : null;
   const heartMaximum = heartRates.length ? Math.max(...heartRates) : null;
-  const averages = {
-    hrv: latest ? averageLast30Measured(data.days, "hrv_ms", latest.metric_date) : null,
-    restingHeartRate: latest ? averageLast30Measured(data.days, "resting_heart_rate", latest.metric_date) : null,
-    oxygenSaturation: latest ? averageLast30Measured(data.days, "oxygen_saturation", latest.metric_date) : null,
-    respiratoryRate: latest ? averageLast30Measured(data.days, "respiratory_rate", latest.metric_date) : null,
-  };
-  const tones = {
-    hrv: metricTone(latest?.hrv_ms ?? null, averages.hrv, "higher_is_better"),
-    restingHeartRate: metricTone(latest?.resting_heart_rate ?? null, averages.restingHeartRate, "lower_is_better"),
-    oxygenSaturation: metricTone(latest?.oxygen_saturation ?? null, averages.oxygenSaturation, "higher_is_better"),
-    respiratoryRate: "neutral" as const,
-  };
+  const averages = { hrv: latest ? averageLast30Measured(data.days, "hrv_ms", latest.metric_date) : null, restingHeartRate: latest ? averageLast30Measured(data.days, "resting_heart_rate", latest.metric_date) : null, oxygenSaturation: latest ? averageLast30Measured(data.days, "oxygen_saturation", latest.metric_date) : null, respiratoryRate: latest ? averageLast30Measured(data.days, "respiratory_rate", latest.metric_date) : null, sleep: latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null, recovery: averageLast30Scores(data.scores, "recovery", latest?.metric_date), strain: latest ? averageLast30Measured(data.days, "zone_minutes", latest.metric_date) : null, energy: latest ? averageLast30Measured(data.days, "total_energy_kcal", latest.metric_date) : null };
+  const headerValues = { sleep: latest?.sleep_minutes ?? null, recovery: score, strain: latest?.zone_minutes ?? null, energy: latest?.total_energy_kcal ?? null };
+  const headerTones = { sleep: metricTone(headerValues.sleep, averages.sleep, "higher_is_better"), recovery: metricTone(headerValues.recovery, averages.recovery, "higher_is_better"), strain: metricTone(headerValues.strain, averages.strain, "context_only"), energy: metricTone(headerValues.energy, averages.energy, "higher_is_better") };
+  const drivers = recoveryScore?.drivers;
+  const driverCoverage = Number(drivers?.coverage);
+  const coverage = Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate].filter((value) => value !== null).length / 3 : 0;
   const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
-  const driverCoverage = Number(recoveryScore?.drivers?.coverage);
-  const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate].filter((value) => value !== null).length / 3 : 0 });
-  return <HealthPageShell kind="recovery" title="Recovery" description="The balance between strain, rest, and your recent physiology." score={score} freshness={freshness} timezone={data.timezone} heroScore={<RecoveryScorePopover score={score} hrv={typeof recoveryScore?.drivers?.hrv === "number" ? recoveryScore.drivers.hrv : null} restingHeartRate={typeof recoveryScore?.drivers?.restingHeartRate === "number" ? recoveryScore.drivers.restingHeartRate : null} sleep={typeof recoveryScore?.drivers?.sleep === "number" ? recoveryScore.drivers.sleep : null} />}>
-    {latest ? <>
-      <section className="health-primary-grid" aria-label="Latest recovery signals">
-        <article className={`health-primary-card health-primary-card--featured health-primary-card--centered metric-tone--${tones.hrv}`}><span>HRV</span><AnimatedMetricReading value={latest.hrv_ms} format="number" decimals={0} unit={latest.hrv_ms === null ? undefined : "ms"} className={`metric-reading--${tones.hrv}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.hrv, "decimal", 0)} ms</p></article>
-        <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.restingHeartRate}`}><span>Resting heart rate</span><AnimatedMetricReading value={latest.resting_heart_rate} format="number" decimals={0} unit={latest.resting_heart_rate === null ? undefined : "bpm"} className={`metric-reading--${tones.restingHeartRate}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.restingHeartRate, "decimal", 0)} bpm</p></article>
-        <article className="health-primary-card health-primary-card--centered"><span>Heart-rate range</span><MetricReading value={heartMinimum === null || heartMaximum === null ? "—" : `${heartMinimum}–${heartMaximum}`} unit={heartMinimum === null || heartMaximum === null ? undefined : "bpm"} /><p className="health-primary-card__average">30-day average unavailable</p></article>
-        <article className={`health-primary-card health-primary-card--centered metric-tone--${tones.oxygenSaturation}`}><span>Nightly SpO₂</span><AnimatedMetricReading value={latest.oxygen_saturation} format="decimal" decimals={1} unit={latest.oxygen_saturation === null ? undefined : "%"} className={`metric-reading--${tones.oxygenSaturation}`} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.oxygenSaturation, "decimal", 1)}%</p></article>
-        <article className="health-primary-card health-primary-card--centered"><span>Respiration</span><AnimatedMetricReading value={latest.respiratory_rate} format="decimal" decimals={1} unit={latest.respiratory_rate === null ? undefined : "/min"} /><p className="health-primary-card__average">30-day average · {formatAverage(averages.respiratoryRate, "decimal", 1)} /min</p></article>
-      </section>
-
-      <section className="health-trends-block" aria-labelledby="recovery-trends-heading"><div className="health-section-heading"><div><span className="eyebrow">Last 30 days</span><h2 id="recovery-trends-heading">Recovery trends</h2></div></div><div className="metric-trend-grid">
-        <MetricTrendCard label="HRV" points={points(data.days, "hrv_ms")} unit="ms" direction="higher_is_better" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Resting heart rate" points={points(data.days, "resting_heart_rate")} unit="bpm" direction="lower_is_better" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="SpO₂" points={points(data.days, "oxygen_saturation")} unit="%" direction="context_only" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Respiration" points={points(data.days, "respiratory_rate")} unit="/min" direction="context_only" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Temperature delta" points={points(data.days, "skin_temperature_delta")} unit="°C" direction="context_only" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="VO₂ max" points={points(data.days, "vo2_max")} unit="ml/kg/min" direction="higher_is_better" animateCurrent animationFormat="decimal" />
-      </div></section>
-
-      <section className="health-panel"><div className="health-section-heading"><div><span className="eyebrow">Latest complete day</span><h2>Time in heart-rate zones</h2></div></div><ZoneDistribution zones={[
-        { label: "Light", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Moderate", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigorous", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Peak", minutes: latest.peak_zone_minutes, tone: "peak" },
-      ]} /></section>
-
-      <section className="health-panel health-panel--recent-samples"><div className="health-section-heading"><div><span className="eyebrow">Recent samples</span><h2>Heart rate through the day</h2></div><span className="quality-pill">{data.heartRateSamples.length} samples</span></div><HeartRateCurve samples={data.heartRateSamples} /></section>
-    </> : <section className="health-panel health-empty"><div><h2>Recovery needs an overnight signal</h2><p>Sync HRV or resting heart rate to begin.</p></div></section>}
-  </HealthPageShell>;
+  const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage });
+  const trendValues = (key: TrendKind) => points(data.days, key).slice(-7);
+  const recoveryValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "recovery" && item.score_date === day.metric_date)?.score ?? null);
+  return <div className={`${styles.page} health-detail-page health-detail-page--recovery`} id="main-page-content">
+    <header className={styles.header}><h1>Recovery</h1><div className={styles.headerMetrics}><HeaderMetric label="Sleep duration" value={formatDurationMinutes(headerValues.sleep)} unit="/ 8h" average={formatDurationMinutes(averages.sleep)} values={data.days.slice(-5).map((day) => day.sleep_minutes)} tone={headerTones.sleep} /><HeaderMetric label="Recovery index" value={formatValue(headerValues.recovery)} unit="%" average={formatValue(averages.recovery)} values={recoveryValues} tone={headerTones.recovery} /><HeaderMetric label="Daily strain" value={formatValue(headerValues.strain)} unit="/ 21.0" average={formatValue(averages.strain)} values={data.days.slice(-5).map((day) => day.zone_minutes)} tone={headerTones.strain} /><HeaderMetric label="Metabolic energy" value={formatValue(headerValues.energy)} unit="kcal" average={averages.energy === null ? "—" : `${formatAverage(averages.energy, "number")} kcal`} values={data.days.slice(-5).map((day) => day.total_energy_kcal)} tone={headerTones.energy} /></div></header>
+    <main className={styles.content}><DateScope latestDate={latest?.metric_date} /><div className={styles.workbench}>
+      <div className={styles.column}>
+        <section className={styles.panel} aria-labelledby="recovery-overview-heading"><div className={styles.panelHeader}><h2 id="recovery-overview-heading">Recovery overview</h2></div><div className={styles.statGrid}><div className={`${styles.statWrap} ${styles.scoreWrap}`}><DataCard label="Recovery score" value={formatValue(score)} tone={score === null ? "negative" : "positive"} /><div className={styles.scoreAction}><RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /></div></div><DataCard label="Driver coverage" value={Number.isFinite(driverCoverage) ? `${Math.round(driverCoverage * 100)}%` : "—"} /></div><p className={styles.statusLine}>Status · {score === null ? "awaiting fresh signal" : freshness.state === "current" ? "current signal" : freshness.state}</p><span className={styles.sectionLabel}>Score drivers</span><div className={styles.driverRows}><p>Overnight variability · 40% <strong>{formatValue(scoreDriver(drivers, "hrv"))}</strong></p><p>Resting pulse · 30% <strong>{formatValue(scoreDriver(drivers, "restingHeartRate"))}</strong></p><p>Sleep context · 30% <strong>{formatValue(scoreDriver(drivers, "sleep"))}</strong></p></div></section>
+        <section className={styles.panel} aria-labelledby="latest-signals-heading"><div className={styles.panelHeader}><h2 id="latest-signals-heading">Latest signals</h2></div><div className={styles.signalRows}>{[["Overnight variability", latest?.hrv_ms ?? null, averages.hrv, "ms", 0], ["Resting pulse", latest?.resting_heart_rate ?? null, averages.restingHeartRate, "bpm", 0], ["Heart-rate range", heartMinimum === null || heartMaximum === null ? null : `${heartMinimum}–${heartMaximum}`, null, "bpm", 0], ["Oxygen saturation", latest?.oxygen_saturation ?? null, averages.oxygenSaturation, "%", 1], ["Breathing rate", latest?.respiratory_rate ?? null, averages.respiratoryRate, "rpm", 1]].map(([label, value, average, unit, decimals]) => <div className={styles.signalRow} key={String(label)}><div><span>{label}</span><small>Source · health signal</small></div><div><strong>{typeof value === "string" ? value : formatValue(value as number | null, decimals as number)}</strong>{unit ? <small>{unit}</small> : null}<em>30d average · {typeof average === "number" ? formatAverage(average, "decimal", decimals as number) : "—"}</em></div></div>)}</div></section>
+        <section className={styles.panel} aria-labelledby="zones-heading"><div className={styles.panelHeader}><h2 id="zones-heading">Time in heart-rate zones</h2></div><p className={styles.supporting}>Latest complete day · unfilled when absent</p><ZoneDistribution zones={[{ label: "Light", minutes: latest?.light_zone_minutes ?? null, tone: "light" }, { label: "Moderate", minutes: latest?.moderate_zone_minutes ?? null, tone: "moderate" }, { label: "Vigorous", minutes: latest?.vigorous_zone_minutes ?? null, tone: "vigorous" }, { label: "Peak", minutes: latest?.peak_zone_minutes ?? null, tone: "peak" }]} /></section>
+      </div>
+      <div className={styles.column}>
+        <section className={`${styles.panel} ${styles.trendsPanel}`} aria-labelledby="recovery-trends-heading"><div className={styles.panelHeader}><h2 id="recovery-trends-heading">Recovery trends</h2><div className={styles.filters}><span>7 jours</span><span>2 semaines</span><strong>1 mois</strong></div></div><div className={styles.trendGrid}>{(Object.keys(trendLabels) as TrendKind[]).map((key) => <TrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} values={trendValues(key)} direction={trendLabels[key].direction} />)}</div></section>
+        <section className={`${styles.panel} ${styles.heartPanel}`} aria-labelledby="heart-rate-heading"><div className={styles.panelHeader}><h2 id="heart-rate-heading">Heart rate through the day</h2></div><HeartRateCurve samples={data.heartRateSamples} /></section>
+        <section className={`${styles.panel} ${styles.calculationPanel}`} aria-labelledby="calculation-heading"><div className={styles.calculationCard}><div className={styles.calculationHeader}><h3 id="calculation-heading">Recovery calculation</h3><span>Calculated</span></div><div className={styles.calculationStats}><DataCard label="Overnight variability" value="40%" /><DataCard label="Resting pulse" value="30%" /></div></div><p>Sleep context · 30%</p><small>Compared with personal baseline.</small></section>
+        <section className={`${styles.panel} ${styles.provenancePanel}`} aria-labelledby="provenance-heading"><div className={styles.panelHeader}><h2 id="provenance-heading">Signal provenance</h2></div><div className={styles.provenanceRow}><span>Source · health signal</span><small>Gaps preserved · no signal ≠ zero</small></div></section>
+      </div>
+    </div><section className={styles.availability} aria-labelledby="availability-heading"><h2 id="availability-heading">Data availability states</h2><div className={styles.availabilityGrid}><div><span>Loading</span><p>Reading overnight data…</p></div><div><span>No data</span><p>Recovery needs an overnight signal.</p></div><div><span>Partial</span><p>Score unavailable; keep gaps unfilled.</p></div><div><span className={styles.errorLabel}>Unavailable</span><p>Recovery data could not load. Try again.</p></div></div></section></main>
+  </div>;
 }

@@ -11,6 +11,7 @@ import "./globals.css";
 import "./components.css";
 import "./responsive.css";
 import "./personal-lab.css";
+import "./health-redesign.css";
 import "./motion-entry.css";
 import "./motion-journal.css";
 import "./motion-matrix.css";
