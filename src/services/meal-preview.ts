@@ -11,12 +11,16 @@ import type {
 } from "@/domain/meals";
 import { MAX_MEAL_PHOTO_BYTES, MAX_MEAL_PHOTOS, MAX_MEAL_PHOTOS_BYTES, normalizeMealFeeling } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
+import { isLocalPreviewMode } from "@/lib/env";
+import { previewUser } from "@/lib/local-preview";
 
 type PreviewPhoto = MealPhoto & { data: ArrayBuffer };
 type PreviewMeal = Omit<Meal, "photos"> & { photos: PreviewPhoto[] };
 
 const store = new Map<string, Map<string, PreviewMeal>>();
 const idempotency = new Map<string, string>();
+const localPreviewDemoSeededUsers = new Set<string>();
+const LOCAL_PREVIEW_DEMO_LUNCH_ID = "00000000-0000-4000-8000-000000000011";
 
 function userMeals(userId: string) {
   let meals = store.get(userId);
@@ -25,6 +29,68 @@ function userMeals(userId: string) {
     store.set(userId, meals);
   }
   return meals;
+}
+
+function previewDemoLunchDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function previewDemoQuantity(value: number, unit: string, grams: number) {
+  return { value, unit, basis: "portion de démonstration", grams };
+}
+
+function previewDemoAnalysis(): MealAnalysis {
+  const range = previewRange;
+  return {
+    summary: "Déjeuner local de démonstration : poulet grillé, riz basmati et légumes rôtis, salade aux noix, puis yaourt grec aux fruits rouges et miel.",
+    dishType: "Plat complet",
+    calorieAnalysis: "Estimation illustrative fondée sur les portions indiquées; elle sert uniquement à rendre l’aperçu local exploitable.",
+    foods: [
+      { name: "Poulet grillé", preparation: "Grillé", portion: "140 g", estimatedGrams: 140, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["animal_protein"], varietyKey: "poulet", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(140, "g", 140), calories: range(200, 220, 240), proteinGrams: range(36, 40, 44), carbohydrateGrams: range(0, 0, 0), fatGrams: range(6, 7, 9), fiberGrams: range(0, 0, 0), sugarGrams: range(0, 0, 0), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Riz basmati", preparation: "Cuit", portion: "180 g", estimatedGrams: 180, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["refined_grain"], varietyKey: "riz-basmati", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(180, "g cuit", 180), calories: range(190, 210, 230), proteinGrams: range(3, 4, 5), carbohydrateGrams: range(42, 46, 50), fatGrams: range(0, 1, 2), fiberGrams: range(1, 1, 2), sugarGrams: range(0, 0, 0), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Légumes rôtis", preparation: "Courgette, carotte et poivron rôtis", portion: "180 g", estimatedGrams: 180, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["vegetable"], varietyKey: "legumes-rotis", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(180, "g", 180), calories: range(80, 90, 100), proteinGrams: range(2, 3, 4), carbohydrateGrams: range(14, 16, 18), fatGrams: range(1, 2, 3), fiberGrams: range(4, 5, 6), sugarGrams: range(5, 7, 9), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Salade verte", preparation: "Crue", portion: "60 g", estimatedGrams: 60, kind: "ingredient", course: "side", countedInTotals: true, foodGroups: ["vegetable"], varietyKey: "salade-verte", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(60, "g", 60), calories: range(15, 20, 25), proteinGrams: range(0.5, 1, 1.5), carbohydrateGrams: range(2, 3, 4), fatGrams: range(0, 0, 0), fiberGrams: range(1, 1, 2), sugarGrams: range(0.5, 1, 2), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Noix", preparation: null, portion: "10 g", estimatedGrams: 10, kind: "ingredient", course: "side", countedInTotals: true, foodGroups: ["nuts_seeds"], varietyKey: "noix", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(10, "g", 10), calories: range(55, 65, 75), proteinGrams: range(1.5, 2, 3), carbohydrateGrams: range(1, 1, 2), fatGrams: range(5, 6, 7), fiberGrams: range(1, 1, 2), sugarGrams: range(0, 0, 1), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Huile d’olive", preparation: "Vinaigrette", portion: "7 g", estimatedGrams: 7, kind: "ingredient", course: "side", countedInTotals: true, foodGroups: ["added_fat"], varietyKey: "huile-olive", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(7, "g", 7), calories: range(57, 63, 69), proteinGrams: range(0, 0, 0), carbohydrateGrams: range(0, 0, 0), fatGrams: range(6, 7, 8), fiberGrams: range(0, 0, 0), sugarGrams: range(0, 0, 0), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Yaourt grec nature", preparation: null, portion: "100 g", estimatedGrams: 100, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["dairy"], varietyKey: "yaourt-grec", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(100, "g", 100), calories: range(85, 95, 105), proteinGrams: range(7, 8, 9), carbohydrateGrams: range(3, 4, 5), fatGrams: range(3, 4, 5), fiberGrams: range(0, 0, 0), sugarGrams: range(3, 4, 5), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Fruits rouges", preparation: "Frais", portion: "80 g", estimatedGrams: 80, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["fruit"], varietyKey: "fruits-rouges", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(80, "g", 80), calories: range(25, 35, 45), proteinGrams: range(0, 0.5, 1), carbohydrateGrams: range(6, 8, 10), fatGrams: range(0, 0, 1), fiberGrams: range(2, 3, 4), sugarGrams: range(4, 5, 7), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
+      { name: "Miel", preparation: null, portion: "8 g", estimatedGrams: 8, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["sweet"], varietyKey: "miel", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(8, "g", 8), calories: range(20, 25, 30), proteinGrams: range(0, 0, 0), carbohydrateGrams: range(5, 6, 8), fatGrams: range(0, 0, 0), fiberGrams: range(0, 0, 0), sugarGrams: range(5, 6, 8), addedSugarGrams: range(5, 6, 8), confidence: "medium" },
+    ],
+    totals: {
+      calories: range(727, 823, 919),
+      proteinGrams: range(50, 58.5, 67.5),
+      carbohydrateGrams: range(73, 84, 97),
+      fatGrams: range(21, 27, 35),
+      fiberGrams: range(9, 11, 16),
+      sugarGrams: range(17.5, 23, 32),
+      addedSugarGrams: range(5, 6, 8),
+    },
+    confidence: "medium",
+    uncertainties: ["Portions et quantité d’huile estimées pour l’aperçu local."],
+  };
+}
+
+function ensureLocalPreviewDemoMeal(userId: string) {
+  if (!isLocalPreviewMode() || userId !== previewUser.id || localPreviewDemoSeededUsers.has(userId)) return;
+  localPreviewDemoSeededUsers.add(userId);
+  const meals = userMeals(userId);
+  const mealDate = previewDemoLunchDate();
+  if ([...meals.values()].some((meal) => meal.mealDate === mealDate && meal.mealType === "lunch")) return;
+  const now = new Date().toISOString();
+  meals.set(LOCAL_PREVIEW_DEMO_LUNCH_ID, {
+    id: LOCAL_PREVIEW_DEMO_LUNCH_ID,
+    userId,
+    mealDate,
+    mealType: "lunch",
+    note: "Déjeuner de démonstration : poulet grillé, riz basmati, légumes rôtis, salade verte aux noix, yaourt grec, fruits rouges et miel.",
+    status: "confirmed",
+    mouthWarmthIntensity: null,
+    stomachOverfullIntensity: null,
+    createdAt: now,
+    updatedAt: now,
+    photos: [],
+    analysis: { id: "00000000-0000-4000-8000-000000000012", mealId: LOCAL_PREVIEW_DEMO_LUNCH_ID, status: "completed", provider: "preview", model: "soma-demo-v1", result: previewDemoAnalysis(), error: null, sourcePhotoIds: [], createdAt: now, completedAt: now },
+  });
 }
 
 function cloneMeal(meal: PreviewMeal): Meal {
@@ -71,6 +137,7 @@ export function createPreviewMeal(userId: string, input: CreateMealInput): Meal 
 }
 
 export function listPreviewMeals(userId: string, options: { from?: string; to?: string } = {}) {
+  ensureLocalPreviewDemoMeal(userId);
   return [...userMeals(userId).values()]
     .filter((meal) => (!options.from || meal.mealDate >= options.from) && (!options.to || meal.mealDate <= options.to))
     .sort((a, b) => b.mealDate.localeCompare(a.mealDate) || b.createdAt.localeCompare(a.createdAt))
@@ -205,6 +272,7 @@ export function deletePreviewMeal(userId: string, mealId: string) {
 }
 
 export function clearPreviewUserData(userId: string) {
+  if (userId === previewUser.id) localPreviewDemoSeededUsers.add(userId);
   const removed = userMeals(userId).size;
   store.delete(userId);
   for (const [key] of idempotency) if (key.startsWith(`${userId}:`)) idempotency.delete(key);

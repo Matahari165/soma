@@ -30,6 +30,8 @@ import "./lab-final.css";
 import "./lab-final-observatory.css";
 import "./lab-final-focus.css";
 import "./lab-final-index.css";
+import "./observatory-geometry.css";
+import "./observatory-deep.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],

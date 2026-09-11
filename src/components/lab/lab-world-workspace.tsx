@@ -4,8 +4,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival } from "./lab-arrival";
 
-export function LabWorldWorkspace({ date, metrics, effects, capture }: {
-  date: string; metrics: ReactNode; effects: ReactNode; capture: ReactNode;
+export function LabWorldWorkspace({ date, metrics, effects, capture, radar }: {
+  date: string; radar: ReactNode; metrics: ReactNode; effects: ReactNode; capture: ReactNode;
 }) {
   const theme = useLabTheme();
   const root = useRef<HTMLDivElement>(null);
@@ -35,7 +35,7 @@ export function LabWorldWorkspace({ date, metrics, effects, capture }: {
   }
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
     <div className="lab-intro">
-      <LabArrival theme={theme} date={date} />
+      <LabArrival theme={theme} date={date} radar={radar} />
       <section className="lab-live-metrics" aria-label="Mesures du jour">{metrics}</section>
     </div>
     <div className="lab-world" lang="fr">

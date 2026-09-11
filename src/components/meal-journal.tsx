@@ -566,15 +566,29 @@ function AnalysisSummary({ meal }: { meal: MealRecord }) {
 function LabMealSummary({ meal }: { meal: MealRecord }) {
   const analysis = meal.analysis;
   if (!analysis) return null;
-  const description = analysis.dishType?.trim() || meal.note.trim() || analysis.summary?.trim() || "Analyse confirmée";
-  const macro = [
-    ["Prot.", analysis.proteinGrams],
-    ["Gluc.", analysis.carbohydratesGrams],
-    ["Lip.", analysis.fatGrams],
-  ].map(([label, range]) => `${label} ${likelyLabel(range as NutritionRange)}`).join(" · ");
-  return <div className={styles.labMealSummary}>
-    <p>{description}</p>
-    <small>{macro}</small>
+  const roots = groupMealIngredients(analysis.ingredients);
+  const mainRoot = roots.find((node) => ingredientCourse(node, false) === "main" || node.ingredient.kind === "dish");
+  const main = roots.filter((node) => ingredientCourse(node, false) === "main").map((node) => node.ingredient.name.trim()).filter(Boolean).join(", ") || analysis.dishType?.trim() || mainRoot?.ingredient.name.trim() || roots[0]?.ingredient.name.trim() || meal.note.trim() || "Repas analysé";
+  const accompaniments = roots
+    .filter((node) => node !== mainRoot && ["side", "dessert"].includes(ingredientCourse(node, false) ?? ""))
+    .map((node) => node.ingredient.name.trim())
+    .filter(Boolean);
+  const secondary = accompaniments.length ? accompaniments.join(", ") : "—";
+  const nutrition = [
+    ["Calories", "kcal", analysis.calories, "calories"],
+    ["Protéines", "g", analysis.proteinGrams, "protein"],
+    ["Glucides", "g", analysis.carbohydratesGrams, "carbs"],
+    ["Lipides", "g", analysis.fatGrams, "fat"],
+    ["Sucres ajoutés", "g", analysis.addedSugarGrams, "sugar"],
+  ] as const;
+  return <div className={styles.labMealSummary} aria-label={`Résumé du ${SLOT_LABELS[meal.slot]}`}>
+    <div className={styles.labMealDetails}>
+      <div><span>Plat</span><strong>{main}</strong></div>
+      <div><span>Accompagnement / dessert</span><strong>{secondary}</strong></div>
+    </div>
+    <div className={styles.labMealNutrition} aria-label="Valeurs nutritionnelles estimées">
+      {nutrition.map(([label, unit, range, metric]) => <span data-metric={metric} key={label} aria-label={`${label} : ${likelyLabel(range)} ${unit}`}><small>{label}</small><strong>{likelyLabel(range)} <small>{unit}</small></strong></span>)}
+    </div>
   </div>;
 }
 
@@ -584,7 +598,7 @@ function MealsMealSummary({ meal }: { meal: MealRecord }) {
 
   const roots = groupMealIngredients(analysis.ingredients);
   const mainRoot = roots.find((node) => ingredientCourse(node, false) === "main" || node.ingredient.kind === "dish");
-  const main = analysis.dishType?.trim() || mainRoot?.ingredient.name.trim() || roots[0]?.ingredient.name.trim() || meal.note.trim() || "Repas analysé";
+  const main = roots.filter((node) => ingredientCourse(node, false) === "main").map((node) => node.ingredient.name.trim()).filter(Boolean).join(", ") || analysis.dishType?.trim() || mainRoot?.ingredient.name.trim() || roots[0]?.ingredient.name.trim() || meal.note.trim() || "Repas analysé";
   const accompaniments = roots
     .filter((node) => node !== mainRoot && ingredientCourse(node, false) === "side")
     .map((node) => node.ingredient.name.trim())
@@ -641,9 +655,10 @@ function MealCompletionControls({ status, saving, mutationBusy, onEdit, onConfir
   </div>;
 }
 
-function MealAnalysisDisclosure({ meal, status, correctionMode, ratingSaveState, onRating, onCorrection, onCancel }: {
+function MealAnalysisDisclosure({ meal, status, showExplanation = false, correctionMode, ratingSaveState, onRating, onCorrection, onCancel }: {
   meal: MealRecord;
   status: "review" | "confirmed";
+  showExplanation?: boolean;
   correctionMode: boolean;
   ratingSaveState: "idle" | "saving" | "saved" | "error";
   onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void | Promise<boolean>;
@@ -654,6 +669,10 @@ function MealAnalysisDisclosure({ meal, status, correctionMode, ratingSaveState,
     <summary>Résultats de l’analyse</summary>
     <div className={styles.analysisDetailsBody}>
       <AnalysisDisplay meal={meal} />
+      {showExplanation && meal.analysis && <div className={styles.analysisExplanation}>
+        {meal.analysis.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+        {meal.analysis.uncertainties?.map((text) => <p key={text}>{text}</p>)}
+      </div>}
       <h4 className={styles.ratingsHeading}>Ressentis</h4>
       <div className={styles.ratings}>
         <RatingScale label={RATING_LABELS.mouthHeat} value={meal.mouthHeat} onChange={(value) => onRating("mouthHeat", value)} />
@@ -678,7 +697,7 @@ function PhotoInput({ slot, onFiles, disabled = false, compact = false, single =
   return <div className={`${styles.photoInput} ${compact ? styles.photoInputCompact : ""} ${single ? styles.photoInputSingle : ""}`}>
     <input ref={cameraRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" capture="environment" aria-label={`Prendre une photo pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
     <input ref={galleryRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" multiple aria-label={`Choisir des photos pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
-    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />Ajouter une photo</button> : <>
+    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-label="Ajouter une photo" aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />Photo</button> : <>
       <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
       <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
     </>}
@@ -758,7 +777,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const visibleStatus = meal ? statusLabel(meal) : skipped ? "Ignoré" : "";
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
   const compactEmptyState = compactEmpty && !meal && !skipped && !entryOpen;
-  const integratedEmpty = mealsCompact;
+  const integratedEmpty = mealsCompact || labCompact;
 
   useEffect(() => {
     if (!openRequest || skipped) return;
@@ -819,7 +838,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       </div>}
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analyse interrompue</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Réessayer</button></div>}
       {status === "confirmed" && meal && <MealSourceEvidence meal={meal} />}
-      {(status === "review" || status === "confirmed") && meal?.analysis && <>{mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}<MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} /></>}
+      {(status === "review" || status === "confirmed") && meal?.analysis && <>{mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}<MealAnalysisDisclosure meal={meal} status={status} showExplanation={labCompact} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />{confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}<MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} /></>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Réanalyse interrompue. L’analyse précédente reste conservée. {visibleAnalysisError(meal.error)}</p>}
     </div>}
   </article>;
