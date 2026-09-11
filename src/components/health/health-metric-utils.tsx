@@ -1,6 +1,34 @@
 export type HealthMetricDirection = "higher_is_better" | "lower_is_better" | "context_only";
 export type HealthMetricTone = "positive" | "negative" | "neutral";
 
+type HealthSourceFreshness = {
+  metric_date?: string | null;
+  source_freshness?: {
+    latestMeasuredAt?: string | null;
+    byType?: Record<string, string | null>;
+  };
+};
+
+/** Counts only finite readings; null, undefined and invalid numbers stay absent. */
+export function measuredCoverage(values: Array<number | null | undefined>) {
+  if (!values.length) return 0;
+  const measured = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return measured.length / values.length;
+}
+
+/** Returns the newest valid source timestamp across every imported signal. */
+export function latestSourceMeasuredAt(day: HealthSourceFreshness | null | undefined) {
+  const candidates = [
+    day?.source_freshness?.latestMeasuredAt,
+    ...Object.values(day?.source_freshness?.byType ?? {}),
+  ].filter((value): value is string => typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value)));
+  const latest = candidates.reduce<string | null>((current, candidate) => {
+    if (!current || Date.parse(candidate) > Date.parse(current)) return candidate;
+    return current;
+  }, null);
+  return latest ?? day?.metric_date ?? null;
+}
+
 function dateWindowEnd<T extends { metric_date: string }>(days: T[], endDate?: string) {
   if (endDate) return endDate;
   return [...days].map((day) => day.metric_date).sort().at(-1) ?? null;

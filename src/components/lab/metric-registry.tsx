@@ -7,11 +7,13 @@ import { useState } from "react";
 import { isResultOnlyMetric, type MetricRole } from "@/domain/lab/metrics";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
+import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
+
 const roleLabels: Record<MetricRole, string> = {
   influence: "Influence",
-  result: "Result",
-  both: "Both",
-  disabled: "Disabled",
+  result: "Résultat",
+  both: "Les deux",
+  disabled: "Désactivée",
 };
 
 export function MetricRegistry({ metrics }: { metrics: PersonalLabSnapshot["metricRegistry"] }) {
@@ -24,19 +26,19 @@ export function MetricRegistry({ metrics }: { metrics: PersonalLabSnapshot["metr
     setError(null);
     const response = await fetch("/api/lab/metrics", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metricId, role }) });
     const result = await response.json();
-    if (!response.ok) setError(result.error ?? "Metric could not be updated.");
+    if (!response.ok) setError(result.error ?? "La métrique n’a pas pu être mise à jour.");
     else router.refresh();
     setBusy(null);
   }
 
   return <details className="metric-registry">
-    <summary>Metrics <span>{metrics.filter((metric) => metric.received).length} received</span></summary>
+    <summary>Métriques <span>{metrics.filter((metric) => metric.received).length} reçues</span></summary>
     <div className="metric-registry__table">
-      <div className="metric-registry__head"><span>Metric</span><span>Coverage</span><span>Role</span></div>
+      <div className="metric-registry__head"><span>Métrique</span><span>Couverture</span><span>Rôle</span></div>
       {[...metrics].sort((first, second) => Number(second.received) - Number(first.received) || first.label.localeCompare(second.label)).map((metric) => <div className={metric.received ? "" : "is-unreceived"} key={metric.id}>
-        <span><strong>{metric.label}</strong><small>{metric.sources.length ? metric.sources.map((source) => `${source.source} ${source.days}d`).join(" · ") : metric.source}{metric.unit ? ` · ${metric.unit}` : ""}</small></span>
-        <span>{metric.recordedDays ? `${metric.recordedDays}d` : "—"}</span>
-        <label><span className="sr-only">{metric.label} role</span><select value={metric.role} disabled={busy === metric.id || isResultOnlyMetric(metric.id)} onChange={(event) => void update(metric.id, event.target.value as MetricRole)}>{(isResultOnlyMetric(metric.id) ? [["result", roleLabels.result]] : Object.entries(roleLabels)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{busy === metric.id && <LoaderCircle className="spin" size={14} aria-hidden="true" />}</label>
+        <span><strong>{localizedMetricLabel(metric.id, metric.label)}</strong><small>{metric.sources.length ? metric.sources.map((source) => `${source.source} ${source.days} j`).join(" · ") : metric.source}{metric.unit ? ` · ${localizedMetricUnit(metric.unit)}` : ""}</small></span>
+        <span>{metric.recordedDays ? `${metric.recordedDays} j` : "—"}</span>
+        <label><span className="sr-only">Rôle de {localizedMetricLabel(metric.id, metric.label)}</span><select aria-label={`Rôle de ${localizedMetricLabel(metric.id, metric.label)}`} value={metric.role} disabled={busy === metric.id || isResultOnlyMetric(metric.id)} onChange={(event) => void update(metric.id, event.target.value as MetricRole)}>{(isResultOnlyMetric(metric.id) ? [["result", roleLabels.result]] : Object.entries(roleLabels)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{busy === metric.id && <LoaderCircle className="spin" size={14} aria-hidden="true" />}</label>
       </div>)}
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}

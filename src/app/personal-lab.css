@@ -911,34 +911,6 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   }
 }
 
-/* LOT 2: journal and strongest evidence share the first desktop viewport. The
-   DOM order stays journal -> analysis so keyboard and assistive-technology
-   navigation keep the existing capture-first sequence. */
-@media (min-width: 1101px) {
-  .personal-lab-page {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    column-gap: var(--lab-column-gap);
-    row-gap: var(--lab-section-space);
-  }
-
-  .personal-lab-page > .lab-notice {
-    flex: 0 0 100%;
-  }
-
-  .personal-lab-page > .lab-workspace {
-    flex: 1 1 calc(68% - (var(--lab-column-gap) / 2));
-    min-width: 0;
-  }
-
-  .personal-lab-page > .strongest-effects-panel {
-    flex: 1 1 calc(32% - (var(--lab-column-gap) / 2));
-    min-width: 320px;
-    align-self: flex-start;
-  }
-}
-
 /* FINAL typography and interaction contract for the daily lab. */
 .personal-lab-page .lab-header__row {
   grid-template-columns: var(--lab-header-title-width) minmax(0, 1fr);
@@ -1036,9 +1008,14 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 
 .personal-lab-page .journal-card--personal-lab .journal-period__index {
   display: inline-flex;
-  min-width: 24px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  align-items: center;
   justify-content: center;
-  color: var(--lab-text-secondary);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-brand);
+  color: var(--lab-surface);
   font-size: 12px;
   font-weight: 650;
   line-height: 16px;

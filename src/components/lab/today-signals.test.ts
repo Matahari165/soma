@@ -46,6 +46,26 @@ describe("Today signals", () => {
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--below" data-trend="below"');
   });
 
+  it("keeps the five-day metric history localized for assistive technology", () => {
+    const html = renderToStaticMarkup(createElement(PersonalLabMetrics, { data: {
+      sleepMinutes: 510,
+      recoveryScore: null,
+      effortScore: null,
+      caloriesKcal: null,
+      averageSleepMinutes: 480,
+      averageRecoveryScore: null,
+      averageEffortScore: null,
+      averageCaloriesKcal: null,
+      history: [
+        { date: "2026-09-11", sleepMinutes: 510, recoveryScore: null, effortScore: null, caloriesKcal: null },
+        { date: "2026-09-10", sleepMinutes: null, recoveryScore: null, effortScore: null, caloriesKcal: null },
+      ],
+    } }));
+
+    expect(html).toContain("Historique des cinq derniers jours : 11 sept. 2026 : 8h 30, 10 sept. 2026 : —");
+    expect(html).not.toContain("2026-09-11");
+  });
+
   it("refreshes the current meal value and 30-day calorie average after a meal event", () => {
     const initial = {
       sleepMinutes: null,

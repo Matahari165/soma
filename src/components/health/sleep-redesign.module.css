@@ -179,7 +179,7 @@
 .trendGrid :global(.metric-trend-card header .metric-reading) { font-family: inherit; font-size: 20px; }
 .trendGrid :global(.metric-trend-card .chart-frame) { height: 128px; margin-top: 12px; }
 .trendGrid :global(.metric-trend-card .baseline-row) { display: none; }
-.trendGrid :global(.metric-trend-card footer) { display: none; }
+.trendGrid :global(.metric-trend-card footer) { display: flex; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sleep-border); }
 .architecturePanel, .distributionPanel { padding: 16px; border: 1px solid var(--sleep-border); border-radius: var(--lab-radius-sm); background: var(--sleep-subtle); }
 .architecturePanel { min-height: 190px; }
 .architectureTimeline { margin-top: 8px; padding-bottom: 12px; }

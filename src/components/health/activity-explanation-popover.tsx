@@ -8,10 +8,12 @@ import { ScoreRing } from "@/components/dashboard/score-ring";
 import { AnimatedMetricReading } from "./animated-value";
 import type { HealthMetricTone } from "./health-metric-utils";
 
-function ExplanationPopover({ open, panelId, title, subtitle, rows, onClose }: { open: boolean; panelId: string; title: string; subtitle: string; rows: Array<{ label: string; value: string; detail: string }>; onClose: () => void }) {
+const focusableSelector = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])";
+
+function ExplanationPopover({ open, panelId, title, subtitle, rows, onClose, dialogRef, closeButtonRef }: { open: boolean; panelId: string; title: string; subtitle: string; rows: Array<{ label: string; value: string; detail: string }>; onClose: () => void; dialogRef: RefObject<HTMLDivElement | null>; closeButtonRef: RefObject<HTMLButtonElement | null> }) {
   if (!open) return null;
-  return <div className="health-explanation-popover" id={panelId} role="dialog" aria-label={title}>
-    <header><div><small>Fonctionnement</small><strong>{title}</strong></div><button type="button" aria-label={`Fermer ${title}`} onClick={onClose}><X size={16} aria-hidden="true" /></button></header>
+  return <div ref={dialogRef} className="health-explanation-popover" id={panelId} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
+    <header><div><small>Fonctionnement</small><strong>{title}</strong></div><button ref={closeButtonRef} type="button" aria-label={`Fermer ${title}`} onClick={onClose}><X size={16} aria-hidden="true" /></button></header>
     <p>{subtitle}</p>
     <dl>{rows.map((row) => <div key={row.label}><dt>{row.label}<small>{row.detail}</small></dt><dd>{row.value}</dd></div>)}</dl>
   </div>;
@@ -20,15 +22,39 @@ function ExplanationPopover({ open, panelId, title, subtitle, rows, onClose }: {
 function usePopover(rootRef: RefObject<HTMLElement | null>, triggerRef: RefObject<HTMLButtonElement | null>) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
+    closeButtonRef.current?.focus();
+    const close = () => {
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current?.contains(document.activeElement)) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -42,7 +68,7 @@ function usePopover(rootRef: RefObject<HTMLElement | null>, triggerRef: RefObjec
     setOpen(false);
     triggerRef.current?.focus();
   };
-  return { open, setOpen, panelId, close };
+  return { open, setOpen, panelId, close, dialogRef, closeButtonRef };
 }
 
 export function ActivityScorePopover({ score, zoneMinutes, exerciseMinutes, activeEnergyKcal, steps }: { score: number | null; zoneMinutes: number | null; exerciseMinutes: number | null; activeEnergyKcal: number | null; steps: number | null }) {
@@ -60,7 +86,7 @@ export function ActivityScorePopover({ score, zoneMinutes, exerciseMinutes, acti
       <ScoreRing kind="effort" label="Score" score={score} animate decorative />
       <span className="sr-only">{popover.open ? "Fermer" : "Ouvrir"} le calcul du score d’effort</span>
     </button>
-    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Score d’effort" subtitle="Soma combine quatre signaux avec des rendements décroissants. Les données absentes sont retirées et les pondérations restantes sont rééquilibrées." rows={rows} onClose={popover.close} />
+    <ExplanationPopover open={popover.open} panelId={popover.panelId} title="Score d’effort" subtitle="Soma combine quatre signaux avec des rendements décroissants. Les données absentes sont retirées et les pondérations restantes sont rééquilibrées." rows={rows} onClose={popover.close} dialogRef={popover.dialogRef} closeButtonRef={popover.closeButtonRef} />
   </div>;
 }
 
@@ -75,6 +101,6 @@ export function ActivityRegularityCard({ value, average, tone, observedDays }: {
       { label: "Période", value: `${observedDays} jours`, detail: "Jusqu’à 28 jours mesurés" },
       { label: "Donnée quotidienne", value: "Score d’effort", detail: "Un score par jour mesuré" },
       { label: "Variation", value: "Moins est mieux", detail: "Moins de variation rapproche le résultat de 100 %" },
-    ]} onClose={popover.close} />
+    ]} onClose={popover.close} dialogRef={popover.dialogRef} closeButtonRef={popover.closeButtonRef} />
   </article>;
 }

@@ -7,6 +7,7 @@ import type { CSSProperties, ReactNode, RefObject } from "react";
 import { isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
+import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
 import { effectText, outcomeExplanation, percentText, RelationDetail } from "./relation-detail";
 import { calculableRelations, compareInfluenceGroups, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
 
@@ -41,12 +42,24 @@ export function formatDuration(value: number) {
 }
 
 export function formatComparisonLabel(label: string) {
-  return label.replace(/([+−-]?\d+(?:\.\d+)?)\s*min\b/g, (match, raw: string) => {
+  const formatted = label.replace(/([+−-]?\d+(?:\.\d+)?)\s*min\b/g, (match, raw: string) => {
     const value = Number(raw.replace("−", "-"));
     if (Math.abs(value) <= 120) return match;
     const prefix = raw.startsWith("+") ? "+" : "";
     return `${prefix}${formatDuration(value).replace(/^−/, "")}`;
   });
+  if (formatted === "yes vs no") return "oui plutôt que non";
+  const amountComparison = formatted.match(/^(.+?) avg vs 0$/);
+  if (amountComparison) return `${amountComparison[1]} en moyenne plutôt que zéro`;
+  const higherSteps = formatted.match(/^\+?(\d+(?:\.\d+)?) steps$/);
+  if (higherSteps) return `${higherSteps[1]} pas de plus`;
+  const threshold = formatted.match(/^threshold above (.+)$/);
+  if (threshold) return `au-dessus de ${threshold[1]}`;
+  const plateau = formatted.match(/^plateau after (.+)$/);
+  if (plateau) return `après ${plateau[1]}`;
+  const zone = formatted.match(/^(?:optimal|adverse|middle) zone (.+)$/);
+  if (zone) return `dans la zone ${zone[1]}`;
+  return formatted;
 }
 
 /** Keep programmatic scrolling consistent with the user's motion preference. */
@@ -331,7 +344,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
       const current = groups.get(key) ?? {
         group: influenceGroup(relation.predictorId),
         predictorId: relation.predictorId,
-        predictorLabel: relation.predictorLabel,
+        predictorLabel: localizedMetricLabel(relation.predictorId, relation.predictorLabel),
         relations: [],
       };
       current.relations.push(relation);
@@ -420,7 +433,9 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
           width: `${Math.max(1, (high - low) * 46)}%`,
           "--matrix-interval-origin": intervalOrigin,
         } as CSSProperties;
-        const relationLabel = `${relation.predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${relation.outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}, période ${periodDisplayLabel(relation.period)}, échantillon de ${relation.sampleSize} jours, ${strongestUncertaintyLabel(relation)}`;
+        const predictorLabel = localizedMetricLabel(relation.predictorId, relation.predictorLabel);
+        const outcomeLabel = localizedMetricLabel(relation.outcomeId, relation.outcomeLabel);
+        const relationLabel = `${predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}, période ${periodDisplayLabel(relation.period)}, échantillon de ${relation.sampleSize} jours, ${strongestUncertaintyLabel(relation)}`;
         return <li
           className="strongest-effects__row"
           data-matrix-effect-key={rowKey}
@@ -434,7 +449,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
               <i className="strongest-effects__interval" style={intervalStyle} />
               <i className="strongest-effects__point" style={{ left: `${50 + point * 46}%` }} />
             </span>
-            <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{relation.outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
+            <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
           </button>
         </li>;
       })}</ol>
@@ -597,9 +612,17 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     const rightTheme = outcomeThemeById[right.id] ?? "Autres";
     return outcomeThemeOrder.indexOf(leftTheme) - outcomeThemeOrder.indexOf(rightTheme);
   }), [matrix.outcomes]);
+  const visibleOutcomes = useMemo(() => outcomes.map((outcome) => ({
+    ...outcome,
+    label: localizedMetricLabel(outcome.id, outcome.label),
+    unit: localizedMetricUnit(outcome.unit),
+  })), [outcomes]);
   const outcomeThemes = useMemo(() => groupOutcomeThemes(outcomes), [outcomes]);
   const periodRows = useMemo(() => (rowsByPeriod[period] ?? []).filter((row) => row.period === period), [rowsByPeriod, period]);
-  const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id)), [outcomes, periodRows]);
+  const rows = useMemo(() => groupMatrixRows(periodRows, outcomes.map((outcome) => outcome.id)).map((row) => ({
+    ...row,
+    label: localizedMetricLabel(row.id, row.label),
+  })), [outcomes, periodRows]);
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod) => {
     const cached = rowsByPeriod[nextPeriod];
@@ -717,13 +740,13 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       <table>
         <thead>
           <tr className="matrix-theme-row"><th scope="col" rowSpan={2}>Influence</th>{outcomeThemes.map((theme, index) => <th scope="colgroup" colSpan={theme.count} key={`${theme.label}-${index}`}>{theme.label}</th>)}</tr>
-          <tr className="matrix-outcome-row">{outcomes.map((outcome) => <th scope="col" key={outcome.id}><button type="button" className="matrix-outcome-trigger" aria-expanded={selectedOutcome?.id === outcome.id} aria-controls={selectedOutcome?.id === outcome.id ? "outcome-detail" : undefined} onClick={() => { setSelected(null); setSelectedInfluence(null); setSelectedOutcome((current) => current?.id === outcome.id ? null : outcome); }}><span>{outcome.label}</span><small>{outcome.unit}</small></button></th>)}</tr>
+          <tr className="matrix-outcome-row">{visibleOutcomes.map((outcome) => <th scope="col" key={outcome.id}><button type="button" className="matrix-outcome-trigger" aria-expanded={selectedOutcome?.id === outcome.id} aria-controls={selectedOutcome?.id === outcome.id ? "outcome-detail" : undefined} onClick={() => { setSelected(null); setSelectedInfluence(null); setSelectedOutcome((current) => current?.id === outcome.id ? null : outcome); }}><span>{outcome.label}</span><small>{outcome.unit}</small></button></th>)}</tr>
         </thead>
         <tbody>{rows.map((row, rowIndex) => <Fragment key={row.id}>{(rowIndex === 0 || rows[rowIndex - 1].group !== row.group) && <tr className="matrix-group-row"><th colSpan={outcomes.length + 1}>{row.group}</th></tr>}<tr><th scope="row"><button type="button" className="matrix-influence-trigger" aria-expanded={selectedInfluence?.id === row.id} aria-controls={selectedInfluence?.id === row.id ? "influence-detail" : undefined} onClick={() => selectInfluence(row)}><strong>{row.emoji && <span aria-hidden="true">{row.emoji}</span>}{row.label}</strong></button></th>{row.relationsByOutcome.map((relations, index) => {
           const calculable = calculableRelations(relations);
           const significant = significantRelations(relations);
           const displayed = showNonSignificant ? calculable : significant;
-          const outcome = outcomes[index];
+          const outcome = visibleOutcomes[index];
           const tones = new Set(significant.map(matrixRelationTone));
           const tone = !significant.length ? "is-non-significant" : tones.size === 1 ? [...tones][0] : "is-mixed";
           const state = matrixCellState(relations, displayed);

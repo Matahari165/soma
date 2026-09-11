@@ -7,11 +7,11 @@ import styles from "./sleep-redesign.module.css";
 import { AnimatedMetricReading, AnimatedValueText } from "./animated-value";
 import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
 import { SleepStageDistribution, SleepStageTimeline } from "./health-charts";
-import { averageLast30Measured, formatAverage, formatDurationMinutes, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatAverage, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 
 const duration = (minutes: number) => formatDurationMinutes(minutes);
-const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
+const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" && Number.isFinite(day[key]) ? day[key] as number : null }));
 const restorativeSleepPoints = (days: HealthMetricDay[]) => days.map((day) => ({
   date: day.metric_date,
   value: typeof day.sleep_rem_minutes === "number" && Number.isFinite(day.sleep_rem_minutes) && typeof day.sleep_deep_minutes === "number" && Number.isFinite(day.sleep_deep_minutes)
@@ -101,7 +101,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const wakeRegularity = timingRegularity(data.days, "wake_time", data.timezone);
   const recommendedWakeMinutes = recommendation?.wakeTimeMinutes ?? null;
   const tonightBedtime = recommendation?.bedtimeMinutes ?? null;
-  const freshness = calculateSignalFreshness({ measuredAt: latest?.source_freshness?.byType?.sleep ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: latest ? [latest.sleep_minutes, latest.sleep_regularity, score].filter((value) => value !== null).length / 3 : 0 });
+  const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: latest ? measuredCoverage([latest.sleep_minutes, latest.sleep_efficiency, latest.sleep_regularity]) : 0 });
 
   return <div className={styles.root}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, qualité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score de sommeil" value={score} average={averageScore} values={recentScoreValues} tone={scoreTone} />} heroMetrics={latest ? <>
     <div className={`health-hero-stat metric-tone--${sleepTone}`}><span>Durée de sommeil</span><strong className={`metric-reading metric-reading--${sleepTone}`}><span>{latest ? formatDurationMinutes(latest.sleep_minutes) : "—"}</span><small>{target === null ? "" : ` / ${formatDurationMinutes(target)}`}</small></strong><small className="health-hero-stat__average">Moy. 30 j · {formatDurationMinutes(averageSleep)}</small></div>

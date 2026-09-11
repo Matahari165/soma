@@ -5,6 +5,8 @@ import type { RefObject } from "react";
 
 import type { MatrixRelation } from "@/domain/lab/matrix";
 
+import { localizedMetricLabel, localizedMetricSentenceLabel } from "./lab-copy";
+
 function signed(value: number, digits = 1) {
   const rounded = Number(value.toFixed(digits));
   return `${rounded > 0 ? "+" : ""}${rounded.toFixed(digits)}`;
@@ -16,19 +18,6 @@ function effectDigits(effect: number | null, unit: string) {
 
 function effectUnit(unit: string) {
   return unit === "%" ? "pp" : unit;
-}
-
-const metricLabels: Record<string, string> = {
-  wake_time: "L’heure de réveil",
-  steps: "Les pas",
-  caffeine: "La caféine",
-  sleep_awake: "le temps éveillé",
-  sleep_efficiency: "l’efficacité du sommeil",
-  recovery: "la récupération",
-};
-
-function localizedMetricLabel(id: string, fallback: string) {
-  return metricLabels[id] ?? fallback;
 }
 
 export function effectText(relation: Pick<MatrixRelation, "effect" | "outcomeUnit">) {
@@ -151,7 +140,7 @@ function effectMagnitudeText(relation: MatrixRelation) {
   const numericValue = Math.abs(Number(relation.effect.toFixed(digits)));
   const value = numericValue.toLocaleString("fr-CH", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   if (unit === "pp") return `${value} point${numericValue < 2 ? "" : "s"} de pourcentage`;
-  if (unit === "count") return `${value} ${relation.outcomeLabel.toLowerCase()}`;
+  if (unit === "count") return `${value} ${localizedMetricLabel(relation.outcomeId, relation.outcomeLabel).toLocaleLowerCase("fr")}`;
   if (unit === "/h") return `${value} par heure`;
   if (unit === "/min") return `${value} par minute`;
   if (unit === "pts") return `${value} point${numericValue === 1 ? "" : "s"}`;
@@ -161,8 +150,8 @@ function effectMagnitudeText(relation: MatrixRelation) {
 }
 
 export function findingSentence(relation: MatrixRelation) {
-  const predictorLabel = localizedMetricLabel(relation.predictorId.replace(/^journal:/, ""), relation.predictorLabel);
-  const outcomeLabel = localizedMetricLabel(relation.outcomeId, relation.outcomeLabel);
+  const predictorLabel = localizedMetricSentenceLabel(relation.predictorId, relation.predictorLabel);
+  const outcomeLabel = localizedMetricSentenceLabel(relation.outcomeId, relation.outcomeLabel);
   const effect = relation.effect;
   const magnitude = effectMagnitudeText(relation);
   if (magnitude === null || effect === null || effect === 0) {
@@ -179,16 +168,18 @@ export function RelationDetail({ relations, direction, onClose, detailRef }: { r
   const first = relations[0];
   if (!first) return null;
   void direction;
+  const predictorLabel = localizedMetricLabel(first.predictorId, first.predictorLabel);
+  const outcomeLabel = localizedMetricLabel(first.outcomeId, first.outcomeLabel);
   return <aside ref={detailRef} className="relation-detail relation-detail--popover" tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
     <header>
-      <div><span className="relation-detail__eyebrow">Relation</span><h3 id="relation-detail-title">{first.predictorLabel} → {first.outcomeLabel}</h3></div>
+      <div><span className="relation-detail__eyebrow">Relation</span><h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Fermer le détail de la relation" onClick={onClose}><X size={17} /></button>
     </header>
     <div className="relation-detail__popover-body">
       {relations.map((relation) => <p className="relation-detail__finding" key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>{findingSentence(relation)}</p>)}
       <dl className="relation-detail__definitions">
-        <div><dt>Influence</dt><dd>{predictorExplanation(first)}</dd></div>
-        <div><dt>Résultat</dt><dd>{outcomeExplanation(first.outcomeId, first.outcomeLabel)}</dd></div>
+        <div><dt>Influence</dt><dd>{predictorExplanation({ ...first, predictorLabel })}</dd></div>
+        <div><dt>Résultat</dt><dd>{outcomeExplanation(first.outcomeId, outcomeLabel)}</dd></div>
       </dl>
     </div>
   </aside>;

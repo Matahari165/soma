@@ -22,7 +22,7 @@ describe("relationship matrix motion helpers", () => {
     expect(formatDuration(120)).toBe("120 min");
     expect(formatDuration(540)).toBe("9 h");
     expect(formatDuration(676)).toBe("11 h 16 min");
-    expect(formatComparisonLabel("adverse zone 540 min–676 min · J+1")).toBe("adverse zone 9 h–11 h 16 min · J+1");
+    expect(formatComparisonLabel("adverse zone 540 min–676 min · J+1")).toBe("dans la zone 9 h–11 h 16 min · J+1");
     expect(formatComparisonLabel("+200 min")).toBe("+3 h 20 min");
   });
 

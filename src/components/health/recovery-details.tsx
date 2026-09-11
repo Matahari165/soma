@@ -2,7 +2,7 @@ import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
 import { HeartRateCurve, ZoneDistribution } from "./health-charts";
-import { averageLast30Measured, formatAverage, formatDurationMinutes, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatAverage, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
 import { MetricTrendCard } from "./metric-trend-card";
 import { RecoveryScorePopover } from "./recovery-score-popover";
@@ -13,7 +13,7 @@ const trendLabels: Record<TrendKind, { label: string; unit: string; direction: "
   hrv: { label: "Variabilité nocturne", unit: "ms", direction: "higher" }, resting_heart_rate: { label: "Pouls au repos", unit: "bpm", direction: "lower" }, oxygen_saturation: { label: "Saturation en oxygène", unit: "%", direction: "context" }, respiratory_rate: { label: "Fréquence respiratoire", unit: "rpm", direction: "context" }, skin_temperature_delta: { label: "Écart de température", unit: "°", direction: "context" }, vo2_max: { label: "VO₂ max", unit: "ml/kg/min", direction: "higher" },
 };
 const metricKeys: Record<TrendKind, keyof HealthMetricDay> = { hrv: "hrv_ms", resting_heart_rate: "resting_heart_rate", oxygen_saturation: "oxygen_saturation", respiratory_rate: "respiratory_rate", skin_temperature_delta: "skin_temperature_delta", vo2_max: "vo2_max" };
-const points = (days: HealthMetricDay[], key: TrendKind) => days.map((day) => { const value = day[metricKeys[key]]; return { date: day.metric_date, value: typeof value === "number" ? value : null }; });
+const points = (days: HealthMetricDay[], key: TrendKind) => days.map((day) => { const value = day[metricKeys[key]]; return { date: day.metric_date, value: typeof value === "number" && Number.isFinite(value) ? value : null }; });
 function formatValue(value: number | null, decimals = 0) { return value === null || !Number.isFinite(value) ? "—" : value.toFixed(decimals).replace(/\.0+$/, ""); }
 function scoreDriver(drivers: Record<string, unknown> | undefined, key: string) { const value = drivers?.[key]; return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null; }
 function averageLast30Scores(scores: ScoreDay[], kind: ScoreDay["kind"], endDate: string | undefined) {
@@ -36,8 +36,24 @@ const directionMap: Record<string, "higher_is_better" | "lower_is_better" | "con
 const visibleTrendKeys: TrendKind[] = ["hrv", "resting_heart_rate", "respiratory_rate", "oxygen_saturation"];
 
 function hasRecoveryMeasurement(day: HealthMetricDay) {
-  return [day.hrv_ms, day.resting_heart_rate, day.sleep_minutes, day.respiratory_rate, day.oxygen_saturation]
-    .some((value) => typeof value === "number" && Number.isFinite(value));
+  return [
+    day.sleep_minutes,
+    day.hrv_ms,
+    day.resting_heart_rate,
+    day.respiratory_rate,
+    day.oxygen_saturation,
+    day.oxygen_saturation_lower,
+    day.oxygen_saturation_upper,
+    day.skin_temperature_delta,
+    day.nightly_temperature_celsius,
+    day.baseline_temperature_celsius,
+    day.light_zone_minutes,
+    day.moderate_zone_minutes,
+    day.vigorous_zone_minutes,
+    day.peak_zone_minutes,
+    day.vo2_max,
+    day.core_body_temperature_celsius,
+  ].some((value) => typeof value === "number" && Number.isFinite(value));
 }
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
@@ -52,9 +68,12 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const headerTones = { sleep: metricTone(headerValues.sleep, averages.sleep, "higher_is_better"), recovery: metricTone(headerValues.recovery, averages.recovery, "higher_is_better"), strain: metricTone(headerValues.strain, averages.strain, "context_only"), energy: metricTone(headerValues.energy, averages.energy, "higher_is_better") };
   const drivers = recoveryScore?.drivers;
   const driverCoverage = Number(drivers?.coverage);
-  const coverage = Number.isFinite(driverCoverage) ? driverCoverage : latest ? [latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes].filter((value) => value !== null).length / 3 : 0;
-  const recoveryMeasurements = latest ? ["daily-heart-rate-variability", "daily-resting-heart-rate", "sleep", "sleep-analysis"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
-  const freshness = calculateSignalFreshness({ measuredAt: recoveryMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage });
+  const coverage = Number.isFinite(driverCoverage)
+    ? Math.min(1, Math.max(0, driverCoverage))
+    : latest
+      ? measuredCoverage([latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes])
+      : 0;
+  const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
   const recoveryValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "recovery" && item.score_date === day.metric_date)?.score ?? null);
   const heroScoreTone = headerTones.recovery === "positive" ? "positive" : headerTones.recovery === "negative" ? "negative" : "neutral";
 

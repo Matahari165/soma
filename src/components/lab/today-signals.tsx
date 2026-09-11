@@ -240,6 +240,10 @@ function metricValue(key: PersonalLabMetricKey, value: number | null) {
   return metricCalories(value);
 }
 
+function accessibleHistoryDate(date: string) {
+  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${date}T12:00:00`));
+}
+
 function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
   if (key !== "strain") return metricValue(key, value);
   const score = strainScore(value);
@@ -280,8 +284,8 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
 }) {
   const max = historyMax(keyName, history);
   const trend = comparison(value, averageValue);
-  const accessibleHistory = history.map((point) => `${point.date}: ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
-  return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label}: ${metricValue(keyName, value)}. Historique des cinq derniers jours: ${accessibleHistory}`}>
+  const accessibleHistory = history.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
+  return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label} : ${metricValue(keyName, value)}. Historique des cinq derniers jours : ${accessibleHistory}`}>
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
       <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>

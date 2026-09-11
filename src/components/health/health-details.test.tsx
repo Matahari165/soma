@@ -165,6 +165,18 @@ describe("health route states", () => {
     expect(markup).toContain("33 % couverts");
   });
 
+  it("keeps a recovery day when sleep and heart-rate values are absent", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
+      data: analytics({
+        days: [day({ respiratory_rate: 14.2, hrv_ms: null, resting_heart_rate: null, sleep_minutes: null })],
+        scores: [{ score_date: "2026-09-10", kind: "recovery", score: null, drivers: {} }],
+      }),
+    }));
+
+    expect(markup).toContain("Fréquence respiratoire");
+    expect(markup).toContain("14.2");
+  });
+
   it("keeps recovery empty without orphaned trend cards", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, { data: analytics() }));
 

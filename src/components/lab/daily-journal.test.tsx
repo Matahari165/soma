@@ -37,12 +37,17 @@ describe("journal motion states", () => {
     expect(html).not.toContain(">À confirmer<");
     expect(html).not.toContain("0/2 recorded");
     expect(html).toContain('data-complete="false"');
-    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Alcohol"');
-    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Vacation"');
+    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Alcool"');
+    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
     expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Matin"');
     expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Contexte de la journée"');
+    expect(html).toContain('>Petit déjeuner<');
+    expect(html).toContain('>Sucres ajoutés<');
+    expect(html).not.toContain('>Breakfast<');
+    expect(html).not.toContain('>Added sugar<');
     expect(html).not.toContain('data-period="sleep"');
-    expect(html.indexOf("Magnesium")).toBeLessThan(html.indexOf('data-period="day"'));
+    expect(html.indexOf("Magnésium")).toBeLessThan(html.indexOf('data-period="day"'));
+    expect(html).not.toContain(">Magnesium<");
   });
 
   it("does not present a saved draft as a validated day", () => {
@@ -76,8 +81,8 @@ describe("journal motion states", () => {
 
     expect(html).toContain('data-state="recorded"');
     expect(html).not.toContain("1/2 recorded");
-    expect(html).toContain('aria-label="Vacation: Enregistrée"');
-    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Vacation"');
+    expect(html).toContain('aria-label="Vacances: Enregistrée"');
+    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
   });
 
   it("shows the achievement percentage without changing the field state", () => {
@@ -123,8 +128,8 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain('aria-label="Alcohol: Enregistrée"');
-    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Alcohol"');
+    expect(html).toContain('aria-label="Alcool: Enregistrée"');
+    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Alcool"');
   });
 
   it("marks a fully recorded period without displaying a counter", () => {

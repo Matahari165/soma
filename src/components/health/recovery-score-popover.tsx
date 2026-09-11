@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { ScoreRing } from "@/components/dashboard/score-ring";
 
+const focusableSelector = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])";
+
 function driverValue(value: number | null) {
   return value === null ? "Indisponible" : Math.round(value).toLocaleString("fr-FR");
 }
@@ -14,16 +16,40 @@ export function RecoveryScorePopover({ score, hrv, restingHeartRate, sleep }: { 
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    closeButtonRef.current?.focus();
+    const close = () => {
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current?.contains(document.activeElement)) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -39,8 +65,8 @@ export function RecoveryScorePopover({ score, hrv, restingHeartRate, sleep }: { 
       <ScoreRing kind="recovery" label="Score" score={score} animate decorative />
       <span className="sr-only">{open ? "Fermer" : "Ouvrir"} le calcul du score de récupération</span>
     </button>
-    {open ? <div className="recovery-score-popover" id={panelId} role="dialog" aria-label="Calcul du score de récupération">
-      <header><div><small>Entrées du score</small><strong>Calcul de la récupération</strong></div><button type="button" aria-label="Fermer le calcul de la récupération" onClick={() => { setOpen(false); triggerRef.current?.focus(); }}><X size={16} aria-hidden="true" /></button></header>
+    {open ? <div ref={dialogRef} className="recovery-score-popover" id={panelId} role="dialog" aria-modal="true" aria-label="Calcul du score de récupération" tabIndex={-1}>
+      <header><div><small>Entrées du score</small><strong>Calcul de la récupération</strong></div><button ref={closeButtonRef} type="button" aria-label="Fermer le calcul de la récupération" onClick={() => { setOpen(false); triggerRef.current?.focus(); }}><X size={16} aria-hidden="true" /></button></header>
       <p>Comparaison avec votre référence personnelle.</p>
       <dl>
         <div><dt>VFC vs référence</dt><dd>{driverValue(hrv)}</dd><small>40&nbsp;%</small></div>

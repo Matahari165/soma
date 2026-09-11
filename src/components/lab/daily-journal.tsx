@@ -30,6 +30,8 @@ import {
 } from "@/domain/lab/journal";
 import type { JournalAchievement } from "@/domain/lab/journal-achievement";
 
+import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
+
 type DraftValue = JournalEntryValue | null;
 type NewVariable = { name: string; variableType: JournalVariableType; unit: string; options: string; emoji: string; dayPeriod: JournalDayPeriod; defaultValue: string; captureMode: JournalCaptureMode; automaticMetricId: string | null; trackingCadence: JournalTrackingCadence };
 
@@ -51,6 +53,25 @@ const dayPeriodLabels: Record<JournalDayPeriod, string> = {
   sleep: "Avant le sommeil",
   other: "Autre",
 };
+
+function journalVariableKey(name: string) {
+  return name.trim().toLocaleLowerCase("en");
+}
+
+function journalVariableLabel(variable: Pick<JournalVariable, "name"> | Pick<NewVariable, "name">) {
+  return localizedMetricLabel(`journal:${variable.name}`, variable.name);
+}
+
+function journalVariableUnit(variable: Pick<JournalVariable, "unit">) {
+  if (!variable.unit) return variable.unit;
+  return localizedMetricUnit(variable.unit);
+}
+
+function journalVariableDefaultValue(variable: Pick<JournalVariable, "defaultValue">) {
+  if (variable.defaultValue === true) return "Oui";
+  if (variable.defaultValue === false) return "Non";
+  return variable.defaultValue === null ? "" : String(variable.defaultValue);
+}
 
 function dayPeriodLabel(period: JournalDayPeriod) {
   return dayPeriodLabels[period];
@@ -77,7 +98,7 @@ function splitOptions(value: string) {
 }
 
 function displayedDayPeriod(variable: JournalVariable) {
-  if (variable.name.toLocaleLowerCase("en") === "magnesium") return "morning";
+  if (journalVariableKey(variable.name) === "magnesium") return "morning";
   return variable.dayPeriod === "sleep" ? "evening" : variable.dayPeriod;
 }
 
@@ -145,19 +166,19 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
 
   if (variable.variableType === "boolean") {
     const options = [{ label: "Non", value: false }, { label: "Oui", value: true }];
-    return <div className={`journal-choice${presentation === "personal-lab" ? " journal-choice--binary" : ""}`} role="group" aria-label={variable.name}>
+    return <div className={`journal-choice${presentation === "personal-lab" ? " journal-choice--binary" : ""}`} role="group" aria-label={journalVariableLabel(variable)}>
       {options.map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
   }
 
   if (variable.variableType === "scale") {
-    return <div className="journal-choice journal-choice--scale" role="group" aria-label={`${variable.name}, de 1 à 5`}>
+    return <div className="journal-choice journal-choice--scale" role="group" aria-label={`${journalVariableLabel(variable)}, de 1 à 5`}>
       {[1, 2, 3, 4, 5].map((option) => <button type="button" disabled={disabled} className={value === option ? "is-selected" : ""} aria-pressed={value === option} onClick={() => onChange(value === option ? null : option)} key={option}>{option}</button>)}
     </div>;
   }
 
   if (variable.variableType === "category") {
-    return <select disabled={disabled} id={inputId} aria-label={variable.name} value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)}>
+    return <select disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)}>
       <option value="">Non renseigné</option>
       {variable.options.map((option) => <option value={option} key={option}>{option}</option>)}
     </select>;
@@ -165,12 +186,12 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
 
   if (variable.variableType === "time") {
     if (isDinnerTimeVariable(variable)) return <DinnerTimeInput key={draftKey} inputId={inputId} value={value} disabled={disabled} onChange={onChange} />;
-    return <input disabled={disabled} id={inputId} aria-label={variable.name} type="time" value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)} />;
+    return <input disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} type="time" value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)} />;
   }
 
-  const nonNegative = variable.variableType === "count" || variable.variableType === "duration" || ["caffeine", "added sugar", "magnesium"].includes(variable.name.toLocaleLowerCase("en"));
-  const input = <input disabled={disabled} id={inputId} aria-label={variable.name} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} placeholder="—" value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
-  if (presentation !== "personal-lab") return <div className="journal-number">{input}<span>{variable.unit}</span></div>;
+  const nonNegative = variable.variableType === "count" || variable.variableType === "duration" || ["caffeine", "added sugar", "magnesium"].includes(journalVariableKey(variable.name));
+  const input = <input disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} placeholder="—" value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
+  if (presentation !== "personal-lab") return <div className="journal-number">{input}<span>{journalVariableUnit(variable)}</span></div>;
 
   function adjustValue(direction: -1 | 1) {
     const numericValue = typeof value === "number" ? value : Number(value);
@@ -180,9 +201,9 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   }
 
   return <div className="journal-number journal-number--stepper">
-    <button type="button" disabled={disabled} aria-label={`Diminuer ${variable.name}`} aria-controls={inputId} onClick={() => adjustValue(-1)}>−</button>
-    <span className="journal-number__value">{input}<span>{variable.unit}</span></span>
-    <button type="button" disabled={disabled} aria-label={`Augmenter ${variable.name}`} aria-controls={inputId} onClick={() => adjustValue(1)}>+</button>
+    <button type="button" disabled={disabled} aria-label={`Diminuer ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(-1)}>−</button>
+    <span className="journal-number__value">{input}<span>{journalVariableUnit(variable)}</span></span>
+    <button type="button" disabled={disabled} aria-label={`Augmenter ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(1)}>+</button>
   </div>;
 }
 
@@ -332,16 +353,16 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
           setDraft(suggestionDraft(suggestion));
           setCreating(true);
           setError(null);
-        }}><strong>{suggestion.name}</strong><span>{suggestion.unit ?? typeLabels[suggestion.variableType]}</span></button>)}
+        }}><strong>{journalVariableLabel(suggestion)}</strong><span>{suggestion.unit ?? typeLabels[suggestion.variableType]}</span></button>)}
       </div>}
       <div className="journal-variable-list" aria-live="polite">
         {activeVariables.length === 0 && <p className="journal-manager__empty">Aucune mesure pour le moment.</p>}
         {activeVariables.map((variable) => editingId === variable.id ? <VariableEditor key={variable.id} variableType={editVariableType} name={editName} unit={editUnit} options={editOptions} emoji={editEmoji} dayPeriod={editDayPeriod} defaultValue={editDefaultValue} captureMode={editCaptureMode} automaticMetricId={editAutomaticMetricId} trackingCadence={editTrackingCadence} busy={busyId === variable.id} onNameChange={setEditName} onTypeChange={(value) => { setEditVariableType(value); setEditDefaultValue(value === "boolean" ? "false" : value === "time" || value === "scale" ? "" : "0"); }} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onEmojiChange={setEditEmoji} onDayPeriodChange={setEditDayPeriod} onDefaultValueChange={setEditDefaultValue} onCaptureModeChange={(value) => { setEditCaptureMode(value); if (value === "manual") setEditAutomaticMetricId(null); }} onAutomaticMetricChange={(value) => { setEditAutomaticMetricId(value); const source = journalAutomaticSource(value); if (source) { setEditVariableType(source.variableType); setEditDayPeriod(source.dayPeriod); setEditTrackingCadence(source.defaultTrackingCadence); setEditDefaultValue(""); } }} onTrackingCadenceChange={setEditTrackingCadence} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} /> : <div className="journal-variable-row" key={variable.id}>
-          <span><strong>{variable.emoji} {variable.name}</strong><small>{typeLabels[variable.variableType]}{variable.unit ? ` · ${variable.unit}` : ""} · {dayPeriodLabel(displayedDayPeriod(variable))}{variable.captureMode === "automatic" ? ` · ${journalAutomaticSource(variable.automaticMetricId)?.label ?? "Google Health"}` : ""}{variable.trackingCadence === "weekly" ? " · une fois par semaine" : ""}{variable.defaultValue !== null ? ` · valeur par défaut : ${String(variable.defaultValue)}` : ""}</small></span>
-          <button type="button" aria-label={`Déplacer ${variable.name} plus tôt`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
-          <button type="button" aria-label={`Déplacer ${variable.name} plus tard`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
+          <span><strong>{variable.emoji} {journalVariableLabel(variable)}</strong><small>{typeLabels[variable.variableType]}{journalVariableUnit(variable) ? ` · ${journalVariableUnit(variable)}` : ""} · {dayPeriodLabel(displayedDayPeriod(variable))}{variable.captureMode === "automatic" ? ` · ${journalAutomaticSource(variable.automaticMetricId)?.label ?? "Google Health"}` : ""}{variable.trackingCadence === "weekly" ? " · une fois par semaine" : ""}{variable.defaultValue !== null ? ` · valeur par défaut : ${journalVariableDefaultValue(variable)}` : ""}</small></span>
+          <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tôt`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
+          <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tard`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
           <button type="button" onClick={() => startEdit(variable)}>Modifier</button>
-          <button type="button" disabled={busyId === variable.id} title={`Retirer ${variable.name} du journal quotidien`} onClick={() => void request("PATCH", { id: variable.id, isActive: false }, variable.id)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Retirer</button>
+          <button type="button" disabled={busyId === variable.id} title={`Retirer ${journalVariableLabel(variable)} du journal quotidien`} onClick={() => void request("PATCH", { id: variable.id, isActive: false }, variable.id)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Retirer</button>
         </div>)}
       </div>
 
@@ -381,13 +402,14 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achiev
   const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
   const achievementLabel = achievement?.percentage === null ? "Progression —" : achievement ? `Progression ${achievement.percentage}%` : null;
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{variable.name}</span>{achievementLabel && <small aria-label={`${variable.name}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
-  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={`${variable.name}: ${stateLabel}`}>
+  const label = journalVariableLabel(variable);
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}</span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
+  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={`${label}: ${stateLabel}`}>
     {canConfirmDisplayedValue
-      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${variable.name}`} onClick={() => onChange(value)}>{headingContent}</button>
+      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${label}`} onClick={() => onChange(value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
-    {variable.name.trim().toLocaleLowerCase("en") === "breakfast" && value === true
+    {journalVariableKey(variable.name) === "breakfast" && value === true
       ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} /><Link href="/meals#meal-breakfast" aria-label="Ajouter une photo du petit déjeuner"><ImagePlus size={15} aria-hidden="true" />Ajouter une photo</Link></div>
       : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />}
   </div>;
@@ -498,7 +520,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       .catch(() => undefined)
       .then(() => persist(date, "draft", draftValues, variableId))
       .then(() => {
-        const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && journalVariableKey(variable.name) === "breakfast");
         const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDate === date;
         if (date === todayDate && breakfast && dayIsValidated) onTodayBreakfastValidation?.(draftValues[breakfast.id] === false);
         if (date === selectedDateRef.current && pendingSavesByDate.current[date] === 1) {
@@ -534,7 +556,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         setError(null);
       }
       if (date === todayDate) {
-        const breakfast = activeVariables.find((variable) => variable.variableType === "boolean" && variable.name.trim().toLocaleLowerCase("fr") === "breakfast");
+        const breakfast = activeVariables.find((variable) => variable.variableType === "boolean" && journalVariableKey(variable.name) === "breakfast");
         const explicitlyRecorded = breakfast ? (recordedByDate[date] ?? new Set<string>()).has(breakfast.id) : false;
         onTodayBreakfastValidation?.(Boolean(breakfast && explicitlyRecorded && drafts.current[date]?.[breakfast.id] === false));
         const morningIds = activeVariables.filter((variable) => variable.dayPeriod === "morning").map((variable) => variable.id);

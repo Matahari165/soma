@@ -8,11 +8,11 @@ import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
 import { ZoneDistribution } from "./health-charts";
 import { ActivityScorePopover } from "./activity-explanation-popover";
 import { AnimatedMetricReading } from "./animated-value";
-import { averageLast30Measured, formatAverage, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatAverage, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 import styles from "./activity-redesign.module.css";
 
-const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" ? day[key] as number : null }));
+const points = (days: HealthMetricDay[], key: keyof HealthMetricDay) => days.map((day) => ({ date: day.metric_date, value: typeof day[key] === "number" && Number.isFinite(day[key]) ? day[key] as number : null }));
 const number = (value: number | null) => value === null || !Number.isFinite(value) ? "—" : Math.round(value).toLocaleString("fr-FR");
 
 const exerciseTypeLabels: Record<string, string> = {
@@ -69,10 +69,10 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     activityRegularity: metricTone(regularity.consistencyScore, averages.activityRegularity, "higher_is_better"),
   };
   const latestExercise = data.exercises.at(0);
-  const activityMeasurements = latest ? ["steps", "active-zone-minutes", "active-energy-burned", "exercise"].map((type) => latest.source_freshness?.byType?.[type]).filter((value): value is string => Boolean(value)).sort() : [];
   const driverCoverage = Number(latestEffort?.drivers?.coverage);
-  const fallbackCoverage = latest ? [latest.zone_minutes, latest.exercise_minutes, latest.active_energy_kcal, latest.steps].filter((value) => value !== null).length / 4 : 0;
-  const freshness = calculateSignalFreshness({ measuredAt: activityMeasurements.at(-1) ?? latest?.source_freshness?.latestMeasuredAt ?? latest?.metric_date, importedAt: data.importedAt, coverage: Number.isFinite(driverCoverage) ? driverCoverage : fallbackCoverage });
+  const fallbackCoverage = latest ? measuredCoverage([latest.zone_minutes, latest.exercise_minutes, latest.active_energy_kcal, latest.steps]) : 0;
+  const coverage = Number.isFinite(driverCoverage) ? Math.min(1, Math.max(0, driverCoverage)) : fallbackCoverage;
+  const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
   const heroMetrics = latest ? <>
     <div className={`health-hero-stat metric-tone--${tones.activeCalories}`}><span>Calories actives</span><AnimatedMetricReading value={latest.active_energy_kcal} format="number" decimals={0} unit={latest.active_energy_kcal === null ? undefined : "kcal"} className={`metric-reading--${tones.activeCalories}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.activeCalories, "number")} kcal</small></div>
     <div className="health-hero-stat metric-tone--neutral"><span>Minutes en zone</span><AnimatedMetricReading value={latest.zone_minutes} format="number" decimals={0} unit={latest.zone_minutes === null ? undefined : "min"} className="metric-reading--neutral" /><small className="health-hero-stat__average">Dernier jour complet</small></div>

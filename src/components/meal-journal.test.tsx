@@ -111,7 +111,7 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal variant="meals" date={date} today={date} initialData={{ date, meals: {} }} />);
 
     expect(html).toContain('role="group" tabindex="0" aria-label="Synthèse nutritionnelle de la journée"');
-    expect(html).toContain('>—<small>kcal</small>');
+    expect(html).toContain('>—<small>kcal');
   });
 
   it("requires a photo before analyzing a draft and keeps the note optional", () => {

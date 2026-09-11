@@ -617,7 +617,7 @@
   .root { padding-top: 16px; padding-bottom: 28px; }
   .root :global(.health-detail-page) { gap: 20px; }
   .root :global(.health-section-heading) { margin-bottom: 16px; }
-  .root :global(.health-primary-grid),
+  .root :global(.health-primary-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .root :global(.metric-trend-grid) { grid-template-columns: 1fr; }
   .root :global(.health-primary-card),
   .root :global(.health-primary-card__trigger) { min-height: 108px; }

@@ -22,4 +22,19 @@ describe("MetricTrendCard", () => {
     expect(markup).toContain("30 jours");
     expect(markup).not.toContain("30d variability:");
   });
+
+  it("anchors both chart labels to the displayed calendar window", () => {
+    const markup = renderToStaticMarkup(createElement(MetricTrendCard, {
+      label: "Variabilité nocturne",
+      points: [
+        { date: "2026-09-08", value: 48 },
+        { date: "2026-09-09", value: 52 },
+        { date: "2026-09-10", value: null },
+      ],
+      unit: "ms",
+      direction: "higher_is_better",
+    }));
+
+    expect(markup).toMatch(/class="chart-axis"[^>]*><span>8 sept\.<\/span><span>10 sept\.<\/span>/);
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { averageLast30Measured, formatDurationMinutes, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 
 describe("health metric comparisons", () => {
   it("averages measured values across the inclusive 30-day window", () => {
@@ -23,5 +23,23 @@ describe("health metric comparisons", () => {
 
   it("rounds duration averages without producing 60 minutes", () => {
     expect(formatDurationMinutes(480.6)).toBe("8h 1m");
+  });
+
+  it("counts an explicit zero as measured while preserving null as absent", () => {
+    expect(measuredCoverage([null, 0, 42])).toBeCloseTo(2 / 3);
+    expect(measuredCoverage([null, null])).toBe(0);
+  });
+
+  it("uses the freshest source timestamp across every recovery signal", () => {
+    expect(latestSourceMeasuredAt({
+      metric_date: "2026-09-10",
+      source_freshness: {
+        latestMeasuredAt: "2026-09-10T06:00:00.000Z",
+        byType: {
+          sleep: "2026-09-10T07:00:00.000Z",
+          "daily-heart-rate-variability": "2026-09-10T05:00:00.000Z",
+        },
+      },
+    })).toBe("2026-09-10T07:00:00.000Z");
   });
 });

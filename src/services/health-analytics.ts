@@ -234,6 +234,25 @@ const metricColumns: Record<HealthAnalyticsScope, string> = {
   trends: "metric_date,sleep_minutes,hrv_ms,resting_heart_rate,steps,source_freshness",
 };
 
+const recoveryMetricKeys: Array<keyof HealthMetricDay> = [
+  "sleep_minutes",
+  "hrv_ms",
+  "resting_heart_rate",
+  "respiratory_rate",
+  "oxygen_saturation",
+  "oxygen_saturation_lower",
+  "oxygen_saturation_upper",
+  "skin_temperature_delta",
+  "nightly_temperature_celsius",
+  "baseline_temperature_celsius",
+  "light_zone_minutes",
+  "moderate_zone_minutes",
+  "vigorous_zone_minutes",
+  "peak_zone_minutes",
+  "vo2_max",
+  "core_body_temperature_celsius",
+];
+
 function civilDateIn(value: string, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
@@ -271,7 +290,10 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = baseResults;
   const timezone = profile?.timezone ?? "Europe/Paris";
   const orderedMetrics = [...((metrics ?? []) as unknown as HealthMetricDay[])].reverse();
-  const latestRecoveryDate = orderedMetrics.findLast((day) => day.hrv_ms !== null || day.resting_heart_rate !== null)?.metric_date;
+  const latestRecoveryDate = orderedMetrics.findLast((day) => recoveryMetricKeys.some((key) => {
+    const value = day[key];
+    return typeof value === "number" && Number.isFinite(value);
+  }))?.metric_date;
   const recoveryStart = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
   recoveryStart?.setUTCDate(recoveryStart.getUTCDate() - 1);
   const recoveryEnd = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;

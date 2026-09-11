@@ -30,10 +30,9 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   const delta = comparison.percentDelta;
   const favorable = delta === null || direction === "context_only" ? "neutral" : (direction === "higher_is_better" ? delta > 0 : delta < 0) ? "positive" : "negative";
   const Icon = delta === null || Math.abs(delta) < 0.05 ? ArrowRight : delta > 0 ? ArrowUpRight : ArrowDownRight;
-  const availablePoints = points.filter((point) => point.value !== null);
   const formatDate = (value: string | undefined) => value ? shortDateFormat.format(new Date(`${value}T12:00:00`)) : "";
   const firstDate = formatDate(chartPoints.at(0)?.date);
-  const lastDate = formatDate(availablePoints.at(-1)?.date);
+  const lastDate = formatDate(chartPoints.at(-1)?.date);
   if (completeCount < 2) {
     const pendingContent = <><span>{label}</span>{animateCurrent ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} /> : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />}<p>D’autres mesures sont nécessaires</p></>;
     return href
