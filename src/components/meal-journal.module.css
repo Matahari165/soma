@@ -2271,7 +2271,7 @@
   font-weight: 400 !important;
 }
 
-:global(html[data-lab-theme]) .labRoot .mealTitle h3 {
+:global(html[data-lab-theme]) .labRoot .mealCard .mealTitle h3 {
   color: var(--lab-text-primary);
   font-size: 20px;
   font-weight: 400 !important;
@@ -2369,7 +2369,7 @@
   width: min(100%, 540px);
 }
 
-:global(html[data-lab-theme]) .labRoot .emptyMealPrompt {
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt {
   display: grid;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2382,7 +2382,7 @@
   min-width: 0;
 }
 
-:global(html[data-lab-theme]) .labRoot .emptyMealPrompt .textInput textarea {
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
   min-height: 48px;
   height: 48px;
   padding: 8px 10px;
@@ -2814,4 +2814,340 @@
   .secondaryButton
 ) {
   min-height: 44px;
+}
+
+/* Homepage only: editorial meal rail for the Personal Lab variant. */
+:global(html[data-lab-theme]) .labRoot {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 10px 28px 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: #000 !important;
+  box-shadow: none;
+}
+
+:global(html[data-lab-theme]) .labRoot > .labHeader {
+  position: absolute;
+  top: -56px;
+  right: 0;
+  z-index: 1;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+:global(html[data-lab-theme]) .labRoot > .labHeader > button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-secondary);
+}
+
+:global(html[data-lab-theme]) .labRoot > .mealList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardConfirmed {
+  min-height: 325px;
+  padding-top: 28px;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty {
+  min-height: 295px;
+  padding-top: 28px;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  align-items: start;
+  justify-content: space-between;
+  padding: 0 0 24px;
+  border: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard .mealTitle h3 {
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-ui);
+  font-size: 24px !important;
+  font-weight: 560 !important;
+  line-height: 29px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labHeaderActions {
+  min-height: 44px;
+  align-items: center;
+}
+
+:global(html[data-lab-theme]) .labRoot .labHeaderActions :is(.mealCompletionControls, .reviewActions) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .labHeaderActions .secondaryButton {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealBody {
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealSummary {
+  display: grid;
+  gap: 35px;
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealDetails {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealDishes {
+  margin: 0;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui);
+  font-size: 20px;
+  font-weight: 400 !important;
+  line-height: 28px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealSides {
+  display: none;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition {
+  display: grid;
+  width: 100%;
+  min-height: 88px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0;
+  padding-top: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 6%, var(--lab-canvas));
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition > span {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition > span > small {
+  overflow: hidden;
+  color: var(--lab-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: .06em;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition strong {
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: 20px !important;
+  font-weight: 560 !important;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition [data-metric="calories"] strong {
+  font-family: var(--font-soma-ui);
+  font-size: 38px !important;
+  line-height: 42px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition strong small {
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0;
+  padding: 0;
+  border: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt > * {
+  width: 100%;
+  grid-column: 1 / -1 !important;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  width: 100%;
+  height: 79px;
+  min-height: 79px;
+  padding: 0 0 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-ui);
+  font-size: 18px;
+  line-height: 26px;
+  resize: none;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt textarea::placeholder {
+  color: var(--lab-text-secondary);
+  opacity: 1;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealActions {
+  display: grid;
+  min-height: 54px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 6%, var(--lab-canvas));
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle {
+  width: auto;
+  height: auto;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .analyzeButton {
+  position: relative;
+  min-width: 190px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-brand);
+  color: var(--lab-canvas);
+  font-size: 15px;
+  font-weight: 560;
+  opacity: 1;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .analyzeButton::after {
+  position: absolute;
+  inset: -4px 0;
+  content: "";
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) .labRoot :is(.mealCardConfirmed, .mealCardEmpty) {
+    min-height: 0;
+    padding: 24px 0 28px;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .mealTitle h3 {
+    font-size: 20px !important;
+    line-height: 25px;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .labMealNutrition {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .labMealNutrition [data-metric="calories"] {
+    grid-column: 1 / -1;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .analyzeButton {
+    min-width: 44px;
+    padding-inline: 12px;
+  }
+}
+
+@media (min-width: 701px) {
+  :global(html[data-lab-theme]) .labRoot .labMealNutrition > span[data-metric="calories"] {
+    grid-column: auto !important;
+    padding: 0;
+  }
+}
+
+/* Repas analysis layout: journal and score summary share the first row;
+   evidence and the remaining analysis continue below at full width. */
+@media (min-width: 1200px) {
+  :global(.meals-page) .mealsPageRoot .mealsWorkbench {
+    grid-template-columns: minmax(480px, .85fr) minmax(560px, 1.15fr);
+    gap: 32px;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary {
+    display: contents;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-score) {
+    display: contents;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-score) > [data-score-part="top"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-score) > [data-score-part="details"] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-score) > [data-score-part="effects"] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-categories),
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends),
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-supplements),
+  :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-recipes) {
+    grid-column: 1 / -1;
+  }
 }

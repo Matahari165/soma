@@ -75,6 +75,44 @@ describe("MealJournal", () => {
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(4);
   });
 
+  it("presents the homepage meal rail with five nutrition fields and quiet empty actions", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
+      date,
+      meals: {
+        breakfast: {
+          id: "meal-breakfast-lab",
+          date,
+          slot: "breakfast",
+          note: "Croissant & Café",
+          photos: [],
+          analysis: {
+            ingredients: [],
+            dishType: "Croissant & Café",
+            calories: { low: 640, likely: 650, high: 660 },
+            proteinGrams: { low: 9, likely: 10, high: 11 },
+            carbohydratesGrams: { low: 115, likely: 120, high: 125 },
+            fatGrams: { low: 15, likely: 16, high: 17 },
+            addedSugarGrams: { low: 4, likely: 5, high: 6 },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Croissant &amp; Café");
+    expect(html).toContain("Calories : 650 kcal");
+    expect(html).toContain("Protéines : 10 g");
+    expect(html).toContain("Glucides : 120 g");
+    expect(html).toContain("Lipides : 16 g");
+    expect(html).toContain("Sucres ajoutés : 5 g");
+    expect(html).toContain(">Modifier<\/button>");
+    expect(html).toContain(">Collation<\/h3>");
+    expect(html.match(/aria-label="Ajouter une photo"/g)).toHaveLength(3);
+    expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
+  });
+
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 

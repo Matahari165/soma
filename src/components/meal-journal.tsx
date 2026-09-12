@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  ArrowRight,
   Camera,
   Check,
   ImagePlus,
@@ -714,7 +715,7 @@ function MealAnalysisTrigger({ open, controlsId, onToggle }: { open: boolean; co
   </button>;
 }
 
-function PhotoInput({ slot, onFiles, disabled = false, compact = false, single = false }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean; compact?: boolean; single?: boolean }) {
+function PhotoInput({ slot, onFiles, disabled = false, compact = false, single = false, singleLabel = "Photo" }: { slot: MealSlot; onFiles: (files: File[]) => void | Promise<void>; disabled?: boolean; compact?: boolean; single?: boolean; singleLabel?: string }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [choiceOpen, setChoiceOpen] = useState(false);
@@ -725,7 +726,7 @@ function PhotoInput({ slot, onFiles, disabled = false, compact = false, single =
   return <div className={`${styles.photoInput} ${compact ? styles.photoInputCompact : ""} ${single ? styles.photoInputSingle : ""}`}>
     <input ref={cameraRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" capture="environment" aria-label={`Prendre une photo pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
     <input ref={galleryRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" multiple aria-label={`Choisir des photos pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
-    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-label="Ajouter une photo" aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />Photo</button> : <>
+    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-label="Ajouter une photo" aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />{singleLabel}</button> : <>
       <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
       <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
     </>}
@@ -850,7 +851,6 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact && meal?.analysis && (status === "review" || status === "confirmed") ? <div className={styles.labHeaderActions}>
-        <MealAnalysisTrigger open={analysisOpen} controlsId={analysisContentId} onToggle={() => setAnalysisOpen((open) => !open)} />
         <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} onConfirm={onConfirm} />
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
@@ -861,7 +861,8 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
       {integratedEmpty ? <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "Décrire le repas…" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} /> : null}
       <div className={styles.emptyMealActions}>
-        {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
+        {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single singleLabel={labCompact ? "Ajouter une photo" : "Photo"} /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
+        {labCompact && <button className={styles.analyzeButton} type="button" disabled={!hasEvidence || processingFiles || mutationBusy || disabled} onClick={onAnalyze}><span>Analyser le repas</span><ArrowRight size={17} aria-hidden="true" /></button>}
       </div>
     </div>}
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
@@ -879,6 +880,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       {status === "confirmed" && !labCompact && meal && <MealSourceEvidence meal={meal} />}
       {(status === "review" || status === "confirmed") && meal?.analysis && <>
         {mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}
+        {labCompact && status === "review" && <div className={styles.labAnalysisRow}><MealAnalysisTrigger open={analysisOpen} controlsId={analysisContentId} onToggle={() => setAnalysisOpen((open) => !open)} /></div>}
         {labCompact && analysisOpen && <div id={analysisContentId} className={styles.labAnalysisContent}>
           <MealAnalysisContent meal={meal} status={status} showExplanation correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
         </div>}
