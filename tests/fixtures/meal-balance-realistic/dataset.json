@@ -1,0 +1,778 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "meal-balance-realistic-12d",
+  "kind": "synthetic-meal-vision-input",
+  "description": "Douze jours fictifs de captures de repas imparfaites pour le harnais du score alimentaire.",
+  "dateRange": {
+    "start": "2026-09-01",
+    "end": "2026-09-12",
+    "days": 12
+  },
+  "mealSlots": ["breakfast", "lunch", "snack", "dinner"],
+  "dailyCoverage": [
+    {
+      "mealDate": "2026-09-01",
+      "slots": {
+        "breakfast": "d01-breakfast",
+        "lunch": "d01-lunch",
+        "snack": null,
+        "dinner": "d01-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-02",
+      "slots": {
+        "breakfast": "d02-breakfast",
+        "lunch": "d02-lunch",
+        "snack": "d02-snack",
+        "dinner": "d02-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-03",
+      "slots": {
+        "breakfast": "d03-breakfast",
+        "lunch": "d03-lunch",
+        "snack": null,
+        "dinner": "d03-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-04",
+      "slots": {
+        "breakfast": "d04-breakfast",
+        "lunch": null,
+        "snack": "d04-snack",
+        "dinner": "d04-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-05",
+      "slots": {
+        "breakfast": "d05-breakfast",
+        "lunch": "d05-lunch",
+        "snack": null,
+        "dinner": "d05-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-06",
+      "slots": {
+        "breakfast": "d06-breakfast",
+        "lunch": "d06-lunch",
+        "snack": "d06-snack",
+        "dinner": null
+      }
+    },
+    {
+      "mealDate": "2026-09-07",
+      "slots": {
+        "breakfast": "d07-breakfast",
+        "lunch": "d07-lunch",
+        "snack": null,
+        "dinner": "d07-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-08",
+      "slots": {
+        "breakfast": null,
+        "lunch": "d08-lunch",
+        "snack": "d08-snack",
+        "dinner": "d08-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-09",
+      "slots": {
+        "breakfast": "d09-breakfast",
+        "lunch": "d09-lunch",
+        "snack": null,
+        "dinner": "d09-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-10",
+      "slots": {
+        "breakfast": "d10-breakfast",
+        "lunch": null,
+        "snack": "d10-snack",
+        "dinner": "d10-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-11",
+      "slots": {
+        "breakfast": "d11-breakfast",
+        "lunch": "d11-lunch",
+        "snack": "d11-snack",
+        "dinner": "d11-dinner"
+      }
+    },
+    {
+      "mealDate": "2026-09-12",
+      "slots": {
+        "breakfast": "d12-breakfast",
+        "lunch": "d12-lunch",
+        "snack": null,
+        "dinner": "d12-dinner"
+      }
+    }
+  ],
+  "entries": [
+    {
+      "entryId": "d01-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-01",
+        "note": "Bol d'avoine, une demi-banane et quelques noix; environ un bol, lait végétal peut-être non sucré.",
+        "images": [
+          { "id": "d01-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d01-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown", "recipe_unknown"]
+      }
+    },
+    {
+      "entryId": "d01-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-01",
+        "note": null,
+        "images": [
+          { "id": "d01-lunch-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d01-lunch-photo-1" },
+          { "id": "d01-lunch-photo-2", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d01-lunch-photo-2" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 2,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d01-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-01",
+        "note": "Pâtes à la tomate, un peu de parmesan et huile ajoutée au feeling; assiette assez pleine, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "recipe_unknown"]
+      }
+    },
+    {
+      "entryId": "d02-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-02",
+        "note": "Deux tartines de pain complet (?) avec beurre de cacahuète, café avec un peu de lait; quantités à l'œil.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d02-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-02",
+        "note": "Salade de lentilles, feta, tomate et morceau de pain; la vinaigrette est probablement déjà au fond.",
+        "images": [
+          { "id": "d02-lunch-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d02-lunch-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d02-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-02",
+        "note": null,
+        "images": [
+          { "id": "d02-snack-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d02-snack-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "blurry",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d02-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-02",
+        "note": "Curry de poulet livré avec riz; sauce assez présente, quantité de riz difficile à juger.",
+        "images": [
+          { "id": "d02-dinner-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d02-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "preparation_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d03-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-03",
+        "note": null,
+        "images": [
+          { "id": "d03-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d03-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "blurry",
+        "uncertaintyTags": ["portion_unknown", "recipe_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d03-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-03",
+        "note": "Sandwich au thon acheté, peut-être mayonnaise et fromage; mangé rapidement, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["food_identity_unknown", "brand_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d03-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-03",
+        "note": "Poêlée de légumes et tofu; un filet d'huile, légumes surgelés possibles, portion plutôt moyenne.",
+        "images": [
+          { "id": "d03-dinner-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d03-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "preparation_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d04-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-04",
+        "note": "Toast avec œuf et avocat, une tranche seulement?; le café n'est pas visible sur la photo.",
+        "images": [
+          { "id": "d04-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d04-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d04-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-04",
+        "note": "Une barre de céréales, marque inconnue, mangée en déplacement; taille standard supposée.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["brand_unknown", "portion_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d04-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-04",
+        "note": null,
+        "images": [
+          { "id": "d04-dinner-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d04-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d05-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-05",
+        "note": "Yaourt nature avec quelques flocons et une pomme; quantité de granola non mesurée, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d05-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-05",
+        "note": "Poke acheté: saumon, riz, edamame et crudités; deux photos, sauce à part mais quantité versée inconnue.",
+        "images": [
+          { "id": "d05-lunch-photo-1", "mimeType": "image/jpeg", "origin": "mixed", "dataRef": "synthetic://d05-lunch-photo-1" },
+          { "id": "d05-lunch-photo-2", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d05-lunch-photo-2" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 2,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d05-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-05",
+        "note": "Chili sin carne maison, haricots et maïs; servi dans un bol, huile de cuisson non notée.",
+        "images": [
+          { "id": "d05-dinner-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d05-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "recipe_unknown"]
+      }
+    },
+    {
+      "entryId": "d06-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-06",
+        "note": null,
+        "images": [
+          { "id": "d06-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d06-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "blurry",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d06-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-06",
+        "note": "Assiette de cantine: pommes de terre, poulet et un peu de légumes; portions difficiles à estimer.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "preparation_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d06-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-06",
+        "note": "Banane et quelques amandes; poignée non pesée, photo prise après avoir commencé.",
+        "images": [
+          { "id": "d06-snack-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d06-snack-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d07-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-07",
+        "note": "Œufs brouillés, pain et tomates; environ deux œufs, beurre ou huile non certain.",
+        "images": [
+          { "id": "d07-breakfast-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d07-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d07-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-07",
+        "note": "Burger acheté avec frites; j'ai laissé environ la moitié des frites, sauce dans le pain.",
+        "images": [
+          { "id": "d07-lunch-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d07-lunch-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d07-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-07",
+        "note": "Soupe et deux toasts au fromage, peut-être un fruit ensuite; repas noté de mémoire, sans photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d08-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-08",
+        "note": null,
+        "images": [
+          { "id": "d08-lunch-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d08-lunch-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d08-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-08",
+        "note": "Une pomme en marchant; taille moyenne supposée, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown"]
+      }
+    },
+    {
+      "entryId": "d08-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-08",
+        "note": "Omelette, salade et pain; un peu de fromage peut être mélangé dans l'omelette.",
+        "images": [
+          { "id": "d08-dinner-photo-1", "mimeType": "image/png", "origin": "mixed", "dataRef": "synthetic://d08-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "composition_uncertain", "recipe_unknown"]
+      }
+    },
+    {
+      "entryId": "d09-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-09",
+        "note": "Porridge avec lait, quelques fruits rouges surgelés et une cuillère de miel?; portions approximatives.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "recipe_unknown", "sugar_exposure_unknown"]
+      }
+    },
+    {
+      "entryId": "d09-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-09",
+        "note": null,
+        "images": [
+          { "id": "d09-lunch-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d09-lunch-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d09-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-09",
+        "note": "Pâtes au pesto, parmesan et tomates; pesto du commerce possible, quantité non mesurée.",
+        "images": [
+          { "id": "d09-dinner-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d09-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d10-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-10",
+        "note": "Café et croissant pris à la boulangerie; taille classique, je n'ai pas fini les dernières bouchées.",
+        "images": [
+          { "id": "d10-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d10-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "blurry",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d10-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-10",
+        "note": "Deux carrés de chocolat et une poignée de noix; poignée vraiment approximative, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d10-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-10",
+        "note": null,
+        "images": [
+          { "id": "d10-dinner-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d10-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "dark",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d11-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-11",
+        "note": "Fromage blanc, banane et un peu de granola; le bol est partiellement hors cadre.",
+        "images": [
+          { "id": "d11-breakfast-photo-1", "mimeType": "image/jpeg", "origin": "homemade", "dataRef": "synthetic://d11-breakfast-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d11-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-11",
+        "note": "Restes de riz et légumes avec un œuf; quantité de riz peut-être une tasse, repas sans photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "recipe_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d11-snack",
+      "input": {
+        "mealType": "snack",
+        "mealDate": "2026-09-11",
+        "note": null,
+        "images": [
+          { "id": "d11-snack-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d11-snack-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "blurry",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d11-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-11",
+        "note": "Deux parts de pizza livrée; une photo de la boîte et une de l'assiette, garniture et huile difficiles à distinguer.",
+        "images": [
+          { "id": "d11-dinner-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d11-dinner-photo-1" },
+          { "id": "d11-dinner-photo-2", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d11-dinner-photo-2" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 2,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown", "composition_uncertain"]
+      }
+    },
+    {
+      "entryId": "d12-breakfast",
+      "input": {
+        "mealType": "breakfast",
+        "mealDate": "2026-09-12",
+        "note": "Yaourt, une pomme et un peu de granola; cuillère non mesurée, pas de photo.",
+        "images": []
+      },
+      "captureMetadata": {
+        "mode": "note_only",
+        "photoCount": 0,
+        "captureQuality": "none",
+        "uncertaintyTags": ["portion_unknown", "brand_unknown"]
+      }
+    },
+    {
+      "entryId": "d12-lunch",
+      "input": {
+        "mealType": "lunch",
+        "mealDate": "2026-09-12",
+        "note": "Salade de pois chiches, concombre, tomate et pain; huile/citron probablement, proportions floues.",
+        "images": [
+          { "id": "d12-lunch-photo-1", "mimeType": "image/png", "origin": "homemade", "dataRef": "synthetic://d12-lunch-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_and_note",
+        "photoCount": 1,
+        "captureQuality": "clear",
+        "uncertaintyTags": ["portion_unknown", "sauce_or_oil_unknown"]
+      }
+    },
+    {
+      "entryId": "d12-dinner",
+      "input": {
+        "mealType": "dinner",
+        "mealDate": "2026-09-12",
+        "note": null,
+        "images": [
+          { "id": "d12-dinner-photo-1", "mimeType": "image/jpeg", "origin": "prepared", "dataRef": "synthetic://d12-dinner-photo-1" }
+        ]
+      },
+      "captureMetadata": {
+        "mode": "photo_only",
+        "photoCount": 1,
+        "captureQuality": "partial",
+        "uncertaintyTags": ["food_identity_unknown", "portion_unknown", "sauce_or_oil_unknown"]
+      }
+    }
+  ],
+  "coverageExpectation": {
+    "calendarDays": 12,
+    "plannedSlots": 48,
+    "recordedEntries": 38,
+    "absentSlots": 10,
+    "recordedBySlot": {
+      "breakfast": 11,
+      "lunch": 10,
+      "snack": 6,
+      "dinner": 11
+    },
+    "captureModes": {
+      "photo_and_note": 16,
+      "photo_only": 10,
+      "note_only": 12
+    },
+    "sourceCoverage": {
+      "entriesWithPhoto": 26,
+      "entriesWithoutPhoto": 12,
+      "entriesWithNote": 28,
+      "entriesWithoutNote": 10,
+      "photoCount": 29,
+      "multiPhotoEntries": 3
+    },
+    "uncertaintyMetadata": {
+      "entriesWithUncertaintyTags": 38,
+      "expectedToBeImperfect": true
+    }
+  }
+}
