@@ -290,6 +290,8 @@ textarea:focus-visible,
   gap: 10px;
 }
 .brand-symbol { width: 44px; height: 44px; }
+.brand-symbol, .nav-brand-symbol { display: inline-flex; overflow: hidden; border-radius: 24%; }
+.soma-symbol__mark { display: block; width: 100%; height: 100%; object-fit: cover; }
 .soma-wordmark { display: grid; line-height: 1; }
 .soma-wordmark strong { font-size: 1.02rem; letter-spacing: .16em; }
 .soma-logo { display: inline-flex; align-items: center; gap: 9px; }

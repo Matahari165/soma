@@ -1,45 +1,27 @@
-import { useId } from "react";
-
 type SomaSymbolProps = {
   className?: string;
   title?: string;
 };
 
 export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProps) {
-  const liquidClipId = `soma-liquid-clip-${useId().replaceAll(":", "")}`;
-
   return (
-    <svg
+    <span
       className={className}
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      <defs>
-        <clipPath id={liquidClipId}>
-          <path d="M20 8v10L10.8 36.2A3.4 3.4 0 0 0 13.8 41h20.4a3.4 3.4 0 0 0 3-4.8L28 18V8Z" />
-        </clipPath>
-      </defs>
-      <rect className="soma-symbol__liquid-fill" x="8" y="32" width="32" height="10" clipPath={`url(#${liquidClipId})`} fill="currentColor" stroke="none" />
-      <path
-        className="soma-symbol__flask"
-        d="M20 8v10L10.8 36.2A3.4 3.4 0 0 0 13.8 41h20.4a3.4 3.4 0 0 0 3-4.8L28 18V8"
-        vectorEffect="non-scaling-stroke"
-        strokeWidth="2"
+      {/* Static public brand mark: next/image optimization is disabled project-wide (see next.config.ts). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="soma-symbol__mark"
+        src="/icons/soma-192.png?v=discobolus-1"
+        alt=""
+        width={192}
+        height={192}
+        decoding="async"
       />
-      <path className="soma-symbol__rim" d="M18 8h12" vectorEffect="non-scaling-stroke" strokeWidth="2" />
-      <path className="soma-symbol__liquid" d="M14.5 32h19" vectorEffect="non-scaling-stroke" strokeWidth="1.5" />
-      <g className="soma-symbol__bubbles" aria-hidden="true" fill="currentColor" stroke="none">
-        <circle cx="22" cy="31" r="1.15" />
-        <circle cx="26" cy="30" r=".92" />
-        <circle cx="24" cy="28" r=".75" />
-      </g>
-    </svg>
+    </span>
   );
 }
 

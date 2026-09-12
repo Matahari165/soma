@@ -9,10 +9,8 @@ describe("Soma logo", () => {
     const html = renderToStaticMarkup(createElement(SomaLogo));
 
     expect(html).not.toContain("soma-logo--loading");
-    expect(html).toContain("soma-symbol__liquid-fill");
-    expect(html).toContain("soma-symbol__bubbles");
-    expect(html.match(/<circle /g)).toHaveLength(3);
-    expect(html).toContain("clip-path=\"url(#soma-liquid-clip-");
+    expect(html).toContain("soma-symbol__mark");
+    expect(html).toContain("/icons/soma-192.png");
     expect(html).toContain("<strong>SOMA</strong>");
   });
 });
