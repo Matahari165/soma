@@ -2740,6 +2740,10 @@
    competing offset in the meal column. */
 @media (min-width: 701px) {
   :global(.personal-lab-meal-column) > .labRoot > .mealList {
+    margin-top: 35px;
+  }
+
+  :global(body.local-preview) :global(.personal-lab-meal-column) > .labRoot > .mealList {
     margin-top: 42.5px;
   }
 }
