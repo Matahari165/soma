@@ -7,6 +7,7 @@ import { LabArrival } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
+import { scrollToLabSectionWhenReady } from "./lab-scroll";
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -93,6 +94,10 @@ export function LabWorldWorkspace({
     const change = () => { window.scrollTo({ top: 0 }); };
     window.addEventListener("lab-theme-change", change);
     return () => window.removeEventListener("lab-theme-change", change);
+  }, []);
+  useEffect(() => {
+    if (window.location.hash !== "#world-effects") return;
+    return scrollToLabSectionWhenReady("world-effects");
   }, []);
   useEffect(() => {
     const elements = root.current?.querySelectorAll<HTMLElement>(".lab-live-metrics .personal-lab-metric, .journal-period, .meal-journal-lab article");

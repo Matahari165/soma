@@ -3,15 +3,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
 
+import { scrollToLabSectionWhenReady } from "./lab-scroll";
+
 export function LabGlobalNavigation() {
   const pathname = usePathname();
   function scroll(event: MouseEvent<HTMLAnchorElement>) {
     if (pathname !== "/") return;
-    const target = document.getElementById(event.currentTarget.hash.slice(1));
-    if (!target) return;
     event.preventDefault();
     window.history.pushState(null, "", event.currentTarget.hash);
-    target.scrollIntoView({ block: "start", inline: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    scrollToLabSectionWhenReady(event.currentTarget.hash.slice(1));
   }
   return <nav className="lab-global-nav" aria-label="Navigation principale">
     <Link href="/" onClick={(event) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}>Personal Lab</Link>
