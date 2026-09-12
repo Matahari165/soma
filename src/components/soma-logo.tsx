@@ -15,7 +15,7 @@ export function SomaSymbol({ className = "brand-symbol", title }: SomaSymbolProp
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="soma-symbol__mark"
-        src="/icons/soma-192.png?v=discobolus-1"
+        src="/icons/soma-192.png?v=discobolus-2"
         alt=""
         width={192}
         height={192}
