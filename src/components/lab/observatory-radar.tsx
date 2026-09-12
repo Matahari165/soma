@@ -29,21 +29,64 @@ export function ObservatoryRadar({data, date}:{data:RadarData; date?:string}) {
     {label:"Effort",average:data.averageEffortScore===null?null:data.averageEffortScore*.21,value:data.effortScore===null?null:data.effortScore*.21,target:21,unit:"",display:data.effortScore===null?"—":`${(data.effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
     {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:2200,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:"2 200 kcal"},
   ];
-  const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [300+Math.cos(angle)*175*ratio,250+Math.sin(angle)*175*ratio];};
+  const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*210*ratio,280+Math.sin(angle)*210*ratio];};
   const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1.2,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport aux repères de démonstration">
-    <svg viewBox="0 0 600 500" role="img" aria-label={`Graphique radar. Le contour représente les objectifs de démonstration. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
+    <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs de démonstration. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><polygon key={ratio} className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />)}
-      {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="300" y1="250" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
+      {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
       {validPoints.length>=3&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
       {validPoints.length===2&&<line className="radar-value" x1={validPoints[0][0]} y1={validPoints[0][1]} x2={validPoints[1][0]} y2={validPoints[1][1]}/>}
       {validPoints.map((point,i)=><circle className="radar-point" key={i} cx={point[0]} cy={point[1]} r="5"/>)}
       {axes.map((axis,i)=>{
-        const [x,y]=coordinate(i,1.23);
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";
         const comparison=trend==="↑"?"Au-dessus de la moyenne sur 30 jours":trend==="↓"?"Sous la moyenne sur 30 jours":trend==="↔"?"Au niveau de la moyenne sur 30 jours":"Moyenne indisponible";
-        return <g key={axis.label} className="radar-axis-label"><title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif de démonstration : ${axis.goal}.`}</title><text x={x} y={y-9} textAnchor="middle" className="radar-label">{axis.label}</text><text x={x} y={y+17} textAnchor="middle" className="radar-number">{axis.display}{axis.unit==="kcal"?" kcal":""} {trend}</text></g>;
+        let labelX = 330;
+        let labelY = 280;
+        let numberX = 330;
+        let numberY = 280;
+        let textAnchor: "middle" | "start" | "end" = "middle";
+
+        if (i === 0) {
+          const [, yEdge] = coordinate(0, 1);
+          labelX = 330;
+          labelY = yEdge - 52;
+          numberX = 330;
+          numberY = yEdge - 28;
+          textAnchor = "middle";
+        } else if (i === 1) {
+          const [xEdge, yEdge] = coordinate(1, 1);
+          labelX = xEdge + 48;
+          labelY = yEdge - 12;
+          numberX = xEdge + 48;
+          numberY = yEdge + 20;
+          textAnchor = "start";
+        } else if (i === 2) {
+          const [, yEdge] = coordinate(2, 1);
+          labelX = 330;
+          labelY = yEdge + 48;
+          numberX = 330;
+          numberY = yEdge + 72;
+          textAnchor = "middle";
+        } else if (i === 3) {
+          const [xEdge, yEdge] = coordinate(3, 1);
+          labelX = xEdge - 48;
+          labelY = yEdge - 12;
+          numberX = xEdge - 48;
+          numberY = yEdge + 20;
+          textAnchor = "end";
+        }
+
+        const valueText = `${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}`;
+
+        return (
+          <g key={axis.label} className="radar-axis-label">
+            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif de démonstration : ${axis.goal}.`}</title>
+            <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label">{axis.label}</text>
+            <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number">{valueText}</text>
+          </g>
+        );
       })}
     </svg>
 
