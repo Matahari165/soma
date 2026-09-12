@@ -721,7 +721,7 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     : loadError
       ? <p className="matrix-no-results" role="alert">Les relations n’ont pas pu être chargées. Sélectionne la période pour réessayer.</p>
       : !rows.length
-        ? <p className="matrix-no-results">{showNonSignificant ? "Aucune relation calculable sur cette période." : "Aucune relation avec q < 0,05 sur cette période."}</p>
+        ? <p className="matrix-no-results">{showNonSignificant ? "Aucune relation calculable sur cette période." : "Aucune relation fiable et suffisamment marquée sur cette période."}</p>
         : null;
 
   return <section id="relations" className="matrix-section" aria-labelledby="matrix-title">
@@ -807,6 +807,6 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
       })}
     </div>
     {resultsStatus}
-    <details className="matrix-method"><summary>Méthode</summary><p>Chaque variable apparaît une fois. Les cellules regroupent les résultats du même jour, du lendemain et de deux jours plus tard lorsque ces décalages sont possibles. Un comportement de la journée n’est jamais associé à un résultat nocturne qui s’est produit auparavant. Les valeurs vides sont omises paire par paire. Les comparaisons binaires et d’exposition nécessitent au moins cinq jours dans chaque groupe ; les mesures continues nécessitent dix jours appariés. À partir de 30 jours appariés, chaque relation numérique teste aussi un seuil, un plateau et une zone médiane par rapport à une droite, en conservant une forme non linéaire uniquement si elle améliore sensiblement l’ajustement. Les quantités utilisent chaque journée enregistrée, y compris les journées à zéro explicite. Les valeurs p bilatérales utilisent des intervalles robustes à la dépendance sérielle, puis une correction de Benjamini–Hochberg. Le tableau par défaut conserve uniquement q &lt; 0,05.</p></details>
+    <details className="matrix-method"><summary>Méthode</summary><p>Chaque variable apparaît une fois. Les cellules regroupent les résultats du même jour, du lendemain et de deux jours plus tard lorsque ces décalages sont possibles. Un comportement de la journée n’est jamais associé à un résultat nocturne qui s’est produit auparavant. Les valeurs vides sont omises paire par paire. Les comparaisons binaires et d’exposition nécessitent au moins cinq jours dans chaque groupe ; les mesures continues nécessitent dix jours appariés. À partir de 30 jours appariés, chaque relation numérique teste aussi un seuil, un plateau et une zone médiane par rapport à une droite, en conservant une forme non linéaire uniquement si elle améliore sensiblement l’ajustement. Les quantités utilisent chaque journée enregistrée, y compris les journées à zéro explicite. Les valeurs p bilatérales utilisent des intervalles robustes à la dépendance sérielle, puis une correction de Benjamini–Hochberg. Les effets mis en avant doivent aussi aller dans la même direction dans au moins deux des quatre blocs chronologiques ; les autres blocs peuvent être neutres ou opposés. Le tableau par défaut conserve uniquement les relations fiables et suffisamment marquées.</p></details>
   </section>;
 }

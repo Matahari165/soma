@@ -58,8 +58,11 @@ evidence belong in views opened from the main information.
   zones instead of forcing every relationship into a straight line.
 - Confidence intervals account for repeated daily observations, and Benjamini–Hochberg
   correction limits false discoveries across the tested relationships.
-- The default matrix shows only corrected `q < 0.05` results. Non-significant results remain
-  available on request.
+- A highlighted relation must also keep the same direction in at least two of four
+  chronological blocks within its selected window. Opposite blocks do not automatically
+  disqualify it; the guard prevents a result from being driven by one isolated slice.
+- The default matrix shows only reliable, practically meaningful results. Other calculable
+  results remain available on request.
 
 These results describe personal associations, not proof that one behaviour caused another.
 

@@ -17,15 +17,35 @@ describe("Personal Lab raw within-person relations", () => {
     expect(isPersonalLabMetricAllowed("sleep_awakenings")).toBe(false);
     expect(isPersonalLabMetricAllowed("sleep_fragmentation")).toBe(true);
     const relation = calculateMatrixRelation(series("bedtime", Array.from({ length: 80 }, (_, index) => 1320 + index % 30)), series("hrv", Array.from({ length: 80 }, (_, index) => 50 + index % 20)));
-    const eligible = { ...relation, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01, practicalRatio: 2 };
+    const eligible = { ...relation, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01, practicalRatio: 2, stable: true };
     for (const period of [15, 30, 90, "all"] as const) {
       const periodRelation = { ...eligible, period };
       expect(isPersonalLabFeatureEligible(periodRelation)).toBe(true);
     }
     expect(isPersonalLabFeatureEligible({ ...eligible, qValue: .05 })).toBe(false);
     expect(isPersonalLabFeatureEligible({ ...eligible, practicallyMeaningful: false })).toBe(false);
+    expect(isPersonalLabFeatureEligible({ ...eligible, stable: false })).toBe(false);
     expect(isPersonalLabFeatureEligible({ ...eligible, outcomeId: "sleep_awakenings" })).toBe(false);
     expect(selectMeaningfulRelations([{ ...eligible, outcomeId: "sleep_awakenings" }])).toEqual([]);
+  });
+
+  it("publishes with the observed direction in at least two of four chronological blocks", () => {
+    const blockStrengths = [8, -1, 8, -1];
+    const predictor = Array.from({ length: 400 }, (_, index) => [-3, -1, 1, 3][index % 4]);
+    const outcome = predictor.map((value, index) => value * blockStrengths[Math.floor(index / 100)]);
+    const relation = calculateMatrixRelation(series("load", predictor), series("hrv", outcome));
+
+    expect(relation.stability).toMatchObject({ chronologicalBlocks: 2, directionHeldInBlocks: true });
+    expect(relation.stable).toBe(true);
+    expect(isPersonalLabFeatureEligible(relation)).toBe(true);
+
+    const oneMatchingBlock = calculateMatrixRelation(
+      series("load", predictor),
+      series("hrv", predictor.map((value, index) => value * [8, -1, -1, -1][Math.floor(index / 100)])),
+    );
+    expect(oneMatchingBlock.stability).toMatchObject({ chronologicalBlocks: 1, directionHeldInBlocks: false });
+    expect(oneMatchingBlock.stable).toBe(false);
+    expect(isPersonalLabFeatureEligible(oneMatchingBlock)).toBe(false);
   });
 
   it("keeps missing values absent and requires ten numeric pairs", () => {

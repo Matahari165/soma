@@ -84,13 +84,14 @@ export function isPersonalLabMetricAllowed(metricId: string) {
 }
 
 /** Canonical publication gate for Personal Lab highlights, narratives, and graphs. */
-export function isPersonalLabPublishedRelation(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful">) {
+export function isPersonalLabPublishedRelation(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful" | "stable">) {
   return isPersonalLabMetricAllowed(relation.predictorId)
     && isPersonalLabMetricAllowed(relation.outcomeId)
     && !relation.excluded
     && relation.featureEligible
     && relation.qValue < .05
-    && relation.practicallyMeaningful;
+    && relation.practicallyMeaningful
+    && relation.stable;
 }
 
 /** @deprecated Use isPersonalLabPublishedRelation for anything that is rendered as a finding. */
@@ -479,17 +480,18 @@ function chronologicalDirection(pairs: Pair[]) {
     const blockDirection = Math.sign(subset.reduce((sum, pair) => sum + (pair.predictor - x) * (pair.outcome - y), 0));
     if (blockDirection === direction) blocks += 1;
   }
-  return { blocks, held: blocks >= 3 };
+  return { blocks, held: blocks >= 2 };
 }
 
 function finalizeRelation(relation: MatrixRelation, qValue: number): MatrixRelation {
   if (relation.coefficient === null) return { ...relation, qValue: 1, practicallyMeaningful: false, practicalRatio: 0, featureEligible: false };
   const significant = qValue < .05;
+  const stable = significant && relation.stability.directionHeldInBlocks;
   const practicalRatio = relation.practicalRatio;
   return {
     ...relation, qValue, practicalRatio: round(practicalRatio, 3), practicallyMeaningful: significant && practicalRatio >= 1,
-    featureEligible: significant, stable: significant,
-    evidence: significant ? "established" : "exploratory",
+    featureEligible: significant, stable,
+    evidence: significant ? (stable ? "established" : "promising") : "exploratory",
     strength: significant ? (Math.abs(relation.percentEffect ?? 0) >= 10 ? "strong" : "clear") : "light",
     relevance: significant ? Math.abs(relation.percentEffect ?? relation.coefficient ?? 0) * -Math.log10(Math.max(qValue, 1e-8)) * Math.log10(relation.sampleSize + 1) : 0,
     exclusionReasons: significant ? relation.exclusionReasons : [...new Set([...relation.exclusionReasons, "BH-adjusted q value is not below 0.05"])],
