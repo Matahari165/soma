@@ -30,7 +30,7 @@ vi.mock("@/lib/cloudflare/db", () => ({
   }),
 }));
 
-import { clearPreviewSupplements, createSupplementDefinition, createSupplementEntry, deleteSupplementEntry, listSupplementDefinitions, listSupplementEntries, updateSupplementEntry } from "./supplements";
+import { archiveSupplementDefinition, clearPreviewSupplements, createSupplementDefinition, listSupplementDefinitions, listSupplementEntries, upsertSupplementEntry } from "./supplements";
 
 describe("supplement service preview", () => {
   const userId = "supplement-test-user";
@@ -42,23 +42,54 @@ describe("supplement service preview", () => {
     d1State.rows = [];
   });
 
-  it("keeps a planned dose distinct from the recorded dose", async () => {
+  it("creates one configured product, records daily statuses, and preserves history", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     const definition = await createSupplementDefinition(userId, {
-      productName: "Whey test",
-      category: "protein",
+      productName: "Oméga-3 test",
+      category: "vitamin_mineral",
       source: "product_label",
-      serving: { quantity: 30, unit: "g", label: "1 dose" },
-      nutrients: [{ key: "protein", label: "Protéines", amount: 24, unit: "g" }],
+      serving: { quantity: 2, unit: "capsule", label: "2 capsules" },
+      nutrients: [{ key: "omega_3", label: "Oméga-3", amount: 500, unit: "mg" }],
+      frequency: { kind: "daily", timesPerDay: 1 },
+      usageInstruction: "Avec un repas contenant du gras",
+    });
+    expect(definition.usageInstruction).toBe("Avec un repas contenant du gras");
+    expect(definition.archivedAt).toBeNull();
+
+    const notRecorded = await upsertSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-12", status: "not_recorded" });
+    expect(notRecorded.created).toBe(true);
+    expect(notRecorded.entry.actual).toMatchObject({ status: "not_recorded", servings: null });
+
+    const taken = await upsertSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-12", status: "taken" });
+    expect(taken.created).toBe(false);
+    expect(taken.entry.id).toBe(notRecorded.entry.id);
+    expect(taken.entry.actual).toMatchObject({ status: "taken", servings: 1 });
+
+    const skipped = await upsertSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-12", status: "skipped" });
+    expect(skipped.entry.id).toBe(taken.entry.id);
+    expect(skipped.entry.actual).toMatchObject({ status: "skipped", servings: null });
+
+    const nextDay = await upsertSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-13", status: "taken" });
+    expect(nextDay.created).toBe(true);
+    expect(nextDay.entry.id).not.toBe(skipped.entry.id);
+    expect((await listSupplementEntries(userId, { definitionId: definition.id })).length).toBe(2);
+
+    const archived = await archiveSupplementDefinition(userId, definition.id);
+    expect(archived.archivedAt).toEqual(expect.any(String));
+    await expect(upsertSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-14", status: "taken" })).rejects.toMatchObject({ code: "invalid" });
+    expect((await listSupplementDefinitions(userId)).find((item) => item.id === definition.id)?.archivedAt).toEqual(archived.archivedAt);
+    expect((await listSupplementEntries(userId, { definitionId: definition.id })).map((entry) => entry.entryDate)).toEqual(["2026-09-13", "2026-09-12"]);
+
+    const replacement = await createSupplementDefinition(userId, {
+      productName: "Oméga-3 replacement",
+      category: "other",
+      source: "personal_record",
+      serving: { quantity: 1, unit: "capsule", label: "1 capsule" },
+      nutrients: [],
       frequency: { kind: "daily", timesPerDay: 1 },
     });
-    const entry = await createSupplementEntry(userId, { definitionId: definition.id, entryDate: "2026-09-12", planned: { servings: 1 } });
-    expect(entry.actual).toMatchObject({ status: "not_recorded", servings: null });
-    expect((await listSupplementEntries(userId))[0].planned.servings).toBe(1);
-    const taken = await updateSupplementEntry(userId, entry.id, { actual: { status: "taken", servings: 0.5, takenAt: "2026-09-12T10:00:00+02:00" } });
-    expect(taken.planned.servings).toBe(1);
-    expect(taken.actual).toMatchObject({ status: "taken", servings: 0.5 });
-    expect(await deleteSupplementEntry(userId, entry.id)).toBe(true);
+    expect(replacement.id).not.toBe(definition.id);
+    expect((await listSupplementEntries(userId, { definitionId: definition.id })).length).toBe(2);
   });
 
   it("serializes and deserializes nested JSON rows through soma_rows", async () => {

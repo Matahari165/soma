@@ -52,7 +52,7 @@ function invalidInput(message = "Le complément n’est pas valide.") {
 function parseDefinition(input: unknown): SupplementDefinitionInput {
   const parsed = supplementDefinitionInputSchema.safeParse(input);
   if (!parsed.success) throw invalidInput("La définition du complément est invalide.");
-  return parsed.data;
+  return { ...parsed.data, usageInstruction: parsed.data.usageInstruction ?? null };
 }
 
 function parseDefinitionUpdate(input: unknown): SupplementDefinitionUpdate {
@@ -85,7 +85,9 @@ function definitionFromRow(row: unknown) {
     serving: value.serving,
     nutrients: value.nutrients,
     frequency: value.frequency,
+    usageInstruction: value.usageInstruction ?? value.usage_instruction ?? null,
     notes: value.notes,
+    archivedAt: value.archivedAt ?? value.archived_at ?? null,
     userId: value.userId ?? value.user_id,
     createdAt: value.createdAt ?? value.created_at,
     updatedAt: value.updatedAt ?? value.updated_at,
@@ -150,7 +152,9 @@ function storedJson(record: SupplementDefinition | SupplementEntry) {
     serving: record.serving,
     nutrients: record.nutrients,
     frequency: record.frequency,
+    usage_instruction: record.usageInstruction ?? null,
     notes: record.notes,
+    archived_at: record.archivedAt ?? null,
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   });
@@ -178,6 +182,11 @@ async function readRows(table: SupplementTable, userId: string, options: { from?
   const result = await cloudflareDb().prepare(`SELECT json_data FROM soma_rows WHERE ${predicates.join(" AND ")} ORDER BY updated_at DESC`).bind(...bindings).all<StoredRow>();
   if (!result.success) throw new Error(result.error ?? "Supplement rows could not be loaded.");
   return result.results ?? [];
+}
+
+async function findEntryForDate(userId: string, definitionId: string, entryDate: string) {
+  const entries = await listSupplementEntries(userId, { from: entryDate, to: entryDate, definitionId });
+  return entries.find((entry) => entry.definitionId === definitionId && entry.entryDate === entryDate) ?? null;
 }
 
 async function readRow(table: SupplementTable, userId: string, id: string) {
@@ -227,7 +236,7 @@ export async function findSupplementDefinition(userId: string, definitionId: str
 export async function createSupplementDefinition(userId: string, input: unknown) {
   const parsed = parseDefinition(input);
   const now = new Date().toISOString();
-  const definition = supplementDefinitionRecordSchema.parse({ ...parsed, id: crypto.randomUUID(), userId, createdAt: now, updatedAt: now });
+  const definition = supplementDefinitionRecordSchema.parse({ ...parsed, usageInstruction: parsed.usageInstruction ?? null, archivedAt: null, id: crypto.randomUUID(), userId, createdAt: now, updatedAt: now });
   if (isLocalPreviewMode()) {
     userStore(definitionPreviewStore, userId).set(definition.id, definition);
     return clone(definition);
@@ -258,20 +267,30 @@ export async function updateSupplementDefinition(userId: string, definitionId: s
   }
 }
 
-export async function deleteSupplementDefinition(userId: string, definitionId: string) {
+export async function archiveSupplementDefinition(userId: string, definitionId: string, archivedAt = new Date().toISOString()) {
   const existing = await findSupplementDefinition(userId, definitionId);
   if (!existing) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+  const updated = supplementDefinitionRecordSchema.parse({ ...existing, archivedAt, updatedAt: new Date().toISOString() });
   if (isLocalPreviewMode()) {
-    userStore(definitionPreviewStore, userId).delete(definitionId);
-    return true;
+    userStore(definitionPreviewStore, userId).set(definitionId, updated);
+    return clone(updated);
   }
   try {
-    if (!await deleteRow(DEFINITION_TABLE, userId, definitionId)) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
-    return true;
+    if (!await updateRow(DEFINITION_TABLE, userId, definitionId, updated)) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+    return updated;
   } catch (error) {
     if (error instanceof SupplementServiceError) throw error;
-    throw unavailable("La définition du complément n’a pas pu être supprimée.");
+    throw unavailable("Le complément n’a pas pu être archivé.");
   }
+}
+
+/**
+ * Kept as a compatibility alias for older callers. New flows must archive so
+ * that the definition and all intake history remain available.
+ */
+export async function deleteSupplementDefinition(userId: string, definitionId: string) {
+  await archiveSupplementDefinition(userId, definitionId);
+  return true;
 }
 
 export async function listSupplementEntries(userId: string, options: { from?: string; to?: string; definitionId?: string } = {}) {
@@ -298,33 +317,110 @@ export async function findSupplementEntry(userId: string, entryId: string) {
   }
 }
 
-async function ensureDefinition(userId: string, definitionId: string) {
-  if (!await findSupplementDefinition(userId, definitionId)) throw new SupplementServiceError("invalid", "La définition du complément est introuvable.");
+async function ensureDefinition(userId: string, definitionId: string, options: { allowArchived?: boolean } = {}) {
+  const definition = await findSupplementDefinition(userId, definitionId);
+  if (!definition) throw new SupplementServiceError("invalid", "La définition du complément est introuvable.");
+  if (definition.archivedAt && !options.allowArchived) throw new SupplementServiceError("invalid", "Ce complément est archivé.");
+  return definition;
 }
 
-export async function createSupplementEntry(userId: string, input: unknown) {
+function dailyEntryId(definitionId: string, entryDate: string) {
+  // Keep a deterministic id for the new daily flow. The FNV hash keeps
+  // the record under the domain's 120-character limit even for legacy ids.
+  let hash = 2166136261;
+  for (const character of `${definitionId}:${entryDate}`) {
+    hash = Math.imul(hash ^ (character.codePointAt(0) ?? 0), 16777619) >>> 0;
+  }
+  return `daily_${hash.toString(16).padStart(8, "0")}_${entryDate}`;
+}
+
+function normalizedEntryInput(parsed: SupplementEntryInput, definition: SupplementDefinition): SupplementEntryInput {
+  const planned = parsed.planned ?? { servings: 1, scheduledAt: null };
+  const actual = parsed.actual ?? { status: "not_recorded" as const, servings: null, takenAt: null, note: null };
+  return {
+    ...parsed,
+    planned,
+    actual: actual.status === "taken" && actual.servings === null
+      ? { ...actual, servings: planned.servings }
+      : actual,
+    // Reading the definition here makes the default explicit in the service
+    // contract while keeping the configured quantity in `serving`.
+    note: parsed.note ?? null,
+    definitionId: definition.id,
+  };
+}
+
+type SupplementEntryUpsertResult = { entry: SupplementEntry; created: boolean };
+
+async function upsertSupplementEntryResult(userId: string, input: unknown): Promise<SupplementEntryUpsertResult> {
   const parsed = parseEntry(input);
-  await ensureDefinition(userId, parsed.definitionId);
+  const definition = await ensureDefinition(userId, parsed.definitionId);
+  const normalized = normalizedEntryInput(parsed, definition);
+  const existing = await findEntryForDate(userId, normalized.definitionId, normalized.entryDate);
   const now = new Date().toISOString();
-  const entry = supplementEntryRecordSchema.parse({ ...parsed, id: crypto.randomUUID(), userId, createdAt: now, updatedAt: now });
+  if (existing) {
+    const updated = supplementEntryRecordSchema.parse({ ...existing, ...normalized, id: existing.id, userId, createdAt: existing.createdAt, updatedAt: now });
+    if (isLocalPreviewMode()) {
+      userStore(entryPreviewStore, userId).set(existing.id, updated);
+      return { entry: clone(updated), created: false };
+    }
+    try {
+      if (!await updateRow(ENTRY_TABLE, userId, existing.id, updated)) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+      return { entry: updated, created: false };
+    } catch (error) {
+      if (error instanceof SupplementServiceError) throw error;
+      throw unavailable("La prise de complément n’a pas pu être actualisée.");
+    }
+  }
+
+  const entry = supplementEntryRecordSchema.parse({ ...normalized, id: dailyEntryId(normalized.definitionId, normalized.entryDate), userId, createdAt: now, updatedAt: now });
   if (isLocalPreviewMode()) {
     userStore(entryPreviewStore, userId).set(entry.id, entry);
-    return clone(entry);
+    return { entry: clone(entry), created: true };
   }
   try {
     await insertRow(ENTRY_TABLE, userId, entry);
-    return entry;
+    return { entry, created: true };
   } catch {
+    // A concurrent retry can race the read above. Deterministic identity
+    // makes the second request converge without creating another daily row.
+    const concurrent = await findEntryForDate(userId, normalized.definitionId, normalized.entryDate);
+    if (concurrent) {
+      const updated = supplementEntryRecordSchema.parse({ ...concurrent, ...normalized, id: concurrent.id, userId, createdAt: concurrent.createdAt, updatedAt: new Date().toISOString() });
+      if (!await updateRow(ENTRY_TABLE, userId, concurrent.id, updated)) throw unavailable("La prise de complément n’a pas pu être actualisée.");
+      return { entry: updated, created: false };
+    }
     throw unavailable("La prise de complément n’a pas pu être enregistrée.");
   }
+}
+
+export async function upsertSupplementEntry(userId: string, input: unknown) {
+  return upsertSupplementEntryResult(userId, input);
+}
+
+/** Compatibility name: creation now converges on the daily product/date row. */
+export async function createSupplementEntry(userId: string, input: unknown) {
+  return (await upsertSupplementEntryResult(userId, input)).entry;
 }
 
 export async function updateSupplementEntry(userId: string, entryId: string, input: unknown) {
   const parsed = parseEntryUpdate(input);
   const existing = await findSupplementEntry(userId, entryId);
   if (!existing) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
-  if (parsed.definitionId) await ensureDefinition(userId, parsed.definitionId);
-  const updated = supplementEntryRecordSchema.parse({ ...existing, ...parsed, updatedAt: new Date().toISOString() });
+  const definitionId = parsed.definitionId ?? existing.definitionId;
+  const entryDate = parsed.entryDate ?? existing.entryDate;
+  const definition = await ensureDefinition(userId, definitionId, { allowArchived: true });
+  const conflicting = await findEntryForDate(userId, definitionId, entryDate);
+  if (conflicting && conflicting.id !== entryId) throw invalidInput("Une seule prise par complément et par jour est autorisée.");
+  const mergedInput = {
+    definitionId,
+    entryDate,
+    planned: parsed.planned ?? existing.planned,
+    actual: parsed.actual ?? existing.actual,
+    note: parsed.note ?? existing.note,
+  } satisfies SupplementEntryInput;
+  const normalized = normalizedEntryInput(mergedInput, definition);
+  const updated = supplementEntryRecordSchema.parse({ ...existing, ...normalized, id: existing.id, userId, createdAt: existing.createdAt, updatedAt: new Date().toISOString() });
   if (isLocalPreviewMode()) {
     userStore(entryPreviewStore, userId).set(entryId, updated);
     return clone(updated);

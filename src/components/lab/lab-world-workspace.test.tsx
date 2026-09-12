@@ -43,6 +43,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
 
   const mockJournal: PersonalLabJournal = {
     todayDate: "2026-09-12",
+    supplements: { definitions: [], entries: [], error: null },
     journal: {
       variables: [],
       entries: [],

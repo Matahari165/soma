@@ -14,6 +14,8 @@ const definition = {
   nutrients: [],
   frequency: { kind: "daily" as const, timesPerDay: 1 },
   notes: null,
+  usageInstruction: "Avec le déjeuner",
+  archivedAt: null,
   createdAt: "2026-09-12T10:00:00.000Z",
   updatedAt: "2026-09-12T10:00:00.000Z",
   contributionScope: "separate" as const,
@@ -23,15 +25,25 @@ describe("MealSupplements", () => {
   it("shows the empty state and the add form", () => {
     const html = renderToStaticMarkup(<MealSupplements date="2026-09-12" initialDefinitions={[]} initialEntries={[]} />);
     expect(html).toContain("Compléments");
-    expect(html).toContain("Nom du produit");
-    expect(html).toContain("Aucun complément renseigné.");
+    expect(html).toContain("Produit");
+    expect(html).toContain("Dose habituelle");
+    expect(html).toContain("Aucun complément actif");
   });
 
-  it("shows a definition and the separate intake area", () => {
+  it("shows a daily yes/no check-in with a distinct unrecorded state", () => {
     const html = renderToStaticMarkup(<MealSupplements date="2026-09-12" initialDefinitions={[definition]} initialEntries={[]} />);
     expect(html).toContain("Créatine monohydrate");
-    expect(html).toContain("Suivi séparé");
-    expect(html).toContain("Prises du 2026-09-12");
-    expect(html).toContain("Pris aujourd’hui");
+    expect(html).toContain("1 dose · Avec le déjeuner");
+    expect(html).toContain("Non renseigné");
+    expect(html).toContain("Oui");
+    expect(html).toContain("Non");
+    expect(html).toContain("Boîte terminée");
+    expect(html).toContain('aria-pressed="false"');
+  });
+
+  it("keeps archived products in a collapsed history without a daily control", () => {
+    const html = renderToStaticMarkup(<MealSupplements date="2026-09-12" initialDefinitions={[{ ...definition, archivedAt: "2026-09-13T10:00:00.000Z" }]} initialEntries={[]} />);
+    expect(html).toContain("Anciennes boîtes (1)");
+    expect(html).not.toContain("Boîte terminée");
   });
 });

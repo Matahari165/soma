@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supplementEntryInputSchema, supplementEntryToView } from "@/domain/supplements";
 import { getCurrentUser } from "@/lib/auth";
-import { createSupplementEntry, listSupplementEntries, SupplementServiceError } from "@/services/supplements";
+import { listSupplementEntries, SupplementServiceError, upsertSupplementEntry } from "@/services/supplements";
 
 const noStore = { "Cache-Control": "private, no-store" };
 
@@ -32,7 +32,8 @@ export async function POST(request: Request) {
   const parsed = supplementEntryInputSchema.safeParse(body?.entry ?? body);
   if (!parsed.success) return NextResponse.json({ error: "La prise du complément est invalide." }, { status: 400, headers: noStore });
   try {
-    return NextResponse.json({ entry: supplementEntryToView(await createSupplementEntry(user.id, parsed.data)) }, { status: 201, headers: noStore });
+    const result = await upsertSupplementEntry(user.id, parsed.data);
+    return NextResponse.json({ entry: supplementEntryToView(result.entry) }, { status: result.created ? 201 : 200, headers: noStore });
   } catch (error) {
     return serviceError(error);
   }

@@ -4,6 +4,7 @@ import {
   supplementCategories,
   supplementContributionScope,
   supplementDefinitionInputSchema,
+  supplementDefinitionToView,
   supplementEntryInputSchema,
 } from "./supplements";
 
@@ -28,8 +29,9 @@ describe("supplement domain", () => {
   });
 
   it("preserves product composition, serving, source, and planned versus actual intake", () => {
-    const parsedDefinition = supplementDefinitionInputSchema.parse(definition);
+    const parsedDefinition = supplementDefinitionInputSchema.parse({ ...definition, usageInstruction: "Avec un repas contenant du gras" });
     expect(parsedDefinition.nutrients).toEqual([{ key: "magnesium", label: "Magnésium", amount: 200, unit: "mg" }]);
+    expect(parsedDefinition.usageInstruction).toBe("Avec un repas contenant du gras");
     const entry = supplementEntryInputSchema.parse({
       definitionId: "supplement-1",
       entryDate: "2026-09-12",
@@ -40,9 +42,31 @@ describe("supplement domain", () => {
     expect(entry.actual).toMatchObject({ status: "taken", servings: 0.5 });
   });
 
-  it("rejects a taken entry without a real dose and a non-taken entry with one", () => {
-    expect(() => supplementEntryInputSchema.parse({ definitionId: "s", entryDate: "2026-09-12", planned: { servings: 1 }, actual: { status: "taken" } })).toThrow();
+  it("accepts a check-in status without asking for the dose again", () => {
+    expect(supplementEntryInputSchema.parse({ definitionId: "s", entryDate: "2026-09-12", status: "taken" })).toMatchObject({
+      planned: { servings: 1 },
+      actual: { status: "taken", servings: null },
+    });
     expect(() => supplementEntryInputSchema.parse({ definitionId: "s", entryDate: "2026-09-12", planned: { servings: 1 }, actual: { status: "skipped", servings: 1 } })).toThrow();
     expect(supplementEntryInputSchema.parse({ definitionId: "s", entryDate: "2026-09-12", planned: { servings: 1 } }).actual).toMatchObject({ status: "not_recorded", servings: null });
+  });
+
+  it("keeps unreliable nutrition contributions separate", () => {
+    expect(supplementDefinitionToView({
+      ...supplementDefinitionInputSchema.parse({ ...definition, source: "personal_record" }),
+      id: "s-1",
+      userId: "u-1",
+      createdAt: "2026-09-12T10:00:00.000Z",
+      updatedAt: "2026-09-12T10:00:00.000Z",
+      archivedAt: null,
+    }).contributionScope).toBe("separate");
+    expect(supplementDefinitionToView({
+      ...supplementDefinitionInputSchema.parse({ ...definition, source: "product_label" }),
+      id: "s-2",
+      userId: "u-1",
+      createdAt: "2026-09-12T10:00:00.000Z",
+      updatedAt: "2026-09-12T10:00:00.000Z",
+      archivedAt: null,
+    }).contributionScope).toBe("micronutrients");
   });
 });

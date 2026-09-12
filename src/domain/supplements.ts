@@ -63,32 +63,36 @@ const supplementDefinitionFields = z.object({
   serving: supplementServingSchema,
   nutrients: z.array(supplementNutrientSchema).max(60).default([]),
   frequency: supplementFrequencySchema,
+  // One short, human-readable cue is enough for the daily check-in. Keep it
+  // separate from notes so future UI can show it without exposing product
+  // metadata again on every day.
+  usageInstruction: z.string().trim().min(1).max(240).nullable().optional(),
   notes: z.string().trim().min(1).max(500).nullable().optional().default(null),
 });
 
 export const supplementDefinitionInputSchema = supplementDefinitionFields;
 export type SupplementDefinitionInput = z.infer<typeof supplementDefinitionInputSchema>;
 
-export const supplementDefinitionUpdateSchema = supplementDefinitionFields.partial().refine((input) => Object.keys(input).length > 0, {
+export const supplementDefinitionUpdateSchema = supplementDefinitionFields.partial().extend({
+  archivedAt: z.string().datetime({ offset: true }).nullable().optional(),
+}).refine((input) => Object.keys(input).length > 0, {
   message: "At least one supplement definition field is required.",
 });
 export type SupplementDefinitionUpdate = z.infer<typeof supplementDefinitionUpdateSchema>;
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected an ISO civil date.");
+const supplementStatusSchema = z.enum(["taken", "skipped", "not_recorded"]);
 const plannedSupplementDoseSchema = z.object({
   servings: z.number().finite().positive().max(1000),
   scheduledAt: z.string().datetime({ offset: true }).nullable().optional().default(null),
 });
 
 const actualSupplementDoseSchema = z.object({
-  status: z.enum(["taken", "skipped", "not_recorded"]),
+  status: supplementStatusSchema,
   servings: z.number().finite().positive().max(1000).nullable().optional().default(null),
   takenAt: z.string().datetime({ offset: true }).nullable().optional().default(null),
   note: z.string().trim().min(1).max(300).nullable().optional().default(null),
 }).superRefine((actual, context) => {
-  if (actual.status === "taken" && actual.servings === null) {
-    context.addIssue({ code: "custom", path: ["servings"], message: "A taken supplement needs the actual number of servings." });
-  }
   if (actual.status !== "taken" && actual.servings !== null) {
     context.addIssue({ code: "custom", path: ["servings"], message: "Only a taken supplement can have actual servings." });
   }
@@ -97,22 +101,45 @@ const actualSupplementDoseSchema = z.object({
   }
 });
 
-export const supplementEntryInputSchema = z.object({
+const defaultActualSupplementDose = { status: "not_recorded" as const, servings: null, takenAt: null, note: null };
+
+const supplementEntryBaseFields = z.object({
   definitionId: z.string().trim().min(1).max(120),
   entryDate: isoDateSchema,
-  planned: plannedSupplementDoseSchema,
-  actual: actualSupplementDoseSchema.default({ status: "not_recorded", servings: null, takenAt: null, note: null }),
+  // The old API required a plan. A daily check-in only needs the product and
+  // date, so a single configured dose is the safe backwards-compatible plan.
+  planned: plannedSupplementDoseSchema.optional().default({ servings: 1, scheduledAt: null }),
+  actual: actualSupplementDoseSchema.optional().default(defaultActualSupplementDose),
+  status: supplementStatusSchema.optional(),
   note: z.string().trim().min(1).max(300).nullable().optional().default(null),
 });
+
+const supplementEntryInputFields = supplementEntryBaseFields.superRefine((entry, context) => {
+  if (entry.status && entry.actual.status !== "not_recorded" && entry.actual.status !== entry.status) {
+    context.addIssue({ code: "custom", path: ["status"], message: "The top-level status and actual status must match." });
+  }
+}).transform(({ status, ...entry }) => ({
+  ...entry,
+  actual: status ? { ...entry.actual, status } : entry.actual,
+}));
+export const supplementEntryInputSchema = supplementEntryInputFields;
 export type SupplementEntryInput = z.infer<typeof supplementEntryInputSchema>;
 
 export const supplementEntryUpdateSchema = z.object({
-  definitionId: supplementEntryInputSchema.shape.definitionId.optional(),
+  definitionId: supplementEntryBaseFields.shape.definitionId.optional(),
   entryDate: isoDateSchema.optional(),
   planned: plannedSupplementDoseSchema.optional(),
   actual: actualSupplementDoseSchema.optional(),
-  note: supplementEntryInputSchema.shape.note.optional(),
-}).refine((input) => Object.keys(input).length > 0, {
+  status: supplementStatusSchema.optional(),
+  note: supplementEntryBaseFields.shape.note.optional(),
+}).superRefine((entry, context) => {
+  if (entry.status && entry.actual && entry.actual.status !== "not_recorded" && entry.actual.status !== entry.status) {
+    context.addIssue({ code: "custom", path: ["status"], message: "The top-level status and actual status must match." });
+  }
+}).transform(({ status, ...entry }) => ({
+  ...entry,
+  ...(status ? { actual: { ...(entry.actual ?? defaultActualSupplementDose), status } } : {}),
+})).refine((input) => Object.keys(input).length > 0, {
   message: "At least one supplement entry field is required.",
 });
 export type SupplementEntryUpdate = z.infer<typeof supplementEntryUpdateSchema>;
@@ -122,15 +149,24 @@ export const supplementDefinitionRecordSchema = supplementDefinitionInputSchema.
   userId: z.string().trim().min(1).max(160),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
+  archivedAt: z.string().datetime({ offset: true }).nullable().optional(),
 });
 export type SupplementDefinition = z.infer<typeof supplementDefinitionRecordSchema>;
 
-export const supplementEntryRecordSchema = supplementEntryInputSchema.extend({
+const supplementEntryRecordFields = supplementEntryBaseFields.extend({
   id: z.string().trim().min(1).max(120),
   userId: z.string().trim().min(1).max(160),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
 });
+export const supplementEntryRecordSchema = supplementEntryRecordFields.superRefine((entry, context) => {
+  if (entry.status && entry.actual.status !== "not_recorded" && entry.actual.status !== entry.status) {
+    context.addIssue({ code: "custom", path: ["status"], message: "The top-level status and actual status must match." });
+  }
+}).transform(({ status, ...entry }) => ({
+  ...entry,
+  actual: status ? { ...entry.actual, status } : entry.actual,
+}));
 export type SupplementEntry = z.infer<typeof supplementEntryRecordSchema>;
 
 export type SupplementContributionScope = "micronutrients" | "protein" | "separate";
@@ -139,7 +175,11 @@ export type SupplementContributionScope = "micronutrients" | "protein" | "separa
  * This is deliberately derived from category. It prevents a creatine or
  * caffeine entry from being silently treated as food quality or variety.
  */
-export function supplementContributionScope(category: SupplementCategory): SupplementContributionScope {
+export function supplementContributionScope(category: SupplementCategory, nutrients?: readonly SupplementNutrient[], source?: SupplementSource): SupplementContributionScope {
+  // Never fold an unverified or empty product composition into meal totals.
+  // The one-argument form remains compatible with callers that only need the
+  // category's legacy label.
+  if (nutrients && source && (nutrients.length === 0 || source === "personal_record" || source === "other")) return "separate";
   if (category === "protein") return "protein";
   if (category === "vitamin_mineral" || category === "electrolyte") return "micronutrients";
   return "separate";
@@ -148,7 +188,7 @@ export function supplementContributionScope(category: SupplementCategory): Suppl
 export function supplementDefinitionToView(definition: SupplementDefinition) {
   const { userId, ...view } = definition;
   void userId;
-  return { ...view, contributionScope: supplementContributionScope(definition.category) };
+  return { ...view, contributionScope: supplementContributionScope(definition.category, definition.nutrients, definition.source) };
 }
 
 export function supplementEntryToView(entry: SupplementEntry) {

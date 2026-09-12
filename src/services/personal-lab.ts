@@ -7,6 +7,7 @@ import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllo
 import { aggregateConfirmedMeals, mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort, type NutritionTargets } from "@/domain/nutrition-targets";
+import { supplementDefinitionToView, supplementEntryToView } from "@/domain/supplements";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
@@ -16,6 +17,7 @@ import { loadConfirmedMealRecords } from "@/services/meals";
 import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { evidenceCandidatesForNarrative, isWeeklyNarrativeCurrent, LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
 import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
+import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
 export type DailyCheckin = {
   checkin_date: string;
@@ -157,6 +159,12 @@ export type PersonalLabSnapshot = {
   };
 };
 
+type PersonalLabSupplements = {
+  definitions: Array<ReturnType<typeof supplementDefinitionToView>>;
+  entries: Array<ReturnType<typeof supplementEntryToView>>;
+  error: string | null;
+};
+
 export type PersonalLabHistoryPoint = {
   date: string;
   sleepMinutes: number | null;
@@ -171,7 +179,7 @@ export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overn
   greetingName: string;
   timeZone: string;
 };
-export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal">;
+export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal"> & { supplements: PersonalLabSupplements };
 export type PersonalLabStream = {
   overview: Promise<PersonalLabOverview>;
   journal: Promise<PersonalLabJournal>;
@@ -851,13 +859,14 @@ function journalWithAutomaticEntries(journal: PersonalLabJournalData, meals: rea
   return { ...journal, entries: [...journal.entries, ...automaticEntries] };
 }
 
-function buildJournalView(timeZone: string, journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = []): PersonalLabJournal {
+function buildJournalView(timeZone: string, journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = [], supplements: PersonalLabSupplements = { definitions: [], entries: [], error: null }): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
   const earliestDate = addDays(todayDate, -6);
   const entries = journalWithAutomaticEntries(journal, meals, health).entries;
   const achievements = journalAchievementsFor({ variables: journal.variables, entries, days: journal.days, todayDate });
   return {
     todayDate,
+    supplements,
     journal: {
       variables: journal.variables,
       entries: entries.filter((entry) => entry.entryDate >= earliestDate && entry.entryDate <= todayDate),
@@ -1088,6 +1097,14 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
   const mealPromise = loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const supplementPromise: Promise<PersonalLabSupplements> = Promise.resolve(profilePromise).then(async (profileResult) => {
+    const today = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
+    const [definitions, entries] = await Promise.all([
+      listSupplementDefinitions(user.id),
+      listSupplementEntries(user.id, { from: addDays(today, -6), to: today }),
+    ]);
+    return { definitions: definitions.map(supplementDefinitionToView), entries: entries.map(supplementEntryToView), error: null };
+  }).catch(() => ({ definitions: [], entries: [], error: "Les compléments sont momentanément indisponibles." }));
   const journalPromise = Promise.all([profilePromise, mealPromise]).then(([profileResult, mealRecords]) => loadJournalData(user.id, {
     ...(analysisWindow ? { from: analysisWindow.start } : {}),
     timeZone: profileResult.data?.timezone ?? "Europe/Paris",
@@ -1119,9 +1136,9 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   }) : null;
 
   const overview = Promise.all([corePromise, mealPromise, targetsPromise]).then(([core, meals, targets]) => buildOverview({ ...core, meals, targets, greetingName: user.displayName }));
-  const journal = Promise.all([profilePromise, journalPromise, mealPromise]).then(([profileResult, journalData, meals]) => {
+  const journal = Promise.all([profilePromise, journalPromise, mealPromise, supplementPromise]).then(([profileResult, journalData, meals, supplements]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals);
+    return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals, [], supplements);
   });
   const analysis = includeAnalysis ? Promise.all([corePromise, journalPromise, mealPromise, targetsPromise, detailPromise!]).then(async ([core, journalData, meals, targets, detail]) => {
     const queryCompletedAt = Date.now();
