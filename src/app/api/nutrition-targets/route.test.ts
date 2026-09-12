@@ -16,7 +16,7 @@ describe("nutrition targets API local preview", () => {
     }));
     expect(update.status).toBe(200);
     expect((await update.json()).targets.caloriesKcal.likely).toBe(3200);
-    const loaded = await GET();
+    const loaded = await GET(new Request("https://soma.example/api/nutrition-targets"));
     expect(loaded.status).toBe(200);
     const body = await loaded.json();
     expect(body.targets.proteinG.likely).toBe(170);

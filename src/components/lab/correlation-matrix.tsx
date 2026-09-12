@@ -4,12 +4,13 @@ import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
-import { isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation } from "@/domain/lab/matrix";
+import { isPersonalLabDisplayableRelation, isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
 import { effectText, outcomeExplanation, percentText, RelationDetail } from "./relation-detail";
 import { calculableRelations, compareInfluenceGroups, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
+import { useTemporalStabilityPreference } from "./personal-lab-preferences";
 
 export function periodLabel(period: AnalysisPeriod) {
   return period === "all" ? "Tout" : `${period} j`;
@@ -143,10 +144,14 @@ function strongestTimingText(lagDays: number) {
 }
 
 /** Details opened from a published finding must stay within the published relation set. */
-export function publishedRelationsForPair(relations: MatrixRelation[], relation: Pick<MatrixRelation, "predictorId" | "outcomeId">) {
+export function publishedRelationsForPair(
+  relations: MatrixRelation[],
+  relation: Pick<MatrixRelation, "predictorId" | "outcomeId">,
+  options: PersonalLabRelationDisplayOptions = {},
+) {
   return relations.filter((candidate) => candidate.predictorId === relation.predictorId
     && candidate.outcomeId === relation.outcomeId
-    && isPersonalLabPublishedRelation(candidate));
+    && isPersonalLabDisplayableRelation(candidate, options));
 }
 
 export type InfluenceExplanation = {
@@ -329,14 +334,16 @@ export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outc
   }, []);
 }
 
-function StrongestEffects({ relations, outcomes, onSelect, periodControl = null, standalone = false }: {
+function StrongestEffects({ relations, outcomes, onSelect, periodControl = null, filterControl = null, requireTemporalStability = true, standalone = false }: {
   relations: MatrixRelation[];
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
   onSelect: (relation: MatrixRelation) => void;
   periodControl?: ReactNode;
+  filterControl?: ReactNode;
+  requireTemporalStability?: boolean;
   standalone?: boolean;
 }) {
-  const meaningful = useMemo(() => selectMeaningfulRelations(relations.filter((relation) => isPersonalLabPublishedRelation(relation)), relations.length), [relations]);
+  const meaningful = useMemo(() => selectMeaningfulRelations(relations, relations.length, { requireTemporalStability }), [relations, requireTemporalStability]);
   const meaningfulGroups = useMemo(() => {
     const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; relations: MatrixRelation[] }>();
     for (const relation of meaningful) {
@@ -410,9 +417,9 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
       <div>
         {standalone ? <h2 id="strongest-effects-title">Effets les plus marquants</h2> : <h3 id="strongest-effects-title">Effets les plus marquants</h3>}
       </div>
-      {periodControl}
+      <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
     </header>
-    {!meaningful.length ? <p className="strongest-effects__empty" role="status">Aucune association n’est à la fois fiable et suffisamment marquée sur cette période.</p> : meaningfulGroups.map(([group, influences]) => {
+    {!meaningful.length ? <p className="strongest-effects__empty" role="status">Aucune association n’est à la fois fiable et suffisamment marquée{requireTemporalStability ? " et cohérente dans le temps" : ""} sur cette période.</p> : meaningfulGroups.map(([group, influences]) => {
       const groupId = group.replaceAll(" ", "-").toLowerCase();
       return <section className="strongest-effects__group" aria-labelledby={`strongest-${groupId}`} key={group}>
       <h4 id={`strongest-${groupId}`}>{group}</h4>
@@ -485,6 +492,7 @@ export function StrongestEffectsPanel() {
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
   const relationDetailRef = useRef<HTMLElement | null>(null);
+  const { requireTemporalStability, setRequireTemporalStability } = useTemporalStabilityPreference();
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod, force = false) => {
     if (!force && rowsByPeriod[nextPeriod]) return;
@@ -523,16 +531,33 @@ export function StrongestEffectsPanel() {
     void loadPeriod(nextPeriod);
   }
 
+  function toggleTemporalStability(next: boolean) {
+    setRequireTemporalStability(next);
+    setSelected(null);
+  }
+
   const rows = rowsByPeriod[period] ?? [];
   const relations = rows.flatMap((row) => row.relations);
   const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Période d’analyse">
     {strongestEffectPeriods.map((value) => <button type="button" aria-label={`Afficher les relations sur ${value === "all" ? "toute la période" : `${value} jours`}`} aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodDisplayLabel(value)}</button>)}
   </div>;
+  const filterControl = <label className="temporal-stability-toggle">
+    <input
+      type="checkbox"
+      checked={requireTemporalStability}
+      aria-describedby="temporal-stability-description"
+      onChange={(event) => toggleTemporalStability(event.target.checked)}
+    />
+    <span className="temporal-stability-toggle__copy">
+      <span>Stabilité dans le temps</span>
+      <span id="temporal-stability-description" className="temporal-stability-toggle__hint">{requireTemporalStability ? "Cochée : garde seulement les relations qui vont dans le même sens dans le temps." : "Désactivée : affiche aussi les relations fiables qui varient selon les périodes."}</span>
+    </span>
+  </label>;
 
   if (!outcomes.length || loadingPeriod === period || (loadError && !rowsByPeriod[period])) return <section className="strongest-effects-panel lab-entry__section" aria-labelledby="strongest-effects-loading-title" aria-busy={loadingPeriod !== null}>
     <header className="strongest-effects-panel__header">
       <h2 id="strongest-effects-loading-title">Effets les plus marquants</h2>
-      {periodControl}
+      <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
     </header>
     {loadError
       ? <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>
@@ -543,8 +568,10 @@ export function StrongestEffectsPanel() {
     <StrongestEffects
       relations={relations}
       outcomes={outcomes}
-      onSelect={(relation) => setSelected(publishedRelationsForPair(relations, relation))}
+      onSelect={(relation) => setSelected(publishedRelationsForPair(relations, relation, { requireTemporalStability }))}
       periodControl={periodControl}
+      filterControl={filterControl}
+      requireTemporalStability={requireTemporalStability}
       standalone
     />
     {loadingPeriod === period && <p className="strongest-effects-panel__state" role="status">Chargement des relations…</p>}

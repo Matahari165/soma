@@ -12,7 +12,7 @@ function logFailure(operation: "load" | "save") {
   console.error(`[api/nutrition-targets] ${operation} failed`);
 }
 
-export async function GET(request: Request = new Request("https://soma.local")) {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401, headers: noStore });
   try {

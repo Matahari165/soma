@@ -84,14 +84,25 @@ export function isPersonalLabMetricAllowed(metricId: string) {
 }
 
 /** Canonical publication gate for Personal Lab highlights, narratives, and graphs. */
-export function isPersonalLabPublishedRelation(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful" | "stable">) {
+export type PersonalLabRelationDisplayOptions = {
+  requireTemporalStability?: boolean;
+};
+
+export function isPersonalLabDisplayableRelation(
+  relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful" | "stable">,
+  options: PersonalLabRelationDisplayOptions = {},
+) {
   return isPersonalLabMetricAllowed(relation.predictorId)
     && isPersonalLabMetricAllowed(relation.outcomeId)
     && !relation.excluded
     && relation.featureEligible
     && relation.qValue < .05
     && relation.practicallyMeaningful
-    && relation.stable;
+    && (options.requireTemporalStability === false || relation.stable);
+}
+
+export function isPersonalLabPublishedRelation(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "excluded" | "featureEligible" | "qValue" | "practicallyMeaningful" | "stable">) {
+  return isPersonalLabDisplayableRelation(relation);
 }
 
 /** @deprecated Use isPersonalLabPublishedRelation for anything that is rendered as a finding. */
@@ -513,14 +524,14 @@ export const PRACTICAL_EFFECT_THRESHOLDS: Readonly<Record<string, number>> = {
   recovery: 3,
 };
 
-export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8) {
+export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8, options: PersonalLabRelationDisplayOptions = {}) {
   const eligibleByPair = new Map<string, MatrixRelation[]>();
   const stronger = (first: MatrixRelation, second: MatrixRelation) =>
     second.practicalRatio - first.practicalRatio
     || first.qValue - second.qValue
     || second.sampleSize - first.sampleSize;
   for (const relation of relations) {
-    if (!isPersonalLabPublishedRelation(relation)) continue;
+    if (!isPersonalLabDisplayableRelation(relation, options)) continue;
     const key = `${relation.period}:${relation.predictorId}:${relation.outcomeId}`;
     eligibleByPair.set(key, [...(eligibleByPair.get(key) ?? []), relation]);
   }

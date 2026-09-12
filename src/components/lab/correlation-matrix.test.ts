@@ -75,6 +75,8 @@ describe("relationship matrix motion helpers", () => {
     const published = { ...base, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01 };
     const stale = { ...published, lagDays: 1, qValue: .2 };
     expect(publishedRelationsForPair([published, stale], published)).toEqual([published]);
+    expect(publishedRelationsForPair([{ ...published, stable: false }], published, { requireTemporalStability: false })).toHaveLength(1);
+    expect(publishedRelationsForPair([{ ...published, stable: false }], published)).toEqual([]);
   });
 
   it("shows the absolute effect when a relative percentage is unavailable", () => {

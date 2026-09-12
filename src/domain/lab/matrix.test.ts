@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabFeatureEligible, isPersonalLabMetricAllowed, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabDisplayableRelation, isPersonalLabFeatureEligible, isPersonalLabMetricAllowed, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
 
 function date(index: number) {
   const value = new Date("2025-01-01T12:00:00Z");
@@ -46,6 +46,19 @@ describe("Personal Lab raw within-person relations", () => {
     expect(oneMatchingBlock.stability).toMatchObject({ chronologicalBlocks: 1, directionHeldInBlocks: false });
     expect(oneMatchingBlock.stable).toBe(false);
     expect(isPersonalLabFeatureEligible(oneMatchingBlock)).toBe(false);
+  });
+
+  it("can relax only the chronological stability gate", () => {
+    const eligible = {
+      predictorId: "steps", outcomeId: "hrv", excluded: false, featureEligible: true,
+      qValue: .01, practicallyMeaningful: true, stable: false,
+    } as const;
+
+    expect(isPersonalLabDisplayableRelation(eligible)).toBe(false);
+    expect(isPersonalLabDisplayableRelation(eligible, { requireTemporalStability: false })).toBe(true);
+    expect(isPersonalLabDisplayableRelation({ ...eligible, qValue: .05 }, { requireTemporalStability: false })).toBe(false);
+    expect(isPersonalLabDisplayableRelation({ ...eligible, practicallyMeaningful: false }, { requireTemporalStability: false })).toBe(false);
+    expect(isPersonalLabDisplayableRelation({ ...eligible, excluded: true }, { requireTemporalStability: false })).toBe(false);
   });
 
   it("keeps missing values absent and requires ten numeric pairs", () => {
