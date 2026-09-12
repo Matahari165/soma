@@ -809,6 +809,7 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
 .journal-field__emoji { display: grid; width: 24px; height: 28px; place-items: center; font-size: 1.12rem; line-height: 1; }
 .journal-field__label { min-width: 0; color: var(--ink-soft); font-size: .7rem; }
 .journal-field__label-text { display: block; overflow-wrap: anywhere; line-height: 1.16; white-space: normal; }
+.journal-field__origin { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--lab-signal); font-family: var(--font-soma-mono), monospace; font-size: .58rem; font-weight: 550; letter-spacing: .02em; line-height: 1.2; }
 .journal-field > .journal-choice { width: 92px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .journal-field > .journal-breakfast-actions { display: grid; width: 148px; justify-items: stretch; gap: 6px; }
 .journal-breakfast-actions > .journal-choice { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }

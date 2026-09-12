@@ -91,6 +91,6 @@ describe("automatic light breakfast", () => {
       mealRecordsByDate: new Map(),
       explicitlyNoBreakfastByDate: new Set(["2026-09-01"]),
       existingEntries: [],
-    })).toEqual([{ variableId: "light-breakfast", entryDate: "2026-09-01", value: true }]);
+    })).toEqual([{ variableId: "light-breakfast", entryDate: "2026-09-01", value: true, source: "automatic" }]);
   });
 });

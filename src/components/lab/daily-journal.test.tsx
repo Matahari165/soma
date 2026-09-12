@@ -85,6 +85,21 @@ describe("journal motion states", () => {
     expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
   });
 
+  it("marks an automatic value as recorded and identifies its origin", () => {
+    const bedtime = variables.find((variable) => variable.name === "Bedtime");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: bedtime ? [{ variableId: bedtime.id, entryDate: todayDate, value: "22:40", source: "automatic" }] : [],
+      days: [],
+      todayDate,
+    }));
+
+    expect(html).toContain('data-source="automatic"');
+    expect(html).toContain('aria-label="Heure du coucher: Détectée automatiquement"');
+    expect(html).toContain("Détectée automatiquement");
+    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Heure du coucher"');
+  });
+
   it("shows the achievement percentage without changing the field state", () => {
     const vacation = variables.find((variable) => variable.name === "Vacation");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
@@ -137,7 +152,7 @@ describe("journal motion states", () => {
     const addedSugar = dayVariables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
-      entries: [...dayVariables.flatMap((variable) => variable.defaultValue === null ? [] : [{ variableId: variable.id, entryDate: todayDate, value: variable.defaultValue }]), ...(addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 0 as const }] : [])],
+      entries: [...dayVariables.flatMap((variable) => variable.defaultValue === null ? [] : [{ variableId: variable.id, entryDate: todayDate, value: variable.defaultValue }]), ...(addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 0 as const }] : []), ...(variables.find((variable) => variable.name === "Running") ? [{ variableId: variables.find((variable) => variable.name === "Running")!.id, entryDate: todayDate, value: true as const, source: "automatic" as const }] : [])],
       days: [],
       todayDate,
     }));

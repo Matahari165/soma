@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, LoaderCircle } from "lucide-react";
+import { Check, ImagePlus, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -239,7 +239,7 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
     </label>
     <label><span>Émoji</span><input aria-label="Émoji de la mesure" maxLength={8} value={emoji} onChange={(event) => onEmojiChange(event.target.value)} /></label>
     <label><span>Type</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Type de mesure" value={variableType} onChange={(event) => onTypeChange(event.target.value as JournalVariableType)}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale", variableType].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-    <label><span>Capture</span><select aria-label="Source de la mesure" value={captureMode} onChange={(event) => onCaptureModeChange(event.target.value as JournalCaptureMode)}><option value="manual">Manuelle</option><option value="automatic">Google Health</option></select></label>
+    <label><span>Capture</span><select aria-label="Source de la mesure" value={captureMode} onChange={(event) => onCaptureModeChange(event.target.value as JournalCaptureMode)}><option value="manual">Manuelle</option><option value="automatic">Automatique</option></select></label>
     {captureMode === "automatic" && <label><span>Signal de santé</span><select aria-label="Signal de santé automatique" value={automaticMetricId ?? ""} onChange={(event) => onAutomaticMetricChange(event.target.value || null)}><option value="">Choisir un signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
     <label><span>Cadence cible</span><select aria-label="Cadence de la mesure" value={trackingCadence} onChange={(event) => onTrackingCadenceChange(event.target.value as JournalTrackingCadence)}><option value="daily">Chaque jour</option><option value="weekly">Une fois par semaine</option></select></label>
     <label><span>Moment</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Moment de la mesure" value={dayPeriod === "sleep" ? "evening" : dayPeriod} onChange={(event) => onDayPeriodChange(event.target.value as JournalDayPeriod)}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{dayPeriodLabel(period.id)}</option>)}</select></label>
@@ -373,7 +373,7 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
         <label><span>Capture</span><select aria-label="Source de la mesure" value={draft.captureMode} onChange={(event) => {
           const captureMode = event.target.value as JournalCaptureMode;
           setDraft((current) => ({ ...current, captureMode, automaticMetricId: captureMode === "manual" ? null : current.automaticMetricId, defaultValue: captureMode === "automatic" ? "" : current.defaultValue }));
-        }}><option value="manual">Manuelle</option><option value="automatic">Google Health</option></select></label>
+        }}><option value="manual">Manuelle</option><option value="automatic">Automatique</option></select></label>
         {draft.captureMode === "automatic" && <label><span>Signal de santé</span><select aria-label="Signal de santé automatique" value={draft.automaticMetricId ?? ""} onChange={(event) => {
           const automaticMetricId = event.target.value || null;
           const source = journalAutomaticSource(automaticMetricId);
@@ -397,14 +397,14 @@ function VariableManager({ variables, open, onClose }: { variables: JournalVaria
   </section>;
 }
 
-function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achievement, onChange, onCommit, feedbackToken, disabled, presentation = "default" }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; achievement?: JournalAchievement; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab" }) {
-  const stateLabel = confirmed ? "Enregistrée" : skipped ? "Non renseignée" : "À confirmer";
-  const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
+function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, automatic = false, achievement, onChange, onCommit, feedbackToken, disabled, presentation = "default" }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; automatic?: boolean; achievement?: JournalAchievement; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab" }) {
+  const stateLabel = confirmed ? (automatic ? "Détectée automatiquement" : "Enregistrée") : skipped ? "Non renseignée" : "À confirmer";
+  const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", automatic ? "journal-field--automatic" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
   const achievementLabel = achievement?.percentage === null ? "Progression —" : achievement ? `Progression ${achievement.percentage}%` : null;
   const label = journalVariableLabel(variable);
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}</span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
-  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={`${label}: ${stateLabel}`}>
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}</span>{automatic && <span className="journal-field__origin"><Check size={13} strokeWidth={2.5} aria-hidden="true" />Détectée automatiquement</span>}{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
+  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} data-source={automatic ? "automatic" : "manual"} aria-label={`${label}: ${stateLabel}`}>
     {canConfirmDisplayedValue
       ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${label}`} onClick={() => onChange(value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
@@ -464,6 +464,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const [feedback, setFeedback] = useState<{ fieldId: string; token: number } | null>(null);
   const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
   const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
+  const [manualOverrideKeys, setManualOverrideKeys] = useState<Set<string>>(() => new Set());
   const feedbackSequence = useRef(0);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNumericFeedback = useRef(new Set<string>());
@@ -471,8 +472,17 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const validated = day?.status === "validated" || validatedDate === entryDate;
   const validating = validatingDate === entryDate;
   const values = draftsByDate[entryDate] ?? journalValuesForDate(activeVariables, entries, days, entryDate);
-  const recorded = recordedByDate[entryDate] ?? new Set<string>();
-  const skipped = skippedByDate[entryDate] ?? new Set<string>();
+  const automaticIdsByDate = useMemo(() => {
+    const result: Record<string, Set<string>> = {};
+    for (const entry of entries) {
+      if (entry.source !== "automatic") continue;
+      (result[entry.entryDate] ??= new Set()).add(entry.variableId);
+    }
+    return result;
+  }, [entries]);
+  const automaticIds = useMemo(() => new Set([...automaticIdsByDate[entryDate] ?? []].filter((id) => !manualOverrideKeys.has(`${entryDate}:${id}`))), [automaticIdsByDate, entryDate, manualOverrideKeys]);
+  const recorded = useMemo(() => new Set([...(recordedByDate[entryDate] ?? []), ...automaticIds]), [automaticIds, recordedByDate, entryDate]);
+  const skipped = useMemo(() => new Set([...(skippedByDate[entryDate] ?? [])].filter((id) => !automaticIds.has(id))), [automaticIds, skippedByDate, entryDate]);
 
   useEffect(() => () => {
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
@@ -506,7 +516,11 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   }
 
   async function persist(date: string, mode: "draft" | "validate", draftValues: Record<string, DraftValue>, changedVariableId?: string) {
-    const included = mode === "validate" ? new Set([...(recordedByDate[date] ?? []), ...(skippedByDate[date] ?? [])]) : undefined;
+    const automaticIdsForDate = automaticIdsByDate[date] ?? new Set<string>();
+    const included = mode === "validate" ? new Set([
+      ...(recordedByDate[date] ?? []),
+      ...(skippedByDate[date] ?? []),
+    ].filter((id) => !automaticIdsForDate.has(id) || manualOverrideKeys.has(`${date}:${id}`))) : undefined;
     const entriesToSave = journalEntriesForSave(activeVariables.map((variable) => variable.id), draftValues, mode, changedVariableId, included);
     const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: entriesToSave }) });
     const result = await response.json();
@@ -610,6 +624,9 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       else nextSkipped.delete(variableId);
       return { ...current, [date]: nextSkipped };
     });
+    if (automaticIdsByDate[date]?.has(variableId)) {
+      setManualOverrideKeys((current) => new Set(current).add(`${date}:${variableId}`));
+    }
     if (variable && textNumericTypes.has(variable.variableType)) pendingNumericFeedback.current.add(variableId);
     else if (variable) triggerFeedback(variableId);
     queueDraft(date, variableId, next[date]);
@@ -642,7 +659,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       const sectionIndex = isPersonalLab ? personalLabIndexes[section.id] : undefined;
       return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complète" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
       <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirmer toutes les valeurs affichées pour ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3></header>
-      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
+      <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} automatic={automaticIds.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>;
     })}</div> : <p className="journal-empty">Ajoute ta première mesure suivie ci-dessous.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}

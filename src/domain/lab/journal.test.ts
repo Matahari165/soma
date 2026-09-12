@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalAutomaticDefaultMatches, journalAutomaticMetricIds, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -127,13 +127,17 @@ describe("journal values", () => {
       "Vacation",
       "Illness",
       "Breakfast",
+      "Light breakfast",
       "WHM",
       "Caffeine",
       "Added sugar",
       "Masturbation",
+      "Running",
       "Alcohol",
       "Strength training",
       "Dinner end time",
+      "Coucher avant 23 h",
+      "Bedtime",
       "Magnesium",
       "Breathing exercise",
       "Reading for 20 minutes",
@@ -141,8 +145,16 @@ describe("journal values", () => {
     ]);
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.unit).toBe("mg");
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.dayPeriod).toBe("day");
-    expect(defaultJournalVariables.map((item) => String(item.name))).not.toContain("Bedtime");
+    expect(defaultJournalVariables.map((item) => String(item.name))).toContain("Bedtime");
     expect(journalVariableSuggestions.map((item) => item.name)).toContain("Late meal");
+  });
+
+  it("configures every automatic journal source as a starter field", () => {
+    expect(defaultJournalVariables.flatMap((item) => item.automaticMetricId ? [item.automaticMetricId] : []).sort()).toEqual([...journalAutomaticMetricIds].sort());
+    expect(journalAutomaticDefaultMatches(
+      { name: "Début du sommeil détecté", automaticMetricId: null },
+      { name: "Bedtime", automaticMetricId: "bedtime" },
+    )).toBe(true);
   });
 
   it("groups starter fields in chronological day periods", () => {

@@ -103,7 +103,7 @@ export function automaticJournalEntriesFor(input: {
         input.explicitlyNoBreakfastByDate?.has(date),
         input.dailyTargetKcal,
       );
-      if (value !== null) entries.push({ variableId: variable.id, entryDate: date, value });
+      if (value !== null) entries.push({ variableId: variable.id, entryDate: date, value, source: "automatic" });
     }
   }
 

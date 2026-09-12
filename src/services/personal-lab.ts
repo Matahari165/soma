@@ -1,5 +1,5 @@
 import type { LabObservation } from "@/domain/lab/observation";
-import { automaticJournalEntriesFor } from "@/domain/lab/journal-automatic";
+import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
 import { journalAchievementsFor, type JournalAchievement } from "@/domain/lab/journal-achievement";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
@@ -822,16 +822,22 @@ function buildOverview(input: {
   };
 }
 
-function buildJournalView(timeZone: string, journal: {
+type PersonalLabJournalData = {
   variables: JournalVariable[];
   entries: JournalEntry[];
   days: import("@/domain/lab/journal").JournalDay[];
-}, meals: readonly ConfirmedMealRecord[] = []): PersonalLabJournal {
+};
+
+function journalWithAutomaticEntries(journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = []): PersonalLabJournalData {
+  const mealAddedSugarByDate = new Map(aggregateConfirmedMeals(meals).map((day) => [day.date, day.addedSugarG]));
+  const automaticEntries = automaticJournalEntriesFor({ variables: journal.variables, health, mealAddedSugarByDate, existingEntries: journal.entries });
+  return { ...journal, entries: [...journal.entries, ...automaticEntries] };
+}
+
+function buildJournalView(timeZone: string, journal: PersonalLabJournalData, meals: readonly ConfirmedMealRecord[] = [], health: readonly AutomaticJournalHealthDay[] = []): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
   const earliestDate = addDays(todayDate, -6);
-  const mealAddedSugarByDate = new Map(aggregateConfirmedMeals(meals).map((day) => [day.date, day.addedSugarG]));
-  const automaticEntries = automaticJournalEntriesFor({ variables: journal.variables, health: [], mealAddedSugarByDate, existingEntries: journal.entries });
-  const entries = [...journal.entries, ...automaticEntries];
+  const entries = journalWithAutomaticEntries(journal, meals, health).entries;
   const achievements = journalAchievementsFor({ variables: journal.variables, entries, days: journal.days, todayDate });
   return {
     todayDate,
@@ -862,6 +868,7 @@ function buildSnapshot(input: {
   requestedPeriods?: AnalysisPeriod[];
   cachedMatrix?: PersonalLabSnapshot["matrix"];
 }) {
+  const journal = journalWithAutomaticEntries(input.journal, input.meals, input.health);
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
   const healthByDate = new Map(input.health.map((day) => [day.metric_date, day]));
   const metricPreferences = new Map((input.metricPreferences ?? []).map((item) => [item.metric_id, item.role]));
@@ -869,9 +876,9 @@ function buildSnapshot(input: {
   const todayDate = dateInTimezone(input.timeZone);
   const today = buildTodayData(input);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
-  const validatedDates = new Set(input.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
+  const validatedDates = new Set(journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate));
   const mealSeries = mealDailySeries(input.meals ?? []);
-  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: input.journal.variables, entries: input.journal.entries, meals: input.meals, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
+  const matrix = input.cachedMatrix ?? buildCorrelationMatrix({ health: input.health, observations, variables: journal.variables, entries: journal.entries, meals: input.meals, validatedDates, metricPreferences, metricDefinitions, timeZone: input.timeZone, requestedPeriods: input.requestedPeriods });
   const metricRegistry = metricDefinitions.filter((metric) => isPersonalLabMetricAllowed(metric.id)).map((metric) => {
     const sourceDays = new Map<string, number>();
     const recordedDays = isMealMetric(metric.id)
@@ -979,10 +986,10 @@ function buildSnapshot(input: {
     greetingName: input.user.displayName,
     checkin,
     journal: {
-      variables: input.journal.variables,
-      entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -6) && entry.entryDate <= todayDate),
-      days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -6) && day.entryDate <= todayDate),
-      achievements: journalAchievementsFor({ variables: input.journal.variables, entries: input.journal.entries, days: input.journal.days, todayDate }),
+      variables: journal.variables,
+      entries: journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -6) && entry.entryDate <= todayDate),
+      days: journal.days.filter((day) => day.entryDate >= addDays(todayDate, -6) && day.entryDate <= todayDate),
+      achievements: journalAchievementsFor({ variables: journal.variables, entries: journal.entries, days: journal.days, todayDate }),
     },
     today,
     aiNarrative,
@@ -996,7 +1003,7 @@ function buildSnapshot(input: {
       healthDays: input.health.length,
       calendarDays: input.calendars.filter((day) => day.deep_work_minutes > 0).length,
       checkinDays: input.checkins.length,
-      journalDays: new Set(input.journal.entries.map((entry) => entry.entryDate)).size,
+      journalDays: new Set(journal.entries.map((entry) => entry.entryDate)).size,
       pairedDeepWorkDays: observations.filter((day) => day.sleepMinutes !== null && day.deepWorkMinutes !== null).length,
       rangeDays: observations.length,
     },
@@ -1019,7 +1026,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     const targetsPromise = loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS);
     return {
       overview: targetsPromise.then((targets) => buildOverview({ ...input, targets })),
-      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals)),
+      journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals, input.health)),
       analysis: includeAnalysis ? targetsPromise.then((targets) => buildSnapshot({ ...input, targets })) : null,
     };
   }

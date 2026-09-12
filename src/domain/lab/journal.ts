@@ -65,7 +65,8 @@ export type JournalVariable = {
 };
 
 export type JournalEntryValue = boolean | number | string;
-export type JournalEntry = { variableId: string; entryDate: string; value: JournalEntryValue };
+export type JournalEntrySource = "manual" | "automatic";
+export type JournalEntry = { variableId: string; entryDate: string; value: JournalEntryValue; source?: JournalEntrySource };
 export type JournalDraft = Record<string, JournalEntryValue | null>;
 export type JournalDraftsByDate = Record<string, JournalDraft>;
 export type JournalDayStatus = "draft" | "validated";
@@ -73,13 +74,23 @@ export type JournalDay = { entryDate: string; status: JournalDayStatus; validate
 
 export type JournalDayPeriod = "context" | "morning" | "day" | "evening" | "sleep" | "other";
 
-function normalizedJournalVariableName(name: string) {
+export function normalizedJournalVariableName(name: string) {
   return name.trim().toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 export function isAddedSugarVariable(variable: Pick<JournalVariable, "name" | "automaticMetricId">) {
   const name = normalizedJournalVariableName(variable.name);
   return variable.automaticMetricId === ADDED_SUGAR_AUTOMATIC_METRIC_ID || name === "added sugar" || name === "sucres ajoutes";
+}
+
+export function journalAutomaticDefaultMatches(variable: Pick<JournalVariable, "name" | "automaticMetricId">, definition: Pick<JournalVariable, "name" | "automaticMetricId">) {
+  const automaticMetricId = journalAutomaticMetricId(definition);
+  if (!automaticMetricId) return false;
+  if (journalAutomaticMetricId(variable) === automaticMetricId) return true;
+  if (automaticMetricId === ADDED_SUGAR_AUTOMATIC_METRIC_ID && isAddedSugarVariable(variable)) return true;
+  const sourceLabel = journalAutomaticSource(automaticMetricId)?.label;
+  const variableName = normalizedJournalVariableName(variable.name);
+  return [definition.name, sourceLabel].filter((name): name is string => Boolean(name)).some((name) => normalizedJournalVariableName(name) === variableName);
 }
 
 /** Values at or below the tolerance are recorded as the achieved 0 g goal. */
@@ -287,13 +298,17 @@ export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
   { name: "Vacation", emoji: "🏖️", variableType: "boolean", unit: null, options: [], position: 0, dayPeriod: "context", defaultValue: false },
   { name: "Illness", emoji: "🤒", variableType: "boolean", unit: null, options: [], position: 5, dayPeriod: "context", defaultValue: false },
   { name: "Breakfast", emoji: "🍳", variableType: "boolean", unit: null, options: [], position: 10, dayPeriod: "morning", defaultValue: false },
+  { name: "Light breakfast", emoji: "🥣", variableType: "boolean", unit: null, options: [], position: 15, dayPeriod: "morning", defaultValue: null, captureMode: "automatic", automaticMetricId: LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, trackingCadence: "daily" },
   { name: "WHM", emoji: "🫁", variableType: "count", unit: "rounds", options: [], position: 20, dayPeriod: "morning", defaultValue: 0 },
   { name: "Caffeine", emoji: "☕", variableType: "number", unit: "mg", options: [], position: 30, dayPeriod: "day", defaultValue: 0 },
   { name: "Added sugar", emoji: "🍬", variableType: "number", unit: "g", options: [], position: 40, dayPeriod: "day", defaultValue: null, captureMode: "automatic", automaticMetricId: ADDED_SUGAR_AUTOMATIC_METRIC_ID, trackingCadence: "daily" },
   { name: "Masturbation", emoji: "✋", variableType: "boolean", unit: null, options: [], position: 50, dayPeriod: "day", defaultValue: false },
+  { name: "Running", emoji: "🏃", variableType: "boolean", unit: null, options: [], position: 55, dayPeriod: "day", defaultValue: null, captureMode: "automatic", automaticMetricId: "run_day", trackingCadence: "weekly" },
   { name: "Alcohol", emoji: "🍷", variableType: "count", unit: "drinks", options: [], position: 60, dayPeriod: "evening", defaultValue: 0 },
   { name: "Strength training", emoji: "🏋️", variableType: "boolean", unit: null, options: [], position: 65, dayPeriod: "day", defaultValue: false },
   { name: "Dinner end time", emoji: "🍽️", variableType: "time", unit: null, options: [], position: 70, dayPeriod: "evening", defaultValue: null },
+  { name: "Coucher avant 23 h", emoji: "🌙", variableType: "boolean", unit: null, options: [], position: 75, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime_before_23", trackingCadence: "daily" },
+  { name: "Bedtime", emoji: "🌘", variableType: "time", unit: null, options: [], position: 78, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime", trackingCadence: "daily" },
   { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "morning", defaultValue: 0 },
   { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },
   { name: "Reading for 20 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },

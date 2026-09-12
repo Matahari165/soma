@@ -2,7 +2,7 @@ import "server-only";
 
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
-import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, isAddedSugarVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, isAddedSugarVariable, journalAutomaticDefaultMatches, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 import { explicitNoBreakfastByDate, mealRecordsByDate as mealRecordsByDateForJournal } from "@/domain/lab/journal-meal-automatic";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadConfirmedMealRecords } from "@/services/meals";
@@ -53,17 +53,25 @@ export function variableFromRow(row: JournalVariableRow): JournalVariable {
 
 function entryFromRow(row: JournalEntryRow): JournalEntry | null {
   if (typeof row.value !== "string" && typeof row.value !== "number" && typeof row.value !== "boolean") return null;
-  return { variableId: row.variable_id, entryDate: row.entry_date, value: row.value as JournalEntryValue };
+  return { variableId: row.variable_id, entryDate: row.entry_date, value: row.value as JournalEntryValue, source: "manual" };
 }
 
 export async function ensureJournalVariables(userId: string) {
   const admin = createCloudflareAdminClient();
-  const { data: existing, error } = await admin.from("journal_variables").select("name").eq("user_id", userId);
+  const { data: existing, error } = await admin.from("journal_variables").select("id,name,is_active,variable_type,unit,default_value,day_period,capture_mode,automatic_metric_id,tracking_cadence").eq("user_id", userId);
   if (error) throw new Error("Your journal variables could not be loaded.");
-  const existingNames = new Set((existing ?? []).map((variable) => variable.name.toLocaleLowerCase("en")));
-  const missing = defaultJournalVariables.filter((variable) => !existingNames.has(variable.name.toLocaleLowerCase("en")));
-  if (!missing.length) return;
-  const { error: insertError } = await admin.from("journal_variables").insert(missing.map((variable) => ({
+  const existingRows = (existing ?? []) as Array<Pick<JournalVariableRow, "id" | "name" | "is_active" | "variable_type" | "unit" | "default_value" | "day_period" | "capture_mode" | "automatic_metric_id" | "tracking_cadence">>;
+  const matchesDefinition = (row: typeof existingRows[number], definition: typeof defaultJournalVariables[number]) => journalAutomaticDefaultMatches(
+    { name: row.name, automaticMetricId: typeof row.automatic_metric_id === "string" ? row.automatic_metric_id : null },
+    { name: definition.name, automaticMetricId: definition.automaticMetricId ?? null },
+  );
+  const missing = defaultJournalVariables.filter((definition) => !existingRows.some((row) => (
+    definition.automaticMetricId
+      ? matchesDefinition(row, definition)
+      : row.name.toLocaleLowerCase("en") === definition.name.toLocaleLowerCase("en")
+  )));
+  if (missing.length) {
+    const { error: insertError } = await admin.from("journal_variables").insert(missing.map((variable) => ({
     user_id: userId,
     name: variable.name,
     variable_type: variable.variableType,
@@ -77,8 +85,37 @@ export async function ensureJournalVariables(userId: string) {
     automatic_metric_id: variable.automaticMetricId ?? null,
     tracking_cadence: variable.trackingCadence ?? "daily",
     is_active: true,
-  })));
-  if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
+    })));
+    if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
+  }
+
+  const automaticUpdates = existingRows.flatMap((row) => {
+    const definition = defaultJournalVariables.find((candidate) => candidate.automaticMetricId && matchesDefinition(row, candidate));
+    if (!definition || !definition.automaticMetricId) return [];
+    const target = {
+      variable_type: definition.variableType,
+      unit: definition.unit,
+      default_value: null,
+      day_period: definition.dayPeriod,
+      capture_mode: "automatic",
+      automatic_metric_id: definition.automaticMetricId,
+      tracking_cadence: definition.trackingCadence ?? journalAutomaticSource(definition.automaticMetricId)?.defaultTrackingCadence ?? "daily",
+      is_active: true,
+    } as const;
+    const changed = row.variable_type !== target.variable_type
+      || row.unit !== target.unit
+      || row.default_value !== target.default_value
+      || row.day_period !== target.day_period
+      || row.capture_mode !== target.capture_mode
+      || row.automatic_metric_id !== target.automatic_metric_id
+      || row.tracking_cadence !== target.tracking_cadence
+      || row.is_active !== target.is_active;
+    return changed ? [{ id: row.id, target }] : [];
+  });
+  for (const update of automaticUpdates) {
+    const { error: updateError } = await admin.from("journal_variables").update(update.target).eq("id", update.id).eq("user_id", userId);
+    if (updateError) throw new Error("Your automatic journal variables could not be configured.");
+  }
 }
 
 export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[]; dailyTargetKcal?: number | null } = {}) {

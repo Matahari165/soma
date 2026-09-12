@@ -52,8 +52,8 @@ describe("automatic journal values", () => {
       mealAddedSugarByDate: new Map([["2026-09-01", 3], ["2026-09-02", 5], ["2026-09-03", null]]),
       existingEntries: [],
     })).toEqual([
-      { variableId: sugar.id, entryDate: "2026-09-01", value: 0 },
-      { variableId: sugar.id, entryDate: "2026-09-02", value: 5 },
+      { variableId: sugar.id, entryDate: "2026-09-01", value: 0, source: "automatic" },
+      { variableId: sugar.id, entryDate: "2026-09-02", value: 5, source: "automatic" },
     ]);
   });
 });
