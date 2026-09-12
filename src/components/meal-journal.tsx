@@ -39,9 +39,12 @@ import {
 } from "@/domain/meal-record";
 import {
   DEFAULT_NUTRITION_TARGETS,
+  mergeDailyNutritionTargets,
+  nutritionTargetsForEffort,
   loadNutritionTargets,
   parseNutritionTargets,
   saveNutritionTargets,
+  type EffortTargetContext,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
 import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
@@ -96,6 +99,9 @@ type Props = {
   historyDays?: number;
   variant?: "page" | "home" | "lab" | "meals";
   publishMealTotals?: boolean;
+  initialTargets?: NutritionTargets;
+  initialEffectiveTargets?: NutritionTargets;
+  initialEffortTargetContext?: EffortTargetContext;
 };
 
 type LoadState = "loading" | "ready" | "error";
@@ -940,14 +946,15 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled }: { onAddMeal: () => void; addDisabled: boolean }) {
+function MealLabHeader({ onAddMeal, addDisabled, calorieTarget }: { onAddMeal: () => void; addDisabled: boolean; calorieTarget: number | null }) {
   return <header className={styles.labHeader}>
     <h2 id="meal-journal-title" className="sr-only">Repas</h2>
+    <span className={styles.labTarget}>{calorieTarget === null ? "Cible indisponible" : `Cible · ${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal`}</span>
     <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>
   </header>;
 }
 
-export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false }: Props) {
+export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -962,12 +969,17 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const [fileError, setFileError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<Partial<Record<MealSlot, string | null>>>({});
   const [savingSlot, setSavingSlot] = useState<MealSlot | null>(null);
-  const [targets, setTargets] = useState<NutritionTargets>(DEFAULT_NUTRITION_TARGETS);
+  const [targets, setTargets] = useState<NutritionTargets>(initialTargets ?? DEFAULT_NUTRITION_TARGETS);
+  const [effectiveTargets, setEffectiveTargets] = useState<NutritionTargets>(initialEffectiveTargets ?? initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const [targetsExpanded, setTargetsExpanded] = useState(false);
   const [entryRequest, setEntryRequest] = useState<{ slot: MealSlot; sequence: number } | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const objectUrls = useRef(new Set<string>());
   const targetSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const targetBaseRef = useRef(initialTargets ?? DEFAULT_NUTRITION_TARGETS);
+  const effectiveTargetsRef = useRef(initialEffectiveTargets ?? initialTargets ?? DEFAULT_NUTRITION_TARGETS);
+  const effortTargetContextRef = useRef<EffortTargetContext>(initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null });
+  const targetStateDateRef = useRef(initialTargets ? initialDate : null);
   const loadRequestId = useRef(0);
   const mutationInFlight = useRef(false);
   const ratingSaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
@@ -1042,32 +1054,69 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
-  useEffect(() => {
-    const localTargets = loadNutritionTargets();
-    setTargets(localTargets);
-    const controller = new AbortController();
-    void fetch("/api/nutrition-targets", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Les objectifs nutritionnels ne sont pas disponibles.");
-        const parsed = parseNutritionTargets(body.targets);
-        if (parsed) {
-          const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
-          if (body.persisted === false && hasCustomizedLocalTargets) {
-            const migrated = await fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: localTargets }), signal: controller.signal });
-            if (!migrated.ok) throw new Error("Les objectifs locaux n’ont pas pu être synchronisés.");
-            setTargets(localTargets);
-            return;
-          }
-          setTargets(parsed);
-          saveNutritionTargets(parsed);
-        }
-      })
-      .catch((error) => {
-        if (error instanceof Error && error.name !== "AbortError") setTargetError("Objectifs locaux utilisés : la synchronisation Soma est indisponible.");
-      });
-    return () => controller.abort();
+  const applyLoadedTargets = useCallback((nextBase: NutritionTargets, nextEffective: NutritionTargets, nextContext: EffortTargetContext, targetDate: string) => {
+    const baseUnchanged = JSON.stringify(targetBaseRef.current) === JSON.stringify(nextBase);
+    const merged = mergeDailyNutritionTargets({
+      current: effectiveTargetsRef.current,
+      next: nextEffective,
+      sameDay: targetStateDateRef.current === targetDate,
+      baseUnchanged,
+    });
+    targetStateDateRef.current = targetDate;
+    targetBaseRef.current = nextBase;
+    effortTargetContextRef.current = nextContext;
+    effectiveTargetsRef.current = merged;
+    setTargets(nextBase);
+    setEffectiveTargets(merged);
   }, []);
+
+  const refreshTargets = useCallback(async (signal?: AbortSignal) => {
+    const localTargets = loadNutritionTargets();
+    if (targetStateDateRef.current !== selectedDate) {
+      targetStateDateRef.current = selectedDate;
+      targetBaseRef.current = localTargets;
+      effortTargetContextRef.current = { effortScore: null, effortCoverage: null, averageEffortScore: null };
+      effectiveTargetsRef.current = localTargets;
+      setTargets(localTargets);
+      setEffectiveTargets(localTargets);
+    }
+    const url = `/api/nutrition-targets?date=${encodeURIComponent(selectedDate)}`;
+    const response = await fetch(url, { cache: "no-store", signal });
+    const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Les objectifs nutritionnels ne sont pas disponibles.");
+    const parsed = parseNutritionTargets(body.targets);
+    if (!parsed) return;
+    const numberOrNull = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
+    const context: EffortTargetContext = {
+      effortScore: numberOrNull(body.effortScore),
+      effortCoverage: numberOrNull(body.effortCoverage),
+      averageEffortScore: numberOrNull(body.averageEffortScore),
+    };
+    const serverEffective = parseNutritionTargets(body.effectiveTargets) ?? nutritionTargetsForEffort(parsed, context);
+    const hasCustomizedLocalTargets = JSON.stringify(localTargets) !== JSON.stringify(DEFAULT_NUTRITION_TARGETS);
+    if (body.persisted === false && hasCustomizedLocalTargets) {
+      const migrated = await fetch("/api/nutrition-targets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: localTargets }), signal });
+      if (!migrated.ok) throw new Error("Les objectifs locaux n’ont pas pu être synchronisés.");
+      applyLoadedTargets(localTargets, nutritionTargetsForEffort(localTargets, context), context, selectedDate);
+      return;
+    }
+    applyLoadedTargets(parsed, serverEffective, context, selectedDate);
+    saveNutritionTargets(parsed);
+  }, [applyLoadedTargets, selectedDate]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshTargets(controller.signal).catch((error) => {
+      if (error instanceof Error && error.name !== "AbortError") setTargetError("Objectifs locaux utilisés : la synchronisation Soma est indisponible.");
+    });
+    const interval = window.setInterval(() => {
+      void refreshTargets().catch(() => undefined);
+    }, 60_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, [refreshTargets]);
 
   useEffect(() => () => {
     if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
@@ -1076,13 +1125,13 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const currentDayTotal = data?.date === selectedDate ? sumLikelyDay(data.meals) : null;
   const emitMealTotals = useCallback(() => {
     if (!publishMealTotals || typeof window === "undefined") return;
-    const calorieTarget = targets.caloriesKcal.likely > 0 ? targets.caloriesKcal.likely : null;
+    const calorieTarget = effectiveTargets.caloriesKcal.likely > 0 ? effectiveTargets.caloriesKcal.likely : null;
     const calories = currentDayTotal?.calories ?? null;
     const calorieProgress = calorieProgressForDisplay(calories, calorieTarget ?? 0);
     window.dispatchEvent(new CustomEvent(MEAL_TOTALS_EVENT, {
       detail: { date: selectedDate, isToday: selectedDate === today, calories, calorieTarget, calorieProgress },
     }));
-  }, [currentDayTotal?.calories, publishMealTotals, selectedDate, targets.caloriesKcal.likely, today]);
+  }, [currentDayTotal?.calories, effectiveTargets.caloriesKcal.likely, publishMealTotals, selectedDate, today]);
 
   useEffect(() => {
     if (!publishMealTotals || typeof window === "undefined") return;
@@ -1104,6 +1153,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
           high: value + (range.high - range.likely),
         },
       };
+      targetBaseRef.current = next;
+      const nextEffective = nutritionTargetsForEffort(next, effortTargetContextRef.current);
+      effectiveTargetsRef.current = nextEffective;
+      setEffectiveTargets(nextEffective);
       saveNutritionTargets(next);
       if (targetSaveTimer.current) clearTimeout(targetSaveTimer.current);
       targetSaveTimer.current = setTimeout(() => {
@@ -1348,7 +1401,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} /> : <MealPageHeader totals={currentDayTotal} targets={targets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader calorieTarget={effectiveTargets.caloriesKcal.likely} onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} /> : <MealPageHeader totals={currentDayTotal} targets={effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;

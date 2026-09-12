@@ -34,6 +34,7 @@ describe("Today signals", () => {
       recoveryScore: 70,
       effortScore: 20,
       caloriesKcal: null,
+      calorieTarget: 3_050,
       averageSleepMinutes: 480,
       averageRecoveryScore: 70,
       averageEffortScore: 30,
@@ -44,6 +45,7 @@ describe("Today signals", () => {
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--above" data-trend="above"');
     expect(html.match(/data-trend="neutral"/g)).toHaveLength(2);
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--below" data-trend="below"');
+    expect(html).toContain("Cible 3 050");
   });
 
   it("keeps the five-day metric history localized for assistive technology", () => {
@@ -94,6 +96,24 @@ describe("Today signals", () => {
     expect(locallyUpdated.history[0]?.caloriesKcal).toBe(3_100);
     expect(refreshed.averageCaloriesKcal).toBe(2_600);
     expect(refreshed.history[0]?.caloriesKcal).toBe(3_100);
+  });
+
+  it("does not lower the displayed target during a partial refresh", () => {
+    const values = {
+      sleepMinutes: null,
+      recoveryScore: null,
+      effortScore: 80,
+      caloriesKcal: null,
+      calorieTarget: 3_300,
+      averageSleepMinutes: null,
+      averageRecoveryScore: null,
+      averageEffortScore: 40,
+      averageCaloriesKcal: null,
+      history: [],
+    };
+    expect(mergePersonalLabMetricRefresh(values, { calorieTarget: 3_000 }).calorieTarget).toBe(3_300);
+    expect(mergePersonalLabMetricRefresh(values, { calorieTarget: null }).calorieTarget).toBe(3_300);
+    expect(mergePersonalLabMetricRefresh(values, { calorieTarget: 3_350 }).calorieTarget).toBe(3_350);
   });
 
   it("ignores meal totals belonging to another date", () => {

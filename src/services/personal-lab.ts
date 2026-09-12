@@ -5,6 +5,7 @@ import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type 
 import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import { aggregateConfirmedMeals, mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
+import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort, type NutritionTargets } from "@/domain/nutrition-targets";
 import type { SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { createCloudflareAdminClient, labMatrixInputRevision } from "@/lib/cloudflare/db";
@@ -13,6 +14,7 @@ import { loadJournalData } from "@/services/journal";
 import { loadConfirmedMealRecords } from "@/services/meals";
 import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { evidenceCandidatesForNarrative, isWeeklyNarrativeCurrent, LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
+import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
 
 export type DailyCheckin = {
   checkin_date: string;
@@ -71,7 +73,7 @@ type HealthDay = {
   data_quality?: { primaryWearable?: string | null; presentTypes?: string[] };
 };
 
-type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null };
+type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers?: Record<string, unknown> };
 export type LabMatrixRow = { id: string; label: string; emoji: string | null; grain: "day"; timeScale: "acute"; period: AnalysisPeriod; lagLabel: string; relations: MatrixRelation[] };
 export type LabMetricCoverage = {
   id: string;
@@ -98,7 +100,9 @@ export type PersonalLabSnapshot = {
     sleepRegularity: number | null;
     recoveryScore: number | null;
     effortScore: number | null;
+    effortCoverage?: number | null;
     caloriesKcal: number | null;
+    calorieTarget?: number | null;
     averageSleepMinutes: number | null;
     averageSleepRegularity: number | null;
     averageRecoveryScore: number | null;
@@ -157,9 +161,10 @@ export type PersonalLabHistoryPoint = {
   recoveryScore: number | null;
   effortScore: number | null;
   caloriesKcal: number | null;
+  calorieTarget?: number | null;
 };
 
-export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
+export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "effortCoverage" | "calorieTarget" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
 export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overnightFingerprint" | "today">;
 export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal">;
 export type PersonalLabStream = {
@@ -293,6 +298,22 @@ function average(values: Array<number | null | undefined>) {
   return present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
 }
 
+function effortCoverage(score: ScoreDay | undefined) {
+  const value = toNumber(score?.drivers?.coverage);
+  return value !== null && value >= 0 && value <= 1 ? value : null;
+}
+
+function effortContextForDate(scores: ScoreDay[], date: string) {
+  const effortRows = scores.filter((score) => score.kind === "effort");
+  const current = effortRows.find((score) => score.score_date === date);
+  const recent = effortRows.filter((score) => score.score_date >= addDays(date, -29) && score.score_date <= date);
+  return {
+    effortScore: toNumber(current?.score),
+    effortCoverage: effortCoverage(current),
+    averageEffortScore: average(recent.map((score) => toNumber(score.score))),
+  };
+}
+
 export function recentAverages(observations: LabObservation[], todayDate: string) {
   const recent = observations.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
   return {
@@ -310,6 +331,7 @@ function buildTodayData(input: {
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
   meals?: readonly ConfirmedMealRecord[];
+  targets?: NutritionTargets;
 }) {
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
   const todayDate = dateInTimezone(input.timeZone);
@@ -319,6 +341,8 @@ function buildTodayData(input: {
   const mealDays = aggregateConfirmedMeals(input.meals ?? []);
   const mealByDate = new Map(mealDays.map((day) => [day.date, day]));
   const recentMealDays = mealDays.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
+  const baseTargets = input.targets ?? DEFAULT_NUTRITION_TARGETS;
+  const targetForDate = (date: string) => nutritionTargetsForEffort(baseTargets, effortContextForDate(input.scores, date)).caloriesKcal.likely;
   const history = Array.from({ length: 7 }, (_, index): PersonalLabHistoryPoint => {
     const date = addDays(todayDate, index - 6);
     const observation = observations.find((day) => day.date === date);
@@ -328,15 +352,20 @@ function buildTodayData(input: {
       recoveryScore: observation?.recoveryScore ?? null,
       effortScore: observation?.effortScore ?? null,
       caloriesKcal: mealByDate.get(date)?.caloriesKcal ?? null,
+      calorieTarget: targetForDate(date),
     };
   });
+  const todayEffort = effortContextForDate(input.scores, todayDate);
   return {
     sleepMinutes: todayObservation?.sleepMinutes ?? null,
     sleepRegularity: todayObservation?.sleepRegularity ?? null,
     recoveryScore: todayObservation?.recoveryScore ?? null,
-    effortScore: todayObservation?.effortScore ?? null,
+    effortScore: todayEffort.effortScore,
+    effortCoverage: todayEffort.effortCoverage,
     caloriesKcal: mealByDate.get(todayDate)?.caloriesKcal ?? null,
     ...recentAverages(observations, todayDate),
+    averageEffortScore: todayEffort.averageEffortScore,
+    calorieTarget: targetForDate(todayDate),
     averageCaloriesKcal: average(recentMealDays.map((day) => day.caloriesKcal)),
     history,
     deepWorkMinutes: todayObservation?.deepWorkMinutes ?? null,
@@ -750,7 +779,7 @@ function previewData() {
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },
-      { score_date: dateString, kind: "effort", score: 50 + (index % 5) * 6 },
+      { score_date: dateString, kind: "effort", score: 50 + (index % 5) * 6, drivers: { coverage: 1 } },
     );
     calendars.push({ metric_date: dateString, deep_work_minutes: deepWork, deep_work_event_count: deepWork ? 2 : 0, total_scheduled_minutes: deepWork + 210, synced_at: new Date().toISOString() });
     const rating = (value: number) => Math.max(1, Math.min(5, Math.round(value)));
@@ -782,6 +811,7 @@ function buildOverview(input: {
   calendars: CalendarDay[];
   checkins: DailyCheckin[];
   meals?: readonly ConfirmedMealRecord[];
+  targets?: NutritionTargets;
 }): PersonalLabOverview {
   const todayDate = dateInTimezone(input.timeZone);
   const todayHealth = input.health.find((day) => day.metric_date === todayDate);
@@ -823,6 +853,7 @@ function buildSnapshot(input: {
   checkins: DailyCheckin[];
   journal: { variables: JournalVariable[]; entries: JournalEntry[]; days: import("@/domain/lab/journal").JournalDay[] };
   meals?: readonly ConfirmedMealRecord[];
+  targets?: NutritionTargets;
   narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; evidence_candidates?: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
   narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown; evidence_candidates?: unknown }>;
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
@@ -985,10 +1016,11 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
+    const targetsPromise = loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS);
     return {
-      overview: Promise.resolve(buildOverview(input)),
+      overview: targetsPromise.then((targets) => buildOverview({ ...input, targets })),
       journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals)),
-      analysis: includeAnalysis ? Promise.resolve().then(() => buildSnapshot(input)) : null,
+      analysis: includeAnalysis ? targetsPromise.then((targets) => buildSnapshot({ ...input, targets })) : null,
     };
   }
   const admin = createCloudflareAdminClient();
@@ -1013,7 +1045,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   })() : Promise.resolve(null);
   const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
   let healthQuery = admin.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false });
-  let scoresQuery = admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).order("score_date", { ascending: false });
+  let scoresQuery = admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false });
   let calendarQuery = admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).order("metric_date", { ascending: false });
   let checkinQuery = admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false });
   if (analysisWindow) {
@@ -1025,6 +1057,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   // Converting the query builders to real promises starts every independent
   // read now and lets the streamed sections share the same database results.
   const profilePromise = admin.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle().then((result) => result);
+  const targetsPromise = loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS);
   const healthPromise = healthQuery.then((result) => result);
   const scoresPromise = scoresQuery.then((result) => result);
   const calendarPromise = calendarQuery.then((result) => result);
@@ -1061,18 +1094,19 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
   }) : null;
 
-  const overview = Promise.all([corePromise, mealPromise]).then(([core, meals]) => buildOverview({ ...core, meals }));
+  const overview = Promise.all([corePromise, mealPromise, targetsPromise]).then(([core, meals, targets]) => buildOverview({ ...core, meals, targets }));
   const journal = Promise.all([profilePromise, journalPromise, mealPromise]).then(([profileResult, journalData, meals]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals);
   });
-  const analysis = includeAnalysis ? Promise.all([corePromise, journalPromise, mealPromise, detailPromise!]).then(async ([core, journalData, meals, detail]) => {
+  const analysis = includeAnalysis ? Promise.all([corePromise, journalPromise, mealPromise, targetsPromise, detailPromise!]).then(async ([core, journalData, meals, targets, detail]) => {
     const queryCompletedAt = Date.now();
     const snapshot = buildSnapshot({
       user,
       ...core,
       journal: journalData,
       meals,
+      targets,
       narrative: detail.narrativeHistoryResult.data?.[0] ?? detail.narrativeResult.data,
       narrativeHistory: (detail.narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
       metricPreferences: (detail.metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
@@ -1113,12 +1147,18 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
     const todayDate = dateInTimezone("Europe/Paris");
     const observations = joinObservations(preview.health, preview.scores, preview.calendars, preview.checkins);
     const today = observations.find((day) => day.date === todayDate);
+    const todayData = buildTodayData({ ...preview, timeZone: "Europe/Paris", targets: await loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS) });
     return {
       sleepMinutes: today?.sleepMinutes ?? null,
       sleepRegularity: today?.sleepRegularity ?? null,
       recoveryScore: today?.recoveryScore ?? null,
-      effortScore: today?.effortScore ?? null,
-      ...recentAverages(observations, todayDate),
+      effortScore: todayData.effortScore,
+      effortCoverage: todayData.effortCoverage,
+      calorieTarget: todayData.calorieTarget,
+      averageSleepMinutes: todayData.averageSleepMinutes,
+      averageSleepRegularity: todayData.averageSleepRegularity,
+      averageRecoveryScore: todayData.averageRecoveryScore,
+      averageEffortScore: todayData.averageEffortScore,
       overnightFingerprint: overnightFingerprint(preview.health.find((day) => day.metric_date === todayDate)),
     };
   }
@@ -1127,24 +1167,29 @@ export async function getPersonalLabToday(user: SomaUser): Promise<PersonalLabTo
   if (profileResult.error) throw new Error("Today's signals could not be loaded.");
   const todayDate = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
   const startDate = addDays(todayDate, -29);
-  const [healthResult, scoresResult] = await Promise.all([
+  const [healthResult, scoresResult, targets] = await Promise.all([
     admin.from("daily_health_metrics").select("metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_latency_minutes,sleep_awake_minutes,sleep_fragmentation,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,respiratory_rate").eq("user_id", user.id).gte("metric_date", startDate).lte("metric_date", todayDate).order("metric_date", { ascending: true }),
-    admin.from("daily_scores").select("score_date,kind,score").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
+    admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).gte("score_date", startDate).lte("score_date", todayDate).order("score_date", { ascending: true }),
+    loadNutritionTargetsForUser(user.id).catch(() => DEFAULT_NUTRITION_TARGETS),
   ]);
   if (healthResult.error || scoresResult.error) throw new Error("Today's signals could not be loaded.");
   const healthRows = (healthResult.data ?? []) as Array<Pick<HealthDay, "metric_date" | "sleep_minutes" | "sleep_regularity" | "bedtime" | "wake_time" | "sleep_efficiency" | "sleep_latency_minutes" | "sleep_awake_minutes" | "sleep_fragmentation" | "sleep_deep_minutes" | "sleep_rem_minutes" | "hrv_ms" | "resting_heart_rate" | "respiratory_rate">>;
-  const scoreRows = scoresResult.data ?? [];
+  const scoreRows = (scoresResult.data ?? []) as ScoreDay[];
   const todayHealth = healthRows.find((day) => day.metric_date === todayDate);
   const todayScores = scoreRows.filter((score) => score.score_date === todayDate);
+  const todayEffort = effortContextForDate(scoreRows, todayDate);
+  const effectiveTargets = nutritionTargetsForEffort(targets, todayEffort);
   return {
     sleepMinutes: toNumber(todayHealth?.sleep_minutes),
     sleepRegularity: toNumber(todayHealth?.sleep_regularity),
     recoveryScore: toNumber(todayScores.find((score) => score.kind === "recovery")?.score),
-    effortScore: toNumber(todayScores.find((score) => score.kind === "effort")?.score),
+    effortScore: todayEffort.effortScore,
+    effortCoverage: todayEffort.effortCoverage,
+    calorieTarget: effectiveTargets.caloriesKcal.likely,
     averageSleepMinutes: average(healthRows.map((day) => toNumber(day.sleep_minutes))),
     averageSleepRegularity: average(healthRows.map((day) => toNumber(day.sleep_regularity))),
     averageRecoveryScore: average(scoreRows.filter((score) => score.kind === "recovery").map((score) => toNumber(score.score))),
-    averageEffortScore: average(scoreRows.filter((score) => score.kind === "effort").map((score) => toNumber(score.score))),
+    averageEffortScore: todayEffort.averageEffortScore,
     overnightFingerprint: overnightFingerprint(todayHealth),
   };
 }

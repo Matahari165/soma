@@ -2,15 +2,23 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
-type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
+type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; calorieTarget?:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
 const DEFAULT_RADAR_RADIUS = 430;
 const SLEEP_TARGET_MINUTES = 510;
 export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
   const router = useRouter();
   const caloriesRef = useRef(data.caloriesKcal);
   const [calories,setCalories] = useState(data.caloriesKcal);
-  const [calorieTarget,setCalorieTarget] = useState<number|null>(null);
+  const calorieTargetRef = useRef<number|null>(data.calorieTarget ?? null);
+  const [calorieTarget,setCalorieTarget] = useState<number|null>(data.calorieTarget ?? null);
   useEffect(()=>{ caloriesRef.current=data.caloriesKcal; startTransition(()=>setCalories(data.caloriesKcal)); },[data.caloriesKcal]);
+  useEffect(()=>{
+    const next = data.calorieTarget ?? null;
+    const current = calorieTargetRef.current;
+    const merged = current !== null && (next === null || next < current) ? current : next;
+    calorieTargetRef.current = merged;
+    startTransition(()=>setCalorieTarget(merged));
+  },[data.calorieTarget]);
   useEffect(()=>{
     const update=(event:Event)=>{
       const detail=(event as CustomEvent<MealTotalsEventDetail>).detail;
@@ -19,6 +27,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         const changed=caloriesRef.current!==detail.calories;
         caloriesRef.current=detail.calories;
         setCalories(detail.calories);
+        calorieTargetRef.current=detail.calorieTarget;
         setCalorieTarget(detail.calorieTarget);
         if(changed)router.refresh();
       }
@@ -30,7 +39,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     {label:"Sommeil",average:data.averageSleepMinutes,value:data.sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:data.sleepMinutes===null?"—":`${Math.floor(data.sleepMinutes/60)}h ${Math.round(data.sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h 30"},
     {label:"Récupération",average:data.averageRecoveryScore,value:data.recoveryScore,target:100,unit:"",display:data.recoveryScore===null?"—":`${Math.round(data.recoveryScore)}`,goal:"100 %"},
     {label:"Effort",average:data.averageEffortScore===null?null:data.averageEffortScore*.21,value:data.effortScore===null?null:data.effortScore*.21,target:21,unit:"",display:data.effortScore===null?"—":`${(data.effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
-    {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:2200,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:2200).toLocaleString("fr-FR")} kcal`},
+    {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:3000,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:3000).toLocaleString("fr-FR")} kcal`},
   ];
   const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
   // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.

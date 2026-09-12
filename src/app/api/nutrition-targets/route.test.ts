@@ -18,7 +18,9 @@ describe("nutrition targets API local preview", () => {
     expect((await update.json()).targets.caloriesKcal.likely).toBe(3200);
     const loaded = await GET();
     expect(loaded.status).toBe(200);
-    expect((await loaded.json()).targets.proteinG.likely).toBe(170);
+    const body = await loaded.json();
+    expect(body.targets.proteinG.likely).toBe(170);
+    expect(body.effectiveTargets.caloriesKcal.likely).toBe(3250);
   });
 
   it("rejects an inverted range", async () => {

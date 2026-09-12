@@ -1,7 +1,7 @@
 import { describe, expect, it, afterEach } from "vitest";
 
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
-import { loadNutritionTargetsForUser, nutritionTargetLikelyValues, saveNutritionTargetsForUser } from "./nutrition-targets";
+import { loadDailyNutritionTargetsForUser, loadNutritionTargetsForUser, nutritionTargetLikelyValues, saveNutritionTargetsForUser } from "./nutrition-targets";
 
 describe("server nutrition targets", () => {
   afterEach(() => {
@@ -19,5 +19,13 @@ describe("server nutrition targets", () => {
   it("returns defaults for a preview user with no saved target", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     expect(await loadNutritionTargetsForUser("preview-target-empty")).toEqual(DEFAULT_NUTRITION_TARGETS);
+  });
+
+  it("derives a preview target from the effort score and its 30-day context", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const state = await loadDailyNutritionTargetsForUser("preview-daily-target", "2026-09-12");
+    expect(state).toMatchObject({ effortScore: 63, effortCoverage: 1, effortSupplementKcal: 50, effortAdjustmentApplied: true });
+    expect(state.targets.caloriesKcal.likely).toBe(3000);
+    expect(state.effectiveTargets.caloriesKcal.likely).toBe(3050);
   });
 });

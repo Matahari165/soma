@@ -4,6 +4,24 @@ export type NutritionTargetRange = {
   high: number;
 };
 
+export const DEFAULT_EFFORT_THRESHOLD = 40;
+export const EFFORT_TARGET_MIN_COVERAGE = 0.75;
+export const EFFORT_KCAL_PER_POINT = 10;
+export const EFFORT_TARGET_STEP_KCAL = 50;
+export const EFFORT_TARGET_MAX_SURPLUS_KCAL = 300;
+
+export type EffortTargetContext = {
+  effortScore: number | null;
+  effortCoverage: number | null;
+  averageEffortScore: number | null;
+};
+
+export type EffortTargetAdjustment = {
+  threshold: number;
+  supplementKcal: number;
+  applied: boolean;
+};
+
 export const DEFAULT_ADDED_SUGAR_TARGET: NutritionTargetRange = { low: 0, likely: 0, high: 5 };
 
 export type NutritionTargets = {
@@ -16,6 +34,68 @@ export type NutritionTargets = {
   addedSugarG: NutritionTargetRange;
   surplusKcal: number;
 };
+
+function finiteScore(value: number | null): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
+}
+
+function finiteCoverage(value: number | null): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+}
+
+export function effortThreshold(averageEffortScore: number | null): number {
+  return finiteScore(averageEffortScore) ?? DEFAULT_EFFORT_THRESHOLD;
+}
+
+export function effortTargetAdjustment(context: EffortTargetContext): EffortTargetAdjustment {
+  const score = finiteScore(context.effortScore);
+  const coverage = finiteCoverage(context.effortCoverage);
+  const threshold = effortThreshold(context.averageEffortScore);
+  const applied = score !== null && coverage !== null && coverage >= EFFORT_TARGET_MIN_COVERAGE;
+  if (!applied) return { threshold, supplementKcal: 0, applied: false };
+
+  const rawSupplement = Math.min(
+    EFFORT_TARGET_MAX_SURPLUS_KCAL,
+    Math.max(0, (score - threshold) * EFFORT_KCAL_PER_POINT),
+  );
+  const supplementKcal = Math.min(
+    EFFORT_TARGET_MAX_SURPLUS_KCAL,
+    Math.max(0, Math.round(rawSupplement / EFFORT_TARGET_STEP_KCAL) * EFFORT_TARGET_STEP_KCAL),
+  );
+  return { threshold, supplementKcal, applied: true };
+}
+
+export function nutritionTargetsForEffort(baseTargets: NutritionTargets, context: EffortTargetContext): NutritionTargets {
+  const { supplementKcal } = effortTargetAdjustment(context);
+  if (supplementKcal === 0) return baseTargets;
+  return {
+    ...baseTargets,
+    caloriesKcal: {
+      low: baseTargets.caloriesKcal.low + supplementKcal,
+      likely: baseTargets.caloriesKcal.likely + supplementKcal,
+      high: baseTargets.caloriesKcal.high + supplementKcal,
+    },
+  };
+}
+
+/**
+ * Keep a same-day target from moving down when a partial activity refresh
+ * temporarily reports less effort. A changed base target remains authoritative
+ * so a deliberate edit is reflected immediately.
+ */
+export function mergeDailyNutritionTargets(input: {
+  current: NutritionTargets;
+  next: NutritionTargets;
+  sameDay: boolean;
+  baseUnchanged: boolean;
+}): NutritionTargets {
+  if (
+    input.sameDay
+    && input.baseUnchanged
+    && input.next.caloriesKcal.likely < input.current.caloriesKcal.likely
+  ) return input.current;
+  return input.next;
+}
 
 /**
  * Runtime validation shared by the server route and client consumers.

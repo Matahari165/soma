@@ -66,6 +66,7 @@ export function LabWorldWorkspace({
       recoveryScore: point?.recoveryScore ?? null,
       effortScore: point?.effortScore ?? null,
       caloriesKcal: point?.caloriesKcal ?? null,
+      calorieTarget: point?.calorieTarget ?? null,
       averageSleepMinutes: overview.today.averageSleepMinutes,
       averageRecoveryScore: overview.today.averageRecoveryScore,
       averageEffortScore: overview.today.averageEffortScore,

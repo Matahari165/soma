@@ -22,7 +22,7 @@ import { mealToApi } from "@/services/meal-api";
 import { listPreviewMeals, loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes";
 import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
-import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
+import { loadDailyNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
 export const metadata: Metadata = { title: { absolute: "Soma" } };
@@ -83,7 +83,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
     isLocalPreviewMode()
       ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
       : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate })),
-    loadSafely(() => loadNutritionTargetsForUser(user.id)),
+    loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
     loadSafely(async () => {
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;
       const result = await createCloudflareAdminClient().from("health_goals").select("goal_type").eq("user_id", user.id).eq("priority", 1).is("ended_on", null).maybeSingle();
@@ -101,9 +101,10 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
       meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, records.find((meal) => meal.slot === slot) ?? null])) as MealJournalData["meals"],
     }
     : null;
-  const targets = targetsResult.ok ? targetsResult.value : DEFAULT_NUTRITION_TARGETS;
+  const targets = targetsResult.ok ? targetsResult.value.targets : DEFAULT_NUTRITION_TARGETS;
+  const effectiveTargets = targetsResult.ok ? targetsResult.value.effectiveTargets : targets;
   const balanceOverview = nutritionResult.ok
-    ? buildMealScoreOverview({ records: nutritionResult.value, targets, date: requestedDate, goalMode: goalMode(goalResult.ok ? goalResult.value : null) })
+    ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.ok ? goalResult.value : null) })
     : null;
   const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
   const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];
@@ -111,7 +112,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div id="main-page-content" className="meals-page" lang="fr">
-      {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
+      {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6} initialTargets={targets} initialEffectiveTargets={effectiveTargets} initialEffortTargetContext={targetsResult.ok ? { effortScore: targetsResult.value.effortScore, effortCoverage: targetsResult.value.effortCoverage, averageEffortScore: targetsResult.value.averageEffortScore } : undefined}>
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}

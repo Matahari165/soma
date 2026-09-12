@@ -142,12 +142,18 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
       const response = await fetch("/api/lab/today", { cache: "no-store" });
       if (!response.ok) return;
       const next = await response.json() as TodaySignalValues;
-      setValues((current) => ({
-        ...current,
-        ...next,
-        calorieProgress: "calorieProgress" in next ? next.calorieProgress : current.calorieProgress,
-        calorieTarget: "calorieTarget" in next ? next.calorieTarget : current.calorieTarget,
-      }));
+      setValues((current) => {
+        const calorieTarget = "calorieTarget" in next ? next.calorieTarget : current.calorieTarget;
+        return {
+          ...current,
+          ...next,
+          calorieProgress: "calorieProgress" in next ? next.calorieProgress : current.calorieProgress,
+          calorieTarget: current.calorieTarget !== null && current.calorieTarget !== undefined
+            && (calorieTarget === null || calorieTarget === undefined || calorieTarget < current.calorieTarget)
+            ? current.calorieTarget
+            : calorieTarget,
+        };
+      });
       if (next.overnightFingerprint && next.overnightFingerprint !== valuesRef.current.overnightFingerprint) router.refresh();
     } finally {
       setRefreshing(false);
@@ -186,6 +192,7 @@ export type PersonalLabMetricValues = {
   recoveryScore: number | null;
   effortScore: number | null;
   caloriesKcal: number | null;
+  calorieTarget?: number | null;
   averageSleepMinutes: number | null;
   averageRecoveryScore: number | null;
   averageEffortScore: number | null;
@@ -205,9 +212,14 @@ export function applyMealTotals(values: PersonalLabMetricValues, detail: MealTot
 }
 
 export function mergePersonalLabMetricRefresh(values: PersonalLabMetricValues, next: PersonalLabMetricRefresh) {
+  const calorieTarget = values.calorieTarget !== null && values.calorieTarget !== undefined
+    && (next.calorieTarget === null || next.calorieTarget === undefined || next.calorieTarget < values.calorieTarget)
+    ? values.calorieTarget
+    : next.calorieTarget ?? values.calorieTarget;
   return {
     ...values,
     ...next,
+    calorieTarget,
     history: Array.isArray(next.history) ? next.history : values.history,
   };
 }
@@ -252,12 +264,13 @@ function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
   return <><span>{score.toFixed(1)}</span><small className="personal-lab-metric__denominator" aria-hidden="true">/21</small></>;
 }
 
-function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null) {
-  if (value === null || averageValue === null) return "Moy. 30 j —";
+function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null, calorieTarget?: number | null) {
+  const targetLabel = key === "energy" && calorieTarget !== null && calorieTarget !== undefined ? `Cible ${metricCalories(calorieTarget)} · ` : "";
+  if (value === null || averageValue === null) return `${targetLabel}Moy. 30 j —`;
   const delta = value - averageValue;
   if (key === "sleep") return `Moy. 30 j ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
   if (key === "strain") return `Moy. 30 j ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
-  if (key === "energy") return `Moy. 30 j ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
+  if (key === "energy") return `${targetLabel}Moy. 30 j ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
   return `Moy. 30 j ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
 }
 
@@ -275,11 +288,12 @@ function historyMax(key: PersonalLabMetricKey, history: PersonalLabHistoryPoint[
   return Math.max(2_500, ...values, 1);
 }
 
-function PersonalLabMetricCard({ label, keyName, value, averageValue, history, href, showTrace = false }: {
+function PersonalLabMetricCard({ label, keyName, value, averageValue, calorieTarget, history, href, showTrace = false }: {
   label: string;
   keyName: PersonalLabMetricKey;
   value: number | null;
   averageValue: number | null;
+  calorieTarget?: number | null;
   history: PersonalLabHistoryPoint[];
   href: string;
   showTrace?: boolean;
@@ -292,7 +306,7 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
       <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>
-      <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue)}</small>
+      <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue, calorieTarget)}</small>
     </span>
     <span className="personal-lab-metric__bars" aria-hidden="true">
       {visibleHistory.map((point) => {
@@ -356,7 +370,7 @@ export function PersonalLabMetrics({ data, presentation = "default" }: { data: P
     { label: "Sommeil", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
     { label: "Récupération", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
     { label: "Effort", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
-    { label: "Énergie", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, href: "/meals" },
+    { label: "Énergie", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, calorieTarget: values.calorieTarget, href: "/meals" },
   ];
   return <section className="personal-lab-metrics" aria-label="Métriques du jour">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} showTrace={presentation === "worlds"} key={metric.keyName} />)}</section>;
 }
