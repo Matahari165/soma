@@ -752,7 +752,7 @@
 }
 
 @media (min-width: 701px) {
-  :global(.personal-lab-journal-column .journal-card--personal-lab #journal-morning-title > button) {
+  :global(.personal-lab-journal-column .journal-card--personal-lab #journal-morning-title > button):not(.root) {
     align-items: flex-start;
   }
 }
