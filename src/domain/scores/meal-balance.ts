@@ -121,6 +121,68 @@ function foodConfidence(foods: readonly ConfirmedMealFood[], fallback: number) {
   return average(values) ?? fallback;
 }
 
+type FoodObservationAxis = "portion" | "novaGroup" | "sugarExposure" | "qualityProperties";
+
+function confidenceForAxis(foods: readonly ConfirmedMealFood[], observed: readonly ConfirmedMealFood[], axis: FoodObservationAxis, fallback: number) {
+  const values = (observed.length ? observed : foods)
+    .map((food) => food.observation?.confidence?.[axis] ?? food.confidence)
+    .map(confidenceValue)
+    .filter((value): value is number => value !== null);
+  return average(values) ?? fallback;
+}
+
+function portionGrams(food: ConfirmedMealFood) {
+  const value = food.quantity?.grams ?? food.estimatedGrams;
+  return value !== null && value !== undefined && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/** Unknown portions use one item as a neutral fallback; explicit zero has zero weight. */
+function foodWeight(food: ConfirmedMealFood) {
+  return portionGrams(food) ?? 1;
+}
+
+function weightedShare(foods: readonly ConfirmedMealFood[], predicate: (food: ConfirmedMealFood) => boolean) {
+  const total = foods.reduce((sum, food) => sum + foodWeight(food), 0);
+  if (total <= 0) return null;
+  return foods.reduce((sum, food) => sum + (predicate(food) ? foodWeight(food) : 0), 0) / total;
+}
+
+function weightedAverage<T>(items: readonly T[], read: (item: T) => number | null, weight: (item: T) => number) {
+  let totalWeight = 0;
+  let total = 0;
+  for (const item of items) {
+    const value = read(item);
+    const itemWeight = weight(item);
+    if (value === null || itemWeight <= 0) continue;
+    total += value * itemWeight;
+    totalWeight += itemWeight;
+  }
+  return totalWeight > 0 ? total / totalWeight : null;
+}
+
+function foodCoverage(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], key: "qualityProperties" | "sugarExposure" | "novaGroup" | "portion", observed: (food: ConfirmedMealFood) => boolean) {
+  if (foods.length) return foods.filter(observed).length / foods.length;
+  const aggregateCoverage = day.foodObservationCoverage?.[key];
+  return aggregateCoverage !== null && aggregateCoverage !== undefined && Number.isFinite(aggregateCoverage)
+    ? clamp(aggregateCoverage, 0, 1)
+    : 0;
+}
+
+function qualityObservation(food: ConfirmedMealFood) {
+  return food.observation?.qualityProperties !== "unknown" && food.qualityProperties !== undefined;
+}
+
+function sugarExposureObservation(food: ConfirmedMealFood) {
+  return food.observation?.sugarExposure !== "unknown"
+    && food.sugarExposure !== undefined
+    && food.sugarExposure !== null
+    && (food.sugarExposure.liquid !== null || food.sugarExposure.concentrated !== null);
+}
+
+function novaObservation(food: ConfirmedMealFood) {
+  return food.observation?.novaGroup !== "unknown" && food.novaGroup !== undefined && food.novaGroup !== null;
+}
+
 function canonicalFoodKey(food: ConfirmedMealFood) {
   const key = food.varietyKey?.trim() || food.name.trim();
   return key ? key.toLocaleLowerCase("fr-FR") : null;
@@ -203,9 +265,9 @@ function varietyComponent(day: MealDailyAggregate, foods: readonly ConfirmedMeal
   const groupCount = groups.size || day.foodGroupCount;
   if (distinctCount === null || distinctCount === undefined || distinctCount <= 0) return { ...emptyComponent("variety"), observationCoverage: 0 };
 
-  // A repeated food key cannot inflate the score. Quantities are not part of
-  // this adapter's contract yet, so the safe fallback is distinct foods plus
-  // broad groups and meal slots, all with diminishing returns.
+  // A repeated food key cannot inflate the score. Variety remains based on
+  // distinct foods, broad groups, and meal slots; portions weight the
+  // composition dimensions below, not the number of distinct foods.
   const signals = [
     { value: diminishingReturns(distinctCount, 6), weight: 0.55 },
     ...(groupCount === null || groupCount === undefined ? [] : [{ value: diminishingReturns(groupCount, 4), weight: 0.3 }]),
@@ -233,30 +295,29 @@ const qualityPropertyWeights: Record<string, number> = {
   unsaturated_fat_source: 0.1,
 };
 
-const qualityFriendlyGroups = new Set(["fruit", "vegetable", "legume", "whole_grain", "plant_protein", "nuts_seeds"]);
-
 function foodQualitySignal(food: ConfirmedMealFood) {
-  const properties = food.qualityProperties ?? [];
+  // undefined means the dimension was not observed; [] means it was observed
+  // and no listed property was found.
+  if (food.qualityProperties === undefined) return null;
+  const properties = food.qualityProperties;
   const explicitSignal = properties.reduce((sum, property) => sum + (qualityPropertyWeights[property] ?? 0), 0);
-  if (explicitSignal > 0) return clamp(explicitSignal, 0, 1);
-  return (food.foodGroups ?? []).some((group) => qualityFriendlyGroups.has(group)) ? 0.5 : 0;
+  return clamp(explicitSignal, 0, 1);
 }
 
 function qualityComponent(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
-  if (!foods.length && day.foodGroupCount === null && day.foodVarietyCount === null) return { ...emptyComponent("foodQuality"), observationCoverage: 0 };
-  const signals = foods.length ? foods.map(foodQualitySignal) : [0.5];
-  const labelCoverage = foods.length
-    ? foods.filter((food) => food.qualityProperties !== undefined).length / foods.length
-    : 0;
+  const observed = foods.filter(qualityObservation);
+  if (!observed.length) return { ...emptyComponent("foodQuality"), observationCoverage: 0 };
+  const signals = observed.map(foodQualitySignal).filter((value): value is number => value !== null);
+  const labelCoverage = foodCoverage(day, foods, "qualityProperties", qualityObservation);
   return {
     key: "foodQuality",
     label: componentLabels.foodQuality,
-    score: score(50 + (average(signals) ?? 0) * 50),
-    confidence,
+    score: score(50 + (weightedAverage(observed, foodQualitySignal, foodWeight) ?? average(signals) ?? 0) * 50),
+    confidence: confidenceForAxis(foods, observed, "qualityProperties", confidence),
     observedValue: `${Math.round(labelCoverage * 100)}% des aliments avec propriétés décrites`,
     target: "Favoriser les propriétés qualitatives observées",
     summary: "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
-    observationCoverage: observationCoverage * Math.max(0.5, labelCoverage),
+    observationCoverage: observationCoverage * labelCoverage,
   };
 }
 
@@ -281,40 +342,42 @@ function addedSugarComponent(day: MealDailyAggregate, confidence: number, observ
   };
 }
 
-function sugarExposureComponent(foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
-  const labelled = foods.filter((food) => food.sugarExposure && (food.sugarExposure.liquid !== null || food.sugarExposure.concentrated !== null));
+function sugarExposureComponent(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
+  const labelled = foods.filter(sugarExposureObservation);
   if (!labelled.length) return { ...emptyComponent("sugarExposure"), observationCoverage: 0 };
-  const liquidShare = labelled.filter((food) => food.sugarExposure?.liquid === true).length / labelled.length;
-  const concentratedShare = labelled.filter((food) => food.sugarExposure?.concentrated === true).length / labelled.length;
+  const labelCoverage = foodCoverage(day, foods, "sugarExposure", sugarExposureObservation);
+  const liquidShare = weightedShare(labelled, (food) => food.sugarExposure?.liquid === true) ?? 0;
+  const concentratedShare = weightedShare(labelled, (food) => food.sugarExposure?.concentrated === true) ?? 0;
   const liquidCount = labelled.filter((food) => food.sugarExposure?.liquid === true).length;
   const concentratedCount = labelled.filter((food) => food.sugarExposure?.concentrated === true).length;
   return {
     key: "sugarExposure",
     label: componentLabels.sugarExposure,
     score: score(100 - 35 * liquidShare - 35 * concentratedShare),
-    confidence,
+    confidence: confidenceForAxis(foods, labelled, "sugarExposure", confidence),
     observedValue: `${liquidCount} liquide · ${concentratedCount} concentré`,
     target: "Limiter les expositions liquides et concentrées",
     summary: "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
-    observationCoverage,
+    observationCoverage: observationCoverage * labelCoverage,
   };
 }
 
-function ultraProcessingComponent(foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
-  const labelled = foods.filter((food) => food.novaGroup !== null && food.novaGroup !== undefined);
+function ultraProcessingComponent(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
+  const labelled = foods.filter(novaObservation);
   if (!labelled.length) return { ...emptyComponent("ultraProcessing"), observationCoverage: 0 };
+  const labelCoverage = foodCoverage(day, foods, "novaGroup", novaObservation);
   const points = { 1: 100, 2: 80, 3: 55, 4: 15 } as const;
-  const averageNovaScore = labelled.reduce((sum, food) => sum + points[food.novaGroup as 1 | 2 | 3 | 4], 0) / labelled.length;
+  const averageNovaScore = weightedAverage(labelled, (food) => points[food.novaGroup as 1 | 2 | 3 | 4], foodWeight) ?? 0;
   const group4Count = labelled.filter((food) => food.novaGroup === 4).length;
   return {
     key: "ultraProcessing",
     label: componentLabels.ultraProcessing,
     score: score(averageNovaScore),
-    confidence,
-    observedValue: unit(labelled.reduce((sum, food) => sum + (food.novaGroup ?? 0), 0) / labelled.length),
+    confidence: confidenceForAxis(foods, labelled, "novaGroup", confidence),
+    observedValue: unit(weightedAverage(labelled, (food) => food.novaGroup ?? null, foodWeight) ?? 0),
     target: "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
     summary: `${group4Count} aliment${group4Count > 1 ? "s" : ""} NOVA 4 observé${group4Count > 1 ? "s" : ""} ; les aliments sans étiquette restent inconnus.`,
-    observationCoverage,
+    observationCoverage: observationCoverage * labelCoverage,
   };
 }
 
@@ -429,14 +492,16 @@ export function calculateMealBalanceScore(input: {
     : 0.5;
   const globalConfidence = recordConfidence(records, dayConfidence);
   const foodConfidenceValue = foodConfidence(foods, globalConfidence);
-  const foodObservationCoverage = Math.min(observationCoverage, records.length ? 1 : 0.5);
+  const foodObservationCoverage = records.length
+    ? observationCoverage
+    : day.foodVarietyCount !== null ? Math.min(observationCoverage, 0.5) : 0;
 
   const rawComponents: ComponentInput[] = [
     varietyComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
     qualityComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
     addedSugarComponent(day, globalConfidence, observationCoverage),
-    sugarExposureComponent(foods, foodConfidenceValue, foodObservationCoverage),
-    ultraProcessingComponent(foods, foodConfidenceValue, foodObservationCoverage),
+    sugarExposureComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
+    ultraProcessingComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
     nutritionCoverageComponent(day, globalConfidence, observationCoverage),
     energyComponent(day, input.targets, goalMode, globalConfidence, observationCoverage),
   ];

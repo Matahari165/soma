@@ -81,8 +81,8 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           : "Les recettes personnelles sont momentanément indisponibles.",
       })),
     isLocalPreviewMode()
-      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
-      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate })),
+      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -27) && record.mealDate <= requestedDate))
+      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -27), to: requestedDate })),
     loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
     loadSafely(async () => {
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;

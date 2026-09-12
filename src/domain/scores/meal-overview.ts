@@ -18,8 +18,15 @@ import {
 export type MealScoreRolling = {
   days: 14 | 28;
   score: number | null;
+  /** Days with a numeric observation; partial days are discounted in `score`. */
   coveredDays: number;
+  /** Days whose balance observation meets the component readiness threshold. */
+  readyDays: number;
   observedDays: number;
+  /** Sum of coverage × confidence, expressed as equivalent full days. */
+  effectiveDays: number;
+  coverage: number;
+  confidence: number;
   totalDays: number;
 };
 
@@ -31,6 +38,9 @@ export type MealScoreTrendPoint = {
   foodVarietyCount: number | null;
   foodGroupCount: number | null;
   balanceScore: number | null;
+  balanceStatus: MealBalanceScore["status"] | null;
+  balanceCoverage: number | null;
+  balanceConfidence: number | null;
 };
 
 export type MealScoreOverview = {
@@ -87,6 +97,9 @@ function trendPoint(day: MealDailyAggregate, targets: MealTargetRanges, records:
     foodVarietyCount: day.foodVarietyCount,
     foodGroupCount: day.foodGroupCount,
     balanceScore: balance.score,
+    balanceStatus: balance.status,
+    balanceCoverage: balance.coverage,
+    balanceConfidence: balance.confidence,
   };
 }
 
@@ -105,17 +118,42 @@ function scoreTrendPoint(date: string, day: MealDailyAggregate | undefined, targ
     foodVarietyCount: null,
     foodGroupCount: null,
     balanceScore: null,
+    balanceStatus: null,
+    balanceCoverage: null,
+    balanceConfidence: null,
   };
+}
+
+function rounded(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function rollingScore(scoreTrend: readonly MealScoreTrendPoint[], days: 14 | 28): MealScoreRolling {
   const points = scoreTrend.slice(-days);
-  const scores = points.map((point) => point.balanceScore).filter((value): value is number => value !== null);
+  const observations = points.filter((point): point is MealScoreTrendPoint & { balanceScore: number; balanceCoverage: number; balanceConfidence: number } => (
+    point.balanceScore !== null
+    && point.balanceCoverage !== null
+    && point.balanceConfidence !== null
+    && point.balanceCoverage > 0
+    && point.balanceConfidence > 0
+  ));
+  const totalWeight = observations.reduce((sum, point) => sum + point.balanceCoverage * point.balanceConfidence, 0);
+  const weightedScore = observations.reduce((sum, point) => sum + point.balanceScore * point.balanceCoverage * point.balanceConfidence, 0);
+  const averageCoverage = observations.length
+    ? observations.reduce((sum, point) => sum + point.balanceCoverage, 0) / observations.length
+    : 0;
+  const averageConfidence = observations.length
+    ? observations.reduce((sum, point) => sum + point.balanceConfidence, 0) / observations.length
+    : 0;
   return {
     days,
-    score: scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null,
-    coveredDays: scores.length,
-    observedDays: scores.length,
+    score: totalWeight > 0 ? Math.round(weightedScore / totalWeight) : null,
+    coveredDays: observations.length,
+    readyDays: observations.filter((point) => point.balanceStatus === "ready").length,
+    observedDays: points.filter((point) => point.balanceScore !== null).length,
+    effectiveDays: rounded(totalWeight),
+    coverage: rounded(averageCoverage),
+    confidence: rounded(averageConfidence),
     totalDays: days,
   };
 }

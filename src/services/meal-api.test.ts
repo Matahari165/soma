@@ -48,4 +48,19 @@ describe("legacy meal API adapter", () => {
   it("does not invent a midpoint for a legacy range without likely", () => {
     expect(legacyAnalysisToStructured({ ingredients: [], calories: { low: 400, high: 600 } })).toBeNull();
   });
+
+  it("preserves the rich food labels in the legacy response used by the journal", () => {
+    const richMeal = {
+      ...meal,
+      analysis: {
+        ...meal.analysis!,
+        result: {
+          ...meal.analysis!.result!,
+          foods: [{ name: "Jus", portion: "250 ml", preparation: null, estimatedGrams: 250, kind: "ingredient" as const, parentId: null, course: null, countedInTotals: true, alcoholic: false, novaGroup: 4 as const, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { portion: "observed" as const, novaGroup: "observed" as const, sugarExposure: "observed" as const, qualityProperties: "none_observed" as const }, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "medium" as const }],
+        },
+      },
+    } satisfies Meal;
+
+    expect(mealToLegacyApi(richMeal).analysis?.ingredients[0]).toMatchObject({ alcoholic: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+  });
 });

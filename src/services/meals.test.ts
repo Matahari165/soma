@@ -182,6 +182,46 @@ describe("meal analysis provenance", () => {
     expect(records[0]?.foods).toBeUndefined();
   });
 
+  it("keeps portions and observation labels in the Personal Lab adapter", async () => {
+    state.listMeals.mockResolvedValue([{
+      id: "12345678-1234-1234-1234-123456789012",
+      userId: "user-1",
+      mealDate: "2026-08-31",
+      mealType: "lunch",
+      note: "Jus et riz",
+      status: "confirmed",
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z",
+      updatedAt: "2026-08-31T10:00:00.000Z",
+      photos: [],
+      analysis: {
+        id: "analysis-1",
+        mealId: "12345678-1234-1234-1234-123456789012",
+        status: "completed",
+        provider: "xai",
+        model: "grok",
+        result: {
+          summary: "Jus et riz",
+          dishType: null,
+          calorieAnalysis: null,
+          foods: [{ name: "Jus", preparation: null, portion: "250 ml", estimatedGrams: 250, quantity: { value: 250, unit: "ml", basis: "étiquette", grams: 250 }, alcoholic: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "observed", qualityProperties: "none_observed" }, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "medium" }],
+          totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+          confidence: "medium",
+          uncertainties: [],
+        },
+        error: null,
+        sourcePhotoIds: [],
+        createdAt: "2026-08-31T10:00:00.000Z",
+        completedAt: "2026-08-31T10:00:01.000Z",
+      },
+    }]);
+
+    const records = await loadConfirmedMealRecords("user-1");
+
+    expect(records[0]?.foods?.[0]).toMatchObject({ name: "Jus", portion: "250 ml", estimatedGrams: 250, quantity: { grams: 250 }, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+  });
+
   it("updates a photo origin and returns not-found from the repository", async () => {
     const photoId = "abcdef12-1234-1234-1234-123456789012";
     state.updatePhotoOrigin.mockResolvedValue({ id: photoId, mealId: "12345678-1234-1234-1234-123456789012", origin: "prepared", objectPath: "private/photo", mimeType: "image/jpeg", bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" });

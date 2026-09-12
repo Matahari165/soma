@@ -12,7 +12,11 @@ export type MealScoreRolling = {
   days: 14 | 28;
   score: number | null;
   coveredDays: number;
+  readyDays?: number;
   observedDays: number;
+  effectiveDays?: number;
+  coverage?: number;
+  confidence?: number;
   totalDays: number;
 };
 
@@ -61,6 +65,11 @@ function formatPercent(value: number | null | undefined) {
   return `${Math.round(value * 100)} %`;
 }
 
+function formatEffectiveDays(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(value);
+}
+
 function formatContribution(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(value);
@@ -100,6 +109,8 @@ function RollingWindow({ item }: { item: MealScoreRolling | undefined }) {
   }
 
   const scoreLabel = item.score === null ? "Score indisponible" : `Score ${formatScore(item.score)} sur 100`;
+  const readiness = item.readyDays === undefined ? "" : ` · ${item.readyDays} prêts`;
+  const effective = item.effectiveDays === undefined ? "" : ` · ${formatEffectiveDays(item.effectiveDays)} j. effectifs`;
   return (
     <li className={styles.rollingItem} data-window={`${item.days}`}>
       <div className={styles.rollingHeading}>
@@ -107,7 +118,7 @@ function RollingWindow({ item }: { item: MealScoreRolling | undefined }) {
         <span className={styles.rollingCoverage}>{item.observedDays} / {item.totalDays} jours observés</span>
       </div>
       <strong className={styles.rollingScore} aria-label={scoreLabel}>{formatScore(item.score)}<span>/100</span></strong>
-      <span className={styles.rollingDetail}>{item.coveredDays} / {item.totalDays} jours couverts</span>
+      <span className={styles.rollingDetail}>{item.coveredDays} / {item.totalDays} jours couverts{readiness}{effective}</span>
     </li>
   );
 }
@@ -162,6 +173,7 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
             {dailyScore === null ? null : <span style={{ width: `${Math.min(Math.max(dailyScore, 0), 100)}%` }} />}
           </div>
           <dl className={styles.coverageList}>
+            <div><dt>Statut</dt><dd>{daily ? daily.status === "ready" ? "Complet" : daily.status === "limited" ? "Partiel" : "Insuffisant" : "—"}</dd></div>
             <div><dt>Couverture</dt><dd>{formatPercent(daily?.coverage)}</dd></div>
             <div><dt>Confiance</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
           </dl>

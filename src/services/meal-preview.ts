@@ -39,13 +39,41 @@ function previewDemoQuantity(value: number, unit: string, grams: number) {
   return { value, unit, basis: "portion de démonstration", grams };
 }
 
+function previewDemoFoodMetadata(food: MealAnalysis["foods"][number]) {
+  const groups = new Set(food.foodGroups ?? []);
+  const isWholeFood = groups.has("fruit") || groups.has("vegetable") || groups.has("legume") || groups.has("whole_grain");
+  const isFiberSource = isWholeFood || groups.has("nuts_seeds");
+  const isProteinSource = groups.has("animal_protein") || groups.has("plant_protein") || groups.has("egg") || groups.has("dairy");
+  const properties = [
+    isWholeFood ? "whole_food" as const : null,
+    isFiberSource ? "fiber_source" as const : null,
+    isProteinSource ? "protein_source" as const : null,
+    groups.has("nuts_seeds") ? "unsaturated_fat_source" as const : null,
+  ].filter((property): property is NonNullable<typeof property> => property !== null);
+  const isSweet = groups.has("sweet");
+  const isBeverage = groups.has("beverage");
+  return {
+    alcoholic: false,
+    novaGroup: isSweet ? 2 as const : 1 as const,
+    sugarExposure: { concentrated: isSweet, liquid: isSweet && isBeverage },
+    qualityProperties: properties,
+    observation: {
+      portion: "observed" as const,
+      novaGroup: "observed" as const,
+      sugarExposure: "observed" as const,
+      qualityProperties: properties.length ? "observed" as const : "none_observed" as const,
+      confidence: { portion: "medium" as const, novaGroup: "medium" as const, sugarExposure: "medium" as const, qualityProperties: "medium" as const },
+    },
+  };
+}
+
 function previewDemoAnalysis(): MealAnalysis {
   const range = previewRange;
   return {
     summary: "Déjeuner local de démonstration : poulet grillé, riz basmati et légumes rôtis, salade aux noix, puis yaourt grec aux fruits rouges et miel.",
     dishType: "Plat complet",
     calorieAnalysis: "Estimation illustrative fondée sur les portions indiquées; elle sert uniquement à rendre l’aperçu local exploitable.",
-    foods: [
+    foods: ([
       { name: "Poulet grillé", preparation: "Grillé", portion: "140 g", estimatedGrams: 140, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["animal_protein"], varietyKey: "poulet", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(140, "g", 140), calories: range(200, 220, 240), proteinGrams: range(36, 40, 44), carbohydrateGrams: range(0, 0, 0), fatGrams: range(6, 7, 9), fiberGrams: range(0, 0, 0), sugarGrams: range(0, 0, 0), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
       { name: "Riz basmati", preparation: "Cuit", portion: "180 g", estimatedGrams: 180, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["refined_grain"], varietyKey: "riz-basmati", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(180, "g cuit", 180), calories: range(190, 210, 230), proteinGrams: range(3, 4, 5), carbohydrateGrams: range(42, 46, 50), fatGrams: range(0, 1, 2), fiberGrams: range(1, 1, 2), sugarGrams: range(0, 0, 0), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
       { name: "Légumes rôtis", preparation: "Courgette, carotte et poivron rôtis", portion: "180 g", estimatedGrams: 180, kind: "ingredient", course: "main", countedInTotals: true, foodGroups: ["vegetable"], varietyKey: "legumes-rotis", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(180, "g", 180), calories: range(80, 90, 100), proteinGrams: range(2, 3, 4), carbohydrateGrams: range(14, 16, 18), fatGrams: range(1, 2, 3), fiberGrams: range(4, 5, 6), sugarGrams: range(5, 7, 9), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
@@ -55,7 +83,7 @@ function previewDemoAnalysis(): MealAnalysis {
       { name: "Yaourt grec nature", preparation: null, portion: "100 g", estimatedGrams: 100, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["dairy"], varietyKey: "yaourt-grec", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(100, "g", 100), calories: range(85, 95, 105), proteinGrams: range(7, 8, 9), carbohydrateGrams: range(3, 4, 5), fatGrams: range(3, 4, 5), fiberGrams: range(0, 0, 0), sugarGrams: range(3, 4, 5), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
       { name: "Fruits rouges", preparation: "Frais", portion: "80 g", estimatedGrams: 80, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["fruit"], varietyKey: "fruits-rouges", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(80, "g", 80), calories: range(25, 35, 45), proteinGrams: range(0, 0.5, 1), carbohydrateGrams: range(6, 8, 10), fatGrams: range(0, 0, 1), fiberGrams: range(2, 3, 4), sugarGrams: range(4, 5, 7), addedSugarGrams: range(0, 0, 0), confidence: "medium" },
       { name: "Miel", preparation: null, portion: "8 g", estimatedGrams: 8, kind: "ingredient", course: "dessert", countedInTotals: true, foodGroups: ["sweet"], varietyKey: "miel", evidence: "inferred", evidenceSource: "note", quantity: previewDemoQuantity(8, "g", 8), calories: range(20, 25, 30), proteinGrams: range(0, 0, 0), carbohydrateGrams: range(5, 6, 8), fatGrams: range(0, 0, 0), fiberGrams: range(0, 0, 0), sugarGrams: range(5, 6, 8), addedSugarGrams: range(5, 6, 8), confidence: "medium" },
-    ],
+    ] as MealAnalysis["foods"]).map((food) => ({ ...food, ...previewDemoFoodMetadata(food) })),
     totals: {
       calories: range(727, 823, 919),
       proteinGrams: range(50, 58.5, 67.5),
@@ -245,7 +273,7 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean }): Me
     summary: `Analyse locale de prévisualisation basée sur les ${sourceLabel}.`,
     dishType: null,
     calorieAnalysis: null,
-    foods: [{ name: describedMeal || "Repas photographié", preparation: null, portion: null, estimatedGrams: null, calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), sugarGrams: null, addedSugarGrams: null, confidence: "low" }],
+    foods: [{ name: describedMeal || "Repas photographié", preparation: null, portion: null, estimatedGrams: null, calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), sugarGrams: null, addedSugarGrams: null, confidence: "low", observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown", confidence: { portion: "low", qualityProperties: "low", sugarExposure: "low", novaGroup: "low" } } }],
     totals: { calories: previewRange(450, 600, 800), proteinGrams: previewRange(18, 28, 40), carbohydrateGrams: previewRange(45, 70, 100), fatGrams: previewRange(12, 20, 32), fiberGrams: previewRange(3, 6, 10), sugarGrams: null, addedSugarGrams: null },
     confidence: "low",
     uncertainties: [],
@@ -290,6 +318,6 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
     const origins = new Set(meal.photos.map((photo) => photo.origin));
     const origin = origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
     const totals = result?.totals;
-    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map((food) => ({ name: food.name, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
+    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map((food) => ({ name: food.name, portion: food.portion ?? null, estimatedGrams: food.estimatedGrams ?? null, quantity: food.quantity ?? null, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, observation: food.observation, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
 }

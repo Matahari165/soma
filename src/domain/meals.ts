@@ -98,6 +98,70 @@ export const mealQualityPropertySchema = z.enum([
 ]);
 export type MealQualityProperty = z.infer<typeof mealQualityPropertySchema>;
 
+/** Distinguishes an unobserved property from a property that could not be assessed. */
+export const mealObservationStatusSchema = z.enum(["observed", "none_observed", "unknown"]);
+export type MealObservationStatus = z.infer<typeof mealObservationStatusSchema>;
+
+export const mealObservationConfidenceSchema = z.enum(["low", "medium", "high"]);
+export type MealObservationConfidence = z.infer<typeof mealObservationConfidenceSchema>;
+
+/** Structured per-food coverage for the axes used by the meal-balance indicator. */
+export const mealFoodObservationSchema = z.object({
+  portion: mealObservationStatusSchema,
+  novaGroup: mealObservationStatusSchema,
+  sugarExposure: mealObservationStatusSchema,
+  qualityProperties: mealObservationStatusSchema,
+  confidence: z.object({
+    portion: mealObservationConfidenceSchema,
+    novaGroup: mealObservationConfidenceSchema,
+    sugarExposure: mealObservationConfidenceSchema,
+    qualityProperties: mealObservationConfidenceSchema,
+  }).optional(),
+});
+export type MealFoodObservation = z.infer<typeof mealFoodObservationSchema>;
+
+export const mealUncertaintyCodeSchema = z.enum([
+  "food_identity_unknown",
+  "portion_unknown",
+  "brand_unknown",
+  "recipe_unknown",
+  "preparation_unknown",
+  "sauce_or_oil_unknown",
+  "nova_group_unknown",
+  "sugar_exposure_unknown",
+  "quality_properties_unknown",
+  "composition_uncertain",
+  "duplicate_risk",
+  "nutrition_unknown",
+]);
+export type MealUncertaintyCode = z.infer<typeof mealUncertaintyCodeSchema>;
+
+export const mealUncertaintyFieldSchema = z.enum([
+  "identity",
+  "portion",
+  "brand",
+  "recipe",
+  "preparation",
+  "sauceOrOil",
+  "novaGroup",
+  "sugarExposure",
+  "qualityProperties",
+  "nutrition",
+  "composition",
+  "source",
+]);
+export type MealUncertaintyField = z.infer<typeof mealUncertaintyFieldSchema>;
+
+/** Machine-readable uncertainty; the legacy free-form uncertainties remain supported. */
+export const mealUncertaintySignalSchema = z.object({
+  code: mealUncertaintyCodeSchema,
+  field: mealUncertaintyFieldSchema,
+  foodId: z.string().trim().min(1).max(120).nullable(),
+  severity: z.enum(["low", "medium", "high"]),
+  detail: z.string().trim().min(1).max(240),
+});
+export type MealUncertaintySignal = z.infer<typeof mealUncertaintySignalSchema>;
+
 export const mealEvidenceSchema = z.enum(["visible", "inferred", "unknown"]);
 export type MealEvidence = z.infer<typeof mealEvidenceSchema>;
 
@@ -140,7 +204,171 @@ function addNutritionInvariantIssues(
   }
 }
 
+type MealFoodForValidation = {
+  id?: string;
+  name: string;
+  preparation: string | null;
+  portion: string | null;
+  estimatedGrams: number | null;
+  kind?: MealFoodKind;
+  parentId?: string | null;
+  countedInTotals?: boolean;
+  alcoholic?: boolean;
+  novaGroup?: MealNovaGroup | null;
+  sugarExposure?: MealSugarExposure | null;
+  qualityProperties?: MealQualityProperty[];
+  observation?: MealFoodObservation;
+  quantity?: MealQuantity | null;
+  calories: NutritionRange | null;
+  proteinGrams: NutritionRange | null;
+  carbohydrateGrams: NutritionRange | null;
+  fatGrams: NutritionRange | null;
+  fiberGrams: NutritionRange | null;
+  sugarGrams?: NutritionRange | null;
+  addedSugarGrams?: NutritionRange | null;
+};
+
+function addMealStructureIssues(
+  analysis: {
+    foods: Array<MealFoodForValidation>;
+    uncertaintySignals?: Array<z.infer<typeof mealUncertaintySignalSchema>>;
+  },
+  context: z.RefinementCtx,
+) {
+  const foodsWithIds = analysis.foods.filter((food) => food.id);
+  const hasCompleteIds = analysis.foods.length > 0 && foodsWithIds.length === analysis.foods.length;
+  const ids = new Map<string, number>();
+  analysis.foods.forEach((food, index) => {
+    if (!food.id) return;
+    const previousIndex = ids.get(food.id);
+    if (previousIndex !== undefined) {
+      context.addIssue({ code: "custom", path: ["foods", index, "id"], message: `Duplicate food id; already used at index ${previousIndex}.` });
+    } else {
+      ids.set(food.id, index);
+    }
+  });
+
+  analysis.foods.forEach((food, index) => {
+    const path = ["foods", index] as (string | number)[];
+    const parentIndex = food.parentId ? ids.get(food.parentId) : undefined;
+    const parent = parentIndex === undefined ? undefined : analysis.foods[parentIndex];
+
+    // Old analyses may have parentId without local ids; only enforce references
+    // when the new id contract is present somewhere in the same response.
+    if (hasCompleteIds && food.parentId && parentIndex === undefined) {
+      context.addIssue({ code: "custom", path: [...path, "parentId"], message: "The composed-dish parentId must reference a food id in the same analysis." });
+    }
+    if (food.id && food.parentId === food.id) {
+      context.addIssue({ code: "custom", path: [...path, "parentId"], message: "A food cannot be its own composed-dish parent." });
+    }
+    if (food.parentId && food.kind === "dish") {
+      context.addIssue({ code: "custom", path: [...path, "kind"], message: "A dish cannot itself be a component of another food." });
+    }
+    if (parent?.kind && parent.kind !== "dish") {
+      context.addIssue({ code: "custom", path: [...path, "parentId"], message: "A composed-dish parent must have kind=dish." });
+    }
+    if (parent?.countedInTotals === true && food.countedInTotals === true) {
+      context.addIssue({ code: "custom", path: [...path, "countedInTotals"], message: "A counted component cannot also have a counted parent dish." });
+    }
+
+    if (food.alcoholic === true) {
+      if (food.countedInTotals !== false) {
+        context.addIssue({ code: "custom", path: [...path, "countedInTotals"], message: "Alcoholic foods must be excluded from countedInTotals." });
+      }
+    }
+
+    const observation = food.observation;
+    if (!observation) return;
+    if (observation.portion === "none_observed") {
+      context.addIssue({ code: "custom", path: [...path, "observation", "portion"], message: "A portion is unknown when it was not provided; none_observed is reserved for reviewed descriptive axes." });
+    }
+    const hasPortionEvidence = Boolean(food.portion?.trim() || food.estimatedGrams != null || food.quantity?.value != null || food.quantity?.grams != null);
+    if (observation.portion === "observed" && !hasPortionEvidence) {
+      context.addIssue({ code: "custom", path: [...path, "observation", "portion"], message: "An observed portion needs a portion label or quantity." });
+    }
+    if (observation.portion === "unknown" && hasPortionEvidence) {
+      context.addIssue({ code: "custom", path: [...path, "observation", "portion"], message: "An unknown portion cannot carry a portion estimate." });
+    }
+    if (observation.novaGroup === "none_observed") {
+      context.addIssue({ code: "custom", path: [...path, "observation", "novaGroup"], message: "NOVA is either identified or unknown; it is not a none_observed property." });
+    }
+    if (observation.novaGroup === "observed" && food.novaGroup == null) {
+      context.addIssue({ code: "custom", path: [...path, "observation", "novaGroup"], message: "An observed NOVA group needs a value." });
+    }
+    if (observation.novaGroup === "unknown" && food.novaGroup != null) {
+      context.addIssue({ code: "custom", path: [...path, "novaGroup"], message: "An unknown NOVA group must not carry a value." });
+    }
+    const sugarExposureKnown = food.sugarExposure != null && food.sugarExposure.concentrated !== null && food.sugarExposure.liquid !== null;
+    if (observation.sugarExposure === "observed" && !sugarExposureKnown) {
+      context.addIssue({ code: "custom", path: [...path, "observation", "sugarExposure"], message: "An observed sugar exposure needs a value." });
+    }
+    if (observation.sugarExposure === "none_observed" && (food.sugarExposure?.concentrated !== false || food.sugarExposure?.liquid !== false)) {
+      context.addIssue({ code: "custom", path: [...path, "sugarExposure"], message: "none_observed sugar exposure must explicitly set concentrated=false and liquid=false." });
+    }
+    if (observation.sugarExposure === "unknown" && food.sugarExposure != null) {
+      context.addIssue({ code: "custom", path: [...path, "sugarExposure"], message: "An unknown sugar exposure must not carry a partial value." });
+    }
+    if (observation.qualityProperties === "observed" && (!food.qualityProperties || food.qualityProperties.length === 0)) {
+      context.addIssue({ code: "custom", path: [...path, "observation", "qualityProperties"], message: "Observed quality properties need at least one descriptive property." });
+    }
+    if (observation.qualityProperties === "none_observed" && (!food.qualityProperties || food.qualityProperties.length !== 0)) {
+      context.addIssue({ code: "custom", path: [...path, "qualityProperties"], message: "none_observed quality properties must be represented by an empty array." });
+    }
+    if (observation.qualityProperties === "unknown" && food.qualityProperties !== undefined) {
+      context.addIssue({ code: "custom", path: [...path, "qualityProperties"], message: "Unknown quality properties must be omitted, not represented as an empty observation." });
+    }
+  });
+
+  const signals = analysis.uncertaintySignals ?? [];
+  const signalKeys = new Set<string>();
+  signals.forEach((signal, index) => {
+    const key = `${signal.code}:${signal.field}:${signal.foodId ?? "meal"}`;
+    if (signalKeys.has(key)) {
+      context.addIssue({ code: "custom", path: ["uncertaintySignals", index], message: "Duplicate structured uncertainty signal." });
+    }
+    if (hasCompleteIds && signal.foodId && !ids.has(signal.foodId)) {
+      context.addIssue({ code: "custom", path: ["uncertaintySignals", index, "foodId"], message: "The uncertainty signal foodId must reference a food id in the same analysis." });
+    }
+    signalKeys.add(key);
+  });
+}
+
+const structuredNutritionFields = [
+  "calories",
+  "proteinGrams",
+  "carbohydrateGrams",
+  "fatGrams",
+  "fiberGrams",
+  "sugarGrams",
+  "addedSugarGrams",
+] as const;
+
+function addStructuredNutritionIssues(
+  analysis: { foods: Array<MealFoodForValidation>; totals: Record<string, NutritionRange | null | undefined> },
+  context: z.RefinementCtx,
+) {
+  // New responses explicitly declare which foods contribute to totals. Old
+  // analyses omit that field and must remain valid and readable.
+  if (!analysis.foods.length || !analysis.foods.every((food) => typeof food.countedInTotals === "boolean")) return;
+  const countedFoods = analysis.foods.filter((food) => food.countedInTotals !== false && food.alcoholic !== true);
+  if (!countedFoods.length) return;
+
+  structuredNutritionFields.forEach((field) => {
+    const total = analysis.totals[field];
+    if (!total) return;
+    const ranges = countedFoods.map((food) => food[field]).filter((range): range is NutritionRange => range !== null && range !== undefined);
+    if (ranges.length !== countedFoods.length) return;
+    const sumLow = ranges.reduce((sum, range) => sum + range.low, 0);
+    const sumHigh = ranges.reduce((sum, range) => sum + range.high, 0);
+    if (sumHigh < total.low || total.high < sumLow) {
+      context.addIssue({ code: "custom", path: ["totals", field], message: "The total range must overlap the interval sum of counted foods." });
+    }
+  });
+}
+
 export const mealFoodItemSchema = z.object({
+  /** Stable local identifier used only to validate composed-dish relationships. */
+  id: z.string().trim().min(1).max(120).optional(),
   name: z.string().trim().min(1).max(120),
   preparation: z.string().trim().max(240).nullable(),
   portion: z.string().trim().max(120).nullable(),
@@ -162,6 +390,8 @@ export const mealFoodItemSchema = z.object({
   novaGroup: mealNovaGroupSchema.nullable().optional(),
   sugarExposure: mealSugarExposureSchema.nullable().optional(),
   qualityProperties: z.array(mealQualityPropertySchema).max(8).optional(),
+  /** Optional for old analyses; required in new provider responses. */
+  observation: mealFoodObservationSchema.optional(),
   calories: nutritionRangeSchema.nullable(),
   proteinGrams: nutritionRangeSchema.nullable(),
   carbohydrateGrams: nutritionRangeSchema.nullable(),
@@ -190,16 +420,21 @@ export const mealAnalysisSchema = z.object({
   }),
   confidence: z.enum(["low", "medium", "high"]),
   uncertainties: z.array(z.string().trim().min(1).max(300)).max(12),
+  /** Optional for old analyses; required in new provider responses. */
+  uncertaintySignals: z.array(mealUncertaintySignalSchema).max(20).optional(),
 }).superRefine((analysis, context) => {
   analysis.foods.forEach((food, index) => addNutritionInvariantIssues(food, ["foods", index], context));
   addNutritionInvariantIssues(analysis.totals, ["totals"], context);
+  addMealStructureIssues(analysis, context);
+  addStructuredNutritionIssues(analysis, context);
 });
 export type MealAnalysis = z.infer<typeof mealAnalysisSchema>;
 
 /**
  * Single canonical entry point for validating model or user-confirmed meal data.
- * It deliberately does not compare nutrient sums: rounded/wide ranges need not
- * add up exactly to the reported totals.
+ * It deliberately does not compare exact nutrient sums: rounded/wide ranges
+ * need not add up exactly. New responses only reject totals whose interval is
+ * disjoint from the interval sum of all counted foods.
  */
 export function validateMealAnalysis(value: unknown): MealAnalysis {
   return mealAnalysisSchema.parse(value);

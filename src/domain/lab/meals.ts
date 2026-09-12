@@ -1,5 +1,5 @@
 import type { MatrixPoint, MatrixSeries } from "@/domain/lab/matrix";
-import type { MealFoodGroup, MealNovaGroup, MealQualityProperty, MealSugarExposure } from "@/domain/meals";
+import type { MealFoodGroup, MealFoodObservation, MealNovaGroup, MealQualityProperty, MealQuantity, MealSugarExposure } from "@/domain/meals";
 
 /** Meal slots supported by the first meal journal version. */
 export const mealTypes = ["breakfast", "lunch", "snack", "dinner"] as const;
@@ -49,6 +49,14 @@ export type ConfirmedMealRecord = {
 
 export type ConfirmedMealFood = {
   name: string;
+  /** Preserved when the analysis provides a usable portion description. */
+  portion?: string | null;
+  /** Legacy-compatible numeric portion; null remains different from zero. */
+  estimatedGrams?: number | null;
+  /** Structured portion evidence from newer analyses. */
+  quantity?: MealQuantity | null;
+  /** Per-axis observation status from newer analyses. */
+  observation?: MealFoodObservation;
   varietyKey?: string | null;
   foodGroups?: readonly MealFoodGroup[];
   alcoholic?: boolean;
@@ -57,6 +65,13 @@ export type ConfirmedMealFood = {
   qualityProperties?: readonly MealQualityProperty[];
   countedInTotals?: boolean;
   confidence?: "low" | "medium" | "high";
+};
+
+export type MealFoodObservationCoverage = {
+  qualityProperties: number;
+  sugarExposure: number;
+  novaGroup: number;
+  portion: number;
 };
 
 export type MealDailyAggregate = {
@@ -80,6 +95,8 @@ export type MealDailyAggregate = {
   foodGroupCount: number | null;
   /** Cross-labelled family occurrences; null means no food classification. */
   foodGroupCounts: Partial<Record<MealFoodGroup, number>> | null;
+  /** null means no food list; zero values mean an explicit empty/unlabelled list. */
+  foodObservationCoverage?: MealFoodObservationCoverage | null;
   mouthHeatAverage: number | null;
   mouthHeatMaximum: number | null;
   stomachOverfullnessAverage: number | null;
@@ -238,6 +255,24 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       return value === null ? [] : [value];
     });
     const foods = meals.flatMap((meal) => (meal.foods ?? []).filter((food) => food.countedInTotals !== false && food.alcoholic !== true));
+    const hasFoodListObservation = meals.some((meal) => meal.foods !== undefined);
+    const observedAxis = (food: ConfirmedMealFood, axis: keyof MealFoodObservation) => {
+      const status = food.observation?.[axis];
+      if (status === "unknown") return false;
+      if (axis === "qualityProperties") return food.qualityProperties !== undefined;
+      if (axis === "sugarExposure") return food.sugarExposure !== undefined && food.sugarExposure !== null;
+      if (axis === "novaGroup") return food.novaGroup !== undefined && food.novaGroup !== null;
+      const grams = food.quantity?.grams ?? food.estimatedGrams;
+      return grams !== null && grams !== undefined && Number.isFinite(grams) && grams >= 0
+        ? true
+        : Boolean(food.portion?.trim());
+    };
+    const observedPortion = (food: ConfirmedMealFood) => {
+      const grams = food.quantity?.grams ?? food.estimatedGrams;
+      return grams !== null && grams !== undefined && Number.isFinite(grams) && grams >= 0
+        ? true
+        : Boolean(food.portion?.trim());
+    };
     const foodKeys = new Set(foods.flatMap((food) => {
       const key = canonicalFoodKey(food);
       return key ? [key] : [];
@@ -269,6 +304,14 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       foodVarietyCount: foodKeys.size || null,
       foodGroupCount: foodGroups.size || null,
       foodGroupCounts: Object.keys(foodGroupCounts).length ? foodGroupCounts : null,
+      foodObservationCoverage: hasFoodListObservation
+        ? {
+            qualityProperties: foods.length ? foods.filter((food) => observedAxis(food, "qualityProperties")).length / foods.length : 0,
+            sugarExposure: foods.length ? foods.filter((food) => observedAxis(food, "sugarExposure")).length / foods.length : 0,
+            novaGroup: foods.length ? foods.filter((food) => observedAxis(food, "novaGroup")).length / foods.length : 0,
+            portion: foods.length ? foods.filter((food) => observedAxis(food, "portion") && observedPortion(food)).length / foods.length : 0,
+          }
+        : null,
       mouthHeatAverage: average(meals.map((meal) => intensity(meal.mouthHeat))),
       mouthHeatMaximum: maximum(meals.map((meal) => intensity(meal.mouthHeat))),
       stomachOverfullnessAverage: average(meals.map((meal) => intensity(meal.stomachOverfullness))),

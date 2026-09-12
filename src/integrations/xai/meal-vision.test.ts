@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { analyzeMealInput, createXaiMealVisionProvider } from "./meal-vision";
+import { analyzeMealInput, createXaiMealVisionProvider, makePrompt, makeTextPrompt, mealAnalysisJsonSchema } from "./meal-vision";
 
 function structuredAnalysis() {
   const range = { low: 400, likely: 500, high: 650 };
   return {
     summary: "A bowl with grains, vegetables, and a protein source.",
-    foods: [{ name: "Rice", preparation: "cooked", portion: "one bowl", estimatedGrams: 250, calories: range, proteinGrams: { low: 5, likely: 7, high: 10 }, carbohydrateGrams: { low: 60, likely: 75, high: 90 }, fatGrams: { low: 1, likely: 3, high: 6 }, fiberGrams: { low: 2, likely: 4, high: 6 }, confidence: "medium" }],
-    totals: { calories: range, proteinGrams: { low: 20, likely: 28, high: 36 }, carbohydrateGrams: { low: 65, likely: 80, high: 100 }, fatGrams: { low: 12, likely: 18, high: 25 }, fiberGrams: { low: 4, likely: 7, high: 10 } },
+    foods: [{ id: "food-1", name: "Rice", preparation: "cooked", portion: "one bowl", estimatedGrams: 250, kind: "ingredient", parentId: null, course: "main", countedInTotals: true, foodGroups: ["refined_grain"], varietyKey: "riz", alcoholic: false, novaGroup: 1, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["minimally_processed"], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed", confidence: { portion: "medium", novaGroup: "low", sugarExposure: "medium", qualityProperties: "medium" } }, evidence: "visible", evidenceSource: "photo", evidencePhotoIds: ["photo-1"], quantity: { value: 250, unit: "g", basis: "visible portion", grams: 250 }, calories: range, proteinGrams: { low: 0, likely: 7, high: 40 }, carbohydrateGrams: { low: 0, likely: 75, high: 120 }, fatGrams: { low: 0, likely: 3, high: 40 }, fiberGrams: { low: 0, likely: 4, high: 20 }, sugarGrams: { low: 0, likely: 0, high: 10 }, addedSugarGrams: { low: 0, likely: 0, high: 4 }, confidence: "medium" }],
+    totals: { calories: range, proteinGrams: { low: 20, likely: 28, high: 36 }, carbohydrateGrams: { low: 65, likely: 80, high: 100 }, fatGrams: { low: 12, likely: 18, high: 25 }, fiberGrams: { low: 4, likely: 7, high: 10 }, sugarGrams: { low: 0, likely: 2, high: 8 }, addedSugarGrams: { low: 0, likely: 0, high: 2 } },
     confidence: "medium",
     uncertainties: ["The amount of oil is not visible."],
+    uncertaintySignals: [{ code: "sauce_or_oil_unknown", field: "sauceOrOil", foodId: "food-1", severity: "medium", detail: "La quantité d'huile n'est pas visible." }],
   };
 }
 
@@ -22,6 +23,29 @@ describe("xAI meal vision contract", () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_MEAL_VALIDATOR_MODEL;
     delete process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT;
+  });
+
+  it("requires structured observation and uncertainty fields in new provider output", () => {
+    const schema = mealAnalysisJsonSchema() as {
+      required: string[];
+      properties: { foods: { items: { required: string[]; properties: Record<string, unknown> } }; uncertaintySignals: unknown };
+    };
+    expect(schema.required).toContain("uncertaintySignals");
+    expect(schema.properties.foods.items.required).toContain("id");
+    expect(schema.properties.foods.items.required).toContain("observation");
+    expect(schema.properties.foods.items.required).not.toContain("qualityProperties");
+  });
+
+  it("makes unknown versus none_observed explicit in text and image prompts", () => {
+    const textPrompt = makeTextPrompt({ mealType: "lunch", mealDate: "2026-09-12", note: "Un plat préparé sans marque", });
+    const imagePrompt = makePrompt({ mealType: "lunch", mealDate: "2026-09-12", note: null, images: [] });
+    for (const prompt of [textPrompt, imagePrompt]) {
+      expect(prompt).toContain("none_observed");
+      expect(prompt).toContain("unknown");
+      expect(prompt).toContain("uncertaintySignals");
+      expect(prompt).toContain("qualityProperties");
+      expect(prompt).toContain("novaGroup");
+    }
   });
 
   it("sends the note and all photos in one structured vision request", async () => {
@@ -73,10 +97,11 @@ describe("xAI meal vision contract", () => {
       summary: "2 bananes, sans photo.",
       dishType: null,
       calorieAnalysis: "Environ 190 kcal (likely), un en-cas modéré.",
-      foods: [{ name: "Banane", preparation: null, portion: null, estimatedGrams: null, calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "low" }],
-      totals: { calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+      foods: [{ id: "food-1", name: "Banane", preparation: null, portion: null, estimatedGrams: null, kind: "ingredient", parentId: null, course: null, countedInTotals: true, foodGroups: ["fruit"], varietyKey: "banane", alcoholic: false, novaGroup: 1, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["whole_food", "fiber_source"], observation: { portion: "unknown", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed", confidence: { portion: "low", novaGroup: "low", sugarExposure: "medium", qualityProperties: "low" } }, evidence: "visible", evidenceSource: "note", evidencePhotoIds: [], quantity: null, calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: { low: 20, likely: 24, high: 28 }, addedSugarGrams: { low: 0, likely: 0, high: 0 }, confidence: "low" }],
+      totals: { calories: range, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: { low: 20, likely: 24, high: 28 }, addedSugarGrams: { low: 0, likely: 0, high: 0 } },
       confidence: "low",
       uncertainties: ["Estimation à partir de la seule description, sans photo."],
+      uncertaintySignals: [{ code: "portion_unknown", field: "portion", foodId: "food-1", severity: "high", detail: "La quantité n'est pas indiquée." }],
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(textOnly) }] }] }), { status: 200 }));
     const result = await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });

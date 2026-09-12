@@ -148,6 +148,26 @@ describe("confirmed meal daily series", () => {
     expect(mealDailySeries([meal({ id: "meal-empty", foods: [] })]).meal_food_variety.points).toEqual([]);
   });
 
+  it("keeps an explicit empty food list distinct from an absent food observation", () => {
+    const absent = aggregateConfirmedMeals([meal({ id: "meal-absent", foods: undefined })])[0];
+    const empty = aggregateConfirmedMeals([meal({ id: "meal-empty", foods: [] })])[0];
+
+    expect(absent?.foodObservationCoverage).toBeNull();
+    expect(empty?.foodObservationCoverage).toEqual({ qualityProperties: 0, sugarExposure: 0, novaGroup: 0, portion: 0 });
+  });
+
+  it("preserves structured and legacy portion evidence for the score adapter", () => {
+    const result = aggregateConfirmedMeals([meal({
+      id: "meal-portions",
+      foods: [
+        { name: "Lentilles", portion: "150 g", estimatedGrams: 150, quantity: { value: 1, unit: "portion", basis: "assiette", grams: 160 } },
+        { name: "Huile", portion: null, estimatedGrams: 0, quantity: null },
+      ],
+    })])[0];
+
+    expect(result?.foodObservationCoverage?.portion).toBe(1);
+  });
+
   it("aligns nutrition trends to every calendar day without turning gaps into zero", () => {
     const history = mealNutritionHistory([
       meal({ id: "meal-early", mealDate: "2026-08-27", addedSugarG: { low: 1, likely: 2, high: 3 } }),

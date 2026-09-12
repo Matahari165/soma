@@ -415,6 +415,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
     dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
     calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
     foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({
+      id: ingredient.sourceId,
       name: ingredient.name.trim(),
       preparation: ingredient.preparation?.trim() || null,
       portion: ingredient.portion.trim() || null,
@@ -429,6 +430,10 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       evidenceSource: ingredient.evidenceSource,
       evidencePhotoIds: ingredient.evidencePhotoIds,
       quantity: ingredient.quantity ?? null,
+      novaGroup: ingredient.novaGroup ?? null,
+      sugarExposure: ingredient.sugarExposure ?? null,
+      qualityProperties: ingredient.qualityProperties,
+      observation: ingredient.observation,
       calories: normalizedApiRange(ingredient.calories),
       proteinGrams: normalizedApiRange(ingredient.proteinGrams),
       carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams),
@@ -440,7 +445,8 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
     })),
     totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
     confidence: analysis.confidence ?? "medium",
-    uncertainties: analysis.note ? [analysis.note.slice(0, 300)] : [],
+    uncertainties: analysis.uncertainties?.length ? analysis.uncertainties.slice(0, 12).map((item) => item.slice(0, 300)) : analysis.note ? [analysis.note.slice(0, 300)] : [],
+    uncertaintySignals: analysis.uncertaintySignals,
   };
 }
 

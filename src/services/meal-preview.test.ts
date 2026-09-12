@@ -20,7 +20,7 @@ describe("local meal preview store", () => {
     expect(confirmed?.status).toBe("confirmed");
     expect(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")).toMatchObject({ storageStatus: "purged", purgedAt: expect.any(String) });
     expect(new Uint8Array(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")?.data ?? new ArrayBuffer(0))).toEqual(new Uint8Array());
-    expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "mixed", caloriesKcal: { low: 450, likely: 600, high: 800 } });
+    expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "mixed", caloriesKcal: { low: 450, likely: 600, high: 800 }, foods: [{ observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown" } }] });
     expect(deletePreviewMeal(userId, meal.id)).toBe(true);
     expect(findPreviewMeal(userId, meal.id)).toBeNull();
   });

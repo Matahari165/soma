@@ -72,7 +72,7 @@ describe("calculateMealBalanceScore", () => {
   });
 
   it("lets a whole fruit improve variety and quality without added-sugar penalty", () => {
-    const base = [meal({ id: "base", foods: [food("riz", { foodGroups: ["refined_grain"] })] })];
+    const base = [meal({ id: "base", foods: [food("riz", { foodGroups: ["refined_grain"], qualityProperties: [] })] })];
     const withFruit = [meal({ id: "fruit", foods: [
       food("riz", { foodGroups: ["refined_grain"] }),
       food("pomme", { foodGroups: ["fruit"], qualityProperties: ["whole_food", "fiber_source"] }),
@@ -83,6 +83,62 @@ describe("calculateMealBalanceScore", () => {
     expect(component(fruitResult, "variety").score).toBeGreaterThan(component(baseResult, "variety").score!);
     expect(component(fruitResult, "foodQuality").score).toBeGreaterThan(component(baseResult, "foodQuality").score!);
     expect(component(fruitResult, "addedSugar").score).toBe(component(baseResult, "addedSugar").score);
+  });
+
+  it("does not treat an unobserved quality list like an observed empty list", () => {
+    const unknown = [meal({ id: "unknown", foods: [food("aliment ancien", { foodGroups: ["other"] })] })];
+    const empty = [meal({ id: "empty", foods: [food("aliment observe", { qualityProperties: [] })] })];
+    const unknownResult = calculateMealBalanceScore({ day: dayFrom(unknown), records: unknown, targets });
+    const emptyResult = calculateMealBalanceScore({ day: dayFrom(empty), records: empty, targets });
+
+    expect(component(unknownResult, "foodQuality").score).toBeNull();
+    expect(component(unknownResult, "foodQuality").observationCoverage).toBe(0);
+    expect(component(emptyResult, "foodQuality").score).not.toBeNull();
+    expect(component(emptyResult, "foodQuality").observationCoverage).toBeGreaterThan(0);
+  });
+
+  it("weights food-level signals by known portions while retaining an item fallback", () => {
+    const balanced = [meal({ id: "balanced", foods: [
+      food("fruit", { estimatedGrams: 100, qualityProperties: ["whole_food", "fiber_source"] }),
+      food("dessert", { estimatedGrams: 100, qualityProperties: [] }),
+    ] })];
+    const mostlyDessert = [meal({ id: "mostly-dessert", foods: [
+      food("fruit", { estimatedGrams: 10, qualityProperties: ["whole_food", "fiber_source"] }),
+      food("dessert", { estimatedGrams: 500, qualityProperties: [] }),
+    ] })];
+    const balancedResult = calculateMealBalanceScore({ day: dayFrom(balanced), records: balanced, targets });
+    const mostlyDessertResult = calculateMealBalanceScore({ day: dayFrom(mostlyDessert), records: mostlyDessert, targets });
+
+    expect(component(mostlyDessertResult, "foodQuality").score).toBeLessThan(component(balancedResult, "foodQuality").score!);
+  });
+
+  it("uses confidence specific to the observed axis", () => {
+    const high = [meal({ id: "high-axis", foods: [food("lentilles", {
+      qualityProperties: ["whole_food", "protein_source"],
+      confidence: "low",
+      observation: {
+        portion: "unknown",
+        novaGroup: "unknown",
+        sugarExposure: "unknown",
+        qualityProperties: "observed",
+        confidence: { portion: "low", novaGroup: "low", sugarExposure: "low", qualityProperties: "high" },
+      },
+    })] })];
+    const low = [meal({ id: "low-axis", foods: [food("lentilles", {
+      qualityProperties: ["whole_food", "protein_source"],
+      confidence: "high",
+      observation: {
+        portion: "unknown",
+        novaGroup: "unknown",
+        sugarExposure: "unknown",
+        qualityProperties: "observed",
+        confidence: { portion: "low", novaGroup: "low", sugarExposure: "low", qualityProperties: "low" },
+      },
+    })] })];
+    const highResult = calculateMealBalanceScore({ day: dayFrom(high), records: high, targets });
+    const lowResult = calculateMealBalanceScore({ day: dayFrom(low), records: low, targets });
+
+    expect(component(highResult, "foodQuality").confidence).toBeGreaterThan(component(lowResult, "foodQuality").confidence);
   });
 
   it("accumulates added-sugar, liquid/concentrated, and NOVA penalties for a labelled soda", () => {

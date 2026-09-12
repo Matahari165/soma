@@ -1,4 +1,14 @@
-import { mealAnalysisSchema, type Meal, type MealAnalysis } from "@/domain/meals";
+import {
+  mealAnalysisSchema,
+  mealFoodObservationSchema,
+  mealNovaGroupSchema,
+  mealQualityPropertySchema,
+  mealQuantitySchema,
+  mealSugarExposureSchema,
+  mealUncertaintySignalSchema,
+  type Meal,
+  type MealAnalysis,
+} from "@/domain/meals";
 
 export function mealToApi(meal: Meal) {
   return {
@@ -41,6 +51,38 @@ function legacyRange(value: { low?: unknown; likely?: unknown; high?: unknown } 
   return { low, likely, high };
 }
 
+function legacyFoodObservation(value: unknown) {
+  const parsed = mealFoodObservationSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function legacySugarExposure(value: unknown) {
+  if (value === null) return null;
+  const parsed = mealSugarExposureSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function legacyQualityProperties(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((property) => {
+    const parsed = mealQualityPropertySchema.safeParse(property);
+    return parsed.success ? [parsed.data] : [];
+  }).slice(0, 8);
+}
+
+function legacyUncertaintySignals(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((signal) => {
+    const parsed = mealUncertaintySignalSchema.safeParse(signal);
+    return parsed.success ? [parsed.data] : [];
+  }).slice(0, 20);
+}
+
+function legacyUncertainties(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 12);
+}
+
 /** Convert the first UI contract to the canonical stored analysis shape. */
 export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null {
   const canonical = mealAnalysisSchema.safeParse(value);
@@ -48,6 +90,20 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
   if (!value || typeof value !== "object") return null;
   const input = value as Record<string, unknown>;
   const rawIngredients = Array.isArray(input.ingredients) ? input.ingredients : [];
+  const rawIngredientRecords = rawIngredients.filter(
+    (ingredient): ingredient is Record<string, unknown> => Boolean(ingredient && typeof ingredient === "object"),
+  );
+  const rawIngredientIds = rawIngredientRecords.flatMap((item) =>
+    typeof item.id === "string" && item.id.trim() ? [item.id.trim().slice(0, 120)] : [],
+  );
+  const canPreserveIds =
+    rawIngredientRecords.length === rawIngredients.length &&
+    rawIngredientIds.length === rawIngredientRecords.length &&
+    new Set(rawIngredientIds).size === rawIngredientIds.length &&
+    rawIngredientRecords.every(
+      (item) => item.parentId === null || item.parentId === undefined ||
+        (typeof item.parentId === "string" && rawIngredientIds.includes(item.parentId)),
+    );
   const foods = rawIngredients.flatMap((ingredient) => {
     if (!ingredient || typeof ingredient !== "object") return [];
     const item = ingredient as Record<string, unknown>;
@@ -55,7 +111,38 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
     if (!name) return [];
     const sugar = legacyRange(item.sugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
     const addedSugar = legacyRange(item.addedSugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
-    return [{ name, preparation: null, portion: typeof item.portion === "string" ? item.portion.trim() || null : null, estimatedGrams: null, kind: item.kind === "dish" || item.kind === "component" || item.kind === "ingredient" ? item.kind : undefined, parentId: typeof item.parentId === "string" ? item.parentId : null, course: item.course === "starter" || item.course === "main" || item.course === "side" || item.course === "dessert" ? item.course : null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: sugar === "invalid" ? null : sugar, addedSugarGrams: addedSugar === "invalid" ? null : addedSugar, confidence: item.confidence === "high" || item.confidence === "medium" ? item.confidence : "low" } satisfies MealAnalysis["foods"][number]];
+    const quantity = item.quantity === null ? null : mealQuantitySchema.safeParse(item.quantity);
+    const novaGroup = item.novaGroup === null ? null : mealNovaGroupSchema.safeParse(item.novaGroup);
+    return [{
+      id: canPreserveIds && typeof item.id === "string" && item.id.trim() ? item.id.trim().slice(0, 120) : undefined,
+      name,
+      preparation: typeof item.preparation === "string" ? item.preparation.trim() || null : null,
+      portion: typeof item.portion === "string" ? item.portion.trim() || null : null,
+      estimatedGrams: typeof item.estimatedGrams === "number" && Number.isFinite(item.estimatedGrams) ? item.estimatedGrams : null,
+      kind: item.kind === "dish" || item.kind === "component" || item.kind === "ingredient" ? item.kind : undefined,
+      parentId: typeof item.parentId === "string" ? item.parentId : null,
+      course: item.course === "starter" || item.course === "main" || item.course === "side" || item.course === "dessert" ? item.course : null,
+      countedInTotals: typeof item.countedInTotals === "boolean" ? item.countedInTotals : undefined,
+      alcoholic: typeof item.alcoholic === "boolean" ? item.alcoholic : undefined,
+      foodGroups: Array.isArray(item.foodGroups) ? item.foodGroups.filter((group) => typeof group === "string").slice(0, 4) as MealAnalysis["foods"][number]["foodGroups"] : undefined,
+      varietyKey: typeof item.varietyKey === "string" && item.varietyKey.trim() ? item.varietyKey.trim().slice(0, 80) : null,
+      evidence: item.evidence === "visible" || item.evidence === "inferred" || item.evidence === "unknown" ? item.evidence : undefined,
+      evidenceSource: item.evidenceSource === "photo" || item.evidenceSource === "note" || item.evidenceSource === "model" ? item.evidenceSource : undefined,
+      evidencePhotoIds: Array.isArray(item.evidencePhotoIds) ? item.evidencePhotoIds.filter((id): id is string => typeof id === "string").slice(0, 5) : undefined,
+      quantity: quantity === null ? null : quantity.success ? quantity.data : undefined,
+      novaGroup: novaGroup === null ? null : novaGroup.success ? novaGroup.data : undefined,
+      sugarExposure: legacySugarExposure(item.sugarExposure),
+      qualityProperties: legacyQualityProperties(item.qualityProperties),
+      observation: legacyFoodObservation(item.observation),
+      calories: null,
+      proteinGrams: null,
+      carbohydrateGrams: null,
+      fatGrams: null,
+      fiberGrams: null,
+      sugarGrams: sugar === "invalid" ? null : sugar,
+      addedSugarGrams: addedSugar === "invalid" ? null : addedSugar,
+      confidence: item.confidence === "high" || item.confidence === "medium" ? item.confidence : "low",
+    } satisfies MealAnalysis["foods"][number]];
   });
   const range = (inputValue: unknown) => legacyRange(inputValue as { low?: unknown; high?: unknown } | null);
   const calories = range(input.calories);
@@ -68,6 +155,7 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
   const ranges = [calories, proteinGrams, carbohydrateGrams, fatGrams, fiberGrams, sugarGrams, addedSugarGrams];
   if (ranges.some((value) => value === "invalid")) return null;
   const [validCalories, validProteinGrams, validCarbohydrateGrams, validFatGrams, validFiberGrams, validSugarGrams, validAddedSugarGrams] = ranges as Array<LegacyRange | null>;
+  const uncertainties = legacyUncertainties(input.uncertainties);
   return {
     summary: typeof input.note === "string" && input.note.trim() ? input.note.trim() : "Composition du repas relue par l’utilisateur.",
     dishType: null,
@@ -75,7 +163,8 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
     foods,
     totals: { calories: validCalories, proteinGrams: validProteinGrams, carbohydrateGrams: validCarbohydrateGrams, fatGrams: validFatGrams, fiberGrams: validFiberGrams, sugarGrams: validSugarGrams, addedSugarGrams: validAddedSugarGrams },
     confidence: input.confidence === "high" || input.confidence === "medium" ? input.confidence : "low",
-    uncertainties: [],
+    uncertainties,
+    uncertaintySignals: legacyUncertaintySignals(input.uncertaintySignals),
   };
 }
 
@@ -89,7 +178,7 @@ export function mealToLegacyApi(meal: Meal) {
   const analysisRecord = meal.analysis?.result ? meal.analysis : meal.lastSuccessfulAnalysis;
   const analysis = analysisRecord?.result;
   const legacyAnalysis = analysis ? {
-    ingredients: analysis.foods.map((food, index) => ({ id: `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
+    ingredients: analysis.foods.map((food, index) => ({ id: food.id ?? `${analysisRecord?.id ?? meal.id}-${index}`, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, observation: food.observation, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
     dishType: analysis.dishType ?? null,
     calorieAnalysis: analysis.calorieAnalysis ?? null,
     calories: legacyRangeFromCanonical(analysis.totals.calories),
@@ -101,6 +190,8 @@ export function mealToLegacyApi(meal: Meal) {
     addedSugarGrams: legacyRangeFromCanonical(analysis.totals.addedSugarGrams),
     confidence: analysis.confidence,
     note: analysis.calorieAnalysis ?? analysis.summary,
+    uncertainties: analysis.uncertainties,
+    uncertaintySignals: analysis.uncertaintySignals,
   } : null;
   return {
     id: meal.id,
