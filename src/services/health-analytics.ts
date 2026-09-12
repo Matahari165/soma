@@ -173,11 +173,18 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       active_day: steps >= 7_500, active_day_rate_28d: 71, activity_consistency_28d: 78, weekly_load: 408 + wave * 30, acute_chronic_load_ratio: 1.04 + wave * 0.04, source_freshness: { latestMeasuredAt: date.toISOString() },
     };
   });
-  const scores = days.flatMap((day, index): ScoreDay[] => [
-    { score_date: day.metric_date, kind: "sleep", score: Math.round(76 + Math.sin(index / 5) * 7 + index * 0.05), drivers: {} },
-    { score_date: day.metric_date, kind: "recovery", score: Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07), drivers: {} },
-    { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
-  ]);
+  const scores = days.flatMap((day, index): ScoreDay[] => {
+    const sleepScore = Math.round(76 + Math.sin(index / 5) * 7 + index * 0.05);
+    const recoveryScore = Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07);
+    const hrvDriver = Math.round(Math.min(100, Math.max(0, 72 + Math.sin(index / 5) * 10 + index * 0.04)));
+    const restingHeartRateDriver = Math.round(Math.min(100, Math.max(0, 74 - Math.sin(index / 5) * 8 + index * 0.03)));
+    const sleepDriver = Math.round(Math.min(100, Math.max(0, sleepScore)));
+    return [
+      { score_date: day.metric_date, kind: "sleep", score: sleepScore, drivers: {} },
+      { score_date: day.metric_date, kind: "recovery", score: recoveryScore, drivers: { hrv: hrvDriver, restingHeartRate: restingHeartRateDriver, sleep: sleepDriver, coverage: 1 } },
+      { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
+    ];
+  });
   const canonicalDays = days.slice(-previewScoreHistory.sleep.length);
   canonicalDays.forEach((day, index) => {
     const scoreIndex = scores.findIndex((score) => score.score_date === day.metric_date);

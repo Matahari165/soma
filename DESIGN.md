@@ -202,6 +202,10 @@ Composant signature et sommet de la hiérarchie. Il montre d’abord les associa
 
 La saisie quotidienne est rapide, autosauvegardée et non culpabilisante. Un état vide invite à agir sans répéter les boutons. Brouillon, validé, ignoré, absent et zéro explicite restent visuellement et sémantiquement distincts.
 
+### Health Detail Surfaces
+
+Les surfaces secondaires de santé (Sommeil, Récupération et Effort) héritent strictement de l’Observatoire sombre et suivent une même séquence de lecture : quatre repères de tête (score et trois KPI, avec moyenne à 30 jours), une bande de recommandation ou de contexte, cinq tendances sur 30 jours, puis la preuve détaillée la plus récente. À `1440px`, ces éléments restent sur le rail commun ; à `768px`, les KPI et les tendances se réorganisent sans changer leur ordre ; à `390px`, les tendances passent en une colonne et la dernière preuve reste secondaire. Les états chargement, vide, erreur et mesure partielle conservent cette hiérarchie sans inventer de valeur.
+
 ## Do's and Don'ts
 
 ### Do:

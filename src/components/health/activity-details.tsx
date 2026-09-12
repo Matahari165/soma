@@ -55,6 +55,8 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.find((scoreDay) => scoreDay.score_date === day.metric_date)?.score ?? null })));
   const averages = {
     steps: latest ? averageLast30Measured(activityDays, "steps", latest.metric_date) : null,
+    zoneMinutes: latest ? averageLast30Measured(activityDays, "zone_minutes", latest.metric_date) : null,
+    exerciseMinutes: latest ? averageLast30Measured(activityDays, "exercise_minutes", latest.metric_date) : null,
     activeCalories: latest ? averageLast30Measured(activityDays, "active_energy_kcal", latest.metric_date) : null,
     dailyLoad: averageScores(effortScores, "effort", latest?.metric_date),
     weeklyLoad: latest ? averageLast30Measured(activityDays, "weekly_load", latest.metric_date) : null,
@@ -63,6 +65,8 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   };
   const tones = {
     steps: metricTone(latest?.steps ?? null, averages.steps, "higher_is_better"),
+    zoneMinutes: metricTone(latest?.zone_minutes ?? null, averages.zoneMinutes, "higher_is_better"),
+    exerciseMinutes: metricTone(latest?.exercise_minutes ?? null, averages.exerciseMinutes, "higher_is_better"),
     activeCalories: metricTone(latest?.active_energy_kcal ?? null, averages.activeCalories, "higher_is_better"),
     dailyLoad: metricTone(score, averages.dailyLoad, "higher_is_better"),
     weeklyLoad: metricTone(latest?.weekly_load ?? null, averages.weeklyLoad, "higher_is_better"),
@@ -73,29 +77,32 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const fallbackCoverage = latest ? measuredCoverage([latest.zone_minutes, latest.exercise_minutes, latest.active_energy_kcal, latest.steps]) : 0;
   const coverage = Number.isFinite(driverCoverage) ? Math.min(1, Math.max(0, driverCoverage)) : fallbackCoverage;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
+  const distanceCount = activityDays.filter((day) => typeof day.distance_km === "number" && Number.isFinite(day.distance_km)).length;
+  const sedentaryCount = activityDays.filter((day) => typeof day.sedentary_minutes === "number" && Number.isFinite(day.sedentary_minutes)).length;
+  const secondaryTrend = distanceCount >= sedentaryCount
+    ? { label: "Distance", key: "distance_km" as const, unit: "km", direction: "context_only" as const, animationFormat: "decimal" as const, valueFormat: "decimal" as const }
+    : { label: "Temps sédentaire", key: "sedentary_minutes" as const, unit: "min", direction: "lower_is_better" as const, animationFormat: "number" as const, valueFormat: "number" as const };
   const heroMetrics = latest ? <>
+    <div className={`health-hero-stat metric-tone--${tones.zoneMinutes}`}><span>Minutes en zone</span><AnimatedMetricReading value={latest.zone_minutes} format="number" decimals={0} unit={latest.zone_minutes === null ? undefined : "min"} className={`metric-reading--${tones.zoneMinutes}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.zoneMinutes, "number")} min</small></div>
+    <div className={`health-hero-stat metric-tone--${tones.exerciseMinutes}`}><span>Durée d’exercice</span><AnimatedMetricReading value={latest.exercise_minutes} format="number" decimals={0} unit={latest.exercise_minutes === null ? undefined : "min"} className={`metric-reading--${tones.exerciseMinutes}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.exerciseMinutes, "number")} min</small></div>
     <div className={`health-hero-stat metric-tone--${tones.activeCalories}`}><span>Calories actives</span><AnimatedMetricReading value={latest.active_energy_kcal} format="number" decimals={0} unit={latest.active_energy_kcal === null ? undefined : "kcal"} className={`metric-reading--${tones.activeCalories}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.activeCalories, "number")} kcal</small></div>
-    <div className="health-hero-stat metric-tone--neutral"><span>Minutes en zone</span><AnimatedMetricReading value={latest.zone_minutes} format="number" decimals={0} unit={latest.zone_minutes === null ? undefined : "min"} className="metric-reading--neutral" /><small className="health-hero-stat__average">Dernier jour complet</small></div>
-    <div className={`health-hero-stat metric-tone--${tones.weeklyLoad}`}><span>Charge hebdomadaire</span><AnimatedMetricReading value={latest.weekly_load} format="number" decimals={0} className={`metric-reading--${tones.weeklyLoad}`} /><small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.weeklyLoad, "number")}</small></div>
   </> : undefined;
   const recentEffortScores = activityDays.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "effort" && item.score_date === day.metric_date)?.score ?? null);
-  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="activity" title="Effort" description="Mouvement, charge d’entraînement et jours actifs." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score d’effort" value={score} average={averages.dailyLoad} values={recentEffortScores} tone={tones.dailyLoad} action={<ActivityScorePopover score={score} zoneMinutes={latest?.zone_minutes ?? null} exerciseMinutes={latest?.exercise_minutes ?? null} activeEnergyKcal={latest?.active_energy_kcal ?? null} steps={latest?.steps ?? null} />} />} heroMetrics={heroMetrics}>
+  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="activity" title="Effort" description="Mouvement, charge d’entraînement et jours actifs." score={score} freshness={freshness} timezone={data.timezone} heroScore={<HealthHeroScore label="Score d’effort" value={score} average={averages.dailyLoad} values={recentEffortScores} tone={tones.dailyLoad} showBars={false} action={<ActivityScorePopover score={score} zoneMinutes={latest?.zone_minutes ?? null} exerciseMinutes={latest?.exercise_minutes ?? null} activeEnergyKcal={latest?.active_energy_kcal ?? null} steps={latest?.steps ?? null} />} />} heroMetrics={heroMetrics}>
     {latest ? <>
-      <section className="health-panel health-key-readings" aria-labelledby="activity-readings-heading"><div className="health-section-heading"><h2 id="activity-readings-heading">Repères du jour</h2></div><dl>
-        <div><dt>Pas</dt><dd>{number(latest.steps)}</dd><small>Moy. 30 j · {formatAverage(averages.steps, "number")}</small></div>
-        <div><dt>Charge récente / habituelle</dt><dd>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</dd><small>Moy. 30 j · {formatAverage(averages.acuteChronicLoadRatio, "decimal", 2)}×</small></div>
-        <div><dt>Régularité</dt><dd>{regularity.consistencyScore === null ? "—" : `${Math.round(regularity.consistencyScore)} %`}</dd><small>{regularity.observedDays} jours observés</small></div>
+      <section className="health-panel health-key-readings" aria-labelledby="activity-readings-heading"><div className="health-section-heading"><h2 id="activity-readings-heading">Repères</h2></div><dl>
+        <div><dt>Charge hebdomadaire</dt><dd>{number(latest.weekly_load)}</dd><small>avg {formatAverage(averages.weeklyLoad, "number")}</small></div>
+        <div><dt>Ratio charge récente / habituelle</dt><dd>{latest.acute_chronic_load_ratio === null ? "—" : `${latest.acute_chronic_load_ratio.toFixed(2)}×`}</dd><small>avg {formatAverage(averages.acuteChronicLoadRatio, "decimal", 2)}×</small></div>
+        <div><dt>Régularité · 28 j</dt><dd>{regularity.consistencyScore === null ? "—" : `${Math.round(regularity.consistencyScore)} %`}</dd><small>{regularity.observedDays} jours observés</small></div>
+        <div><dt>Pas · jours actifs</dt><dd>{number(latest.steps)}</dd><small>{regularity.activeDays} jours actifs</small></div>
       </dl></section>
 
-      <section className="health-panel"><div className="health-section-heading"><h2>Zones cardiaques</h2><span className="quality-pill">{number(latest.zone_minutes)} min · dernier jour complet</span></div><ZoneDistribution zones={[
-        { label: "Légère", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Modérée", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigoureuse", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Pic", minutes: latest.peak_zone_minutes, tone: "peak" },
-      ]} /></section>
-
-      <section className="health-trends-block" aria-labelledby="activity-trends-heading"><div className="health-section-heading"><h2 id="activity-trends-heading">Tendances sur 30 jours</h2></div><div className="metric-trend-grid">
-        <MetricTrendCard label="Pas" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("fr-FR")} animateCurrent animationFormat="number" />
-        <MetricTrendCard label="Durée d’exercice" points={points(activityDays, "exercise_minutes")} unit="min" direction="context_only" animateCurrent animationFormat="number" />
-        <MetricTrendCard label="Distance" points={points(activityDays, "distance_km")} unit="km" direction="context_only" animateCurrent animationFormat="decimal" />
-        <MetricTrendCard label="Temps sédentaire" points={points(activityDays, "sedentary_minutes")} unit="min" direction="lower_is_better" animateCurrent animationFormat="number" />
+      <section className="health-trends-block" aria-labelledby="activity-trends-heading"><div className="health-section-heading"><h2 id="activity-trends-heading">Tendances</h2><span>30 jours</span></div><div className="metric-trend-grid">
+        <MetricTrendCard compact label="Charge hebdomadaire" points={points(activityDays, "weekly_load")} direction="context_only" format={(value) => Math.round(value).toLocaleString("fr-FR")} valueFormat="number" animateCurrent animationFormat="number" />
+        <MetricTrendCard compact label="Régularité effort" points={points(activityDays, "activity_consistency_28d")} unit="%" direction="higher_is_better" format={(value) => `${value.toFixed(0)}`} valueFormat="number" animateCurrent animationFormat="number" />
+        <MetricTrendCard compact label="Pas" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("fr-FR")} valueFormat="number" animateCurrent animationFormat="number" />
+        <MetricTrendCard compact label="Minutes actives" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" animateCurrent animationFormat="number" />
+        <MetricTrendCard compact label={secondaryTrend.label} points={points(activityDays, secondaryTrend.key)} unit={secondaryTrend.unit} direction={secondaryTrend.direction} valueFormat={secondaryTrend.valueFormat} animateCurrent animationFormat={secondaryTrend.animationFormat} />
       </div><details className="health-more-metrics"><summary>Voir les métriques complémentaires</summary><div className="metric-trend-grid">
           <MetricTrendCard label="Minutes actives" points={points(activityDays, "active_minutes")} unit="min" direction="higher_is_better" animateCurrent animationFormat="number" />
           <MetricTrendCard label="Énergie totale" points={points(activityDays, "total_energy_kcal")} unit="kcal" direction="context_only" animateCurrent animationFormat="number" />
@@ -104,6 +111,10 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
           <MetricTrendCard label="Poids" points={points(activityDays, "weight_kg")} unit="kg" direction="context_only" animateCurrent animationFormat="decimal" />
           <MetricTrendCard label="Masse grasse" points={points(activityDays, "body_fat_percent")} unit="%" direction="context_only" animateCurrent animationFormat="decimal" />
         </div></details></section>
+
+      <section className="health-panel"><div className="health-section-heading"><h2>Zones cardiaques</h2><span className="quality-pill">{number(latest.zone_minutes)} min · dernier jour complet</span></div><ZoneDistribution zones={[
+        { label: "Légère", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Modérée", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigoureuse", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Pic", minutes: latest.peak_zone_minutes, tone: "peak" },
+      ]} /></section>
 
       {latestExercise && <details className="health-panel health-session-details"><summary><span>Dernière séance · {latestExercise.name}</span><small>{exerciseTypeLabel(latestExercise.type)}</small></summary><dl className="exercise-detail-grid">
         <div><dt>Temps actif</dt><dd>{latestExercise.activeMinutes === null ? "—" : `${Math.round(latestExercise.activeMinutes)} min`}</dd></div>

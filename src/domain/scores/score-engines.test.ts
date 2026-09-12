@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calculateEffortScore, calculateEffortScoreFromAvailable, diminishingLoad } from "./effort";
 import { calculateRecoveryScore } from "./recovery";
 import { circularMean, sleepRegularityScore } from "./regularity";
-import { estimateSleepNeed, recommendBedtime, recommendBedtimeFromHistory } from "./sleep-need";
+import { estimateSleepNeed, recommendBedtime, recommendBedtimeFromAwake, recommendBedtimeFromHistory } from "./sleep-need";
 
 describe("score engines", () => {
   it("keeps the personal sleep target fixed across debt and effort contexts", () => {
@@ -54,6 +54,11 @@ describe("score engines", () => {
     expect(result.recentEfficiencyPercent).toBe(85);
     expect(result.bedtimeMinutes).toBe(22 * 60 + 11);
     expect(result.timeInBedMinutes).toBeGreaterThanOrEqual(result.sleepNeedMinutes);
+  });
+
+  it("uses the declared wake time, target and average awake time without efficiency adjustment", () => {
+    const result = recommendBedtimeFromAwake({ wakeTime: "07:00", sleepNeedMinutes: 510, averageAwakeMinutes: 36 });
+    expect(result).toMatchObject({ bedtimeMinutes: 1_314, timeInBedMinutes: 546, wakeTimeMinutes: 420, sleepNeedMinutes: 510, averageAwakeMinutes: 36 });
   });
 
   it("withholds recovery when personal history is insufficient", () => {

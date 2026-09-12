@@ -23,6 +23,7 @@ export function HealthHeroScore({
   values,
   tone = "neutral",
   action,
+  showBars = true,
 }: {
   label: string;
   value: number | null;
@@ -31,6 +32,7 @@ export function HealthHeroScore({
   values: Array<number | null>;
   tone?: "positive" | "negative" | "neutral";
   action?: ReactNode;
+  showBars?: boolean;
 }) {
   const measured = values.filter((item): item is number => item !== null && Number.isFinite(item));
   const min = measured.length ? Math.min(...measured) : 0;
@@ -54,9 +56,9 @@ export function HealthHeroScore({
             <strong>{formattedValue}</strong>
             {unit && <small>{unit}</small>}
           </div>
-          <p>Moy. 30 j · {formattedAverage}</p>
+          <p>Moy. 30 j · {formattedAverage}{unit ? ` ${unit}` : ""}</p>
         </div>
-        <div className="health-hero-score-card__bars" aria-hidden="true">
+        {showBars && <div className="health-hero-score-card__bars" aria-hidden="true">
           {values.map((item, index) => {
             const normalized = typeof item === "number" && Number.isFinite(item) ? item : null;
             const height = normalized === null
@@ -72,7 +74,7 @@ export function HealthHeroScore({
               />
             );
           })}
-        </div>
+        </div>}
       </div>
     </div>
   );

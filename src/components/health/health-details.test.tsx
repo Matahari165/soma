@@ -2,12 +2,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
+import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } from "@/services/health-analytics";
 
 import { ActivityDetails } from "./activity-details";
-import { RecoveryDetails } from "./recovery-details";
+import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
 import { SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
+import { HealthHeroScore } from "./health-page-shell";
 
 function day(overrides: Partial<HealthMetricDay> = {}) {
   return {
@@ -118,7 +119,18 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
-  it("keeps a normal sleep route concise while preserving the three non-hero trends", () => {
+  it("keeps the score unit visible after its 30-day average", () => {
+    const markup = renderToStaticMarkup(createElement(HealthHeroScore, {
+      label: "Score",
+      value: 84,
+      average: 81,
+      values: [79, 81, 84],
+    }));
+
+    expect(markup).toContain("Moy. 30 j · 81 %");
+  });
+
+  it("keeps a normal sleep route concise while preserving the five requested trends", () => {
     const first = day({ metric_date: "2026-09-09", sleep_minutes: 450, sleep_efficiency: 90, sleep_fragmentation: 1.2, sleep_deep_minutes: 80, sleep_rem_minutes: 90, bedtime: "2026-09-08T22:30:00Z", wake_time: "2026-09-09T06:30:00Z" });
     const latest = day({ metric_date: "2026-09-10", sleep_minutes: 480, sleep_efficiency: 92, sleep_fragmentation: 0.9, sleep_deep_minutes: 90, sleep_deep_percent: 18, sleep_rem_minutes: 100, sleep_rem_percent: 20, sleep_light_percent: 55, sleep_awake_percent: 7, bedtime: "2026-09-09T22:30:00Z", wake_time: "2026-09-10T06:30:00Z" });
     const markup = renderToStaticMarkup(createElement(SleepDetails, {
@@ -129,10 +141,10 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup.match(/metric-trend-card/g)?.length).toBe(3);
+    expect(markup.match(/class="metric-trend-card"/g)?.length).toBe(5);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
-    expect(markup).toContain("REM + sommeil profond");
+    expect(markup).toContain("Sommeil profond + paradoxal");
   });
 
   it("uses the exact missing recommendation copy for a partial sleep day", () => {
@@ -165,6 +177,30 @@ describe("health route states", () => {
     expect(markup).toContain("33 % couverts");
   });
 
+  it("keeps the recovery rail limited to score and resting heart rate", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
+      data: analytics({
+        days: [day({ hrv_ms: 54, resting_heart_rate: 57, respiratory_rate: 14.2, sleep_minutes: 480 })],
+        scores: [{ score_date: "2026-09-10", kind: "recovery", score: 82, drivers: { hrv: 80, restingHeartRate: 84, sleep: 82, coverage: 1 } }],
+      }),
+    }));
+
+    expect(markup).toContain("Score de récupération");
+    expect(markup).toContain("FC au repos");
+    expect(markup).not.toContain("Durée de sommeil");
+    expect(markup).not.toContain("Charge du jour");
+    expect(markup).not.toContain("Énergie métabolique");
+    expect(markup).toContain("Variabilité cardiaque");
+    expect(markup).toContain("VFC nocturne");
+    expect(markup).toContain("Fréquence respiratoire");
+  });
+
+  it("provides visible weighted recovery drivers in the local analytics preview", () => {
+    const latestRecovery = buildPreviewAnalytics().scores.findLast((score) => score.kind === "recovery");
+
+    expect(latestRecovery?.drivers).toMatchObject({ hrv: expect.any(Number), restingHeartRate: expect.any(Number), sleep: expect.any(Number), coverage: 1 });
+  });
+
   it("keeps a recovery day when sleep and heart-rate values are absent", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
       data: analytics({
@@ -175,6 +211,19 @@ describe("health route states", () => {
 
     expect(markup).toContain("Fréquence respiratoire");
     expect(markup).toContain("14.2");
+  });
+
+  it("averages weekly heart-rate zones by measured day and keeps missing zones absent", () => {
+    const summary = averageWeeklyZoneMinutes([
+      day({ metric_date: "2026-09-08", light_zone_minutes: 20, moderate_zone_minutes: null, vigorous_zone_minutes: 0, peak_zone_minutes: null }),
+      day({ metric_date: "2026-09-10", light_zone_minutes: 40, moderate_zone_minutes: 10, vigorous_zone_minutes: null, peak_zone_minutes: null }),
+    ], "2026-09-10");
+
+    expect(summary.startDate).toBe("2026-09-07");
+    expect(summary.endDate).toBe("2026-09-13");
+    expect(summary.zones.find((zone) => zone.label === "Légère")).toMatchObject({ minutes: 30, measuredDays: 2 });
+    expect(summary.zones.find((zone) => zone.label === "Vigoureuse")).toMatchObject({ minutes: 0, measuredDays: 1 });
+    expect(summary.zones.find((zone) => zone.label === "Pic")).toMatchObject({ minutes: null, measuredDays: 0 });
   });
 
   it("keeps recovery empty without orphaned trend cards", () => {

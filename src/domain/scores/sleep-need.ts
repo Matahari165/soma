@@ -96,3 +96,29 @@ export function recommendBedtimeFromHistory(input: {
     windDownMinutes: input.windDownMinutes,
   });
 }
+
+/**
+ * Returns the time to get into bed when wake time, sleep target and average
+ * awake time are the declared inputs. Awake time is added to the target so
+ * the recommendation reserves the same amount of in-bed time as the brief's
+ * simple rule, without applying an efficiency or regularity adjustment.
+ */
+export function recommendBedtimeFromAwake(input: {
+  wakeTime: string;
+  sleepNeedMinutes: number;
+  averageAwakeMinutes: number;
+}) {
+  const [hours, minutes] = input.wakeTime.split(":").map(Number);
+  const wakeTimeMinutes = hours * 60 + minutes;
+  const awake = Math.max(0, Math.round(input.averageAwakeMinutes));
+  const sleepNeed = Math.max(0, Math.round(input.sleepNeedMinutes));
+  const timeInBedMinutes = sleepNeed + awake;
+  return {
+    bedtimeMinutes: ((wakeTimeMinutes - timeInBedMinutes) % 1440 + 1440) % 1440,
+    timeInBedMinutes,
+    sleepNeedMinutes: sleepNeed,
+    wakeTimeMinutes,
+    averageAwakeMinutes: awake,
+    algorithmVersion: "bedtime-awake-v1",
+  } as const;
+}

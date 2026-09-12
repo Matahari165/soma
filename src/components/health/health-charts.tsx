@@ -7,13 +7,25 @@ import type { MetricPoint } from "@/domain/metrics/trends";
 
 import styles from "./health-charts.module.css";
 
-function formatChartValue(value: number | null, unit?: string) {
+export type ChartValueFormat = "number" | "decimal" | "duration" | "clock";
+
+function formatChartValue(value: number | null, unit?: string, valueFormat: ChartValueFormat = "decimal") {
   if (value === null || !Number.isFinite(value)) return "Donnée absente";
-  return `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`;
+  const formatted = valueFormat === "number"
+    ? Math.round(value).toLocaleString("fr-FR")
+    : valueFormat === "duration"
+      ? `${Math.floor(Math.abs(Math.round(value)) / 60)}h ${Math.abs(Math.round(value)) % 60}m`
+      : valueFormat === "clock"
+        ? (() => {
+            const normalized = ((Math.round(value) % 1440) + 1440) % 1440;
+            return `${Math.floor(normalized / 60)}:${String(normalized % 60).padStart(2, "0")}`;
+          })()
+        : value.toFixed(1);
+  return `${formatted}${unit ? ` ${unit}` : ""}`;
 }
 
-function chartDescription(label: string, points: MetricPoint[], unit?: string) {
-  return `${label}. ${points.map((point) => `${point.date} : ${formatChartValue(point.value, unit)}`).join(" ; ")}`;
+function chartDescription(label: string, points: MetricPoint[], unit?: string, valueFormat?: ChartValueFormat) {
+  return `${label}. ${points.map((point) => `${point.date} : ${formatChartValue(point.value, unit, valueFormat)}`).join(" ; ")}`;
 }
 
 function formatDurationMs(value: number | null) {
@@ -22,13 +34,13 @@ function formatDurationMs(value: number | null) {
   return `${minutes} min`;
 }
 
-export function LineTrendChart({ points, label, target, unit }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string }) {
+export function LineTrendChart({ points, label, target, unit, valueFormat = "decimal" }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat }) {
   const titleId = useId();
   const descriptionId = useId();
   const [activePoint, setActivePoint] = useState<{ date: string; value: number } | null>(null);
   const dated = points.map((point) => ({ ...point, timestamp: Date.parse(point.date) }));
   const available = dated.filter((point): point is typeof point & { value: number } => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp));
-  const description = chartDescription(label, points, unit);
+  const description = chartDescription(label, points, unit, valueFormat);
   if (available.length < 2) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
   const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
   const rawMin = Math.min(...available.map((point) => point.value), measuredTarget ?? Infinity);
@@ -69,15 +81,15 @@ export function LineTrendChart({ points, label, target, unit }: { points: Metric
     moveActivePoint(event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "Home" ? "first" : "last");
   }}>
     <line x1="8" y1="92" x2="292" y2="92" className="health-chart-grid" />
-    <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Moyenne ${average.toFixed(1)}`}</title></line>
-    {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${measuredTarget}`}</title></line>}
+    <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Moyenne ${formatChartValue(average, unit, valueFormat)}`}</title></line>
+    {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${formatChartValue(measuredTarget, unit, valueFormat)}`}</title></line>}
     {segments.map((segment, index) => {
       const line = segment.map((point) => `${x(point.timestamp)},${y(point.value)}`).join(" ");
       const area = `${x(segment[0].timestamp)},92 ${line} ${x(segment.at(-1)?.timestamp ?? segment[0].timestamp)},92`;
       return <g key={`${segment[0].date}-${index}`}><polygon points={area} className="health-chart-area" /><polyline points={line} className="health-chart-line" /></g>;
     })}
-    {available.map((point, index) => <circle key={`${point.date}-${point.value}-${index}`} cx={x(point.timestamp)} cy={y(point.value)} r={index === available.length - 1 ? 3.8 : 1.8} onPointerEnter={() => setActivePoint(point)} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint(point)} className={index === available.length - 1 ? "health-chart-point health-chart-point--latest" : "health-chart-point"}><title>{`${point.date}: ${formatChartValue(point.value, unit)}`}</title></circle>)}
-  </svg><span id={titleId} className="sr-only">{label} : tendance sur {available.length} jours mesurés</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas reliées. Utilisez les flèches gauche et droite pour parcourir les points.</p><span className="health-chart-range" aria-hidden="true"><b>{max.toFixed(1)}</b><b>{min.toFixed(1)}</b></span>{activePoint && <output className="health-chart-tooltip" aria-live="polite">{new Date(activePoint.date).toLocaleDateString("fr-FR", { month: "short", day: "numeric" })} · {formatChartValue(activePoint.value, unit)}</output>}</div>;
+    {available.map((point, index) => <circle key={`${point.date}-${point.value}-${index}`} cx={x(point.timestamp)} cy={y(point.value)} r={index === available.length - 1 ? 3.8 : 1.8} onPointerEnter={() => setActivePoint(point)} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint(point)} className={index === available.length - 1 ? "health-chart-point health-chart-point--latest" : "health-chart-point"}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></circle>)}
+  </svg><span id={titleId} className="sr-only">{label} : tendance sur {available.length} jours mesurés</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas reliées. Utilisez les flèches gauche et droite pour parcourir les points.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{activePoint && <output className="health-chart-tooltip" aria-live="polite">{new Date(activePoint.date).toLocaleDateString("fr-FR", { month: "short", day: "numeric" })} · {formatChartValue(activePoint.value, unit, valueFormat)}</output>}</div>;
 }
 
 const stageClass: Record<SleepStageSegment["type"], string> = { AWAKE: "awake", LIGHT: "light", DEEP: "deep", REM: "rem", ASLEEP: "light", RESTLESS: "awake" };

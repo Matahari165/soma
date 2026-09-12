@@ -193,6 +193,390 @@
   .workbench { grid-template-columns: 1fr; }
 }
 
+/* QA correction: the two Recovery KPIs own the full right-hand rail. */
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Signals are a compact reference strip, like Sleep's timing band. */
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > span {
+  color: var(--health-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > strong {
+  color: var(--health-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > small {
+  color: var(--health-muted);
+  font-size: 12px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > em {
+  margin-left: auto;
+  color: var(--health-muted);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > em { margin-left: 0; }
+}
+
+/* Recovery observatory v1: one score rail, one evidence column, then the
+   trend instrument. This route-level contract intentionally mirrors Sleep
+   without changing the shared shell used by the other health pages. */
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 24px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score),
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
+  min-height: 72px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) > strong,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) {
+  color: var(--health-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace !important;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) > small,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) > span,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) > small {
+  color: inherit;
+  font: inherit;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__metric) p,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
+  color: var(--health-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-content) {
+  display: flex;
+  width: min(100%, 1376px);
+  margin-inline: auto;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 8px;
+  padding-bottom: 40px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel) {
+  padding: 24px 0;
+  border: 0;
+  border-top: 1px solid var(--health-rule);
+  border-radius: 0;
+  background: transparent;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel-header) {
+  margin-bottom: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel-header) h2 {
+  color: var(--health-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .factorsPanel .calculatedBy,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalPanel .supporting,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zonesPanel .supporting {
+  margin: 0 0 12px;
+  color: var(--health-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--health-rule);
+  color: var(--health-text);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p > span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p small {
+  color: var(--health-muted);
+  font-size: 12px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p strong,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow strong {
+  color: var(--health-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--health-rule);
+  color: var(--health-text);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow small,
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow em {
+  color: var(--health-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 48px;
+  row-gap: 0;
+  margin: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) {
+  min-height: 304px;
+  padding: 24px 0;
+  border: 0;
+  border-top: 1px solid var(--health-rule);
+  border-radius: 0;
+  background: transparent;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(header span) {
+  color: var(--health-text);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(header .metric-reading) {
+  margin-top: 6px;
+  color: var(--health-muted);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.metric-trend-card__average) {
+  color: var(--health-muted);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-frame) {
+  height: 220px;
+  margin-top: 14px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart-wrap) {
+  height: 208px;
+  padding-right: 26px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart) {
+  width: 100%;
+  height: 198px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-axis) {
+  color: var(--health-muted);
+  font-size: 11px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .weeklyZones {
+  min-width: 0;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneBar {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--health-track);
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment { min-width: 0; height: 100%; }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--light { background: var(--health-rule-strong); }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--moderate { background: color-mix(in srgb, var(--health-accent) 58%, var(--health-canvas)); }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--vigorous { background: var(--health-accent); }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--peak { background: var(--health-positive); }
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  min-width: 0;
+  color: var(--health-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend strong {
+  grid-column: 2;
+  color: var(--health-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot {
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--health-rule-strong);
+}
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--moderate { background: var(--health-accent); opacity: .7; }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--vigorous { background: var(--health-accent); }
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--peak { background: var(--health-positive); }
+
+@media (max-width: 960px) {
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-grid) { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) { gap: 12px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-content) { padding-bottom: 28px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel) { padding-block: 20px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) { min-height: 284px; padding-block: 20px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-frame) { height: 204px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart-wrap) { height: 192px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart) { height: 182px; }
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+
 @media (max-width: 760px) {
   .content { gap: 24px; padding-top: 16px; padding-bottom: 28px; }
   .column { gap: 20px; }
@@ -519,4 +903,99 @@
 /* Keep the desktop ratio out of the tablet range after the final cascade. */
 @container (max-width: 920px) {
   .workbench { grid-template-columns: 1fr; }
+}
+
+/* Cascade guard: keep the route and its inner rail in the same global scope. */
+.page :global(.health-detail-page--recovery .health-hero-metrics) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.page :global(.health-detail-page--recovery) .signalRows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+}
+
+.page :global(.health-detail-page--recovery .health-recovery-signal-rows) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+}
+
+.page :global(.health-detail-page--recovery) .signalRow {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+}
+
+.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > span {
+  color: var(--health-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > div {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+  gap: 0 8px;
+}
+
+.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > div > em {
+  grid-column: 1 / -1;
+  margin-left: 0;
+}
+
+@media (max-width: 640px) {
+  .page :global(.health-detail-page--recovery .health-hero-metrics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page :global(.health-detail-page--recovery) .signalRows {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .page :global(.health-detail-page--recovery .health-recovery-signal-rows) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Match Sleep's desktop title rail and keep the KPI grid on the right. */
+@media (min-width: 1101px) {
+  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-detail-hero) {
+    grid-template-columns: minmax(0, 308px) minmax(0, 1fr);
+  }
+}
+
+/* Final Recovery parity with Sleep: the second KPI uses the same left rail. */
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat) {
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat .metric-reading),
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat .health-hero-stat__average) {
+  align-self: flex-start;
+  margin-inline: 0;
+}
+
+/* Recovery trend cards stay completely flat; spacing carries the grouping. */
+:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .metric-trend-grid) :global(.metric-trend-card) {
+  border-top: 0;
 }
