@@ -159,6 +159,29 @@ describe("meal analysis provenance", () => {
     expect(state.listMeals).toHaveBeenCalledWith("user-1", { from: "2026-08-01", preferLatestCompletedAnalysis: true });
   });
 
+  it("keeps a confirmed meal without analysis with null nutrition", async () => {
+    state.listMeals.mockResolvedValue([{
+      id: "12345678-1234-1234-1234-123456789012",
+      userId: "user-1",
+      mealDate: "2026-08-31",
+      mealType: "lunch",
+      note: "Repas confirmé",
+      status: "confirmed",
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z",
+      updatedAt: "2026-08-31T10:00:00.000Z",
+      photos: [],
+      analysis: null,
+    }]);
+
+    const records = await loadConfirmedMealRecords("user-1");
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ id: "12345678-1234-1234-1234-123456789012", status: "confirmed", caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null });
+    expect(records[0]?.foods).toBeUndefined();
+  });
+
   it("updates a photo origin and returns not-found from the repository", async () => {
     const photoId = "abcdef12-1234-1234-1234-123456789012";
     state.updatePhotoOrigin.mockResolvedValue({ id: photoId, mealId: "12345678-1234-1234-1234-123456789012", origin: "prepared", objectPath: "private/photo", mimeType: "image/jpeg", bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" });

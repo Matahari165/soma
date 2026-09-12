@@ -559,35 +559,45 @@ function mealOrigin(meal: Meal): ConfirmedMealRecord["origin"] {
 }
 
 /**
- * Adapter consumed by Personal Lab. Drafts, unanalysed meals and failed
- * analyses are deliberately omitted: a missing estimate is not a zero.
+ * Adapter consumed by Personal Lab. Every confirmed meal remains an
+ * observation; an unavailable analysis contributes nulls, never zeros.
  */
 export async function loadConfirmedMealRecords(userId: string, options: { from?: string; to?: string } = {}): Promise<ConfirmedMealRecord[]> {
   const meals = await listMeals(userId, { ...options, preferLatestCompletedAnalysis: true });
   return meals.flatMap((meal) => {
-    if (meal.status !== "confirmed" || meal.analysis?.status !== "completed" || !meal.analysis.result) return [];
-    const totals = meal.analysis.result.totals;
+    if (meal.status !== "confirmed") return [];
+    const analysis = meal.analysis?.status === "completed" && meal.analysis.result
+      ? meal.analysis
+      : meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result
+        ? meal.lastSuccessfulAnalysis
+        : null;
+    const result = analysis?.result ?? null;
+    const totals = result?.totals;
     return [{
       id: meal.id,
       mealDate: meal.mealDate,
       mealType: meal.mealType,
       status: "confirmed" as const,
       origin: mealOrigin(meal),
-      caloriesKcal: nutritionEstimate(totals.calories),
-      proteinG: nutritionEstimate(totals.proteinGrams),
-      carbsG: nutritionEstimate(totals.carbohydrateGrams),
-      fatG: nutritionEstimate(totals.fatGrams),
-      fiberG: nutritionEstimate(totals.fiberGrams),
-      sugarG: nutritionEstimate(totals.sugarGrams),
-      addedSugarG: nutritionEstimate(totals.addedSugarGrams),
-      foods: meal.analysis.result.foods.map((food) => ({
+      caloriesKcal: nutritionEstimate(totals?.calories),
+      proteinG: nutritionEstimate(totals?.proteinGrams),
+      carbsG: nutritionEstimate(totals?.carbohydrateGrams),
+      fatG: nutritionEstimate(totals?.fatGrams),
+      fiberG: nutritionEstimate(totals?.fiberGrams),
+      sugarG: nutritionEstimate(totals?.sugarGrams),
+      addedSugarG: nutritionEstimate(totals?.addedSugarGrams),
+      foods: result?.foods.map((food) => ({
         name: food.name,
         varietyKey: food.varietyKey ?? null,
         foodGroups: food.foodGroups,
+        alcoholic: food.alcoholic,
+        novaGroup: food.novaGroup,
+        sugarExposure: food.sugarExposure,
+        qualityProperties: food.qualityProperties,
         countedInTotals: food.countedInTotals,
         confidence: food.confidence,
       })),
-      analysisConfidence: meal.analysis.result.confidence,
+      analysisConfidence: result?.confidence,
       mouthHeat: meal.mouthWarmthIntensity,
       stomachOverfullness: meal.stomachOverfullIntensity,
       photoIds: meal.photos.map((photo) => photo.id),

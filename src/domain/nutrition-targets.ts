@@ -4,12 +4,16 @@ export type NutritionTargetRange = {
   high: number;
 };
 
+export const DEFAULT_ADDED_SUGAR_TARGET: NutritionTargetRange = { low: 0, likely: 0, high: 5 };
+
 export type NutritionTargets = {
   caloriesKcal: NutritionTargetRange;
   proteinG: NutritionTargetRange;
   fatG: NutritionTargetRange;
   carbsG: NutritionTargetRange;
   fiberG: NutritionTargetRange;
+  /** Personal guardrail: ideal 0 g, with a 5 g/day tolerance. */
+  addedSugarG: NutritionTargetRange;
   surplusKcal: number;
 };
 
@@ -35,9 +39,12 @@ export function parseNutritionTargets(value: unknown): NutritionTargets | null {
   const fatG = range(input.fatG);
   const carbsG = range(input.carbsG);
   const fiberG = range(input.fiberG);
+  // Older saved targets predate the added-sugar axis. Keep them valid and
+  // apply the user's explicit 0 g ideal / 5 g tolerance by default.
+  const addedSugarG = range(input.addedSugarG) ?? DEFAULT_ADDED_SUGAR_TARGET;
   const surplusKcal = typeof input.surplusKcal === "number" && Number.isFinite(input.surplusKcal) ? input.surplusKcal : null;
   if (!caloriesKcal || !proteinG || !fatG || !carbsG || !fiberG || surplusKcal === null) return null;
-  return { caloriesKcal, proteinG, fatG, carbsG, fiberG, surplusKcal };
+  return { caloriesKcal, proteinG, fatG, carbsG, fiberG, addedSugarG, surplusKcal };
 }
 
 export const NUTRITION_TARGETS_STORAGE_KEY = "soma.nutrition-targets.v1";
@@ -48,6 +55,7 @@ export const DEFAULT_NUTRITION_TARGETS: NutritionTargets = {
   fatG: { low: 70, likely: 80, high: 90 },
   carbsG: { low: 350, likely: 385, high: 420 },
   fiberG: { low: 25, likely: 30, high: 35 },
+  addedSugarG: DEFAULT_ADDED_SUGAR_TARGET,
   surplusKcal: 300,
 };
 

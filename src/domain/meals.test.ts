@@ -58,6 +58,32 @@ describe("meal domain", () => {
     expect(result.foods[0]?.quantity?.grams).toBeNull();
   });
 
+  it("accepts optional composable food labels without turning them into a score", () => {
+    const result = mealAnalysisSchema.parse({
+      summary: "Boisson et céréales",
+      foods: [{
+        name: "Jus de fruits",
+        preparation: null,
+        portion: "250 ml",
+        estimatedGrams: null,
+        novaGroup: 4,
+        sugarExposure: { concentrated: true, liquid: true },
+        qualityProperties: ["whole_food"],
+        calories: null,
+        proteinGrams: null,
+        carbohydrateGrams: null,
+        fatGrams: null,
+        fiberGrams: null,
+        confidence: "low",
+      }],
+      totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+      confidence: "low",
+      uncertainties: [],
+    });
+
+    expect(result.foods[0]).toMatchObject({ novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: ["whole_food"] });
+  });
+
   it("rejects contradictory sugar relationships without requiring exact sums", () => {
     const validWithUnequalSums = {
       summary: "Repas",

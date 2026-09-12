@@ -44,6 +44,18 @@ describe("local meal preview store", () => {
     expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "unknown" });
   });
 
+  it("keeps a confirmed meal occurrence when no analysis was completed", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-06", mealType: "lunch", note: "Repas noté" });
+    expect(updatePreviewMeal(userId, meal.id, { status: "confirmed" })?.status).toBe("confirmed");
+
+    const records = loadPreviewConfirmedMealRecords(userId);
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ id: meal.id, caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null });
+    expect(records[0]?.foods).toBeUndefined();
+  });
+
   it("combines the note and available photos in one preview analysis", () => {
     const userId = `preview-${crypto.randomUUID()}`;
     const meal = createPreviewMeal(userId, { mealDate: "2026-09-04", mealType: "lunch", note: "Pâtes avec sauce tomate" });

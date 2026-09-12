@@ -64,6 +64,7 @@ export function nutritionTargetLikelyValues(targets: NutritionTargets) {
     fatG: targets.fatG.likely,
     carbsG: targets.carbsG.likely,
     fiberG: targets.fiberG.likely,
+    addedSugarG: targets.addedSugarG.likely,
     surplusKcal: targets.surplusKcal,
   };
 }

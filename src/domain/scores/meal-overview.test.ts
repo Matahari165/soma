@@ -54,6 +54,13 @@ describe("buildMealScoreOverview", () => {
     expect(overview.evidenceScore.components).toMatchObject({ mealCoverage: 25, analysisCoverage: 100, analysisConfidence: 100 });
     expect(overview.foodVarietyCount).toBe(2);
     expect(overview.foodGroupCount).toBe(2);
+    expect(overview.balanceScore?.score).toEqual(expect.any(Number));
+    expect(overview.rolling).toEqual([
+      expect.objectContaining({ days: 14, coveredDays: 2, totalDays: 14 }),
+      expect.objectContaining({ days: 28, coveredDays: 2, totalDays: 28 }),
+    ]);
+    expect(overview.scoreTrend).toHaveLength(28);
+    expect(overview.scoreTrend.at(-2)?.balanceScore).toBeNull();
     expect(overview.trend).toEqual([
       expect.objectContaining({ date: "2026-09-04", targetScore: 100 }),
       expect.objectContaining({ date: "2026-09-06", targetScore: 100, evidenceScore: 85 }),

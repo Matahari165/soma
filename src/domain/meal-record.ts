@@ -1,4 +1,4 @@
-import { MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup } from "@/domain/meals";
+import { MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup, type MealNovaGroup, type MealQualityProperty, type MealSugarExposure } from "@/domain/meals";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
@@ -65,6 +65,9 @@ export type MealIngredient = {
   evidenceSource?: MealFoodEvidenceSource;
   evidencePhotoIds?: string[];
   quantity?: MealFoodQuantity | null;
+  novaGroup?: MealNovaGroup | null;
+  sugarExposure?: MealSugarExposure | null;
+  qualityProperties?: MealQualityProperty[];
 };
 
 export type MealAnalysis = {
@@ -172,6 +175,25 @@ function mealFoodEvidenceSource(value: unknown): MealFoodEvidenceSource | undefi
   return value === "photo" || value === "note" || value === "model" ? value : undefined;
 }
 
+function mealNovaGroup(value: unknown): MealNovaGroup | null | undefined {
+  return value === null ? null : value === 1 || value === 2 || value === 3 || value === 4 ? value : undefined;
+}
+
+function mealSugarExposure(value: unknown): MealSugarExposure | null | undefined {
+  if (value === null) return null;
+  if (!isRecord(value)) return undefined;
+  if (!Object.prototype.hasOwnProperty.call(value, "concentrated") || !Object.prototype.hasOwnProperty.call(value, "liquid")) return undefined;
+  const concentrated = value.concentrated;
+  const liquid = value.liquid;
+  if ((concentrated !== null && typeof concentrated !== "boolean") || (liquid !== null && typeof liquid !== "boolean")) return undefined;
+  return { concentrated: concentrated as boolean | null, liquid: liquid as boolean | null };
+}
+
+function mealQualityProperties(value: unknown): MealQualityProperty[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((property): property is MealQualityProperty => property === "whole_food" || property === "minimally_processed" || property === "fermented" || property === "fiber_source" || property === "protein_source" || property === "unsaturated_fat_source").slice(0, 8);
+}
+
 export function apiMealToRecord(value: unknown): MealRecord {
   const meal = isRecord(value) ? value : {};
   const analysisRecord = isRecord(meal.analysis) ? meal.analysis : null;
@@ -212,6 +234,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
       parentId: typeof rawFood.parentId === "string" ? rawFood.parentId : null,
       course: mealFoodCourse(rawFood.course),
       countedInTotals: typeof rawFood.countedInTotals === "boolean" ? rawFood.countedInTotals : undefined,
+      alcoholic: typeof rawFood.alcoholic === "boolean" ? rawFood.alcoholic : undefined,
       foodGroups: Array.isArray(rawFood.foodGroups)
         ? rawFood.foodGroups.filter((group): group is MealFoodGroup => group === "fruit" || group === "vegetable" || group === "legume" || group === "whole_grain" || group === "refined_grain" || group === "potato" || group === "animal_protein" || group === "plant_protein" || group === "egg" || group === "dairy" || group === "nuts_seeds" || group === "added_fat" || group === "sauce" || group === "sweet" || group === "beverage" || group === "other").slice(0, 4)
         : undefined,
@@ -225,6 +248,9 @@ export function apiMealToRecord(value: unknown): MealRecord {
         basis: typeof rawFood.quantity.basis === "string" ? rawFood.quantity.basis : null,
         grams: typeof rawFood.quantity.grams === "number" ? rawFood.quantity.grams : null,
       } : null,
+      novaGroup: mealNovaGroup(rawFood.novaGroup),
+      sugarExposure: mealSugarExposure(rawFood.sugarExposure),
+      qualityProperties: mealQualityProperties(rawFood.qualityProperties),
     }];
   });
   const uncertainties = result && Array.isArray(result.uncertainties) ? result.uncertainties.filter((item): item is string => typeof item === "string") : [];

@@ -76,6 +76,28 @@ export const mealFoodGroupSchema = z.enum([
 ]);
 export type MealFoodGroup = z.infer<typeof mealFoodGroupSchema>;
 
+/** Optional descriptive axes used by composable food scoring. */
+export const mealNovaGroupSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+export type MealNovaGroup = z.infer<typeof mealNovaGroupSchema>;
+
+/** Concentrated and liquid sugar exposure are independent observations. */
+export const mealSugarExposureSchema = z.object({
+  concentrated: z.boolean().nullable(),
+  liquid: z.boolean().nullable(),
+});
+export type MealSugarExposure = z.infer<typeof mealSugarExposureSchema>;
+
+/** Descriptive food properties; these are not quality judgements or scores. */
+export const mealQualityPropertySchema = z.enum([
+  "whole_food",
+  "minimally_processed",
+  "fermented",
+  "fiber_source",
+  "protein_source",
+  "unsaturated_fat_source",
+]);
+export type MealQualityProperty = z.infer<typeof mealQualityPropertySchema>;
+
 export const mealEvidenceSchema = z.enum(["visible", "inferred", "unknown"]);
 export type MealEvidence = z.infer<typeof mealEvidenceSchema>;
 
@@ -135,6 +157,11 @@ export const mealFoodItemSchema = z.object({
   evidenceSource: mealEvidenceSourceSchema.optional(),
   evidencePhotoIds: z.array(z.string().trim().min(1).max(120)).max(6).optional(),
   quantity: mealQuantitySchema.nullable().optional(),
+  /** Optional labels; old analyses remain valid and simply omit them. */
+  alcoholic: z.boolean().optional(),
+  novaGroup: mealNovaGroupSchema.nullable().optional(),
+  sugarExposure: mealSugarExposureSchema.nullable().optional(),
+  qualityProperties: z.array(mealQualityPropertySchema).max(8).optional(),
   calories: nutritionRangeSchema.nullable(),
   proteinGrams: nutritionRangeSchema.nullable(),
   carbohydrateGrams: nutritionRangeSchema.nullable(),

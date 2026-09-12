@@ -523,3 +523,39 @@
   .root:global(.meals-page-trends) .barChart { min-height: 88px; }
   .root:global(.meals-page-trends) .barColumn { height: 78px; }
 }
+
+/* The period switch follows Soma's navigation language: flat controls,
+   one active rule, no nested control card. */
+.root:global(.meals-page-trends) .periodOptions {
+  gap: 0;
+  border: 0;
+  border-bottom: 1px solid var(--lab-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.root:global(.meals-page-trends) .periodOptions button {
+  min-width: 88px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: var(--lab-type-label);
+  font-weight: 400;
+}
+
+.root:global(.meals-page-trends) .periodOptions button:nth-child(2) { min-width: 112px; }
+.root:global(.meals-page-trends) .periodOptions button:hover { background: var(--lab-surface-subtle); color: var(--lab-text-primary); }
+.root:global(.meals-page-trends) .periodOptions button[aria-pressed="true"] {
+  border-bottom-color: var(--lab-text-primary);
+  background: transparent;
+  color: var(--lab-text-primary);
+}
+.root:global(.meals-page-trends) .periodOptions button:focus-visible { outline: 2px solid var(--lab-text-primary); outline-offset: -2px; }
+
+@media (max-width: 700px) {
+  .root:global(.meals-page-trends) .periodOptions button,
+  .root:global(.meals-page-trends) .periodOptions button:nth-child(2) { min-width: 0; }
+}

@@ -9,6 +9,13 @@ describe("nutrition target contract", () => {
       ...DEFAULT_NUTRITION_TARGETS,
       proteinG: { low: 120, likely: 150, high: 190 },
     })?.proteinG).toEqual({ low: 120, likely: 150, high: 190 });
+    expect(DEFAULT_NUTRITION_TARGETS.addedSugarG).toEqual({ low: 0, likely: 0, high: 5 });
+  });
+
+  it("keeps older saved targets valid and adds the sugar guardrail", () => {
+    const legacy = { ...DEFAULT_NUTRITION_TARGETS };
+    delete (legacy as Partial<typeof legacy>).addedSugarG;
+    expect(parseNutritionTargets(legacy)).toMatchObject({ addedSugarG: { low: 0, likely: 0, high: 5 } });
   });
 
   it("rejects incomplete, inverted, or negative targets", () => {

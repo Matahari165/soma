@@ -114,7 +114,7 @@ export function mealAnalysisJsonSchema() {
   const food = {
     type: "object",
     additionalProperties: false,
-    required: ["name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "course", "countedInTotals", "foodGroups", "varietyKey", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams", "confidence"],
+    required: ["name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "course", "countedInTotals", "foodGroups", "varietyKey", "alcoholic", "novaGroup", "sugarExposure", "qualityProperties", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams", "confidence"],
     properties: {
       name: { type: "string", maxLength: 120 },
       preparation: { anyOf: [{ type: "string", maxLength: 240 }, { type: "null" }] },
@@ -126,6 +126,23 @@ export function mealAnalysisJsonSchema() {
       countedInTotals: { type: "boolean" },
       foodGroups: { type: "array", maxItems: 4, items: { type: "string", enum: ["fruit", "vegetable", "legume", "whole_grain", "refined_grain", "potato", "animal_protein", "plant_protein", "egg", "dairy", "nuts_seeds", "added_fat", "sauce", "sweet", "beverage", "other"] } },
       varietyKey: { anyOf: [{ type: "string", maxLength: 80 }, { type: "null" }] },
+      alcoholic: { type: "boolean" },
+      novaGroup: { anyOf: [{ type: "integer", minimum: 1, maximum: 4 }, { type: "null" }] },
+      sugarExposure: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["concentrated", "liquid"],
+            properties: {
+              concentrated: { anyOf: [{ type: "boolean" }, { type: "null" }] },
+              liquid: { anyOf: [{ type: "boolean" }, { type: "null" }] },
+            },
+          },
+        ],
+      },
+      qualityProperties: { type: "array", maxItems: 8, items: { type: "string", enum: ["whole_food", "minimally_processed", "fermented", "fiber_source", "protein_source", "unsaturated_fat_source"] } },
       evidence: { type: "string", enum: ["visible", "inferred", "unknown"] },
       evidenceSource: { type: "string", enum: ["photo", "note", "model"] },
       evidencePhotoIds: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 120 } },
@@ -382,7 +399,8 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "Liste chaque aliment cité dans la description. Indique une quantité ou une portion seulement si l'utilisateur la donne explicitement (par exemple « 2 bananes ») ; sinon portion à null. Ne jamais inventer de grammes : estimatedGrams à null si la description ne permet pas une estimation responsable.",
     "Pour un plat composé, distingue le plat, ses composants et les ingrédients seulement si cela évite une ambiguïté. Ne double jamais un plat avec ses composants : countedInTotals doit être false pour le parent si ses composants sont comptés.",
     "Pour chaque aliment, renseigne course avec starter, main, side ou dessert seulement si la description indique clairement sa place dans le repas ; utilise null sinon. course sert uniquement à structurer l'affichage (entrée, plat, accompagnement, dessert), pas à juger l'aliment.",
-    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires justifiées par la description. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires justifiées par la description. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Renseigne alcoholic=true uniquement pour une boisson ou un aliment alcoolisé : l'alcool est conservé pour trace mais exclu des dimensions du score et ne doit pas être inclus dans countedInTotals ni dans les totaux nutritionnels. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable ; null sinon. Renseigne sugarExposure avec concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; les deux peuvent être vrais. Renseigne qualityProperties uniquement pour des propriétés descriptives justifiées (whole_food, minimally_processed, fermented, fiber_source, protein_source, unsaturated_fat_source), sans déduire une qualité globale.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme éléments inferred/unknown structurés quand elles sont pertinentes, sans en inventer la quantité. Utilise kind, parentId, evidence, evidenceSource et quantity seulement quand ils sont justifiés.",
     "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
     "Estime séparément les sucres totaux et les sucres ajoutés lorsque la description le permet. Ne confonds jamais glucides et sucres ; utilise null si ce n’est pas estimable. Inclus sugarGrams et addedSugarGrams pour chaque aliment et dans totals.",
@@ -405,7 +423,8 @@ export function makePrompt(input: MealVisionInput) {
     "Pour chaque aliment : name en français ; portion/quantityLabel en français seulement si visuellement estimable (par exemple « 1 bol », « 2 tranches »), sinon null ; ne jamais deviner les grammes : estimatedGrams à null si non estimable.",
     "Pour un plat composé, utilise kind=dish pour le plat et kind=component ou ingredient pour ses éléments seulement si cela clarifie ce qui est visible. Ne double jamais le plat avec ses composants : si les composants sont comptés dans les totaux, countedInTotals=false pour le plat parent et parentId pour chaque enfant.",
     "Pour chaque aliment, renseigne course avec starter, main, side ou dessert seulement si sa place est justifiée par la note ou une preuve claire ; utilise null sinon. course sert uniquement à structurer l'affichage (entrée, plat, accompagnement, dessert), pas à juger l'aliment.",
-    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires visibles ou fortement inférées. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires visibles ou fortement inférées. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Renseigne alcoholic=true uniquement pour une boisson ou un aliment alcoolisé : l'alcool est conservé pour trace mais exclu des dimensions du score et ne doit pas être inclus dans countedInTotals ni dans les totaux nutritionnels. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable ; null sinon. Renseigne sugarExposure avec concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; les deux peuvent être vrais. Renseigne qualityProperties uniquement pour des propriétés descriptives justifiées (whole_food, minimally_processed, fermented, fiber_source, protein_source, unsaturated_fat_source), sans déduire une qualité globale.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte son identifiant dans evidencePhotoIds. Ne les invente pas et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
     "Estimate total sugars and added sugars separately when the food or preparation supports it. Use null rather than guessing, and never treat all carbohydrates as sugar. Include sugarGrams and addedSugarGrams for every food and in totals.",
@@ -424,7 +443,7 @@ export function makePrompt(input: MealVisionInput) {
 function makeVerificationPrompt(input: MealVisionVerificationInput) {
   return [
     "Relis cette analyse primaire d'un repas avec bienveillance et précision pour un journal alimentaire personnel. Réponds avec des libellés en français.",
-    "Vérifie les quantités, les plats composés, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey et la cohérence nutritionnelle avec les photos et la note. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
+    "Vérifie les quantités, les plats composés, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey, le label alcoholic, les labels de transformation et d'exposition au sucre, et la cohérence nutritionnelle avec les photos et la note. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
     "Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds. Ne double jamais un plat avec ses composants : countedInTotals=false pour le parent lorsque les composants sont comptés.",
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence et uncertainties restent internes à l'analyse.",
     "Une correction utilisateur éventuelle est une indication en langage naturel, à appliquer seulement si elle est compatible avec les preuves.",

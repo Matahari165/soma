@@ -285,10 +285,11 @@ function previewNutrition(value: NutritionEstimate | null | undefined): Nutritio
 
 export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRecord[] {
   return listPreviewMeals(userId).flatMap((meal) => {
-    if (meal.status !== "confirmed" || meal.analysis?.status !== "completed" || !meal.analysis.result) return [];
+    if (meal.status !== "confirmed") return [];
+    const result = meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis.result : null;
     const origins = new Set(meal.photos.map((photo) => photo.origin));
     const origin = origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
-    const totals = meal.analysis.result.totals;
-    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals.calories), proteinG: previewNutrition(totals.proteinGrams), carbsG: previewNutrition(totals.carbohydrateGrams), fatG: previewNutrition(totals.fatGrams), fiberG: previewNutrition(totals.fiberGrams), sugarG: previewNutrition(totals.sugarGrams), addedSugarG: previewNutrition(totals.addedSugarGrams), foods: meal.analysis.result.foods.map((food) => ({ name: food.name, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: meal.analysis.result.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
+    const totals = result?.totals;
+    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map((food) => ({ name: food.name, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
 }

@@ -34,5 +34,30 @@ describe("meal record server boundary", () => {
     });
 
     expect(record.analysis?.ingredients[0]).toMatchObject({ foodGroups: ["vegetable"], varietyKey: "tomate" });
+    expect(record.analysis?.ingredients[0]?.novaGroup).toBeUndefined();
+    expect(record.analysis?.ingredients[0]?.sugarExposure).toBeUndefined();
+  });
+
+  it("keeps optional labels when adapting a current analysis", () => {
+    const record = apiMealToRecord({
+      id: "meal-labels",
+      mealDate: "2026-09-05",
+      mealType: "lunch",
+      status: "confirmed",
+      photos: [],
+      analysis: {
+        status: "completed",
+        id: "analysis-labels",
+        result: {
+          summary: "Repas étiqueté",
+          foods: [{ name: "Jus", preparation: null, portion: null, estimatedGrams: null, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: ["minimally_processed"], calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "medium" }],
+          totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+          confidence: "medium",
+          uncertainties: [],
+        },
+      },
+    });
+
+    expect(record.analysis?.ingredients[0]).toMatchObject({ novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: ["minimally_processed"] });
   });
 });

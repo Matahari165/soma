@@ -1,5 +1,5 @@
 import type { MatrixPoint, MatrixSeries } from "@/domain/lab/matrix";
-import type { MealFoodGroup } from "@/domain/meals";
+import type { MealFoodGroup, MealNovaGroup, MealQualityProperty, MealSugarExposure } from "@/domain/meals";
 
 /** Meal slots supported by the first meal journal version. */
 export const mealTypes = ["breakfast", "lunch", "snack", "dinner"] as const;
@@ -51,6 +51,10 @@ export type ConfirmedMealFood = {
   name: string;
   varietyKey?: string | null;
   foodGroups?: readonly MealFoodGroup[];
+  alcoholic?: boolean;
+  novaGroup?: MealNovaGroup | null;
+  sugarExposure?: MealSugarExposure | null;
+  qualityProperties?: readonly MealQualityProperty[];
   countedInTotals?: boolean;
   confidence?: "low" | "medium" | "high";
 };
@@ -74,6 +78,8 @@ export type MealDailyAggregate = {
   analysisConfidence: number | null;
   foodVarietyCount: number | null;
   foodGroupCount: number | null;
+  /** Cross-labelled family occurrences; null means no food classification. */
+  foodGroupCounts: Partial<Record<MealFoodGroup, number>> | null;
   mouthHeatAverage: number | null;
   mouthHeatMaximum: number | null;
   stomachOverfullnessAverage: number | null;
@@ -184,12 +190,12 @@ function canonicalFoodKey(food: ConfirmedMealFood) {
   return raw ? raw.toLocaleLowerCase("fr-FR") : null;
 }
 
-/** A nutrition sum is unknown when at least one confirmed meal has no estimate. */
+/** Sum known estimates; unknown meals do not erase the known part of the day. */
 function sumNutrition(records: readonly ConfirmedMealRecord[], read: (record: ConfirmedMealRecord) => NutritionEstimate | null) {
   if (!records.length) return null;
   const values = records.map((record) => likelyEstimate(read(record)));
-  if (values.some((value) => value === null)) return null;
-  return (values as number[]).reduce((sum, value) => sum + value, 0);
+  const known = values.filter((value): value is number => value !== null);
+  return known.length ? known.reduce((sum, value) => sum + value, 0) : null;
 }
 
 /**
@@ -222,19 +228,25 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
     const preparedCount = meals.filter((meal) => meal.origin === "prepared").length;
     const mixedCount = meals.filter((meal) => meal.origin === "mixed").length;
     const nutritionObservations = meals.flatMap((meal) => nutritionFields.map((field) => meal[field] !== null && meal[field] !== undefined));
+    // A day with confirmed meals but no completed nutrition analysis is a real
+    // observation with 0% coverage; an absent day has no aggregate at all.
     const analysisCoverage = nutritionObservations.length
       ? nutritionObservations.filter(Boolean).length / nutritionObservations.length * 100
-      : null;
+      : 0;
     const confidenceValues = meals.flatMap((meal) => {
       const value = confidenceValue(meal.analysisConfidence);
       return value === null ? [] : [value];
     });
-    const foods = meals.flatMap((meal) => (meal.foods ?? []).filter((food) => food.countedInTotals !== false));
+    const foods = meals.flatMap((meal) => (meal.foods ?? []).filter((food) => food.countedInTotals !== false && food.alcoholic !== true));
     const foodKeys = new Set(foods.flatMap((food) => {
       const key = canonicalFoodKey(food);
       return key ? [key] : [];
     }));
     const foodGroups = new Set(foods.flatMap((food) => food.foodGroups ?? []));
+    const foodGroupCounts = foods.reduce<Partial<Record<MealFoodGroup, number>>>((counts, food) => {
+      for (const group of food.foodGroups ?? []) counts[group] = (counts[group] ?? 0) + 1;
+      return counts;
+    }, {});
     return {
       date,
       mealCount: meals.length,
@@ -256,6 +268,7 @@ export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[])
       analysisConfidence: confidenceValues.length ? average(confidenceValues) : null,
       foodVarietyCount: foodKeys.size || null,
       foodGroupCount: foodGroups.size || null,
+      foodGroupCounts: Object.keys(foodGroupCounts).length ? foodGroupCounts : null,
       mouthHeatAverage: average(meals.map((meal) => intensity(meal.mouthHeat))),
       mouthHeatMaximum: maximum(meals.map((meal) => intensity(meal.mouthHeat))),
       stomachOverfullnessAverage: average(meals.map((meal) => intensity(meal.stomachOverfullness))),
@@ -294,6 +307,21 @@ export function mealNutritionHistory(records: readonly ConfirmedMealRecord[], en
       return { date, value: day ? spec.read(day) : null };
     }),
   }));
+}
+
+export type MealFoodGroupTrendPoint = {
+  date: string;
+  counts: Partial<Record<MealFoodGroup, number>> | null;
+};
+
+/** Calendar-aligned family distribution for the Repas page. */
+export function mealFoodGroupHistory(records: readonly ConfirmedMealRecord[], endDate: string, days = 28): MealFoodGroupTrendPoint[] {
+  const safeDays = Math.max(1, Math.floor(days));
+  const byDate = new Map(aggregateConfirmedMeals(records).map((day) => [day.date, day]));
+  return Array.from({ length: safeDays }, (_, index) => {
+    const date = addDays(endDate, index - (safeDays - 1));
+    return { date, counts: byDate.get(date)?.foodGroupCounts ?? null };
+  });
 }
 
 const seriesSpec: ReadonlyArray<{ id: MealMetricId; label: string; unit: string; read: (day: MealDailyAggregate) => number | null }> = [

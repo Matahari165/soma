@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aggregateConfirmedMeals, mealDailySeries, mealNutritionHistory, type ConfirmedMealRecord } from "./meals";
+import { aggregateConfirmedMeals, mealDailySeries, mealFoodGroupHistory, mealNutritionHistory, type ConfirmedMealRecord } from "./meals";
 
 function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "id">): ConfirmedMealRecord {
   return {
@@ -69,9 +69,43 @@ describe("confirmed meal daily series", () => {
       meal({ id: "meal-2", mealType: "lunch", caloriesKcal: null, proteinG: null }),
     ]);
 
-    expect(result[0]?.caloriesKcal).toBeNull();
-    expect(result[0]?.proteinG).toBeNull();
+    expect(result[0]?.caloriesKcal).toBe(400);
+    expect(result[0]?.proteinG).toBe(25);
     expect(result[0]?.carbsG).toBe(100);
+  });
+
+  it("keeps cross-labelled food family occurrences available for the history graph", () => {
+    const result = aggregateConfirmedMeals([meal({ id: "meal-labelled", foods: [
+      { name: "Tomate", varietyKey: "tomate", foodGroups: ["vegetable"] },
+      { name: "Lentilles", varietyKey: "lentilles", foodGroups: ["legume", "plant_protein"] },
+    ] })]);
+
+    expect(result[0]?.foodGroupCounts).toEqual({ vegetable: 1, legume: 1, plant_protein: 1 });
+    expect(mealFoodGroupHistory([meal({ id: "meal-labelled", foods: [{ name: "Tomate", foodGroups: ["vegetable"] }] })], "2026-08-25", 2)).toEqual([
+      { date: "2026-08-24", counts: null },
+      { date: "2026-08-25", counts: { vegetable: 1 } },
+    ]);
+  });
+
+  it("keeps a confirmed meal without analysis as an observation with zero coverage", () => {
+    const result = aggregateConfirmedMeals([meal({
+      id: "meal-unanalysed",
+      caloriesKcal: null,
+      proteinG: null,
+      carbsG: null,
+      fatG: null,
+      fiberG: null,
+      foods: undefined,
+    })]);
+
+    expect(result[0]).toMatchObject({ mealCount: 1, analysisCoverage: 0, caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null, foodVarietyCount: null, foodGroupCount: null });
+    expect(mealDailySeries([meal({ id: "meal-unanalysed", caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null })]).meal_count.points).toEqual([{ date: "2026-08-25", value: 1 }]);
+    expect(mealDailySeries([meal({ id: "meal-unanalysed", caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null })]).meal_analysis_coverage.points).toEqual([{ date: "2026-08-25", value: 0 }]);
+  });
+
+  it("leaves a day absent when there are no confirmed meal records", () => {
+    expect(aggregateConfirmedMeals([])).toEqual([]);
+    expect(mealDailySeries([]).meal_count.points).toEqual([]);
   });
 
   it("measures coverage by distinct meal slots, not by photo count", () => {
