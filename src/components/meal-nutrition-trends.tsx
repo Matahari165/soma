@@ -70,6 +70,7 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
   const firstDate = points[0]?.date;
   const lastDate = points.at(-1)?.date ?? firstDate;
   const summaryId = `nutrition-${metric.id}-summary`;
+  const coverageLabel = `${available.length} ${available.length === 1 ? "jour mesuré" : "jours mesurés"} sur ${points.length}`;
 
   return <article className={styles.card} data-metric={metric.id} aria-labelledby={`nutrition-${metric.id}-title`}>
     <header className={styles.cardHeader}>
@@ -81,7 +82,7 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
     </header>
 
     <div className={styles.chartFrame}>
-      <div className={styles.barChart} style={{ "--point-count": points.length } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${available.length} jours mesurés sur ${points.length}.`}>
+      <div className={styles.barChart} style={{ "--point-count": points.length } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${coverageLabel}.`}>
         {points.map((point) => {
           const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
           // Animate the painted bar with a compositor-friendly transform.
@@ -97,7 +98,6 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
       <p id={summaryId} className="sr-only">{points.map((point) => pointDescription(point, copy.unit)).join(". ")}</p>
     </div>
 
-    <footer className={styles.cardFooter}><span>{available.length}/{points.length} jours mesurés</span><span>{periodLabels[period]}</span></footer>
   </article>;
 }
 

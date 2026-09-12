@@ -47,7 +47,8 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
     <div className="baseline-row">{trend.comparisons.map((item) => <span key={item.days}><small>moy. {item.days} j · {item.sampleSize}/{item.days}</small><strong>{item.average === null ? "—" : format(item.average)}</strong></span>)}</div>
     <footer><span>Dernière mesure&nbsp;{formatDate(trend.currentDate ?? undefined)} · {completeCount} jours mesurés</span>{href && <ArrowUpRight className="metric-card-cue" size={17} aria-hidden="true" />}</footer>
   </>;
-  const accessibleSummary = `${label}. Valeur actuelle : ${current === null ? "indisponible" : `${format(current)}${unit ? ` ${unit}` : ""}`}. Variabilité sur 30 jours : ${variability}. Évolution : ${trend.sustainedChange.replaceAll("_", " ")}.`;
+  const changeLabel = trend.sustainedChange === "improving" ? "en amélioration" : trend.sustainedChange === "declining" ? "en baisse" : "stable";
+  const accessibleSummary = `${label}. Valeur actuelle : ${current === null ? "indisponible" : `${format(current)}${unit ? ` ${unit}` : ""}`}. Variabilité sur 30 jours : ${variability}. Évolution : ${changeLabel}.`;
   return href
     ? <Link className="metric-trend-card metric-trend-card--link" href={href} aria-label={`Ouvrir le détail. ${accessibleSummary}`}>{cardContent}</Link>
     : <article className="metric-trend-card" aria-label={accessibleSummary}>{cardContent}</article>;

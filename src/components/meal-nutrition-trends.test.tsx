@@ -37,7 +37,8 @@ describe("MealNutritionTrends", () => {
     expect(html).toContain("Sucres ajoutés");
     expect(html).toContain("Lipides");
     expect(html).toContain("Glucides");
-    expect(html).toContain("0/7 jours mesurés");
+    expect(html).not.toContain("0/7 jours mesurés");
+    expect(html).toContain("6 jours mesurés sur 7");
     expect(html).toContain("mercredi 26 août : aucune estimation disponible");
   });
 
@@ -49,7 +50,8 @@ describe("MealNutritionTrends", () => {
     const html = renderToStaticMarkup(<MealNutritionTrends metrics={[zeroMetric]} />);
 
     expect(html).toContain("0 g");
-    expect(html).toContain("1/7 jours mesurés");
+    expect(html).not.toContain("1/7 jours mesurés");
+    expect(html).toContain("1 jour mesuré sur 7");
     expect(html).toMatch(/class="[^"]*barMissing[^"]*"/);
     expect(html).toMatch(/class="[^"]*bar[^"]*" style="--bar-scale:0\.04"/);
   });

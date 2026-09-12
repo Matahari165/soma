@@ -206,7 +206,7 @@
 .captureButtonCompact,
 .galleryButtonCompact {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -751,6 +751,11 @@
   .labRoot .emptyMealActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Shared interaction contract: compact styling, full 44px target. */
+:global(html[data-lab-theme="observatory"]) .mealsPageRoot :is(button, input, select, textarea, summary) {
+  min-height: 44px;
+}
+
 /* Empty slots are capture surfaces: the note stays in the row and the photo
    action opens the camera/library choice without multiplying competing CTAs. */
 .emptyMealPrompt { align-items: stretch; }
@@ -1115,7 +1120,11 @@
 .mealsPageRoot .mealsWeekStrip .weekDay:last-child,
 .mealsPageRoot .mealsWeekStrip .weekDaySelected:last-child { border-right: 0; }
 .mealsPageRoot .mealsWeekStrip .weekDay:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
-.mealsPageRoot .mealsWeekStrip .weekDaySelected { background: var(--lab-brand); color: var(--lab-surface); }
+.mealsPageRoot .mealsWeekStrip .weekDaySelected {
+  background: rgba(238, 238, 238, .05);
+  color: var(--lab-text-primary);
+  box-shadow: inset 0 -1px var(--lab-text-primary);
+}
 .mealsPageRoot .mealsWeekStrip .weekDay span,
 .mealsPageRoot .mealsWeekStrip .weekDaySelected span { font-family: var(--font-soma-mono), monospace; font-size: 12px; text-transform: uppercase; }
 .mealsPageRoot .mealsWeekStrip .weekDay strong,
@@ -1738,8 +1747,9 @@
 }
 
 :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
-  background: #eee;
-  color: #050505;
+  background: rgba(238, 238, 238, .05);
+  color: #eee;
+  box-shadow: inset 0 -1px #eee;
 }
 
 :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-trends),
@@ -2463,4 +2473,295 @@
     width: 100%;
     max-width: none;
   }
+}
+
+/* Annotation 4 — align the first meal title with the first journal period on
+   the shared desktop workbench without changing the column header controls. */
+@media (min-width: 701px) {
+  .personal-lab-meal-column > .labRoot > .mealList {
+    margin-top: 32px;
+  }
+
+  /* Empty captures should size to their controls instead of reserving a
+     desktop-only blank block. */
+  .mealsJournalPanel .mealCardEmpty { min-height: 0; }
+}
+
+/* Annotation 5 — empty meals are quiet capture surfaces, not blank holes.
+   Keep the note and the single Photo entry point visible while preserving the
+   same 4px geometry and 44px touch target as the rest of Soma. */
+.labRoot .mealCardEmpty,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty {
+  width: 100%;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface-subtle);
+  box-shadow: none;
+}
+
+.labRoot .mealCardEmpty .mealHeader,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .mealHeader {
+  min-height: 44px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--lab-border);
+}
+
+.labRoot .mealCardEmpty .mealTitle h3,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .mealTitle h3 {
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-group);
+  font-weight: 560;
+  line-height: 24px;
+}
+
+.labRoot .mealCardEmpty .emptyMealPrompt,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  border-top: 0;
+}
+
+.labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  min-height: 56px;
+  height: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-ui);
+  line-height: 18px;
+}
+
+.labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea::placeholder,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea::placeholder {
+  color: var(--lab-text-secondary);
+  opacity: 1;
+}
+
+.labRoot .mealCardEmpty .emptyMealActions,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealActions {
+  width: auto;
+  align-self: stretch;
+}
+
+.labRoot .mealCardEmpty .photoInputSingle,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle {
+  display: block;
+  width: auto;
+  height: 100%;
+}
+
+.labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact,
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact {
+  width: auto;
+  min-width: 84px;
+  min-height: 56px;
+  height: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-ui);
+  font-weight: 500;
+}
+
+.labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact:hover:not(:disabled),
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact:hover:not(:disabled) {
+  border-color: var(--lab-border-strong);
+  background: var(--lab-surface);
+  color: var(--lab-text-primary);
+}
+
+/* Annotation 7 — /meals follows the shared Personal Lab date language and
+   rhythm while retaining the arrows for dates outside the visible window. */
+.mealsPageRoot .historyNavigation,
+:global(.meals-page) .mealsPageRoot .historyNavigation {
+  height: 44px;
+  min-height: 44px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mealsPageRoot .historyArrow,
+:global(.meals-page) .mealsPageRoot .historyArrow {
+  min-width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: 18px;
+}
+
+.mealsPageRoot .historyArrow:hover:not(:disabled),
+:global(.meals-page) .mealsPageRoot .historyArrow:hover:not(:disabled) {
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
+}
+
+.mealsPageRoot .mealsWeekStrip,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip {
+  height: 44px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.mealsPageRoot .mealsWeekStrip .weekDay,
+.mealsPageRoot .mealsWeekStrip .weekDaySelected,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+  min-height: 44px;
+  height: 44px;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0;
+  padding: 3px 10px;
+  border: 0;
+  border-right: 1px solid var(--lab-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.mealsPageRoot .mealsWeekStrip .weekDay:last-child,
+.mealsPageRoot .mealsWeekStrip .weekDaySelected:last-child,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay:last-child,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected:last-child { border-right: 0; }
+
+.mealsPageRoot .mealsWeekStrip .weekDay:hover,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay:hover {
+  background: var(--lab-surface-subtle);
+  color: var(--lab-text-primary);
+}
+
+.mealsPageRoot .mealsWeekStrip .weekDaySelected,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+  background: transparent;
+  color: var(--lab-text-primary);
+  box-shadow: inset 0 -1px var(--lab-text-primary);
+}
+
+.mealsPageRoot .mealsWeekStrip .weekDay span,
+.mealsPageRoot .mealsWeekStrip .weekDaySelected span,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay span,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected span {
+  overflow: hidden;
+  max-width: 100%;
+  color: inherit;
+  font-family: var(--font-soma-ui);
+  font-size: var(--lab-type-label);
+  line-height: 16px;
+  text-overflow: ellipsis;
+  text-transform: none;
+}
+
+.mealsPageRoot .mealsWeekStrip .weekDay strong,
+.mealsPageRoot .mealsWeekStrip .weekDaySelected strong,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay strong,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected strong {
+  color: inherit;
+  font-family: var(--lab-data-font);
+  font-size: var(--lab-type-label);
+  font-weight: 560;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.mealsPageRoot .historyArrow:focus-visible,
+:global(.meals-page) .mealsPageRoot .historyArrow:focus-visible,
+.mealsPageRoot .mealsWeekStrip .weekDay:focus-visible,
+.mealsPageRoot .mealsWeekStrip .weekDaySelected:focus-visible,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay:focus-visible,
+:global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected:focus-visible {
+  outline: 2px solid var(--lab-brand);
+  outline-offset: -2px;
+}
+
+@media (max-width: 700px) {
+  .labRoot .mealCardEmpty .emptyMealPrompt,
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 8px;
+  }
+
+  .labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact,
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .photoInputSingle .captureButtonCompact {
+    width: 88px;
+    min-width: 88px;
+    padding-inline: 8px;
+  }
+
+  .mealsPageRoot .historyNavigation,
+  :global(.meals-page) .mealsPageRoot .historyNavigation,
+  .mealsPageRoot .historyArrow,
+  :global(.meals-page) .mealsPageRoot .historyArrow,
+  .mealsPageRoot .mealsWeekStrip,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip { height: 44px; min-height: 44px; }
+
+  .mealsPageRoot .mealsWeekStrip,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip { overflow-x: auto; scrollbar-width: none; }
+  .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { display: none; }
+  .mealsPageRoot .mealsWeekStrip .weekDay,
+  .mealsPageRoot .mealsWeekStrip .weekDaySelected,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay,
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDaySelected {
+    flex: 0 0 96px;
+    min-width: 96px;
+    min-height: 44px;
+    height: 44px;
+    padding-inline: 6px;
+  }
+}
+
+/* Final mobile header contract: show every daily metric without a hidden
+   horizontal gesture, using the same two-column rhythm as health summaries. */
+@media (max-width: 700px) {
+  :global(.meals-page) .mealsPageRoot .headerMetrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    gap: 12px 20px;
+    overflow: visible;
+    padding: 0;
+    scroll-snap-type: none;
+  }
+
+  :global(.meals-page) .mealsPageRoot .headerMetric {
+    min-width: 0;
+    min-height: 64px;
+    flex: none;
+    padding: 0;
+  }
+
+  :global(.meals-page) .mealsPageRoot .headerMetric > strong small {
+    white-space: nowrap;
+  }
+}
+
+:global(.meals-page) .mealsPageRoot .mealsJournalPanel :is(
+  .captureButton,
+  .captureButtonCompact,
+  .galleryButton,
+  .galleryButtonCompact,
+  .analyzeButton,
+  .emptyNoteButton,
+  .secondaryButton
+) {
+  min-height: 44px;
 }

@@ -219,11 +219,21 @@ function IngredientGroups({ analysis }: { analysis: MealAnalysis }) {
   </div>;
 }
 
-function compactDayLabel(date: string) {
+function compactDayLabel(date: string, today?: string) {
   const value = new Date(`${date}T12:00:00`);
+  const relativeDays = today
+    ? Math.round((new Date(`${today}T12:00:00`).getTime() - value.getTime()) / 86_400_000)
+    : null;
+  const weekday = relativeDays === 0
+    ? "Aujourd’hui"
+    : relativeDays === 1
+      ? "Hier"
+      : relativeDays === 2
+        ? "Avant-hier"
+        : new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(value).replace(".", "");
   return {
-    weekday: new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(value).replace(".", ""),
-    day: new Intl.DateTimeFormat("fr-FR", { day: "numeric" }).format(value),
+    weekday,
+    day: new Intl.DateTimeFormat("fr-FR", today ? { day: "numeric", month: "short" } : { day: "numeric" }).format(value).replace(".", ""),
   };
 }
 
@@ -807,7 +817,8 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     if (!openRequest || skipped) return;
     const frame = requestAnimationFrame(() => {
       document.getElementById(`meal-${slot}-note`)?.focus({ preventScroll: true });
-      document.getElementById(`meal-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById(`meal-${slot}`)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
     });
     return () => cancelAnimationFrame(frame);
   }, [openRequest, skipped, slot]);
@@ -848,7 +859,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
     {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
-      {integratedEmpty ? <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} /> : null}
+      {integratedEmpty ? <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "Décrire le repas…" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} /> : null}
       <div className={styles.emptyMealActions}>
         {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
       </div>
@@ -856,7 +867,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
     {!skipped && !compactEmptyState && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
-      {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
+      {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "Décrire le repas…" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
       {status === "draft" && <div className={styles.actionsRow}>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />
         <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
@@ -1316,13 +1327,14 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     void saveMeal(meal);
   };
 
-  const historyDates = mealHistoryDates(selectedDate, today, variant === "meals" ? historyDays ?? 6 : historyDays ?? 7);
-  const visibleHistoryDates = variant === "meals" ? [...historyDates].reverse() : historyDates;
+  const historyDates = mealHistoryDates(selectedDate, today, variant === "meals" ? Math.max(7, historyDays ?? 7) : historyDays ?? 7);
+  // Keep the newest day on the left, like the shared Personal Lab selector.
+  const visibleHistoryDates = historyDates;
   const internalDateNavigation = showDateNavigation ? <nav className={styles.historyNavigation} aria-label="Historique des repas">
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled} aria-label="Jours précédents" onClick={() => selectDate(shiftIsoDate(selectedDate, -1))}>‹</button>}
-    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""}`} role="group" aria-label={variant === "meals" ? "Six jours" : "Sept jours"}>
+    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""}`} role="group" aria-label="Sept jours">
       {visibleHistoryDates.map((historyDate) => {
-        const label = compactDayLabel(historyDate);
+        const label = compactDayLabel(historyDate, variant === "meals" ? today : undefined);
         return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-current={historyDate === selectedDate ? "date" : undefined} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><strong>{label.day}</strong></button>;
       })}
     </div>

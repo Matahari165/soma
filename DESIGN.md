@@ -2,17 +2,17 @@
 name: Soma
 description: Un laboratoire personnel vivant pour saisir le quotidien et révéler les effets les plus importants.
 colors:
-  canvas: "#f4f6f2"
-  surface: "#ffffff"
-  surface-subtle: "#f2f5f0"
-  surface-selected: "#e8f0e6"
-  border: "#e0e8de"
-  text-primary: "#1c2520"
-  text-secondary: "#59665e"
-  brand: "#264d38"
-  signal: "#2e7a4f"
-  error: "#c45442"
-  sidebar: "#ebf0ea"
+  canvas: "#050505"
+  surface: "#0b0b0b"
+  surface-subtle: "#151515"
+  surface-selected: "#1c1c1c"
+  border: "#292929"
+  text-primary: "#f1f1f1"
+  text-secondary: "#a7a7a7"
+  brand: "#eeeeee"
+  signal: "#d5e5da"
+  error: "#e2b2aa"
+  sidebar: "#050505"
 typography:
   display:
     fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
@@ -37,7 +37,7 @@ typography:
     lineHeight: 1.4
   observatoryHeading:
     fontFamily: "Georgia, Times New Roman, serif"
-    fontSize: "20–40px"
+    fontSize: "clamp(30px, 3vw, 72px)"
     fontWeight: 400
     lineHeight: 1.2
 rounded:
@@ -82,57 +82,57 @@ components:
 
 **Creative North Star: "Le laboratoire personnel vivant"**
 
-Soma ressemble à un instrument personnel utilisé chaque jour, pas à un logiciel hospitalier ni à un dashboard SaaS. Sa précision vient de l’alignement, des unités, des repères temporels et de la hiérarchie des preuves. Sa chaleur vient de surfaces claires légèrement minérales, d’un vert profond et d’un langage direct adressé à une seule personne.
+Soma ressemble à un instrument personnel utilisé chaque jour, pas à un logiciel hospitalier ni à un dashboard SaaS. Sa précision vient de l’alignement, des unités, des repères temporels et de la hiérarchie des preuves. Son calme vient d’un observatoire noir mat, de règles fines, d’un contraste mesuré et d’un langage direct adressé à une seule personne.
 
-Le système global est celui de `Personal Lab / Stitch / FINAL`. `Meals / Redesign V1` en est la déclinaison pour `/meals`. Les styles antérieurs de l’Atlas physiologique sont un héritage à migrer, jamais une seconde direction valide.
+Le système global effectif est l’Observatoire sombre rendu sur `/`, dérivé de `Personal Lab / Stitch / FINAL`. `Meals / Redesign V1` en est la déclinaison structurelle pour `/meals`. Les styles clairs antérieurs et l’Atlas physiologique sont des héritages à migrer, jamais une seconde direction valide.
 
 La hiérarchie produit culmine dans `Strongest Effects`. Le journal et les repas rendent la donnée possible ; Sommeil, Récupération et Effort donnent le contexte ; les effets les plus forts livrent la compréhension recherchée.
 
 **Key Characteristics:**
 
 - Dense, calme et immédiatement scannable.
-- Grille nette, surfaces plates et variations tonales légères.
+- Noir mat, grille nette, surfaces plates et variations tonales très discrètes.
 - Couleur réservée à un rôle, une source ou un signal.
 - Nombres, périodes et unités traités comme des annotations de laboratoire.
 - Détails et preuves ouverts depuis une synthèse courte.
 
 ## Colors
 
-La palette est froide, végétale et minérale : blanc doux, gris-vert clair et vert forêt. Les accents restent rares afin que les variations et alertes conservent leur poids.
+La palette est noire, minérale et presque monochrome. Les accents restent rares afin que les variations et alertes conservent leur poids.
 
 ### Primary
 
-- **Vert laboratoire** (`#264d38`) : marque, action principale et sélection forte.
-- **Vert signal** (`#2e7a4f`) : évolution favorable ou signal positif, jamais seul pour transmettre le sens.
+- **Blanc laboratoire** (`#eeeeee`) : marque, action principale et sélection forte.
+- **Vert signal pâle** (`#d5e5da`) : évolution favorable, jamais seul pour transmettre le sens.
 
 ### Neutral
 
-- **Toile minérale** (`#f4f6f2`) : fond global.
-- **Surface claire** (`#ffffff`) : panneaux et données prioritaires.
-- **Surface subtile** (`#f2f5f0`) : regroupements secondaires et contrôles.
-- **Surface sélectionnée** (`#e8f0e6`) : date ou option active.
-- **Encre végétale** (`#1c2520`) : texte principal.
-- **Encre secondaire** (`#59665e`) : métadonnées, avec contraste suffisant.
-- **Bordure minérale** (`#e0e8de`) : séparation courante.
+- **Toile Observatoire** (`#050505`) : fond global.
+- **Surface sombre** (`#0b0b0b`) : panneaux et données prioritaires.
+- **Surface subtile** (`#151515`) : regroupements secondaires et contrôles.
+- **Surface sélectionnée** (`#1c1c1c`) : date ou option active.
+- **Encre claire** (`#f1f1f1`) : texte principal.
+- **Encre secondaire** (`#a7a7a7`) : métadonnées, avec contraste suffisant.
+- **Règle minérale** (`#292929`) : séparation courante.
 
 ### Tertiary
 
-- **Rouge alerte** (`#c45442`) : erreur ou évolution défavorable, toujours accompagné d’un texte ou symbole.
+- **Rose alerte** (`#e2b2aa`) : erreur ou évolution défavorable, toujours accompagné d’un texte ou symbole.
 
 ### Named Rules
 
 **The Evidence Color Rule.** Une couleur porte une source, un état ou une direction ; elle ne remplit jamais une surface sans fonction.
 
-**The Latest Layer Rule.** Les tokens `--lab-*` et les frames Stitch validées sont l’autorité. Les anciens tokens chauds sont des compatibilités temporaires, pas une palette à étendre.
+**The Latest Layer Rule.** Le rendu Observatoire actif de `/`, les tokens `--lab-*` et les frames Stitch validées sont l’autorité. Les anciens tokens clairs ou chauds sont des compatibilités temporaires, pas une palette à étendre.
 
 ## Typography
 
 - **Display Font:** Schibsted Grotesk (system-ui en repli)
 - **Body Font:** Schibsted Grotesk (system-ui en repli)
 - **Data Font:** Azeret Mono (monospace en repli)
-- **Observatory Heading (aperçu local uniquement):** Georgia (Times New Roman en repli)
+- **Observatory Heading:** Georgia (Times New Roman en repli)
 
-Schibsted donne une voix contemporaine, sobre et humaine. Dans le mode `SOMA_LOCAL_PREVIEW`, Georgia porte les titres de l’Observatoire pour introduire une tension éditoriale discrète sans remplacer le système clair de production. Azeret Mono distingue les données, dates, unités et preuves sans transformer toute l’interface en terminal. Newsreader et Geist ne font pas partie du système tant qu’ils ne sont pas réellement chargés et validés.
+Schibsted donne une voix contemporaine, sobre et humaine. Georgia porte les titres éditoriaux de l’Observatoire, local comme authentifié. Azeret Mono distingue les données, dates, unités et preuves sans transformer toute l’interface en terminal. Newsreader et Geist ne font pas partie du système tant qu’ils ne sont pas réellement chargés et validés.
 
 ### Hierarchy
 

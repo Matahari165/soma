@@ -163,7 +163,7 @@ html[data-lab-theme="observatory"] .meals-page > section :is(button,input,select
   border-radius: 4px;
   font-weight: 400;
 }
-html[data-lab-theme="observatory"] .meals-page > section button { min-height: 36px; }
+html[data-lab-theme="observatory"] .meals-page > section button { min-height: 44px; }
 html[data-lab-theme="observatory"] .meals-page > section :focus-visible { outline: 2px solid #eee; outline-offset: 3px; }
 
 /* Route-specific first-panel accents are useful in the light system but

@@ -696,12 +696,13 @@
   text-transform: none;
 }
 
-/* Every in-scope control keeps the requested compact rectangular geometry. */
+/* Keep the visual density compact without shrinking the interactive target. */
 :global(html[data-lab-theme="observatory"]) .observatory :global(button),
 :global(html[data-lab-theme="observatory"]) .observatory :global(input),
 :global(html[data-lab-theme="observatory"]) .observatory :global(select),
-:global(html[data-lab-theme="observatory"]) .observatory :global(textarea) {
-  min-height: 36px;
+:global(html[data-lab-theme="observatory"]) .observatory :global(textarea),
+:global(html[data-lab-theme="observatory"]) .observatory :global(summary) {
+  min-height: 44px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -780,6 +781,9 @@
 
 @media (max-width: 640px) {
   :global(html[data-lab-theme="observatory"]) .observatory { padding: 0 16px 32px; gap: 16px; }
+  :global(html[data-lab-theme="observatory"]) .observatory :global(.health-detail-hero) {
+    margin-inline: 0 !important;
+  }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-detail-hero) > div:first-child { min-height: 58px; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-detail-hero) h1 { font-size: 30px; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
@@ -801,10 +805,16 @@
 }
 
 @media (max-width: 390px) {
-  :global(html[data-lab-theme="observatory"]) .observatory { padding-inline: 12px; }
+  :global(html[data-lab-theme="observatory"]) .observatory { padding-inline: 16px; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-hero-metrics) { column-gap: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :global(html[data-lab-theme="observatory"]) .observatory :global(*) { scroll-behavior: auto; transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
+
+/* Legacy route modules set disclosure rows to 36px later in the cascade. */
+:global(html[data-lab-theme="observatory"]) .observatory :global(summary) {
+  min-height: 44px !important;
+  height: auto !important;
 }

@@ -17,9 +17,9 @@ describe("HealthDataCoverageIndicator", () => {
       endDate: "2026-08-22",
     }} phase="up_to_date" />);
 
-    expect(markup).toContain("Data in Soma");
+    expect(markup).toContain("Données dans Soma");
     expect(markup).toContain("88 / 88");
     expect(markup).toContain("83 / 83");
-    expect(markup).toContain("Complete");
+    expect(markup).toContain("Complète");
   });
 });

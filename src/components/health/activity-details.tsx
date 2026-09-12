@@ -111,7 +111,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
         <div><dt>Allure</dt><dd>{latestExercise.averagePaceSecondsPerKm === null ? "—" : `${Math.floor(latestExercise.averagePaceSecondsPerKm / 60)}:${Math.round(latestExercise.averagePaceSecondsPerKm % 60).toString().padStart(2, "0")} /km`}</dd></div>
         <div><dt>Dénivelé</dt><dd>{latestExercise.elevationGainMeters === null ? "—" : `${Math.round(latestExercise.elevationGainMeters)} m`}</dd></div>
         <div><dt>Pas</dt><dd>{number(latestExercise.steps)}</dd></div>
-        <div><dt>Run VO₂ max</dt><dd>{latestExercise.runVo2Max === null ? "—" : latestExercise.runVo2Max.toFixed(1)}</dd></div>
+        <div><dt>VO₂ max en course</dt><dd>{latestExercise.runVo2Max === null ? "—" : latestExercise.runVo2Max.toFixed(1)}</dd></div>
         <div><dt>Cadence</dt><dd>{latestExercise.cadence === null ? "—" : `${Math.round(latestExercise.cadence)} spm`}</dd></div>
         <div><dt>Foulée</dt><dd>{latestExercise.strideLengthMeters === null ? "—" : `${latestExercise.strideLengthMeters.toFixed(2)} m`}</dd></div>
         <div><dt>Contact au sol</dt><dd>{latestExercise.groundContactMilliseconds === null ? "—" : `${Math.round(latestExercise.groundContactMilliseconds)} ms`}</dd></div>
