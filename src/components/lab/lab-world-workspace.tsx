@@ -1,14 +1,90 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival } from "./lab-arrival";
+import { ObservatoryRadar } from "./observatory-radar";
+import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 
-export function LabWorldWorkspace({ date, effects, capture, radar }: {
-  date: string; radar: ReactNode; effects: ReactNode; capture: ReactNode;
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
+}
+
+export function LabWorldWorkspace({
+  date: initialDateString,
+  effects,
+  capture,
+  radar,
+  overview,
+  journal,
+  initialSelectedDate,
+}: {
+  date?: string;
+  radar?: ReactNode;
+  effects: ReactNode;
+  capture?: ReactNode;
+  overview?: PersonalLabOverview;
+  journal?: PersonalLabJournal;
+  initialSelectedDate?: string;
 }) {
   const theme = useLabTheme();
   const root = useRef<HTMLDivElement>(null);
+
+  const todayDate = overview?.todayDate ?? journal?.todayDate;
+  const availableDates = useMemo(() => {
+    if (!todayDate) return [];
+    return Array.from({ length: 7 }, (_, index) => addDays(todayDate, index - 6));
+  }, [todayDate]);
+
+  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? todayDate ?? "");
+  const activeDate = (availableDates.length > 0 && availableDates.includes(selectedDate))
+    ? selectedDate
+    : (todayDate ?? selectedDate);
+
+  const formattedDate = useMemo(() => {
+    if (!activeDate) return initialDateString ?? "";
+    return formatDate(activeDate);
+  }, [activeDate, initialDateString]);
+
+  const radarData = useMemo(() => {
+    if (!overview) return null;
+    if (activeDate === overview.todayDate) {
+      return overview.today;
+    }
+    const point = overview.today.history.find((p) => p.date === activeDate);
+    return {
+      sleepMinutes: point?.sleepMinutes ?? null,
+      recoveryScore: point?.recoveryScore ?? null,
+      effortScore: point?.effortScore ?? null,
+      caloriesKcal: point?.caloriesKcal ?? null,
+      averageSleepMinutes: overview.today.averageSleepMinutes,
+      averageRecoveryScore: overview.today.averageRecoveryScore,
+      averageEffortScore: overview.today.averageEffortScore,
+      averageCaloriesKcal: overview.today.averageCaloriesKcal,
+    };
+  }, [activeDate, overview]);
+
+  const activeRadar = radarData ? (
+    <ObservatoryRadar data={radarData} date={activeDate} key={activeDate} />
+  ) : radar;
+
+  const activeCapture = journal ? (
+    <PersonalLabJournalWorkspace
+      data={journal}
+      recentDatesFirst
+      selectedDate={activeDate}
+      onDateChange={setSelectedDate}
+      availableDates={availableDates}
+    />
+  ) : capture;
+
   useEffect(() => {
     const change = () => { window.scrollTo({ top: 0 }); };
     window.addEventListener("lab-theme-change", change);
@@ -21,26 +97,28 @@ export function LabWorldWorkspace({ date, effects, capture, radar }: {
       if (!entry.isIntersecting) return;
       const element = entry.target as HTMLElement;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { observer.unobserve(element); return; }
-      element.animate([{ opacity: .35, transform: theme === "index" ? "translateX(-16px)" : theme === "focus" ? "scale(.975)" : "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "cubic-bezier(.2,.7,.2,1)" });
+      element.animate([{ opacity: .35, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "cubic-bezier(.2,.7,.2,1)" });
       element.querySelectorAll(".metric-trace-line").forEach(line => line.animate([{ strokeDasharray: "500", strokeDashoffset: "500" }, { strokeDasharray: "500", strokeDashoffset: "0" }], { duration: 1000, easing: "ease-out" }));
       observer.unobserve(element);
     }), { threshold: .08 });
     elements.forEach(element => observer.observe(element));
     return () => observer.disconnect();
   }, [theme]);
-  function moveRail(direction: number) {
-    const rail = root.current?.querySelector<HTMLElement>(".personal-lab-workbench");
-    if (!rail) return;
-    rail.scrollBy({ left: direction * (rail.clientWidth + 16), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  }
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
     <div className="lab-intro">
-      <LabArrival theme={theme} date={date} radar={radar} />
+      <LabArrival
+        theme={theme}
+        date={formattedDate}
+        radar={activeRadar}
+        selectedDate={activeDate}
+        todayDate={todayDate}
+        availableDates={availableDates}
+        onDateChange={setSelectedDate}
+      />
     </div>
     <div className="lab-world" lang="fr">
       <header className="lab-world__header"><h2>Au quotidien</h2></header>
-      {theme === "focus" && <div className="lab-rail-controls" role="group" aria-label="Faire glisser Journal et Repas"><button type="button" onClick={() => moveRail(-1)} aria-label="Panneau précédent">← Journal</button><span>Glisser pour changer de panneau</span><button type="button" onClick={() => moveRail(1)} aria-label="Panneau suivant">Repas →</button></div>}
-      <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{capture}</section>
+      <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{activeCapture}</section>
       <section className="lab-world__effects" id="world-effects" aria-label="Associations personnelles">{effects}</section>
     </div>
   </div>;

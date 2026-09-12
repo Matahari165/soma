@@ -284,9 +284,10 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
   href: string;
   showTrace?: boolean;
 }) {
-  const max = historyMax(keyName, history);
+  const visibleHistory = history.slice(-5);
+  const max = historyMax(keyName, visibleHistory);
   const trend = comparison(value, averageValue);
-  const accessibleHistory = history.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
+  const accessibleHistory = visibleHistory.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
   return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label} : ${metricValue(keyName, value)}. Historique des cinq derniers jours : ${accessibleHistory}`}>
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
@@ -294,13 +295,13 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, history, h
       <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue)}</small>
     </span>
     <span className="personal-lab-metric__bars" aria-hidden="true">
-      {history.map((point) => {
+      {visibleHistory.map((point) => {
         const pointValue = valueForHistory(keyName, point);
         const height = pointValue === null ? 7 : Math.max(12, Math.round(pointValue / max * 100));
         return <span className={`personal-lab-metric__bar${pointValue === null ? " is-empty" : ""}`} style={{ height: `${height}%` }} key={point.date} />;
       })}
     </span>
-    {showTrace && <MetricHistoryTrace values={history.map(point => valueForHistory(keyName, point))} maximum={max} />}
+    {showTrace && <MetricHistoryTrace values={visibleHistory.map(point => valueForHistory(keyName, point))} maximum={max} />}
   </Link>;
 }
 

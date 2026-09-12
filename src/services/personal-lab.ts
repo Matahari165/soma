@@ -319,8 +319,8 @@ function buildTodayData(input: {
   const mealDays = aggregateConfirmedMeals(input.meals ?? []);
   const mealByDate = new Map(mealDays.map((day) => [day.date, day]));
   const recentMealDays = mealDays.filter((day) => day.date >= addDays(todayDate, -29) && day.date <= todayDate);
-  const history = Array.from({ length: 5 }, (_, index): PersonalLabHistoryPoint => {
-    const date = addDays(todayDate, index - 4);
+  const history = Array.from({ length: 7 }, (_, index): PersonalLabHistoryPoint => {
+    const date = addDays(todayDate, index - 6);
     const observation = observations.find((day) => day.date === date);
     return {
       date,
@@ -798,7 +798,7 @@ function buildJournalView(timeZone: string, journal: {
   days: import("@/domain/lab/journal").JournalDay[];
 }, meals: readonly ConfirmedMealRecord[] = []): PersonalLabJournal {
   const todayDate = dateInTimezone(timeZone);
-  const earliestDate = addDays(todayDate, -4);
+  const earliestDate = addDays(todayDate, -6);
   const mealAddedSugarByDate = new Map(aggregateConfirmedMeals(meals).map((day) => [day.date, day.addedSugarG]));
   const automaticEntries = automaticJournalEntriesFor({ variables: journal.variables, health: [], mealAddedSugarByDate, existingEntries: journal.entries });
   const entries = [...journal.entries, ...automaticEntries];
@@ -949,8 +949,8 @@ function buildSnapshot(input: {
     checkin,
     journal: {
       variables: input.journal.variables,
-      entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -4) && entry.entryDate <= todayDate),
-      days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -4) && day.entryDate <= todayDate),
+      entries: input.journal.entries.filter((entry) => entry.entryDate >= addDays(todayDate, -6) && entry.entryDate <= todayDate),
+      days: input.journal.days.filter((day) => day.entryDate >= addDays(todayDate, -6) && day.entryDate <= todayDate),
       achievements: journalAchievementsFor({ variables: input.journal.variables, entries: input.journal.entries, days: input.journal.days, todayDate }),
     },
     today,

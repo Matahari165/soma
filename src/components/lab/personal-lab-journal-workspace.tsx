@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { PersonalLabJournal } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
@@ -37,11 +37,25 @@ export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completed
   </nav>;
 }
 
-export function PersonalLabJournalWorkspace({ data, recentDatesFirst = false }: { data: PersonalLabJournal; recentDatesFirst?: boolean }) {
-  const dates = useMemo(() => Array.from({ length: 6 }, (_, index) => addDays(data.todayDate, index - 5)), [data.todayDate]);
-  const [selectedDate, setSelectedDate] = useState(data.todayDate);
+export function PersonalLabJournalWorkspace({
+  data,
+  recentDatesFirst = false,
+  selectedDate: controlledSelectedDate,
+  onDateChange: controlledOnDateChange,
+  availableDates: controlledDates,
+}: {
+  data: PersonalLabJournal;
+  recentDatesFirst?: boolean;
+  selectedDate?: string;
+  onDateChange?: (date: string) => void;
+  availableDates?: readonly string[];
+}) {
+  const defaultDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(data.todayDate, index - 6)), [data.todayDate]);
+  const dates = controlledDates ?? defaultDates;
+  const [internalSelectedDate, setInternalSelectedDate] = useState(data.todayDate);
+  const selectedDate = controlledSelectedDate ?? internalSelectedDate;
+  const onDateChange = controlledOnDateChange ?? setInternalSelectedDate;
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
-  const onDateChange = useCallback((date: string) => setSelectedDate(date), []);
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
   const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);
 
