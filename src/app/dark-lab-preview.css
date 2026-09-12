@@ -13,7 +13,7 @@ html[data-lab-theme] {
   --lab-content-top: 0px; --lab-card-padding: 16px; --lab-column-gap: 20px;
   scrollbar-color: var(--lab-border-strong) var(--lab-canvas);
 }
-html[data-lab-theme] .preview-banner { left: 0; top: 0; min-height: 26px; border: 0; background: var(--lab-sidebar); color: var(--lab-text-secondary); font-family: var(--font-soma-ui); font-size: 11px; letter-spacing: 0; text-transform: none; }
+html[data-lab-theme] .preview-banner { left: 0; top: 0; min-height: 26px; border: 0; background: transparent; color: var(--lab-text-secondary); font-family: var(--font-soma-ui); font-size: 11px; letter-spacing: 0; text-transform: none; }
 html[data-lab-theme] .dark-theme-switcher { position: fixed; inset: 26px 0 auto; z-index: 71; display: flex; justify-content: center; gap: 6px; height: 62px; padding: 8px 16px 10px; background: var(--lab-sidebar); }
 html[data-lab-theme] .dark-theme-switcher button { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 22px; border: 0; border-radius: 4px; background: transparent; color: var(--lab-text-secondary); font-size: 14px; font-weight: 550; transition: background-color 160ms ease-out, color 160ms ease-out; }
 html[data-lab-theme] .dark-theme-switcher button:hover { background: var(--lab-surface); color: var(--lab-text-primary); }

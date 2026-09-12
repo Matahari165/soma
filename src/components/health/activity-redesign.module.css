@@ -1,14 +1,14 @@
 .root {
-  --activity-canvas: var(--lab-canvas, #f4f6f2);
-  --activity-surface: var(--lab-surface, #ffffff);
-  --activity-subtle: var(--lab-surface-subtle, #f2f5f0);
-  --activity-border: var(--lab-border, #e0e8de);
-  --activity-border-strong: var(--lab-border-strong, #dfe5dc);
-  --activity-text: var(--lab-text-primary, #1c2520);
-  --activity-text-secondary: var(--lab-text-secondary, #59665e);
-  --activity-brand: var(--lab-brand, #264d38);
-  --activity-signal: var(--lab-signal, #2e7a4f);
-  --activity-error: var(--lab-error, #c45442);
+  --activity-canvas: var(--lab-canvas, #050505);
+  --activity-surface: var(--lab-surface, #080808);
+  --activity-subtle: var(--lab-surface-subtle, #0c0c0c);
+  --activity-border: var(--lab-border, #292929);
+  --activity-border-strong: var(--lab-border-strong, #3a3a3a);
+  --activity-text: var(--lab-text-primary, #f1f1f1);
+  --activity-text-secondary: var(--lab-text-secondary, #aaaaaa);
+  --activity-brand: var(--lab-brand, #eeeeee);
+  --activity-signal: var(--lab-signal, #d5e5da);
+  --activity-error: var(--lab-error, #e2b2aa);
   width: 100%;
   min-height: 100%;
   padding: 32px clamp(24px, 2.5vw, 40px) 48px;

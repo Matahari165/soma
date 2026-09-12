@@ -1,0 +1,286 @@
+.switcherRoot {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 90;
+  font-family: var(--font-soma-ui, "Schibsted Grotesk", system-ui, sans-serif);
+}
+
+/* ── Trigger / Minimisé (Badge discret) ── */
+.triggerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  background: var(--lab-surface, #ffffff);
+  border: 1px solid var(--lab-border-strong, #dfe5dc);
+  border-radius: var(--lab-radius-sm, 4px);
+  box-shadow: 0 4px 16px rgba(28, 37, 32, 0.08), 0 1px 3px rgba(28, 37, 32, 0.04);
+  color: var(--lab-text-primary, #1c2520);
+  font-size: 12px;
+  font-family: var(--font-soma-mono, "Azeret Mono", monospace);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 180ms ease;
+  user-select: none;
+}
+
+.triggerBadge:hover {
+  background: var(--lab-surface-selected, #e8f0e6);
+  border-color: var(--lab-brand, #264d38);
+}
+
+.triggerBadge:focus-visible {
+  outline: 2px solid var(--lab-brand, #264d38);
+  outline-offset: 2px;
+}
+
+.triggerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lab-signal, #2e7a4f);
+  flex-shrink: 0;
+}
+
+.triggerDot[data-active="false"] {
+  background: var(--lab-text-secondary, #59665e);
+  opacity: 0.5;
+}
+
+.triggerChevron {
+  color: var(--lab-text-secondary, #59665e);
+  transition: transform 180ms ease;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Panneau Déplié (Dock) ── */
+.panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 330px;
+  background: var(--lab-surface, #ffffff);
+  border: 1px solid var(--lab-border-strong, #dfe5dc);
+  border-radius: var(--lab-radius-md, 8px);
+  box-shadow: 0 12px 32px rgba(28, 37, 32, 0.12), 0 2px 8px rgba(28, 37, 32, 0.06);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: slideInUp 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--lab-text-primary, #1c2520);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--lab-border, #e0e8de);
+  padding-bottom: 10px;
+}
+
+.headerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lab-text-primary, #1c2520);
+  letter-spacing: -0.01em;
+}
+
+.previewBadge {
+  font-family: var(--font-soma-mono, "Azeret Mono", monospace);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  background: var(--lab-surface-selected, #e8f0e6);
+  color: var(--lab-brand, #264d38);
+  border: 1px solid var(--lab-border, #e0e8de);
+  border-radius: var(--lab-radius-xs, 2px);
+  text-transform: uppercase;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: var(--lab-text-secondary, #59665e);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--lab-radius-xs, 2px);
+  transition: all 150ms ease;
+}
+
+.closeButton:hover {
+  background: var(--lab-surface-subtle, #f2f5f0);
+  color: var(--lab-text-primary, #1c2520);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #264d38);
+  outline-offset: 1px;
+}
+
+/* ── Grille des Variantes ── */
+.sectionLabel {
+  font-family: var(--font-soma-mono, "Azeret Mono", monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lab-text-secondary, #59665e);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.variantGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.variantButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--lab-surface-subtle, #f2f5f0);
+  border: 1px solid var(--lab-border, #e0e8de);
+  border-radius: var(--lab-radius-sm, 4px);
+  cursor: pointer;
+  text-align: left;
+  transition: all 160ms ease;
+}
+
+.variantButton:hover {
+  background: var(--lab-surface-selected, #e8f0e6);
+  border-color: var(--lab-border-strong, #dfe5dc);
+}
+
+.variantButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #264d38);
+  outline-offset: 1px;
+}
+
+.variantButton[data-active="true"] {
+  background: var(--lab-surface-selected, #e8f0e6);
+  border-color: var(--lab-brand, #264d38);
+  box-shadow: inset 0 0 0 1px var(--lab-brand, #264d38);
+}
+
+.variantName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lab-text-primary, #1c2520);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.variantTagline {
+  font-size: 10px;
+  color: var(--lab-text-secondary, #59665e);
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+/* ── Contrôle d'Intensité / Opacité ── */
+.intensitySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intensityRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: var(--lab-surface-subtle, #f2f5f0);
+  padding: 3px;
+  border: 1px solid var(--lab-border, #e0e8de);
+  border-radius: var(--lab-radius-sm, 4px);
+}
+
+.intensityButton {
+  padding: 6px 0;
+  font-size: 11px;
+  font-family: var(--font-soma-mono, "Azeret Mono", monospace);
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--lab-text-secondary, #59665e);
+  border-radius: var(--lab-radius-xs, 2px);
+  cursor: pointer;
+  transition: all 140ms ease;
+  text-align: center;
+}
+
+.intensityButton:hover {
+  color: var(--lab-text-primary, #1c2520);
+}
+
+.intensityButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #264d38);
+  outline-offset: 1px;
+}
+
+.intensityButton[data-active="true"] {
+  background: var(--lab-surface, #ffffff);
+  color: var(--lab-brand, #264d38);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(28, 37, 32, 0.08);
+}
+
+.intensityDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Footer / Metadonnées ── */
+.panelFooter {
+  border-top: 1px solid var(--lab-border, #e0e8de);
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-soma-mono, "Azeret Mono", monospace);
+  font-size: 10px;
+  color: var(--lab-text-secondary, #59665e);
+}
+
+.urlHint {
+  color: var(--lab-brand, #264d38);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .switcherRoot {
+    bottom: 16px;
+    left: 16px;
+  }
+
+  .panel {
+    width: calc(100vw - 32px);
+    max-width: 320px;
+  }
+}

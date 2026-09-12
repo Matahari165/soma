@@ -929,8 +929,8 @@ function MealHomeHeader() {
 
 function MealLabHeader({ onAddMeal, addDisabled }: { onAddMeal: () => void; addDisabled: boolean }) {
   return <header className={styles.labHeader}>
-    <h2 id="meal-journal-title">Repas</h2>
-    <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal}><Plus size={17} aria-hidden="true" /></button>
+    <h2 id="meal-journal-title" className="sr-only">Repas</h2>
+    <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>
   </header>;
 }
 

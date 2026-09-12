@@ -15,13 +15,11 @@ export function LabGlobalNavigation() {
   }
   return <nav className="lab-global-nav" aria-label="Navigation principale">
     <Link href="/" onClick={(event) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}>Personal Lab</Link>
-    <Link href="/#daily-journal" onClick={scroll}>Journal</Link>
-    <Link href="/#meal-journal-title" onClick={scroll}>Repas</Link>
     <Link href="/#world-effects" onClick={scroll}>Strongest Effects</Link>
-    <Link href="/meals" aria-current={pathname === "/meals" ? "page" : undefined}>Historique repas</Link>
+    <Link href="/meals" aria-current={pathname === "/meals" ? "page" : undefined}>Repas</Link>
     <Link href="/sleep" aria-current={pathname === "/sleep" ? "page" : undefined}>Sommeil</Link>
     <Link href="/recovery" aria-current={pathname === "/recovery" ? "page" : undefined}>Récupération</Link>
     <Link href="/activity" aria-current={pathname === "/activity" ? "page" : undefined}>Effort</Link>
-    <Link href="/settings" aria-current={pathname === "/settings" ? "page" : undefined}>Réglages</Link>
+    <Link className="lab-global-nav__settings" href="/settings" aria-current={pathname === "/settings" ? "page" : undefined}>Réglages</Link>
   </nav>;
 }

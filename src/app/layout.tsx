@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   applicationName: "Soma",
   description: "A personal lab for the relationships between health, focus, energy, recovery, and Deep Work.",
   icons: {
-    icon: [{ url: "/icon.png?v=discobolus-2", type: "image/png" }],
-    shortcut: [{ url: "/favicon.ico?v=discobolus-2" }],
-    apple: [{ url: "/apple-icon.png?v=discobolus-2", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/icon.png?v=discobolus-4", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico?v=discobolus-4" }],
+    apple: [{ url: "/apple-icon.png?v=discobolus-4", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -70,8 +70,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: isLocalPreviewMode() ? "dark" : "light",
-  themeColor: isLocalPreviewMode() ? "#141619" : "#F4F6F2",
+  colorScheme: "dark",
+  themeColor: "#050505",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -80,10 +80,11 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   await connection();
   const user = await getCurrentUser();
   const localPreview = isLocalPreviewMode();
-  const observatoryMode = isObservatoryMode() && Boolean(user);
+  const darkInterface = isObservatoryMode();
+  const observatoryMode = darkInterface && Boolean(user);
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={observatoryMode ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={darkInterface ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={[localPreview && "local-preview", observatoryMode && "observatory-mode"].filter(Boolean).join(" ") || undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}

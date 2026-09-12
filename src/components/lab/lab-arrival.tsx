@@ -25,8 +25,8 @@ export function LabArrival({
   const canGoNext = onDateChange && availableDates && currentIndex >= 0 && currentIndex < availableDates.length - 1 && selectedDate !== todayDate;
 
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Accueil Personal Lab" key={theme}>
-    <div className="arrival-composition">
-      <div className="arrival-heading">
+    <div className="arrival-composition" style={{ position: "relative" }}>
+      <div className="arrival-heading" style={{ position: "relative", zIndex: 1 }}>
         <h1 id="arrival-title" tabIndex={-1}>
           <span className="arrival-title-line"><span>{title[0]}</span></span>
           <span className="arrival-title-line"><span>{title[1]}</span></span>
@@ -57,7 +57,7 @@ export function LabArrival({
           )}
         </div>
       </div>
-      <div className="arrival-art">{radar}</div>
+      <div className="arrival-art" style={{ position: "relative", zIndex: 1 }}>{radar}</div>
     </div>
   </section>;
 }

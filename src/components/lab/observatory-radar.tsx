@@ -2,9 +2,12 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
+import { BACKDROP_OPTIONS, type ArrivalBackdropId } from "./arrival-backdrops";
 
 type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
-export function ObservatoryRadar({data, date}:{data:RadarData; date?:string}) {
+const DEFAULT_RADAR_RADIUS = 430;
+const LOCAL_HOST_RE = /^(localhost|127\.|0\.0\.0\.0|::1|192\.168\.|10\.)/;
+export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
   const router = useRouter();
   const caloriesRef = useRef(data.caloriesKcal);
   const [calories,setCalories] = useState(data.caloriesKcal);
@@ -29,16 +32,20 @@ export function ObservatoryRadar({data, date}:{data:RadarData; date?:string}) {
     {label:"Effort",average:data.averageEffortScore===null?null:data.averageEffortScore*.21,value:data.effortScore===null?null:data.effortScore*.21,target:21,unit:"",display:data.effortScore===null?"—":`${(data.effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
     {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:2200,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:"2 200 kcal"},
   ];
-  const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*210*ratio,280+Math.sin(angle)*210*ratio];};
+  const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
+  // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.
+  const unit = radarRadius / DEFAULT_RADAR_RADIUS;
+  const gap = (base: number) => Math.round(base * unit);
+  const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*radarRadius*ratio,280+Math.sin(angle)*radarRadius*ratio];};
   const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1.2,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
-  return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport aux repères de démonstration">
+  return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport aux repères de démonstration" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
     <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs de démonstration. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><polygon key={ratio} className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
       {validPoints.length>=3&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
       {validPoints.length===2&&<line className="radar-value" x1={validPoints[0][0]} y1={validPoints[0][1]} x2={validPoints[1][0]} y2={validPoints[1][1]}/>}
-      {validPoints.map((point,i)=><circle className="radar-point" key={i} cx={point[0]} cy={point[1]} r="5"/>)}
+      {validPoints.map((point,i)=><circle className="radar-point" key={i} cx={point[0]} cy={point[1]} r={Math.round(8*unit*10)/10}/>)}
       {axes.map((axis,i)=>{
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";
         const comparison=trend==="↑"?"Au-dessus de la moyenne sur 30 jours":trend==="↓"?"Sous la moyenne sur 30 jours":trend==="↔"?"Au niveau de la moyenne sur 30 jours":"Moyenne indisponible";
@@ -51,34 +58,36 @@ export function ObservatoryRadar({data, date}:{data:RadarData; date?:string}) {
         if (i === 0) {
           const [, yEdge] = coordinate(0, 1);
           labelX = 330;
-          labelY = yEdge - 52;
+          labelY = yEdge - gap(72);
           numberX = 330;
-          numberY = yEdge - 28;
+          numberY = yEdge - gap(38);
           textAnchor = "middle";
         } else if (i === 1) {
           const [xEdge, yEdge] = coordinate(1, 1);
-          labelX = xEdge + 48;
+          labelX = xEdge + gap(70);
           labelY = yEdge - 12;
-          numberX = xEdge + 48;
-          numberY = yEdge + 20;
+          numberX = xEdge + gap(70);
+          numberY = yEdge + 22;
           textAnchor = "start";
         } else if (i === 2) {
           const [, yEdge] = coordinate(2, 1);
           labelX = 330;
-          labelY = yEdge + 48;
+          labelY = yEdge + gap(68);
           numberX = 330;
-          numberY = yEdge + 72;
+          numberY = yEdge + gap(100);
           textAnchor = "middle";
         } else if (i === 3) {
           const [xEdge, yEdge] = coordinate(3, 1);
-          labelX = xEdge - 48;
+          labelX = xEdge - gap(70);
           labelY = yEdge - 12;
-          numberX = xEdge - 48;
-          numberY = yEdge + 20;
+          numberX = xEdge - gap(70);
+          numberY = yEdge + 22;
           textAnchor = "end";
         }
 
-        const valueText = `${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}`;
+        const valueText = axis.label === "Calories"
+          ? (trend ? `${trend} ${axis.display} kcal` : `${axis.display} kcal`)
+          : (`${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}`);
 
         return (
           <g key={axis.label} className="radar-axis-label">
@@ -91,4 +100,42 @@ export function ObservatoryRadar({data, date}:{data:RadarData; date?:string}) {
     </svg>
 
   </figure>;
+}
+
+// Outil local uniquement : trois sliders (taille, décalage vertical, décalage horizontal).
+// La taille pilote la prop radius (géométrie proportionnelle) ; les décalages appliquent une
+// translation inline sur le <figure>, donc 1 px de slider = 1 px à l'écran, sans aléa de grille.
+// Réservé aux hôtes locaux (jamais en production) ; sans l'outil, rayon 380 et aucun décalage.
+export const RADAR_SIZE_LIMITS = { min: 80, max: 430, step: 10 } as const;
+export const RADAR_SHIFT_LIMITS = { min: -100, max: 100, step: 4 } as const;
+export function useLocalRadarTuning() {
+  const [isLocal, setIsLocal] = useState(false);
+  const [size, setSize] = useState(DEFAULT_RADAR_RADIUS);
+  const [shiftY, setShiftY] = useState(-24);
+  const [shiftX, setShiftX] = useState(28);
+  const [backdrop, setBackdrop] = useState<ArrivalBackdropId>("disco-large");
+  useEffect(() => {
+    const revealLocalControls = window.setTimeout(() => {
+      setIsLocal(LOCAL_HOST_RE.test(window.location.hostname));
+    }, 0);
+    return () => window.clearTimeout(revealLocalControls);
+  }, []);
+  return { isLocal, size, setSize, shiftY, setShiftY, shiftX, setShiftX, backdrop, setBackdrop };
+}
+
+export function RadarTuningToolbar({ size, shiftY, shiftX, backdrop, onSizeChange, onShiftYChange, onShiftXChange, onBackdropChange }: { size: number; shiftY: number; shiftX: number; backdrop: ArrivalBackdropId; onSizeChange: (value: number) => void; onShiftYChange: (value: number) => void; onShiftXChange: (value: number) => void; onBackdropChange: (value: ArrivalBackdropId) => void }) {
+  const slider = (label: string, hint: string, value: number, min: number, max: number, step: number, ariaLabel: string, onChange: (value: number) => void) => <label className="radar-toolbar__slider">
+    <span>{label} <small>{hint}</small></span>
+    <input type="range" min={min} max={max} step={step} value={value} aria-label={ariaLabel} onChange={(event) => onChange(Number(event.target.value))} />
+    <output>{value > 0 ? `+${value}` : value}</output>
+  </label>;
+  return <div className="radar-toolbar" role="group" aria-label="Réglages du radar (aperçu local uniquement)">
+    <span className="radar-toolbar__title">RADAR</span>
+    {slider("Taille", "", size, RADAR_SIZE_LIMITS.min, RADAR_SIZE_LIMITS.max, RADAR_SIZE_LIMITS.step, "Taille du graphique", onSizeChange)}
+    {slider("Y", "↑↓", shiftY, RADAR_SHIFT_LIMITS.min, RADAR_SHIFT_LIMITS.max, RADAR_SHIFT_LIMITS.step, "Décalage vertical du graphique, négatif vers le haut", onShiftYChange)}
+    {slider("X", "←→", shiftX, RADAR_SHIFT_LIMITS.min, RADAR_SHIFT_LIMITS.max, RADAR_SHIFT_LIMITS.step, "Décalage horizontal du graphique, négatif vers la gauche", onShiftXChange)}
+    <div className="radar-toolbar__backdrops" role="group" aria-label="Fond décoratif (aperçu local uniquement)">
+      {BACKDROP_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={backdrop === option.id} onClick={() => onBackdropChange(option.id)}>{option.label}</button>)}
+    </div>
+  </div>;
 }

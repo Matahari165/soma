@@ -17,6 +17,7 @@
 @media(max-width:700px) {
  .lab-global-nav { gap:20px; padding-inline:18px; }
  .lab-global-nav a:first-child { margin-right:0; }
+ .lab-global-nav__settings { margin-left:0; border-left:0; padding-left:0; }
  .lab-rail-controls { flex-wrap:wrap; }
  .lab-rail-controls span { order:3; width:100%; text-align:center; }
 }
@@ -26,6 +27,7 @@ html[data-lab-theme] .lab-global-nav { position:fixed; inset:88px 0 auto; }
 html[data-lab-theme] body.local-preview :is(.sidebar,.mobile-header) { display:none; }
 html[data-lab-theme] body.local-preview .app-shell .main-content { margin-left:0; padding-top:144px; }
 .lab-global-nav a[aria-current="page"] { color:var(--lab-text-primary); box-shadow:inset 0 -2px var(--lab-brand); }
+.lab-global-nav__settings { margin-left:auto; border-left:1px solid var(--lab-border); padding-left:24px; }
 
 html[data-lab-theme="index"] .lab-global-nav a { font-family:var(--font-soma-mono),monospace; text-transform:uppercase; font-size:11px; }
 html[data-lab-theme="index"] .lab-global-nav { border-bottom:1px solid var(--lab-border); }

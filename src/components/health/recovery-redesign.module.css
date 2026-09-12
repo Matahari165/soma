@@ -1,14 +1,14 @@
 .page {
-  --recovery-canvas: var(--lab-canvas, #f4f6f2);
-  --recovery-surface: var(--lab-surface, #fff);
-  --recovery-subtle: var(--lab-surface-subtle, #f2f5f0);
-  --recovery-border: var(--lab-border, #e0e8de);
-  --recovery-border-strong: var(--lab-border-strong, #dfe5dc);
-  --recovery-text: var(--lab-text-primary, #1c2520);
-  --recovery-muted: var(--lab-text-secondary, #59665e);
-  --recovery-brand: var(--lab-brand, #264d38);
-  --recovery-signal: var(--lab-signal, #2e7a4f);
-  --recovery-error: var(--lab-error, #c45442);
+  --recovery-canvas: var(--lab-canvas, #050505);
+  --recovery-surface: var(--lab-surface, #080808);
+  --recovery-subtle: var(--lab-surface-subtle, #0c0c0c);
+  --recovery-border: var(--lab-border, #292929);
+  --recovery-border-strong: var(--lab-border-strong, #3a3a3a);
+  --recovery-text: var(--lab-text-primary, #f1f1f1);
+  --recovery-muted: var(--lab-text-secondary, #aaaaaa);
+  --recovery-brand: var(--lab-brand, #eeeeee);
+  --recovery-signal: var(--lab-signal, #d5e5da);
+  --recovery-error: var(--lab-error, #e2b2aa);
   width: 100%;
   min-width: 0;
   min-height: 100vh;

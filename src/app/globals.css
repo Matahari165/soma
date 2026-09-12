@@ -4,27 +4,27 @@
    A calm, precise surface for reading a personal body history. */
 
 :root {
-  color-scheme: light;
-  /* Personal Lab is the source of truth. The names below are temporary
-     compatibility aliases for older components still being migrated. */
-  --lab-canvas: #f4f6f2;
-  --lab-surface: #ffffff;
-  --lab-surface-subtle: #f2f5f0;
-  --lab-surface-selected: #e8f0e6;
-  --lab-control-track: #e6ede5;
-  --lab-border: #e0e8de;
-  --lab-border-strong: #dfe5dc;
-  --lab-text-primary: #1c2520;
-  --lab-text-secondary: #59665e;
-  --lab-brand: #264d38;
-  --lab-signal: #2e7a4f;
-  --lab-error: #c45442;
-  --lab-error-soft: #f7e8e4;
-  --lab-warning: #896f32;
-  --lab-warning-soft: #f3eedf;
-  --lab-info: #536f87;
-  --lab-info-soft: #e7eef2;
-  --lab-sidebar: #ebf0ea;
+  color-scheme: dark;
+  /* Soma has one visual world. These defaults keep compatibility aliases
+     dark even on routes that have not received a route-specific override. */
+  --lab-canvas: #050505;
+  --lab-surface: #080808;
+  --lab-surface-subtle: #0c0c0c;
+  --lab-surface-selected: #222222;
+  --lab-control-track: #0b0b0b;
+  --lab-border: #292929;
+  --lab-border-strong: #3a3a3a;
+  --lab-text-primary: #f1f1f1;
+  --lab-text-secondary: #aaaaaa;
+  --lab-brand: #eeeeee;
+  --lab-signal: #d5e5da;
+  --lab-error: #e2b2aa;
+  --lab-error-soft: #382a28;
+  --lab-warning: #d5c397;
+  --lab-warning-soft: #342f25;
+  --lab-info: #adc5df;
+  --lab-info-soft: #273340;
+  --lab-sidebar: #050505;
   --lab-radius-xs: 2px;
   --lab-radius-sm: 4px;
   --lab-radius-md: 8px;

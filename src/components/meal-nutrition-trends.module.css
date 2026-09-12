@@ -363,9 +363,10 @@
   padding: 3px 8px;
   border-right-color: var(--lab-border);
   color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
   font-size: var(--lab-type-label);
   font-weight: 560;
-  line-height: 14px;
+  line-height: 16px;
 }
 
 .root:global(.meals-page-trends) .periodOptions button:nth-child(2) { min-width: 94px; }
@@ -403,24 +404,26 @@
 .root:global(.meals-page-trends) .cardHeader > div { gap: 3px; }
 .root:global(.meals-page-trends) .metricLabel {
   color: var(--lab-text-secondary);
-  font-family: var(--font-soma-ui);
-  font-size: var(--lab-type-label);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
   font-weight: 650;
   letter-spacing: .8px;
   line-height: 14px;
+  text-transform: uppercase;
 }
 
 .root:global(.meals-page-trends) .value {
   color: var(--lab-text-primary);
-  font-family: var(--font-soma-mono), monospace;
+  font-family: var(--lab-data-font, var(--font-soma-mono)), ui-monospace, monospace;
   font-size: 28px;
   font-weight: 560;
   letter-spacing: -.5px;
   line-height: 30px;
+  font-variant-numeric: tabular-nums;
 }
 
-.root:global(.meals-page-trends) .value small { color: var(--lab-text-secondary); font-size: var(--lab-type-label); letter-spacing: 0; }
-.root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
+.root:global(.meals-page-trends) .value small { color: var(--lab-text-secondary); font-family: var(--lab-data-font, var(--font-soma-mono)), ui-monospace, monospace; font-size: var(--lab-type-label); letter-spacing: 0; }
+.root:global(.meals-page-trends) .average { color: var(--lab-text-secondary); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: var(--lab-type-label); line-height: 16px; font-variant-numeric: tabular-nums; }
 
 .root:global(.meals-page-trends) .chartFrame { gap: 8px; padding-top: 0; }
 .root:global(.meals-page-trends) .barChart { position: relative; min-height: 96px; padding: 8px 2px 0; border-bottom: 1px solid var(--lab-border); background: none; }
@@ -438,9 +441,9 @@
 }
 .root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
 .root:global(.meals-page-trends) .axis,
-.root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-size: var(--lab-type-label); line-height: 16px; }
+.root:global(.meals-page-trends) .cardFooter { color: var(--lab-text-secondary); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: var(--lab-type-label); line-height: 16px; }
 .root:global(.meals-page-trends) .cardFooter { padding-top: 8px; border-top-color: var(--lab-border); }
-.root:global(.meals-page-trends) .emptyState { min-height: 112px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); }
+.root:global(.meals-page-trends) .emptyState { min-height: 112px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: 12px; }
 
 @media (max-width: 1100px) {
   .root:global(.meals-page-trends) { min-height: 0; }

@@ -21,17 +21,9 @@ export function isLocalPreviewMode() {
   return process.env.NODE_ENV !== "production" && process.env.SOMA_LOCAL_PREVIEW === "true";
 }
 
-/** Enables the production Observatoire shell while keeping production data-backed. */
+/** Soma now has one visual world: the data-backed dark Observatoire shell. */
 export function isObservatoryMode() {
-  if (isLocalPreviewMode()) return true;
-  if (process.env.SOMA_OBSERVATORY_MODE === "true") return true;
-  if (process.env.NODE_ENV !== "production") return false;
-
-  try {
-    return (getCloudflareContext().env as CloudflareRuntimeEnv).SOMA_OBSERVATORY_MODE === "true";
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export function requireServerEnv(name: string) {

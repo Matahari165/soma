@@ -3,17 +3,17 @@
    reference and avoid changing the shared shell for other health pages. */
 
 .root :global(.health-detail-page--sleep) {
-  --sleep-canvas: #f4f6f2;
-  --sleep-surface: #ffffff;
-  --sleep-subtle: #f2f5f0;
-  --sleep-track: #e6ede5;
-  --sleep-border: #e0e8de;
-  --sleep-border-strong: #dfe5dc;
-  --sleep-primary: #1c2520;
-  --sleep-secondary: #59665e;
-  --sleep-brand: #264d38;
-  --sleep-signal: #2e7a4f;
-  --sleep-error: #c45442;
+  --sleep-canvas: var(--lab-canvas, #050505);
+  --sleep-surface: var(--lab-surface, #080808);
+  --sleep-subtle: var(--lab-surface-subtle, #0c0c0c);
+  --sleep-track: var(--lab-control-track, #0b0b0b);
+  --sleep-border: var(--lab-border, #292929);
+  --sleep-border-strong: var(--lab-border-strong, #3a3a3a);
+  --sleep-primary: var(--lab-text-primary, #f1f1f1);
+  --sleep-secondary: var(--lab-text-secondary, #aaaaaa);
+  --sleep-brand: var(--lab-brand, #eeeeee);
+  --sleep-signal: var(--lab-signal, #d5e5da);
+  --sleep-error: var(--lab-error, #e2b2aa);
   width: 100%;
   max-width: none;
   gap: 16px;

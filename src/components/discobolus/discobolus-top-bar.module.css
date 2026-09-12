@@ -1,0 +1,144 @@
+.topBarRoot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(11, 15, 19, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #29383f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-soma-mono, monospace);
+  font-size: 11px;
+  color: #edf4f5;
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brandLabel {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #48b376;
+  text-transform: uppercase;
+}
+
+.previewPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: rgba(46, 122, 79, 0.2);
+  color: #76b88e;
+  border: 1px solid rgba(46, 122, 79, 0.35);
+  border-radius: 2px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.variantGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #11171c;
+  padding: 2px 3px;
+  border-radius: 4px;
+  border: 1px solid #29383f;
+}
+
+.variantButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #a6b5b9;
+  font-family: var(--font-soma-mono, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.variantButton:hover {
+  background: #182229;
+  color: #edf4f5;
+}
+
+.variantButton[data-active="true"] {
+  background: #2e7a4f;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(46, 122, 79, 0.4);
+}
+
+.variantOffButton {
+  color: #8c9ea2;
+  opacity: 0.85;
+}
+
+.variantOffButton[data-active="true"] {
+  background: #3a4b52;
+  color: #ffffff;
+  opacity: 1;
+}
+
+.viewGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #29383f;
+  border-radius: 3px;
+  background: #11171c;
+  color: #a6b5b9;
+  font-family: var(--font-soma-mono, monospace);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.viewToggle:hover {
+  background: #182229;
+  color: #edf4f5;
+}
+
+.viewToggle[data-active="true"] {
+  border-color: #48b376;
+  background: rgba(46, 122, 79, 0.2);
+  color: #48b376;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .brandGroup {
+    display: none;
+  }
+
+  .variantButton {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+}

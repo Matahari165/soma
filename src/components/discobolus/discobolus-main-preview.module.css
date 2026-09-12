@@ -1,0 +1,88 @@
+.previewWrapper {
+  position: relative;
+  min-height: 100vh;
+  background: #080b0f;
+  color: #edf4f5;
+  transition: background 450ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.contentWrapper {
+  position: relative;
+  padding-top: 44px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   VISIBILITÉ CRUCIALE DE LA STATUE DU DISCOBOLE :
+   On s'assure que les sections du laboratoire (.lab-intro, .lab-world)
+   ont un fond transparent pour que le flanc sculptural latéral soit
+   immédiatement visible sans être masqué par des fonds opaques.
+══════════════════════════════════════════════════════════════════ */
+.previewWrapper[data-has-statue="true"] :global(.lab-experience),
+.previewWrapper[data-has-statue="true"] :global(.lab-experience) :is(.lab-intro, .lab-world) {
+  background: transparent !important;
+}
+
+/* Le graphique en étoile (ObservatoryRadar dans .arrival-art) est
+   maintenu totalement libre, dégagé et au premier plan */
+.previewWrapper :global(.arrival-art) {
+  position: relative;
+  z-index: 20;
+}
+
+/* Les cartes interactives de métriques restent nettes et cliquables */
+.previewWrapper :global(.personal-lab-metric) {
+  position: relative;
+  z-index: 15;
+}
+
+.previewWrapper :global(.lab-world) {
+  position: relative;
+  z-index: 12;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HARMONIE TITRE ET STATUE — LECTURE CRISTALLINE AU PREMIER PLAN
+   Le titre conserve sa mise en page, sa police et sa position 100% d'origine,
+   flottant simplement au premier plan au-dessus de la statue.
+══════════════════════════════════════════════════════════════════ */
+.previewWrapper[data-has-statue="true"] :global(.arrival-heading) {
+  position: relative;
+  z-index: 25;
+}
+
+/* Titre blanc pur, plein et très visible au premier plan */
+.previewWrapper[data-has-statue="true"] :global(#arrival-title),
+.previewWrapper[data-has-statue="true"] :global(.arrival-title-line),
+.previewWrapper[data-has-statue="true"] :global(.arrival-title-line) > span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  -webkit-text-stroke: 0.3px rgba(255, 255, 255, 0.5);
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.98),
+    0 0 20px rgba(0, 0, 0, 0.90),
+    0 2px 4px rgba(0, 0, 0, 0.98),
+    0 6px 16px rgba(0, 0, 0, 0.90),
+    0 14px 36px rgba(0, 0, 0, 0.75),
+    0 24px 56px rgba(0, 0, 0, 0.50);
+}
+
+.previewWrapper[data-has-statue="true"] :global(.arrival-date),
+.previewWrapper[data-has-statue="true"] :global(.arrival-date-nav) {
+  color: #ffffff !important;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.95),
+    0 4px 14px rgba(0, 0, 0, 0.85);
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   ACCESSIBILITÉ : PREFERS-REDUCED-MOTION
+══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .previewWrapper[data-statue-variant="superposed"] :global(.arrival-heading) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

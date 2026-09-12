@@ -41,14 +41,13 @@ describe("production-only application contract", () => {
     expect(loginPage).toContain('if (user) redirect("/")');
   });
 
-  it("keeps the authenticated home focused on daily sections", () => {
+  it("keeps the authenticated home on the dark observatory workspace", () => {
     const page = readFileSync(`${sourceRoot}/app/page.tsx`, "utf8");
     expect(page).toContain("createPersonalLabStream");
-    expect(page).toContain("<Suspense fallback={<PersonalLabOverviewLoading />}");
-    expect(page).toContain("<Suspense fallback={<PersonalLabJournalLoading />}");
     expect(page).toContain("includeAnalysis: false");
-    expect(page).toContain("<StrongestEffectsPanel />");
-    expect(page).not.toContain("DeferredPersonalLabAnalysis");
+    expect(page).toContain("<LabWorldPreview stream={stream} />");
+    expect(page).not.toContain("PersonalLabOverviewSection");
+    expect(page).not.toContain("PersonalLabJournalSection");
   });
 
   it("bounds Google network waits and defers the first Calendar sync", () => {

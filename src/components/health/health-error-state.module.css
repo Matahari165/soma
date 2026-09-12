@@ -1,10 +1,10 @@
-.root { display: grid; min-height: 100%; padding: 24px; place-items: center; background: var(--lab-canvas, #f4f6f2); color: var(--lab-text-primary, #1c2520); font-family: var(--font-soma-ui), system-ui, sans-serif; }
-.panel { display: flex; width: min(100%, 640px); align-items: flex-start; gap: 16px; padding: 24px; border: 1px solid var(--lab-border-strong, #dfe5dc); border-radius: var(--lab-radius-sm, 4px); background: var(--lab-surface, #fff); }
+.root { display: grid; min-height: 100%; padding: 24px; place-items: center; background: var(--lab-canvas, #050505); color: var(--lab-text-primary, #f1f1f1); font-family: var(--font-soma-ui), system-ui, sans-serif; }
+.panel { display: flex; width: min(100%, 640px); align-items: flex-start; gap: 16px; padding: 24px; border: 1px solid var(--lab-border-strong, #3a3a3a); border-radius: var(--lab-radius-sm, 4px); background: var(--lab-surface, #080808); }
 .panel svg { flex: 0 0 auto; color: var(--lab-error, #c45442); }
 .panel h1 { margin: 0; font-size: var(--lab-type-section, 22px); line-height: 28px; }
-.panel p { margin: 8px 0 16px; color: var(--lab-text-secondary, #59665e); font-size: var(--lab-type-label, 12px); line-height: 18px; }
-.panel button { min-height: 44px; padding: 10px 16px; border: 1px solid var(--lab-brand, #264d38); border-radius: var(--lab-radius-sm, 4px); background: var(--lab-brand, #264d38); color: var(--lab-surface, #fff); cursor: pointer; font: inherit; font-size: var(--lab-type-label, 12px); }
-.panel button:focus-visible { outline: 2px solid var(--lab-brand, #264d38); outline-offset: 3px; }
+.panel p { margin: 8px 0 16px; color: var(--lab-text-secondary, #aaaaaa); font-size: var(--lab-type-label, 12px); line-height: 18px; }
+.panel button { min-height: 44px; padding: 10px 16px; border: 1px solid var(--lab-brand, #eeeeee); border-radius: var(--lab-radius-sm, 4px); background: var(--lab-brand, #eeeeee); color: var(--lab-canvas, #050505); cursor: pointer; font: inherit; font-size: var(--lab-type-label, 12px); }
+.panel button:focus-visible { outline: 2px solid var(--lab-brand, #eeeeee); outline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
   .panel button { transition: none; }

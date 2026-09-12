@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival } from "./lab-arrival";
-import { ObservatoryRadar } from "./observatory-radar";
+import { ObservatoryRadar, RadarTuningToolbar, useLocalRadarTuning } from "./observatory-radar";
+import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 
 function addDays(date: string, days: number) {
@@ -71,9 +72,12 @@ export function LabWorldWorkspace({
     };
   }, [activeDate, overview]);
 
+  const radarTuning = useLocalRadarTuning();
   const activeRadar = radarData ? (
-    <ObservatoryRadar data={radarData} date={activeDate} key={activeDate} />
-  ) : radar;
+    <ObservatoryRadar data={radarData} date={activeDate} radius={radarTuning.size} shiftX={radarTuning.shiftX} shiftY={radarTuning.shiftY} key={activeDate} />
+  ) : radar && isValidElement(radar)
+    ? cloneElement(radar as ReactElement<{ radius?: number; shiftX?: number; shiftY?: number }>, { radius: radarTuning.size, shiftX: radarTuning.shiftX, shiftY: radarTuning.shiftY })
+    : radar;
 
   const activeCapture = journal ? (
     <PersonalLabJournalWorkspace
@@ -105,7 +109,9 @@ export function LabWorldWorkspace({
     return () => observer.disconnect();
   }, [theme]);
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
+    {radarTuning.isLocal && <RadarTuningToolbar size={radarTuning.size} shiftY={radarTuning.shiftY} shiftX={radarTuning.shiftX} backdrop={radarTuning.backdrop} onSizeChange={radarTuning.setSize} onShiftYChange={radarTuning.setShiftY} onShiftXChange={radarTuning.setShiftX} onBackdropChange={radarTuning.setBackdrop} />}
     <div className="lab-intro">
+      {radarTuning.isLocal && <ArrivalBackdrop variant={radarTuning.backdrop} />}
       <LabArrival
         theme={theme}
         date={formattedDate}
@@ -117,7 +123,6 @@ export function LabWorldWorkspace({
       />
     </div>
     <div className="lab-world" lang="fr">
-      <header className="lab-world__header"><h2>Au quotidien</h2></header>
       <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{activeCapture}</section>
       <section className="lab-world__effects" id="world-effects" aria-label="Associations personnelles">{effects}</section>
     </div>
