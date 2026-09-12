@@ -4,9 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export const BACKDROP_OPTIONS = [
   { id: "disco-large", label: "Disco" },
-  { id: "mont-cimes", label: "Verticale" },
-  { id: "mont-panorama", label: "Panorama" },
-  { id: "mont-crepuscule", label: "Nuages" },
+  { id: "mont-nuages-user", label: "Nuages" },
 ] as const;
 
 export type ArrivalBackdropId = (typeof BACKDROP_OPTIONS)[number]["id"];
@@ -38,29 +36,11 @@ function DiscoLarge() {
   />;
 }
 
-function MontCimes() {
-  return <Photo
-    src="/images/backdrops/montagnes-cimes.jpg"
-    alt="Cimes acérées émergeant des nuages"
-    className="arrival-backdrop__image arrival-backdrop__image--vertical"
-  />;
-}
-
-function MontPanorama() {
+function MontNuages({ source, alt }: { source: string; alt: string }) {
   return <>
     <Photo
-      src="/images/backdrops/montagnes-altitude-v2.png"
-      alt="Chaîne de sommets enneigés au-dessus d'une mer de nuages"
-      className="arrival-backdrop__image arrival-backdrop__image--panorama"
-    />
-  </>;
-}
-
-function MontCrepuscule() {
-  return <>
-    <Photo
-      src="/images/backdrops/montagnes-nuages-v2.png"
-      alt="Crête alpine dominant une mer de nuages"
+      src={source}
+      alt={alt}
       className="arrival-backdrop__image arrival-backdrop__image--crepuscule"
     />
   </>;
@@ -95,9 +75,7 @@ export function ArrivalBackdrop({ variant }: { variant: ArrivalBackdropId }) {
   if (!BACKDROP_OPTIONS.some((option) => option.id === variant)) return null;
   return <div ref={layerRef} className="arrival-backdrop" data-backdrop={variant} aria-hidden="true" style={HERO_LAYER_STYLE}>
     {variant === "disco-large" && <DiscoLarge />}
-    {variant === "mont-cimes" && <MontCimes />}
-    {variant === "mont-panorama" && <MontPanorama />}
-    {variant === "mont-crepuscule" && <MontCrepuscule />}
+    {variant === "mont-nuages-user" && <MontNuages source="/images/backdrops/montagnes-nuages-utilisateur-v3.png" alt="Sommets alpins émergeant d'une vaste mer de nuages" />}
     <div className="arrival-backdrop__tone" />
     <div className="arrival-backdrop__fade" />
   </div>;

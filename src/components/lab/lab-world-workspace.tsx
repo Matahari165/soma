@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, cloneElement, isValidElement, typ
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival } from "./lab-arrival";
-import { ObservatoryRadar, RadarTuningToolbar, useLocalRadarTuning } from "./observatory-radar";
+import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 
@@ -72,11 +72,11 @@ export function LabWorldWorkspace({
     };
   }, [activeDate, overview]);
 
-  const radarTuning = useLocalRadarTuning();
+  const radarPresentation = OBSERVATORY_RADAR_PRESENTATION;
   const activeRadar = radarData ? (
-    <ObservatoryRadar data={radarData} date={activeDate} radius={radarTuning.size} shiftX={radarTuning.shiftX} shiftY={radarTuning.shiftY} key={activeDate} />
+    <ObservatoryRadar data={radarData} date={activeDate} radius={radarPresentation.size} shiftX={radarPresentation.shiftX} shiftY={radarPresentation.shiftY} key={activeDate} />
   ) : radar && isValidElement(radar)
-    ? cloneElement(radar as ReactElement<{ radius?: number; shiftX?: number; shiftY?: number }>, { radius: radarTuning.size, shiftX: radarTuning.shiftX, shiftY: radarTuning.shiftY })
+    ? cloneElement(radar as ReactElement<{ radius?: number; shiftX?: number; shiftY?: number }>, { radius: radarPresentation.size, shiftX: radarPresentation.shiftX, shiftY: radarPresentation.shiftY })
     : radar;
 
   const activeCapture = journal ? (
@@ -109,9 +109,8 @@ export function LabWorldWorkspace({
     return () => observer.disconnect();
   }, [theme]);
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
-    {radarTuning.isLocal && <RadarTuningToolbar size={radarTuning.size} shiftY={radarTuning.shiftY} shiftX={radarTuning.shiftX} backdrop={radarTuning.backdrop} onSizeChange={radarTuning.setSize} onShiftYChange={radarTuning.setShiftY} onShiftXChange={radarTuning.setShiftX} onBackdropChange={radarTuning.setBackdrop} />}
     <div className="lab-intro">
-      {radarTuning.isLocal && <ArrivalBackdrop variant={radarTuning.backdrop} />}
+      {theme === "observatory" && <ArrivalBackdrop variant={radarPresentation.backdrop} />}
       <LabArrival
         theme={theme}
         date={formattedDate}

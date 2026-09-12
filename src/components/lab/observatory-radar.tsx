@@ -2,11 +2,8 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
-import { BACKDROP_OPTIONS, type ArrivalBackdropId } from "./arrival-backdrops";
-
 type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
 const DEFAULT_RADAR_RADIUS = 430;
-const LOCAL_HOST_RE = /^(localhost|127\.|0\.0\.0\.0|::1|192\.168\.|10\.)/;
 export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
   const router = useRouter();
   const caloriesRef = useRef(data.caloriesKcal);
@@ -64,10 +61,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
           textAnchor = "middle";
         } else if (i === 1) {
           const [xEdge, yEdge] = coordinate(1, 1);
-          labelX = xEdge + gap(70);
-          labelY = yEdge - 12;
-          numberX = xEdge + gap(70);
-          numberY = yEdge + 22;
+          labelX = xEdge + gap(42);
+          labelY = yEdge - 8;
+          numberX = xEdge + gap(42);
+          numberY = yEdge + 10;
           textAnchor = "start";
         } else if (i === 2) {
           const [, yEdge] = coordinate(2, 1);
@@ -78,10 +75,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
           textAnchor = "middle";
         } else if (i === 3) {
           const [xEdge, yEdge] = coordinate(3, 1);
-          labelX = xEdge - gap(70);
-          labelY = yEdge - 12;
-          numberX = xEdge - gap(70);
-          numberY = yEdge + 22;
+          labelX = xEdge - gap(42);
+          labelY = yEdge - 8;
+          numberX = xEdge - gap(42);
+          numberY = yEdge + 10;
           textAnchor = "end";
         }
 
@@ -102,40 +99,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   </figure>;
 }
 
-// Outil local uniquement : trois sliders (taille, décalage vertical, décalage horizontal).
-// La taille pilote la prop radius (géométrie proportionnelle) ; les décalages appliquent une
-// translation inline sur le <figure>, donc 1 px de slider = 1 px à l'écran, sans aléa de grille.
-// Réservé aux hôtes locaux (jamais en production) ; sans l'outil, rayon 380 et aucun décalage.
-export const RADAR_SIZE_LIMITS = { min: 80, max: 430, step: 10 } as const;
-export const RADAR_SHIFT_LIMITS = { min: -100, max: 100, step: 4 } as const;
-export function useLocalRadarTuning() {
-  const [isLocal, setIsLocal] = useState(false);
-  const [size, setSize] = useState(DEFAULT_RADAR_RADIUS);
-  const [shiftY, setShiftY] = useState(-24);
-  const [shiftX, setShiftX] = useState(28);
-  const [backdrop, setBackdrop] = useState<ArrivalBackdropId>("disco-large");
-  useEffect(() => {
-    const revealLocalControls = window.setTimeout(() => {
-      setIsLocal(LOCAL_HOST_RE.test(window.location.hostname));
-    }, 0);
-    return () => window.clearTimeout(revealLocalControls);
-  }, []);
-  return { isLocal, size, setSize, shiftY, setShiftY, shiftX, setShiftX, backdrop, setBackdrop };
-}
-
-export function RadarTuningToolbar({ size, shiftY, shiftX, backdrop, onSizeChange, onShiftYChange, onShiftXChange, onBackdropChange }: { size: number; shiftY: number; shiftX: number; backdrop: ArrivalBackdropId; onSizeChange: (value: number) => void; onShiftYChange: (value: number) => void; onShiftXChange: (value: number) => void; onBackdropChange: (value: ArrivalBackdropId) => void }) {
-  const slider = (label: string, hint: string, value: number, min: number, max: number, step: number, ariaLabel: string, onChange: (value: number) => void) => <label className="radar-toolbar__slider">
-    <span>{label} <small>{hint}</small></span>
-    <input type="range" min={min} max={max} step={step} value={value} aria-label={ariaLabel} onChange={(event) => onChange(Number(event.target.value))} />
-    <output>{value > 0 ? `+${value}` : value}</output>
-  </label>;
-  return <div className="radar-toolbar" role="group" aria-label="Réglages du radar (aperçu local uniquement)">
-    <span className="radar-toolbar__title">RADAR</span>
-    {slider("Taille", "", size, RADAR_SIZE_LIMITS.min, RADAR_SIZE_LIMITS.max, RADAR_SIZE_LIMITS.step, "Taille du graphique", onSizeChange)}
-    {slider("Y", "↑↓", shiftY, RADAR_SHIFT_LIMITS.min, RADAR_SHIFT_LIMITS.max, RADAR_SHIFT_LIMITS.step, "Décalage vertical du graphique, négatif vers le haut", onShiftYChange)}
-    {slider("X", "←→", shiftX, RADAR_SHIFT_LIMITS.min, RADAR_SHIFT_LIMITS.max, RADAR_SHIFT_LIMITS.step, "Décalage horizontal du graphique, négatif vers la gauche", onShiftXChange)}
-    <div className="radar-toolbar__backdrops" role="group" aria-label="Fond décoratif (aperçu local uniquement)">
-      {BACKDROP_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={backdrop === option.id} onClick={() => onBackdropChange(option.id)}>{option.label}</button>)}
-    </div>
-  </div>;
-}
+export const OBSERVATORY_RADAR_PRESENTATION = {
+  size: 180,
+  shiftY: -24,
+  shiftX: 28,
+  backdrop: "mont-nuages-user",
+} as const;

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { ObservatoryRadar, RADAR_SIZE_LIMITS, RadarTuningToolbar } from "./observatory-radar";
+import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const data = { sleepMinutes: 460, recoveryScore: 70, effortScore: 75, caloriesKcal: 1800, averageSleepMinutes: 480, averageRecoveryScore: 60, averageEffortScore: 75, averageCaloriesKcal: 2000 };
 it("compares each value with its own 30-day average, including equality", () => {
@@ -43,23 +43,13 @@ it("scales label offsets proportionally with the radius prop", () => {
   expect(html).toContain('class="radar-number"');
 });
 
-it("renders the three local-only tuning sliders plus backdrop buttons", () => {
-  const html = renderToStaticMarkup(<RadarTuningToolbar size={430} shiftY={-24} shiftX={28} backdrop="mont-cimes" onSizeChange={() => {}} onShiftYChange={() => {}} onShiftXChange={() => {}} onBackdropChange={() => {}} />);
-  expect(html).toContain("Taille du graphique");
-  expect(html).toContain("Décalage vertical du graphique");
-  expect(html).toContain("Décalage horizontal du graphique");
-  expect(html.match(/type="range"/g)).toHaveLength(3);
-  expect(html).toContain("430");
-  expect(html).toContain("<output>-24</output>");
-  expect(html).toContain("<output>+28</output>");
-  expect(html).toContain("Verticale");
-  expect(html).toContain("Disco");
-  expect(html).not.toContain("Disco statue");
-  expect(html).not.toContain(">Aucun</button>");
-});
-
-it("lets the local radar shrink well below 140 px", () => {
-  expect(RADAR_SIZE_LIMITS).toEqual({ min: 80, max: 430, step: 10 });
+it("uses the approved fixed local presentation without exposing controls", () => {
+  expect(OBSERVATORY_RADAR_PRESENTATION).toEqual({
+    size: 180,
+    shiftY: -24,
+    shiftX: 28,
+    backdrop: "mont-nuages-user",
+  });
 });
 
 it("forwards the shift values as an inline transform on the figure", () => {
