@@ -1,5 +1,10 @@
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
+import { MEAL_TOTALS_EVENT } from "@/domain/meal-record";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const data = { sleepMinutes: 460, recoveryScore: 70, effortScore: 75, caloriesKcal: 1800, averageSleepMinutes: 480, averageRecoveryScore: 60, averageEffortScore: 75, averageCaloriesKcal: 2000 };
@@ -43,11 +48,37 @@ it("scales label offsets proportionally with the radius prop", () => {
   expect(html).toContain('class="radar-number"');
 });
 
+it("caps every plotted metric at its target while keeping the real values visible", () => {
+  const html = renderToStaticMarkup(<ObservatoryRadar data={{
+    ...data,
+    sleepMinutes: 600,
+    recoveryScore: 120,
+    effortScore: 140,
+    caloriesKcal: 3000,
+  }} radius={180} />);
+  expect(html).toContain('points="330,100 510,280 330,460 150,280"');
+  expect(html).toContain("10h 00 ↑");
+  expect(html).toMatch(/↑ 3[\s\u202f]000 kcal/);
+  expect(html).toContain("Objectif : 8 h 30");
+});
+
+it("uses the personal calorie target received from the meal journal", async () => {
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  await act(async () => root.render(<ObservatoryRadar data={{ ...data, caloriesKcal: 2500 }} radius={180} />));
+  await act(async () => window.dispatchEvent(new CustomEvent(MEAL_TOTALS_EVENT, {
+    detail: { date: "2026-09-12", isToday: true, calories: 2500, calorieTarget: 3000, calorieProgress: 83 },
+  })));
+  expect(container.querySelector(".radar-value")?.getAttribute("points")).toContain("180,280");
+  expect(container.querySelector("svg")?.getAttribute("aria-label")).toMatch(/Objectif : 3[\s\u202f]000 kcal/);
+  await act(async () => root.unmount());
+});
+
 it("uses the approved fixed local presentation without exposing controls", () => {
   expect(OBSERVATORY_RADAR_PRESENTATION).toEqual({
-    size: 180,
+    size: 250,
     shiftY: -24,
-    shiftX: 28,
+    shiftX: -24,
     backdrop: "mont-nuages-user",
   });
 });

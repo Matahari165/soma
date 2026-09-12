@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
 type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
 const DEFAULT_RADAR_RADIUS = 430;
+const SLEEP_TARGET_MINUTES = 510;
 export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
   const router = useRouter();
   const caloriesRef = useRef(data.caloriesKcal);
   const [calories,setCalories] = useState(data.caloriesKcal);
+  const [calorieTarget,setCalorieTarget] = useState<number|null>(null);
   useEffect(()=>{ caloriesRef.current=data.caloriesKcal; startTransition(()=>setCalories(data.caloriesKcal)); },[data.caloriesKcal]);
   useEffect(()=>{
     const update=(event:Event)=>{
@@ -17,6 +19,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         const changed=caloriesRef.current!==detail.calories;
         caloriesRef.current=detail.calories;
         setCalories(detail.calories);
+        setCalorieTarget(detail.calorieTarget);
         if(changed)router.refresh();
       }
     };
@@ -24,20 +27,20 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     return()=>window.removeEventListener(MEAL_TOTALS_EVENT,update);
   },[router, date]);
   const axes=[
-    {label:"Sommeil",average:data.averageSleepMinutes,value:data.sleepMinutes,target:480,unit:"min",display:data.sleepMinutes===null?"—":`${Math.floor(data.sleepMinutes/60)}h ${Math.round(data.sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h"},
+    {label:"Sommeil",average:data.averageSleepMinutes,value:data.sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:data.sleepMinutes===null?"—":`${Math.floor(data.sleepMinutes/60)}h ${Math.round(data.sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h 30"},
     {label:"Récupération",average:data.averageRecoveryScore,value:data.recoveryScore,target:100,unit:"",display:data.recoveryScore===null?"—":`${Math.round(data.recoveryScore)}`,goal:"100 %"},
     {label:"Effort",average:data.averageEffortScore===null?null:data.averageEffortScore*.21,value:data.effortScore===null?null:data.effortScore*.21,target:21,unit:"",display:data.effortScore===null?"—":`${(data.effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
-    {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:2200,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:"2 200 kcal"},
+    {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:2200,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:2200).toLocaleString("fr-FR")} kcal`},
   ];
   const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
   // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.
   const unit = radarRadius / DEFAULT_RADAR_RADIUS;
   const gap = (base: number) => Math.round(base * unit);
   const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*radarRadius*ratio,280+Math.sin(angle)*radarRadius*ratio];};
-  const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1.2,Math.max(0,axis.value/axis.target))));
+  const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
-  return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport aux repères de démonstration" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
-    <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs de démonstration. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
+  return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
+    <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><polygon key={ratio} className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
       {validPoints.length>=3&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
@@ -87,8 +90,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
           : (`${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}`);
 
         return (
-          <g key={axis.label} className="radar-axis-label">
-            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif de démonstration : ${axis.goal}.`}</title>
+          <g key={axis.label} className={`radar-axis-label radar-axis-label--${i}`}>
+            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}.`}</title>
             <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label">{axis.label}</text>
             <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number">{valueText}</text>
           </g>
@@ -100,8 +103,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
 }
 
 export const OBSERVATORY_RADAR_PRESENTATION = {
-  size: 180,
+  size: 250,
   shiftY: -24,
-  shiftX: 28,
+  shiftX: -24,
   backdrop: "mont-nuages-user",
 } as const;

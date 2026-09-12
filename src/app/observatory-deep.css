@@ -121,7 +121,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { grid-template-columns:minmax(0,1fr)!important; min-height:0!important; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:520px!important; min-height:520px!important; margin-top:16px; margin-bottom:0; }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { margin:20px 0 12px; }
- .radar-label { font-size:18px; } .radar-number { font-size:25px; }
+ .observatory-radar { transform:translateY(-24px)!important; }
+ .observatory-radar svg { transform:scale(.92); transform-origin:center; }
 }
 @media(prefers-reduced-motion:reduce) { .arrival-title-line > span,html[data-lab-theme="observatory"] .arrival-heading,html[data-lab-theme="observatory"] .arrival-backdrop__image { animation:none!important; } html[data-lab-theme="observatory"] .arrival-backdrop { transform:none!important; opacity:1!important; } }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary button.is-selected { background:#1c1c1c!important; color:#fff; border-radius:4px; }
@@ -133,7 +134,11 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
 @keyframes observatory-axis-draw { from { stroke-dashoffset:1100; opacity:.15; } to { stroke-dashoffset:0; opacity:1; } }
 @media(prefers-reduced-motion:reduce) { .radar-grid { animation:none; } }
 /* Single radar edition — common proportions for all daily controls. */
-html[data-lab-theme="observatory"] .lab-global-nav { inset:26px 0 auto; background:transparent; }
+html[data-lab-theme="observatory"] .lab-global-nav {
+ inset:8px 0 auto;
+ padding-bottom:12px;
+ background:linear-gradient(to bottom,#050505 0%,rgba(5,5,5,.96) 72%,rgba(5,5,5,0) 100%);
+}
 /* Le journal passe devant le fond immersif fixe pour rester parfaitement lisible. */
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world { position:relative; z-index:1; }
 html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:82px; }
@@ -164,12 +169,19 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-button--validate,.journal-card__actions > .primary-button) { width:168px; }
 .radar-number,.radar-label { font-weight:400; }
 
-html[data-lab-theme="observatory"] .lab-global-nav { inset:26px 0 auto; }
+html[data-lab-theme="observatory"] .lab-global-nav { inset:8px 0 auto; }
 html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:82px; }
 html[data-lab-theme="observatory"] :is(.radar-label,.radar-number) { font-weight:400; }
-html[data-lab-theme="observatory"] .radar-label { font-size:12px!important; }
-html[data-lab-theme="observatory"] .radar-number { font-size:10px!important; }
+html[data-lab-theme="observatory"] .radar-label { font-size:18px!important; }
+html[data-lab-theme="observatory"] .radar-number { font-size:16px!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card__actions { justify-content:flex-end; width:100%; }
+
+@media(max-width:700px) {
+ html[data-lab-theme="observatory"] .radar-label { font-size:28px!important; }
+ html[data-lab-theme="observatory"] .radar-number { font-size:24px!important; }
+ html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-52px); }
+ html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(52px); }
+}
 
 /* Separate daily capture areas through proportion and negative space. */
 @media(min-width:901px) {
