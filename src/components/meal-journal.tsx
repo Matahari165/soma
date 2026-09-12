@@ -445,7 +445,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
     })),
     totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
     confidence: analysis.confidence ?? "medium",
-    uncertainties: analysis.uncertainties?.length ? analysis.uncertainties.slice(0, 12).map((item) => item.slice(0, 300)) : analysis.note ? [analysis.note.slice(0, 300)] : [],
+    uncertainties: analysis.uncertainties?.slice(0, 12).map((item) => item.slice(0, 300)) ?? [],
     uncertaintySignals: analysis.uncertaintySignals,
   };
 }

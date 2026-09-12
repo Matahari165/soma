@@ -20,7 +20,13 @@ export type MealScoreRolling = {
   totalDays: number;
 };
 
-export type MealScoreTrendPoint = { date: string; score: number | null };
+export type MealScoreTrendPoint = {
+  date: string;
+  score: number | null;
+  status?: "ready" | "limited" | "insufficient" | null;
+  coverage?: number | null;
+  confidence?: number | null;
+};
 
 export type MealScoreOverviewPanelProps = {
   daily: MealBalanceScore | null;
@@ -153,7 +159,7 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
       ? `${formatDate(point.date, true)} : aucun score, jour absent du tracé`
-      : `${formatDate(point.date, true)} : score ${formatScore(point.score)} sur 100`).join(". ")
+      : `${formatDate(point.date, true)} : score ${formatScore(point.score)} sur 100${point.status === "limited" ? `, partiel, couverture ${formatPercent(point.coverage)}, confiance ${formatPercent(point.confidence)}` : ""}`).join(". ")
     : "Aucun jour disponible pour cette évolution.";
 
   return (
@@ -200,8 +206,8 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
                 <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
                 <div className={styles.barChart} style={{ "--point-count": trend.length } as CSSProperties}>
                   {trend.map((point) => (
-                    <div className={styles.barColumn} key={point.date}>
-                      {point.score === null ? null : <span className={styles.bar} style={scoreBarStyle(point.score)} aria-hidden="true" />}
+                    <div className={styles.barColumn} key={point.date} data-status={point.status}>
+                      {point.score === null ? null : <span className={styles.bar} style={scoreBarStyle(point.score)} title={point.status === "limited" ? `Score partiel · ${formatPercent(point.coverage)} couvert · ${formatPercent(point.confidence)} confiance` : undefined} aria-hidden="true" />}
                     </div>
                   ))}
                 </div>

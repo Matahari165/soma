@@ -161,11 +161,10 @@ function weightedAverage<T>(items: readonly T[], read: (item: T) => number | nul
 }
 
 function foodCoverage(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], key: "qualityProperties" | "sugarExposure" | "novaGroup" | "portion", observed: (food: ConfirmedMealFood) => boolean) {
-  if (foods.length) return foods.filter(observed).length / foods.length;
   const aggregateCoverage = day.foodObservationCoverage?.[key];
   return aggregateCoverage !== null && aggregateCoverage !== undefined && Number.isFinite(aggregateCoverage)
     ? clamp(aggregateCoverage, 0, 1)
-    : 0;
+    : foods.length ? foods.filter(observed).length / foods.length : 0;
 }
 
 function qualityObservation(food: ConfirmedMealFood) {
@@ -176,7 +175,8 @@ function sugarExposureObservation(food: ConfirmedMealFood) {
   return food.observation?.sugarExposure !== "unknown"
     && food.sugarExposure !== undefined
     && food.sugarExposure !== null
-    && (food.sugarExposure.liquid !== null || food.sugarExposure.concentrated !== null);
+    && food.sugarExposure.liquid !== null
+    && food.sugarExposure.concentrated !== null;
 }
 
 function novaObservation(food: ConfirmedMealFood) {
@@ -252,7 +252,20 @@ function foodRecordsForDay(day: MealDailyAggregate, records: readonly ConfirmedM
 }
 
 function foodsForRecords(records: readonly ConfirmedMealRecord[]) {
-  return records.flatMap((record) => (record.foods ?? []).filter((food) => food.countedInTotals !== false && food.alcoholic !== true));
+  return records.flatMap((record) => {
+    const foods = record.foods ?? [];
+    const byId = new Map(foods.flatMap((food) => food.id ? [[food.id, food] as const] : []));
+    const parentIds = new Set(foods.flatMap((food) => food.parentId ? [food.parentId] : []));
+    return foods.filter((food) => {
+      if (food.alcoholic === true || food.countedInTotals === false) return false;
+      if (food.parentId) {
+        const parent = byId.get(food.parentId);
+        if (parent?.countedInTotals === true) return false;
+      }
+      if (food.id && parentIds.has(food.id) && food.countedInTotals !== true) return false;
+      return true;
+    });
+  });
 }
 
 function varietyComponent(day: MealDailyAggregate, foods: readonly ConfirmedMealFood[], confidence: number, observationCoverage: number): ComponentInput {
@@ -486,24 +499,25 @@ export function calculateMealBalanceScore(input: {
   const records = foodRecordsForDay(day, input.records);
   const foods = foodsForRecords(records);
   const analysis = analysisCoverage(day);
-  const observationCoverage = baseObservationCoverage(day, analysis);
+  const mealObservationCoverage = mealCoverage(day);
+  const nutritionObservationCoverage = baseObservationCoverage(day, analysis);
   const dayConfidence = day.analysisConfidence !== null && Number.isFinite(day.analysisConfidence)
     ? clamp(day.analysisConfidence, 0, 100) / 100
     : 0.5;
   const globalConfidence = recordConfidence(records, dayConfidence);
   const foodConfidenceValue = foodConfidence(foods, globalConfidence);
   const foodObservationCoverage = records.length
-    ? observationCoverage
-    : day.foodVarietyCount !== null ? Math.min(observationCoverage, 0.5) : 0;
+    ? mealObservationCoverage * (day.foodListCoverage ?? 1)
+    : day.foodVarietyCount !== null ? Math.min(mealObservationCoverage * (day.foodListCoverage ?? 1), 0.5) : 0;
 
   const rawComponents: ComponentInput[] = [
     varietyComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
     qualityComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
-    addedSugarComponent(day, globalConfidence, observationCoverage),
+    addedSugarComponent(day, globalConfidence, nutritionObservationCoverage),
     sugarExposureComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
     ultraProcessingComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
-    nutritionCoverageComponent(day, globalConfidence, observationCoverage),
-    energyComponent(day, input.targets, goalMode, globalConfidence, observationCoverage),
+    nutritionCoverageComponent(day, globalConfidence, nutritionObservationCoverage),
+    energyComponent(day, input.targets, goalMode, globalConfidence, nutritionObservationCoverage),
   ];
   const components = rawComponents.map(createComponent);
   const effectiveWeight = components.reduce((sum, component) => sum + component.effectiveWeight, 0);

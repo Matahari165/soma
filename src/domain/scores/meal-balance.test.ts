@@ -173,6 +173,31 @@ describe("calculateMealBalanceScore", () => {
     expect(component(result, "ultraProcessing").score).toBeNull();
   });
 
+  it("does not score a partially known sugar exposure as a negative observation", () => {
+    const records = [meal({ id: "partial", foods: [food("boisson", { sugarExposure: { liquid: false, concentrated: null } })] })];
+    const result = calculateMealBalanceScore({ day: dayFrom(records), records, targets });
+    expect(component(result, "sugarExposure").score).toBeNull();
+    expect(component(result, "sugarExposure").observationCoverage).toBe(0);
+  });
+
+  it("keeps food dimensions usable when nutrition totals are unavailable", () => {
+    const records = [meal({ id: "foods-only", caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null, addedSugarG: null, foods: [food("lentilles", { qualityProperties: ["whole_food"], sugarExposure: { liquid: false, concentrated: false }, novaGroup: 1 })] })];
+    const result = calculateMealBalanceScore({ day: dayFrom(records), records, targets });
+    expect(component(result, "foodQuality").score).not.toBeNull();
+    expect(component(result, "ultraProcessing").score).not.toBeNull();
+    expect(component(result, "energy").score).toBeNull();
+    expect(component(result, "nutritionCoverage").observationCoverage).toBe(0);
+  });
+
+  it("counts either a composed-dish parent or its children, never both", () => {
+    const records = [meal({ id: "dish", foods: [
+      food("curry", { id: "dish-1", kind: "dish" }),
+      food("pois chiches", { id: "child-1", kind: "component", parentId: "dish-1" }),
+    ] })];
+    const result = calculateMealBalanceScore({ day: dayFrom(records), records, targets });
+    expect(component(result, "variety").observedValue).toContain("1 aliment");
+  });
+
   it("uses a non-linear energy curve and a configured build-muscle surplus plateau", () => {
     const resultFor = (caloriesKcal: number) => {
       const records = [meal({ id: String(caloriesKcal), caloriesKcal: estimate(caloriesKcal) })];

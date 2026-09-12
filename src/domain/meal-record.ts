@@ -223,6 +223,10 @@ export function apiMealToRecord(value: unknown): MealRecord {
   const resultRecord = analysisRecord && isRecord(analysisRecord.result) ? analysisRecord : successfulRecord;
   const rawPhotos = Array.isArray(meal.photos) ? meal.photos : [];
   const rawFoods = result && Array.isArray(result.foods) ? result.foods : [];
+  const rawFoodIds = rawFoods.map((rawFood) => isRecord(rawFood) && typeof rawFood.id === "string" ? rawFood.id.trim().slice(0, 120) : "");
+  const usableFoodIds = rawFoodIds.every(Boolean) && new Set(rawFoodIds).size === rawFoodIds.length;
+  const validParentReferences = rawFoods.every((rawFood) => !isRecord(rawFood) || typeof rawFood.parentId !== "string" || rawFoodIds.includes(rawFood.parentId.trim().slice(0, 120)));
+  const preserveFoodGraph = usableFoodIds && validParentReferences;
   const totals = result && isRecord(result.totals) ? result.totals : {};
   const ingredients = rawFoods.flatMap((rawFood, index) => {
     if (!isRecord(rawFood)) return [];
@@ -233,7 +237,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
       const value = range(key);
       return value.low === null && value.high === null ? undefined : value;
     };
-    const sourceId = typeof rawFood.id === "string" && rawFood.id.trim() ? rawFood.id.trim().slice(0, 120) : undefined;
+    const sourceId = preserveFoodGraph ? rawFoodIds[index] : undefined;
     return [{
       id: sourceId ?? `${resultRecord?.id ?? "analysis"}-${index}`,
       sourceId,
@@ -250,7 +254,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
       addedSugarGrams: optionalRange("addedSugarGrams") ?? optionalRange("addedSugarsGrams") ?? optionalRange("addedSugars"),
       confidence: confidence(rawFood.confidence),
       kind: mealFoodKind(rawFood.kind),
-      parentId: typeof rawFood.parentId === "string" ? rawFood.parentId : null,
+      parentId: preserveFoodGraph && typeof rawFood.parentId === "string" ? rawFood.parentId.trim().slice(0, 120) : null,
       course: mealFoodCourse(rawFood.course),
       countedInTotals: typeof rawFood.countedInTotals === "boolean" ? rawFood.countedInTotals : undefined,
       alcoholic: typeof rawFood.alcoholic === "boolean" ? rawFood.alcoholic : undefined,

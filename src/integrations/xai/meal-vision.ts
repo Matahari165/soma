@@ -800,7 +800,7 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
     instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, parentId, alcoholic/countInTotals, statuts observation, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, la compatibilité des intervalles sans exiger leur addition exacte, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues, et les nulls quand une donnée ne peut pas être estimée. Ne transforme pas unknown en none_observed et conserve uncertaintySignals structurés. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
     promptText: makeVerificationPrompt(input),
     imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" })),
-    maxOutputTokens: 4_000,
+    maxOutputTokens: 6_000,
     reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low",
     requestId: input.requestId,
     maxAttempts: 1,
@@ -819,7 +819,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, sauces/préparations, statuts observation et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues, la compatibilité des intervalles sans exiger leur addition exacte, et les nulls quand une donnée ne peut pas être estimée. unknown signifie indéterminable ; none_observed signifie axe examiné sans propriété observée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
         promptText: makeVerificationPrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
-        maxOutputTokens: 4_000,
+        maxOutputTokens: 6_000,
         requestId: input.requestId,
         maxAttempts: 1,
       })
@@ -833,7 +833,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         instructions: "You are a careful food-photo analyst. Return stable food ids and structured observation statuses. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high, nulls when not estimable, and structured uncertainty signals for important unknowns. Labels in French. Return only the requested JSON object.",
         promptText: makePrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
-        maxOutputTokens: 4_000,
+        maxOutputTokens: 6_000,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
       });
@@ -844,7 +844,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         instructions: "You are a careful food-description analyst. List only foods named in the user description and return stable food ids with structured observation statuses. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and nulls when not estimable. Default confidence to low unless the description is very precise. Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties and machine-readable uncertaintySignals for important unknowns. Labels in French. Return only the requested JSON object.",
         promptText: makeTextPrompt(input),
         imageContents: [],
-        maxOutputTokens: 1_500,
+        maxOutputTokens: 3_000,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
       });

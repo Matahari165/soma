@@ -106,7 +106,7 @@ describe("xAI meal vision contract", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify(textOnly) }] }] }), { status: 200 }));
     const result = await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "2 bananes" });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string; text?: string }> }>; text: { format: { type: string; name: string; strict: boolean } } };
-    expect(body).toMatchObject({ max_output_tokens: 1500, text: { format: { type: "json_schema", name: "soma_meal_analysis", strict: true } } });
+    expect(body).toMatchObject({ max_output_tokens: 3000, text: { format: { type: "json_schema", name: "soma_meal_analysis", strict: true } } });
     expect(body.input[0]?.content.some((item) => item.type === "input_image")).toBe(false);
     expect(body.input[0]?.content[0]?.text).toContain("2 bananes");
     expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
@@ -156,8 +156,8 @@ describe("xAI meal vision contract", () => {
 
     const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number };
     const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { max_output_tokens: number };
-    expect(firstBody.max_output_tokens).toBe(1_500);
-    expect(retryBody.max_output_tokens).toBe(1_500);
+    expect(firstBody.max_output_tokens).toBe(3_000);
+    expect(retryBody.max_output_tokens).toBe(3_000);
   });
 
   it("retries an empty Grok response once", async () => {
@@ -184,8 +184,8 @@ describe("xAI meal vision contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string }> }> };
     const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { max_output_tokens: number; input: Array<{ content: Array<{ type: string }> }> };
-    expect(firstBody.max_output_tokens).toBe(4_000);
-    expect(retryBody.max_output_tokens).toBe(8_000);
+    expect(firstBody.max_output_tokens).toBe(6_000);
+    expect(retryBody.max_output_tokens).toBe(12_000);
     expect(retryBody.input[0]?.content.filter((item) => item.type === "input_image")).toHaveLength(4);
   });
 

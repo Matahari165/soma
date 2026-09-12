@@ -60,4 +60,26 @@ describe("meal record server boundary", () => {
 
     expect(record.analysis?.ingredients[0]).toMatchObject({ novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: ["minimally_processed"] });
   });
+
+  it("does not preserve an incomplete legacy food graph as canonical source ids", () => {
+    const record = apiMealToRecord({
+      id: "legacy",
+      mealDate: "2026-09-05",
+      mealType: "lunch",
+      status: "confirmed",
+      photos: [],
+      analysis: { id: "analysis", status: "completed", result: {
+        foods: [
+          { id: "dish", name: "Plat", parentId: null },
+          { name: "Composant", parentId: "dish" },
+        ],
+        totals: {},
+        confidence: "low",
+        uncertainties: [],
+      } },
+    });
+
+    expect(record.analysis?.ingredients.every((ingredient) => ingredient.sourceId === undefined)).toBe(true);
+    expect(record.analysis?.ingredients.every((ingredient) => ingredient.parentId === null)).toBe(true);
+  });
 });

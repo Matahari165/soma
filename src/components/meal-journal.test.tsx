@@ -645,6 +645,18 @@ describe("apiMealToRecord", () => {
     expect(payload.totals.calories).toEqual({ low: 300, high: 500 });
   });
 
+  it("does not turn a descriptive note into an uncertainty", () => {
+    const payload = recordAnalysisToApi({
+      ingredients: [],
+      calories: { low: null, high: null },
+      proteinGrams: { low: null, high: null },
+      note: "Description normale du repas",
+      uncertainties: [],
+    });
+
+    expect(payload.uncertainties).toEqual([]);
+  });
+
   it("preserves rich food observations when confirming an analysis", () => {
     const payload = recordAnalysisToApi({
       ingredients: [{

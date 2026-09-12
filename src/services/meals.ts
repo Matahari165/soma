@@ -587,7 +587,10 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
       sugarG: nutritionEstimate(totals?.sugarGrams),
       addedSugarG: nutritionEstimate(totals?.addedSugarGrams),
       foods: result?.foods.map((food) => ({
+        id: food.id,
         name: food.name,
+        kind: food.kind,
+        parentId: food.parentId,
         portion: food.portion ?? null,
         estimatedGrams: food.estimatedGrams ?? null,
         quantity: food.quantity ?? null,

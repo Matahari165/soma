@@ -156,6 +156,21 @@ describe("confirmed meal daily series", () => {
     expect(empty?.foodObservationCoverage).toEqual({ qualityProperties: 0, sugarExposure: 0, novaGroup: 0, portion: 0 });
   });
 
+  it("discounts food-axis coverage when some confirmed meals have no food list", () => {
+    const aggregate = aggregateConfirmedMeals([
+      meal({ id: "labelled", foods: [{ name: "Pomme", qualityProperties: ["whole_food"], sugarExposure: { liquid: false, concentrated: false }, novaGroup: 1, portion: "1" }] }),
+      meal({ id: "missing", mealType: "lunch", foods: undefined }),
+    ])[0];
+
+    expect(aggregate?.foodListCoverage).toBe(0.5);
+    expect(aggregate?.foodObservationCoverage).toEqual({ qualityProperties: 0.5, sugarExposure: 0.5, novaGroup: 0.5, portion: 0.5 });
+  });
+
+  it("requires both sugar-exposure flags before considering the axis observed", () => {
+    const aggregate = aggregateConfirmedMeals([meal({ id: "partial", foods: [{ name: "Boisson", sugarExposure: { liquid: false, concentrated: null } }] })])[0];
+    expect(aggregate?.foodObservationCoverage?.sugarExposure).toBe(0);
+  });
+
   it("preserves structured and legacy portion evidence for the score adapter", () => {
     const result = aggregateConfirmedMeals([meal({
       id: "meal-portions",

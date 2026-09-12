@@ -116,7 +116,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
-          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore }))}
+          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, status: point.balanceStatus, coverage: point.balanceCoverage, confidence: point.balanceConfidence }))}
           className="meals-page-score"
         />
         {nutritionResult.ok
