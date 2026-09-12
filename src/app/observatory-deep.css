@@ -204,10 +204,16 @@ html[data-lab-theme="observatory"] .lab-global-nav {
   background:linear-gradient(to bottom,#050505 0%,rgba(5,5,5,.94) 42%,rgba(5,5,5,.52) 76%,rgba(5,5,5,0) 100%);
 }
 html[data-lab-theme="observatory"] .app-shell:has(.lab-continuous) .main-content { padding-top:52px; }
-/* The local preview reserves the banner and theme switcher above the nav. */
-html[data-lab-theme="observatory"] body.local-preview .lab-global-nav { top:88px; }
+/* The local preview banner is fixed independently; it must not push the nav down. */
+html[data-lab-theme="observatory"] body.local-preview .lab-global-nav {
+  top:0;
+  align-items:flex-start;
+  padding-top:8px;
+  padding-bottom:0;
+  border:0;
+}
 html[data-lab-theme="observatory"] body.local-preview .app-shell:has(.lab-continuous) .main-content,
-html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:140px; }
+html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:52px; }
 
 /* A quiet, line-led date rail keeps the active day legible without a heavy tile. */
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip {

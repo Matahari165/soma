@@ -751,6 +751,12 @@
   .labRoot .emptyMealActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+@media (min-width: 701px) {
+  :global(.personal-lab-journal-column .journal-card--personal-lab #journal-morning-title > button) {
+    align-items: flex-start;
+  }
+}
+
 /* Shared interaction contract: compact styling, full 44px target. */
 :global(html[data-lab-theme="observatory"]) .mealsPageRoot :is(button, input, select, textarea, summary) {
   min-height: 44px;
@@ -2726,6 +2732,46 @@
     min-height: 44px;
     height: 44px;
     padding-inline: 6px;
+  }
+}
+
+/* Annotation 2 — the first meal begins on the same rail as the first journal
+   period. The action row remains above the journal content without reserving a
+   competing offset in the meal column. */
+@media (min-width: 701px) {
+  :global(.personal-lab-meal-column) > .labRoot > .mealList {
+    margin-top: 42.5px;
+  }
+}
+
+/* Annotation 3 — every meal heading shares one measurable header contract,
+   whether its capture surface is empty or its analysis is already filled. */
+:global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard .mealTitle {
+  min-height: 24px;
+  align-items: center;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard .mealTitle h3 {
+  display: block;
+  margin: 0;
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-ui);
+  font-size: 20px !important;
+  font-weight: 400 !important;
+  line-height: 24px;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
+    height: auto;
   }
 }
 
