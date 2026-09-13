@@ -37,5 +37,5 @@ export function requireServerEnv(name: string) {
 }
 
 export function getSiteUrl() {
-  return (getCloudflareSiteUrl() ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? getCloudflareSiteUrl() ?? "http://localhost:3000").replace(/\/$/, "");
 }

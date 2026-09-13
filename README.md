@@ -21,9 +21,9 @@ Soma is a wellness and self-observation product, not a medical device.
 ## Technology
 
 - Next.js 16 and React 19
-- Cloudflare Workers
-- Cloudflare D1 for application and analysis data
-- Private R2 storage for source archives
+- Vercel for the Next.js application
+- Supabase for application and analysis data
+- Cloudflare R2 for private source archives and meal photos
 - Google OAuth and Google Health
 - xAI for bounded explanations after deterministic calculations
 
@@ -51,13 +51,17 @@ This runs linting, TypeScript checks, tests, and a production build.
 
 ## Production
 
-The application is deployed on Cloudflare Workers at
-[soma.hthv4f94vw.workers.dev](https://soma.hthv4f94vw.workers.dev).
+The application is deployed on Vercel at
+[soma-neon-phi.vercel.app](https://soma-neon-phi.vercel.app).
+Vercel deploys the connected GitHub `main` branch automatically.
 
 ```bash
-pnpm db:migrate:remote
-pnpm deploy
+pnpm db:migrate:supabase
 ```
+
+The Cloudflare Worker commands are retained only for legacy recovery and are
+explicitly named `preview:cloudflare` and `deploy:cloudflare`; they are not part
+of the normal Soma deployment path.
 
 Deployment credentials and provider secrets must remain outside Git. Never commit
 `.env.local`, health exports, OAuth tokens, or private user data.

@@ -17,8 +17,9 @@ function applicationSources(directory: string): string[] {
 }
 
 describe("production-only application contract", () => {
-  it("keeps the legacy Vercel host redirect-only", () => {
-    expect(vercelConfig).toContain('"destination": "https://soma.hthv4f94vw.workers.dev/:path*"');
+  it("keeps Vercel as the active application host", () => {
+    expect(vercelConfig).not.toContain('"redirects"');
+    expect(vercelConfig).not.toContain("workers.dev");
     expect(vercelConfig).not.toContain('"crons"');
   });
 
