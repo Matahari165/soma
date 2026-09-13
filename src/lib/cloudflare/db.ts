@@ -143,6 +143,44 @@ export function cloudflareArchives() {
 }
 
 export async function saveCloudflareJournalDay({ userId, entryDate, entries, validate, replaceOmissions }: { userId: string; entryDate: string; entries: Array<{ variable_id: string; value: unknown }>; validate: boolean; replaceOmissions: boolean }) {
+  if (hasSupabaseRuntime()) {
+    const admin = createCloudflareAdminClient();
+    const currentDayResult = await admin.from("journal_days").select("*").eq("user_id", userId).eq("entry_date", entryDate).maybeSingle();
+    if (currentDayResult.error) throw new Error(currentDayResult.error.message);
+    const currentDay = currentDayResult.data as Row | null;
+    const wasValidated = currentDay?.status === "validated";
+    const now = new Date().toISOString();
+    for (const entry of entries) {
+      const row = { user_id: userId, variable_id: entry.variable_id, entry_date: entryDate };
+      if (entry.value === null) {
+        const result = await admin.from("journal_entries").delete().eq("user_id", userId).eq("variable_id", entry.variable_id).eq("entry_date", entryDate);
+        if (result.error) throw new Error(result.error.message);
+        continue;
+      }
+      const result = await admin.from("journal_entries").upsert(withDefaults({ ...row, value: entry.value }), { onConflict: "user_id,variable_id,entry_date" });
+      if (result.error) throw new Error(result.error.message);
+    }
+    const dayRow = withDefaults({
+      ...(currentDay ?? {}),
+      user_id: userId,
+      entry_date: entryDate,
+      status: validate || wasValidated ? "validated" : "draft",
+      validated_at: validate || wasValidated ? currentDay?.validated_at ?? now : null,
+      omitted_variables: mergeJournalOmissions(currentDay?.omitted_variables, entries, replaceOmissions),
+      updated_at: now,
+    });
+    const dayResult = await admin.from("journal_days").upsert(dayRow, { onConflict: "user_id,entry_date" });
+    if (dayResult.error) throw new Error(dayResult.error.message);
+    const revisionResult = await admin.from(LAB_MATRIX_REVISION_TABLE).upsert({ user_id: userId, revision: 1, updated_at: now }, { onConflict: "user_id" });
+    if (revisionResult.error) throw new Error(revisionResult.error.message);
+
+    const persistedEntriesResult = await admin.from("journal_entries").select("*").eq("user_id", userId).eq("entry_date", entryDate);
+    const persistedDayResult = await admin.from("journal_days").select("*").eq("user_id", userId).eq("entry_date", entryDate).maybeSingle();
+    if (persistedEntriesResult.error) throw new Error(persistedEntriesResult.error.message);
+    if (persistedDayResult.error) throw new Error(persistedDayResult.error.message);
+    assertJournalDayPersisted({ entryDate, entries, persistedEntries: persistedEntriesResult.data ?? [], persistedDay: persistedDayResult.data, expectedStatus: validate || wasValidated ? "validated" : "draft" });
+    return;
+  }
   const db = cloudflareDb();
   const dayResult = await db.prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND user_id = ? AND json_extract(json_data, '$.entry_date') = ? LIMIT 1")
     .bind("journal_days", userId, entryDate).first<{ json_data: string }>();
@@ -229,6 +267,16 @@ export function assertJournalDayPersisted({ entryDate, entries, persistedEntries
 }
 
 export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs = 60_000) {
+  if (hasSupabaseRuntime()) {
+    const admin = createCloudflareAdminClient();
+    const existingResult = await admin.from("operation_locks").select("*").eq("id", lockKey).maybeSingle();
+    if (existingResult.error) throw new Error(existingResult.error.message);
+    const now = Date.now();
+    if (existingResult.data && Number(existingResult.data.expires_at_ms) >= now) return false;
+    if (existingResult.data) await admin.from("operation_locks").delete().eq("id", lockKey);
+    const result = await admin.from("operation_locks").insert({ id: lockKey, user_id: userId, expires_at_ms: now + ttlMs });
+    return !result.error;
+  }
   const db = cloudflareDb();
   const now = Date.now();
   await db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND CAST(json_extract(json_data, '$.expires_at_ms') AS INTEGER) < ?")
@@ -241,6 +289,11 @@ export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs
 }
 
 export async function releaseCloudflareLock(lockKey: string, userId: string) {
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("operation_locks").delete().eq("id", lockKey).eq("user_id", userId);
+    if (result.error) throw new Error(result.error.message);
+    return;
+  }
   const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ?")
     .bind("operation_locks", lockKey, userId).run();
   if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
@@ -251,6 +304,17 @@ export async function releaseCloudflareLock(lockKey: string, userId: string) {
  * worker whose lease expired from deleting a newer worker's lock.
  */
 export async function claimCloudflareLockWithToken(lockKey: string, userId: string, ttlMs = 60_000) {
+  if (hasSupabaseRuntime()) {
+    const admin = createCloudflareAdminClient();
+    const existingResult = await admin.from("operation_locks").select("*").eq("id", lockKey).maybeSingle();
+    if (existingResult.error) throw new Error(existingResult.error.message);
+    const now = Date.now();
+    if (existingResult.data && Number(existingResult.data.expires_at_ms) >= now) return null;
+    if (existingResult.data) await admin.from("operation_locks").delete().eq("id", lockKey);
+    const token = crypto.randomUUID();
+    const result = await admin.from("operation_locks").insert({ id: lockKey, user_id: userId, token, expires_at_ms: now + ttlMs });
+    return result.error ? null : token;
+  }
   const db = cloudflareDb();
   const now = Date.now();
   await db.prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND CAST(json_extract(json_data, '$.expires_at_ms') AS INTEGER) < ?")
@@ -264,6 +328,11 @@ export async function claimCloudflareLockWithToken(lockKey: string, userId: stri
 }
 
 export async function refreshCloudflareLockWithToken(lockKey: string, userId: string, token: string, ttlMs = 60_000) {
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("operation_locks").update({ expires_at_ms: Date.now() + ttlMs }).eq("id", lockKey).eq("user_id", userId).eq("token", token).select("id").maybeSingle();
+    if (result.error) throw new Error(result.error.message);
+    return Boolean(result.data);
+  }
   const now = Date.now();
   const result = await cloudflareDb().prepare(`
     UPDATE soma_rows
@@ -275,6 +344,11 @@ export async function refreshCloudflareLockWithToken(lockKey: string, userId: st
 }
 
 export async function releaseCloudflareLockWithToken(lockKey: string, userId: string, token: string) {
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("operation_locks").delete().eq("id", lockKey).eq("user_id", userId).eq("token", token);
+    if (result.error) throw new Error(result.error.message);
+    return;
+  }
   const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ? AND json_extract(json_data, '$.token') = ?")
     .bind("operation_locks", lockKey, userId, token).run();
   if (!result.success) throw new Error(result.error ?? "The operation lock could not be released.");
@@ -282,6 +356,16 @@ export async function releaseCloudflareLockWithToken(lockKey: string, userId: st
 
 export async function latestHealthRecordsByType(userId: string, dataTypes: readonly string[]) {
   if (!dataTypes.length) return [] as Array<{ data_type: string; civil_date: string | null; measured_at: string | null }>;
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("health_records").select("data_type,civil_date,measured_at").eq("user_id", userId).in("data_type", [...dataTypes]);
+    if (result.error) throw new Error(result.error.message);
+    const latest = new Map<string, { data_type: string; civil_date: string | null; measured_at: string | null }>();
+    for (const row of result.data ?? []) {
+      const current = latest.get(row.data_type);
+      if (!current || String(row.civil_date ?? "") > String(current.civil_date ?? "") || String(row.measured_at ?? "") > String(current.measured_at ?? "")) latest.set(row.data_type, row);
+    }
+    return [...latest.values()];
+  }
   const placeholders = dataTypes.map(() => "?").join(", ");
   const statement = cloudflareDb().prepare(`
     WITH ranked AS (
@@ -312,6 +396,23 @@ export async function latestHealthRecordsByType(userId: string, dataTypes: reado
 }
 
 export async function healthSyncDiagnostics(userId: string, dataTypes: readonly string[]) {
+  if (hasSupabaseRuntime()) {
+    const [healthResult, analyticsResult] = await Promise.all([
+      createCloudflareAdminClient().from("health_records").select("data_type,civil_date").eq("user_id", userId).in("data_type", [...dataTypes]),
+      createCloudflareAdminClient().from("daily_health_metrics").select("id").eq("user_id", userId),
+    ]);
+    if (healthResult.error) throw new Error(healthResult.error.message);
+    if (analyticsResult.error) throw new Error(analyticsResult.error.message);
+    const importedRecords = Object.fromEntries(dataTypes.map((dataType) => [dataType, (healthResult.data ?? []).filter((row) => row.data_type === dataType).length]));
+    return {
+      importedRecords,
+      analytics: {
+        datedRecords: (healthResult.data ?? []).filter((row) => row.civil_date !== null).length,
+        metricDays: analyticsResult.data?.length ?? 0,
+        scoreRows: 0,
+      },
+    };
+  }
   const healthResult = await cloudflareDb().prepare(`
     SELECT
       json_extract(json_data, '$.data_type') AS data_type,
@@ -348,6 +449,11 @@ export async function healthSyncDiagnostics(userId: string, dataTypes: readonly 
 
 export async function healthRecordsForAnalysis(userId: string, dataTypes: readonly string[], analysisStart: string) {
   if (!dataTypes.length) return [];
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("health_records").select("*").eq("user_id", userId).in("data_type", [...dataTypes]).or(`civil_date.gte.${analysisStart},end_time.gte.${analysisStart}T00:00:00.000Z,start_time.gte.${analysisStart}T00:00:00.000Z,measured_at.gte.${analysisStart}T00:00:00.000Z`).order("id");
+    if (result.error) throw new Error(result.error.message);
+    return result.data ?? [];
+  }
   const placeholders = dataTypes.map(() => "?").join(", ");
   const analysisStartTime = `${analysisStart}T00:00:00.000Z`;
   const result = await cloudflareDb().prepare(`
@@ -370,6 +476,12 @@ export async function healthRecordsForAnalysis(userId: string, dataTypes: readon
 }
 
 export async function labMatrixInputRevision(userId: string) {
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from(LAB_MATRIX_REVISION_TABLE).select("revision").eq("user_id", userId).maybeSingle();
+    if (result.error) throw new Error(result.error.message);
+    const revision = Number(result.data?.revision);
+    return Number.isSafeInteger(revision) && revision >= 0 ? String(revision) : "0";
+  }
   const row = await cloudflareDb().prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? LIMIT 1")
     .bind(LAB_MATRIX_REVISION_TABLE, userId)
     .first<{ json_data: string }>();
@@ -772,7 +884,7 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
   }
 }
 
-export function createCloudflareAdminClient() {
+function createD1AdminClient() {
   return {
     from(table: string) { return new CloudflareQueryBuilder(table); },
     async rpc(name: string, parameters: Row) {
@@ -797,6 +909,283 @@ export function createCloudflareAdminClient() {
       },
     },
   };
+}
+
+type SupabaseStoredRow = {
+  table_name: string;
+  row_key: string;
+  user_id: string | null;
+  json_data: Row;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseFilter = Filter & { field: string };
+
+export function hasSupabaseRuntime() {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function supabaseConfig() {
+  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+  return { url, key };
+}
+
+async function supabaseRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const { url, key } = supabaseConfig();
+  const headers = new Headers(init.headers);
+  headers.set("apikey", key);
+  headers.set("Authorization", `Bearer ${key}`);
+  headers.set("Accept", "application/json");
+  if (init.body !== undefined) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${url}/rest/v1/${path}`, { ...init, headers });
+  const body = await response.text();
+  let parsed: unknown = null;
+  if (body) {
+    try { parsed = JSON.parse(body); } catch { parsed = body; }
+  }
+  if (!response.ok) {
+    const message = typeof parsed === "object" && parsed && "message" in parsed
+      ? String((parsed as { message: unknown }).message)
+      : `Supabase request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  return parsed as T;
+}
+
+function supabasePath(table: string, filters: Array<[string, string]>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of filters) params.set(key, value);
+  const query = params.toString();
+  return `${encodeURIComponent(table)}${query ? `?${query}` : ""}`;
+}
+
+function supabaseFilterValue(filter: SupabaseFilter) {
+  if (filter.operator === "is" && filter.value === null) return "is.null";
+  if (filter.operator === "in") return `in.(${(filter.value as unknown[]).map((value) => String(value)).join(",")})`;
+  if (filter.operator === "not") return `not.${filter.secondaryOperator}.${String(filter.value)}`;
+  return `${filter.operator}.${String(filter.value)}`;
+}
+
+function storageRow(table: string, row: Row, explicitConflict?: string): SupabaseStoredRow {
+  const value = withDefaults(row);
+  return {
+    table_name: table,
+    row_key: stableIdentity(table, value, explicitConflict),
+    user_id: value.user_id ?? null,
+    json_data: value,
+    created_at: value.created_at ?? null,
+    updated_at: value.updated_at ?? null,
+  };
+}
+
+function logicalRow(item: SupabaseStoredRow) {
+  const row = cleanRow(item.json_data ?? {});
+  if (row.user_id === undefined && item.user_id !== null) row.user_id = item.user_id;
+  return row;
+}
+
+async function readSupabaseStorageRows(table: string, filters: SupabaseFilter[]) {
+  const serverFilters: Array<[string, string]> = [["select", "table_name,row_key,user_id,json_data,created_at,updated_at"], ["table_name", `eq.${table}`]];
+  for (const filter of filters) {
+    if (filter.field === "user_id") serverFilters.push(["user_id", supabaseFilterValue(filter)]);
+  }
+  const rows = await supabaseRequest<SupabaseStoredRow[]>(supabasePath("soma_rows", serverFilters));
+  return rows.map(logicalRow);
+}
+
+class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
+  private selector: string | undefined;
+  private selectOptions: { count?: "exact"; head?: boolean } | undefined;
+  private filters: SupabaseFilter[] = [];
+  private orFilters: Array<ReturnType<typeof parseOrExpression>> = [];
+  private sorts: Sort[] = [];
+  private maxRows: number | undefined;
+  private fromIndex = 0;
+  private toIndex: number | undefined;
+  private cardinality: "many" | "single" | "maybeSingle" = "many";
+  private mutation: Mutation | undefined;
+
+  constructor(private table: string) {}
+
+  select(selector = "*", options?: { count?: "exact"; head?: boolean }) { this.selector = selector; this.selectOptions = options; return this; }
+  insert(values: Row | Row[]) { this.mutation = { kind: "insert", values: Array.isArray(values) ? values : [values] }; return this; }
+  upsert(values: Row | Row[], options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+    this.mutation = { kind: "upsert", values: Array.isArray(values) ? values : [values], onConflict: options?.onConflict, ignoreDuplicates: options?.ignoreDuplicates };
+    return this;
+  }
+  update(values: Row) { this.mutation = { kind: "update", values }; return this; }
+  delete() { this.mutation = { kind: "delete" }; return this; }
+  eq(field: string, value: any) { this.filters.push({ field, operator: "eq", value }); return this; }
+  neq(field: string, value: any) { this.filters.push({ field, operator: "neq", value }); return this; }
+  in(field: string, value: any[]) { this.filters.push({ field, operator: "in", value }); return this; }
+  is(field: string, value: any) { this.filters.push({ field, operator: "is", value }); return this; }
+  gte(field: string, value: any) { this.filters.push({ field, operator: "gte", value }); return this; }
+  gt(field: string, value: any) { this.filters.push({ field, operator: "gt", value }); return this; }
+  lte(field: string, value: any) { this.filters.push({ field, operator: "lte", value }); return this; }
+  lt(field: string, value: any) { this.filters.push({ field, operator: "lt", value }); return this; }
+  contains(field: string, value: any[]) { this.filters.push({ field, operator: "contains", value }); return this; }
+  not(field: string, operator: string, value: any) { this.filters.push({ field, operator: "not", secondaryOperator: operator, value }); return this; }
+  or(expression: string) { this.orFilters.push(parseOrExpression(expression)); return this; }
+  order(field: string, options?: { ascending?: boolean; nullsFirst?: boolean }) { this.sorts.push({ field, ascending: options?.ascending !== false }); return this; }
+  limit(value: number) { this.maxRows = value; return this; }
+  range(from: number, to: number) { this.fromIndex = from; this.toIndex = to; return this; }
+  single() { this.cardinality = "single"; return this as unknown as PromiseLike<SingleResult>; }
+  maybeSingle() { this.cardinality = "maybeSingle"; return this as unknown as PromiseLike<SingleResult>; }
+
+  private isPhysicalTable() {
+    return this.table === "soma_users" || this.table === "soma_sessions";
+  }
+
+  private async readRows() {
+    if (this.isPhysicalTable()) {
+      const filters: Array<[string, string]> = [["select", this.selector?.trim() || "*"]];
+      for (const filter of this.filters) filters.push([filter.field, supabaseFilterValue(filter)]);
+      const rows = await supabaseRequest<Row[]>(supabasePath(this.table, filters));
+      return rows;
+    }
+
+    let rows = await readSupabaseStorageRows(this.table, this.filters);
+    rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
+    rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
+    for (const sort of [...this.sorts].reverse()) {
+      rows.sort((left, right) => {
+        const a = valueAt(left, sort.field);
+        const b = valueAt(right, sort.field);
+        const compared = a == null && b == null ? 0 : a == null ? 1 : b == null ? -1 : a < b ? -1 : a > b ? 1 : 0;
+        return sort.ascending ? compared : -compared;
+      });
+    }
+    return rows;
+  }
+
+  private shape(rows: Row[], totalCount?: number): QueryResult<any> {
+    const projected = rows.map((row) => projectRow(row, this.selector));
+    const count = this.selectOptions?.count ? (totalCount ?? rows.length) : undefined;
+    if (this.selectOptions?.head) return { data: null, error: null, count };
+    if (this.cardinality === "single") {
+      if (projected.length !== 1) return { data: null, error: { message: "Expected exactly one row.", code: "PGRST116" }, count };
+      return { data: projected[0], error: null, count };
+    }
+    if (this.cardinality === "maybeSingle") {
+      if (projected.length > 1) return { data: null, error: { message: "Expected at most one row.", code: "PGRST116" }, count };
+      return { data: projected[0] ?? null, error: null, count };
+    }
+    return { data: projected, error: null, count };
+  }
+
+  private async insertPhysical(rows: Row[], upsert: boolean, onConflict?: string, ignoreDuplicates = false) {
+    const headers = new Headers({ Prefer: upsert ? `resolution=${ignoreDuplicates ? "ignore-duplicates" : "merge-duplicates"},return=representation` : "return=representation" });
+    const query = upsert && onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : "";
+    return supabaseRequest<Row[]>(`${encodeURIComponent(this.table)}${query}`, { method: "POST", headers, body: JSON.stringify(rows) });
+  }
+
+  private async insertLogical(rows: Row[], upsert: boolean, onConflict?: string, ignoreDuplicates = false) {
+    const stored = rows.map((row) => storageRow(this.table, row, onConflict));
+    const headers = new Headers({ Prefer: upsert ? `resolution=${ignoreDuplicates ? "ignore-duplicates" : "merge-duplicates"},return=representation` : "return=representation" });
+    const query = upsert ? `?on_conflict=table_name%2Crow_key` : "";
+    await supabaseRequest<unknown[]>(`soma_rows${query}`, { method: "POST", headers, body: JSON.stringify(stored) });
+    if (affectsLabMatrixRevision(this.table)) {
+      const userIds = [...new Set(rows.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))];
+      if (userIds.length) await new SupabaseQueryBuilder(LAB_MATRIX_REVISION_TABLE).upsert(userIds.map((userId) => ({ user_id: userId, revision: 1, updated_at: new Date().toISOString() })), { onConflict: "user_id" });
+    }
+  }
+
+  private async updatePhysical(existing: Row[], values: Row) {
+    for (const row of existing) {
+      const key = this.table === "soma_sessions" ? "token_hash" : "id";
+      const updated = { ...row, ...values };
+      await supabaseRequest<unknown[]>(supabasePath(this.table, [[key, `eq.${String(row[key])}`]]), { method: "PATCH", headers: new Headers({ Prefer: "return=representation" }), body: JSON.stringify(updated) });
+    }
+    return existing.map((row) => ({ ...row, ...values }));
+  }
+
+  private async mutate() {
+    if (!this.mutation) {
+      const allRows = await this.readRows();
+      const from = Math.max(0, this.fromIndex);
+      const to = this.toIndex === undefined ? undefined : this.toIndex + 1;
+      const paged = allRows.slice(from, to).slice(0, this.maxRows);
+      return this.shape(paged, allRows.length);
+    }
+
+    const mutation = this.mutation;
+    if (mutation.kind === "insert" || mutation.kind === "upsert") {
+      const rows = mutation.values.map(withDefaults);
+      const isUpsert = mutation.kind === "upsert";
+      const onConflict = isUpsert ? mutation.onConflict : undefined;
+      const ignoreDuplicates = isUpsert ? mutation.ignoreDuplicates : false;
+      if (this.isPhysicalTable()) await this.insertPhysical(rows, isUpsert, onConflict, ignoreDuplicates);
+      else await this.insertLogical(rows, isUpsert, onConflict, ignoreDuplicates);
+      return this.shape(rows);
+    }
+
+    const existing = await this.readRows();
+    if (this.isPhysicalTable()) {
+      if (mutation.kind === "delete") {
+        const key = this.table === "soma_sessions" ? "token_hash" : "id";
+        for (const row of existing) await supabaseRequest<unknown[]>(supabasePath(this.table, [[key, `eq.${String(row[key])}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+        return this.shape(existing);
+      }
+      return this.shape(await this.updatePhysical(existing, mutation.values));
+    }
+
+    if (mutation.kind === "delete") {
+      for (const row of existing) await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${stableIdentity(this.table, row)}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+      return this.shape(existing);
+    }
+
+    const changed = existing.map((row) => cleanRow({ ...row, ...mutation.values, updated_at: new Date().toISOString() }));
+    for (let index = 0; index < existing.length; index += 1) {
+      const oldKey = stableIdentity(this.table, existing[index]);
+      const newRow = changed[index];
+      await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${oldKey}`]]), {
+        method: "PATCH",
+        headers: new Headers({ Prefer: "return=minimal" }),
+        body: JSON.stringify(storageRow(this.table, newRow)),
+      });
+    }
+    return this.shape(changed);
+  }
+
+  private async execute(): Promise<QueryResult<any>> {
+    try { return await this.mutate(); }
+    catch (error) { return { data: null, error: { message: error instanceof Error ? error.message : "Supabase operation failed." } }; }
+  }
+
+  then<TResult1 = ManyResult, TResult2 = never>(onfulfilled?: ((value: ManyResult) => TResult1 | PromiseLike<TResult1>) | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null): PromiseLike<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled as any, onrejected as any) as PromiseLike<TResult1 | TResult2>;
+  }
+}
+
+function createSupabaseAdminClient() {
+  return {
+    from(table: string) { return new SupabaseQueryBuilder(table); },
+    async rpc(name: string, parameters: Row) {
+      const { executeCloudflareRpc } = await import("@/lib/cloudflare/rpc");
+      return executeCloudflareRpc(name, parameters);
+    },
+    auth: {
+      admin: {
+        async deleteUser(userId: string) {
+          try {
+            await supabaseRequest<unknown[]>(supabasePath("soma_sessions", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+            await supabaseRequest<unknown[]>(supabasePath("soma_users", [["id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+            await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+            return { data: null, error: null };
+          } catch (error) {
+            return { data: null, error: { message: error instanceof Error ? error.message : "Account deletion failed." } };
+          }
+        },
+      },
+    },
+  };
+}
+
+export function createCloudflareAdminClient() {
+  return hasSupabaseRuntime() ? createSupabaseAdminClient() : createD1AdminClient();
 }
 
 export type CloudflareAdminClient = ReturnType<typeof createCloudflareAdminClient>;

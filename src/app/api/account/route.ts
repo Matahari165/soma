@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
-import { cloudflareArchives, createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
 import { deleteLabMatrixCache } from "@/lib/lab-matrix-cache";
+import { deleteR2Object } from "@/lib/r2";
 import { clearPreviewUserData } from "@/services/meal-preview";
 import { clearPreviewMealRecipes } from "@/services/meal-recipes";
 
@@ -29,8 +30,8 @@ export async function DELETE(request: Request) {
   if (archiveError || mealPhotoError) return NextResponse.json({ error: "Account files could not be listed." }, { status: 500 });
   try {
     await Promise.all([
-      ...(archiveRows ?? []).map((row) => cloudflareArchives().delete(String(row.object_path))),
-      ...(mealPhotoRows ?? []).map((row) => cloudflareArchives().delete(String(row.object_path))),
+      ...(archiveRows ?? []).map((row) => deleteR2Object(String(row.object_path))),
+      ...(mealPhotoRows ?? []).map((row) => deleteR2Object(String(row.object_path))),
       deleteLabMatrixCache(user.id),
     ]);
   } catch {

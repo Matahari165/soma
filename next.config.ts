@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-initOpenNextCloudflareForDev();
+// The OpenNext adapter is needed for the Cloudflare Worker dev/preview path,
+// but Vercel supplies its own Next.js runtime and must not initialize it.
+if (!process.env.VERCEL) initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

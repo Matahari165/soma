@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { cloudflareArchives } from "@/lib/cloudflare/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { getR2ArchiveObject } from "@/lib/r2";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -12,12 +12,12 @@ export async function GET(request: Request) {
   const admin = createCloudflareAdminClient();
   const { data: manifest } = await admin.from("health_record_archives").select("id").eq("user_id", user.id).eq("object_path", key).maybeSingle();
   if (!manifest) return NextResponse.json({ error: "Archive not found." }, { status: 404 });
-  const object = await cloudflareArchives().get(key);
-  if (!object?.body) return NextResponse.json({ error: "Archive not found." }, { status: 404 });
+  const object = await getR2ArchiveObject(key).catch(() => null);
+  if (!object) return NextResponse.json({ error: "Archive not found." }, { status: 404 });
   const contentType = key.endsWith(".tar.zst") || key.endsWith(".zst")
     ? "application/zstd"
     : key.endsWith(".json") ? "application/json" : "application/gzip";
-  return new Response(object.body, {
+  return new Response(object, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${key.split("/").at(-1) ?? "soma-archive"}"`,

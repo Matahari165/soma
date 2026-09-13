@@ -14,14 +14,12 @@ import {
   type SupplementEntryInput,
   type SupplementEntryUpdate,
 } from "@/domain/supplements";
-import { cloudflareDb, stableIdentity } from "@/lib/cloudflare/db";
+import { cloudflareDb, createCloudflareAdminClient, stableIdentity } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
 
 const DEFINITION_TABLE = "supplement_definitions" as const;
 const ENTRY_TABLE = "supplement_entries" as const;
 type SupplementTable = typeof DEFINITION_TABLE | typeof ENTRY_TABLE;
-type StoredRow = { json_data: string };
-
 export class SupplementServiceError extends Error {
   constructor(readonly code: "not_found" | "invalid" | "unavailable", message: string) {
     super(message);
@@ -113,23 +111,28 @@ function entryFromRow(row: unknown) {
   return parsed.data;
 }
 
-function decodeStoredJson(jsonData: string) {
-  try {
-    return JSON.parse(jsonData) as unknown;
-  } catch {
-    throw new Error("Stored supplement JSON is invalid.");
-  }
+function decodeStoredJson(jsonData: unknown) {
+  if (typeof jsonData !== "string") return jsonData;
+  try { return JSON.parse(jsonData) as unknown; }
+  catch { throw new Error("Stored supplement JSON is invalid."); }
+}
+
+function supabaseRuntimeEnabled() {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function payloadFromStoredRow(row: unknown) {
+  if (row && typeof row === "object" && "json_data" in row) return decodeStoredJson((row as { json_data: unknown }).json_data);
+  return decodeStoredJson(row);
 }
 
 function rowKey(table: SupplementTable, id: string) {
-  // The table name is a closed union and the identity contains only the
-  // validated record id. No request value is interpolated into SQL.
   return stableIdentity(table, { id }, "id");
 }
 
 function storedJson(record: SupplementDefinition | SupplementEntry) {
   if ("definitionId" in record) {
-    return JSON.stringify({
+    return {
       id: record.id,
       user_id: record.userId,
       definition_id: record.definitionId,
@@ -139,9 +142,9 @@ function storedJson(record: SupplementDefinition | SupplementEntry) {
       note: record.note,
       created_at: record.createdAt,
       updated_at: record.updatedAt,
-    });
+    };
   }
-  return JSON.stringify({
+  return {
     id: record.id,
     user_id: record.userId,
     product_name: record.productName,
@@ -157,7 +160,7 @@ function storedJson(record: SupplementDefinition | SupplementEntry) {
     archived_at: record.archivedAt ?? null,
     created_at: record.createdAt,
     updated_at: record.updatedAt,
-  });
+  };
 }
 
 function unavailable(message: string) {
@@ -165,23 +168,23 @@ function unavailable(message: string) {
 }
 
 async function readRows(table: SupplementTable, userId: string, options: { from?: string; to?: string; definitionId?: string } = {}) {
-  const predicates = ["table_name = ?", "user_id = ?"];
-  const bindings: unknown[] = [table, userId];
-  if (options.from) {
-    predicates.push("json_extract(json_data, '$.entry_date') >= ?");
-    bindings.push(options.from);
+  if (!supabaseRuntimeEnabled()) {
+    const predicates = ["table_name = ?", "user_id = ?"];
+    const bindings: unknown[] = [table, userId];
+    if (options.from) { predicates.push("json_extract(json_data, '$.entry_date') >= ?"); bindings.push(options.from); }
+    if (options.to) { predicates.push("json_extract(json_data, '$.entry_date') <= ?"); bindings.push(options.to); }
+    if (options.definitionId) { predicates.push("json_extract(json_data, '$.definition_id') = ?"); bindings.push(options.definitionId); }
+    const result = await cloudflareDb().prepare(`SELECT json_data FROM soma_rows WHERE ${predicates.join(" AND ")} ORDER BY updated_at DESC`).bind(...bindings).all<{ json_data: string }>();
+    if (!result.success) throw new Error(result.error ?? "Supplement rows could not be loaded.");
+    return result.results ?? [];
   }
-  if (options.to) {
-    predicates.push("json_extract(json_data, '$.entry_date') <= ?");
-    bindings.push(options.to);
-  }
-  if (options.definitionId) {
-    predicates.push("json_extract(json_data, '$.definition_id') = ?");
-    bindings.push(options.definitionId);
-  }
-  const result = await cloudflareDb().prepare(`SELECT json_data FROM soma_rows WHERE ${predicates.join(" AND ")} ORDER BY updated_at DESC`).bind(...bindings).all<StoredRow>();
-  if (!result.success) throw new Error(result.error ?? "Supplement rows could not be loaded.");
-  return result.results ?? [];
+  let query = createCloudflareAdminClient().from(table).select("*").eq("user_id", userId).order("updated_at", { ascending: false });
+  if (options.from) query = query.gte("entry_date", options.from);
+  if (options.to) query = query.lte("entry_date", options.to);
+  if (options.definitionId) query = query.eq("definition_id", options.definitionId);
+  const result = await query;
+  if (result.error) throw new Error(result.error.message);
+  return result.data ?? [];
 }
 
 async function findEntryForDate(userId: string, definitionId: string, entryDate: string) {
@@ -190,34 +193,54 @@ async function findEntryForDate(userId: string, definitionId: string, entryDate:
 }
 
 async function readRow(table: SupplementTable, userId: string, id: string) {
-  const result = await cloudflareDb().prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ? LIMIT 1").bind(table, rowKey(table, id), userId).first<StoredRow>();
-  return result ? decodeStoredJson(result.json_data) : null;
+  if (!supabaseRuntimeEnabled()) {
+    const result = await cloudflareDb().prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ? LIMIT 1").bind(table, rowKey(table, id), userId).first<{ json_data: string }>();
+    return result ? decodeStoredJson(result.json_data) : null;
+  }
+  const result = await createCloudflareAdminClient().from(table).select("*").eq("user_id", userId).eq("id", id).maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data ? decodeStoredJson(result.data) : null;
 }
 
 async function insertRow(table: SupplementTable, userId: string, record: SupplementDefinition | SupplementEntry) {
-  const result = await cloudflareDb().prepare("INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(table, rowKey(table, record.id), userId, storedJson(record), record.createdAt, record.updatedAt).run();
-  if (!result.success) throw new Error(result.error ?? "Supplement row could not be inserted.");
+  if (!supabaseRuntimeEnabled()) {
+    const result = await cloudflareDb().prepare("INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(table, rowKey(table, record.id), userId, JSON.stringify(storedJson(record)), record.createdAt, record.updatedAt).run();
+    if (!result.success) throw new Error(result.error ?? "Supplement row could not be inserted.");
+    return;
+  }
+  const result = await createCloudflareAdminClient().from(table).insert(storedJson({ ...record, userId }));
+  if (result.error) throw new Error(result.error.message);
 }
 
 async function updateRow(table: SupplementTable, userId: string, id: string, record: SupplementDefinition | SupplementEntry) {
-  const result = await cloudflareDb().prepare("UPDATE soma_rows SET json_data = ?, updated_at = ? WHERE table_name = ? AND row_key = ? AND user_id = ?")
-    .bind(storedJson(record), record.updatedAt, table, rowKey(table, id), userId).run();
-  if (!result.success) throw new Error(result.error ?? "Supplement row could not be updated.");
-  return Number(result.meta?.changes ?? 0) > 0;
+  if (!supabaseRuntimeEnabled()) {
+    const result = await cloudflareDb().prepare("UPDATE soma_rows SET json_data = ?, updated_at = ? WHERE table_name = ? AND row_key = ? AND user_id = ?")
+      .bind(JSON.stringify(storedJson(record)), record.updatedAt, table, rowKey(table, id), userId).run();
+    if (!result.success) throw new Error(result.error ?? "Supplement row could not be updated.");
+    return Number(result.meta?.changes ?? 0) > 0;
+  }
+  const result = await createCloudflareAdminClient().from(table).update(storedJson({ ...record, userId })).eq("user_id", userId).eq("id", id).select("id").maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return Boolean(result.data);
 }
 
 async function deleteRow(table: SupplementTable, userId: string, id: string) {
-  const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ?")
-    .bind(table, rowKey(table, id), userId).run();
-  if (!result.success) throw new Error(result.error ?? "Supplement row could not be deleted.");
-  return Number(result.meta?.changes ?? 0) > 0;
+  if (!supabaseRuntimeEnabled()) {
+    const result = await cloudflareDb().prepare("DELETE FROM soma_rows WHERE table_name = ? AND row_key = ? AND user_id = ?")
+      .bind(table, rowKey(table, id), userId).run();
+    if (!result.success) throw new Error(result.error ?? "Supplement row could not be deleted.");
+    return Number(result.meta?.changes ?? 0) > 0;
+  }
+  const result = await createCloudflareAdminClient().from(table).delete().eq("user_id", userId).eq("id", id).select("id").maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return Boolean(result.data);
 }
 
 export async function listSupplementDefinitions(userId: string) {
   if (isLocalPreviewMode()) return [...userStore(definitionPreviewStore, userId).values()].map(clone).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   try {
-    return (await readRows(DEFINITION_TABLE, userId)).map((row) => definitionFromRow(decodeStoredJson(row.json_data)));
+    return (await readRows(DEFINITION_TABLE, userId)).map((row) => definitionFromRow(payloadFromStoredRow(row)));
   } catch {
     throw unavailable("Les définitions de compléments sont momentanément indisponibles.");
   }
@@ -301,7 +324,7 @@ export async function listSupplementEntries(userId: string, options: { from?: st
       .sort((a, b) => b.entryDate.localeCompare(a.entryDate) || b.updatedAt.localeCompare(a.updatedAt));
   }
   try {
-    return (await readRows(ENTRY_TABLE, userId, options)).map((row) => entryFromRow(decodeStoredJson(row.json_data)));
+    return (await readRows(ENTRY_TABLE, userId, options)).map((row) => entryFromRow(payloadFromStoredRow(row)));
   } catch {
     throw unavailable("Les prises de compléments sont momentanément indisponibles.");
   }
