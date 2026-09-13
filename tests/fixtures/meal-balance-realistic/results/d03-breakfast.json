@@ -1,0 +1,599 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d03-breakfast",
+  "mealDate": "2026-09-03",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:d523c82461af9b76fc4b4ed45ae4219d4745dc97924206f13d57a309fcd8738b",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner : bol de yaourt nature apparent avec granola, fraises et banane, accompagné d’un café noir. Un carton de lait est visible en arrière-plan mais n’est pas versé dans une tasse.",
+    "dishType": "Bol yaourt granola",
+    "calorieAnalysis": "Apport probable autour de 380 kcal (fourchette large), repas plutôt léger à modéré selon la quantité de granola et de yaourt.",
+    "foods": [
+      {
+        "id": "food-bowl",
+        "name": "Bol yaourt, granola et fruits",
+        "preparation": "Servi froid, non cuit",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "dairy",
+          "fruit",
+          "refined_grain",
+          "sweet"
+        ],
+        "varietyKey": "bol yaourt granola",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol vu de dessus",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-yogurt",
+        "name": "Yaourt",
+        "preparation": "Nature apparent, non cuit",
+        "portion": "base du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "yaourt",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "couche blanche dans le bol",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 90,
+          "likely": 140,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 16
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 22
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 6,
+          "likely": 11,
+          "high": 20
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-granola",
+        "name": "Granola",
+        "preparation": "Céréales croustillantes, probablement toastées",
+        "portion": "une poignée éparpillée",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "nuts_seeds",
+          "sweet"
+        ],
+        "varietyKey": "granola",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "grappes visibles en surface",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 150,
+          "high": 250
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 10,
+          "likely": 20,
+          "high": 32
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 14
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-strawberry",
+        "name": "Fraises",
+        "preparation": "Crues, coupées",
+        "portion": "quelques morceaux",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "fraise",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "morceaux rouges visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 20,
+          "high": 35
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-banana",
+        "name": "Banane",
+        "preparation": "Crue, en rondelles",
+        "portion": "quelques rondelles",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "banane",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "rondelles visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 25,
+          "likely": 45,
+          "high": 80
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 11,
+          "high": 20
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 12
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-coffee",
+        "name": "Café noir",
+        "preparation": "Infusion, sans lait visible dans la tasse",
+        "portion": "1 tasse",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage"
+        ],
+        "varietyKey": "café",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tasse",
+          "basis": "mug blanc",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 5,
+          "high": 15
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 205,
+        "likely": 360,
+        "high": 600
+      },
+      "proteinGrams": {
+        "low": 8,
+        "likely": 15,
+        "high": 26
+      },
+      "carbohydrateGrams": {
+        "low": 24,
+        "likely": 47,
+        "high": 84
+      },
+      "fatGrams": {
+        "low": 5,
+        "likely": 11,
+        "high": 24
+      },
+      "fiberGrams": {
+        "low": 1,
+        "likely": 4,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 15,
+        "likely": 28,
+        "high": 54
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Quantités de yaourt et de granola non mesurables sans référence d’échelle.",
+      "Type de yaourt (nature, sucré, gras) non identifiable.",
+      "Recette et sucres ajoutés du granola inconnus.",
+      "Le carton de lait n’indique pas qu’il a été consommé.",
+      "Sucre éventuellement ajouté au café non visible."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-yogurt",
+        "severity": "high",
+        "detail": "Volume de yaourt masqué par les garnitures, grammes non estimables."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-granola",
+        "severity": "high",
+        "detail": "Couche de granola irrégulière, masse incertaine."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-yogurt",
+        "severity": "high",
+        "detail": "Yaourt nature ou sucré, et taux de matière grasse, non lisibles."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-granola",
+        "severity": "high",
+        "detail": "Composition (avoine, huile, miel/sucre, fruits secs) non identifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-yogurt",
+        "severity": "medium",
+        "detail": "Niveau de transformation du yaourt non déterminable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-granola",
+        "severity": "medium",
+        "detail": "Granola souvent ultra-transformé, mais marque et recette absentes."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-granola",
+        "severity": "medium",
+        "detail": "Sucres ajoutés possibles dans le granola, non confirmés."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-granola",
+        "severity": "low",
+        "detail": "Huile ou sirop de liage possibles, non visibles distinctement."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-bowl",
+        "severity": "medium",
+        "detail": "Macros du plat entier dépendent de recettes inconnues."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d10-breakfast",
+  "mealDate": "2026-09-10",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:87115fd5c60b7050182b2a8bd3ffb2af0ec54889aae28a3f93645e1a01c3f6bb",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner boulangerie : croissant au beurre partiellement consommé (miettes et dernières bouchées non finies) et tasse de café noir, sans lait ni sucre visibles.",
+    "dishType": "Croissant et café",
+    "calorieAnalysis": "Apport probable autour de 230 kcal, plutôt léger à modéré pour un petit-déjeuner, surtout porté par le croissant.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Croissant au beurre",
+        "preparation": "Viennoiserie feuilletée, cuite au four",
+        "portion": "1 croissant classique, presque terminé",
+        "estimatedGrams": 55,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "added_fat"
+        ],
+        "varietyKey": "croissant",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "croissant classique, restes visibles",
+          "grams": 55
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 170,
+          "likely": 230,
+          "high": 300
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 20,
+          "likely": 26,
+          "high": 35
+        },
+        "fatGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Café noir",
+        "preparation": "Infusé, sans lait ni sucre visibles",
+        "portion": "1 tasse",
+        "estimatedGrams": 180,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage"
+        ],
+        "varietyKey": "café",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tasse",
+          "basis": "mug rempli de café noir",
+          "grams": 180
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 4,
+          "high": 10
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 170,
+        "likely": 234,
+        "high": 310
+      },
+      "proteinGrams": {
+        "low": 3,
+        "likely": 5,
+        "high": 8
+      },
+      "carbohydrateGrams": {
+        "low": 20,
+        "likely": 26,
+        "high": 37
+      },
+      "fatGrams": {
+        "low": 8,
+        "likely": 12,
+        "high": 18
+      },
+      "fiberGrams": {
+        "low": 0,
+        "likely": 1,
+        "high": 2
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 5,
+        "high": 8
+      },
+      "addedSugarGrams": {
+        "low": 1,
+        "likely": 3,
+        "high": 6
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Poids exact du croissant non mesuré ; dernière bouchées non finies.",
+      "Recette et marque de boulangerie inconnues (beurre, sucre ajouté).",
+      "Volume exact du café et éventuel sucre/lait non visibles dans la tasse."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Taille classique estimée visuellement, mais restes et miettes rendent le gramme imprécis."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Composition boulangère (beurre, sucre) non étiquetée."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "low",
+        "detail": "Volume de café dans le mug non mesuré."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-2",
+        "severity": "low",
+        "detail": "Type de café (filtre, espresso allongé) non confirmé."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

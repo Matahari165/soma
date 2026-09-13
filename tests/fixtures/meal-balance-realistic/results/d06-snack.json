@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d06-snack",
+  "mealDate": "2026-09-06",
+  "mealType": "snack",
+  "inputFingerprint": "sha256:ac77b2e1a9e008e5a01f6e6d856e140cd5584d4b2fc19508fd25fcba3d4faeed",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Collation visible : une banane déjà entamée (un morceau mordu) et une petite poignée d’amandes entières (environ 8 restant sur la table). Photo prise après le début ; la quantité déjà consommée n’est pas visible.",
+    "dishType": "En-cas banane-amandes",
+    "calorieAnalysis": "Fourchette likely d’environ 145 kcal pour ce qui reste visible : collation légère. La part déjà mangée avant la photo n’est pas estimable.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Banane",
+        "preparation": "Crue, pelée en partie, déjà entamée",
+        "portion": "1 banane restante (bouchée visible)",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "banane",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d06-snack-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "reste visible après une bouchée",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 90,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 16,
+          "likely": 22,
+          "high": 30
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 12,
+          "likely": 18,
+          "high": 24
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Amandes",
+        "preparation": "Entières, non salées apparentes",
+        "portion": "environ 8 amandes visibles",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "nuts_seeds"
+        ],
+        "varietyKey": "amande",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d06-snack-photo-1"
+        ],
+        "quantity": {
+          "value": 8,
+          "unit": "pièces",
+          "basis": "compte visuel sur la table",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "protein_source",
+          "unsaturated_fat_source",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 55,
+          "high": 80
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 7
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 110,
+        "likely": 145,
+        "high": 200
+      },
+      "proteinGrams": {
+        "low": 1,
+        "likely": 3,
+        "high": 6
+      },
+      "carbohydrateGrams": {
+        "low": 17,
+        "likely": 24,
+        "high": 34
+      },
+      "fatGrams": {
+        "low": 3,
+        "likely": 5,
+        "high": 8
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 3,
+        "high": 6
+      },
+      "sugarGrams": {
+        "low": 12,
+        "likely": 19,
+        "high": 26
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 0
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Photo prise après le début : la part déjà consommée n’apparaît pas.",
+      "Poignée d’amandes non pesée ; seules les amandes restantes sont visibles.",
+      "Poids exact de la banane restante non mesurable sans référence d’échelle."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Banane déjà entamée ; grammes restants et quantité mangée avant la photo inconnus."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Poignée non pesée ; seulement ~8 amandes visibles, d’autres ont pu être mangées."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-2",
+        "severity": "low",
+        "detail": "Marque, salage ou torréfaction des amandes non identifiables."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,410 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d08-dinner",
+  "mealDate": "2026-09-08",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:35191fea38e80f10681cb8207908b4ac47ee919d56289298b6f3f8a073c8f1db",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Assiette dînatoire : omelette dorée (herbes visibles, fromage possible selon la note), salade verte avec tomates cerises et concombre, et deux tranches de pain rustique. Vinaigrette et matière grasse de cuisson possibles mais non mesurables.",
+    "dishType": "Omelette salade pain",
+    "calorieAnalysis": "Fourchette likely d’environ 560 kcal : repas plutôt modéré, selon la taille de l’omelette, le fromage éventuel et l’assaisonnement.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Omelette",
+        "preparation": "Cuite à la poêle, herbes visibles ; fromage éventuellement mélangé",
+        "portion": "1 omelette pliée",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "egg",
+          "animal_protein"
+        ],
+        "varietyKey": "omelette",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 220,
+          "likely": 320,
+          "high": 450
+        },
+        "proteinGrams": {
+          "low": 14,
+          "likely": 20,
+          "high": 28
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "fatGrams": {
+          "low": 16,
+          "likely": 24,
+          "high": 36
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Fromage dans l'omelette",
+        "preparation": "Éventuellement fondu dans l'omelette",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "fromage",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d08-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Salade verte",
+        "preparation": "Crue, éventuellement assaisonnée",
+        "portion": "petite portion d’assiette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "salade verte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 25,
+          "likely": 70,
+          "high": 140
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 10
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-4",
+        "name": "Pain rustique",
+        "preparation": "Tranché, aspect mie alvéolée",
+        "portion": "2 tranches",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 120,
+          "likely": 170,
+          "high": 240
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 22,
+          "likely": 32,
+          "high": 44
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 365,
+        "likely": 560,
+        "high": 830
+      },
+      "proteinGrams": {
+        "low": 19,
+        "likely": 28,
+        "high": 40
+      },
+      "carbohydrateGrams": {
+        "low": 26,
+        "likely": 41,
+        "high": 60
+      },
+      "fatGrams": {
+        "low": 18,
+        "likely": 31,
+        "high": 52
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 4,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 2,
+        "likely": 6,
+        "high": 10
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 3
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Poids exacts non mesurables sur la photo.",
+      "Présence et quantité de fromage dans l’omelette incertaines.",
+      "Huile ou beurre de cuisson et vinaigrette non quantifiés.",
+      "Type exact de pain et recette inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Volume de l’omelette visible mais grammes et nombre d’œufs non mesurables."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Le fromage n’est pas clairement visible ; seulement mentionné comme possible."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Brillance sur les feuilles : assaisonnement probable, quantité inconnue."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Matière grasse de cuisson non identifiable."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-4",
+        "severity": "low",
+        "detail": "Pain sans marque ni composition lisible."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Macros estimées par fourchettes visuelles, sans pesée."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,572 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d02-lunch",
+  "mealDate": "2026-09-02",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:79275a4f8a9b2e9c50875e6839f05c1b5962c30536504895190b33579391ab99",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Bol de salade de lentilles avec tomates, feta, herbes et une vinaigrette huileuse visible au fond, accompagné d’un morceau de pain. Les quantités exactes et la recette de la vinaigrette ne sont pas mesurables sur la photo.",
+    "dishType": "Salade de lentilles",
+    "calorieAnalysis": "Apport probable autour de 520 kcal (fourchette large selon pain, feta et huile) : repas de midi plutôt modéré, potentiellement copieux si beaucoup d’huile.",
+    "foods": [
+      {
+        "id": "food-salad",
+        "name": "Salade de lentilles",
+        "preparation": "Salade composée, lentilles cuites, vinaigrette au fond",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "legume",
+          "vegetable",
+          "dairy",
+          "added_fat"
+        ],
+        "varietyKey": "salade de lentilles",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol vu de dessus",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-lentils",
+        "name": "Lentilles",
+        "preparation": "Cuites, en salade",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "legume"
+        ],
+        "varietyKey": "lentilles",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 200,
+          "high": 280
+        },
+        "proteinGrams": {
+          "low": 10,
+          "likely": 15,
+          "high": 22
+        },
+        "carbohydrateGrams": {
+          "low": 22,
+          "likely": 32,
+          "high": 45
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 15
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-tomato",
+        "name": "Tomates",
+        "preparation": "Crues, en morceaux",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 12,
+          "likely": 20,
+          "high": 35
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-feta",
+        "name": "Feta",
+        "preparation": "Émiettée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "feta",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 110,
+          "high": 170
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 10
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fatGrams": {
+          "low": 5,
+          "likely": 9,
+          "high": 14
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-vinaigrette",
+        "name": "Vinaigrette à l’huile",
+        "preparation": "Huile visible au fond du bol, vinaigrette probable selon la note",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat",
+          "sauce"
+        ],
+        "varietyKey": "vinaigrette",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 110,
+          "high": 200
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 7,
+          "likely": 12,
+          "high": 22
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-bread",
+        "name": "Pain",
+        "preparation": "Morceau de pain, mie aérée, croûte dorée",
+        "portion": "1 morceau",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "morceau",
+          "basis": "tranche dans le bol",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 120,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 15,
+          "likely": 23,
+          "high": 35
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 362,
+        "likely": 560,
+        "high": 865
+      },
+      "proteinGrams": {
+        "low": 16,
+        "likely": 26,
+        "high": 41
+      },
+      "carbohydrateGrams": {
+        "low": 39,
+        "likely": 60,
+        "high": 92
+      },
+      "fatGrams": {
+        "low": 12,
+        "likely": 23,
+        "high": 42
+      },
+      "fiberGrams": {
+        "low": 6,
+        "likely": 12,
+        "high": 20
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 7,
+        "high": 14
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammages non mesurables : fourchettes nutritionnelles larges.",
+      "Quantité d’huile / vinaigrette au fond du bol incertaine.",
+      "Type exact de pain et éventuel sucre ajouté inconnus.",
+      "Composition précise de la vinaigrette (sucre, moutarde) non visible."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-lentils",
+        "severity": "high",
+        "detail": "Volume de lentilles dans le bol non quantifiable en grammes."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-feta",
+        "severity": "medium",
+        "detail": "Cubes de feta visibles mais masse incertaine."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-vinaigrette",
+        "severity": "high",
+        "detail": "Huile visible et vinaigrette probable, quantité et recette inconnues."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-bread",
+        "severity": "medium",
+        "detail": "Pain artisanal possible mais niveau de transformation non identifiable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-vinaigrette",
+        "severity": "medium",
+        "detail": "Sucre éventuel dans la vinaigrette non observable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-vinaigrette",
+        "severity": "medium",
+        "detail": "Sucres totaux et ajoutés de la sauce non estimables."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-salad",
+        "severity": "low",
+        "detail": "Herbes et assaisonnement visibles sans recette complète."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

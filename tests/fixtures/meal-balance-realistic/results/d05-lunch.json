@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d05-lunch",
+  "mealDate": "2026-09-05",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:0bcf80926ccad2c25750df49deef845f2d64bbb56e0b4c27cb31b4098c16f1d7",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Poké bowl acheté avec riz, dés de saumon, edamame et crudités (concombre, carotte, radis, chou rouge, quelques feuilles), graines de sésame, sauce sombre à part dont la quantité réellement versée n’est pas connue.",
+    "dishType": "Poké au saumon",
+    "calorieAnalysis": "Fourchette likely autour de 650 kcal pour le bol, appréciation copieuse à modérée selon la sauce réellement consommée.",
+    "foods": [
+      {
+        "id": "food-poke",
+        "name": "Poké bowl saumon",
+        "preparation": "Bol composé, saumon cru assaisonné, riz cuit, crudités crues, sauce à part",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain",
+          "vegetable",
+          "legume"
+        ],
+        "varietyKey": "poké",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-riz",
+        "name": "Riz blanc cuit",
+        "preparation": "cuit",
+        "portion": "base du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-poke",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "riz",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 250,
+          "high": 340
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 38,
+          "likely": 54,
+          "high": 74
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-saumon",
+        "name": "Saumon cru en dés",
+        "preparation": "cru, légèrement assaisonné, graines de sésame",
+        "portion": "portion centrale du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-poke",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "saumon",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "protein_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 250,
+          "high": 340
+        },
+        "proteinGrams": {
+          "low": 18,
+          "likely": 25,
+          "high": 34
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 24
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-edamame",
+        "name": "Edamame",
+        "preparation": "cuit, décortiqué",
+        "portion": "tas sur le côté",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-poke",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "legume",
+          "plant_protein"
+        ],
+        "varietyKey": "edamame",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 50,
+          "likely": 80,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 11
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 11
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 6
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-crudites",
+        "name": "Crudités du bol",
+        "preparation": "crues : concombre, carotte râpée, radis, chou rouge, quelques feuilles",
+        "portion": "garniture du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-poke",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "crudités",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 20,
+          "likely": 35,
+          "high": 55
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 11
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-sesame",
+        "name": "Graines de sésame",
+        "preparation": "saupoudrées",
+        "portion": "pincée",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-poke",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "nuts_seeds"
+        ],
+        "varietyKey": "sésame",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 20,
+          "high": 35
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce sombre à part",
+        "preparation": "sauce liquide type soja/teriyaki, quantité versée inconnue",
+        "portion": "godet à part",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-poke",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce"
+        ],
+        "varietyKey": "sauce soja",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-lunch-photo-1",
+          "d05-lunch-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 40,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 6,
+          "high": 20
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 14
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 3,
+          "high": 12
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 450,
+        "likely": 675,
+        "high": 1010
+      },
+      "proteinGrams": {
+        "low": 26,
+        "likely": 41,
+        "high": 61
+      },
+      "carbohydrateGrams": {
+        "low": 47,
+        "likely": 76,
+        "high": 122
+      },
+      "fatGrams": {
+        "low": 13,
+        "likely": 22,
+        "high": 38
+      },
+      "fiberGrams": {
+        "low": 4,
+        "likely": 7,
+        "high": 13
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 10,
+        "high": 26
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 3,
+        "high": 14
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Grammages non mesurables sans référence d’échelle.",
+      "Quantité de sauce réellement versée inconnue.",
+      "Recette et sucres ajoutés de la sauce non identifiables.",
+      "Type exact de riz (blanc vs légèrement assaisonné) non certain."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-riz",
+        "severity": "high",
+        "detail": "Volume de riz visible mais sans échelle ni poids."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-saumon",
+        "severity": "high",
+        "detail": "Dés de saumon visibles, masse non estimable précisément."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sauce à part ; quantité consommée et composition inconnues."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Sauce industrielle possible (soja/teriyaki) non identifiable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sucres concentrés éventuels de la sauce non vérifiables."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-saumon",
+        "severity": "medium",
+        "detail": "Assaisonnement du saumon (sucre, huile, marinade) non visible."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Totaux en fourchettes larges faute de grammes et de recette."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

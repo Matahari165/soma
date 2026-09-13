@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d12-dinner",
+  "mealDate": "2026-09-12",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:1b2d296119c6db8c45dc159ed26ea3d3cec24a618cc11c41e66a661a09ce95c2",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Assiette dînatoire : wrap/tortilla grillé coupé en deux, garni de salade, de morceaux orange (carotte probable) et d’une sauce crémeuse, accompagné d’une petite salade de mesclun et tomates. Un verre d’eau est visible. La protéine et la recette exacte du wrap restent incertaines.",
+    "dishType": "Wrap et salade",
+    "calorieAnalysis": "Apport probable autour de 560 kcal (fourchette large), repas plutôt modéré, selon la garniture et la quantité de sauce.",
+    "foods": [
+      {
+        "id": "wrap-1",
+        "name": "Wrap garni",
+        "preparation": "Tortilla grillée, garniture froide avec sauce crémeuse",
+        "portion": "1 wrap coupé en deux",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "wrap",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "wrap",
+          "basis": "pièce visible coupée en deux",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 380,
+          "likely": 500,
+          "high": 680
+        },
+        "proteinGrams": {
+          "low": 12,
+          "likely": 22,
+          "high": 35
+        },
+        "carbohydrateGrams": {
+          "low": 35,
+          "likely": 48,
+          "high": 65
+        },
+        "fatGrams": {
+          "low": 14,
+          "likely": 24,
+          "high": 38
+        },
+        "fiberGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 12
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "salade-1",
+        "name": "Salade de mesclun et tomates",
+        "preparation": "Crue, éventuellement assaisonnée",
+        "portion": "petite portion d’accompagnement",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "salade verte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "portion",
+          "basis": "tas de feuilles et tomates sur l’assiette",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 25,
+          "likely": 55,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 10
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "eau-1",
+        "name": "Eau",
+        "preparation": null,
+        "portion": "1 verre",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage"
+        ],
+        "varietyKey": "eau",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "verre",
+          "basis": "verre en arrière-plan",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 405,
+        "likely": 555,
+        "high": 800
+      },
+      "proteinGrams": {
+        "low": 13,
+        "likely": 24,
+        "high": 39
+      },
+      "carbohydrateGrams": {
+        "low": 37,
+        "likely": 53,
+        "high": 75
+      },
+      "fatGrams": {
+        "low": 15,
+        "likely": 27,
+        "high": 48
+      },
+      "fiberGrams": {
+        "low": 4,
+        "likely": 7,
+        "high": 12
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 9,
+        "high": 18
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Protéine et garniture exacte du wrap non identifiables (poulet, thon, fromage ou autre).",
+      "Quantités en grammes non mesurables.",
+      "Huile ou vinaigrette sur la salade possible mais non certaine.",
+      "Niveau NOVA et sucres ajoutés du wrap inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "wrap-1",
+        "severity": "high",
+        "detail": "Garniture mixte visible (salade, carotte probable, sauce crémeuse) sans identification fiable de la protéine."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "wrap-1",
+        "severity": "high",
+        "detail": "Recette et marque de la tortilla non connues."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "wrap-1",
+        "severity": "medium",
+        "detail": "Volume estimé visuellement seulement, sans grammes."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "salade-1",
+        "severity": "medium",
+        "detail": "Brillance possible d’assaisonnement, quantité d’huile inconnue."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "wrap-1",
+        "severity": "medium",
+        "detail": "Tortilla et sauce trop peu caractérisées pour un NOVA fiable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "wrap-1",
+        "severity": "high",
+        "detail": "Macros et sucres ajoutés du wrap restent des fourchettes larges."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

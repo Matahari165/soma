@@ -1,0 +1,485 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d09-dinner",
+  "mealDate": "2026-09-09",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:184f2d1bf2aecb32e6721c81f0a30b750f9c36859172146242b248dd1f85b71e",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Bol de penne nappées de pesto vert, tomates cerises coupées et parmesan râpé. Quantité non mesurée ; pesto éventuellement du commerce. Plat unique du dîner.",
+    "dishType": "Pâtes au pesto",
+    "calorieAnalysis": "Fourchette likely autour de 680 kcal pour un bol généreux : apport plutôt copieux, surtout selon la quantité de pesto et d’huile.",
+    "foods": [
+      {
+        "id": "food-dish",
+        "name": "Pâtes au pesto",
+        "preparation": "Pâtes cuites mélangées au pesto, garnies de tomates et de fromage râpé",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "dairy",
+          "added_fat"
+        ],
+        "varietyKey": "pâtes au pesto",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol blanc vu de dessus",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-penne",
+        "name": "Penne",
+        "preparation": "Cuites, enrobées de pesto",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pâtes",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 320,
+          "likely": 420,
+          "high": 560
+        },
+        "proteinGrams": {
+          "low": 11,
+          "likely": 15,
+          "high": 20
+        },
+        "carbohydrateGrams": {
+          "low": 62,
+          "likely": 82,
+          "high": 110
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 6
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-pesto",
+        "name": "Pesto",
+        "preparation": "Sauce verte mixée, éventuellement du commerce",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat",
+          "sauce",
+          "nuts_seeds"
+        ],
+        "varietyKey": "pesto",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 220,
+          "high": 340
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 14,
+          "likely": 22,
+          "high": 34
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-tomates",
+        "name": "Tomates cerises",
+        "preparation": "Crues, coupées en deux",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 25,
+          "high": 40
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-parmesan",
+        "name": "Parmesan râpé",
+        "preparation": "Râpé sur le plat",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "parmesan",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 20,
+          "likely": 35,
+          "high": 60
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 495,
+        "likely": 700,
+        "high": 1000
+      },
+      "proteinGrams": {
+        "low": 15,
+        "likely": 23,
+        "high": 34
+      },
+      "carbohydrateGrams": {
+        "low": 67,
+        "likely": 91,
+        "high": 127
+      },
+      "fatGrams": {
+        "low": 16,
+        "likely": 26,
+        "high": 42
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 6,
+        "high": 10
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 6,
+        "high": 12
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Quantité de pâtes et de pesto non mesurée",
+      "Pesto du commerce possible : recette, huile et sel inconnus",
+      "Sucres ajoutés du pesto non vérifiables",
+      "Poids du parmesan râpé imprécis"
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-penne",
+        "severity": "high",
+        "detail": "Bol vu de dessus sans référence de poids ; grammes de pâtes non estimables de façon fiable."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-pesto",
+        "severity": "high",
+        "detail": "Note indiquant un pesto du commerce possible ; composition et quantité d’huile inconnues."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-pesto",
+        "severity": "high",
+        "detail": "Enrobage huileux visible mais volume de sauce/huile non mesurable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-pesto",
+        "severity": "medium",
+        "detail": "Niveau NOVA du pesto non identifiable sans marque ni liste d’ingrédients."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-pesto",
+        "severity": "medium",
+        "detail": "Présence éventuelle de sucres ajoutés dans un pesto industriel non observable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-dish",
+        "severity": "high",
+        "detail": "Macros du plat entier déduites de fourchettes larges, sans pesée."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

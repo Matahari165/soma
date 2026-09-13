@@ -1,0 +1,687 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d03-dinner",
+  "mealDate": "2026-09-03",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:28a427cb04d95a2798bd51f4cb3f38cb3d088e477cb86a6f7c9aba9097a43961",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Poêlée maison de tofu doré et légumes (brocoli, carotte, poivron, oignon) dans un bol, avec un filet d’huile visible. Portion d’aspect moyen, sans féculent ni sauce évidente au-delà du gras de cuisson.",
+    "dishType": "Poêlée tofu légumes",
+    "calorieAnalysis": "Fourchette likely autour de 380 kcal pour une portion moyenne : repas plutôt léger à modéré, selon la quantité d’huile et de tofu.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Poêlée de légumes et tofu",
+        "preparation": "Poêlée, légèrement dorée",
+        "portion": "1 bol, portion moyenne",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "vegetable",
+          "plant_protein",
+          "added_fat"
+        ],
+        "varietyKey": "poêlée tofu légumes",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "assiette vue de dessus",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 250,
+          "likely": 380,
+          "high": 520
+        },
+        "proteinGrams": {
+          "low": 16,
+          "likely": 24,
+          "high": 34
+        },
+        "carbohydrateGrams": {
+          "low": 14,
+          "likely": 22,
+          "high": 32
+        },
+        "fatGrams": {
+          "low": 12,
+          "likely": 20,
+          "high": 32
+        },
+        "fiberGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "sugarGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 15
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Tofu ferme",
+        "preparation": "Poêlé, cubes dorés",
+        "portion": "plusieurs cubes",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "plant_protein"
+        ],
+        "varietyKey": "tofu",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "cubes visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 200,
+          "high": 280
+        },
+        "proteinGrams": {
+          "low": 14,
+          "likely": 20,
+          "high": 28
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 7,
+          "likely": 11,
+          "high": 18
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-3",
+        "name": "Brocoli",
+        "preparation": "Poêlé",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "brocoli",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 25,
+          "likely": 40,
+          "high": 60
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 11
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-4",
+        "name": "Carotte",
+        "preparation": "Poêlée, en tranches",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "carotte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 25,
+          "high": 40
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 9
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-5",
+        "name": "Poivron",
+        "preparation": "Poêlé, en lamelles",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "poivron",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 18,
+          "high": 30
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-6",
+        "name": "Oignon",
+        "preparation": "Poêlé, en lamelles",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "oignon",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 18,
+          "high": 30
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-7",
+        "name": "Huile de cuisson",
+        "preparation": "Filet, poêlée",
+        "portion": "un filet",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "huile",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d03-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 80,
+          "high": 135
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 4,
+          "likely": 9,
+          "high": 15
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 250,
+        "likely": 380,
+        "high": 520
+      },
+      "proteinGrams": {
+        "low": 16,
+        "likely": 24,
+        "high": 34
+      },
+      "carbohydrateGrams": {
+        "low": 14,
+        "likely": 22,
+        "high": 32
+      },
+      "fatGrams": {
+        "low": 12,
+        "likely": 20,
+        "high": 32
+      },
+      "fiberGrams": {
+        "low": 6,
+        "likely": 9,
+        "high": 13
+      },
+      "sugarGrams": {
+        "low": 6,
+        "likely": 10,
+        "high": 15
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 2
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammes non mesurables sur la photo ; portion seulement visuelle.",
+      "Quantité et type d’huile imprécis (filet indiqué, brillance visible).",
+      "Mélange surgelé possible : composition exacte non confirmée.",
+      "Assaisonnement ou sauce sucrée non visible, non compté au-delà d’une petite marge."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-7",
+        "severity": "high",
+        "detail": "Le filet d’huile n’est pas quantifiable ; impact majeur sur les calories et lipides."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Brillance de cuisson visible ; éventuelle sauce sucrée non observée."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Légumes surgelés possibles selon la note ; mélange exact non identifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "NOVA du plat entier dépend de l’assaisonnement et du tofu (nature vs aromatisé)."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Macros en fourchettes larges faute de poids et d’huile mesurés."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

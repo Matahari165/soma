@@ -1,0 +1,612 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d09-lunch",
+  "mealDate": "2026-09-09",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:73c591840f7cce9384932838e9cdf14dbceb8fcec4fd140ab574c39c003fa1af",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Assortiment de sushis (nigiris saumon, crevette et thon, makis au sésame, avocat et poisson) avec un bol de salade verte et une coupelle de sauce soja. Portions et recettes (riz vinaigré, garnitures, vinaigrette) peu précises sur une seule photo.",
+    "dishType": "Assortiment de sushis",
+    "calorieAnalysis": "Repas d’environ 450 à 900 kcal (valeur probable vers 650 kcal) : apport modéré à copieux selon le nombre de makis et la vinaigrette.",
+    "foods": [
+      {
+        "id": "food-sushi",
+        "name": "Assortiment de sushis",
+        "preparation": "Riz vinaigré, poisson cru, makis roulés",
+        "portion": "1 plateau",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "animal_protein"
+        ],
+        "varietyKey": "sushi",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "plateau",
+          "basis": "vue du plateau",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-nigiri-saumon",
+        "name": "Nigiri au saumon",
+        "preparation": "Poisson cru sur riz",
+        "portion": "1 pièce",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-sushi",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain"
+        ],
+        "varietyKey": "saumon",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "pièce visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 50,
+          "likely": 70,
+          "high": 95
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "fatGrams": {
+          "low": 1.5,
+          "likely": 2.5,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-nigiri-crevette",
+        "name": "Nigiri à la crevette",
+        "preparation": "Crevette cuite sur riz",
+        "portion": "1 pièce",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-sushi",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain"
+        ],
+        "varietyKey": "crevette",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "pièce visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 35,
+          "likely": 50,
+          "high": 70
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-nigiri-thon",
+        "name": "Nigiri au thon",
+        "preparation": "Poisson cru sur riz",
+        "portion": "1 pièce",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-sushi",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain"
+        ],
+        "varietyKey": "thon",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "pièce visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 55,
+          "high": 80
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 7,
+          "high": 10
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-maki",
+        "name": "Makis assortis",
+        "preparation": "Riz, nori, avocat, poisson, sésame",
+        "portion": "plusieurs pièces",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-sushi",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "animal_protein"
+        ],
+        "varietyKey": "maki",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": "pièces",
+          "basis": "plusieurs makis visibles, nombre exact incertain",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source",
+          "unsaturated_fat_source",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 250,
+          "likely": 400,
+          "high": 600
+        },
+        "proteinGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 26
+        },
+        "carbohydrateGrams": {
+          "low": 35,
+          "likely": 55,
+          "high": 80
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 22
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-salade",
+        "name": "Salade verte",
+        "preparation": "Crue, vinaigrette visible",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "salade verte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 90,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 12
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 7,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-soja",
+        "name": "Sauce soja",
+        "preparation": null,
+        "portion": "1 coupelle",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce"
+        ],
+        "varietyKey": "sauce soja",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d09-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "coupelle",
+          "basis": "coupelle visible, consommation inconnue",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": true
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 5,
+          "likely": 15,
+          "high": 40
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 6
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 420,
+        "likely": 680,
+        "high": 1065
+      },
+      "proteinGrams": {
+        "low": 23,
+        "likely": 37,
+        "high": 59
+      },
+      "carbohydrateGrams": {
+        "low": 57,
+        "likely": 90,
+        "high": 137
+      },
+      "fatGrams": {
+        "low": 9.5,
+        "likely": 22.5,
+        "high": 45
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 6,
+        "high": 11
+      },
+      "sugarGrams": null,
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Nombre exact de makis et grammes non mesurables.",
+      "Composition des garnitures (surimi, mayonnaise, sucre du riz) non confirmée.",
+      "Quantité de sauce soja réellement consommée inconnue.",
+      "Vinaigrette de la salade non identifiée."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-maki",
+        "severity": "high",
+        "detail": "Plusieurs makis visibles mais le nombre et le poids ne sont pas estimables avec précision."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-sushi",
+        "severity": "medium",
+        "detail": "Assaisonnement du riz et éventuelle mayonnaise ou surimi non vérifiables."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-salade",
+        "severity": "medium",
+        "detail": "Vinaigrette visible sans identification ni quantité."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-soja",
+        "severity": "medium",
+        "detail": "Coupelle visible, quantité consommée inconnue."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Sucres totaux et sucres ajoutés du riz et des sauces non estimables de façon responsable."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

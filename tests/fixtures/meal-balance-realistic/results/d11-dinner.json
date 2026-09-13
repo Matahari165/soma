@@ -1,0 +1,562 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d11-dinner",
+  "mealDate": "2026-09-11",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:e1560bc1a5d792688e752404a90e68f88572f096e8b11aa73de22de528c0f350",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Deux parts de pizza livrée (même repas, assiette et boîte). Pâte cuite au four, fromage fondu, sauce tomate ; garniture de type charcuterie/viande et éventuellement champignons, huile et détails de recette peu lisibles.",
+    "dishType": "Pizza livrée",
+    "calorieAnalysis": "Fourchette likely autour de 700 kcal pour les deux parts : repas plutôt copieux, avec une large incertitude selon l’épaisseur, le fromage et la garniture.",
+    "foods": [
+      {
+        "id": "food-pizza",
+        "name": "Pizza livrée (2 parts)",
+        "preparation": "Cuite au four, livrée",
+        "portion": "2 parts",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "dairy",
+          "animal_protein"
+        ],
+        "varietyKey": "pizza",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-1",
+          "d11-dinner-photo-2"
+        ],
+        "quantity": {
+          "value": 2,
+          "unit": "parts",
+          "basis": "visuel assiette et boîte",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "high",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pate",
+        "name": "Pâte à pizza",
+        "preparation": "Cuite, croûte dorée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-pizza",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pâte à pizza",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-1",
+          "d11-dinner-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 280,
+          "likely": 380,
+          "high": 500
+        },
+        "proteinGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "carbohydrateGrams": {
+          "low": 40,
+          "likely": 55,
+          "high": 75
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-fromage",
+        "name": "Fromage fondu",
+        "preparation": "Fondu à la cuisson",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-pizza",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "fromage",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-1",
+          "d11-dinner-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 220,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 8,
+          "likely": 14,
+          "high": 20
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 24
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce tomate",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-pizza",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "sauce tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-1",
+          "d11-dinner-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 20,
+          "likely": 40,
+          "high": 70
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 7,
+          "high": 12
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-garniture",
+        "name": "Garniture (charcuterie/viande, éventuellement champignons)",
+        "preparation": "Cuite sur la pizza",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-pizza",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": null,
+        "evidence": "inferred",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-1",
+          "d11-dinner-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 140,
+          "high": 240
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 14
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 11,
+          "high": 20
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-huile",
+        "name": "Huile ou graisse de surface",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-pizza",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "huile",
+        "evidence": "unknown",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d11-dinner-photo-2"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 40,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 13
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 520,
+        "likely": 820,
+        "high": 1250
+      },
+      "proteinGrams": {
+        "low": 20,
+        "likely": 35,
+        "high": 54
+      },
+      "carbohydrateGrams": {
+        "low": 46,
+        "likely": 67,
+        "high": 97
+      },
+      "fatGrams": {
+        "low": 22,
+        "likely": 42,
+        "high": 76
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 4,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 20
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 2,
+        "high": 9
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Garniture (viande, pepperoni, champignons) difficile à identifier de façon certaine.",
+      "Quantité d’huile ou de graisse non mesurable.",
+      "Poids des parts et recette (sucre dans la sauce, type de fromage) inconnus.",
+      "Les deux photos montrent les mêmes parts sous des angles différents."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-garniture",
+        "severity": "high",
+        "detail": "Charcuterie, viande hachée et champignons se distinguent mal selon l’angle."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-huile",
+        "severity": "high",
+        "detail": "Huile ou graisse de surface mentionnée comme difficile à voir ; quantité inconnue."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-pate",
+        "severity": "medium",
+        "detail": "Taille réelle des parts (poids, épaisseur) non estimable sans référence."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Sucre ajouté éventuel dans la sauce tomate non observable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-huile",
+        "severity": "low",
+        "detail": "Nature de la matière grasse (huile, graisse de fromage ou de viande) indéterminée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-pizza",
+        "severity": "medium",
+        "detail": "Macros globales estimées par fourchettes larges uniquement."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

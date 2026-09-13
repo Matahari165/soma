@@ -1,0 +1,497 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d01-breakfast",
+  "mealDate": "2026-09-01",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:876232a71ee6bb3b64fc7650ed6e7a71ae333411747bf421fc66620ec6087928",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner maison : bol d’avoine dans un liquide (lait végétal probable), garni de banane en rondelles et de noix concassées. Volume d’un bol ; sucres ajoutés non visibles.",
+    "dishType": "Bol d'avoine",
+    "calorieAnalysis": "Fourchette probable d’environ 340 kcal (environ 250–470 kcal) : apport modéré pour un petit-déjeuner, selon la quantité d’avoine, de noix et de lait.",
+    "foods": [
+      {
+        "id": "food-bowl",
+        "name": "Bol d'avoine",
+        "preparation": "Avoine hydratée au lait, garnie de fruits et noix",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "whole_grain",
+          "fruit",
+          "nuts_seeds",
+          "beverage"
+        ],
+        "varietyKey": "porridge avoine",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-oats",
+        "name": "Flocons d'avoine",
+        "preparation": "Hydratés / trempés dans un liquide",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "whole_grain"
+        ],
+        "varietyKey": "avoine",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 120,
+          "likely": 160,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 20,
+          "likely": 28,
+          "high": 38
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 3.5,
+          "high": 5
+        },
+        "fiberGrams": {
+          "low": 3,
+          "likely": 4.5,
+          "high": 7
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-banana",
+        "name": "Banane",
+        "preparation": "Crue, en rondelles",
+        "portion": "environ une demi-banane",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "banane",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 55,
+          "high": 80
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 10,
+          "likely": 14,
+          "high": 20
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1.5,
+          "high": 2.5
+        },
+        "sugarGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-walnuts",
+        "name": "Noix",
+        "preparation": "Crues, concassées",
+        "portion": "quelques cerneaux",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "nuts_seeds"
+        ],
+        "varietyKey": "noix",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "unsaturated_fat_source",
+          "protein_source",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 120,
+          "high": 170
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1.5,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-plant-milk",
+        "name": "Lait végétal",
+        "preparation": "Liquide versé sur l’avoine",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage",
+          "plant_protein"
+        ],
+        "varietyKey": "lait végétal",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d01-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 30,
+          "high": 80
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1.5,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 6
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 255,
+        "likely": 365,
+        "high": 550
+      },
+      "proteinGrams": {
+        "low": 6,
+        "likely": 10,
+        "high": 18
+      },
+      "carbohydrateGrams": {
+        "low": 31,
+        "likely": 45,
+        "high": 70
+      },
+      "fatGrams": {
+        "low": 10,
+        "likely": 17,
+        "high": 25
+      },
+      "fiberGrams": {
+        "low": 5,
+        "likely": 7.5,
+        "high": 12.5
+      },
+      "sugarGrams": {
+        "low": 6,
+        "likely": 11,
+        "high": 22
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 6
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Quantités d’avoine sèche et de liquide non mesurables sur la photo.",
+      "Type et sucrage du lait végétal non identifiés (note : éventuellement non sucré).",
+      "Poids exact des noix et de la banane estimé visuellement seulement."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-oats",
+        "severity": "medium",
+        "detail": "Masse d’avoine (sèche ou cuite) non mesurable ; estimation nutritionnelle large."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-plant-milk",
+        "severity": "high",
+        "detail": "Marque, type (amande, soja, avoine…) et sucrage du lait non visibles."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-plant-milk",
+        "severity": "medium",
+        "detail": "Lait éventuellement non sucré selon la note, mais non vérifiable sur l’image."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-plant-milk",
+        "severity": "medium",
+        "detail": "Niveau de transformation du lait végétal non identifiable."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-bowl",
+        "severity": "low",
+        "detail": "Pas de recette : proportions avoine/lait et éventuel sucrage inconnu."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

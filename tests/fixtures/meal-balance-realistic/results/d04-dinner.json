@@ -1,0 +1,640 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d04-dinner",
+  "mealDate": "2026-09-04",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:94c48782191de3cef85655685f44665c08fe52921dc0928f6631f0d1a20a264a",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Bol de nouilles épaisses sautées (type udon/lo mein) avec morceaux de poulet, brocoli, carottes et poivron, nappées d’une sauce brune brillante. Une seule photo, sans note : portions et recette de sauce très incertaines.",
+    "dishType": "Nouilles sautées au poulet",
+    "calorieAnalysis": "Fourchette probable autour de 620 kcal (environ 420–900), repas plutôt copieux selon le volume de nouilles et la quantité de sauce.",
+    "foods": [
+      {
+        "id": "food-dish",
+        "name": "Nouilles sautées poulet-légumes",
+        "preparation": "Sautées, sauce brune brillante",
+        "portion": "1 barquette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "animal_protein",
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "nouilles sautées",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "barquette",
+          "basis": "contenant vu",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-noodles",
+        "name": "Nouilles épaisses",
+        "preparation": "Sautées",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "nouilles",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 250,
+          "likely": 380,
+          "high": 550
+        },
+        "proteinGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "carbohydrateGrams": {
+          "low": 45,
+          "likely": 70,
+          "high": 100
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-chicken",
+        "name": "Poulet",
+        "preparation": "Sauté, en morceaux",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "poulet",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 140,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 14,
+          "likely": 24,
+          "high": 36
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-broccoli",
+        "name": "Brocoli",
+        "preparation": "Sauté",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "brocoli",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 30,
+          "high": 50
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 9
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-carrot",
+        "name": "Carotte",
+        "preparation": "Sautée, en lamelles",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "carotte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 20,
+          "high": 35
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pepper",
+        "name": "Poivron",
+        "preparation": "Sauté",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "poivron",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 5,
+          "likely": 12,
+          "high": 25
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce de cuisson",
+        "preparation": "Sauce brune brillante (huile et/ou sauce soja possible)",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-dish",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce",
+          "added_fat"
+        ],
+        "varietyKey": "sauce sautée",
+        "evidence": "inferred",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 90,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 8,
+          "high": 18
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 14
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 10
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 3,
+          "high": 8
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 400,
+        "likely": 672,
+        "high": 1060
+      },
+      "proteinGrams": {
+        "low": 23,
+        "likely": 40,
+        "high": 65
+      },
+      "carbohydrateGrams": {
+        "low": 52,
+        "likely": 90,
+        "high": 144
+      },
+      "fatGrams": {
+        "low": 7,
+        "likely": 18,
+        "high": 40
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 7,
+        "high": 15
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 12,
+        "high": 27
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 3,
+        "high": 10
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Grammages non mesurables depuis une seule photo.",
+      "Type exact de nouilles et composition de la sauce inconnus.",
+      "Huile de cuisson et sucres ajoutés de la sauce non quantifiables.",
+      "Morceaux de poulet partiellement recouverts : quantité incertaine."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-noodles",
+        "severity": "high",
+        "detail": "Volume de nouilles dans la barquette non convertible en grammes fiables."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sauce brillante visible mais recette, huile et sucres inconnus."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-dish",
+        "severity": "medium",
+        "detail": "Plat préparé sans recette ni note utilisateur."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-noodles",
+        "severity": "medium",
+        "detail": "Nouilles possiblement industrielles ; transformation non identifiable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-dish",
+        "severity": "high",
+        "detail": "Macros estimées par fourchettes larges uniquement."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

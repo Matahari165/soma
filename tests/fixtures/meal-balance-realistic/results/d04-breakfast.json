@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d04-breakfast",
+  "mealDate": "2026-09-04",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:f0f253973d5d555f757eda58671db8bd7f8b3a86c7cf078edd4c6094bb2685c7",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner visible : une tranche de pain grillé garnie d’avocat et d’un œuf au plat, poivre et flocons de piment. Le café mentionné n’apparaît pas sur la photo.",
+    "dishType": "Toast avocat-œuf",
+    "calorieAnalysis": "Environ 320 kcal au total (fourchette large selon l’épaisseur du pain et la quantité d’avocat) : apport modéré pour un petit-déjeuner.",
+    "foods": [
+      {
+        "id": "food-toast-avocat-oeuf",
+        "name": "Toast avocat et œuf",
+        "preparation": "Pain grillé, avocat écrasé/tranché, œuf au plat",
+        "portion": "1 tranche garnie",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "egg",
+          "added_fat"
+        ],
+        "varietyKey": "toast avocat œuf",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tranche",
+          "basis": "assiette visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "fiber_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "high",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pain",
+        "name": "Pain grillé",
+        "preparation": "Tranche grillée, mie plutôt claire, croûte brune",
+        "portion": "1 tranche",
+        "estimatedGrams": 35,
+        "kind": "component",
+        "parentId": "food-toast-avocat-oeuf",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tranche",
+          "basis": "photo",
+          "grams": 35
+        },
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 95,
+          "high": 130
+        },
+        "proteinGrams": {
+          "low": 2.5,
+          "likely": 3.5,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 12,
+          "likely": 17,
+          "high": 24
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1.5,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3.5
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1.5,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-avocat",
+        "name": "Avocat",
+        "preparation": "Tranché et légèrement écrasé sur le pain",
+        "portion": "environ un quart à un demi-fruit",
+        "estimatedGrams": 50,
+        "kind": "component",
+        "parentId": "food-toast-avocat-oeuf",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable",
+          "added_fat"
+        ],
+        "varietyKey": "avocat",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "couche visible",
+          "grams": 50
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 80,
+          "high": 130
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "fatGrams": {
+          "low": 5,
+          "likely": 7.5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3.5,
+          "high": 6
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-oeuf",
+        "name": "Œuf au plat",
+        "preparation": "Au plat, jaune encore entier, blanc cuit",
+        "portion": "1 œuf",
+        "estimatedGrams": 50,
+        "kind": "component",
+        "parentId": "food-toast-avocat-oeuf",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "egg",
+          "animal_protein"
+        ],
+        "varietyKey": "œuf",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "œuf",
+          "basis": "photo",
+          "grams": 50
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "high",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 90,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 6,
+          "likely": 7,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fatGrams": {
+          "low": 5,
+          "likely": 7,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "high"
+      },
+      {
+        "id": "food-epices",
+        "name": "Poivre et piment",
+        "preparation": "Saupoudrés sur l’œuf",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-toast-avocat-oeuf",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "other"
+        ],
+        "varietyKey": "épices",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-matiere-grasse",
+        "name": "Matière grasse de cuisson",
+        "preparation": "Possible graisse dans la poêle pour l’œuf, non mesurable",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-toast-avocat-oeuf",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "huile",
+        "evidence": "inferred",
+        "evidenceSource": "model",
+        "evidencePhotoIds": [
+          "d04-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 20,
+          "high": 50
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 6
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 200,
+        "likely": 286,
+        "high": 433
+      },
+      "proteinGrams": {
+        "low": 8.5,
+        "likely": 11.5,
+        "high": 15
+      },
+      "carbohydrateGrams": {
+        "low": 14,
+        "likely": 21,
+        "high": 32
+      },
+      "fatGrams": {
+        "low": 10,
+        "likely": 18,
+        "high": 31
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 5.5,
+        "high": 9.5
+      },
+      "sugarGrams": {
+        "low": 0,
+        "likely": 1.5,
+        "high": 4
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 1
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Type exact du pain (complet vs raffiné) et poids de la tranche incertains.",
+      "Quantité d’avocat approximative.",
+      "Graisse de cuisson de l’œuf non visible.",
+      "Café indiqué par la note mais absent de la photo, non compté."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Une tranche visible mais épaisseur et grammage non mesurés."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Pain probablement raffiné ; fibres et NOVA restent approximatifs."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-avocat",
+        "severity": "medium",
+        "detail": "Couche d’avocat visible sans référence de poids."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-matiere-grasse",
+        "severity": "high",
+        "detail": "Huile ou beurre de cuisson possible mais non observé."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-toast-avocat-oeuf",
+        "severity": "low",
+        "detail": "NOVA du plat entier dépend du pain et de la graisse."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-matiere-grasse",
+        "severity": "medium",
+        "detail": "Calories de cuisson estimées très largement."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

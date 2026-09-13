@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d10-dinner",
+  "mealDate": "2026-09-10",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:3b69ebfc3a271c55d6c574025b2ca2b4a34e748ecaae112be37880974dc4ec33",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Barquette de riz sauté aux légumes (brocoli, carotte, chou) avec morceaux de protéine et sauce brune brillante, type plat asiatique à emporter. Photo unique, portions et nature exacte de la protéine peu nettes.",
+    "dishType": "Riz sauté aux légumes",
+    "calorieAnalysis": "Repas probablement copieux, autour de 650 kcal (fourchette large 450–900), selon la quantité de riz, d’huile et de sauce.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Riz sauté aux légumes",
+        "preparation": "Sauté, sauce brune",
+        "portion": "1 barquette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "animal_protein",
+          "sauce"
+        ],
+        "varietyKey": "riz sauté",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "barquette",
+          "basis": "contenant visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Riz cuit",
+        "preparation": "Mélangé, sauté",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "riz",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 280,
+          "high": 400
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 38,
+          "likely": 58,
+          "high": 82
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Légumes sautés",
+        "preparation": "Sautés (brocoli, carotte, chou)",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "légumes sautés",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 70,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 20
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 6
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-4",
+        "name": "Morceaux de protéine",
+        "preparation": "Sautés en dés",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "poulet",
+        "evidence": "inferred",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 150,
+          "high": 250
+        },
+        "proteinGrams": {
+          "low": 10,
+          "likely": 18,
+          "high": 30
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 15
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-5",
+        "name": "Sauce brune",
+        "preparation": "Nappage brillant, type sauce soja/sucrée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce"
+        ],
+        "varietyKey": "sauce soja",
+        "evidence": "inferred",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d10-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 90,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 10,
+          "high": 22
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 14
+        },
+        "addedSugarGrams": {
+          "low": 1,
+          "likely": 5,
+          "high": 12
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 450,
+        "likely": 650,
+        "high": 900
+      },
+      "proteinGrams": {
+        "low": 18,
+        "likely": 30,
+        "high": 48
+      },
+      "carbohydrateGrams": {
+        "low": 50,
+        "likely": 82,
+        "high": 125
+      },
+      "fatGrams": {
+        "low": 8,
+        "likely": 18,
+        "high": 40
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 5,
+        "high": 11
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 24
+      },
+      "addedSugarGrams": {
+        "low": 1,
+        "likely": 5,
+        "high": 13
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Grammages non mesurables (barquette sans référence fiable).",
+      "Identité de la protéine incertaine (poulet, tofu ou autre).",
+      "Composition et sucres de la sauce inconnus.",
+      "Huile de cuisson non quantifiable.",
+      "NOVA et transformation de la sauce/protéine non identifiables."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Volume de riz dans la barquette non estimable en grammes."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-4",
+        "severity": "high",
+        "detail": "Dés de protéine peu nets : poulet probable mais tofu ou autre possible."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-5",
+        "severity": "high",
+        "detail": "Sauce brune et huile de sauté visibles mais recette et quantité inconnues."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Plat à emporter sans recette : proportions riz/légumes/protéine/sauce incertaines."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-5",
+        "severity": "medium",
+        "detail": "Niveau de transformation de la sauce non identifiable sur la photo."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-5",
+        "severity": "medium",
+        "detail": "Sucre ajouté possible dans la sauce, non confirmé."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Macros du plat entier dérivées de fourchettes larges, pas d’une pesée."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

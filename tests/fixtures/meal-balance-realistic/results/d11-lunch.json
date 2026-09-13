@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d11-lunch",
+  "mealDate": "2026-09-11",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:242eaf6ca8488d2133df46f7f10b8c4759d389bf5f7d1304e5452dd2d31068de",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Repas de restes : riz, légumes et un œuf. La quantité de riz est indiquée comme « peut-être une tasse » ; les légumes, la cuisson, l’huile et les assaisonnements ne sont pas précisés.",
+    "dishType": "Restes riz, légumes et œuf",
+    "calorieAnalysis": "Fourchette likely d’environ 350 à 650 kcal selon le volume de riz, le type de légumes et l’éventuelle matière grasse : repas plutôt modéré, pouvant devenir copieux si le riz et l’huile sont généreux.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Restes de riz et légumes avec un œuf",
+        "preparation": "Restes, préparation non précisée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "egg"
+        ],
+        "varietyKey": "riz légumes œuf",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Riz",
+        "preparation": "Restes, cuisson et type de riz non précisés",
+        "portion": "peut-être une tasse",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "riz",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 1,
+          "unit": "tasse",
+          "basis": "quantité incertaine indiquée par l’utilisateur",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 150,
+          "likely": 250,
+          "high": 450
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 10
+        },
+        "carbohydrateGrams": {
+          "low": 30,
+          "likely": 50,
+          "high": 85
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Légumes",
+        "preparation": "Restes, types et cuisson non précisés",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "légumes",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 20,
+          "likely": 60,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 10,
+          "high": 25
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 15
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 12
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Œuf",
+        "preparation": "Non précisée (cuit avec les restes)",
+        "portion": "1 œuf",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "egg"
+        ],
+        "varietyKey": "œuf",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 1,
+          "unit": "œuf",
+          "basis": "unité citée",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "high",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 80,
+          "high": 120
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 7,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 230,
+        "likely": 390,
+        "high": 750
+      },
+      "proteinGrams": {
+        "low": 9,
+        "likely": 14,
+        "high": 27
+      },
+      "carbohydrateGrams": {
+        "low": 34,
+        "likely": 61,
+        "high": 112
+      },
+      "fatGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 37
+      },
+      "fiberGrams": {
+        "low": 1,
+        "likely": 4,
+        "high": 12
+      },
+      "sugarGrams": {
+        "low": 1,
+        "likely": 4,
+        "high": 15
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 0
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Quantité de riz seulement approximative (« peut-être une tasse »), sans grammes fiables.",
+      "Types de légumes, huile, sauce et mode de cuisson inconnus.",
+      "Riz blanc ou complet non précisé."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Tasse de riz seulement hypothétique ; pas de grammes responsables."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "Aucun volume de légumes indiqué."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Matière grasse ou sauce de réchauffage non mentionnée."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Cuisson des restes et de l’œuf non décrite."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Composition exacte des restes inconnue."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Fourchettes nutritionnelles très larges faute de quantités et de recette."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "Niveau de transformation du plat mixte non identifiable."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

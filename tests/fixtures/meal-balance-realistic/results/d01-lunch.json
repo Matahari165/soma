@@ -1,0 +1,512 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d01-lunch",
+  "mealDate": "2026-09-01",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:c766d43312ad07a2268e5be6e2011418f3ce515ac57fa00409b5c4aeb3c945dc",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Assiette de déjeuner : blanc de poulet grillé tranché, couscous, légumes rôtis (courgette, poivron, oignon, aubergine) et sauce blanche herbes. Deux photos du même type de plat, sans double comptage.",
+    "dishType": "Poulet couscous légumes",
+    "calorieAnalysis": "Repas plutôt copieux, autour de 650 kcal selon les volumes visibles (fourchette large à cause de la sauce et de l’huile de cuisson).",
+    "foods": [
+      {
+        "id": "food-plat",
+        "name": "Assiette poulet couscous légumes",
+        "preparation": "Grillade et légumes rôtis, sauce à part",
+        "portion": "1 assiette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain",
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "assiette poulet couscous",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-lunch-photo-1",
+          "d01-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "assiette",
+          "basis": "visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-poulet",
+        "name": "Blanc de poulet grillé",
+        "preparation": "Grillé, herbes, marqué",
+        "portion": "plusieurs tranches",
+        "estimatedGrams": 170,
+        "kind": "component",
+        "parentId": "food-plat",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "poulet",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-lunch-photo-1",
+          "d01-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "estimation visuelle",
+          "grams": 170
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 220,
+          "likely": 280,
+          "high": 360
+        },
+        "proteinGrams": {
+          "low": 35,
+          "likely": 42,
+          "high": 52
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-couscous",
+        "name": "Couscous",
+        "preparation": "Cuit, herbes visibles",
+        "portion": "1 tas",
+        "estimatedGrams": 160,
+        "kind": "component",
+        "parentId": "food-plat",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "couscous",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-lunch-photo-1",
+          "d01-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "estimation visuelle",
+          "grams": 160
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 160,
+          "likely": 200,
+          "high": 260
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 7,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 30,
+          "likely": 38,
+          "high": 50
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-legumes",
+        "name": "Légumes rôtis",
+        "preparation": "Rôtis à l’huile, grillés",
+        "portion": "1 portion",
+        "estimatedGrams": 160,
+        "kind": "component",
+        "parentId": "food-plat",
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable",
+          "added_fat"
+        ],
+        "varietyKey": "légumes rôtis",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-lunch-photo-1",
+          "d01-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "estimation visuelle",
+          "grams": 160
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 110,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 3,
+          "likely": 4,
+          "high": 6
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 10
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce blanche aux herbes",
+        "preparation": "Froide, type yaourt ou mayonnaise légère",
+        "portion": "1 cuillerée généreuse",
+        "estimatedGrams": 45,
+        "kind": "component",
+        "parentId": "food-plat",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce",
+          "dairy"
+        ],
+        "varietyKey": "sauce blanche",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d01-lunch-photo-1",
+          "d01-lunch-photo-2"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "estimation visuelle",
+          "grams": 45
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 70,
+          "high": 140
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 14
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 490,
+        "likely": 660,
+        "high": 940
+      },
+      "proteinGrams": {
+        "low": 43,
+        "likely": 54,
+        "high": 70
+      },
+      "carbohydrateGrams": {
+        "low": 39,
+        "likely": 53,
+        "high": 75
+      },
+      "fatGrams": {
+        "low": 13,
+        "likely": 25,
+        "high": 50
+      },
+      "fiberGrams": {
+        "low": 4,
+        "likely": 6,
+        "high": 11
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 8,
+        "high": 16
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammages visuels approximatifs seulement.",
+      "Huile de rôtissage non mesurable.",
+      "Composition exacte de la sauce (yaourt, crème, mayo) inconnue.",
+      "Couscous éventuellement enrichi en matière grasse.",
+      "Sucres ajoutés de la sauce non estimables."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-poulet",
+        "severity": "medium",
+        "detail": "Volume du poulet estimé sans balance ni référence d’échelle."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-legumes",
+        "severity": "medium",
+        "detail": "Quantité d’huile de rôtissage non visible précisément."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Base de la sauce (yaourt, fromage blanc ou mayonnaise) non identifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Niveau de transformation de la sauce non observable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Sucres éventuels dans la sauce non vérifiables."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sucres ajoutés de la sauce laissés indéterminés."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

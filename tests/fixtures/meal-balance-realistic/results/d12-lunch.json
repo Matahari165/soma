@@ -1,0 +1,653 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d12-lunch",
+  "mealDate": "2026-09-12",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:281de40ba5961cdcc53f8190a030cbb624aef6c4b1331977838c421013b08605",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Salade maison de pois chiches, tomates et concombre aux herbes, avec une tranche de pain grillé. Une huile (et probablement du citron) est visible en brillance ; les proportions restent floues.",
+    "dishType": "Salade de pois chiches",
+    "calorieAnalysis": "Repas plutôt modéré, autour de 430 kcal selon l’estimation la plus probable, selon la quantité d’huile et de pois chiches.",
+    "foods": [
+      {
+        "id": "food-salad",
+        "name": "Salade de pois chiches",
+        "preparation": "Crue, assaisonnée d’huile",
+        "portion": "1 bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "legume",
+          "vegetable"
+        ],
+        "varietyKey": "salade pois chiches",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "visuel",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-chickpeas",
+        "name": "Pois chiches",
+        "preparation": "Cuits, en salade",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "legume",
+          "plant_protein"
+        ],
+        "varietyKey": "pois chiches",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 110,
+          "likely": 165,
+          "high": 230
+        },
+        "proteinGrams": {
+          "low": 6,
+          "likely": 9,
+          "high": 13
+        },
+        "carbohydrateGrams": {
+          "low": 18,
+          "likely": 27,
+          "high": 38
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 4
+        },
+        "fiberGrams": {
+          "low": 5,
+          "likely": 8,
+          "high": 11
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-tomato",
+        "name": "Tomate",
+        "preparation": "Crue, en dés",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 12,
+          "likely": 20,
+          "high": 32
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 7
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-cucumber",
+        "name": "Concombre",
+        "preparation": "Cru, en dés",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "concombre",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 6,
+          "likely": 12,
+          "high": 20
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-herbs",
+        "name": "Herbes fraîches",
+        "preparation": "Ciselées",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "herbes",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-dressing",
+        "name": "Assaisonnement huile et citron",
+        "preparation": "Huile visible ; citron probable selon la note",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-salad",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat",
+          "sauce"
+        ],
+        "varietyKey": "vinaigrette huile",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 70,
+          "likely": 110,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 20
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-bread",
+        "name": "Pain",
+        "preparation": "Tranche grillée",
+        "portion": "1 tranche",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d12-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tranche",
+          "basis": "visuel",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 115,
+          "high": 160
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 4,
+          "high": 6
+        },
+        "carbohydrateGrams": {
+          "low": 14,
+          "likely": 21,
+          "high": 30
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 279,
+        "likely": 425,
+        "high": 630
+      },
+      "proteinGrams": {
+        "low": 9,
+        "likely": 15,
+        "high": 23
+      },
+      "carbohydrateGrams": {
+        "low": 35,
+        "likely": 55,
+        "high": 82
+      },
+      "fatGrams": {
+        "low": 11,
+        "likely": 17,
+        "high": 27
+      },
+      "fiberGrams": {
+        "low": 7,
+        "likely": 12,
+        "high": 18
+      },
+      "sugarGrams": {
+        "low": 6,
+        "likely": 11,
+        "high": 18
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 0
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Quantités de pois chiches, légumes et huile non mesurables précisément.",
+      "Type exact de pain et éventuel sucre ajouté inconnus.",
+      "Présence de citron et composition exacte de l’assaisonnement non confirmées visuellement."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-chickpeas",
+        "severity": "medium",
+        "detail": "Volume de pois chiches dans le bol difficile à convertir en grammes."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-dressing",
+        "severity": "high",
+        "detail": "Huile visible mais quantité et type d’huile inconnus ; citron seulement indiqué par la note."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-bread",
+        "severity": "medium",
+        "detail": "Pain non identifiable (maison, artisanal ou industriel)."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-bread",
+        "severity": "low",
+        "detail": "Sucre ajouté du pain non observable."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-dressing",
+        "severity": "medium",
+        "detail": "Recette d’assaisonnement non fournie."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

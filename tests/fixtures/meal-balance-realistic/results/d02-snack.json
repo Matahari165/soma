@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d02-snack",
+  "mealDate": "2026-09-02",
+  "mealType": "snack",
+  "inputFingerprint": "sha256:20d3a087a8d0cefb6a3be87e355e8807c5cf020728fc0940f4cb111a7501976b",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "En-cas : une barre de chocolat au riz soufflé, encore dans son papier aluminium. Marque et poids exacts non lisibles ; estimation nutritionnelle large d’après l’apparence d’une barre individuelle.",
+    "dishType": "Barre chocolat croustillant",
+    "calorieAnalysis": "Fourchette probable d’environ 210 kcal pour une barre individuelle, collations plutôt légère à modérée selon la taille réelle.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Barre de chocolat au riz soufflé",
+        "preparation": "Chocolat avec céréales soufflées, emballage aluminium",
+        "portion": "1 barre",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sweet",
+          "refined_grain"
+        ],
+        "varietyKey": "barre chocolat riz soufflé",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-snack-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "barre",
+          "basis": "unité visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": true,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 150,
+          "likely": 210,
+          "high": 280
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 18,
+          "likely": 25,
+          "high": 35
+        },
+        "fatGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 12,
+          "likely": 18,
+          "high": 26
+        },
+        "addedSugarGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 24
+        },
+        "confidence": "medium"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 150,
+        "likely": 210,
+        "high": 280
+      },
+      "proteinGrams": {
+        "low": 2,
+        "likely": 3,
+        "high": 5
+      },
+      "carbohydrateGrams": {
+        "low": 18,
+        "likely": 25,
+        "high": 35
+      },
+      "fatGrams": {
+        "low": 8,
+        "likely": 12,
+        "high": 18
+      },
+      "fiberGrams": {
+        "low": 0,
+        "likely": 1,
+        "high": 3
+      },
+      "sugarGrams": {
+        "low": 12,
+        "likely": 18,
+        "high": 26
+      },
+      "addedSugarGrams": {
+        "low": 10,
+        "likely": 16,
+        "high": 24
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Marque et grammage de la barre non identifiables",
+      "Teneur exacte en sucre ajouté et en matière grasse selon la recette inconnue",
+      "Le fond blanc à gauche n’est pas un aliment clairement identifiable"
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Emballage partiel sans nom de marque lisible."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Une barre visible mais le poids n’est pas mesurable sur la photo."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Recette (type de chocolat, liants, sucres) non indiquée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Valeurs estimées par analogie à une barre chocolat-céréales, sans étiquette."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,417 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d02-dinner",
+  "mealDate": "2026-09-02",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:818096b9c0919943c75e9ad912d414ba98bee5d0c094078f8d4c0b783d08a833",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Barquette de curry de poulet livré, avec riz blanc d’un côté et une sauce orange assez abondante recouvrant des morceaux de poulet. Une seule photo, pas de boisson visible. Les quantités (surtout le riz et l’épaisseur de sauce) restent approximatives.",
+    "dishType": "Curry de poulet au riz",
+    "calorieAnalysis": "Repas plutôt copieux : environ 650 à 950 kcal selon la part de riz et la richesse de la sauce, avec une estimation centrale autour de 800 kcal.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Curry de poulet au riz",
+        "preparation": "Plat livré, sauce mijotée abondante",
+        "portion": "1 barquette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "animal_protein",
+          "refined_grain",
+          "sauce"
+        ],
+        "varietyKey": "curry poulet riz",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "barquette",
+          "basis": "contenant visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Riz blanc",
+        "preparation": "Cuit, nature",
+        "portion": "moitié de barquette, volume difficile à juger",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "riz",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "volume visuel incertain",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 220,
+          "likely": 320,
+          "high": 450
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 48,
+          "likely": 70,
+          "high": 98
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Morceaux de poulet",
+        "preparation": "Mijotés dans la sauce",
+        "portion": "plusieurs morceaux dans la sauce",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "poulet",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "morceaux visibles, poids non mesurable",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 260,
+          "high": 360
+        },
+        "proteinGrams": {
+          "low": 22,
+          "likely": 32,
+          "high": 45
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 6
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 20
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Sauce curry",
+        "preparation": "Sauce onctueuse, assez présente",
+        "portion": "couche généreuse sur le poulet",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce",
+          "added_fat"
+        ],
+        "varietyKey": "sauce curry",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d02-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "sauce abondante, recette inconnue",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 150,
+          "likely": 220,
+          "high": 350
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 22
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 28
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 550,
+        "likely": 800,
+        "high": 1160
+      },
+      "proteinGrams": {
+        "low": 28,
+        "likely": 42,
+        "high": 62
+      },
+      "carbohydrateGrams": {
+        "low": 54,
+        "likely": 84,
+        "high": 126
+      },
+      "fatGrams": {
+        "low": 16,
+        "likely": 29,
+        "high": 51
+      },
+      "fiberGrams": {
+        "low": 0,
+        "likely": 2,
+        "high": 5
+      },
+      "sugarGrams": {
+        "low": 2,
+        "likely": 5,
+        "high": 14
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Quantité de riz difficile à juger sur une seule photo.",
+      "Recette et matières grasses de la sauce inconnues (crème, huile, beurre, sucres possibles).",
+      "Poids du poulet non mesurable.",
+      "Sucres ajoutés de la sauce non estimables de façon responsable."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Le volume de riz dans la barquette est mal cadré ; pas d’échelle fiable."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-4",
+        "severity": "high",
+        "detail": "Composition de la sauce (crème, huile, tomate, sucres) non identifiable."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-4",
+        "severity": "high",
+        "detail": "Sauce très présente ; teneur en matières grasses inconnue."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Niveau de transformation de la sauce livrée non observable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Sucres concentrés ou ajoutés dans le curry non visibles."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Sucres ajoutés laissés à null faute de recette."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

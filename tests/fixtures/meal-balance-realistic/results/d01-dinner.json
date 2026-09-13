@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d01-dinner",
+  "mealDate": "2026-09-01",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:6065c5ed57679fc4c9a36d305268787cf4e1badba57f6897a09df7197a439f0f",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Dîner décrit comme des pâtes à la tomate, un peu de parmesan et de l’huile ajoutée au feeling, assiette assez pleine, sans photo ni quantités précises.",
+    "dishType": "Pâtes à la tomate",
+    "calorieAnalysis": "Fourchette likely autour de 700 kcal pour une assiette assez pleine ; repas plutôt copieux, très dépendant de la quantité de pâtes et d’huile.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Pâtes à la tomate",
+        "preparation": "Sauce tomate, parmesan et huile ajoutée au feeling",
+        "portion": "assiette assez pleine",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "vegetable",
+          "dairy",
+          "added_fat"
+        ],
+        "varietyKey": "pâtes tomate",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Pâtes",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pâtes",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 280,
+          "likely": 480,
+          "high": 800
+        },
+        "proteinGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 28
+        },
+        "carbohydrateGrams": {
+          "low": 55,
+          "likely": 90,
+          "high": 150
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Sauce tomate",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 30,
+          "likely": 70,
+          "high": 160
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 10,
+          "high": 22
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 8
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 16
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 8
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Parmesan",
+        "preparation": null,
+        "portion": "un peu",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "parmesan",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 20,
+          "likely": 45,
+          "high": 90
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 7
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-5",
+        "name": "Huile ajoutée",
+        "preparation": "ajoutée au feeling",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "huile",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 120,
+          "high": 270
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 4,
+          "likely": 14,
+          "high": 30
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 370,
+        "likely": 715,
+        "high": 1320
+      },
+      "proteinGrams": {
+        "low": 13,
+        "likely": 22,
+        "high": 41
+      },
+      "carbohydrateGrams": {
+        "low": 59,
+        "likely": 100,
+        "high": 173
+      },
+      "fatGrams": {
+        "low": 6,
+        "likely": 22,
+        "high": 53
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 6,
+        "high": 13
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 9,
+        "high": 22
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 1,
+        "high": 8
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Portions non chiffrées (assiette assez pleine, un peu de parmesan, huile au feeling).",
+      "Recette et type de sauce tomate inconnus (maison ou industrielle).",
+      "Type d’huile et quantité d’huile inconnus.",
+      "Type de pâtes (blanches, complètes, fraîches) non précisé."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Assiette assez pleine sans grammes ni photo."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "Sauce tomate non détaillée : ingrédients et sucres ajoutés possibles."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-5",
+        "severity": "high",
+        "detail": "Huile ajoutée au feeling, type et quantité inconnus."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Niveau NOVA de la sauce non identifiable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Forme et recette de la sauce tomate inconnues."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Fourchettes caloriques très larges faute de quantités."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-2",
+        "severity": "low",
+        "detail": "Cuisson et type de pâtes non précisés."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

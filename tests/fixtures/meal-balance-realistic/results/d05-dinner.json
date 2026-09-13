@@ -1,0 +1,403 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d05-dinner",
+  "mealDate": "2026-09-05",
+  "mealType": "dinner",
+  "inputFingerprint": "sha256:433f010802df1bee36063bf683bac0a595801f38f25c0cc2ace6af7f3e48233d",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Bol de chili sin carne maison : sauce tomate, haricots (rouges et noirs), maïs et morceaux de légumes. Huile de cuisson non visible. Un bol bien rempli, dîner copieux mais sans viande.",
+    "dishType": "Chili sin carne",
+    "calorieAnalysis": "Fourchette likely autour de 420 kcal pour un bol : apport modéré à copieux selon la quantité de légumineuses et d’éventuelle matière grasse de cuisson.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Chili sin carne",
+        "preparation": "Mijoté maison, sauce tomate",
+        "portion": "1 bol",
+        "estimatedGrams": 400,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "legume",
+          "vegetable",
+          "plant_protein"
+        ],
+        "varietyKey": "chili sin carne",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-dinner-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "bol rempli visible",
+          "grams": 400
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "fiber_source",
+          "protein_source",
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 280,
+          "likely": 420,
+          "high": 580
+        },
+        "proteinGrams": {
+          "low": 14,
+          "likely": 22,
+          "high": 32
+        },
+        "carbohydrateGrams": {
+          "low": 35,
+          "likely": 52,
+          "high": 72
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 22
+        },
+        "fiberGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 24
+        },
+        "sugarGrams": {
+          "low": 6,
+          "likely": 12,
+          "high": 20
+        },
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Haricots",
+        "preparation": "Mijotés dans la sauce",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "legume",
+          "plant_protein"
+        ],
+        "varietyKey": "haricots",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "high"
+      },
+      {
+        "id": "food-3",
+        "name": "Maïs",
+        "preparation": "En grains dans le chili",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "maïs",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "high"
+      },
+      {
+        "id": "food-4",
+        "name": "Sauce tomate et légumes",
+        "preparation": "Sauce rouge mijotée, tomates et légumes en morceaux",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d05-dinner-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "minimally_processed"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-5",
+        "name": "Huile de cuisson",
+        "preparation": "Possible graisse de cuisson non notée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "huile",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "high",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 280,
+        "likely": 420,
+        "high": 580
+      },
+      "proteinGrams": {
+        "low": 14,
+        "likely": 22,
+        "high": 32
+      },
+      "carbohydrateGrams": {
+        "low": 35,
+        "likely": 52,
+        "high": 72
+      },
+      "fatGrams": {
+        "low": 6,
+        "likely": 12,
+        "high": 22
+      },
+      "fiberGrams": {
+        "low": 10,
+        "likely": 16,
+        "high": 24
+      },
+      "sugarGrams": {
+        "low": 6,
+        "likely": 12,
+        "high": 20
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Poids du bol estimé visuellement, sans balance.",
+      "Huile de cuisson non notée ni mesurable.",
+      "Recette (conserve vs frais, sucre dans la sauce, protéines végétales hachées) non fournie.",
+      "Sucres ajoutés non estimables."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Volume d’un bol visible mais densité et remplissage imprécis."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-5",
+        "severity": "high",
+        "detail": "Note indique une huile de cuisson non notée ; quantité et type inconnus."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Recette maison sans proportions ni ingrédients cachés confirmés."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Haricots et tomates peuvent venir de conserves ; NOVA du plat non identifiable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Sauce tomate : sucre ajouté possible mais non visible."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Sucres ajoutés et lipides de cuisson trop incertains pour une précision élevée."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

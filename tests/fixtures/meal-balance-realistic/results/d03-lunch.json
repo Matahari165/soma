@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d03-lunch",
+  "mealDate": "2026-09-03",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:f68c44489cf7499889d62d3abaf5d00c2d4660a9f187d472db224a3f23a99a74",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Repas du midi constitué d’un sandwich au thon acheté, éventuellement avec mayonnaise et fromage. Aucune photo ni quantité n’est indiquée ; l’estimation reste donc très incertaine.",
+    "dishType": "Sandwich",
+    "calorieAnalysis": "Fourchette likely autour de 500 kcal pour un sandwich du commerce de taille indéterminée : apport plutôt modéré à copieux selon la taille, le pain, la mayonnaise et le fromage.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Sandwich au thon",
+        "preparation": "Acheté, composition incomplète",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "animal_protein"
+        ],
+        "varietyKey": "sandwich au thon",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 300,
+          "likely": 500,
+          "high": 850
+        },
+        "proteinGrams": {
+          "low": 15,
+          "likely": 25,
+          "high": 40
+        },
+        "carbohydrateGrams": {
+          "low": 28,
+          "likely": 45,
+          "high": 75
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 22,
+          "high": 45
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 8
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 15
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 3,
+          "high": 12
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Mayonnaise",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "added_fat",
+          "sauce"
+        ],
+        "varietyKey": "mayonnaise",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Fromage",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "fromage",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 300,
+        "likely": 500,
+        "high": 850
+      },
+      "proteinGrams": {
+        "low": 15,
+        "likely": 25,
+        "high": 40
+      },
+      "carbohydrateGrams": {
+        "low": 28,
+        "likely": 45,
+        "high": 75
+      },
+      "fatGrams": {
+        "low": 10,
+        "likely": 22,
+        "high": 45
+      },
+      "fiberGrams": {
+        "low": 1,
+        "likely": 4,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 2,
+        "likely": 6,
+        "high": 15
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 3,
+        "high": 12
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Taille et poids du sandwich non indiqués.",
+      "Présence de mayonnaise et de fromage seulement possible, non confirmée.",
+      "Type de pain, recette, huile et quantités de garniture inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune portion ni gramme n’est donné pour le sandwich."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Recette du sandwich acheté inconnue (pain, thon, sauces)."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Mayonnaise mentionnée comme possible, sans quantité."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Fromage possible, type et quantité inconnus."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Nutrition estimée en fourchettes très larges faute de taille et de recette."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Marque du sandwich acheté non précisée."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "Sucres ajoutés du pain ou des sauces non observables."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

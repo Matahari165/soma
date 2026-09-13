@@ -1,0 +1,684 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d08-lunch",
+  "mealDate": "2026-09-08",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:e3190ed7a0695e13a408d94a56669e5db8c57a5600f215e3c189b182555afe2f",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Bol maison avec quinoa, pois chiches rôtis aux épices, laitue mélangée nappée d’une sauce claire, tomates et concombre en dés. Déjeuner visuellement complet, sans boisson ni autre plat visible.",
+    "dishType": "Bowl quinoa pois chiches",
+    "calorieAnalysis": "Fourchette probable d’environ 560 à 780 kcal (valeur centrale vers 670 kcal) : repas plutôt copieux pour un déjeuner, surtout à cause des pois chiches rôtis, du quinoa et de la sauce.",
+    "foods": [
+      {
+        "id": "food-bowl",
+        "name": "Bowl quinoa-pois chiches-légumes",
+        "preparation": "Composé, légumes crus, pois chiches rôtis, quinoa cuit",
+        "portion": "1 grand bol",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "whole_grain",
+          "legume",
+          "vegetable"
+        ],
+        "varietyKey": "bowl quinoa",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "bol",
+          "basis": "un grand bol vu de dessus",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-quinoa",
+        "name": "Quinoa cuit",
+        "preparation": "Cuit, grains clairs et rougeâtres",
+        "portion": "environ un quart à un tiers du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "whole_grain"
+        ],
+        "varietyKey": "quinoa",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "volume visuel dans le bol",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 160,
+          "likely": 220,
+          "high": 290
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 8,
+          "high": 11
+        },
+        "carbohydrateGrams": {
+          "low": 28,
+          "likely": 38,
+          "high": 50
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 6
+        },
+        "fiberGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 7
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pois-chiches",
+        "name": "Pois chiches rôtis",
+        "preparation": "Rôtis, assaisonnés, surface dorée",
+        "portion": "gros tas sur un quart du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "legume",
+          "plant_protein"
+        ],
+        "varietyKey": "pois chiches",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "volume visuel rôtis",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "fiber_source",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 260,
+          "high": 360
+        },
+        "proteinGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 17
+        },
+        "carbohydrateGrams": {
+          "low": 20,
+          "likely": 30,
+          "high": 42
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 10,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 5,
+          "likely": 8,
+          "high": 12
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-salade",
+        "name": "Salade verte mélangée",
+        "preparation": "Crue, feuilles de laitue et feuilles rouges",
+        "portion": "un quart du bol",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "salade verte",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "feuilles visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 8,
+          "likely": 15,
+          "high": 25
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-tomates",
+        "name": "Tomates en morceaux",
+        "preparation": "Crues, coupées",
+        "portion": "tas de dés au centre-bas",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "dés visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 22,
+          "high": 35
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-concombre",
+        "name": "Concombre en dés",
+        "preparation": "Cru, coupé en cubes",
+        "portion": "tas à droite",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "concombre",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "cubes visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 8,
+          "likely": 14,
+          "high": 22
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 5
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce crémeuse sur salade",
+        "preparation": "Nappée, aspect tahini ou vinaigrette épaisse",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-bowl",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce",
+          "added_fat"
+        ],
+        "varietyKey": "sauce salade",
+        "evidence": "inferred",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d08-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "filets visibles sur les feuilles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 140,
+          "high": 240
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 6,
+          "likely": 13,
+          "high": 22
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 431,
+        "likely": 671,
+        "high": 972
+      },
+      "proteinGrams": {
+        "low": 14,
+        "likely": 26,
+        "high": 39
+      },
+      "carbohydrateGrams": {
+        "low": 54,
+        "likely": 81,
+        "high": 117
+      },
+      "fatGrams": {
+        "low": 14,
+        "likely": 27,
+        "high": 46
+      },
+      "fiberGrams": {
+        "low": 10,
+        "likely": 18,
+        "high": 28
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 19
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 2
+      }
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammages non mesurables sans référence d’échelle.",
+      "Huile de rôtissage des pois chiches non quantifiable.",
+      "Composition exacte de la sauce (huile, tahini, sucres) inconnue.",
+      "NOVA de la sauce et d’éventuels assaisonnements industriels non identifiable."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-quinoa",
+        "severity": "medium",
+        "detail": "Volume visible mais poids du quinoa cuit non mesurable."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-pois-chiches",
+        "severity": "medium",
+        "detail": "Tas de pois chiches visible sans échelle ni poids."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-pois-chiches",
+        "severity": "medium",
+        "detail": "Rôtissage suggère de l’huile, quantité et type inconnus."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sauce crémeuse visible sans ingrédients identifiables."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Niveau de transformation de la sauce non déterminable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-sauce",
+        "severity": "medium",
+        "detail": "Présence éventuelle de sucre dans la sauce non vérifiable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sucres totaux et ajoutés de la sauce non estimables de façon responsable."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

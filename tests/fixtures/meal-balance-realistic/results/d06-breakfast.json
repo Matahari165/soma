@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d06-breakfast",
+  "mealDate": "2026-09-06",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:2edd78baa7301538e952a2e3a259b8b804d090cbfd9bd4081a34301fe2296fa5",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner composé d’un croissant, d’un pain aux raisins (ou escargot aux raisins) dans une assiette, et d’une tasse de café au lait. Un sachet de viennoiseries est visible en arrière-plan mais n’est pas compté comme consommé.",
+    "dishType": "Viennoiseries et café",
+    "calorieAnalysis": "Fourchette likely autour de 680 kcal pour l’assiette et la tasse : repas plutôt copieux pour un petit-déjeuner, surtout à cause des deux pâtes feuilletées beurrées.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Croissant",
+        "preparation": "Viennoiserie feuilletée, aspect doré au four",
+        "portion": "1 croissant",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "added_fat"
+        ],
+        "varietyKey": "croissant",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d06-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "croissant entier dans l’assiette",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 220,
+          "likely": 280,
+          "high": 360
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 22,
+          "likely": 30,
+          "high": 40
+        },
+        "fatGrams": {
+          "low": 12,
+          "likely": 16,
+          "high": 22
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1.5,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-2",
+        "name": "Pain aux raisins",
+        "preparation": "Pâte feuilletée enroulée, raisins secs visibles, surface brillante",
+        "portion": "1 pièce",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "added_fat",
+          "fruit",
+          "sweet"
+        ],
+        "varietyKey": "pain aux raisins",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d06-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "escargot aux raisins dans l’assiette",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 250,
+          "likely": 320,
+          "high": 420
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 6,
+          "high": 9
+        },
+        "carbohydrateGrams": {
+          "low": 28,
+          "likely": 38,
+          "high": 50
+        },
+        "fatGrams": {
+          "low": 12,
+          "likely": 16,
+          "high": 24
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 8,
+          "likely": 14,
+          "high": 22
+        },
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-3",
+        "name": "Café au lait",
+        "preparation": "Boisson chaude, aspect laiteux dans une tasse",
+        "portion": "1 tasse",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage",
+          "dairy"
+        ],
+        "varietyKey": "café au lait",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d06-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "tasse",
+          "basis": "mug céramique rempli",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 30,
+          "likely": 80,
+          "high": 160
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 14
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 9
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 500,
+        "likely": 680,
+        "high": 940
+      },
+      "proteinGrams": {
+        "low": 9,
+        "likely": 16,
+        "high": 25
+      },
+      "carbohydrateGrams": {
+        "low": 52,
+        "likely": 74,
+        "high": 104
+      },
+      "fatGrams": {
+        "low": 25,
+        "likely": 36,
+        "high": 55
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 3.5,
+        "high": 7
+      },
+      "sugarGrams": {
+        "low": 13,
+        "likely": 24,
+        "high": 42
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammages non mesurables : portions estimées visuellement seulement.",
+      "Recette et beurre/sucre des viennoiseries inconnus (boulangerie vs industriel).",
+      "Volume et type de lait (et sucre éventuel) dans le café non identifiables.",
+      "Sachet de viennoiseries en arrière-plan non compté comme consommé.",
+      "Sucres ajoutés non séparables des sucres des raisins."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Un croissant visible, mais le poids exact n’est pas mesurable."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Beurre, sucre et type de farine de la pâte non connus."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Une pièce visible ; taille et garniture intérieure non pesées."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Raisins visibles ; sirop, crème pâtissière ou sucre ajouté non confirmés."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-2",
+        "severity": "low",
+        "detail": "Surface brillante : nappage possible, non identifiable."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "Volume de lait et concentration du café inconnus."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-3",
+        "severity": "low",
+        "detail": "Type de lait et sucrage éventuel non visibles."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Boisson maison vs soluble/aromatisée non distinguable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Sucres ajoutés totaux non estimables de façon responsable."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

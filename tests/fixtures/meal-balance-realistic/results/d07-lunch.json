@@ -1,0 +1,589 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d07-lunch",
+  "mealDate": "2026-09-07",
+  "mealType": "lunch",
+  "inputFingerprint": "sha256:12d13966685bb4bd85c034f2d89fe3e0cea49b074efb3b5964ac5f3a2626e94a",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Repas du midi : burger au pain brioché avec steak haché, salade et sauce, accompagné de frites. Une bouchée du burger est visible ; d’après la note, environ la moitié des frites n’a pas été mangée. Portions et recettes (huile, sauce) restent très incertaines.",
+    "dishType": "Burger et frites",
+    "calorieAnalysis": "Fourchette likely d’environ 650 kcal pour ce qui a été consommé (burger plus une partie des frites) : apport plutôt copieux, avec une large incertitude selon la taille du steak, la sauce et la quantité de frites réellement mangée.",
+    "foods": [
+      {
+        "id": "food-burger",
+        "name": "Burger",
+        "preparation": "Pain brioché, steak grillé, salade, sauce dans le pain",
+        "portion": "1 burger (entamé)",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "animal_protein",
+          "vegetable",
+          "sauce"
+        ],
+        "varietyKey": "burger",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "burger",
+          "basis": "pièce visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pain",
+        "name": "Pain à burger",
+        "preparation": "Pain type brioché, légèrement brillant",
+        "portion": "1 pain",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-burger",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain burger",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "pain",
+          "basis": "pièce",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 180,
+          "likely": 240,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 6,
+          "likely": 8,
+          "high": 12
+        },
+        "carbohydrateGrams": {
+          "low": 30,
+          "likely": 40,
+          "high": 52
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 10
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 8
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-steak",
+        "name": "Steak haché",
+        "preparation": "Grillée / saisie, visible dans le burger",
+        "portion": "1 galette",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-burger",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "steak haché",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "galette",
+          "basis": "pièce visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 150,
+          "likely": 220,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 12,
+          "likely": 18,
+          "high": 26
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 24
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-salade",
+        "name": "Salade iceberg",
+        "preparation": "Crue, feuilles dans le burger",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-burger",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "laitue",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-sauce",
+        "name": "Sauce du burger",
+        "preparation": "Sauce claire/rosée dans le pain (note)",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-burger",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "sauce",
+          "added_fat"
+        ],
+        "varietyKey": "sauce burger",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 80,
+          "high": 140
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fatGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 14
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 6
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-frites",
+        "name": "Frites",
+        "preparation": "Frites de pomme de terre, frites à l’huile",
+        "portion": "environ la moitié d’une barquette (mangée)",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "potato",
+          "added_fat"
+        ],
+        "varietyKey": "frites",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-lunch-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 150,
+          "high": 280
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "carbohydrateGrams": {
+          "low": 12,
+          "likely": 20,
+          "high": 35
+        },
+        "fatGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 16
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 452,
+        "likely": 695,
+        "high": 1072
+      },
+      "proteinGrams": {
+        "low": 19,
+        "likely": 29,
+        "high": 45
+      },
+      "carbohydrateGrams": {
+        "low": 44,
+        "likely": 67,
+        "high": 104
+      },
+      "fatGrams": {
+        "low": 20,
+        "likely": 37,
+        "high": 64
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 5,
+        "high": 9
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 11,
+        "high": 23
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 6,
+        "high": 14
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Grammages non mesurables sur la photo.",
+      "Quantité de frites réellement mangée (moitié laissée) très approximative.",
+      "Composition exacte de la sauce et éventuel fromage non confirmés.",
+      "Huile d’absorption des frites et taille du steak inconnues.",
+      "Sucres ajoutés du pain et de la sauce non identifiables."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-frites",
+        "severity": "high",
+        "detail": "La note indique qu’environ la moitié des frites a été laissée ; la photo ne permet pas de quantifier précisément la part mangée."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-steak",
+        "severity": "medium",
+        "detail": "Épaisseur et diamètre du steak haché peu lisibles ; pas de grammes fiables."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-sauce",
+        "severity": "high",
+        "detail": "Sauce visible/mentionnée dans le pain, type et quantité inconnus."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-frites",
+        "severity": "medium",
+        "detail": "Huile de friture et absorption non observables."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-burger",
+        "severity": "medium",
+        "detail": "Recette du burger (fromage, condiments cachés) non entièrement visible."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Sucre éventuellement ajouté dans le pain brioché non vérifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-steak",
+        "severity": "low",
+        "detail": "Steak haché : transformation (assaisonnement, additifs) non identifiable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Macros et calories estimés en larges fourchettes faute de poids et de recette."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d11-snack",
+  "mealDate": "2026-09-11",
+  "mealType": "snack",
+  "inputFingerprint": "sha256:80dd717c354e5499685590622be16d7511aa7e031def80d3786e62bd470e855a",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Sachet ouvert de chips triangulaires type tortilla/nachos, assaisonnées, encore dans l’emballage. Quantité consommée et marque non déterminables ; collations visibles uniquement.",
+    "dishType": "Chips de maïs",
+    "calorieAnalysis": null,
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Chips de maïs (tortilla)",
+        "preparation": "Frites, assaisonnées",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "added_fat"
+        ],
+        "varietyKey": "chips de maïs",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-snack-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": null,
+      "proteinGrams": null,
+      "carbohydrateGrams": null,
+      "fatGrams": null,
+      "fiberGrams": null,
+      "sugarGrams": null,
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Portion consommée inconnue (reste dans le sachet, pas d’assiette ni d’échelle).",
+      "Marque et recette d’assaisonnement non lisibles.",
+      "Huile, sel et sucres ajoutés non quantifiables.",
+      "Calories et macros non estimables de façon responsable."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Photo du fond du sachet : volume restant visible, quantité ingérée non mesurable."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Emballage intérieur métallisé, logo et étiquette nutritionnelle non visibles."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Assaisonnement visible mais composition (fromage, épices, sucres) non identifiable."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Friture/huile probable mais type et quantité d’huile inconnus."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Chips salées ; sucres concentrés ou liquides non vérifiables sans recette."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Sans grammes ni portion, calories et macros restent nulles."
+      },
+      {
+        "code": "quality_properties_unknown",
+        "field": "qualityProperties",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "Propriétés de qualité non attribuées faute de preuve claire au-delà du produit transformé."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -2,22 +2,25 @@ import type { ConfirmedMealFood, ConfirmedMealRecord, MealDailyAggregate } from 
 import type { NutritionTargets } from "@/domain/nutrition-targets";
 
 /**
- * The seven dimensions intentionally stay close in size so that no single
- * proxy can dominate the daily result. These are nominal weights; confidence
- * and missing observations reduce the effective weight at calculation time.
+ * Six behavioural dimensions make up the 100-point score. Nutrition
+ * coverage remains visible as a proof metric, but is deliberately
+ * non-contributive: knowing more nutrition numbers must not improve the
+ * behavioural score by itself.
  */
 export const MEAL_BALANCE_COMPONENT_WEIGHTS = {
-  variety: 15,
-  foodQuality: 15,
-  addedSugar: 15,
-  sugarExposure: 12,
-  ultraProcessing: 13,
-  nutritionCoverage: 15,
+  variety: 10,
+  foodQuality: 20,
+  addedSugar: 20,
+  sugarExposure: 15,
+  ultraProcessing: 20,
+  nutritionCoverage: 0,
   energy: 15,
 } as const;
 
-export const MEAL_BALANCE_WEIGHT_TOTAL = Object.values(MEAL_BALANCE_COMPONENT_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
-export const MEAL_BALANCE_ALGORITHM_VERSION = "meal-balance-v1" as const;
+export const MEAL_BALANCE_WEIGHT_TOTAL = Object.values(MEAL_BALANCE_COMPONENT_WEIGHTS).reduce((sum: number, weight: number) => sum + weight, 0);
+export const MEAL_BALANCE_ALGORITHM_VERSION = "meal-balance-v2" as const;
+export const MEAL_BALANCE_ADVERSE_PENALTY_CAP = 25 as const;
+export const MEAL_BALANCE_NEUTRAL_BASE = 50 as const;
 
 export type MealBalanceComponentKey = keyof typeof MEAL_BALANCE_COMPONENT_WEIGHTS;
 export type MealBalanceStatus = "ready" | "limited" | "insufficient";
@@ -30,6 +33,7 @@ export type MealBalanceComponent = {
   score: number | null;
   weight: number;
   effectiveWeight: number;
+  /** Weighted adjustment in points versus the neutral base; can be negative. */
   contribution: number;
   /** 0–1, the fraction of this dimension that is actually observed. */
   observationCoverage: number;
@@ -48,6 +52,29 @@ export type MealBalanceEffect = {
   summary: string;
 };
 
+export type MealBalanceAdverseSignalKey = "addedSugar" | "sugarExposure" | "ultraProcessing" | "alcohol";
+
+export type MealBalanceAdverseSignal = {
+  key: MealBalanceAdverseSignalKey;
+  label: string;
+  /** Raw risk before confidence weighting, on the same 0–100 scale as a component. */
+  risk: number;
+  /** Risk retained after applying the evidence confidence. */
+  weightedRisk: number;
+  /** 0–1 confidence for this signal, kept separate from the day confidence. */
+  confidence: number;
+};
+
+export type MealBalanceWorstMeal = {
+  mealId: string;
+  type: ConfirmedMealRecord["mealType"];
+  /** Bounded points removed from the daily score, never a /100 score. */
+  penalty: number;
+  signals: readonly MealBalanceAdverseSignal[];
+  confidence: number;
+  observationStatus: MealBalanceStatus;
+};
+
 export type MealBalanceScore = {
   algorithmVersion: typeof MEAL_BALANCE_ALGORITHM_VERSION;
   score: number | null;
@@ -59,6 +86,12 @@ export type MealBalanceScore = {
   components: readonly MealBalanceComponent[];
   strongestEffects: readonly MealBalanceEffect[];
   reasons: readonly string[];
+  /** Score before the bounded adverse penalty: neutral base + component adjustments. */
+  baseScore: number | null;
+  /** Bounded adverse points removed after the six behavioural dimensions. */
+  adversePenalty: number;
+  /** Explainable source of `adversePenalty`; null means no adverse signal observed. */
+  worstMeal: MealBalanceWorstMeal | null;
 };
 
 type ComponentInput = Omit<MealBalanceComponent, "weight" | "effectiveWeight" | "contribution" | "status"> & {
@@ -97,6 +130,18 @@ function unit(value: number) {
 
 function score(value: number) {
   return unit(clamp(value));
+}
+
+/**
+ * Keep an observed negative signal actionable even when confidence is low,
+ * while pulling positive claims towards the neutral midpoint when evidence
+ * is incomplete. Unknown dimensions are neutral rather than zero.
+ */
+function evidenceAdjustedScore(input: Pick<MealBalanceComponent, "score" | "confidence" | "observationCoverage">) {
+  if (input.score === null || input.observationCoverage <= 0) return MEAL_BALANCE_NEUTRAL_BASE;
+  if (input.score <= 50) return score(input.score);
+  const evidence = clamp(input.confidence, 0, 1) * clamp(input.observationCoverage, 0, 1);
+  return score(MEAL_BALANCE_NEUTRAL_BASE + (input.score - MEAL_BALANCE_NEUTRAL_BASE) * evidence);
 }
 
 function finiteNonNegative(value: number | null | undefined) {
@@ -218,7 +263,9 @@ function createComponent(input: ComponentInput): MealBalanceComponent {
   const weight = MEAL_BALANCE_COMPONENT_WEIGHTS[input.key];
   const observationCoverage = clamp(input.observationCoverage, 0, 1);
   const effectiveWeight = input.score === null ? 0 : unit(weight * observationCoverage * clamp(input.confidence, 0, 1));
-  const contribution = input.score === null ? 0 : unit(effectiveWeight * input.score / 100);
+  const contribution = weight <= 0
+    ? 0
+    : unit(weight * (evidenceAdjustedScore({ ...input, observationCoverage }) - MEAL_BALANCE_NEUTRAL_BASE) / 100);
   return {
     ...input,
     weight,
@@ -336,8 +383,10 @@ function qualityComponent(day: MealDailyAggregate, foods: readonly ConfirmedMeal
 
 function addedSugarScore(addedSugarG: number) {
   if (addedSugarG <= 0) return 100;
-  if (addedSugarG <= 5) return 100 - addedSugarG * 2;
-  return 90 * Math.pow(5 / addedSugarG, 0.75);
+  if (addedSugarG <= 5) return 100 - addedSugarG * 3;
+  // The tolerance is intentionally short: after 5 g, each extra amount has
+  // a visibly stronger effect instead of keeping most days in the 70–80 band.
+  return 85 * Math.pow(5 / addedSugarG, 1.1);
 }
 
 function addedSugarComponent(day: MealDailyAggregate, confidence: number, observationCoverage: number): ComponentInput {
@@ -350,8 +399,22 @@ function addedSugarComponent(day: MealDailyAggregate, confidence: number, observ
     confidence,
     observedValue: unit(value),
     target: "Idéal personnel : 0 g · tolérance : 5 g/jour",
-    summary: value === 0 ? "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici." : "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent.",
+    summary: value === 0 ? "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici." : "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent. La couverture reflète uniquement les repas où ce champ est renseigné.",
     observationCoverage,
+  };
+}
+
+/**
+ * A liquid is not automatically a sugar exposure. The provider's explicit
+ * concentrated flag is a sugar signal; otherwise only an existing sweet/sugar
+ * food-group label can turn the liquid flag into a penalty.
+ */
+function sugarExposureFlags(food: ConfirmedMealFood) {
+  const exposure = food.sugarExposure;
+  const groupSignals = (food.foodGroups ?? []).some((group) => /sweet|sugar|juice|dessert/i.test(group));
+  return {
+    liquid: exposure?.liquid === true && (exposure.concentrated === true || groupSignals),
+    concentrated: exposure?.concentrated === true,
   };
 }
 
@@ -359,18 +422,18 @@ function sugarExposureComponent(day: MealDailyAggregate, foods: readonly Confirm
   const labelled = foods.filter(sugarExposureObservation);
   if (!labelled.length) return { ...emptyComponent("sugarExposure"), observationCoverage: 0 };
   const labelCoverage = foodCoverage(day, foods, "sugarExposure", sugarExposureObservation);
-  const liquidShare = weightedShare(labelled, (food) => food.sugarExposure?.liquid === true) ?? 0;
-  const concentratedShare = weightedShare(labelled, (food) => food.sugarExposure?.concentrated === true) ?? 0;
-  const liquidCount = labelled.filter((food) => food.sugarExposure?.liquid === true).length;
-  const concentratedCount = labelled.filter((food) => food.sugarExposure?.concentrated === true).length;
+  const liquidShare = weightedShare(labelled, (food) => sugarExposureFlags(food).liquid) ?? 0;
+  const concentratedShare = weightedShare(labelled, (food) => sugarExposureFlags(food).concentrated) ?? 0;
+  const liquidCount = labelled.filter((food) => sugarExposureFlags(food).liquid).length;
+  const concentratedCount = labelled.filter((food) => sugarExposureFlags(food).concentrated).length;
   return {
     key: "sugarExposure",
     label: componentLabels.sugarExposure,
-    score: score(100 - 35 * liquidShare - 35 * concentratedShare),
+    score: score(100 - 50 * liquidShare - 50 * concentratedShare),
     confidence: confidenceForAxis(foods, labelled, "sugarExposure", confidence),
     observedValue: `${liquidCount} liquide · ${concentratedCount} concentré`,
     target: "Limiter les expositions liquides et concentrées",
-    summary: "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+    summary: "Seules les expositions avec un signal sucré sont pénalisées ; eau, lait, café et sauce soja ne le sont pas par leur forme liquide seule.",
     observationCoverage: observationCoverage * labelCoverage,
   };
 }
@@ -379,7 +442,7 @@ function ultraProcessingComponent(day: MealDailyAggregate, foods: readonly Confi
   const labelled = foods.filter(novaObservation);
   if (!labelled.length) return { ...emptyComponent("ultraProcessing"), observationCoverage: 0 };
   const labelCoverage = foodCoverage(day, foods, "novaGroup", novaObservation);
-  const points = { 1: 100, 2: 80, 3: 55, 4: 15 } as const;
+  const points = { 1: 100, 2: 70, 3: 35, 4: 5 } as const;
   const averageNovaScore = weightedAverage(labelled, (food) => points[food.novaGroup as 1 | 2 | 3 | 4], foodWeight) ?? 0;
   const group4Count = labelled.filter((food) => food.novaGroup === 4).length;
   return {
@@ -417,6 +480,8 @@ export function scoreEnergyForMealBalance(input: {
   targets: NutritionTargets;
   goalMode: MealBalanceGoalMode;
   partialDay?: boolean;
+  /** Fraction of expected meal slots represented by this observation. */
+  observationCoverage?: number;
 }) {
   const calories = finiteNonNegative(input.caloriesKcal);
   if (calories === null) return null;
@@ -425,15 +490,38 @@ export function scoreEnergyForMealBalance(input: {
   const usefulHigh = input.goalMode === "build_muscle"
     ? targetHigh + Math.max(0, finiteNonNegative(input.targets.surplusKcal) ?? 0)
     : targetHigh;
-  if (calories >= low && calories <= usefulHigh) return 100;
-  if (calories < low) {
-    if (low === 0) return 100;
-    const raw = 100 * Math.pow(calories / low, 0.65);
-    // A partial day can look artificially low because later meals are simply
-    // unobserved. Keep that uncertainty from becoming a strong low-energy hit.
-    return score(input.partialDay ? Math.max(raw, 75) : raw);
+  const fullDayScore = calories >= low && calories <= usefulHigh
+    ? 100
+    : calories < low
+      ? low === 0 ? 100 : score(100 * Math.pow(calories / low, 0.65))
+      : score(100 * Math.pow(usefulHigh / calories, 0.8));
+  const coverage = clamp(input.observationCoverage ?? (input.partialDay ? 0.5 : 1), 0, 1);
+  // A partial day is not a complete intake observation. Bring the energy
+  // signal towards neutral in proportion to its observed meal-slot coverage,
+  // without inventing a minimum score such as the former 75-point floor.
+  const evidence = input.partialDay ? Math.max(0.35, coverage) : coverage;
+  return score(50 + (fullDayScore - 50) * evidence);
+}
+
+function recordFieldCoverage(day: MealDailyAggregate, records: readonly ConfirmedMealRecord[], read: (record: ConfirmedMealRecord) => NutritionEstimateLike | null | undefined) {
+  const meal = mealCoverage(day);
+  if (records.length) {
+    const observed = records.filter((record) => finiteNonNegative(read(record)?.likely) !== null).length / records.length;
+    return meal * observed;
   }
-  return score(100 * Math.pow(usefulHigh / calories, 0.8));
+  return meal;
+}
+
+type NutritionEstimateLike = { likely: number };
+
+function addedSugarObservationCoverage(day: MealDailyAggregate, records: readonly ConfirmedMealRecord[]) {
+  if (records.length) return recordFieldCoverage(day, records, (record) => record.addedSugarG);
+  return day.addedSugarG === null ? 0 : mealCoverage(day);
+}
+
+function energyObservationCoverage(day: MealDailyAggregate, records: readonly ConfirmedMealRecord[]) {
+  if (records.length) return recordFieldCoverage(day, records, (record) => record.caloriesKcal);
+  return day.caloriesKcal === null ? 0 : mealCoverage(day);
 }
 
 function energyComponent(day: MealDailyAggregate, targets: NutritionTargets, goalMode: MealBalanceGoalMode, confidence: number, observationCoverage: number): ComponentInput {
@@ -445,18 +533,101 @@ function energyComponent(day: MealDailyAggregate, targets: NutritionTargets, goa
   return {
     key: "energy",
     label: componentLabels.energy,
-    score: scoreEnergyForMealBalance({ caloriesKcal: value, targets, goalMode, partialDay: observationCoverage < 0.75 }),
+    score: scoreEnergyForMealBalance({ caloriesKcal: value, targets, goalMode, partialDay: observationCoverage < 0.75, observationCoverage }),
     confidence,
     observedValue: unit(value),
     target: `${targets.caloriesKcal.low}–${usefulHigh} kcal selon la cible existante${goalMode === "build_muscle" ? " et le surplus configuré" : ""}`,
-    summary: "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+    summary: "La zone utile est un plateau ; les écarts faibles sont graduels et une journée partielle reste distinguée par sa couverture plutôt que par un plancher artificiel.",
     observationCoverage,
   };
 }
 
+const mealRiskNovaPenalty = { 1: 0, 2: 30, 3: 65, 4: 100 } as const;
+
+function adverseSignal(key: MealBalanceAdverseSignalKey, label: string, risk: number, confidence: number): MealBalanceAdverseSignal {
+  const boundedRisk = score(risk);
+  const boundedConfidence = clamp(confidence, 0, 1);
+  return {
+    key,
+    label,
+    risk: boundedRisk,
+    weightedRisk: score(boundedRisk * boundedConfidence),
+    confidence: unit(boundedConfidence),
+  };
+}
+
+function mealRiskSignals(record: ConfirmedMealRecord): MealBalanceAdverseSignal[] {
+  // Keep the alcohol observation separate and intentionally inspect the raw
+  // food list before `foodsForRecords` removes alcoholic items from nutrition
+  // and food-quality dimensions.
+  const rawFoods = record.foods ?? [];
+  const foods = foodsForRecords([record]);
+  const recordEvidence = recordConfidence([record], 0.5);
+  const signals: MealBalanceAdverseSignal[] = [];
+  const addedSugar = finiteNonNegative(record.addedSugarG?.likely);
+  if (addedSugar !== null) {
+    const risk = score(100 - addedSugarScore(addedSugar));
+    if (risk > 0) signals.push(adverseSignal("addedSugar", "Sucre ajouté", risk, recordEvidence));
+  }
+
+  const labelledExposure = foods.filter(sugarExposureObservation);
+  if (labelledExposure.length) {
+    const liquidShare = weightedShare(labelledExposure, (food) => sugarExposureFlags(food).liquid) ?? 0;
+    const concentratedShare = weightedShare(labelledExposure, (food) => sugarExposureFlags(food).concentrated) ?? 0;
+    const risk = score(100 * (0.6 * liquidShare + 0.6 * concentratedShare));
+    const confidence = confidenceForAxis(foods, labelledExposure, "sugarExposure", recordEvidence);
+    if (risk > 0) signals.push(adverseSignal("sugarExposure", "Exposition sucrée", risk, confidence));
+  }
+
+  const labelledNova = foods.filter(novaObservation);
+  const novaRisk = weightedAverage(labelledNova, (food) => mealRiskNovaPenalty[food.novaGroup as 1 | 2 | 3 | 4], foodWeight);
+  if (novaRisk !== null && novaRisk > 0) {
+    signals.push(adverseSignal("ultraProcessing", "NOVA défavorable", novaRisk, confidenceForAxis(foods, labelledNova, "novaGroup", recordEvidence)));
+  }
+
+  const alcoholicFoods = rawFoods.filter((food) => food.alcoholic === true);
+  const alcoholShare = weightedShare(rawFoods, (food) => food.alcoholic === true) ?? 0;
+  if (alcoholicFoods.length && alcoholShare > 0) {
+    signals.push(adverseSignal("alcohol", "Alcool signalé", alcoholShare * 100, foodConfidence(alcoholicFoods, recordEvidence)));
+  }
+
+  return signals;
+}
+
+function mealRiskAssessment(record: ConfirmedMealRecord): MealBalanceWorstMeal | null {
+  const signals = mealRiskSignals(record);
+  if (!signals.length) return null;
+
+  // Correlated NOVA4, exposure and added-sugar signals are folded into one
+  // bounded meal-level risk so the same bad meal is not counted three times in
+  // the extra penalty. Each signal has already been confidence-weighted.
+  const strongest = Math.max(...signals.map((signal) => signal.weightedRisk));
+  const remainder = signals.reduce((sum, signal) => sum + signal.weightedRisk, 0) - strongest;
+  const severity = score(strongest + 0.3 * remainder);
+  const penalty = unit(Math.min(MEAL_BALANCE_ADVERSE_PENALTY_CAP, severity * 0.25));
+  const confidence = signals.length
+    ? unit(signals.reduce((sum, signal) => sum + signal.confidence, 0) / signals.length)
+    : 0;
+  return {
+    mealId: record.id,
+    type: record.mealType,
+    penalty,
+    signals,
+    confidence,
+    observationStatus: confidence >= 0.75 ? "ready" : "limited",
+  };
+}
+
+function worstMealAssessment(records: readonly ConfirmedMealRecord[]) {
+  const candidates = records.map(mealRiskAssessment).filter((meal): meal is MealBalanceWorstMeal => meal !== null);
+  if (!candidates.length) return null;
+  return [...candidates].sort((first, second) => second.penalty - first.penalty || first.mealId.localeCompare(second.mealId))[0] ?? null;
+}
+
 function effectForComponent(component: MealBalanceComponent): MealBalanceEffect | null {
   if (component.score === null) return null;
-  const distance = Math.abs(component.score - 75);
+  if (component.weight <= 0) return null;
+  const distance = Math.abs(component.score - 50);
   if (distance < 8) return null;
   const direction: MealBalanceEffectDirection = component.score >= 80 ? "positive" : component.score < 45 ? "negative" : "caution";
   return {
@@ -478,6 +649,9 @@ function emptyResult(): MealBalanceScore {
     components: componentOrder.map(emptyComponent),
     strongestEffects: [],
     reasons: ["Aucun repas confirmé exploitable pour cette journée."],
+    baseScore: null,
+    adversePenalty: 0,
+    worstMeal: null,
   };
 }
 
@@ -506,32 +680,54 @@ export function calculateMealBalanceScore(input: {
     : 0.5;
   const globalConfidence = recordConfidence(records, dayConfidence);
   const foodConfidenceValue = foodConfidence(foods, globalConfidence);
-  const foodObservationCoverage = records.length
+  const foodListObservationCoverage = records.length
     ? mealObservationCoverage * (day.foodListCoverage ?? 1)
     : day.foodVarietyCount !== null ? Math.min(mealObservationCoverage * (day.foodListCoverage ?? 1), 0.5) : 0;
+  // `day.foodObservationCoverage` already includes foodListCoverage for each
+  // labelled axis. Keep the base at meal coverage here so quality, sugar
+  // exposure and NOVA do not discount missing food lists a second time.
+  const foodAxisObservationCoverage = records.length ? mealObservationCoverage : foodListObservationCoverage;
+  const addedSugarCoverage = addedSugarObservationCoverage(day, records);
+  const energyCoverage = energyObservationCoverage(day, records);
 
   const rawComponents: ComponentInput[] = [
-    varietyComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
-    qualityComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
-    addedSugarComponent(day, globalConfidence, nutritionObservationCoverage),
-    sugarExposureComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
-    ultraProcessingComponent(day, foods, foodConfidenceValue, foodObservationCoverage),
+    varietyComponent(day, foods, foodConfidenceValue, foodListObservationCoverage),
+    qualityComponent(day, foods, foodConfidenceValue, foodAxisObservationCoverage),
+    addedSugarComponent(day, globalConfidence, addedSugarCoverage),
+    sugarExposureComponent(day, foods, foodConfidenceValue, foodAxisObservationCoverage),
+    ultraProcessingComponent(day, foods, foodConfidenceValue, foodAxisObservationCoverage),
     nutritionCoverageComponent(day, globalConfidence, nutritionObservationCoverage),
-    energyComponent(day, input.targets, goalMode, globalConfidence, nutritionObservationCoverage),
+    energyComponent(day, input.targets, goalMode, globalConfidence, energyCoverage),
   ];
   const components = rawComponents.map(createComponent);
-  const effectiveWeight = components.reduce((sum, component) => sum + component.effectiveWeight, 0);
-  const contribution = components.reduce((sum, component) => sum + component.contribution, 0);
-  const nominalObservedWeight = components.reduce((sum, component) => sum + (component.score === null ? 0 : component.weight * component.observationCoverage), 0);
-  const confidence = nominalObservedWeight ? unit(components.reduce((sum, component) => sum + (component.score === null ? 0 : component.weight * component.confidence * component.observationCoverage), 0) / nominalObservedWeight) : 0;
-  const coverage = unit(components.reduce((sum, component) => sum + component.weight * (component.score === null ? 0 : component.observationCoverage), 0) / MEAL_BALANCE_WEIGHT_TOTAL);
-  const calculatedScore = effectiveWeight > 0 ? score(contribution / effectiveWeight * 100) : null;
+  const behaviouralComponents = components.filter((component) => component.weight > 0);
+  const hasObservedBehaviour = behaviouralComponents.some((component) => component.score !== null && component.observationCoverage > 0);
+  // Fixed behavioural weights keep unknown dimensions neutral at 50 instead
+  // of renormalising the day around whichever axes happened to be available.
+  // Each component exposes its rounded adjustment, so this same expression is
+  // reconstructible from the public contract and remains stable in the UI.
+  const componentAdjustment = behaviouralComponents.reduce((sum, component) => sum + component.contribution, 0);
+  const baseScore = hasObservedBehaviour ? score(MEAL_BALANCE_NEUTRAL_BASE + componentAdjustment) : null;
+  const nominalObservedWeight = behaviouralComponents.reduce((sum, component) => sum + (component.score === null ? 0 : component.weight * component.observationCoverage), 0);
+  const confidence = nominalObservedWeight ? unit(behaviouralComponents.reduce((sum, component) => sum + (component.score === null ? 0 : component.weight * component.confidence * component.observationCoverage), 0) / nominalObservedWeight) : 0;
+  const coverage = unit(behaviouralComponents.reduce((sum, component) => sum + component.weight * (component.score === null ? 0 : component.observationCoverage), 0) / MEAL_BALANCE_WEIGHT_TOTAL);
+  const worstMeal = hasObservedBehaviour ? worstMealAssessment(records) : null;
+  const penalty = worstMeal?.penalty ?? 0;
+  const calculatedScore = baseScore === null ? null : score(baseScore - penalty);
   const status: MealBalanceStatus = calculatedScore === null ? "insufficient" : coverage >= 0.75 && confidence >= 0.75 ? "ready" : "limited";
-  const strongestEffects = components
+  const baseStrongestEffects = components
     .map(effectForComponent)
     .filter((effect): effect is MealBalanceEffect => effect !== null)
-    .sort((first, second) => Math.abs(second.points - 75) - Math.abs(first.points - 75))
+    .sort((first, second) => {
+      const directionRank = { negative: 0, caution: 1, positive: 2 } as const;
+      return directionRank[first.direction] - directionRank[second.direction]
+        || Math.abs(second.points - 50) - Math.abs(first.points - 50);
+    })
     .slice(0, 3);
+  const riskReason = penalty > 0 ? `Repas le plus défavorable : -${unit(penalty)} point${penalty > 1 ? "s" : ""} après combinaison des signaux corrélés.` : null;
+  // Keep the bounded internal penalty in its own contract/UI field instead of
+  // pretending it is another /100 component or duplicating it in an effect.
+  const strongestEffects = baseStrongestEffects;
 
   return {
     algorithmVersion: MEAL_BALANCE_ALGORITHM_VERSION,
@@ -541,6 +737,12 @@ export function calculateMealBalanceScore(input: {
     confidence,
     components,
     strongestEffects,
-    reasons: strongestEffects.map((effect) => `${effect.label} : ${effect.summary}`),
+    reasons: [
+      ...strongestEffects.map((effect) => `${effect.label} : ${effect.summary}`),
+      ...(riskReason ? [riskReason] : []),
+    ],
+    baseScore,
+    adversePenalty: penalty,
+    worstMeal,
   };
 }

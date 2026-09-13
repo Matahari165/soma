@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d09-breakfast",
+  "mealDate": "2026-09-09",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:e4be1c7166218b16429d4121f1d41e7806f5238849c21aed5a63aa9a50e770fd",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner décrit comme un porridge au lait, avec quelques fruits rouges surgelés et éventuellement une cuillère de miel. Portions et recette non précises ; aucune photo.",
+    "dishType": "Porridge",
+    "calorieAnalysis": "Fourchette likely autour de 380 kcal pour l’ensemble, appréciation sobre : repas plutôt modéré, mais très variable selon la quantité de flocons, de lait et de miel.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Porridge",
+        "preparation": "Avec lait ; fruits et miel ajoutés selon la description",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "whole_grain",
+          "dairy"
+        ],
+        "varietyKey": "porridge",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Lait",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "lait",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Fruits rouges surgelés",
+        "preparation": "Surgelés, ajoutés au porridge",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "fruits rouges",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Miel",
+        "preparation": null,
+        "portion": "1 cuillère (mention incertaine)",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sweet"
+        ],
+        "varietyKey": "miel",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": true,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 200,
+        "likely": 380,
+        "high": 650
+      },
+      "proteinGrams": {
+        "low": 8,
+        "likely": 15,
+        "high": 30
+      },
+      "carbohydrateGrams": {
+        "low": 35,
+        "likely": 60,
+        "high": 105
+      },
+      "fatGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 25
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 5,
+        "high": 12
+      },
+      "sugarGrams": {
+        "low": 12,
+        "likely": 28,
+        "high": 55
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 12,
+        "high": 30
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Portions approximatives : aucune masse ni volume fiable pour le porridge, le lait ou les fruits.",
+      "Présence et taille de la cuillère de miel incertaines (« miel? »).",
+      "Type de lait, type de céréales du porridge et éventuel ajout de matière grasse inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune quantité chiffrée pour le porridge."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Recette et proportions flocons/lait non fournies."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Mode de cuisson et éventuel ajout d’huile ou de beurre non décrits."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Quantité et type de lait (entier, demi-écrémé, végétal) inconnus."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "« Quelques » fruits rouges sans masse ni variété précise."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Cuillère de miel mentionnée avec un point d’interrogation ; cuillère à café ou à soupe indéterminée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Totaux en fourchettes très larges faute de grammes observés."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Sucres ajoutés hors miel éventuel non vérifiables (céréales sucrées, lait aromatisé)."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

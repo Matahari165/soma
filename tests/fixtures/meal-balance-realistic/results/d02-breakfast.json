@@ -1,0 +1,468 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d02-breakfast",
+  "mealDate": "2026-09-02",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:a38c76dc3e737aca70e80de8f350aa0407c1d3ebce438e07c75aa1035beff1cb",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner décrit : deux tartines de pain possiblement complet avec beurre de cacahuète, et un café avec un peu de lait. Les quantités hors « deux tartines » restent à l’œil ; la taille des tartines, la quantité de beurre et le type de pain/lait ne sont pas précisés.",
+    "dishType": "petit-déjeuner",
+    "calorieAnalysis": "Fourchette très large, autour de 350 kcal (environ 180–700), selon la taille des tartines et surtout la quantité de beurre de cacahuète : apport plutôt modéré, pouvant devenir copieux.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Pain complet (tartines)",
+        "preparation": "en tartines, type complet incertain",
+        "portion": "2 tartines",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "whole_grain"
+        ],
+        "varietyKey": "pain complet",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 2,
+          "unit": "tartines",
+          "basis": "déclaré par l'utilisateur",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 120,
+          "likely": 200,
+          "high": 360
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 16
+        },
+        "carbohydrateGrams": {
+          "low": 20,
+          "likely": 36,
+          "high": 64
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 10
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 4
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Beurre de cacahuète",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "nuts_seeds",
+          "plant_protein",
+          "added_fat"
+        ],
+        "varietyKey": "beurre de cacahuète",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "qualityProperties": [
+          "protein_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 50,
+          "likely": 140,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 14
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 14
+        },
+        "fatGrams": {
+          "low": 4,
+          "likely": 12,
+          "high": 28
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 8
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 6
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Café",
+        "preparation": "avec un peu de lait",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "beverage"
+        ],
+        "varietyKey": "café",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 2,
+          "high": 10
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Lait",
+        "preparation": "ajouté au café, un peu",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy",
+          "beverage"
+        ],
+        "varietyKey": "lait",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": true
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 5,
+          "likely": 15,
+          "high": 50
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 180,
+        "likely": 350,
+        "high": 700
+      },
+      "proteinGrams": {
+        "low": 6,
+        "likely": 15,
+        "high": 32
+      },
+      "carbohydrateGrams": {
+        "low": 22,
+        "likely": 42,
+        "high": 80
+      },
+      "fatGrams": {
+        "low": 5,
+        "likely": 16,
+        "high": 38
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 7,
+        "high": 15
+      },
+      "sugarGrams": {
+        "low": 1,
+        "likely": 6,
+        "high": 20
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 1,
+        "high": 10
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Taille des tartines et grammage du pain inconnus.",
+      "Quantité de beurre de cacahuète non précisée (principal levier calorique).",
+      "Pain « complet (?) » : farine, recette et transformation inconnues.",
+      "Marque et recette du beurre de cacahuète (sucres ajoutés, huiles) inconnues.",
+      "Volume de café et quantité/type de lait (entier, demi-écrémé, végétal) inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Deux tartines sans taille ni grammage."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Beurre de cacahuète sans quantité."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Pain indiqué complet avec un doute."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Marque et formulation du beurre de cacahuète inconnues."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Transformation du pain non identifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "NOVA du beurre de cacahuète non identifiable sans recette."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Sucres ajoutés possibles selon la marque."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Recette du beurre de cacahuète inconnue."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Un peu de lait sans volume ni type."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Fourchettes nutritionnelles très larges faute de quantités."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

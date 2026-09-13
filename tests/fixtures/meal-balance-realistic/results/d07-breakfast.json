@@ -1,0 +1,509 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d07-breakfast",
+  "mealDate": "2026-09-07",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:5b8314e1a87f1204bb09764b171b1f8e9ae8dcd746490ed30f6b7a92daed8ede",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner maison : œufs brouillés poivrés, deux tranches de pain et quartiers de tomate crue. Graisse de cuisson (beurre ou huile) possible mais non visible.",
+    "dishType": "Œufs brouillés et pain",
+    "calorieAnalysis": "Apport probable autour de 420 kcal (fourchette large), repas plutôt modéré ; l’incertitude porte surtout sur le pain et une éventuelle matière grasse.",
+    "foods": [
+      {
+        "id": "food-assiette",
+        "name": "Assiette petit-déjeuner",
+        "preparation": null,
+        "portion": "1 assiette",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "egg",
+          "refined_grain",
+          "vegetable"
+        ],
+        "varietyKey": "petit-déjeuner œufs pain tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 1,
+          "unit": "assiette",
+          "basis": "visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "high",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "medium"
+      },
+      {
+        "id": "food-oeufs",
+        "name": "Œufs brouillés",
+        "preparation": "Brouillés, poivre visible",
+        "portion": "environ 2 œufs",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-assiette",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "egg"
+        ],
+        "varietyKey": "œuf",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 2,
+          "unit": "œufs",
+          "basis": "note et volume visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 180,
+          "high": 240
+        },
+        "proteinGrams": {
+          "low": 11,
+          "likely": 13,
+          "high": 17
+        },
+        "carbohydrateGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 3
+        },
+        "fatGrams": {
+          "low": 10,
+          "likely": 13,
+          "high": 18
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-pain",
+        "name": "Pain en tranches",
+        "preparation": null,
+        "portion": "2 tranches",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-assiette",
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": 2,
+          "unit": "tranches",
+          "basis": "visible",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 140,
+          "likely": 190,
+          "high": 260
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 7,
+          "high": 11
+        },
+        "carbohydrateGrams": {
+          "low": 26,
+          "likely": 36,
+          "high": 50
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 7
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-tomates",
+        "name": "Tomates",
+        "preparation": "Crues, en quartiers",
+        "portion": "plusieurs quartiers",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-assiette",
+        "course": "side",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": "tomate",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d07-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "quartiers visibles",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "high",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 15,
+          "likely": 25,
+          "high": 40
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 3,
+          "likely": 5,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 1.5,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 6
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-matiere-grasse",
+        "name": "Beurre ou huile de cuisson",
+        "preparation": "Possible pour les œufs",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-assiette",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat"
+        ],
+        "varietyKey": "matière grasse",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [
+          "d07-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 45,
+          "high": 90
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 5,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 295,
+        "likely": 440,
+        "high": 630
+      },
+      "proteinGrams": {
+        "low": 16,
+        "likely": 21,
+        "high": 30
+      },
+      "carbohydrateGrams": {
+        "low": 30,
+        "likely": 43,
+        "high": 61
+      },
+      "fatGrams": {
+        "low": 11,
+        "likely": 21,
+        "high": 36
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 3.5,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 8,
+        "high": 14
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "medium",
+    "uncertainties": [
+      "Grammes non mesurables sur la photo.",
+      "Type exact et composition du pain inconnus.",
+      "Beurre ou huile de cuisson non visible ; quantité inconnue.",
+      "Sucres ajoutés du pain non déterminables."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-oeufs",
+        "severity": "medium",
+        "detail": "Volume d’œufs visible et note « environ deux œufs », sans pesée."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Deux tranches visibles, épaisseur et densité du pain non mesurées."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Pain sans étiquette : farine, levain et sucres éventuels inconnus."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Niveau de transformation du pain non identifiable avec certitude."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-pain",
+        "severity": "medium",
+        "detail": "Présence de sucres ajoutés dans le pain non observable."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-matiere-grasse",
+        "severity": "high",
+        "detail": "Note indique beurre ou huile possible, sans preuve visuelle ni quantité."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-matiere-grasse",
+        "severity": "medium",
+        "detail": "Mode et quantité de matière grasse pour les œufs non confirmés."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "medium",
+        "detail": "Totaux en fourchettes larges ; sucres ajoutés totaux non sommables."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}

@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 2,
+  "caseId": "d11-breakfast",
+  "mealDate": "2026-09-11",
+  "mealType": "breakfast",
+  "inputFingerprint": "sha256:3c6c41582f7dbdc79b310ba8a678d85407f928b2cd0cece61b502f779ae8046d",
+  "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner dans un bol : fromage blanc, rondelles de banane et granola (flocons et grappes). Le bol est partiellement hors cadre, donc les portions et les macros restent approximatives.",
+    "dishType": "Bol fromage blanc",
+    "calorieAnalysis": "Fourchette likely autour de 350 kcal : apport modéré pour un petit-déjeuner, avec une large incertitude car le volume du bol n’est pas entièrement visible.",
+    "foods": [
+      {
+        "id": "food-bowl",
+        "name": "Bol fromage blanc banane granola",
+        "preparation": "Assemblé froid, non cuit",
+        "portion": "1 bol (partiellement hors cadre)",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "dairy",
+          "fruit",
+          "refined_grain"
+        ],
+        "varietyKey": "bol fromage blanc",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-breakfast-photo-1"
+        ],
+        "quantity": {
+          "value": null,
+          "unit": null,
+          "basis": "bol partiellement hors cadre",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-fromage-blanc",
+        "name": "Fromage blanc",
+        "preparation": "Nature, non cuit",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "fromage blanc",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 140,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 8,
+          "likely": 14,
+          "high": 22
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 14
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 14
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-banane",
+        "name": "Banane",
+        "preparation": "Crue, en rondelles",
+        "portion": "plusieurs rondelles",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "banane",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "high"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 90,
+          "high": 130
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 2
+        },
+        "carbohydrateGrams": {
+          "low": 14,
+          "likely": 22,
+          "high": 32
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 8,
+          "likely": 12,
+          "high": 18
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "medium"
+      },
+      {
+        "id": "food-granola",
+        "name": "Granola",
+        "preparation": "Grappes de céréales, aspect grillé",
+        "portion": "une poignée visible",
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-bowl",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "nuts_seeds",
+          "sweet"
+        ],
+        "varietyKey": "granola",
+        "evidence": "visible",
+        "evidenceSource": "photo",
+        "evidencePhotoIds": [
+          "d11-breakfast-photo-1"
+        ],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 3,
+        "sugarExposure": {
+          "concentrated": true,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "fiber_source",
+          "unsaturated_fat_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 120,
+          "high": 200
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 6
+        },
+        "carbohydrateGrams": {
+          "low": 8,
+          "likely": 16,
+          "high": 28
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 10
+        },
+        "addedSugarGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 8
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 200,
+        "likely": 350,
+        "high": 550
+      },
+      "proteinGrams": {
+        "low": 9,
+        "likely": 18,
+        "high": 30
+      },
+      "carbohydrateGrams": {
+        "low": 26,
+        "likely": 46,
+        "high": 74
+      },
+      "fatGrams": {
+        "low": 2,
+        "likely": 9,
+        "high": 23
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 4,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 14,
+        "likely": 25,
+        "high": 42
+      },
+      "addedSugarGrams": {
+        "low": 1,
+        "likely": 4,
+        "high": 10
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Bol partiellement hors cadre : volume total du fromage blanc et du granola non mesurable.",
+      "Type de fromage blanc (0 %, 20 %, 40 %) non identifiable.",
+      "Recette du granola (sucres ajoutés, huile, fruits secs) non connue.",
+      "Grammes non estimables de façon responsable."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-fromage-blanc",
+        "severity": "high",
+        "detail": "Le bol est coupé : la quantité de fromage blanc n’est pas entièrement visible."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-granola",
+        "severity": "high",
+        "detail": "Couche de granola visible mais volume total hors cadre."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-granola",
+        "severity": "medium",
+        "detail": "Granola maison ou industriel et sucres/huiles de recette non confirmés."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-fromage-blanc",
+        "severity": "medium",
+        "detail": "Teneur en matière grasse du fromage blanc non visible."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Macros et calories en fourchettes larges faute de grammes et de recette."
+      }
+    ]
+  },
+  "analysisProvenance": {
+    "primary": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "final": {
+      "provider": "xai",
+      "model": "grok-4.6"
+    },
+    "validation": {
+      "requested": true,
+      "configured": false,
+      "attempted": false,
+      "succeeded": false,
+      "provider": null,
+      "model": null
+    },
+    "fallback": {
+      "configured": false,
+      "attempted": false,
+      "used": false,
+      "provider": null,
+      "model": null
+    }
+  }
+}
