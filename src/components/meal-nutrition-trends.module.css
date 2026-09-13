@@ -474,23 +474,20 @@
 }
 
 .root:global(.meals-page-trends) .grid {
+  grid-template-columns: 1fr;
   gap: 0;
-  border: 1px solid var(--lab-border);
-  border-radius: var(--lab-radius-sm);
-  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .root:global(.meals-page-trends) .card {
   border: 0;
-  border-radius: var(--lab-radius-sm);
-  background: var(--lab-surface);
+  border-radius: 0;
+  background: transparent;
 }
 
-.root:global(.meals-page-trends) .card:nth-child(odd) {
-  border-right: 1px solid var(--lab-border);
-}
-
-.root:global(.meals-page-trends) .card:nth-child(n + 3) {
+.root:global(.meals-page-trends) .card + .card {
   border-top: 1px solid var(--lab-border);
 }
 

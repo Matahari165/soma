@@ -102,6 +102,7 @@ type Props = {
   initialTargets?: NutritionTargets;
   initialEffectiveTargets?: NutritionTargets;
   initialEffortTargetContext?: EffortTargetContext;
+  hideAddMealButton?: boolean;
 };
 
 type LoadState = "loading" | "ready" | "error";
@@ -952,15 +953,15 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled, calorieTarget }: { onAddMeal: () => void; addDisabled: boolean; calorieTarget: number | null }) {
+function MealLabHeader({ onAddMeal, addDisabled, calorieTarget, hideAddMealButton = false }: { onAddMeal: () => void; addDisabled: boolean; calorieTarget: number | null; hideAddMealButton?: boolean }) {
   return <header className={styles.labHeader}>
     <h2 id="meal-journal-title" className="sr-only">Repas</h2>
     <span className={styles.labTarget}>{calorieTarget === null ? "Cible indisponible" : `Cible · ${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal`}</span>
-    <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>
+    {!hideAddMealButton && <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>}
   </header>;
 }
 
-export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext }: Props) {
+export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -1388,15 +1389,17 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     void saveMeal(meal);
   };
 
-  const historyDates = mealHistoryDates(selectedDate, today, variant === "meals" ? Math.max(7, historyDays ?? 7) : historyDays ?? 7);
+  // The date rail is a seven-day contract in every journal surface. Keep the
+  // lower bound here so a route cannot accidentally render only six days.
+  const historyDates = mealHistoryDates(selectedDate, today, Math.max(7, historyDays ?? 7));
   // Keep the newest day on the left, like the shared Personal Lab selector.
   const visibleHistoryDates = historyDates;
-  const internalDateNavigation = showDateNavigation ? <nav className={styles.historyNavigation} aria-label="Historique des repas">
+  const internalDateNavigation = showDateNavigation ? <nav className={`${styles.historyNavigation} personal-lab-day-strip`} aria-label="Historique des repas">
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled} aria-label="Jours précédents" onClick={() => selectDate(shiftIsoDate(selectedDate, -1))}>‹</button>}
-    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""}`} role="group" aria-label="Sept jours">
+    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""} personal-lab-day-strip__days`} role="group" aria-label="Jours disponibles">
       {visibleHistoryDates.map((historyDate) => {
-        const label = compactDayLabel(historyDate, variant === "meals" ? today : undefined);
-        return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-current={historyDate === selectedDate ? "date" : undefined} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><strong>{label.day}</strong></button>;
+        const label = compactDayLabel(historyDate, today);
+        return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-current={historyDate === selectedDate ? "date" : undefined} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><small>{label.day}</small><span className="sr-only">{formatDate(historyDate)}</span></button>;
       })}
     </div>
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled || selectedDate >= today} aria-label="Jours suivants" onClick={() => selectDate(shiftIsoDate(selectedDate, 1))}>›</button>}
@@ -1407,7 +1410,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader calorieTarget={effectiveTargets.caloriesKcal.likely} onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} /> : <MealPageHeader totals={currentDayTotal} targets={effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader calorieTarget={effectiveTargets.caloriesKcal.likely} onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;

@@ -6,7 +6,8 @@ import { MealFoodCategoryTrends } from "./meal-food-category-trends";
 describe("MealFoodCategoryTrends", () => {
   it("shows an accessible empty state", () => {
     const html = renderToStaticMarkup(<MealFoodCategoryTrends points={[]} />);
-    expect(html).toContain("Répartition des familles");
+    expect(html).toContain('<h2 id="meal-category-trends-title">Répartition des familles</h2>');
+    expect(html).toContain("28 JOURS");
     expect(html).toContain("Aucune période disponible");
   });
 
@@ -28,5 +29,14 @@ describe("MealFoodCategoryTrends", () => {
     expect(html).toContain("Protéines végétales");
     expect(html).toContain("Les familles peuvent se croiser");
     expect(html).toContain('role="img"');
+  });
+
+  it("adds clearly labelled illustrative history only when requested", () => {
+    const html = renderToStaticMarkup(<MealFoodCategoryTrends illustrative points={[
+      { date: "2026-09-11", counts: null },
+      { date: "2026-09-12", counts: null },
+    ]} />);
+    expect(html).toContain("DONNÉES ILLUSTRATIVES");
+    expect(html).toContain("Légumes");
   });
 });

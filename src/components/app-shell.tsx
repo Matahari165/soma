@@ -23,7 +23,7 @@ import type { SomaUser } from "@/lib/auth";
 
 const navigation = [
   { label: "Laboratoire", href: "/", icon: LayoutDashboard },
-  { label: "Repas", href: "/meals", icon: Utensils },
+  { label: "Alimentation", href: "/meals", icon: Utensils },
   { label: "Sommeil", href: "/sleep", icon: BedDouble },
   { label: "Récupération", href: "/recovery", icon: HeartPulse },
   { label: "Effort", href: "/activity", icon: Activity },
@@ -34,7 +34,7 @@ const navigation = [
 const mobileNavigation = navigation.filter(({ href }) => href !== "/");
 const personalLabNavigation = [
   { label: "Laboratoire", href: "/", icon: Beaker },
-  { label: "Repas", href: "/meals", icon: Utensils },
+  { label: "Alimentation", href: "/meals", icon: Utensils },
   { label: "Sommeil", href: "/sleep", icon: Moon },
   { label: "Récupération", href: "/recovery", icon: Heart },
   { label: "Effort", href: "/activity", icon: Zap },

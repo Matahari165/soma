@@ -113,6 +113,12 @@ describe("MealJournal", () => {
     expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
   });
 
+  it("keeps seven days in the lab date rail even when a route passes a shorter hint", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation date={date} today={date} historyDays={6} initialData={{ date, meals: {} }} />);
+
+    expect(html.match(/aria-pressed=/g)).toHaveLength(7);
+  });
+
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 

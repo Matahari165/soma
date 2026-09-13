@@ -25,6 +25,8 @@ import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadDailyNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
+import styles from "./meals-page.module.css";
+
 export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 type LoadResult<T> = { ok: true; value: T } | { ok: false };
@@ -111,23 +113,30 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Les compléments sont momentanément indisponibles." : null;
 
   return (
-    <div id="main-page-content" className="meals-page" lang="fr">
-      {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6} initialTargets={targets} initialEffectiveTargets={effectiveTargets} initialEffortTargetContext={targetsResult.ok ? { effortScore: targetsResult.value.effortScore, effortCoverage: targetsResult.value.effortCoverage, averageEffortScore: targetsResult.value.averageEffortScore } : undefined}>
+    <main id="main-page-content" className={`${styles.page} meals-page`} lang="fr">
+      <header className={styles.header}><h1>Alimentation</h1></header>
+      <div className={styles.flow}>
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
           trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, status: point.balanceStatus, coverage: point.balanceCoverage, confidence: point.balanceConfidence }))}
           className="meals-page-score"
         />
+        {initialData ? (
+          <section className={styles.journal} aria-labelledby="meals-journal-title">
+            <h2 id="meals-journal-title">Journal des repas</h2>
+            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals hideAddMealButton />
+          </section>
+        ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
           ? <>
-            <MealFoodCategoryTrends points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
+            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
           </>
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
-      </MealJournal> : <MealsInitialLoadError kind="meals" />}
-    </div>
+      </div>
+    </main>
   );
 }

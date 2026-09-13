@@ -1,226 +1,292 @@
 ---
-name: Soma
-description: Un laboratoire personnel vivant pour saisir le quotidien et révéler les effets les plus importants.
-colors:
-  canvas: "#050505"
-  surface: "#0b0b0b"
-  surface-subtle: "#151515"
-  surface-selected: "#1c1c1c"
-  border: "#292929"
-  text-primary: "#f1f1f1"
-  text-secondary: "#a7a7a7"
-  brand: "#eeeeee"
-  signal: "#d5e5da"
-  error: "#e2b2aa"
-  sidebar: "#050505"
-typography:
-  display:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
-    fontSize: "clamp(2.35rem, 5vw, 5rem)"
-    fontWeight: 500
-    lineHeight: 1
-    letterSpacing: "-0.03em"
-  headline:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
-    fontSize: "clamp(1.6rem, 3vw, 2.5rem)"
-    fontWeight: 560
-    lineHeight: 1.1
-  body:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
-    fontSize: "16px"
-    fontWeight: 400
-    lineHeight: 1.55
-  data:
-    fontFamily: "Azeret Mono, monospace"
-    fontSize: "12px"
-    fontWeight: 500
-    lineHeight: 1.4
-  observatoryHeading:
-    fontFamily: "Georgia, Times New Roman, serif"
-    fontSize: "clamp(30px, 3vw, 72px)"
-    fontWeight: 400
-    lineHeight: 1.2
-rounded:
-  xs: "2px"
-  sm: "4px"
-  md: "8px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.brand}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.sm}"
-    height: "44px"
-    padding: "10px 16px"
-  button-secondary:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.sm}"
-    height: "44px"
-    padding: "10px 16px"
-  card:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.sm}"
-    padding: "24px"
-  input:
-    backgroundColor: "{colors.surface-subtle}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.xs}"
-    height: "44px"
-    padding: "10px 12px"
+name: Soma — Observatoire
+status: canonical
+scope: visual-language
+referenceRoute: "/"
+lastReviewed: "2026-09-12"
 ---
 
-# Design System: Soma
+# Soma — système visuel de l’Observatoire
 
-## Overview
+## 1. Autorité
 
-**Creative North Star: "Le laboratoire personnel vivant"**
+Ce fichier est la référence visuelle canonique de Soma. Il formalise le langage de la page principale authentifiée, l’**Observatoire**, afin que toute nouvelle page appartienne clairement au même produit.
 
-Soma ressemble à un instrument personnel utilisé chaque jour, pas à un logiciel hospitalier ni à un dashboard SaaS. Sa précision vient de l’alignement, des unités, des repères temporels et de la hiérarchie des preuves. Son calme vient d’un observatoire noir mat, de règles fines, d’un contraste mesuré et d’un langage direct adressé à une seule personne.
+Avant de créer, modifier ou évaluer une interface : lire ce fichier en entier, inspecter la page `/` réellement rendue, réutiliser les tokens et composants existants, puis vérifier à `1440 × 900` et `390 × 844`.
 
-Le système global effectif est l’Observatoire sombre rendu sur `/`, dérivé de `Personal Lab / Stitch / FINAL`. `Meals / Redesign V1` en est la déclinaison structurelle pour `/meals`. Les styles clairs antérieurs et l’Atlas physiologique sont des héritages à migrer, jamais une seconde direction valide.
+Ordre d’autorité en cas de désaccord :
 
-La hiérarchie produit culmine dans `Strongest Effects`. Le journal et les repas rendent la donnée possible ; Sommeil, Récupération et Effort donnent le contexte ; les effets les plus forts livrent la compréhension recherchée.
+1. la page `/` authentifiée actuellement validée ;
+2. les règles obligatoires de ce document ;
+3. les tokens `--lab-*` de `src/app/globals.css` ;
+4. les anciennes pages et documentations.
 
-**Key Characteristics:**
+`design/PHYSIOLOGICAL_ATLAS.md` est historique. Son thème clair, ses couleurs chaudes et ses rayons de 10 px ne doivent pas être réintroduits.
 
-- Dense, calme et immédiatement scannable.
-- Noir mat, grille nette, surfaces plates et variations tonales très discrètes.
-- Couleur réservée à un rôle, une source ou un signal.
-- Nombres, périodes et unités traités comme des annotations de laboratoire.
-- Détails et preuves ouverts depuis une synthèse courte.
+## 2. Principe fondamental
 
-## Colors
+**Toutes les pages partagent le même langage visuel ; leur composition peut varier.**
 
-La palette est noire, minérale et presque monochrome. Les accents restent rares afin que les variations et alertes conservent leur poids.
+Sont communs et non négociables : typographie, palette, formes, densité, composants, états, interactions, qualité du mouvement et voix éditoriale.
 
-### Primary
+Peuvent varier : ordre de lecture, grille, position des blocs, type de graphique, relation synthèse/détail et degré de comparaison ou d’exploration. Une page peut présenter les données d’une manière entièrement différente sans jamais ressembler à un autre produit.
 
-- **Blanc laboratoire** (`#eeeeee`) : marque, action principale et sélection forte.
-- **Vert signal pâle** (`#d5e5da`) : évolution favorable, jamais seul pour transmettre le sens.
+## 3. Intention artistique
 
-### Neutral
+**Étoile polaire : un observatoire personnel, nocturne et silencieux, dans lequel les traces du corps deviennent lisibles.**
 
-- **Toile Observatoire** (`#050505`) : fond global.
-- **Surface sombre** (`#0b0b0b`) : panneaux et données prioritaires.
-- **Surface subtile** (`#151515`) : regroupements secondaires et contrôles.
-- **Surface sélectionnée** (`#1c1c1c`) : date ou option active.
-- **Encre claire** (`#f1f1f1`) : texte principal.
-- **Encre secondaire** (`#a7a7a7`) : métadonnées, avec contraste suffisant.
-- **Règle minérale** (`#292929`) : séparation courante.
+Soma n’est ni un dashboard SaaS, ni une interface médicale froide, ni une application de bien-être colorée. C’est un instrument personnel : précis, calme, discret et éditorial.
 
-### Tertiary
+Adjectifs directeurs : calme, minimal, nocturne, mat, précis, contemplatif, éditorial, scientifique sans être clinique, dense sans être encombré, humain sans être décoratif, assuré sans être spectaculaire.
 
-- **Rose alerte** (`#e2b2aa`) : erreur ou évolution défavorable, toujours accompagné d’un texte ou symbole.
+L’utilisateur doit percevoir une continuité d’informations, pas une collection de cartes. L’espace, l’alignement, la taille des caractères et le contraste créent la hiérarchie. Le cadre visuel s’efface pour laisser parler les données.
 
-### Named Rules
+## 4. Règles immuables
 
-**The Evidence Color Rule.** Une couleur porte une source, un état ou une direction ; elle ne remplit jamais une surface sans fonction.
+1. Fond général noir, mat et continu.
+2. Widgets **borderless** par défaut.
+3. Aucun fond, bordure, ombre ou arrondi automatique autour d’un widget.
+4. Hiérarchie créée d’abord par typographie, espace, alignement et contraste.
+5. Palette presque entièrement noire, blanche et grise.
+6. Couleur rare, sémantique et jamais décorative.
+7. Données, dates, unités et périodes en monospace.
+8. Chaque texte visible aide à comprendre, décider, agir, attendre ou corriger.
+9. Aucun titre décoratif, sous-titre évident ou texte d’ambiance.
+10. Animations courtes, utiles et désactivables ; aucune animation perpétuelle.
+11. Rayon courant maximal de 4 px pour les éléments rectangulaires.
+12. Une absence de donnée n’est jamais présentée comme zéro.
 
-**The Latest Layer Rule.** Le rendu Observatoire actif de `/`, les tokens `--lab-*` et les frames Stitch validées sont l’autorité. Les anciens tokens clairs ou chauds sont des compatibilités temporaires, pas une palette à étendre.
+## 5. Palette
 
-## Typography
+| Rôle | Token | Valeur | Usage |
+|---|---|---:|---|
+| Toile | `--lab-canvas` | `#050505` | Fond global continu |
+| Surface | `--lab-surface` | `#080808` | Rare séparation tonale |
+| Surface subtile | `--lab-surface-subtle` | `#0c0c0c` | Contrôle ou regroupement discret |
+| Sélection | `--lab-surface-selected` | `#222222` | État actif |
+| Piste | `--lab-control-track` | `#0b0b0b` | Fond compact d’un contrôle |
+| Texte principal | `--lab-text-primary` | `#f1f1f1` | Titres, valeurs et contenu prioritaire |
+| Texte secondaire | `--lab-text-secondary` | `#aaaaaa` | Métadonnées et contexte |
+| Marque | `--lab-brand` | `#eeeeee` | Action ou sélection forte |
+| Règle | `--lab-border` | `#292929` | Séparateur exceptionnel |
+| Règle forte | `--lab-border-strong` | `#3a3a3a` | Limite fonctionnelle importante |
 
-- **Display Font:** Schibsted Grotesk (system-ui en repli)
-- **Body Font:** Schibsted Grotesk (system-ui en repli)
-- **Data Font:** Azeret Mono (monospace en repli)
-- **Observatory Heading:** Georgia (Times New Roman en repli)
+Les noirs légèrement bleutés de certaines scènes immersives de `/` sont une nuance locale de profondeur, pas une seconde palette.
 
-Schibsted donne une voix contemporaine, sobre et humaine. Georgia porte les titres éditoriaux de l’Observatoire, local comme authentifié. Azeret Mono distingue les données, dates, unités et preuves sans transformer toute l’interface en terminal. Newsreader et Geist ne font pas partie du système tant qu’ils ne sont pas réellement chargés et validés.
+Couleurs sémantiques, toujours rares et accompagnées d’un texte, symbole, motif ou placement :
 
-### Hierarchy
+- `--lab-signal: #d5e5da` : évolution favorable ou signal confirmé ;
+- `--lab-error: #e2b2aa` : erreur, danger ou évolution défavorable ;
+- `--lab-warning: #d5c397` : prudence ou donnée à vérifier ;
+- `--lab-info: #adc5df` : information ou source distincte nécessaire.
 
-- **Display** (`500`, jusqu’à `5rem`) : rares titres de contexte, jamais au détriment du contenu utile dans le premier écran.
-- **Headline** (`560`, `1.6–2.5rem`) : titres de page et de section principale.
-- **Title** (`560–650`, `16–20px`) : cartes, relations et groupes de journal.
-- **Body** (`400`, `16px`, hauteur `1.55`) : explications et contenu de travail.
-- **Data** (`500–650`, minimum fonctionnel `12px`) : unités, périodes, valeurs et petites actions. Les micro-labels non interactifs peuvent descendre à `11px` si leur contraste est suffisant.
+Interdits : dégradés décoratifs, glow, néon, glassmorphism, grandes surfaces colorées, palette propre à une page, violet technologique, vert « santé » systématique, blanc pur étendu et palette arc-en-ciel générique.
 
-**The Readable Instrument Rule.** Une apparence technique ne justifie jamais un texte fonctionnel de 10 px ou moins.
+Un graphique multisérie doit privilégier gris, styles de trait, symboles, motifs et libellés directs. Une couleur de domaine n’est admise que si elle améliore réellement la compréhension.
 
-## Layout
+## 6. Typographie
 
-La grille dense s’aligne sur un rail desktop de `64px`. Les sections principales suivent un rythme de `24px`, avec `32px` entre colonnes. Les panneaux utilisent généralement `24px` de padding et partagent des frontières nettes.
+Soma possède trois voix. Aucune quatrième sans décision explicite.
 
-Le premier écran montre la saisie quotidienne et la compréhension la plus importante sans défilement inutile. `Strongest Effects` reçoit plus d’espace et de contraste hiérarchique que les résumés secondaires. Repas et journal présentent une action principale avant les contrôles détaillés.
+- **Schibsted Grotesk**, token `--font-soma-ui` : corps, navigation, boutons, libellés, titres fonctionnels et contrôles.
+- **Georgia**, pile `Georgia, "Times New Roman", serif` : grand titre de l’Observatoire et titres majeurs ouvrant une nouvelle lecture. Ne pas l’employer dans tableaux ou contrôles.
+- **Azeret Mono**, tokens `--font-soma-mono` et `--lab-data-font` : valeurs, unités, dates, heures, périodes, axes, indices et métadonnées de preuve. Utiliser les chiffres tabulaires pour les valeurs alignées.
 
-Sous `1100px`, les grandes zones peuvent s’empiler et la navigation devient compacte. Sous `700px`, la composition passe en une colonne, les bandes temporelles restent parcourables et les métriques secondaires utilisent la divulgation progressive. La cible mobile est `390 × 844`.
+| Niveau | Police | Taille | Graisse | Interligne |
+|---|---|---:|---:|---:|
+| Titre immersif de `/` | Georgia | `clamp(44px, 5vw, 72px)` | 400 | 1–1.08 |
+| Titre de page secondaire | Georgia | `clamp(30px, 3vw, 40px)` | 400 | 1.2 |
+| Titre de section majeur | Georgia ou Schibsted | 20–26 px | 400–500 | 1.2–1.3 |
+| Titre de groupe | Schibsted | 16–20 px | 400–560 | 1.25–1.4 |
+| Corps | Schibsted | 16 px | 400 | 1.55 |
+| Interface | Schibsted | 13–14 px | 400–500 | 1.35–1.5 |
+| Donnée | Azeret Mono | 12–26 px | 400–500 | 1–1.4 |
+| Micro-label | Azeret Mono | 11–12 px | 400–500 | 1.35–1.4 |
 
-Les hauteurs artificielles destinées seulement à égaliser des colonnes sont interdites lorsqu’elles créent du vide.
+Préférer la graisse 400 ; réserver 500–560 à une différence réelle. Éviter le gras massif. Espacement négatif léger uniquement sur les grands titres. Limiter le corps à environ 65 caractères par ligne. Aucun texte fonctionnel sous 12 px ; 11 px seulement pour une annotation non interactive. Capitales courtes possibles pour un repère instrumental. Jamais de monospace pour un paragraphe. Ne pas mélanger français et anglais sur une même surface.
 
-## Elevation & Depth
+## 7. Hiérarchie de l’information
 
-Soma est plat par défaut. La profondeur vient des bordures, des différences tonales et de la superposition. Une ombre de `0 1px 2px rgba(28, 37, 32, .04)` peut détacher un panneau interactif ; les grandes ombres décoratives sont exclues.
+Ordre généralement attendu : contexte/période → résultat principal → facteurs explicatifs → tendance → détail/provenance/incertitude → action éventuelle.
 
-**The Flat Evidence Rule.** Une donnée gagne en importance par sa place, sa taille et son libellé, pas par une ombre spectaculaire.
+Un seul élément domine chaque zone. Les autres restent présents mais plus calmes, plus petits ou plus éloignés.
 
-## Shapes
+- préférer une composition continue à une mosaïque de cartes ;
+- regrouper par proximité et alignement avant d’ajouter un conteneur ;
+- employer l’asymétrie si elle clarifie la priorité ;
+- adapter la largeur au contenu ;
+- éviter hauteurs artificielles et vide décoratif ;
+- montrer l’essentiel sans défilement inutile ;
+- conserver la preuve près du résultat qu’elle qualifie ;
+- placer couverture, période, source et incertitude au niveau utile.
 
-La géométrie est compacte et presque rectangulaire. Les rayons sont `2px`, `4px` et `8px`. Contrôles et cartes utilisent prioritairement `4px`; `8px` est réservé aux grands conteneurs. Les cercles sont réservés aux avatars, anneaux de score et actions explicitement rondes.
+## 8. Espacement et grille
 
-Les bordures de `1px` structurent les données. Éviter les séries de cartes identiques : regrouper ou utiliser une séparation de grille quand plusieurs éléments servent la même lecture.
+Échelle : `4 / 8 / 16 / 24 / 32 px`.
 
-## Components
+- 4 px : relation interne serrée ; 8 px : même contrôle ; 16 px : séparation interne ; 24 px : groupe compact ; 32 px : séparation structurelle ; 48–88 px : respiration entre grandes zones.
+- Le desktop s’aligne sur un rail de 64 px.
+- Une page secondaire utilise typiquement `32px 5vw 64px`.
+- Une grande composition peut limiter sa largeur, mais ne doit pas être enfermée automatiquement dans une carte centrée.
+- Titres, valeurs, axes et séparateurs doivent s’aligner exactement.
 
-### Buttons
+## 9. Surfaces et profondeur
 
-- **Shape:** rectangle compact, rayon `4px`, cible tactile `44px`.
-- **Primary:** vert laboratoire sur surface claire ; une seule action dominante par zone.
-- **Hover / Focus:** contraste renforcé et contour visible de `2px` avec offset `3px`.
-- **Secondary:** surface claire ou transparente, bordure minérale et texte principal.
-- **Danger:** rouge alerte, libellé explicite et confirmation proportionnée.
+Un widget est une **zone d’information**, pas une carte. Par défaut : fond transparent, aucune bordure, aucune ombre, rayon nul, espacement assuré par la grille.
 
-### Cards / Containers
+Une surface `#080808` ou `#0c0c0c` est admise pour un contrôle, une interaction, une sélection ou un regroupement autrement ambigu. Une ligne de 1 px peut séparer une série ou matérialiser un axe ; elle n’entoure pas chaque bloc.
 
-- **Corner Style:** `4px` par défaut, `8px` pour un grand panneau.
-- **Background:** blanc ou surface subtile.
-- **Shadow Strategy:** aucune au repos, sauf séparation structurelle légère.
-- **Border:** `1px solid #e0e8de`.
-- **Internal Padding:** `16px` pour un petit groupe, `24px` pour un panneau principal.
+Rayons : 2 px pour un détail, 4 px pour le contrôle courant, 8 px exceptionnellement pour un grand conteneur distinct, cercle uniquement pour une forme intrinsèquement circulaire. Les pills sont réservées aux statuts ou filtres courts.
 
-### Inputs / Fields
+Aucune ombre au repos. Une ombre imperceptible est tolérée pour une superposition temporaire.
 
-- **Style:** fond subtil, rayon `2–4px`, libellé toujours visible.
-- **Focus:** contour vert foncé visible ; ne jamais dépendre d’une couleur seule.
-- **Error / Disabled:** message adjacent, état annoncé et action désactivée perceptible.
+## 10. Composants
 
-### Navigation
+### Boutons
 
-Le rail desktop est compact et iconographique, mais chaque destination conserve un nom accessible et un tooltip lorsque replié. L’état actif combine traitement visuel et `aria-current`. Sur mobile, les destinations essentielles restent directement accessibles.
+- une action principale maximum par zone ;
+- 36–40 px sur desktop dense, au moins 44 × 44 px sur mobile ;
+- rayon 4 px, graisse 400–500 ;
+- primaire : fond `#eeeeee`, texte sombre ;
+- secondaire : transparent ou `#1c1c1c`, texte clair ;
+- action textuelle sans fond si l’affordance reste claire ;
+- danger sémantique avec libellé explicite.
 
-### Strongest Effects
+Hover et active changent légèrement contraste ou fond. Aucun gonflement, déplacement spectaculaire ou glow.
 
-Composant signature et sommet de la hiérarchie. Il montre d’abord les associations corrigées et suffisamment étayées, dans une formulation concrète, puis ouvre période, échantillon, incertitude, chronologie, forme, provenance et méthode. Il ne présente jamais une association comme une causalité.
+### Sélecteurs
 
-### Daily Journal and Meals
+- compacts, directs et intégrés à la composition ;
+- aucun grand conteneur décoratif ;
+- inactif gris, actif blanc ou gris profond ;
+- sélection indiquée aussi par position, trait, forme, `aria-pressed` ou `aria-current` ;
+- libellés courts et navigation temporelle cohérente ;
+- sur mobile : empilement ou défilement explicite sans écraser les libellés.
 
-La saisie quotidienne est rapide, autosauvegardée et non culpabilisante. Un état vide invite à agir sans répéter les boutons. Brouillon, validé, ignoré, absent et zéro explicite restent visuellement et sémantiquement distincts.
+### Champs
 
-### Health Detail Surfaces
+- libellé visible et proche ;
+- fond `#101010` ou transparent ;
+- bordure absente si surface et libellé suffisent, sinon règle de 1 px ;
+- hauteur 40–44 px, rayon 2–4 px ;
+- valeurs numériques en Azeret Mono ;
+- erreur annoncée par texte et sémantique, jamais par couleur seule.
 
-Les surfaces secondaires de santé (Sommeil, Récupération et Effort) héritent strictement de l’Observatoire sombre et suivent une même séquence de lecture : quatre repères de tête (score et trois KPI, avec moyenne à 30 jours), une bande de recommandation ou de contexte, cinq tendances sur 30 jours, puis la preuve détaillée la plus récente. À `1440px`, ces éléments restent sur le rail commun ; à `768px`, les KPI et les tendances se réorganisent sans changer leur ordre ; à `390px`, les tendances passent en une colonne et la dernière preuve reste secondaire. Les états chargement, vide, erreur et mesure partielle conservent cette hiérarchie sans inventer de valeur.
+### Graphiques
 
-## Do's and Don'ts
+- choisir le type selon la question, jamais pour son apparence ;
+- rendre axes, unités, période et couverture lisibles ;
+- libeller directement les valeurs importantes si possible ;
+- employer noir, blanc et gris par défaut ; couleur sémantique rare ;
+- garder la grille plus calme que les données ;
+- aucun donut ou radar ajouté simplement pour « faire visuel » ;
+- aucune courbe lissée si elle déforme le phénomène ;
+- aucune fausse précision ;
+- montrer les données absentes ou incomplètes sans inventer de valeur.
 
-### Do:
+### Icônes et navigation
 
-- **Do** donner à `Strongest Effects` la hiérarchie principale de Personal Lab.
-- **Do** montrer unité, période, couverture et incertitude près du résultat concerné.
-- **Do** appliquer la même grille, les mêmes rayons et la même palette sur toute l’app.
-- **Do** préserver les états normal, chargement, vide, erreur, partiel et obsolète.
-- **Do** vérifier chaque changement à `1440 × 900` et `390 × 844`.
+Icônes linéaires, simples et cohérentes. Elles complètent un libellé et ne le remplacent que pour une action universelle et accessible. Aucun emoji ou pictogramme décoratif répété.
 
-### Don't:
+Le rail desktop reste silencieux et compact. La destination active possède `aria-current`. Sur mobile, les destinations essentielles restent accessibles sans hover ni tooltip.
 
-- **Don't** réintroduire l’ancienne palette chaude ou les rayons `10px` comme une seconde direction.
-- **Don't** afficher de grands titres décoratifs, des sous-titres évidents ou des cartes répétitives.
-- **Don't** descendre les actions, valeurs ou libellés fonctionnels sous `12px`.
-- **Don't** utiliser la couleur seule pour distinguer une évolution, une source ou un statut.
-- **Don't** transformer une absence en zéro ou une corrélation en causalité.
-- **Don't** mélanger français et anglais sur une même surface.
+## 11. Microcopy
+
+Voix brève, factuelle, calme et non culpabilisante. Chaque texte répond à une question utile : quoi, quand, quelle source, quelle signification, quelle action, pourquoi une absence ou que corriger ?
+
+Supprimer slogans d’écran de travail, sous-titres répétant le titre, introductions évidentes, confirmations bavardes, labels répétés et phrases génériques comme « Voici vos données ».
+
+Conserver erreurs, chargements, absences, provenance, incertitude, confirmations utiles et instructions nécessaires.
+
+## 12. Mouvement
+
+- interaction simple : 150–180 ms ;
+- transition de composition : jusqu’à 240 ms ;
+- révélation exceptionnelle de scène : 650–950 ms maximum ;
+- easing : `cubic-bezier(.2, .8, .2, 1)` ou `cubic-bezier(.16, 1, .3, 1)` ;
+- faible amplitude pour les contrôles ;
+- graphique animé une seule fois ;
+- aucun pulse, balayage ou rotation sans fin ;
+- aucune parallaxe indispensable à la compréhension ;
+- sous `prefers-reduced-motion: reduce`, supprimer toute animation non essentielle.
+
+## 13. États et données
+
+Prévoir : normal, hover, focus visible, active/selected, disabled, loading, empty, partial/unavailable, error et stale.
+
+Le focus utilise un contour de 2 px avec offset visible. Le chargement conserve la géométrie générale ; éviter le spinner isolé au centre d’une grande surface. L’état vide explique l’absence et ne propose une action que si elle est utile.
+
+`null` signifie « indisponible ou non mesuré ». `0` signifie une mesure explicite égale à zéro. Cette distinction vaut dans le texte, les graphiques et l’accessibilité. Une association n’est jamais formulée comme une causalité.
+
+## 14. Responsive
+
+### Desktop — `1440 × 900`
+
+- fonction et résultats prioritaires dans le premier écran ;
+- colonnes utilisées pour comparer ou relier ;
+- lignes de lecture nettes ;
+- pas de petit conteneur arbitrairement centré ;
+- pas de cartes ajoutées pour remplir l’espace.
+
+### Mobile — `390 × 844`
+
+- une colonne lorsque la comparaison horizontale devient illisible ;
+- ordre sémantique préservé ;
+- zones tactiles de 44 px ;
+- corps jamais sous 16 px ;
+- aucune donnée masquée uniquement pour faire tenir la page ;
+- reformuler avant de tronquer ;
+- pas de défilement horizontal sauf bande temporelle ou tableau conçu pour cela ;
+- zones sûres et navigation préservées.
+
+Vérifier les ruptures naturelles autour de 700, 900 et 1100 px sans créer de media queries inutiles.
+
+## 15. Accessibilité
+
+- viser WCAG 2.2 AA ;
+- maintenir contraste et lisibilité ;
+- donner un nom accessible à chaque contrôle ;
+- utiliser les éléments HTML natifs avant ARIA ;
+- conserver ordre de tabulation logique et focus visible ;
+- ne jamais dépendre de la couleur seule ;
+- annoncer erreurs, chargements et confirmations importantes ;
+- respecter zoom, agrandissement du texte et réduction du mouvement ;
+- fournir une description textuelle lorsque le sens d’un graphique n’est pas disponible à proximité.
+
+## 16. Critères de conformité
+
+Une page conforme prolonge naturellement l’Observatoire, reste calme avec beaucoup de données, possède une hiérarchie immédiate, adapte sa composition à sa question, ne ressemble pas à une grille de cartes générique, reste lisible sans couleur, ne contient aucun texte superflu, donne accès à la preuve sans surcharger la synthèse, conserve ses fonctions essentielles sur mobile et traite correctement les états incomplets.
+
+Refuser : thème propre à une page, cartes arrondies répétées, fond derrière chaque widget, bordure autour de chaque groupe, grand hero générique repoussant la fonction, palette multicolore, gradient gratuit, glassmorphism, glow, néon, ombres de dashboard, microcopy redondante, graphique choisi pour son apparence, animation perpétuelle, valeur inventée ou copie visuelle d’un produit tiers.
+
+## 17. Liberté de composition
+
+La conformité ne signifie pas reproduire `/` bloc par bloc. Une page peut utiliser colonnes, progression verticale, index dense, chronologie, composition asymétrique, table, matrice ou graphique principal entouré de preuves.
+
+La liberté porte sur la **manière d’expliquer les données**. Elle ne porte pas sur l’identité du produit.
+
+## 18. Procédure obligatoire pour les agents
+
+Avant toute modification visuelle :
+
+1. identifier la question principale de la page ;
+2. lister les informations indispensables et leurs états ;
+3. choisir une composition adaptée sans recopier mécaniquement `/` ;
+4. mapper chaque couleur, police, taille, rayon, contrôle et mouvement vers ce document ou un token existant ;
+5. justifier toute exception avant de l’implémenter ;
+6. vérifier le rendu réel, pas seulement le code ;
+7. comparer côte à côte avec `/` à `1440 × 900` et `390 × 844` ;
+8. vérifier clavier, focus, contraste, mouvement réduit, chargement, vide, erreur et données partielles ;
+9. relire le diff pour détecter les styles isolés ;
+10. mettre à jour ce document seulement après validation explicite d’une nouvelle décision globale.
+
+Questions finales :
+
+- Les pages semblent-elles appartenir exactement à la même application ?
+- Leur différence vient-elle de la composition plutôt que d’un nouveau thème ?
+- Peut-on retirer un fond, une bordure, un arrondi ou un texte sans perdre de compréhension ?
+- L’élément essentiel est-il évident sans couleur vive ni grande carte ?
+- Le mobile conserve-t-il toutes les fonctions et données essentielles ?
+- Chaque exception stylistique possède-t-elle une raison fonctionnelle ?
+
+Si une réponse est non, la page n’est pas terminée.
