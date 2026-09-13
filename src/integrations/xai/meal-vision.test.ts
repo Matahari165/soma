@@ -87,7 +87,7 @@ describe("xAI meal vision contract", () => {
   it("rejects an invalid provider response instead of persisting guesses", async () => {
     process.env.XAI_API_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ summary: "bad", foods: [], totals: {}, confidence: "medium", uncertainties: [] }) }] }] }), { status: 200 }));
-    await expect(createXaiMealVisionProvider().analyze({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] })).rejects.toThrow("invalid structured meal analysis");
+    await expect(createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] })).rejects.toThrow("invalid structured meal analysis");
   });
 
   it("sends a text-only request without images for a free description", async () => {

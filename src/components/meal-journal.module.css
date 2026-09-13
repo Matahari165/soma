@@ -705,7 +705,6 @@
 }
 
 .labHeader h2 { color: var(--lab-text-primary); font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
-.labTarget { color: var(--lab-text-secondary); font-family: var(--font-soma-mono), monospace; font-size: var(--lab-type-label); letter-spacing: .02em; }
 .labHeader button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-surface-selected); color: var(--lab-brand); }
 .labHeader button:hover { background: var(--lab-brand); color: var(--lab-surface); }
 .labHeader button:disabled { cursor: not-allowed; opacity: .38; }

@@ -953,10 +953,9 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled, calorieTarget, hideAddMealButton = false }: { onAddMeal: () => void; addDisabled: boolean; calorieTarget: number | null; hideAddMealButton?: boolean }) {
+function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false }: { onAddMeal: () => void; addDisabled: boolean; hideAddMealButton?: boolean }) {
   return <header className={styles.labHeader}>
     <h2 id="meal-journal-title" className="sr-only">Repas</h2>
-    <span className={styles.labTarget}>{calorieTarget === null ? "Cible indisponible" : `Cible · ${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal`}</span>
     {!hideAddMealButton && <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>}
   </header>;
 }
@@ -1410,7 +1409,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader calorieTarget={effectiveTargets.caloriesKcal.likely} onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;

@@ -376,8 +376,13 @@ function normalizeStructuredAnalysis(value: unknown) {
     const quantity = item.quantity && typeof item.quantity === "object" && !Array.isArray(item.quantity)
       ? { ...(item.quantity as Record<string, unknown>), value: normalizeNumericFields((item.quantity as Record<string, unknown>).value), grams: normalizeNumericFields((item.quantity as Record<string, unknown>).grams) }
       : item.quantity;
+    const normalizedItem = { ...item };
+    // Strict OpenAI schemas require every property to be present. `null` is
+    // the wire representation of an unknown descriptive axis; the canonical
+    // Zod model represents that same state by omitting qualityProperties.
+    if (normalizedItem.qualityProperties === null) delete normalizedItem.qualityProperties;
     return {
-      ...item,
+      ...normalizedItem,
       estimatedGrams: normalizeNumericFields(item.estimatedGrams),
       calories: normalizeRange(item.calories),
       proteinGrams: normalizeRange(item.proteinGrams),
@@ -699,6 +704,14 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
           });
           return result;
         } catch (error) {
+          if (responseStatus !== "incomplete" && attempt < maxAttempts) {
+            // A complete JSON envelope can still contain a transiently
+            // incoherent model answer. Retry the same strict contract once;
+            // never repair the payload or persist it before validation passes.
+            lastError = error;
+            await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
+            continue;
+          }
           if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
             console.error("[meal-analysis] provider content failed schema validation", {
               requestId: request.requestId,
