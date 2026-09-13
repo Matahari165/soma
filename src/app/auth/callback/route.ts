@@ -22,6 +22,7 @@ function postLoginDestination(nextPath: string, onboardingCompleted: boolean) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const cookieStore = await cookies();
+  let stage = "input";
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const expectedState = cookieStore.get("soma_oauth_state")?.value;
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
   if (!code || !state || !expectedState || state !== expectedState || !verifier) return loginError(url.origin, "oauth_state");
 
   try {
+    stage = "token_exchange";
     const tokens = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -45,27 +47,41 @@ export async function GET(request: Request) {
       signal: AbortSignal.timeout(8_000),
     });
     const tokenPayload = await tokens.json().catch(() => null) as { access_token?: unknown } | null;
-    if (!tokens.ok || typeof tokenPayload?.access_token !== "string") return loginError(url.origin, "oauth_callback");
+    if (!tokens.ok || typeof tokenPayload?.access_token !== "string") {
+      console.error("[auth/callback] Google token exchange failed", { status: tokens.status });
+      return loginError(url.origin, "oauth_callback");
+    }
+    stage = "profile_fetch";
     const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     });
     const profile = await response.json().catch(() => null) as GoogleProfile | null;
-    if (!response.ok || typeof profile?.sub !== "string") return loginError(url.origin, "oauth_profile");
+    if (!response.ok || typeof profile?.sub !== "string") {
+      console.error("[auth/callback] Google profile fetch failed", { status: response.status });
+      return loginError(url.origin, "oauth_profile");
+    }
+    stage = "user_upsert";
     const user = await upsertGoogleUser({
       sub: profile.sub,
       email: typeof profile.email === "string" ? profile.email : undefined,
       name: typeof profile.name === "string" ? profile.name : undefined,
       picture: typeof profile.picture === "string" ? profile.picture : undefined,
     });
+    stage = "onboarding_lookup";
     const onboardingCompleted = await hasCompletedOnboarding(user.id);
+    stage = "session_create";
     await createSession(user.id);
     cookieStore.delete("soma_oauth_state");
     cookieStore.delete("soma_oauth_verifier");
     cookieStore.delete("soma_oauth_next");
     return NextResponse.redirect(new URL(postLoginDestination(nextPath, onboardingCompleted), url.origin));
-  } catch {
+  } catch (error) {
+    console.error("[auth/callback] OAuth callback failed", {
+      stage,
+      message: error instanceof Error ? error.message.slice(0, 240) : "Unknown error",
+    });
     return loginError(url.origin, "oauth_callback");
   }
 }
