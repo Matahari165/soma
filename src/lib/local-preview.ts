@@ -9,7 +9,9 @@ export const previewUser = {
 export const previewScoreHistory = {
   sleep: [72, 76, 74, 81, 79, 84, 93],
   recovery: [64, 68, 61, 73, 76, 78, 82],
-  effort: [42, 68, 35, 72, 54, 81, 63],
+  // Keep the preview dashboard aligned with the effort-v3 scores generated
+  // from the four synthetic activity inputs in buildPreviewAnalytics.
+  effort: [23, 22, 22, 22, 22, 23, 29],
 } satisfies Record<"sleep" | "recovery" | "effort", number[]>;
 
 export const previewDashboard: DashboardSnapshot = {
@@ -21,14 +23,14 @@ export const previewDashboard: DashboardSnapshot = {
   scores: [
     { kind: "sleep", score: previewScoreHistory.sleep.at(-1) ?? null, status: "restorative", label: "Sleep", value: "7h 48m", target: "of 8h 10m needed", delta: "84% regularity", detail: "Duration, efficiency, and regularity are combined transparently.", action: "Keep tonight close to your established sleep window.", href: "/sleep", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.sleep },
     { kind: "recovery", score: previewScoreHistory.recovery.at(-1) ?? null, status: "restorative", label: "Recovery", value: "Above recent range", target: "HRV 57 ms · RHR 57 bpm", delta: "Uses your own recent range", detail: "HRV, resting heart rate, and sleep support today's score.", action: "Use this signal alongside how you feel today.", href: "/recovery", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.recovery },
-    { kind: "effort", score: previewScoreHistory.effort.at(-1) ?? null, status: "steady", label: "Effort", value: "63/100 accomplished", target: "Today's accumulated load", delta: "8,900 steps · 33 zone min", detail: "Every additional activity adds load, with progressively smaller gains.", action: "Interpret this accomplished load alongside your recovery.", href: "/activity", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.effort },
+    { kind: "effort", score: previewScoreHistory.effort.at(-1) ?? null, status: "steady", label: "Effort", value: "29/100 accomplished", target: "Today's accumulated load", delta: "8,900 steps · 33 zone min", detail: "Every additional activity adds load, with progressively smaller gains.", action: "Interpret this accomplished load alongside your recovery.", href: "/activity", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.effort },
   ],
-  summary: "Sleep and recovery are both above your recent range. Today's activity has accumulated 63 load points so far.",
+  summary: "Sleep and recovery are both above your recent range. Today's activity has accumulated 29 load points so far.",
   insights: [
     { id: "preview-insight-1", category: "positive", title: "Sleep regularity is strengthening", description: "Your last four complete nights stayed closer to your usual window.", evidence: "Demo · 7 complete nights" },
     { id: "preview-insight-2", category: "information", title: "Recovery moved with sleep", description: "Both signals improved across the latest complete days.", evidence: "Demo · 7 complete nights" },
   ],
-  weeklyEffort: { current: 415, days: [42, 68, 35, 72, 54, 81, 63].map((value, index) => ({ label: ["M", "T", "W", "T", "F", "S", "S"][index], value, today: index === 6 })) },
+  weeklyEffort: { current: 163, days: previewScoreHistory.effort.map((value, index) => ({ label: ["M", "T", "W", "T", "F", "S", "S"][index], value, today: index === 6 })) },
   recoveryTrend: [64, 68, 61, 73, 76, 78, 82].map((value, index) => ({ label: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index], value })),
   sleepRegularity: { bedtime: "10:52 PM", wakeTime: "7:04 AM", consistency: 84 },
 };

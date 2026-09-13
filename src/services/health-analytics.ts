@@ -3,6 +3,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createCloudflareServerClient } from "@/lib/cloudflare/server";
+import { calculateEffortScoreFromAvailable } from "@/domain/scores/effort";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
 
@@ -210,14 +211,27 @@ export function buildPreviewAnalytics(): HealthAnalytics {
         algorithm_version: sleep?.algorithmVersion ?? null,
       },
       { score_date: day.metric_date, kind: "recovery", score: recoveryScore, drivers: { hrv: hrvDriver, restingHeartRate: restingHeartRateDriver, sleep: sleepDriver, coverage: 1 } },
-      { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
+      (() => {
+        const effort = calculateEffortScoreFromAvailable({
+          zoneMinutes: day.zone_minutes,
+          exerciseMinutes: day.exercise_minutes,
+          activeEnergyKcal: day.active_energy_kcal,
+          steps: day.steps,
+        });
+        return {
+          score_date: day.metric_date,
+          kind: "effort" as const,
+          score: effort.score,
+          drivers: { coverage: effort.coverage },
+          algorithm_version: effort.algorithmVersion,
+        };
+      })(),
     ];
   });
   const canonicalDays = days.slice(-previewScoreHistory.recovery.length);
   canonicalDays.forEach((day, index) => {
     const scoreIndex = scores.findIndex((score) => score.score_date === day.metric_date);
     scores[scoreIndex + 1] = { ...scores[scoreIndex + 1], score: previewScoreHistory.recovery[index] };
-    scores[scoreIndex + 2] = { ...scores[scoreIndex + 2], score: previewScoreHistory.effort[index] };
   });
   const lastDate = days.at(-1)?.metric_date ?? now.toISOString().slice(0, 10);
   const lastBedtime = new Date(`${lastDate}T12:00:00Z`);
