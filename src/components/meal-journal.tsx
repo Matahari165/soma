@@ -826,6 +826,11 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
   const compactEmptyState = compactEmpty && !meal && !skipped && !entryOpen;
   const integratedEmpty = mealsCompact || labCompact;
+  // Keep the compact capture form mounted while a note creates its draft meal.
+  // The first keystroke changes `meal` from null to a local draft; rendering
+  // the textarea through a different parent at that moment would replace the
+  // DOM node and make the browser lose focus.
+  const compactDraftCapture = integratedEmpty && !skipped && status === "draft";
 
   useEffect(() => {
     if (!openRequest || skipped) return;
@@ -871,17 +876,25 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       </div> : visibleStatus && <span className={styles.mealStatus} data-status={meal?.status ?? "empty"}>{meal?.status === "confirmed" ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status">Créneau ignoré dans le journal.</div>}
-    {compactEmptyState && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
-      {integratedEmpty ? <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "Décrire le repas…" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} /> : null}
-      <div className={styles.emptyMealActions}>
-        {integratedEmpty ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single singleLabel={labCompact ? "Ajouter une photo" : "Photo"} /> : <><button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button><PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact /></>}
+    {compactDraftCapture ? <div className={compactEmptyState ? styles.emptyMealPrompt : `${styles.mealBody} ${styles.draftMeal}`} role="group" aria-label={meal ? SLOT_LABELS[slot] : `${SLOT_LABELS[slot]} non renseigné`}>
+      {hasPhotos && <PhotoStrip key="photos" meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
+      <MealTextInput key="text" slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />
+      <div className={compactEmptyState ? styles.emptyMealActions : styles.actionsRow}>
+        {compactEmptyState ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />}
         {labCompact && <button className={styles.analyzeButton} type="button" disabled={!hasEvidence || processingFiles || mutationBusy || disabled} onClick={onAnalyze}><span>Analyser le repas</span><ArrowRight size={17} aria-hidden="true" /></button>}
+        {!compactEmptyState && !hasEvidence && <p className={styles.photoRequired}>Ajoute une photo ou décris ton repas pour lancer l’analyse.</p>}
+      </div>
+    </div> : null}
+    {compactEmptyState && !compactDraftCapture && <div className={styles.emptyMealPrompt} role="group" aria-label={`${SLOT_LABELS[slot]} non renseigné`}>
+      <div className={styles.emptyMealActions}>
+        <button className={styles.emptyNoteButton} type="button" onClick={() => setEntryStarted(true)}>Écrire</button>
+        <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact />
       </div>
     </div>}
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
-    {!skipped && !compactEmptyState && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
+    {!skipped && !compactEmptyState && !compactDraftCapture && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
-      {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "Décrire le repas…" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
+      {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
       {status === "draft" && <div className={styles.actionsRow}>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />
         <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
