@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d03-lunch",
+  "mealDate": "2026-09-03",
+  "mealType": "lunch",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Sandwich au thon acheté, avec mention incertaine de mayonnaise et de fromage ; aucune portion ni photo.",
+    "dishType": "Sandwich au thon",
+    "calorieAnalysis": "Fourchette likely autour de 500 kcal pour un sandwich industriel de taille inconnue : apport plutôt modéré à copieux selon le pain, la mayo et le fromage.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Sandwich au thon (acheté)",
+        "preparation": "Produit acheté, composition exacte inconnue",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "refined_grain",
+          "animal_protein"
+        ],
+        "varietyKey": "sandwich thon",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Thon",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "thon",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 180,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 12,
+          "likely": 22,
+          "high": 40
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 8
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 8,
+          "high": 20
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Pain du sandwich",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain"
+        ],
+        "varietyKey": "pain",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 150,
+          "likely": 250,
+          "high": 420
+        },
+        "proteinGrams": {
+          "low": 5,
+          "likely": 9,
+          "high": 16
+        },
+        "carbohydrateGrams": {
+          "low": 28,
+          "likely": 45,
+          "high": 75
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 7
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 10
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Mayonnaise",
+        "preparation": "Présence possible, non confirmée",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "added_fat",
+          "sauce"
+        ],
+        "varietyKey": "mayonnaise",
+        "evidence": "unknown",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 80,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 9,
+          "high": 24
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-5",
+        "name": "Fromage",
+        "preparation": "Présence possible, type inconnu",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "fromage",
+        "evidence": "unknown",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 70,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 5,
+          "high": 12
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 6,
+          "high": 15
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 250,
+        "likely": 500,
+        "high": 900
+      },
+      "proteinGrams": {
+        "low": 15,
+        "likely": 36,
+        "high": 65
+      },
+      "carbohydrateGrams": {
+        "low": 28,
+        "likely": 49,
+        "high": 85
+      },
+      "fatGrams": {
+        "low": 5,
+        "likely": 27,
+        "high": 65
+      },
+      "fiberGrams": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 1,
+        "likely": 5,
+        "high": 15
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Portion et poids du sandwich non indiqués.",
+      "Mayonnaise et fromage seulement possibles, non confirmés.",
+      "Recette, type de pain, huile/sauce et sucres ajoutés inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune quantité ni taille de sandwich n'est donnée."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Sandwich acheté sans marque ni liste d'ingrédients."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-4",
+        "severity": "high",
+        "detail": "Mayonnaise seulement hypothétique."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-5",
+        "severity": "high",
+        "detail": "Fromage seulement hypothétique, type inconnu."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Graisse d'assaisonnement possible non quantifiée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Calories et sucres ajoutés du produit fini non mesurables précisément."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Produit acheté sans marque."
+      }
+    ]
+  }
+}

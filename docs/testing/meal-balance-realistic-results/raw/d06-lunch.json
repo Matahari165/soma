@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d06-lunch",
+  "mealDate": "2026-09-06",
+  "mealType": "lunch",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Assiette de cantine (déjeuner) composée de pommes de terre, de poulet et d’un peu de légumes, sans quantités ni mode de préparation précisés.",
+    "dishType": "Assiette de cantine",
+    "calorieAnalysis": null,
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Assiette de cantine",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": false,
+        "foodGroups": [
+          "potato",
+          "animal_protein",
+          "vegetable"
+        ],
+        "varietyKey": "assiette cantine",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Pommes de terre",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "potato"
+        ],
+        "varietyKey": "pomme de terre",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Poulet",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "animal_protein"
+        ],
+        "varietyKey": "poulet",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Légumes",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "vegetable"
+        ],
+        "varietyKey": null,
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": null,
+      "proteinGrams": null,
+      "carbohydrateGrams": null,
+      "fatGrams": null,
+      "fiberGrams": null,
+      "sugarGrams": null,
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Portions non estimables de façon responsable.",
+      "Préparation, huile ou sauce de cantine non précisées.",
+      "Type exact des légumes inconnu.",
+      "Valeurs nutritionnelles non estimables sans quantité."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "L’utilisateur indique que les portions sont difficiles à estimer."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Sans grammes ni portions, calories et nutriments restent non estimables."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Cuisson et assaisonnement de cantine non décrits."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Présence éventuelle d’huile, beurre ou sauce non mentionnée."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Recette de cantine inconnue."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Niveau de transformation non identifiable."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-4",
+        "severity": "medium",
+        "detail": "Les légumes ne sont pas nommés."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Composition exacte de l’assiette non détaillée."
+      }
+    ]
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d07-dinner",
+  "mealDate": "2026-09-07",
+  "mealType": "dinner",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Dîner noté de mémoire : une soupe (type et quantité non précisés), deux toasts au fromage, et éventuellement un fruit ensuite. Sans photo ni recette, les identités, portions et préparations restent très incertaines.",
+    "dishType": "soupe et toasts",
+    "calorieAnalysis": null,
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Soupe",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "starter",
+        "countedInTotals": true,
+        "foodGroups": [
+          "other"
+        ],
+        "varietyKey": "soupe",
+        "evidence": "unknown",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Toasts au fromage",
+        "preparation": null,
+        "portion": "2 toasts",
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "main",
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "dairy"
+        ],
+        "varietyKey": "toast fromage",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 2,
+          "unit": "toasts",
+          "basis": "nombre cité",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Fruit",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": "dessert",
+        "countedInTotals": false,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": null,
+        "evidence": "unknown",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": null,
+      "proteinGrams": null,
+      "carbohydrateGrams": null,
+      "fatGrams": null,
+      "fiberGrams": null,
+      "sugarGrams": null,
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Type, recette et quantité de la soupe inconnus.",
+      "Pain, fromage, matière grasse et cuisson des toasts non précisés.",
+      "Fruit seulement éventuel, identité et portion inconnues.",
+      "Repas noté de mémoire, sans photo."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "La soupe n’est pas identifiée (légumes, crème, bouillon, etc.)."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune quantité de soupe n’est indiquée."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune recette ni ingrédients de la soupe."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Type de pain, fromage et cuisson des toasts non précisés."
+      },
+      {
+        "code": "sauce_or_oil_unknown",
+        "field": "sauceOrOil",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Beurre, huile ou autre matière grasse éventuelle non mentionnés."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Degré de transformation du pain et du fromage inconnu."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "Fruit seulement éventuel, espèce non citée."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-3",
+        "severity": "high",
+        "detail": "Aucune portion de fruit indiquée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Calories et nutriments non estimables de façon responsable."
+      }
+    ]
+  }
+}

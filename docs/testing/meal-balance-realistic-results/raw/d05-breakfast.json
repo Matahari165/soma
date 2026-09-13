@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d05-breakfast",
+  "mealDate": "2026-09-05",
+  "mealType": "breakfast",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner décrit sans photo : yaourt nature, quelques flocons (granola non mesuré) et une pomme. Portions et composition du granola très incertaines.",
+    "dishType": "petit-déjeuner",
+    "calorieAnalysis": "Fourchette likely autour de 280 kcal (très large : environ 150–500 kcal). Apport plutôt léger à modéré, selon la quantité de granola et de yaourt.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Yaourt nature",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "yaourt nature",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 60,
+          "likely": 120,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 16
+        },
+        "carbohydrateGrams": {
+          "low": 5,
+          "likely": 10,
+          "high": 20
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 9,
+          "high": 18
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Flocons / granola",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "whole_grain"
+        ],
+        "varietyKey": "granola",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 90,
+          "high": 220
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 7
+        },
+        "carbohydrateGrams": {
+          "low": 6,
+          "likely": 15,
+          "high": 35
+        },
+        "fatGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 4,
+          "high": 12
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 3,
+          "high": 10
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Pomme",
+        "preparation": null,
+        "portion": "1 pièce",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "pomme",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 1,
+          "unit": "pièce",
+          "basis": "une pomme",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 50,
+          "likely": 80,
+          "high": 130
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 12,
+          "likely": 20,
+          "high": 32
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 25
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 150,
+        "likely": 290,
+        "high": 570
+      },
+      "proteinGrams": {
+        "low": 5,
+        "likely": 11,
+        "high": 24
+      },
+      "carbohydrateGrams": {
+        "low": 23,
+        "likely": 45,
+        "high": 87
+      },
+      "fatGrams": {
+        "low": 1,
+        "likely": 7,
+        "high": 23
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 5,
+        "high": 11
+      },
+      "sugarGrams": {
+        "low": 14,
+        "likely": 29,
+        "high": 55
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 3,
+        "high": 12
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Quantité de yaourt non indiquée.",
+      "Quantité de flocons/granola explicitement non mesurée ; recette et sucres ajoutés inconnus.",
+      "Poids de la pomme non donné (une pièce seulement)."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune quantité de yaourt n'est indiquée."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Granola/flocons décrits comme non mesurés."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Composition du granola (céréales, matières grasses, sucres) inconnue."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Transformation du granola non identifiable."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Présence éventuelle de sucres concentrés dans le granola non observée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Totaux nutritionnels très larges faute de grammes et de recette."
+      }
+    ]
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d08-snack",
+  "mealDate": "2026-09-08",
+  "mealType": "snack",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Collation en marchant : une pomme, taille moyenne seulement supposée, sans photo ni préparation précisée.",
+    "dishType": "Collation (fruit)",
+    "calorieAnalysis": "Fourchette likely autour de 80 kcal : collation légère, une pomme seule.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Pomme",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "pomme",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "high",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 50,
+          "likely": 80,
+          "high": 130
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "carbohydrateGrams": {
+          "low": 12,
+          "likely": 20,
+          "high": 32
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 3,
+          "high": 6
+        },
+        "sugarGrams": {
+          "low": 10,
+          "likely": 16,
+          "high": 26
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 50,
+        "likely": 80,
+        "high": 130
+      },
+      "proteinGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 1
+      },
+      "carbohydrateGrams": {
+        "low": 12,
+        "likely": 20,
+        "high": 32
+      },
+      "fatGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 1
+      },
+      "fiberGrams": {
+        "low": 2,
+        "likely": 3,
+        "high": 6
+      },
+      "sugarGrams": {
+        "low": 10,
+        "likely": 16,
+        "high": 26
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 0,
+        "high": 0
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Taille moyenne seulement supposée : pas de grammes ni de calibre mesuré.",
+      "Variété, pelure et degré de maturité inconnus."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Pomme sans quantité mesurée ; taille moyenne seulement supposée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Calories et glucides en fourchettes larges faute de poids."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "Variété et pelure non précisées."
+      }
+    ]
+  }
+}

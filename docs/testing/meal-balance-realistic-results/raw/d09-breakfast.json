@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d09-breakfast",
+  "mealDate": "2026-09-09",
+  "mealType": "breakfast",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Petit-déjeuner décrit comme un porridge au lait, avec quelques fruits rouges surgelés et éventuellement une cuillère de miel ; portions approximatives, sans photo ni grammes fiables.",
+    "dishType": "Porridge",
+    "calorieAnalysis": "Fourchette large autour d’environ 280 à 550 kcal (valeur probable ~400 kcal) : repas plutôt modéré, selon la quantité de flocons, de lait et de miel.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Porridge au lait",
+        "preparation": "Porridge préparé avec du lait, fruits rouges surgelés et miel possible",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": false,
+        "foodGroups": [
+          "whole_grain",
+          "dairy",
+          "fruit",
+          "sweet"
+        ],
+        "varietyKey": "porridge",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": null,
+        "proteinGrams": null,
+        "carbohydrateGrams": null,
+        "fatGrams": null,
+        "fiberGrams": null,
+        "sugarGrams": null,
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Flocons pour porridge",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "whole_grain"
+        ],
+        "varietyKey": "avoine",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 180,
+          "high": 320
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 14
+        },
+        "carbohydrateGrams": {
+          "low": 14,
+          "likely": 30,
+          "high": 55
+        },
+        "fatGrams": {
+          "low": 1.5,
+          "likely": 4,
+          "high": 8
+        },
+        "fiberGrams": {
+          "low": 2,
+          "likely": 4,
+          "high": 8
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-3",
+        "name": "Lait",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "dairy"
+        ],
+        "varietyKey": "lait",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "minimally_processed",
+          "protein_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 90,
+          "high": 180
+        },
+        "proteinGrams": {
+          "low": 3,
+          "likely": 6,
+          "high": 12
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 16
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 3.5,
+          "high": 10
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 16
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-4",
+        "name": "Fruits rouges surgelés",
+        "preparation": "surgelés",
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "fruit"
+        ],
+        "varietyKey": "fruits rouges",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 1,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "qualityProperties": [
+          "whole_food",
+          "minimally_processed",
+          "fiber_source"
+        ],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "medium"
+          }
+        },
+        "calories": {
+          "low": 10,
+          "likely": 25,
+          "high": 60
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 1.5
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 4
+        },
+        "sugarGrams": {
+          "low": 1,
+          "likely": 4,
+          "high": 10
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "confidence": "low"
+      },
+      {
+        "id": "food-5",
+        "name": "Miel",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "component",
+        "parentId": "food-1",
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sweet"
+        ],
+        "varietyKey": "miel",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 2,
+        "sugarExposure": {
+          "concentrated": true,
+          "liquid": false
+        },
+        "qualityProperties": [],
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "observed",
+          "qualityProperties": "none_observed",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "medium",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 0,
+          "likely": 60,
+          "high": 90
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "carbohydrateGrams": {
+          "low": 0,
+          "likely": 16,
+          "high": 24
+        },
+        "fatGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 0
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 16,
+          "high": 24
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 16,
+          "high": 24
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 130,
+        "likely": 355,
+        "high": 650
+      },
+      "proteinGrams": {
+        "low": 6,
+        "likely": 13,
+        "high": 28
+      },
+      "carbohydrateGrams": {
+        "low": 20,
+        "likely": 59,
+        "high": 107
+      },
+      "fatGrams": {
+        "low": 1.5,
+        "likely": 7.5,
+        "high": 18
+      },
+      "fiberGrams": {
+        "low": 3,
+        "likely": 6,
+        "high": 12
+      },
+      "sugarGrams": {
+        "low": 5,
+        "likely": 29,
+        "high": 53
+      },
+      "addedSugarGrams": {
+        "low": 0,
+        "likely": 16,
+        "high": 24
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Portions approximatives : aucune quantité fiable pour flocons, lait ou fruits.",
+      "Présence et quantité de miel incertaines (mentionnée avec un point d’interrogation).",
+      "Type de lait (écrémé, entier, végétal) non précisé.",
+      "Nature exacte des flocons (avoine entière, mélange, instantané) non précisée."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Portions décrites comme approximatives, sans grammes ni volumes."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Recette et proportions flocons/lait/fruits/miel non données."
+      },
+      {
+        "code": "preparation_unknown",
+        "field": "preparation",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Type de flocons et cuisson non précisés."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-3",
+        "severity": "medium",
+        "detail": "Nature du lait (animal, teneur en matière grasse ou végétal) inconnue."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-5",
+        "severity": "high",
+        "detail": "Le miel est indiqué avec un point d’interrogation : présence non confirmée."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Nutrition estimée en fourchettes très larges faute de quantités."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-5",
+        "severity": "medium",
+        "detail": "Sucres ajoutés du miel seulement si la cuillère est réellement consommée."
+      }
+    ]
+  }
+}

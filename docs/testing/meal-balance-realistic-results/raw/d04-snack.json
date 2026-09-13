@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d04-snack",
+  "mealDate": "2026-09-04",
+  "mealType": "snack",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Collation en déplacement : une barre de céréales de marque inconnue, sans quantité mesurée ni recette.",
+    "dishType": "barre de céréales",
+    "calorieAnalysis": "Fourchette large autour d’environ 150 kcal (très incertaine) : collation plutôt légère à modérée selon la taille et la recette.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Barre de céréales",
+        "preparation": null,
+        "portion": null,
+        "estimatedGrams": null,
+        "kind": "dish",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "refined_grain",
+          "sweet"
+        ],
+        "varietyKey": "barre de céréales",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": null,
+        "alcoholic": false,
+        "novaGroup": 4,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "unknown",
+          "novaGroup": "observed",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 150,
+          "high": 280
+        },
+        "proteinGrams": {
+          "low": 1,
+          "likely": 3,
+          "high": 8
+        },
+        "carbohydrateGrams": {
+          "low": 12,
+          "likely": 22,
+          "high": 40
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 6,
+          "high": 14
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 2,
+          "high": 6
+        },
+        "sugarGrams": {
+          "low": 4,
+          "likely": 10,
+          "high": 22
+        },
+        "addedSugarGrams": {
+          "low": 2,
+          "likely": 8,
+          "high": 20
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 80,
+        "likely": 150,
+        "high": 280
+      },
+      "proteinGrams": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "carbohydrateGrams": {
+        "low": 12,
+        "likely": 22,
+        "high": 40
+      },
+      "fatGrams": {
+        "low": 2,
+        "likely": 6,
+        "high": 14
+      },
+      "fiberGrams": {
+        "low": 0,
+        "likely": 2,
+        "high": 6
+      },
+      "sugarGrams": {
+        "low": 4,
+        "likely": 10,
+        "high": 22
+      },
+      "addedSugarGrams": {
+        "low": 2,
+        "likely": 8,
+        "high": 20
+      }
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Marque, recette, ingrédients (céréales, liants sucrés, matières grasses) et taille réelle inconnus.",
+      "La « taille standard » n’est pas une quantité mesurée : aucune masse n’a été retenue."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Marque inconnue : composition et NOVA/sucres variables."
+      },
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Aucune portion chiffrée ; taille standard seulement supposée."
+      },
+      {
+        "code": "recipe_unknown",
+        "field": "recipe",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Recette non donnée (céréales, sirop, chocolat, fruits secs possibles)."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Présence de sucres concentrés (sirop, nappage) non vérifiable."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": "food-1",
+        "severity": "high",
+        "detail": "Valeurs nutritionnelles très larges faute de grammes et d’étiquette."
+      },
+      {
+        "code": "composition_uncertain",
+        "field": "composition",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Familles alimentaires (céréales raffinées vs complètes, oléagineux) incertaines."
+      }
+    ]
+  }
+}

@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "caseId": "d10-snack",
+  "mealDate": "2026-09-10",
+  "mealType": "snack",
+  "provider": "xai",
+  "model": "grok-4.6",
+  "analysis": {
+    "summary": "Collation composée de deux carrés de chocolat et d’une poignée de noix, quantité de noix indiquée comme très approximative, sans photo ni type de chocolat ou de noix.",
+    "dishType": "collation",
+    "calorieAnalysis": "Apport calorique probable autour de 250 kcal (fourchette large), collation plutôt légère à modérée selon la taille réelle de la poignée et le type de chocolat.",
+    "foods": [
+      {
+        "id": "food-1",
+        "name": "Chocolat",
+        "preparation": null,
+        "portion": "2 carrés",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "sweet"
+        ],
+        "varietyKey": "chocolat",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": 2,
+          "unit": "carrés",
+          "basis": "description utilisateur",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": null,
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "unknown",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "medium",
+            "novaGroup": "low",
+            "sugarExposure": "low",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 40,
+          "likely": 80,
+          "high": 160
+        },
+        "proteinGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "carbohydrateGrams": {
+          "low": 4,
+          "likely": 8,
+          "high": 18
+        },
+        "fatGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fiberGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 3
+        },
+        "sugarGrams": {
+          "low": 3,
+          "likely": 7,
+          "high": 16
+        },
+        "addedSugarGrams": null,
+        "confidence": "low"
+      },
+      {
+        "id": "food-2",
+        "name": "Noix",
+        "preparation": null,
+        "portion": "une poignée",
+        "estimatedGrams": null,
+        "kind": "ingredient",
+        "parentId": null,
+        "course": null,
+        "countedInTotals": true,
+        "foodGroups": [
+          "nuts_seeds"
+        ],
+        "varietyKey": "noix",
+        "evidence": "inferred",
+        "evidenceSource": "note",
+        "evidencePhotoIds": [],
+        "quantity": {
+          "value": null,
+          "unit": "poignée",
+          "basis": "description utilisateur",
+          "grams": null
+        },
+        "alcoholic": false,
+        "novaGroup": null,
+        "sugarExposure": {
+          "concentrated": false,
+          "liquid": false
+        },
+        "observation": {
+          "portion": "observed",
+          "novaGroup": "unknown",
+          "sugarExposure": "none_observed",
+          "qualityProperties": "unknown",
+          "confidence": {
+            "portion": "low",
+            "novaGroup": "low",
+            "sugarExposure": "medium",
+            "qualityProperties": "low"
+          }
+        },
+        "calories": {
+          "low": 80,
+          "likely": 170,
+          "high": 350
+        },
+        "proteinGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 10
+        },
+        "carbohydrateGrams": {
+          "low": 2,
+          "likely": 5,
+          "high": 12
+        },
+        "fatGrams": {
+          "low": 7,
+          "likely": 16,
+          "high": 32
+        },
+        "fiberGrams": {
+          "low": 1,
+          "likely": 2,
+          "high": 5
+        },
+        "sugarGrams": {
+          "low": 0,
+          "likely": 1,
+          "high": 4
+        },
+        "addedSugarGrams": {
+          "low": 0,
+          "likely": 0,
+          "high": 2
+        },
+        "confidence": "low"
+      }
+    ],
+    "totals": {
+      "calories": {
+        "low": 120,
+        "likely": 250,
+        "high": 510
+      },
+      "proteinGrams": {
+        "low": 2,
+        "likely": 6,
+        "high": 13
+      },
+      "carbohydrateGrams": {
+        "low": 6,
+        "likely": 13,
+        "high": 30
+      },
+      "fatGrams": {
+        "low": 9,
+        "likely": 21,
+        "high": 44
+      },
+      "fiberGrams": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "sugarGrams": {
+        "low": 3,
+        "likely": 8,
+        "high": 20
+      },
+      "addedSugarGrams": null
+    },
+    "confidence": "low",
+    "uncertainties": [
+      "Estimation à partir de la seule description, sans photo.",
+      "Type de chocolat (noir, au lait, fourré) non précisé.",
+      "Poignée de noix très approximative : variété, grillées/salées ou nature, et taille inconnues.",
+      "Grammages non estimables de façon responsable ; nutrition en fourchettes très larges."
+    ],
+    "uncertaintySignals": [
+      {
+        "code": "portion_unknown",
+        "field": "portion",
+        "foodId": "food-2",
+        "severity": "high",
+        "detail": "Poignée décrite comme vraiment approximative, sans grammes ni photo."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Nature du chocolat (pourcentage de cacao, lait, fourrage) non indiquée."
+      },
+      {
+        "code": "food_identity_unknown",
+        "field": "identity",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Type de noix et assaisonnement non précisés."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Niveau de transformation du chocolat non identifiable."
+      },
+      {
+        "code": "nova_group_unknown",
+        "field": "novaGroup",
+        "foodId": "food-2",
+        "severity": "medium",
+        "detail": "Noix nature ou transformées (grillées, salées, enrobées) inconnu."
+      },
+      {
+        "code": "sugar_exposure_unknown",
+        "field": "sugarExposure",
+        "foodId": "food-1",
+        "severity": "medium",
+        "detail": "Sucres du chocolat (ajoutés ou non) non observables."
+      },
+      {
+        "code": "nutrition_unknown",
+        "field": "nutrition",
+        "foodId": null,
+        "severity": "high",
+        "detail": "Sans grammes ni recette, les nutriments restent des fourchettes très larges."
+      },
+      {
+        "code": "brand_unknown",
+        "field": "brand",
+        "foodId": "food-1",
+        "severity": "low",
+        "detail": "Marque et composition du chocolat inconnues."
+      }
+    ]
+  }
+}

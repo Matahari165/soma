@@ -1,0 +1,5855 @@
+{
+  "schemaVersion": 1,
+  "mode": "live",
+  "fixtureDirectory": "/Users/jeremydelloume/.codex/worktrees/1cec/Soma/tests/fixtures/meal-balance-realistic",
+  "resultsDirectory": "/Users/jeremydelloume/.codex/worktrees/1cec/Soma/docs/testing/meal-balance-realistic-results/raw",
+  "fixtureVersion": 1,
+  "targetSource": "default",
+  "goalMode": "maintain",
+  "cases": [
+    {
+      "caseId": "d01-breakfast",
+      "mealDate": "2026-09-01",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d01-lunch",
+      "mealDate": "2026-09-01",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d01-dinner",
+      "mealDate": "2026-09-01",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "response_schema_error"
+    },
+    {
+      "caseId": "d02-breakfast",
+      "mealDate": "2026-09-02",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "response_schema_error"
+    },
+    {
+      "caseId": "d02-lunch",
+      "mealDate": "2026-09-02",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d02-snack",
+      "mealDate": "2026-09-02",
+      "mealType": "snack",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d02-dinner",
+      "mealDate": "2026-09-02",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d03-breakfast",
+      "mealDate": "2026-09-03",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d03-lunch",
+      "mealDate": "2026-09-03",
+      "mealType": "lunch",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Sandwich au thon acheté, avec mention incertaine de mayonnaise et de fromage ; aucune portion ni photo.",
+        "dishType": "Sandwich au thon",
+        "calorieAnalysis": "Fourchette likely autour de 500 kcal pour un sandwich industriel de taille inconnue : apport plutôt modéré à copieux selon le pain, la mayo et le fromage.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Sandwich au thon (acheté)",
+            "preparation": "Produit acheté, composition exacte inconnue",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "main",
+            "countedInTotals": false,
+            "foodGroups": [
+              "refined_grain",
+              "animal_protein"
+            ],
+            "varietyKey": "sandwich thon",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 4,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Thon",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "animal_protein"
+            ],
+            "varietyKey": "thon",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 80,
+              "likely": 180,
+              "high": 320
+            },
+            "proteinGrams": {
+              "low": 12,
+              "likely": 22,
+              "high": 40
+            },
+            "carbohydrateGrams": {
+              "low": 0,
+              "likely": 2,
+              "high": 8
+            },
+            "fatGrams": {
+              "low": 2,
+              "likely": 8,
+              "high": 20
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 2
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Pain du sandwich",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "refined_grain"
+            ],
+            "varietyKey": "pain",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 150,
+              "likely": 250,
+              "high": 420
+            },
+            "proteinGrams": {
+              "low": 5,
+              "likely": 9,
+              "high": 16
+            },
+            "carbohydrateGrams": {
+              "low": 28,
+              "likely": 45,
+              "high": 75
+            },
+            "fatGrams": {
+              "low": 1,
+              "likely": 4,
+              "high": 12
+            },
+            "fiberGrams": {
+              "low": 1,
+              "likely": 3,
+              "high": 7
+            },
+            "sugarGrams": {
+              "low": 1,
+              "likely": 4,
+              "high": 10
+            },
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-4",
+            "name": "Mayonnaise",
+            "preparation": "Présence possible, non confirmée",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "added_fat",
+              "sauce"
+            ],
+            "varietyKey": "mayonnaise",
+            "evidence": "unknown",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 4,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 0,
+              "likely": 80,
+              "high": 220
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "carbohydrateGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 4
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 9,
+              "high": 24
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 2
+            },
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-5",
+            "name": "Fromage",
+            "preparation": "Présence possible, type inconnu",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "dairy"
+            ],
+            "varietyKey": "fromage",
+            "evidence": "unknown",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 0,
+              "likely": 70,
+              "high": 180
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 5,
+              "high": 12
+            },
+            "carbohydrateGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 3
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 6,
+              "high": 15
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 250,
+            "likely": 500,
+            "high": 900
+          },
+          "proteinGrams": {
+            "low": 15,
+            "likely": 36,
+            "high": 65
+          },
+          "carbohydrateGrams": {
+            "low": 28,
+            "likely": 49,
+            "high": 85
+          },
+          "fatGrams": {
+            "low": 5,
+            "likely": 27,
+            "high": 65
+          },
+          "fiberGrams": {
+            "low": 1,
+            "likely": 3,
+            "high": 8
+          },
+          "sugarGrams": {
+            "low": 1,
+            "likely": 5,
+            "high": 15
+          },
+          "addedSugarGrams": null
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Portion et poids du sandwich non indiqués.",
+          "Mayonnaise et fromage seulement possibles, non confirmés.",
+          "Recette, type de pain, huile/sauce et sucres ajoutés inconnus."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Aucune quantité ni taille de sandwich n'est donnée."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Sandwich acheté sans marque ni liste d'ingrédients."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-4",
+            "severity": "high",
+            "detail": "Mayonnaise seulement hypothétique."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-5",
+            "severity": "high",
+            "detail": "Fromage seulement hypothétique, type inconnu."
+          },
+          {
+            "code": "sauce_or_oil_unknown",
+            "field": "sauceOrOil",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Graisse d'assaisonnement possible non quantifiée."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Calories et sucres ajoutés du produit fini non mesurables précisément."
+          },
+          {
+            "code": "brand_unknown",
+            "field": "brand",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Produit acheté sans marque."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d03-dinner",
+      "mealDate": "2026-09-03",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d04-breakfast",
+      "mealDate": "2026-09-04",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d04-snack",
+      "mealDate": "2026-09-04",
+      "mealType": "snack",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Collation en déplacement : une barre de céréales de marque inconnue, sans quantité mesurée ni recette.",
+        "dishType": "barre de céréales",
+        "calorieAnalysis": "Fourchette large autour d’environ 150 kcal (très incertaine) : collation plutôt légère à modérée selon la taille et la recette.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Barre de céréales",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "refined_grain",
+              "sweet"
+            ],
+            "varietyKey": "barre de céréales",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 4,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 80,
+              "likely": 150,
+              "high": 280
+            },
+            "proteinGrams": {
+              "low": 1,
+              "likely": 3,
+              "high": 8
+            },
+            "carbohydrateGrams": {
+              "low": 12,
+              "likely": 22,
+              "high": 40
+            },
+            "fatGrams": {
+              "low": 2,
+              "likely": 6,
+              "high": 14
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 2,
+              "high": 6
+            },
+            "sugarGrams": {
+              "low": 4,
+              "likely": 10,
+              "high": 22
+            },
+            "addedSugarGrams": {
+              "low": 2,
+              "likely": 8,
+              "high": 20
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 80,
+            "likely": 150,
+            "high": 280
+          },
+          "proteinGrams": {
+            "low": 1,
+            "likely": 3,
+            "high": 8
+          },
+          "carbohydrateGrams": {
+            "low": 12,
+            "likely": 22,
+            "high": 40
+          },
+          "fatGrams": {
+            "low": 2,
+            "likely": 6,
+            "high": 14
+          },
+          "fiberGrams": {
+            "low": 0,
+            "likely": 2,
+            "high": 6
+          },
+          "sugarGrams": {
+            "low": 4,
+            "likely": 10,
+            "high": 22
+          },
+          "addedSugarGrams": {
+            "low": 2,
+            "likely": 8,
+            "high": 20
+          }
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Marque, recette, ingrédients (céréales, liants sucrés, matières grasses) et taille réelle inconnus.",
+          "La « taille standard » n’est pas une quantité mesurée : aucune masse n’a été retenue."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "brand_unknown",
+            "field": "brand",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Marque inconnue : composition et NOVA/sucres variables."
+          },
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Aucune portion chiffrée ; taille standard seulement supposée."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Recette non donnée (céréales, sirop, chocolat, fruits secs possibles)."
+          },
+          {
+            "code": "sugar_exposure_unknown",
+            "field": "sugarExposure",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Présence de sucres concentrés (sirop, nappage) non vérifiable."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Valeurs nutritionnelles très larges faute de grammes et d’étiquette."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Familles alimentaires (céréales raffinées vs complètes, oléagineux) incertaines."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d04-dinner",
+      "mealDate": "2026-09-04",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d05-breakfast",
+      "mealDate": "2026-09-05",
+      "mealType": "breakfast",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Petit-déjeuner décrit sans photo : yaourt nature, quelques flocons (granola non mesuré) et une pomme. Portions et composition du granola très incertaines.",
+        "dishType": "petit-déjeuner",
+        "calorieAnalysis": "Fourchette likely autour de 280 kcal (très large : environ 150–500 kcal). Apport plutôt léger à modéré, selon la quantité de granola et de yaourt.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Yaourt nature",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "dairy"
+            ],
+            "varietyKey": "yaourt nature",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "minimally_processed",
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 60,
+              "likely": 120,
+              "high": 220
+            },
+            "proteinGrams": {
+              "low": 4,
+              "likely": 8,
+              "high": 16
+            },
+            "carbohydrateGrams": {
+              "low": 5,
+              "likely": 10,
+              "high": 20
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 4,
+              "high": 12
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "sugarGrams": {
+              "low": 4,
+              "likely": 9,
+              "high": 18
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 2
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Flocons / granola",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "whole_grain"
+            ],
+            "varietyKey": "granola",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 40,
+              "likely": 90,
+              "high": 220
+            },
+            "proteinGrams": {
+              "low": 1,
+              "likely": 3,
+              "high": 7
+            },
+            "carbohydrateGrams": {
+              "low": 6,
+              "likely": 15,
+              "high": 35
+            },
+            "fatGrams": {
+              "low": 1,
+              "likely": 3,
+              "high": 10
+            },
+            "fiberGrams": {
+              "low": 1,
+              "likely": 2,
+              "high": 5
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 4,
+              "high": 12
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 3,
+              "high": 10
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Pomme",
+            "preparation": null,
+            "portion": "1 pièce",
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "fruit"
+            ],
+            "varietyKey": "pomme",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": 1,
+              "unit": "pièce",
+              "basis": "une pomme",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "whole_food",
+              "minimally_processed",
+              "fiber_source"
+            ],
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "medium",
+                "novaGroup": "high",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 50,
+              "likely": 80,
+              "high": 130
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "carbohydrateGrams": {
+              "low": 12,
+              "likely": 20,
+              "high": 32
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "fiberGrams": {
+              "low": 2,
+              "likely": 3,
+              "high": 5
+            },
+            "sugarGrams": {
+              "low": 10,
+              "likely": 16,
+              "high": 25
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 150,
+            "likely": 290,
+            "high": 570
+          },
+          "proteinGrams": {
+            "low": 5,
+            "likely": 11,
+            "high": 24
+          },
+          "carbohydrateGrams": {
+            "low": 23,
+            "likely": 45,
+            "high": 87
+          },
+          "fatGrams": {
+            "low": 1,
+            "likely": 7,
+            "high": 23
+          },
+          "fiberGrams": {
+            "low": 3,
+            "likely": 5,
+            "high": 11
+          },
+          "sugarGrams": {
+            "low": 14,
+            "likely": 29,
+            "high": 55
+          },
+          "addedSugarGrams": {
+            "low": 0,
+            "likely": 3,
+            "high": 12
+          }
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Quantité de yaourt non indiquée.",
+          "Quantité de flocons/granola explicitement non mesurée ; recette et sucres ajoutés inconnus.",
+          "Poids de la pomme non donné (une pièce seulement)."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Aucune quantité de yaourt n'est indiquée."
+          },
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-2",
+            "severity": "high",
+            "detail": "Granola/flocons décrits comme non mesurés."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-2",
+            "severity": "high",
+            "detail": "Composition du granola (céréales, matières grasses, sucres) inconnue."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Transformation du granola non identifiable."
+          },
+          {
+            "code": "sugar_exposure_unknown",
+            "field": "sugarExposure",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Présence éventuelle de sucres concentrés dans le granola non observée."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Totaux nutritionnels très larges faute de grammes et de recette."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d05-lunch",
+      "mealDate": "2026-09-05",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d05-dinner",
+      "mealDate": "2026-09-05",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d06-breakfast",
+      "mealDate": "2026-09-06",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d06-lunch",
+      "mealDate": "2026-09-06",
+      "mealType": "lunch",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Assiette de cantine (déjeuner) composée de pommes de terre, de poulet et d’un peu de légumes, sans quantités ni mode de préparation précisés.",
+        "dishType": "Assiette de cantine",
+        "calorieAnalysis": null,
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Assiette de cantine",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "main",
+            "countedInTotals": false,
+            "foodGroups": [
+              "potato",
+              "animal_protein",
+              "vegetable"
+            ],
+            "varietyKey": "assiette cantine",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Pommes de terre",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "potato"
+            ],
+            "varietyKey": "pomme de terre",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "fiber_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Poulet",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "animal_protein"
+            ],
+            "varietyKey": "poulet",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-4",
+            "name": "Légumes",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "vegetable"
+            ],
+            "varietyKey": null,
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": null,
+          "proteinGrams": null,
+          "carbohydrateGrams": null,
+          "fatGrams": null,
+          "fiberGrams": null,
+          "sugarGrams": null,
+          "addedSugarGrams": null
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Portions non estimables de façon responsable.",
+          "Préparation, huile ou sauce de cantine non précisées.",
+          "Type exact des légumes inconnu.",
+          "Valeurs nutritionnelles non estimables sans quantité."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "L’utilisateur indique que les portions sont difficiles à estimer."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Sans grammes ni portions, calories et nutriments restent non estimables."
+          },
+          {
+            "code": "preparation_unknown",
+            "field": "preparation",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Cuisson et assaisonnement de cantine non décrits."
+          },
+          {
+            "code": "sauce_or_oil_unknown",
+            "field": "sauceOrOil",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Présence éventuelle d’huile, beurre ou sauce non mentionnée."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Recette de cantine inconnue."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Niveau de transformation non identifiable."
+          },
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-4",
+            "severity": "medium",
+            "detail": "Les légumes ne sont pas nommés."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Composition exacte de l’assiette non détaillée."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d06-snack",
+      "mealDate": "2026-09-06",
+      "mealType": "snack",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d07-breakfast",
+      "mealDate": "2026-09-07",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d07-lunch",
+      "mealDate": "2026-09-07",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d07-dinner",
+      "mealDate": "2026-09-07",
+      "mealType": "dinner",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Dîner noté de mémoire : une soupe (type et quantité non précisés), deux toasts au fromage, et éventuellement un fruit ensuite. Sans photo ni recette, les identités, portions et préparations restent très incertaines.",
+        "dishType": "soupe et toasts",
+        "calorieAnalysis": null,
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Soupe",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "starter",
+            "countedInTotals": true,
+            "foodGroups": [
+              "other"
+            ],
+            "varietyKey": "soupe",
+            "evidence": "unknown",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Toasts au fromage",
+            "preparation": null,
+            "portion": "2 toasts",
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "refined_grain",
+              "dairy"
+            ],
+            "varietyKey": "toast fromage",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": 2,
+              "unit": "toasts",
+              "basis": "nombre cité",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "medium",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Fruit",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "dessert",
+            "countedInTotals": false,
+            "foodGroups": [
+              "fruit"
+            ],
+            "varietyKey": null,
+            "evidence": "unknown",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": null,
+          "proteinGrams": null,
+          "carbohydrateGrams": null,
+          "fatGrams": null,
+          "fiberGrams": null,
+          "sugarGrams": null,
+          "addedSugarGrams": null
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Type, recette et quantité de la soupe inconnus.",
+          "Pain, fromage, matière grasse et cuisson des toasts non précisés.",
+          "Fruit seulement éventuel, identité et portion inconnues.",
+          "Repas noté de mémoire, sans photo."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "La soupe n’est pas identifiée (légumes, crème, bouillon, etc.)."
+          },
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Aucune quantité de soupe n’est indiquée."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Aucune recette ni ingrédients de la soupe."
+          },
+          {
+            "code": "preparation_unknown",
+            "field": "preparation",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Type de pain, fromage et cuisson des toasts non précisés."
+          },
+          {
+            "code": "sauce_or_oil_unknown",
+            "field": "sauceOrOil",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Beurre, huile ou autre matière grasse éventuelle non mentionnés."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Degré de transformation du pain et du fromage inconnu."
+          },
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-3",
+            "severity": "high",
+            "detail": "Fruit seulement éventuel, espèce non citée."
+          },
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-3",
+            "severity": "high",
+            "detail": "Aucune portion de fruit indiquée."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Calories et nutriments non estimables de façon responsable."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d08-lunch",
+      "mealDate": "2026-09-08",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d08-snack",
+      "mealDate": "2026-09-08",
+      "mealType": "snack",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Collation en marchant : une pomme, taille moyenne seulement supposée, sans photo ni préparation précisée.",
+        "dishType": "Collation (fruit)",
+        "calorieAnalysis": "Fourchette likely autour de 80 kcal : collation légère, une pomme seule.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Pomme",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "fruit"
+            ],
+            "varietyKey": "pomme",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "whole_food",
+              "minimally_processed",
+              "fiber_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "high",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 50,
+              "likely": 80,
+              "high": 130
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "carbohydrateGrams": {
+              "low": 12,
+              "likely": 20,
+              "high": 32
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "fiberGrams": {
+              "low": 2,
+              "likely": 3,
+              "high": 6
+            },
+            "sugarGrams": {
+              "low": 10,
+              "likely": 16,
+              "high": 26
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 50,
+            "likely": 80,
+            "high": 130
+          },
+          "proteinGrams": {
+            "low": 0,
+            "likely": 0,
+            "high": 1
+          },
+          "carbohydrateGrams": {
+            "low": 12,
+            "likely": 20,
+            "high": 32
+          },
+          "fatGrams": {
+            "low": 0,
+            "likely": 0,
+            "high": 1
+          },
+          "fiberGrams": {
+            "low": 2,
+            "likely": 3,
+            "high": 6
+          },
+          "sugarGrams": {
+            "low": 10,
+            "likely": 16,
+            "high": 26
+          },
+          "addedSugarGrams": {
+            "low": 0,
+            "likely": 0,
+            "high": 0
+          }
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Taille moyenne seulement supposée : pas de grammes ni de calibre mesuré.",
+          "Variété, pelure et degré de maturité inconnus."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Pomme sans quantité mesurée ; taille moyenne seulement supposée."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Calories et glucides en fourchettes larges faute de poids."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-1",
+            "severity": "low",
+            "detail": "Variété et pelure non précisées."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d08-dinner",
+      "mealDate": "2026-09-08",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d09-breakfast",
+      "mealDate": "2026-09-09",
+      "mealType": "breakfast",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Petit-déjeuner décrit comme un porridge au lait, avec quelques fruits rouges surgelés et éventuellement une cuillère de miel ; portions approximatives, sans photo ni grammes fiables.",
+        "dishType": "Porridge",
+        "calorieAnalysis": "Fourchette large autour d’environ 280 à 550 kcal (valeur probable ~400 kcal) : repas plutôt modéré, selon la quantité de flocons, de lait et de miel.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Porridge au lait",
+            "preparation": "Porridge préparé avec du lait, fruits rouges surgelés et miel possible",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": false,
+            "foodGroups": [
+              "whole_grain",
+              "dairy",
+              "fruit",
+              "sweet"
+            ],
+            "varietyKey": "porridge",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Flocons pour porridge",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "whole_grain"
+            ],
+            "varietyKey": "avoine",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "whole_food",
+              "minimally_processed",
+              "fiber_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 80,
+              "likely": 180,
+              "high": 320
+            },
+            "proteinGrams": {
+              "low": 3,
+              "likely": 7,
+              "high": 14
+            },
+            "carbohydrateGrams": {
+              "low": 14,
+              "likely": 30,
+              "high": 55
+            },
+            "fatGrams": {
+              "low": 1.5,
+              "likely": 4,
+              "high": 8
+            },
+            "fiberGrams": {
+              "low": 2,
+              "likely": 4,
+              "high": 8
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 3
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Lait",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "dairy"
+            ],
+            "varietyKey": "lait",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "minimally_processed",
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 40,
+              "likely": 90,
+              "high": 180
+            },
+            "proteinGrams": {
+              "low": 3,
+              "likely": 6,
+              "high": 12
+            },
+            "carbohydrateGrams": {
+              "low": 4,
+              "likely": 8,
+              "high": 16
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 3.5,
+              "high": 10
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "sugarGrams": {
+              "low": 4,
+              "likely": 8,
+              "high": 16
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-4",
+            "name": "Fruits rouges surgelés",
+            "preparation": "surgelés",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "fruit"
+            ],
+            "varietyKey": "fruits rouges",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "whole_food",
+              "minimally_processed",
+              "fiber_source"
+            ],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 10,
+              "likely": 25,
+              "high": 60
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1.5
+            },
+            "carbohydrateGrams": {
+              "low": 2,
+              "likely": 5,
+              "high": 12
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "fiberGrams": {
+              "low": 1,
+              "likely": 2,
+              "high": 4
+            },
+            "sugarGrams": {
+              "low": 1,
+              "likely": 4,
+              "high": 10
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-5",
+            "name": "Miel",
+            "preparation": null,
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-1",
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "sweet"
+            ],
+            "varietyKey": "miel",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": 2,
+            "sugarExposure": {
+              "concentrated": true,
+              "liquid": false
+            },
+            "qualityProperties": [],
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "observed",
+              "sugarExposure": "observed",
+              "qualityProperties": "none_observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 0,
+              "likely": 60,
+              "high": 90
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "carbohydrateGrams": {
+              "low": 0,
+              "likely": 16,
+              "high": 24
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 16,
+              "high": 24
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 16,
+              "high": 24
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 130,
+            "likely": 355,
+            "high": 650
+          },
+          "proteinGrams": {
+            "low": 6,
+            "likely": 13,
+            "high": 28
+          },
+          "carbohydrateGrams": {
+            "low": 20,
+            "likely": 59,
+            "high": 107
+          },
+          "fatGrams": {
+            "low": 1.5,
+            "likely": 7.5,
+            "high": 18
+          },
+          "fiberGrams": {
+            "low": 3,
+            "likely": 6,
+            "high": 12
+          },
+          "sugarGrams": {
+            "low": 5,
+            "likely": 29,
+            "high": 53
+          },
+          "addedSugarGrams": {
+            "low": 0,
+            "likely": 16,
+            "high": 24
+          }
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Portions approximatives : aucune quantité fiable pour flocons, lait ou fruits.",
+          "Présence et quantité de miel incertaines (mentionnée avec un point d’interrogation).",
+          "Type de lait (écrémé, entier, végétal) non précisé.",
+          "Nature exacte des flocons (avoine entière, mélange, instantané) non précisée."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Portions décrites comme approximatives, sans grammes ni volumes."
+          },
+          {
+            "code": "recipe_unknown",
+            "field": "recipe",
+            "foodId": "food-1",
+            "severity": "high",
+            "detail": "Recette et proportions flocons/lait/fruits/miel non données."
+          },
+          {
+            "code": "preparation_unknown",
+            "field": "preparation",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Type de flocons et cuisson non précisés."
+          },
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-3",
+            "severity": "medium",
+            "detail": "Nature du lait (animal, teneur en matière grasse ou végétal) inconnue."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-5",
+            "severity": "high",
+            "detail": "Le miel est indiqué avec un point d’interrogation : présence non confirmée."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Nutrition estimée en fourchettes très larges faute de quantités."
+          },
+          {
+            "code": "sugar_exposure_unknown",
+            "field": "sugarExposure",
+            "foodId": "food-5",
+            "severity": "medium",
+            "detail": "Sucres ajoutés du miel seulement si la cuillère est réellement consommée."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d09-lunch",
+      "mealDate": "2026-09-09",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d09-dinner",
+      "mealDate": "2026-09-09",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d10-breakfast",
+      "mealDate": "2026-09-10",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d10-snack",
+      "mealDate": "2026-09-10",
+      "mealType": "snack",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Collation composée de deux carrés de chocolat et d’une poignée de noix, quantité de noix indiquée comme très approximative, sans photo ni type de chocolat ou de noix.",
+        "dishType": "collation",
+        "calorieAnalysis": "Apport calorique probable autour de 250 kcal (fourchette large), collation plutôt légère à modérée selon la taille réelle de la poignée et le type de chocolat.",
+        "foods": [
+          {
+            "id": "food-1",
+            "name": "Chocolat",
+            "preparation": null,
+            "portion": "2 carrés",
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "sweet"
+            ],
+            "varietyKey": "chocolat",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": 2,
+              "unit": "carrés",
+              "basis": "description utilisateur",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": null,
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "unknown",
+              "sugarExposure": "unknown",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "medium",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 40,
+              "likely": 80,
+              "high": 160
+            },
+            "proteinGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 3
+            },
+            "carbohydrateGrams": {
+              "low": 4,
+              "likely": 8,
+              "high": 18
+            },
+            "fatGrams": {
+              "low": 2,
+              "likely": 5,
+              "high": 12
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 3
+            },
+            "sugarGrams": {
+              "low": 3,
+              "likely": 7,
+              "high": 16
+            },
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Noix",
+            "preparation": null,
+            "portion": "une poignée",
+            "estimatedGrams": null,
+            "kind": "ingredient",
+            "parentId": null,
+            "course": null,
+            "countedInTotals": true,
+            "foodGroups": [
+              "nuts_seeds"
+            ],
+            "varietyKey": "noix",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": null,
+              "unit": "poignée",
+              "basis": "description utilisateur",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 80,
+              "likely": 170,
+              "high": 350
+            },
+            "proteinGrams": {
+              "low": 2,
+              "likely": 5,
+              "high": 10
+            },
+            "carbohydrateGrams": {
+              "low": 2,
+              "likely": 5,
+              "high": 12
+            },
+            "fatGrams": {
+              "low": 7,
+              "likely": 16,
+              "high": 32
+            },
+            "fiberGrams": {
+              "low": 1,
+              "likely": 2,
+              "high": 5
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 4
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 2
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 120,
+            "likely": 250,
+            "high": 510
+          },
+          "proteinGrams": {
+            "low": 2,
+            "likely": 6,
+            "high": 13
+          },
+          "carbohydrateGrams": {
+            "low": 6,
+            "likely": 13,
+            "high": 30
+          },
+          "fatGrams": {
+            "low": 9,
+            "likely": 21,
+            "high": 44
+          },
+          "fiberGrams": {
+            "low": 1,
+            "likely": 3,
+            "high": 8
+          },
+          "sugarGrams": {
+            "low": 3,
+            "likely": 8,
+            "high": 20
+          },
+          "addedSugarGrams": null
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Type de chocolat (noir, au lait, fourré) non précisé.",
+          "Poignée de noix très approximative : variété, grillées/salées ou nature, et taille inconnues.",
+          "Grammages non estimables de façon responsable ; nutrition en fourchettes très larges."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-2",
+            "severity": "high",
+            "detail": "Poignée décrite comme vraiment approximative, sans grammes ni photo."
+          },
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Nature du chocolat (pourcentage de cacao, lait, fourrage) non indiquée."
+          },
+          {
+            "code": "food_identity_unknown",
+            "field": "identity",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Type de noix et assaisonnement non précisés."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Niveau de transformation du chocolat non identifiable."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-2",
+            "severity": "medium",
+            "detail": "Noix nature ou transformées (grillées, salées, enrobées) inconnu."
+          },
+          {
+            "code": "sugar_exposure_unknown",
+            "field": "sugarExposure",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Sucres du chocolat (ajoutés ou non) non observables."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Sans grammes ni recette, les nutriments restent des fourchettes très larges."
+          },
+          {
+            "code": "brand_unknown",
+            "field": "brand",
+            "foodId": "food-1",
+            "severity": "low",
+            "detail": "Marque et composition du chocolat inconnues."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d10-dinner",
+      "mealDate": "2026-09-10",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d11-breakfast",
+      "mealDate": "2026-09-11",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d11-lunch",
+      "mealDate": "2026-09-11",
+      "mealType": "lunch",
+      "status": "completed",
+      "provider": "xai",
+      "model": "grok-4.6",
+      "analysis": {
+        "summary": "Déjeuner de restes : riz, légumes et un œuf. La quantité de riz est seulement approximative (peut-être une tasse) ; les légumes et la préparation ne sont pas précisés, sans photo.",
+        "dishType": "Restes riz, légumes et œuf",
+        "calorieAnalysis": "Fourchette likely d’environ 450 kcal pour l’ensemble, repas plutôt modéré, mais très incertain faute de portions et de composition précises.",
+        "foods": [
+          {
+            "id": "food-dish",
+            "name": "Restes de riz et légumes avec un œuf",
+            "preparation": "Restes, préparation non précisée",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "dish",
+            "parentId": null,
+            "course": "main",
+            "countedInTotals": false,
+            "foodGroups": [
+              "refined_grain",
+              "vegetable",
+              "egg"
+            ],
+            "varietyKey": "riz-légumes-œuf",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "low",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": null,
+            "proteinGrams": null,
+            "carbohydrateGrams": null,
+            "fatGrams": null,
+            "fiberGrams": null,
+            "sugarGrams": null,
+            "addedSugarGrams": null,
+            "confidence": "low"
+          },
+          {
+            "id": "food-1",
+            "name": "Riz",
+            "preparation": "Restes, cuisson non précisée",
+            "portion": "peut-être une tasse",
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-dish",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "refined_grain"
+            ],
+            "varietyKey": "riz",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": 1,
+              "unit": "tasse",
+              "basis": "estimation utilisateur incertaine",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "minimally_processed"
+            ],
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "observed",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "medium",
+                "sugarExposure": "medium",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 150,
+              "likely": 220,
+              "high": 380
+            },
+            "proteinGrams": {
+              "low": 3,
+              "likely": 5,
+              "high": 8
+            },
+            "carbohydrateGrams": {
+              "low": 30,
+              "likely": 45,
+              "high": 75
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 4
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 3
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-2",
+            "name": "Légumes",
+            "preparation": "Restes, types et cuisson non précisés",
+            "portion": null,
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-dish",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "vegetable"
+            ],
+            "varietyKey": "légumes",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": null,
+            "alcoholic": false,
+            "novaGroup": null,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "observation": {
+              "portion": "unknown",
+              "novaGroup": "unknown",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "unknown",
+              "confidence": {
+                "portion": "low",
+                "novaGroup": "low",
+                "sugarExposure": "medium",
+                "qualityProperties": "low"
+              }
+            },
+            "calories": {
+              "low": 20,
+              "likely": 80,
+              "high": 250
+            },
+            "proteinGrams": {
+              "low": 1,
+              "likely": 3,
+              "high": 8
+            },
+            "carbohydrateGrams": {
+              "low": 4,
+              "likely": 12,
+              "high": 35
+            },
+            "fatGrams": {
+              "low": 0,
+              "likely": 2,
+              "high": 15
+            },
+            "fiberGrams": {
+              "low": 1,
+              "likely": 4,
+              "high": 10
+            },
+            "sugarGrams": {
+              "low": 1,
+              "likely": 4,
+              "high": 12
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 2
+            },
+            "confidence": "low"
+          },
+          {
+            "id": "food-3",
+            "name": "Œuf",
+            "preparation": "Non précisée (cuit avec les restes)",
+            "portion": "1 œuf",
+            "estimatedGrams": null,
+            "kind": "component",
+            "parentId": "food-dish",
+            "course": "main",
+            "countedInTotals": true,
+            "foodGroups": [
+              "egg"
+            ],
+            "varietyKey": "œuf",
+            "evidence": "inferred",
+            "evidenceSource": "note",
+            "evidencePhotoIds": [],
+            "quantity": {
+              "value": 1,
+              "unit": "œuf",
+              "basis": "description",
+              "grams": null
+            },
+            "alcoholic": false,
+            "novaGroup": 1,
+            "sugarExposure": {
+              "concentrated": false,
+              "liquid": false
+            },
+            "qualityProperties": [
+              "whole_food",
+              "minimally_processed",
+              "protein_source"
+            ],
+            "observation": {
+              "portion": "observed",
+              "novaGroup": "observed",
+              "sugarExposure": "none_observed",
+              "qualityProperties": "observed",
+              "confidence": {
+                "portion": "medium",
+                "novaGroup": "high",
+                "sugarExposure": "high",
+                "qualityProperties": "medium"
+              }
+            },
+            "calories": {
+              "low": 60,
+              "likely": 80,
+              "high": 120
+            },
+            "proteinGrams": {
+              "low": 5,
+              "likely": 7,
+              "high": 9
+            },
+            "carbohydrateGrams": {
+              "low": 0,
+              "likely": 1,
+              "high": 2
+            },
+            "fatGrams": {
+              "low": 4,
+              "likely": 6,
+              "high": 10
+            },
+            "fiberGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "sugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 1
+            },
+            "addedSugarGrams": {
+              "low": 0,
+              "likely": 0,
+              "high": 0
+            },
+            "confidence": "low"
+          }
+        ],
+        "totals": {
+          "calories": {
+            "low": 230,
+            "likely": 450,
+            "high": 900
+          },
+          "proteinGrams": {
+            "low": 9,
+            "likely": 15,
+            "high": 25
+          },
+          "carbohydrateGrams": {
+            "low": 34,
+            "likely": 58,
+            "high": 112
+          },
+          "fatGrams": {
+            "low": 4,
+            "likely": 9,
+            "high": 29
+          },
+          "fiberGrams": {
+            "low": 1,
+            "likely": 5,
+            "high": 13
+          },
+          "sugarGrams": {
+            "low": 1,
+            "likely": 4,
+            "high": 14
+          },
+          "addedSugarGrams": {
+            "low": 0,
+            "likely": 0,
+            "high": 2
+          }
+        },
+        "confidence": "low",
+        "uncertainties": [
+          "Estimation à partir de la seule description, sans photo.",
+          "Quantité de riz seulement approximative (une tasse possible).",
+          "Types, quantité et mode de cuisson des légumes inconnus.",
+          "Huile, sauce ou matières grasses de cuisson non mentionnées.",
+          "Riz blanc ou complet non précisé."
+        ],
+        "uncertaintySignals": [
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-1",
+            "severity": "medium",
+            "detail": "Tasse de riz seulement hypothétique, grammes non estimables de façon responsable."
+          },
+          {
+            "code": "portion_unknown",
+            "field": "portion",
+            "foodId": "food-2",
+            "severity": "high",
+            "detail": "Aucune quantité ni variété de légumes indiquée."
+          },
+          {
+            "code": "preparation_unknown",
+            "field": "preparation",
+            "foodId": "food-dish",
+            "severity": "medium",
+            "detail": "Cuisson, mélange et éventuelle matière grasse des restes non décrits."
+          },
+          {
+            "code": "sauce_or_oil_unknown",
+            "field": "sauceOrOil",
+            "foodId": "food-dish",
+            "severity": "medium",
+            "detail": "Présence d’huile ou de sauce possible mais non citée."
+          },
+          {
+            "code": "composition_uncertain",
+            "field": "composition",
+            "foodId": "food-2",
+            "severity": "high",
+            "detail": "Identité des légumes trop vague pour NOVA et qualités."
+          },
+          {
+            "code": "nutrition_unknown",
+            "field": "nutrition",
+            "foodId": null,
+            "severity": "high",
+            "detail": "Fourchettes caloriques très larges faute de portions et de recette."
+          },
+          {
+            "code": "nova_group_unknown",
+            "field": "novaGroup",
+            "foodId": "food-dish",
+            "severity": "low",
+            "detail": "Niveau de transformation de l’ensemble des restes non identifiable."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "d11-snack",
+      "mealDate": "2026-09-11",
+      "mealType": "snack",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d11-dinner",
+      "mealDate": "2026-09-11",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d12-breakfast",
+      "mealDate": "2026-09-12",
+      "mealType": "breakfast",
+      "status": "failed",
+      "errorCode": "response_schema_error"
+    },
+    {
+      "caseId": "d12-lunch",
+      "mealDate": "2026-09-12",
+      "mealType": "lunch",
+      "status": "failed",
+      "errorCode": "provider_request"
+    },
+    {
+      "caseId": "d12-dinner",
+      "mealDate": "2026-09-12",
+      "mealType": "dinner",
+      "status": "failed",
+      "errorCode": "provider_request"
+    }
+  ],
+  "records": [
+    {
+      "id": "d03-lunch",
+      "mealDate": "2026-09-03",
+      "mealType": "lunch",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 250,
+        "likely": 500,
+        "high": 900
+      },
+      "proteinG": {
+        "low": 15,
+        "likely": 36,
+        "high": 65
+      },
+      "carbsG": {
+        "low": 28,
+        "likely": 49,
+        "high": 85
+      },
+      "fatG": {
+        "low": 5,
+        "likely": 27,
+        "high": 65
+      },
+      "fiberG": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "sugarG": {
+        "low": 1,
+        "likely": 5,
+        "high": 15
+      },
+      "addedSugarG": null,
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Sandwich au thon (acheté)",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "sandwich thon",
+          "foodGroups": [
+            "refined_grain",
+            "animal_protein"
+          ],
+          "alcoholic": false,
+          "novaGroup": 4,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": false,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Thon",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "thon",
+          "foodGroups": [
+            "animal_protein"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Pain du sandwich",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "pain",
+          "foodGroups": [
+            "refined_grain"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-4",
+          "name": "Mayonnaise",
+          "kind": "ingredient",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "mayonnaise",
+          "foodGroups": [
+            "added_fat",
+            "sauce"
+          ],
+          "alcoholic": false,
+          "novaGroup": 4,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-5",
+          "name": "Fromage",
+          "kind": "ingredient",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "fromage",
+          "foodGroups": [
+            "dairy"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d04-snack",
+      "mealDate": "2026-09-04",
+      "mealType": "snack",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 80,
+        "likely": 150,
+        "high": 280
+      },
+      "proteinG": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "carbsG": {
+        "low": 12,
+        "likely": 22,
+        "high": 40
+      },
+      "fatG": {
+        "low": 2,
+        "likely": 6,
+        "high": 14
+      },
+      "fiberG": {
+        "low": 0,
+        "likely": 2,
+        "high": 6
+      },
+      "sugarG": {
+        "low": 4,
+        "likely": 10,
+        "high": 22
+      },
+      "addedSugarG": {
+        "low": 2,
+        "likely": 8,
+        "high": 20
+      },
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Barre de céréales",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "barre de céréales",
+          "foodGroups": [
+            "refined_grain",
+            "sweet"
+          ],
+          "alcoholic": false,
+          "novaGroup": 4,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d05-breakfast",
+      "mealDate": "2026-09-05",
+      "mealType": "breakfast",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 150,
+        "likely": 290,
+        "high": 570
+      },
+      "proteinG": {
+        "low": 5,
+        "likely": 11,
+        "high": 24
+      },
+      "carbsG": {
+        "low": 23,
+        "likely": 45,
+        "high": 87
+      },
+      "fatG": {
+        "low": 1,
+        "likely": 7,
+        "high": 23
+      },
+      "fiberG": {
+        "low": 3,
+        "likely": 5,
+        "high": 11
+      },
+      "sugarG": {
+        "low": 14,
+        "likely": 29,
+        "high": 55
+      },
+      "addedSugarG": {
+        "low": 0,
+        "likely": 3,
+        "high": 12
+      },
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Yaourt nature",
+          "kind": "ingredient",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "yaourt nature",
+          "foodGroups": [
+            "dairy"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "minimally_processed",
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Flocons / granola",
+          "kind": "ingredient",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "granola",
+          "foodGroups": [
+            "whole_grain"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Pomme",
+          "kind": "ingredient",
+          "parentId": null,
+          "portion": "1 pièce",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": 1,
+            "unit": "pièce",
+            "basis": "une pomme",
+            "grams": null
+          },
+          "varietyKey": "pomme",
+          "foodGroups": [
+            "fruit"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "whole_food",
+            "minimally_processed",
+            "fiber_source"
+          ],
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "medium",
+              "novaGroup": "high",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d06-lunch",
+      "mealDate": "2026-09-06",
+      "mealType": "lunch",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": null,
+      "proteinG": null,
+      "carbsG": null,
+      "fatG": null,
+      "fiberG": null,
+      "sugarG": null,
+      "addedSugarG": null,
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Assiette de cantine",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "assiette cantine",
+          "foodGroups": [
+            "potato",
+            "animal_protein",
+            "vegetable"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": false,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Pommes de terre",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "pomme de terre",
+          "foodGroups": [
+            "potato"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "fiber_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Poulet",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "poulet",
+          "foodGroups": [
+            "animal_protein"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-4",
+          "name": "Légumes",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": null,
+          "foodGroups": [
+            "vegetable"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d07-dinner",
+      "mealDate": "2026-09-07",
+      "mealType": "dinner",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": null,
+      "proteinG": null,
+      "carbsG": null,
+      "fatG": null,
+      "fiberG": null,
+      "sugarG": null,
+      "addedSugarG": null,
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Soupe",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "soupe",
+          "foodGroups": [
+            "other"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Toasts au fromage",
+          "kind": "dish",
+          "parentId": null,
+          "portion": "2 toasts",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": 2,
+            "unit": "toasts",
+            "basis": "nombre cité",
+            "grams": null
+          },
+          "varietyKey": "toast fromage",
+          "foodGroups": [
+            "refined_grain",
+            "dairy"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "medium",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Fruit",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": null,
+          "foodGroups": [
+            "fruit"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": false,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d08-snack",
+      "mealDate": "2026-09-08",
+      "mealType": "snack",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 50,
+        "likely": 80,
+        "high": 130
+      },
+      "proteinG": {
+        "low": 0,
+        "likely": 0,
+        "high": 1
+      },
+      "carbsG": {
+        "low": 12,
+        "likely": 20,
+        "high": 32
+      },
+      "fatG": {
+        "low": 0,
+        "likely": 0,
+        "high": 1
+      },
+      "fiberG": {
+        "low": 2,
+        "likely": 3,
+        "high": 6
+      },
+      "sugarG": {
+        "low": 10,
+        "likely": 16,
+        "high": 26
+      },
+      "addedSugarG": {
+        "low": 0,
+        "likely": 0,
+        "high": 0
+      },
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Pomme",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "pomme",
+          "foodGroups": [
+            "fruit"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "whole_food",
+            "minimally_processed",
+            "fiber_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "high",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d09-breakfast",
+      "mealDate": "2026-09-09",
+      "mealType": "breakfast",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 130,
+        "likely": 355,
+        "high": 650
+      },
+      "proteinG": {
+        "low": 6,
+        "likely": 13,
+        "high": 28
+      },
+      "carbsG": {
+        "low": 20,
+        "likely": 59,
+        "high": 107
+      },
+      "fatG": {
+        "low": 1.5,
+        "likely": 7.5,
+        "high": 18
+      },
+      "fiberG": {
+        "low": 3,
+        "likely": 6,
+        "high": 12
+      },
+      "sugarG": {
+        "low": 5,
+        "likely": 29,
+        "high": 53
+      },
+      "addedSugarG": {
+        "low": 0,
+        "likely": 16,
+        "high": 24
+      },
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Porridge au lait",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "porridge",
+          "foodGroups": [
+            "whole_grain",
+            "dairy",
+            "fruit",
+            "sweet"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": false,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Flocons pour porridge",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "avoine",
+          "foodGroups": [
+            "whole_grain"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "whole_food",
+            "minimally_processed",
+            "fiber_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Lait",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "lait",
+          "foodGroups": [
+            "dairy"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "minimally_processed",
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-4",
+          "name": "Fruits rouges surgelés",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "fruits rouges",
+          "foodGroups": [
+            "fruit"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "whole_food",
+            "minimally_processed",
+            "fiber_source"
+          ],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-5",
+          "name": "Miel",
+          "kind": "component",
+          "parentId": "food-1",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "miel",
+          "foodGroups": [
+            "sweet"
+          ],
+          "alcoholic": false,
+          "novaGroup": 2,
+          "sugarExposure": {
+            "concentrated": true,
+            "liquid": false
+          },
+          "qualityProperties": [],
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "observed",
+            "sugarExposure": "observed",
+            "qualityProperties": "none_observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d10-snack",
+      "mealDate": "2026-09-10",
+      "mealType": "snack",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 120,
+        "likely": 250,
+        "high": 510
+      },
+      "proteinG": {
+        "low": 2,
+        "likely": 6,
+        "high": 13
+      },
+      "carbsG": {
+        "low": 6,
+        "likely": 13,
+        "high": 30
+      },
+      "fatG": {
+        "low": 9,
+        "likely": 21,
+        "high": 44
+      },
+      "fiberG": {
+        "low": 1,
+        "likely": 3,
+        "high": 8
+      },
+      "sugarG": {
+        "low": 3,
+        "likely": 8,
+        "high": 20
+      },
+      "addedSugarG": null,
+      "foods": [
+        {
+          "id": "food-1",
+          "name": "Chocolat",
+          "kind": "ingredient",
+          "parentId": null,
+          "portion": "2 carrés",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": 2,
+            "unit": "carrés",
+            "basis": "description utilisateur",
+            "grams": null
+          },
+          "varietyKey": "chocolat",
+          "foodGroups": [
+            "sweet"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": null,
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "unknown",
+            "sugarExposure": "unknown",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "medium",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Noix",
+          "kind": "ingredient",
+          "parentId": null,
+          "portion": "une poignée",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": null,
+            "unit": "poignée",
+            "basis": "description utilisateur",
+            "grams": null
+          },
+          "varietyKey": "noix",
+          "foodGroups": [
+            "nuts_seeds"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    },
+    {
+      "id": "d11-lunch",
+      "mealDate": "2026-09-11",
+      "mealType": "lunch",
+      "status": "confirmed",
+      "origin": "unknown",
+      "caloriesKcal": {
+        "low": 230,
+        "likely": 450,
+        "high": 900
+      },
+      "proteinG": {
+        "low": 9,
+        "likely": 15,
+        "high": 25
+      },
+      "carbsG": {
+        "low": 34,
+        "likely": 58,
+        "high": 112
+      },
+      "fatG": {
+        "low": 4,
+        "likely": 9,
+        "high": 29
+      },
+      "fiberG": {
+        "low": 1,
+        "likely": 5,
+        "high": 13
+      },
+      "sugarG": {
+        "low": 1,
+        "likely": 4,
+        "high": 14
+      },
+      "addedSugarG": {
+        "low": 0,
+        "likely": 0,
+        "high": 2
+      },
+      "foods": [
+        {
+          "id": "food-dish",
+          "name": "Restes de riz et légumes avec un œuf",
+          "kind": "dish",
+          "parentId": null,
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "riz-légumes-œuf",
+          "foodGroups": [
+            "refined_grain",
+            "vegetable",
+            "egg"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "low",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": false,
+          "confidence": "low"
+        },
+        {
+          "id": "food-1",
+          "name": "Riz",
+          "kind": "component",
+          "parentId": "food-dish",
+          "portion": "peut-être une tasse",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": 1,
+            "unit": "tasse",
+            "basis": "estimation utilisateur incertaine",
+            "grams": null
+          },
+          "varietyKey": "riz",
+          "foodGroups": [
+            "refined_grain"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "minimally_processed"
+          ],
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "observed",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "medium",
+              "sugarExposure": "medium",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-2",
+          "name": "Légumes",
+          "kind": "component",
+          "parentId": "food-dish",
+          "portion": null,
+          "estimatedGrams": null,
+          "quantity": null,
+          "varietyKey": "légumes",
+          "foodGroups": [
+            "vegetable"
+          ],
+          "alcoholic": false,
+          "novaGroup": null,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "observation": {
+            "portion": "unknown",
+            "novaGroup": "unknown",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "unknown",
+            "confidence": {
+              "portion": "low",
+              "novaGroup": "low",
+              "sugarExposure": "medium",
+              "qualityProperties": "low"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        },
+        {
+          "id": "food-3",
+          "name": "Œuf",
+          "kind": "component",
+          "parentId": "food-dish",
+          "portion": "1 œuf",
+          "estimatedGrams": null,
+          "quantity": {
+            "value": 1,
+            "unit": "œuf",
+            "basis": "description",
+            "grams": null
+          },
+          "varietyKey": "œuf",
+          "foodGroups": [
+            "egg"
+          ],
+          "alcoholic": false,
+          "novaGroup": 1,
+          "sugarExposure": {
+            "concentrated": false,
+            "liquid": false
+          },
+          "qualityProperties": [
+            "whole_food",
+            "minimally_processed",
+            "protein_source"
+          ],
+          "observation": {
+            "portion": "observed",
+            "novaGroup": "observed",
+            "sugarExposure": "none_observed",
+            "qualityProperties": "observed",
+            "confidence": {
+              "portion": "medium",
+              "novaGroup": "high",
+              "sugarExposure": "high",
+              "qualityProperties": "medium"
+            }
+          },
+          "countedInTotals": true,
+          "confidence": "low"
+        }
+      ],
+      "analysisConfidence": "low",
+      "mouthHeat": null,
+      "stomachOverfullness": null,
+      "photoIds": []
+    }
+  ],
+  "aggregates": [
+    {
+      "date": "2026-09-03",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 500,
+      "proteinG": 36,
+      "carbsG": 49,
+      "fatG": 27,
+      "fiberG": 3,
+      "sugarG": 5,
+      "addedSugarG": null,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 4,
+      "foodGroupCount": 5,
+      "foodGroupCounts": {
+        "animal_protein": 1,
+        "refined_grain": 1,
+        "added_fat": 1,
+        "sauce": 1,
+        "dairy": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0.5,
+        "sugarExposure": 0.5,
+        "novaGroup": 0.25,
+        "portion": 0
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-04",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 150,
+      "proteinG": 3,
+      "carbsG": 22,
+      "fatG": 6,
+      "fiberG": 2,
+      "sugarG": 10,
+      "addedSugarG": 8,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 1,
+      "foodGroupCount": 2,
+      "foodGroupCounts": {
+        "refined_grain": 1,
+        "sweet": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0,
+        "sugarExposure": 0,
+        "novaGroup": 1,
+        "portion": 0
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-05",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 290,
+      "proteinG": 11,
+      "carbsG": 45,
+      "fatG": 7,
+      "fiberG": 5,
+      "sugarG": 29,
+      "addedSugarG": 3,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 3,
+      "foodGroupCount": 3,
+      "foodGroupCounts": {
+        "dairy": 1,
+        "whole_grain": 1,
+        "fruit": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0.6666666666666666,
+        "sugarExposure": 0.6666666666666666,
+        "novaGroup": 0.6666666666666666,
+        "portion": 0.3333333333333333
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-06",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": null,
+      "proteinG": null,
+      "carbsG": null,
+      "fatG": null,
+      "fiberG": null,
+      "sugarG": null,
+      "addedSugarG": null,
+      "analysisCoverage": 0,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 3,
+      "foodGroupCount": 3,
+      "foodGroupCounts": {
+        "potato": 1,
+        "animal_protein": 1,
+        "vegetable": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0.6666666666666666,
+        "sugarExposure": 1,
+        "novaGroup": 0,
+        "portion": 0
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-07",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": null,
+      "proteinG": null,
+      "carbsG": null,
+      "fatG": null,
+      "fiberG": null,
+      "sugarG": null,
+      "addedSugarG": null,
+      "analysisCoverage": 0,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 2,
+      "foodGroupCount": 3,
+      "foodGroupCounts": {
+        "other": 1,
+        "refined_grain": 1,
+        "dairy": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0,
+        "sugarExposure": 0,
+        "novaGroup": 0,
+        "portion": 0.5
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-08",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 80,
+      "proteinG": 0,
+      "carbsG": 20,
+      "fatG": 0,
+      "fiberG": 3,
+      "sugarG": 16,
+      "addedSugarG": 0,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 1,
+      "foodGroupCount": 1,
+      "foodGroupCounts": {
+        "fruit": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 1,
+        "sugarExposure": 1,
+        "novaGroup": 1,
+        "portion": 0
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-09",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 355,
+      "proteinG": 13,
+      "carbsG": 59,
+      "fatG": 7.5,
+      "fiberG": 6,
+      "sugarG": 29,
+      "addedSugarG": 16,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 4,
+      "foodGroupCount": 4,
+      "foodGroupCounts": {
+        "whole_grain": 1,
+        "dairy": 1,
+        "fruit": 1,
+        "sweet": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 1,
+        "sugarExposure": 1,
+        "novaGroup": 1,
+        "portion": 0
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-10",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 250,
+      "proteinG": 6,
+      "carbsG": 13,
+      "fatG": 21,
+      "fiberG": 3,
+      "sugarG": 8,
+      "addedSugarG": null,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 2,
+      "foodGroupCount": 2,
+      "foodGroupCounts": {
+        "sweet": 1,
+        "nuts_seeds": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0,
+        "sugarExposure": 0.5,
+        "novaGroup": 0,
+        "portion": 1
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    },
+    {
+      "date": "2026-09-11",
+      "mealCount": 1,
+      "mealCoverage": 25,
+      "homemadeCount": 0,
+      "preparedCount": 0,
+      "mixedCount": 0,
+      "homemadeShare": 0,
+      "caloriesKcal": 450,
+      "proteinG": 15,
+      "carbsG": 58,
+      "fatG": 9,
+      "fiberG": 5,
+      "sugarG": 4,
+      "addedSugarG": 0,
+      "analysisCoverage": 100,
+      "analysisConfidence": 33,
+      "foodVarietyCount": 3,
+      "foodGroupCount": 3,
+      "foodGroupCounts": {
+        "refined_grain": 1,
+        "vegetable": 1,
+        "egg": 1
+      },
+      "foodListCoverage": 1,
+      "foodObservationCoverage": {
+        "qualityProperties": 0.6666666666666666,
+        "sugarExposure": 1,
+        "novaGroup": 0.6666666666666666,
+        "portion": 0.6666666666666666
+      },
+      "mouthHeatAverage": null,
+      "mouthHeatMaximum": null,
+      "stomachOverfullnessAverage": null,
+      "stomachOverfullnessMaximum": null
+    }
+  ],
+  "scores": [
+    {
+      "date": "2026-09-03",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 70.44,
+        "status": "limited",
+        "coverage": 0.15,
+        "confidence": 0.42,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 52.42,
+            "confidence": 0.33,
+            "observedValue": "4 aliments · 5 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.65,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 55,
+            "confidence": 0.67,
+            "observedValue": "50% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.125,
+            "weight": 15,
+            "effectiveWeight": 1.26,
+            "contribution": 0.69,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.125,
+            "weight": 12,
+            "effectiveWeight": 1.01,
+            "contribution": 1.01,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 15,
+            "confidence": 0.67,
+            "observedValue": 4,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.0625,
+            "weight": 13,
+            "effectiveWeight": 0.54,
+            "contribution": 0.08,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 500,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "direction": "negative",
+            "points": 15,
+            "summary": "1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "positive",
+            "points": 100,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          }
+        ],
+        "reasons": [
+          "Ultra-transformation : 1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-04",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 56.55,
+        "status": "limited",
+        "coverage": 0.18,
+        "confidence": 0.33,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 24.5,
+            "confidence": 0.33,
+            "observedValue": "1 aliment · 2 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.3,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": 63.26,
+            "confidence": 0.33,
+            "observedValue": 8,
+            "target": "Idéal personnel : 0 g · tolérance : 5 g/jour",
+            "summary": "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.78,
+            "status": "limited"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 12,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 15,
+            "confidence": 0.33,
+            "observedValue": 4,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.25,
+            "weight": 13,
+            "effectiveWeight": 1.07,
+            "contribution": 0.16,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 150,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "direction": "negative",
+            "points": 15,
+            "summary": "1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus."
+          },
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 24.5,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "positive",
+            "points": 100,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          }
+        ],
+        "reasons": [
+          "Ultra-transformation : 1 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-05",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 84.47,
+        "status": "limited",
+        "coverage": 0.22,
+        "confidence": 0.45,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 41.72,
+            "confidence": 0.33,
+            "observedValue": "3 aliments · 3 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.52,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 75,
+            "confidence": 0.67,
+            "observedValue": "67% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 15,
+            "effectiveWeight": 1.68,
+            "contribution": 1.26,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": 94,
+            "confidence": 0.33,
+            "observedValue": 3,
+            "target": "Idéal personnel : 0 g · tolérance : 5 g/jour",
+            "summary": "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.17,
+            "status": "limited"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 12,
+            "effectiveWeight": 1.34,
+            "contribution": 1.34,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 100,
+            "confidence": 0.835,
+            "observedValue": 1,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 13,
+            "effectiveWeight": 1.81,
+            "contribution": 1.81,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 290,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 41.72,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "direction": "positive",
+            "points": 100,
+            "summary": "0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus."
+          }
+        ],
+        "reasons": [
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+          "Ultra-transformation : 0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-06",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 73.53,
+        "status": "limited",
+        "coverage": 0.09,
+        "confidence": 0.44,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 41.72,
+            "confidence": 0.33,
+            "observedValue": "3 aliments · 3 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.52,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 56.25,
+            "confidence": 0.33,
+            "observedValue": "67% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 15,
+            "effectiveWeight": 0.83,
+            "contribution": 0.47,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.25,
+            "weight": 12,
+            "effectiveWeight": 2.01,
+            "contribution": 2.01,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 13,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 0,
+            "confidence": 0.33,
+            "observedValue": 0,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "negative",
+            "points": 0,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          },
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 41.72,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          }
+        ],
+        "reasons": [
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-07",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 35.48,
+        "status": "limited",
+        "coverage": 0.04,
+        "confidence": 0.33,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 35.67,
+            "confidence": 0.33,
+            "observedValue": "2 aliments · 3 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.44,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 12,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 13,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 0,
+            "confidence": 0.33,
+            "observedValue": 0,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "negative",
+            "points": 0,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          },
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 35.67,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          }
+        ],
+        "reasons": [
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-08",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 86.72,
+        "status": "limited",
+        "coverage": 0.25,
+        "confidence": 0.51,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 19.33,
+            "confidence": 0.33,
+            "observedValue": "1 aliment · 1 groupe",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.24,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 85,
+            "confidence": 0.67,
+            "observedValue": "100% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 2.51,
+            "contribution": 2.13,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 0,
+            "target": "Idéal personnel : 0 g · tolérance : 5 g/jour",
+            "summary": "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.25,
+            "weight": 12,
+            "effectiveWeight": 2.01,
+            "contribution": 2.01,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 100,
+            "confidence": 1,
+            "observedValue": 1,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.25,
+            "weight": 13,
+            "effectiveWeight": 3.25,
+            "contribution": 3.25,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 80,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 19.33,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          }
+        ],
+        "reasons": [
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Sucre ajouté : Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-09",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 76.9,
+        "status": "limited",
+        "coverage": 0.25,
+        "confidence": 0.45,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 49.98,
+            "confidence": 0.33,
+            "observedValue": "4 aliments · 4 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.62,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 71.25,
+            "confidence": 0.5850000000000001,
+            "observedValue": "100% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 2.19,
+            "contribution": 1.56,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": 37.62,
+            "confidence": 0.33,
+            "observedValue": 16,
+            "target": "Idéal personnel : 0 g · tolérance : 5 g/jour",
+            "summary": "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.47,
+            "status": "limited"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 91.25,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 1 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.25,
+            "weight": 12,
+            "effectiveWeight": 2.01,
+            "contribution": 1.83,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 95,
+            "confidence": 0.67,
+            "observedValue": 1.25,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.25,
+            "weight": 13,
+            "effectiveWeight": 2.18,
+            "contribution": 2.07,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 355,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "direction": "negative",
+            "points": 37.62,
+            "summary": "La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent."
+          },
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "caution",
+            "points": 49.98,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "positive",
+            "points": 100,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          }
+        ],
+        "reasons": [
+          "Sucre ajouté : La pénalité augmente après la tolérance de 5 g, sans confondre sucre ajouté et sucre naturellement présent.",
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-10",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 75.48,
+        "status": "limited",
+        "coverage": 0.13,
+        "confidence": 0.37,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 31.65,
+            "confidence": 0.33,
+            "observedValue": "2 aliments · 2 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.39,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 15,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.67,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.125,
+            "weight": 12,
+            "effectiveWeight": 1.01,
+            "contribution": 1.01,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": null,
+            "confidence": 0,
+            "observedValue": null,
+            "target": null,
+            "summary": "Aucune observation exploitable pour cette dimension.",
+            "observationCoverage": 0,
+            "weight": 13,
+            "effectiveWeight": 0,
+            "contribution": 0,
+            "status": "insufficient"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 250,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 31.65,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "direction": "positive",
+            "points": 100,
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+          }
+        ],
+        "reasons": [
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+          "Couverture nutritionnelle : La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel."
+        ]
+      }
+    },
+    {
+      "date": "2026-09-11",
+      "score": {
+        "algorithmVersion": "meal-balance-v1",
+        "score": 86.01,
+        "status": "limited",
+        "coverage": 0.23,
+        "confidence": 0.48,
+        "components": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "score": 41.72,
+            "confidence": 0.33,
+            "observedValue": "3 aliments · 3 groupes",
+            "target": "Diversité progressive, sans répétition artificielle",
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.52,
+            "status": "limited"
+          },
+          {
+            "key": "foodQuality",
+            "label": "Qualité alimentaire",
+            "score": 71.25,
+            "confidence": 0.67,
+            "observedValue": "67% des aliments avec propriétés décrites",
+            "target": "Favoriser les propriétés qualitatives observées",
+            "summary": "Les propriétés disponibles décrivent les aliments ; leur absence n'est pas interprétée comme une mauvaise qualité.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 15,
+            "effectiveWeight": 1.68,
+            "contribution": 1.2,
+            "status": "limited"
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 0,
+            "target": "Idéal personnel : 0 g · tolérance : 5 g/jour",
+            "summary": "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "score": 100,
+            "confidence": 0.7799999999999999,
+            "observedValue": "0 liquide · 0 concentré",
+            "target": "Limiter les expositions liquides et concentrées",
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté.",
+            "observationCoverage": 0.25,
+            "weight": 12,
+            "effectiveWeight": 2.34,
+            "contribution": 2.34,
+            "status": "limited"
+          },
+          {
+            "key": "ultraProcessing",
+            "label": "Ultra-transformation",
+            "score": 100,
+            "confidence": 0.835,
+            "observedValue": 1,
+            "target": "Privilégier les groupes NOVA 1–3 lorsque l'information existe",
+            "summary": "0 aliment NOVA 4 observé ; les aliments sans étiquette restent inconnus.",
+            "observationCoverage": 0.16666666666666666,
+            "weight": 13,
+            "effectiveWeight": 1.81,
+            "contribution": 1.81,
+            "status": "limited"
+          },
+          {
+            "key": "nutritionCoverage",
+            "label": "Couverture nutritionnelle",
+            "score": 100,
+            "confidence": 0.33,
+            "observedValue": 100,
+            "target": "Connaître les cinq dimensions nutritionnelles de base",
+            "summary": "La couverture mesure la part des estimations disponibles ; une valeur manquante n'est pas comptée comme zéro nutritionnel.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 1.24,
+            "status": "limited"
+          },
+          {
+            "key": "energy",
+            "label": "Énergie",
+            "score": 75,
+            "confidence": 0.33,
+            "observedValue": 450,
+            "target": "2900–3100 kcal selon la cible existante",
+            "summary": "La zone utile est un plateau ; les écarts faibles sont graduels et les journées partielles protègent contre un faux bas.",
+            "observationCoverage": 0.25,
+            "weight": 15,
+            "effectiveWeight": 1.24,
+            "contribution": 0.93,
+            "status": "limited"
+          }
+        ],
+        "strongestEffects": [
+          {
+            "key": "variety",
+            "label": "Variété",
+            "direction": "negative",
+            "points": 41.72,
+            "summary": "Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire."
+          },
+          {
+            "key": "addedSugar",
+            "label": "Sucre ajouté",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici."
+          },
+          {
+            "key": "sugarExposure",
+            "label": "Exposition liquide / concentrée",
+            "direction": "positive",
+            "points": 100,
+            "summary": "Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+          }
+        ],
+        "reasons": [
+          "Variété : Les rendements sont décroissants et une répétition du même aliment ne crée pas de variété supplémentaire.",
+          "Sucre ajouté : Aucun sucre ajouté observé ; le sucre d'un fruit entier n'est pas pénalisé ici.",
+          "Exposition liquide / concentrée : Une boisson sucrée liquide et concentrée cumule les deux expositions, même sans sucre ajouté."
+        ]
+      }
+    }
+  ]
+}
