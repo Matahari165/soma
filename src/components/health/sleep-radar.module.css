@@ -1,9 +1,13 @@
 .root {
-  --radar-grid: var(--lab-border, #292929);
-  --radar-grid-strong: var(--lab-border-strong, #3a3a3a);
+  --radar-grid: color-mix(in srgb, var(--radar-text) 16%, transparent);
+  --radar-grid-strong: color-mix(in srgb, var(--radar-text) 32%, transparent);
+  --radar-axis: color-mix(in srgb, var(--radar-text) 11%, transparent);
   --radar-text: var(--lab-text-primary, #f1f1f1);
   --radar-muted: var(--lab-text-secondary, #aaaaaa);
   --radar-data: var(--lab-brand, #eeeeee);
+  --radar-data-surface: color-mix(in srgb, var(--radar-data) 10%, transparent);
+  --radar-signal: var(--lab-signal, #d5e5da);
+  --radar-error: var(--lab-error, #e2b2aa);
   display: grid;
   width: min(100%, 32rem);
   min-width: 0;
@@ -54,21 +58,28 @@
   fill: none;
   stroke: var(--radar-grid);
   stroke-width: 1;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+
+.axis {
+  stroke: var(--radar-axis);
 }
 
 .gridOuter {
   stroke: var(--radar-grid-strong);
 }
 
+.dataLayer {
+  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
 .valueArea {
-  fill: var(--radar-data);
-  fill-opacity: .13;
+  fill: var(--radar-data-surface);
   stroke: var(--radar-data);
   stroke-width: 1.5;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .valueLine {
@@ -76,7 +87,6 @@
   stroke: var(--radar-data);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
-  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .point {
@@ -84,7 +94,6 @@
   stroke: var(--lab-canvas, #050505);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
-  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 @keyframes radarReveal {
@@ -110,6 +119,24 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
+}
+
+.comparison {
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.comparisonPositive {
+  fill: var(--radar-signal);
+}
+
+.comparisonNegative {
+  fill: var(--radar-error);
+}
+
+.comparisonEqual {
+  fill: var(--radar-muted);
 }
 
 .unavailable {
@@ -151,5 +178,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .valueArea, .valueLine, .point { animation: none; }
+  .dataLayer { animation: none; }
 }

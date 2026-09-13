@@ -131,8 +131,8 @@ describe("health route states", () => {
   });
 
   it("prioritizes the sleep score radar while keeping secondary trends accessible", () => {
-    const first = day({ metric_date: "2026-09-09", sleep_minutes: 450, sleep_efficiency: 90, sleep_fragmentation: 1.2, sleep_deep_minutes: 80, sleep_rem_minutes: 90, bedtime: "2026-09-08T22:30:00Z", wake_time: "2026-09-09T06:30:00Z" });
-    const latest = day({ metric_date: "2026-09-10", sleep_minutes: 480, sleep_efficiency: 92, sleep_fragmentation: 0.9, sleep_deep_minutes: 90, sleep_deep_percent: 18, sleep_rem_minutes: 100, sleep_rem_percent: 20, sleep_light_percent: 55, sleep_awake_percent: 7, bedtime: "2026-09-09T22:30:00Z", wake_time: "2026-09-10T06:30:00Z" });
+    const first = day({ metric_date: "2026-09-09", sleep_minutes: 450, sleep_need_minutes: 480, sleep_efficiency: 90, sleep_latency_minutes: 20, cumulative_sleep_debt_minutes: 20, sleep_fragmentation: 1.2, sleep_deep_minutes: 80, sleep_rem_minutes: 90, bedtime: "2026-09-08T22:30:00Z", wake_time: "2026-09-09T06:30:00Z" });
+    const latest = day({ metric_date: "2026-09-10", sleep_minutes: 480, sleep_need_minutes: 480, sleep_efficiency: 92, sleep_latency_minutes: 10, cumulative_sleep_debt_minutes: 0, sleep_fragmentation: 0.9, sleep_deep_minutes: 90, sleep_deep_percent: 18, sleep_rem_minutes: 100, sleep_rem_percent: 20, sleep_light_percent: 55, sleep_awake_percent: 7, bedtime: "2026-09-09T22:30:00Z", wake_time: "2026-09-10T06:30:00Z" });
     const markup = renderToStaticMarkup(createElement(SleepDetails, {
       data: analytics({
         days: [first, latest],
@@ -142,12 +142,22 @@ describe("health route states", () => {
     }));
 
     expect(markup).toContain("Profil du sommeil");
-    expect(markup).toContain("Durée / besoin");
+    expect(markup).toContain("Durée");
+    expect(markup).toContain("Latence");
+    expect(markup).toContain("Score Sommeil");
+    expect(markup).toContain("/100");
+    expect(markup).toContain("Répartition des phases");
     expect(markup).toContain("Autres mesures");
     expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
     expect(markup).toContain("Sommeil profond + paradoxal");
+    expect(markup).toContain("0h 0m");
+    expect(markup).not.toContain("health-hero-score-card");
+    expect(markup).not.toContain("Objectif en périphérie");
+    expect(markup).not.toContain("Continuité");
+    expect(markup).not.toContain("Architecture");
+    expect(markup).not.toContain("Phases importées");
   });
 
   it("keeps a concise missing recommendation state for a partial sleep day", () => {
@@ -158,8 +168,9 @@ describe("health route states", () => {
     }));
 
     expect(markup).toContain("Repère indisponible");
-    expect(markup).toContain("Indisponible : Durée / besoin, Régularité, Continuité, Dette.");
+    expect(markup).toContain("Indisponible : Durée, Régularité, Latence, Dette.");
     expect(markup).toContain("90");
+    expect(markup).not.toContain("health-hero-score-card");
   });
 
   it("renders a dedicated empty state without trend cards", () => {

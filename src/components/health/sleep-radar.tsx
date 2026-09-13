@@ -20,6 +20,9 @@ export type SleepRadarDimension = {
   label: string;
   normalizedValue: number | null;
   valueLabel?: string;
+  comparison?: "up" | "down" | "equal" | null;
+  comparisonLabel?: string | null;
+  comparisonTone?: "positive" | "negative" | "neutral";
 };
 
 export type SleepRadarProps = {
@@ -76,9 +79,33 @@ function labelPosition(index: number, count: number) {
 
 function readableDimension(dimension: SleepRadarDimension) {
   const value = dimension.valueLabel?.trim();
-  if (value) return `${dimension.label} : ${value}`;
-  if (dimension.normalizedValue === 0) return `${dimension.label} : mesurée à 0`;
-  return `${dimension.label} : mesure disponible`;
+  const description = value
+    ? `${dimension.label} : ${value}`
+    : dimension.normalizedValue === 0
+      ? `${dimension.label} : mesurée à 0`
+      : `${dimension.label} : mesure disponible`;
+  const comparison = comparisonPresentation(dimension);
+  return comparison ? `${description}. ${comparison.label}` : description;
+}
+
+function comparisonPresentation(dimension: SleepRadarDimension) {
+  if (!hasNormalizedValue(dimension) || !dimension.comparison) return null;
+  const className = dimension.comparisonTone === "positive"
+    ? styles.comparisonPositive
+    : dimension.comparisonTone === "negative"
+      ? styles.comparisonNegative
+      : styles.comparisonEqual;
+
+  switch (dimension.comparison) {
+    case "up":
+      return { arrow: "↑", label: dimension.comparisonLabel?.trim() || "Au-dessus de la moyenne", className };
+    case "down":
+      return { arrow: "↓", label: dimension.comparisonLabel?.trim() || "Sous la moyenne", className };
+    case "equal":
+      return { arrow: "→", label: dimension.comparisonLabel?.trim() || "Stable", className: styles.comparisonEqual };
+  }
+
+  return null;
 }
 
 function chartDescription(
@@ -108,6 +135,7 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
   const unavailableSummary = unavailable.length
     ? `Indisponible : ${unavailable.map((dimension) => dimension.label).join(", ")}.`
     : "Aucune mesure disponible";
+  const captionSummary = summary?.trim();
 
   if (!measured.length) {
     return (
@@ -121,16 +149,18 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
     );
   }
 
-  const count = measured.length;
-  const measuredPoints = measured.map((dimension, index) => pointFor(index, count, dimension.normalizedValue));
+  const count = dimensions.length;
+  const plottedPoints = dimensions.map((dimension, index) => hasNormalizedValue(dimension)
+    ? pointFor(index, count, dimension.normalizedValue)
+    : null);
+  const completePoints = plottedPoints.filter((point): point is Point => point !== null);
+  const allPointsMeasured = completePoints.length === plottedPoints.length;
 
   return (
-    <figure className={rootClassName} aria-labelledby={titleId} aria-describedby={descriptionId}>
+    <figure className={rootClassName} aria-labelledby={titleId} aria-describedby={captionSummary ? descriptionId : undefined}>
       <figcaption className={styles.caption}>
         <span id={titleId} className={styles.title}>{title}</span>
-        <span id={descriptionId} className={styles.summary}>
-          {summary ?? `${measured.length} dimension${measured.length > 1 ? "s" : ""} mesurée${measured.length > 1 ? "s" : ""}`}
-        </span>
+        {captionSummary && <span id={descriptionId} className={styles.summary}>{captionSummary}</span>}
       </figcaption>
 
       <svg
@@ -148,7 +178,8 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
             <polygon
               key={ratio}
               className={`${styles.grid} ${ratio === 1 ? styles.gridOuter : ""}`}
-              points={pointsAttribute(measured.map((_, index) => pointFor(index, count, ratio)))}
+              points={pointsAttribute(dimensions.map((_, index) => pointFor(index, count, ratio)))}
+              aria-hidden="true"
             />
           ))
           : GRID_RATIOS.map((ratio) => (
@@ -158,30 +189,41 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
               cx={CENTER_X}
               cy={CENTER_Y}
               r={RADIUS * ratio}
+              aria-hidden="true"
             />
           ))}
 
-        {measured.map((dimension, index) => {
+        {dimensions.map((dimension, index) => {
           const [x, y] = pointFor(index, count, 1);
-          return <line key={`axis-${dimension.id}-${index}`} className={styles.axis} x1={CENTER_X} y1={CENTER_Y} x2={x} y2={y} />;
+          return <line key={`axis-${dimension.id}-${index}`} className={styles.axis} x1={CENTER_X} y1={CENTER_Y} x2={x} y2={y} aria-hidden="true" />;
         })}
 
-        {count >= 3 && <polygon className={styles.valueArea} points={pointsAttribute(measuredPoints)} />}
-        {count === 2 && <line className={styles.valueLine} x1={measuredPoints[0][0]} y1={measuredPoints[0][1]} x2={measuredPoints[1][0]} y2={measuredPoints[1][1]} />}
+        <g className={styles.dataLayer}>
+          {count >= 3 && allPointsMeasured && <polygon className={styles.valueArea} points={pointsAttribute(completePoints)} aria-hidden="true" />}
+          {count === 2 && allPointsMeasured && <line className={styles.valueLine} x1={completePoints[0][0]} y1={completePoints[0][1]} x2={completePoints[1][0]} y2={completePoints[1][1]} aria-hidden="true" />}
 
-        {measuredPoints.map(([x, y], index) => (
-          <circle key={`point-${measured[index].id}-${index}`} className={styles.point} cx={x} cy={y} r="3.5">
-            <title>{readableDimension(measured[index])}</title>
-          </circle>
-        ))}
+          {plottedPoints.map((point, index) => point && (
+            <circle key={`point-${dimensions[index].id}-${index}`} className={styles.point} cx={point[0]} cy={point[1]} r="3.5" aria-hidden="true">
+              <title>{readableDimension(dimensions[index])}</title>
+            </circle>
+          ))}
+        </g>
 
-        {measured.map((dimension, index) => {
+        {dimensions.map((dimension, index) => {
           const position = labelPosition(index, count);
           const valueLabel = dimension.valueLabel?.trim();
+          const comparison = comparisonPresentation(dimension);
+          const displayValue = valueLabel || (!hasNormalizedValue(dimension) ? "—" : null);
           return (
-            <g key={`label-${dimension.id}-${index}`} className={styles.labelGroup}>
+            <g key={`label-${dimension.id}-${index}`} className={styles.labelGroup} aria-hidden="true">
+              <title>{readableDimension(dimension)}</title>
               <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}</text>
-              {valueLabel && <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.textAnchor}>{valueLabel}</text>}
+              {displayValue || comparison ? (
+                <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.textAnchor}>
+                  {displayValue}
+                  {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx={displayValue ? 5 : 0}>{comparison.arrow}</tspan>}
+                </text>
+              ) : null}
             </g>
           );
         })}
