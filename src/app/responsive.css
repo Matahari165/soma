@@ -277,7 +277,6 @@
   .onboarding-card legend { font-size: clamp(2.2rem, 11vw, 3.2rem); }
   .onboarding-card .form-intro { font-size: 1rem; }
   .onboarding-finish-actions { gap: 8px; }
-  .auth-consent-note { max-width: none; }
 
 }
 

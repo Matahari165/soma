@@ -33,22 +33,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <SomaLogo />
         </Link>
         <div className="auth-intro__copy">
-          <h1 id="auth-intro-title">Bienvenue<br /><em>chez Soma.</em></h1>
+          <h1 id="auth-intro-title">Vous revoilà<br /><em>chez Soma.</em></h1>
         </div>
       </section>
       <section className="auth-card-wrap" aria-labelledby="auth-title">
         <div className="auth-card">
           <h2 id="auth-title">Se connecter</h2>
-          <p>Utilisez votre compte Google pour retrouver vos données.</p>
           {configured ? (
             <GoogleSignInButton />
           ) : (
             <p className="configuration-note" role="alert">La connexion Google n’est pas encore configurée.</p>
           )}
           {errorMessage && <p className="form-error auth-error" role="alert">{errorMessage}</p>}
-          <div className="auth-consent-note">
-            L’accès aux données de santé est demandé séparément. Vous gardez le contrôle de cette autorisation.
-          </div>
           <p className="legal-copy">En continuant, vous acceptez les <Link href="/terms">Conditions d’utilisation</Link> et reconnaissez la <Link href="/privacy">Politique de confidentialité</Link>.</p>
         </div>
       </section>
