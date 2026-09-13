@@ -41,6 +41,9 @@ describe("journal motion states", () => {
     expect(html).toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
     expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Matin"');
     expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Contexte de la journée"');
+    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Détection automatique"');
+    expect(html).not.toContain(">Détectée automatiquement<");
+    expect(html).not.toContain(">Détecté automatiquement<");
     expect(html).toContain('>Petit déjeuner<');
     expect(html).toContain('>Sucres ajoutés<');
     expect(html).not.toContain('>Breakfast<');
@@ -145,5 +148,17 @@ describe("journal motion states", () => {
     expect(html).toContain('class="journal-period journal-period--complete"');
     expect(html).toContain('aria-label="Journée, complète"');
     expect(html).not.toContain("3/3 recorded");
+  });
+
+  it("places Personal Lab validation in the morning header row", () => {
+    const addedSugar = variables.find((variable) => variable.name === "Added sugar");
+    const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
+    const actionsStart = html.indexOf('class="journal-card__actions"');
+    const actionsEnd = html.indexOf("</header>", actionsStart);
+
+    expect(html.slice(actionsStart, actionsEnd)).not.toContain("Valider la journée");
+    expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning"');
+    expect(html.indexOf("journal-period__header-row--morning")).toBeLessThan(html.indexOf("Valider la journée"));
+    expect(html).toContain('aria-label="Sucres ajoutés: Enregistrée, détection automatique"');
   });
 });

@@ -408,7 +408,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
   return <section ref={sectionRef} className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
       <div>
-        {standalone ? <h2 id="strongest-effects-title">Effets les plus marquants</h2> : <h3 id="strongest-effects-title">Effets les plus marquants</h3>}
+        {standalone ? <h2 id="strongest-effects-title">Analyses</h2> : <h3 id="strongest-effects-title">Analyses</h3>}
       </div>
       {periodControl}
     </header>
@@ -531,7 +531,7 @@ export function StrongestEffectsPanel() {
 
   if (!outcomes.length || loadingPeriod === period || (loadError && !rowsByPeriod[period])) return <section className="strongest-effects-panel lab-entry__section" aria-labelledby="strongest-effects-loading-title" aria-busy={loadingPeriod !== null}>
     <header className="strongest-effects-panel__header">
-      <h2 id="strongest-effects-loading-title">Effets les plus marquants</h2>
+      <h2 id="strongest-effects-loading-title">Analyses</h2>
       {periodControl}
     </header>
     {loadError

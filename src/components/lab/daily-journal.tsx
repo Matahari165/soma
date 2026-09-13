@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, LoaderCircle } from "lucide-react";
+import { ImagePlus, LoaderCircle, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -403,10 +403,12 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, achiev
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
   const achievementLabel = achievement?.percentage === null ? "Progression —" : achievement ? `Progression ${achievement.percentage}%` : null;
   const label = journalVariableLabel(variable);
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}</span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
-  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={`${label}: ${stateLabel}`}>
+  const automaticDetectionLabel = variable.captureMode === "automatic" ? "Détection automatique" : null;
+  const accessibleLabel = `${label}: ${stateLabel}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("fr-FR")}` : ""}`;
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}</span></>;
+  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} aria-label={accessibleLabel}>
     {canConfirmDisplayedValue
-      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${label}`} onClick={() => onChange(value)}>{headingContent}</button>
+      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${label}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("fr-FR")}` : ""}`} onClick={() => onChange(value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
     {journalVariableKey(variable.name) === "breakfast" && value === true
@@ -626,11 +628,13 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const statusClass = ["checkin-state", "journal-save-status", validated || saveStatus === "saved" ? "checkin-state--saved" : "", saveStatus === "error" ? "checkin-state--error" : ""].filter(Boolean).join(" ");
   const statusText = journalStatusText({ validated, validating, saveStatus });
   const personalLabIndexes: Record<string, string> = { morning: "01", day: "02", evening: "03", context: "04" };
+  const placeValidationInMorning = isPersonalLab && sections.some((section) => section.id === "morning");
+  const validationAction = !validated ? <button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validation…</> : "Valider la journée"}</button> : null;
   return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""}`} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Actions du journal"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
       {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
       <span>{statusText}</span>
     </span>
-    {!validated && <button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validation…</> : "Valider la journée"}</button>}
+    {!placeValidationInMorning && validationAction}
     {!managerOpen && <button className="text-link" type="button" aria-label="Modifier les champs du journal" onClick={() => setManagerOpen(true)}>Modifier</button>}
   </div></header>
     {showDateNavigation && <nav className="journal-date-strip" aria-label="Date du journal">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Aujourd’hui" : new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
@@ -641,7 +645,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       const sectionLabel = dayPeriodLabel(section.id);
       const sectionIndex = isPersonalLab ? personalLabIndexes[section.id] : undefined;
       return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complète" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
-      <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirmer toutes les valeurs affichées pour ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3></header>
+      <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><div className={`journal-period__header-row${placeValidationInMorning && section.id === "morning" ? " journal-period__header-row--morning" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirmer toutes les valeurs affichées pour ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3>{placeValidationInMorning && section.id === "morning" ? validationAction : null}</div></header>
       <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>;
     })}</div> : <p className="journal-empty">Ajoute ta première mesure suivie ci-dessous.</p>}

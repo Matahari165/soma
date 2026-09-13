@@ -1,5 +1,5 @@
 "use client";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
 type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
@@ -41,7 +41,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
     <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
-      {[.25,.5,.75,1].map(ratio=><polygon key={ratio} className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />)}
+      {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
+        <polygon className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />
+        <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
+      </Fragment>)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
       {validPoints.length>=3&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
       {validPoints.length===2&&<line className="radar-value" x1={validPoints[0][0]} y1={validPoints[0][1]} x2={validPoints[1][0]} y2={validPoints[1][1]}/>}
