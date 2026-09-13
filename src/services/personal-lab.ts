@@ -1,4 +1,5 @@
 import type { LabObservation } from "@/domain/lab/observation";
+import { arrivalActivityFor, type ArrivalActivity } from "@/domain/lab/arrival-message";
 import { automaticJournalEntriesFor } from "@/domain/lab/journal-automatic";
 import { journalAchievementsFor, type JournalAchievement } from "@/domain/lab/journal-achievement";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
@@ -110,6 +111,7 @@ export type PersonalLabSnapshot = {
     deepWorkSource: "calendar" | "corrected" | "missing";
     focus: number | null;
     energy: number | null;
+    activity: ArrivalActivity | null;
   };
   aiNarrative: {
     isCurrent: boolean;
@@ -160,7 +162,10 @@ export type PersonalLabHistoryPoint = {
 };
 
 export type PersonalLabToday = Pick<PersonalLabSnapshot["today"], "sleepMinutes" | "sleepRegularity" | "recoveryScore" | "effortScore" | "averageSleepMinutes" | "averageSleepRegularity" | "averageRecoveryScore" | "averageEffortScore"> & { overnightFingerprint: string | null };
-export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overnightFingerprint" | "today">;
+export type PersonalLabOverview = Pick<PersonalLabSnapshot, "todayDate" | "overnightFingerprint" | "today"> & {
+  greetingName: string;
+  timeZone: string;
+};
 export type PersonalLabJournal = Pick<PersonalLabSnapshot, "todayDate" | "journal">;
 export type PersonalLabStream = {
   overview: Promise<PersonalLabOverview>;
@@ -314,6 +319,7 @@ function buildTodayData(input: {
   const observations = joinObservations(input.health, input.scores, input.calendars, input.checkins);
   const todayDate = dateInTimezone(input.timeZone);
   const todayObservation = observations.find((day) => day.date === todayDate);
+  const todayHealth = input.health.find((day) => day.metric_date === todayDate);
   const todayCalendar = input.calendars.find((day) => day.metric_date === todayDate);
   const checkin = input.checkins.find((day) => day.checkin_date === todayDate) ?? null;
   const mealDays = aggregateConfirmedMeals(input.meals ?? []);
@@ -344,6 +350,14 @@ function buildTodayData(input: {
     deepWorkSource: checkin?.deep_work_minutes_override !== null && checkin?.deep_work_minutes_override !== undefined ? "corrected" as const : todayCalendar ? "calendar" as const : "missing" as const,
     focus: todayObservation?.focus ?? null,
     energy: todayObservation?.energy ?? null,
+    activity: arrivalActivityFor({
+      runningDistanceKm: todayHealth?.running_distance_km,
+      runningDurationMinutes: todayHealth?.running_duration_minutes,
+      runningPaceSecondsPerKm: todayHealth?.running_pace_seconds_per_km,
+      vigorousZoneMinutes: todayHealth?.vigorous_zone_minutes,
+      peakZoneMinutes: todayHealth?.peak_zone_minutes,
+      dataQuality: todayHealth?.data_quality,
+    }),
   };
 }
 
@@ -777,6 +791,7 @@ function previewData() {
 
 function buildOverview(input: {
   timeZone: string;
+  greetingName: string;
   health: HealthDay[];
   scores: ScoreDay[];
   calendars: CalendarDay[];
@@ -788,6 +803,8 @@ function buildOverview(input: {
   return {
     todayDate,
     overnightFingerprint: overnightFingerprint(todayHealth),
+    greetingName: input.greetingName,
+    timeZone: input.timeZone,
     today: buildTodayData(input),
   };
 }
@@ -986,7 +1003,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
     return {
-      overview: Promise.resolve(buildOverview(input)),
+      overview: Promise.resolve(buildOverview({ ...input, greetingName: user.displayName })),
       journal: Promise.resolve(buildJournalView(input.timeZone, input.journal, input.meals)),
       analysis: includeAnalysis ? Promise.resolve().then(() => buildSnapshot(input)) : null,
     };
@@ -1061,7 +1078,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
   }) : null;
 
-  const overview = Promise.all([corePromise, mealPromise]).then(([core, meals]) => buildOverview({ ...core, meals }));
+  const overview = Promise.all([corePromise, mealPromise]).then(([core, meals]) => buildOverview({ ...core, meals, greetingName: user.displayName }));
   const journal = Promise.all([profilePromise, journalPromise, mealPromise]).then(([profileResult, journalData, meals]) => {
     if (profileResult.error) throw new Error("Your Personal Lab is temporarily unavailable.");
     return buildJournalView(profileResult.data?.timezone ?? "Europe/Paris", journalData, meals);

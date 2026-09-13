@@ -81,6 +81,7 @@ html[data-lab-theme="observatory"] .lab-intro > .lab-arrival { position:relative
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { min-height:700px!important; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:750px!important; min-height:750px!important; margin-top:16px; margin-bottom:0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { font-size:clamp(44px,5vw,72px); margin:0 0 20px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading--personalized h1 { max-width:20ch; }
 .arrival-date-nav { position:relative; display:flex; align-items:center; gap:8px; width:max-content; }
 .arrival-date-nav__btn:first-child { position:absolute; right:100%; margin-right:8px; }
 .arrival-date-nav__btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:4px; background:transparent; color:#888; font-size:16px; line-height:1; border:0; cursor:pointer; padding:0; transition:color 150ms ease, background 150ms ease; }

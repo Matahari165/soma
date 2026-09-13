@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { useLabTheme } from "./lab-theme";
-import { LabArrival } from "./lab-arrival";
+import { LabArrival, type LabArrivalPersonalization } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
@@ -27,6 +27,7 @@ export function LabWorldWorkspace({
   overview,
   journal,
   initialSelectedDate,
+  personalization,
 }: {
   date?: string;
   radar?: ReactNode;
@@ -35,6 +36,7 @@ export function LabWorldWorkspace({
   overview?: PersonalLabOverview;
   journal?: PersonalLabJournal;
   initialSelectedDate?: string;
+  personalization?: LabArrivalPersonalization;
 }) {
   const theme = useLabTheme();
   const root = useRef<HTMLDivElement>(null);
@@ -124,6 +126,7 @@ export function LabWorldWorkspace({
         todayDate={todayDate}
         availableDates={availableDates}
         onDateChange={setSelectedDate}
+        personalization={personalization}
       />
     </div>
     <div className="lab-world" lang="fr">

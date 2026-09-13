@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { onboardingSchema } from "@/domain/profile";
 
 const validOnboarding = {
-  displayName: "Jeremy",
+  displayName: "Jérémy",
   dateOfBirth: "1999-08-19",
   heightCm: 178,
   weightKg: 72,
