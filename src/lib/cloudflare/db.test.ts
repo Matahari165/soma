@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, createCloudflareAdminClient, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
 
 describe("Cloudflare D1 row identity", () => {
   it("keeps idempotent sync jobs on the same connection-scoped row", () => {
@@ -114,6 +114,41 @@ describe("Cloudflare D1 read planning", () => {
 
     expect(plan.sql).not.toContain("OR 1=1");
     expect(plan.paginationPushed).toBe(false);
+  });
+});
+
+describe("Supabase storage pagination", () => {
+  it("reads logical rows beyond Supabase's first 1,000-row page", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const offset = Number(url.searchParams.get("offset"));
+      const page = offset === 0
+        ? Array.from({ length: 1_000 }, (_, index) => ({ table_name: "daily_scores", row_key: String(index).padStart(4, "0"), user_id: "user-1", json_data: { id: String(index), user_id: "user-1", kind: "sleep" }, created_at: null, updated_at: null }))
+        : [{ table_name: "daily_scores", row_key: "1000", user_id: "user-1", json_data: { id: "1000", user_id: "user-1", kind: "sleep" }, created_at: null, updated_at: null }];
+      return new Response(JSON.stringify(page), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("daily_scores").select("*").eq("user_id", "user-1");
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1_001);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("offset")).toBe("0");
+      expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("offset")).toBe("1000");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
   });
 });
 

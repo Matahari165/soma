@@ -922,6 +922,8 @@ type SupabaseStoredRow = {
 
 type SupabaseFilter = Filter & { field: string };
 
+const SUPABASE_STORAGE_PAGE_SIZE = 1_000;
+
 export function hasSupabaseRuntime() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
@@ -988,12 +990,25 @@ function logicalRow(item: SupabaseStoredRow) {
 }
 
 async function readSupabaseStorageRows(table: string, filters: SupabaseFilter[]) {
-  const serverFilters: Array<[string, string]> = [["select", "table_name,row_key,user_id,json_data,created_at,updated_at"], ["table_name", `eq.${table}`]];
+  const serverFilters: Array<[string, string]> = [
+    ["select", "table_name,row_key,user_id,json_data,created_at,updated_at"],
+    ["table_name", `eq.${table}`],
+    ["order", "row_key.asc"],
+  ];
   for (const filter of filters) {
     if (filter.field === "user_id") serverFilters.push(["user_id", supabaseFilterValue(filter)]);
   }
-  const rows = await supabaseRequest<SupabaseStoredRow[]>(supabasePath("soma_rows", serverFilters));
-  return rows.map(logicalRow);
+  const storedRows: SupabaseStoredRow[] = [];
+  for (let offset = 0; ; offset += SUPABASE_STORAGE_PAGE_SIZE) {
+    const page = await supabaseRequest<SupabaseStoredRow[]>(supabasePath("soma_rows", [
+      ...serverFilters,
+      ["limit", String(SUPABASE_STORAGE_PAGE_SIZE)],
+      ["offset", String(offset)],
+    ]));
+    storedRows.push(...page);
+    if (page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
+  }
+  return storedRows.map(logicalRow);
 }
 
 class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
