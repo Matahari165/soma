@@ -44,10 +44,6 @@ export function DiscobolusBackdrop({
   className = "",
   placement = "hero",
 }: DiscobolusBackdropProps) {
-  if (variant === "off") {
-    return null;
-  }
-
   const scrollLayerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -98,6 +94,10 @@ export function DiscobolusBackdrop({
       window.removeEventListener("resize", handleScroll);
     };
   }, [variant]);
+
+  if (variant === "off") {
+    return null;
+  }
 
   const normalized = normalizeDiscobolusVariant(variant);
 
