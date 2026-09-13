@@ -21,7 +21,7 @@ function hasS3Config() {
 }
 
 function r2BucketName() {
-  return process.env.R2_BUCKET_NAME || "soma-health-record-archives";
+  return process.env.R2_BUCKET_NAME || process.env.R2_ARCHIVE_BUCKET || "soma-health-record-archives";
 }
 
 async function getS3Client() {
