@@ -67,12 +67,6 @@ const RADAR_LABEL_LINES: Record<MealBalanceComponentKey, readonly string[]> = {
   energy: ["Énergie"],
 };
 
-const EFFECT_LABELS = {
-  positive: "Point positif",
-  caution: "À surveiller",
-  negative: "Point négatif",
-} as const;
-
 const RADAR_DETAIL_ID = "meal-score-dimension-detail";
 
 function formatScore(value: number | null | undefined) {
@@ -120,11 +114,13 @@ function scoreBarStyle(score: number | null): CSSProperties | undefined {
 
 function RollingWindow({ item, days }: { item: MealScoreRolling | undefined; days: 14 | 28 }) {
   const score = item?.score ?? null;
+  const observedLabel = item
+    ? `${item.observedDays} observé${item.observedDays > 1 || item.observedDays === 0 ? "s" : ""}`
+    : "indisponible";
   return (
     <li className={styles.rollingItem} data-window={`${days}`}>
-      <span className={styles.rollingLabel}>{days} jours</span>
+      <span className={styles.rollingLabel}>{days} jours ({observedLabel})</span>
       <strong className={styles.rollingScore} aria-label={scoreDescription(score)}>{formatScore(score)}<span>/100</span></strong>
-      <span className={styles.rollingDetail}>{item ? `${item.observedDays} / ${item.totalDays} jours observés` : "Donnée indisponible"}</span>
     </li>
   );
 }
@@ -186,10 +182,12 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
             ? null
             : radarPoint(index, 128 * Math.min(Math.max(axis.score, 0), 100) / 100);
           const selected = selectedKey === axis.keyName;
+          const actionLabel = selected ? "Masquer les détails de cette dimension" : "Afficher les détails de cette dimension";
           return (
             <g
               aria-controls={RADAR_DETAIL_ID}
-              aria-label={`${axis.label}. ${scoreDescription(axis.score)}. Afficher les détails de cette dimension.`}
+              aria-expanded={selected}
+              aria-label={`${axis.label}. ${scoreDescription(axis.score)}. ${actionLabel}.`}
               aria-pressed={selected}
               className={styles.radarAxisButton}
               data-key={axis.keyName}
@@ -225,12 +223,10 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
 type DimensionDetailProps = {
   dimension: RadarAxis | null;
   open: boolean;
-  onClose: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
-  closeButtonRef: RefObject<HTMLButtonElement | null>;
 };
 
-function DimensionDetail({ dimension, open, onClose, headingRef, closeButtonRef }: DimensionDetailProps) {
+function DimensionDetail({ dimension, open, headingRef }: DimensionDetailProps) {
   const component = dimension?.component ?? null;
   const score = component?.score ?? null;
   const weight = component?.weight ?? (dimension ? MEAL_BALANCE_COMPONENT_WEIGHTS[dimension.keyName] : null);
@@ -240,7 +236,6 @@ function DimensionDetail({ dimension, open, onClose, headingRef, closeButtonRef 
     <aside aria-hidden={!open} aria-labelledby="meal-score-dimension-detail-title" className={styles.dimensionDetail} data-open={open} id={RADAR_DETAIL_ID}>
       <div className={styles.dimensionDetailHeader}>
         <h3 id="meal-score-dimension-detail-title" ref={headingRef} tabIndex={-1}>{label}</h3>
-        <button aria-label={`Fermer les détails de ${label}`} className={styles.detailClose} onClick={onClose} ref={closeButtonRef} tabIndex={open ? 0 : -1} type="button">Fermer</button>
       </div>
       <dl className={styles.dimensionDetailMetrics}>
         <div><dt>Score</dt><dd>{formatScore(score)}<span>/100</span></dd></div>
@@ -266,7 +261,6 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
   const [selectedKey, setSelectedKey] = useState<MealBalanceComponentKey | null>(null);
   const radarButtonRefs = useRef<Partial<Record<MealBalanceComponentKey, SVGGElement | null>>>({});
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
-  const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
   const selectedDimension = selectedKey ? axisData(daily).find((axis) => axis.keyName === selectedKey) ?? null : null;
 
   useEffect(() => {
@@ -286,20 +280,15 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
     } else setSelectedKey(key);
   }
 
-  function closeDimension() {
-    if (!selectedKey) return;
-    const key = selectedKey;
-    setSelectedKey(null);
-    restoreRadarFocus(key);
-  }
-
   return (
     <section className={[styles.root, className].filter(Boolean).join(" ")} aria-label="Équilibre alimentaire">
       <div className={styles.scoreTop} data-score-part="top">
         <div className={styles.scoreEssentials}>
           <div className={styles.radarStage} data-detail-open={selectedDimension ? "true" : "false"}>
             <MealBalanceRadar daily={daily} onSelect={toggleDimension} registerButton={(key, node) => { radarButtonRefs.current[key] = node; }} selectedKey={selectedKey} />
-            <DimensionDetail closeButtonRef={detailCloseButtonRef} dimension={selectedDimension} headingRef={detailHeadingRef} onClose={closeDimension} open={selectedDimension !== null} />
+            <div className={styles.dimensionDetailShell} data-open={selectedDimension !== null}>
+              <DimensionDetail dimension={selectedDimension} headingRef={detailHeadingRef} open={selectedDimension !== null} />
+            </div>
           </div>
           <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
             <div className={styles.panelHeading}><h3 id="meal-score-daily-title">Aujourd’hui</h3></div>
@@ -337,13 +326,6 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
         </section>
       </div>
 
-      <section className={styles.effectsSection} data-score-part="effects" aria-labelledby="meal-score-effects-title">
-        <div className={styles.effectsHeading}>
-          <h2 className={styles.sectionTitle} id="meal-score-effects-title">Ce qui se démarque aujourd’hui</h2>
-          <p>Les dimensions les plus éloignées du repère d’équilibre.</p>
-        </div>
-        {daily?.strongestEffects.length ? <ul className={styles.effectsList}>{daily.strongestEffects.map((effect) => <li className={styles.effectRow} data-direction={effect.direction} key={effect.key}><div className={styles.effectHeading}><span>{EFFECT_LABELS[effect.direction]}</span><strong>{effect.label}</strong></div><b className={styles.effectScore}>{formatScore(effect.points)}<small>/100</small></b><p>{effect.summary}</p></li>)}</ul> : <p className={styles.emptyInline}>Les effets principaux apparaîtront quand suffisamment de dimensions seront observées.</p>}
-      </section>
     </section>
   );
 }

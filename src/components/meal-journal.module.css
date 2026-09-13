@@ -3740,3 +3740,203 @@
     padding-top: 12px;
   }
 }
+
+/* Final /meals contract: empty slots use a title followed by one quiet capture
+   row; confirmed slots keep their summary on the same compact rail. */
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 8px;
+  min-height: 0;
+  padding-block: 16px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard .mealHeader {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: center;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard .mealBody,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard > .emptyMealPrompt,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard > .skippedState {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed {
+  grid-template-columns: minmax(220px, .34fr) minmax(0, 1.66fr);
+  column-gap: 24px;
+  align-items: start;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed .mealHeader {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed .mealBody {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, .34fr) minmax(140px, .34fr) !important;
+  gap: 8px;
+  align-items: stretch;
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput {
+  width: 100%;
+  max-width: none;
+  grid-column: 1 !important;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+  display: contents;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: transparent;
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-ui);
+  font-weight: 400;
+  line-height: 20px;
+  resize: none;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea::placeholder {
+  color: var(--lab-text-secondary);
+  opacity: 1;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .captureButtonCompact,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  width: 100%;
+  min-width: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle {
+  grid-column: 2;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  grid-column: 3;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .captureButtonCompact,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  min-height: 44px;
+  height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-xs);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: var(--lab-type-ui);
+  font-weight: 400;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .captureButtonCompact:hover:not(:disabled),
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton:hover:not(:disabled) {
+  border-color: var(--lab-border-strong);
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton:disabled {
+  border-color: var(--lab-border);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  opacity: .55;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealSummary {
+  display: grid;
+  grid-template-columns: minmax(220px, .75fr) minmax(0, 1.75fr);
+  align-items: baseline;
+  gap: 24px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealDetails {
+  align-items: baseline;
+  gap: 0 8px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealDishes {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+  padding-top: 0;
+  border-top: 0;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard,
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+    row-gap: 8px;
+    padding-block: 16px 20px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed {
+    grid-template-columns: 1fr;
+    column-gap: 0;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed .mealHeader,
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardConfirmed .mealBody {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions {
+    display: grid;
+    width: 100%;
+    grid-column: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput,
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+    grid-column: 1;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle,
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+    grid-column: auto;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+    height: 52px;
+    min-height: 52px;
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealSummary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 6%, var(--lab-canvas));
+  }
+}

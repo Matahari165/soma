@@ -63,18 +63,21 @@ describe("MealScoreOverviewPanel", () => {
       expect(html).toContain(label);
     }
     expect(html).toContain("Contribution");
-    expect(html).toContain("8 / 14 jours observés");
-    expect(html).toContain("12 / 28 jours observés");
+    expect(html).toContain("14 jours (8 observés)");
+    expect(html).toContain("28 jours (12 observés)");
     expect(html).toContain("sans barre");
     expect(html.match(/role="img"/g)).toHaveLength(1);
     expect(html.match(/role="button"/g)).toHaveLength(7);
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(7);
+    expect(html.match(/aria-expanded="false"/g)).toHaveLength(7);
     expect(html).toContain('data-key="variety"');
     expect(html).toContain('aria-label="Sucre ajouté. Score indisponible. Afficher les détails de cette dimension."');
     expect(html).toContain("Profil des sept dimensions de l’équilibre alimentaire");
     expect(html).not.toContain("NaN");
-    expect(html).toContain("Point positif");
-    expect(html).toContain("Point négatif");
+    expect(html).not.toContain("Ce qui se démarque aujourd’hui");
+    expect(html).not.toContain("Point positif");
+    expect(html).not.toContain("Point négatif");
+    expect(html).not.toContain("Fermer les détails de");
     expect(html).not.toContain("Détail des 7 dimensions");
   });
 });
