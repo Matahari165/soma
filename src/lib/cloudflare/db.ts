@@ -842,7 +842,10 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     if (!this.mutation) return this.shape(await this.readRows());
     if (this.mutation.kind === "insert" || this.mutation.kind === "upsert") {
       const mutation = this.mutation;
-      const rows = mutation.values.map(withDefaults);
+      // Physical compatibility tables have their own exact schemas. In
+      // particular, soma_sessions is keyed by token_hash and has no id
+      // column, so do not inject the logical-row id default here.
+      const rows = mutation.values.map((row) => this.isPhysicalTable() ? cleanRow(row) : withDefaults(row));
       await writeRows(this.table, rows, mutation.kind === "upsert" ? mutation.onConflict : undefined, mutation.kind === "upsert" && mutation.ignoreDuplicates);
       return this.shape(rows);
     }
