@@ -1,4 +1,4 @@
-import { MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup, type MealNovaGroup, type MealQualityProperty, type MealSugarExposure } from "@/domain/meals";
+import { mealFoodObservationSchema, mealUncertaintySignalSchema, MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup, type MealFoodObservation, type MealNovaGroup, type MealQualityProperty, type MealSugarExposure, type MealUncertaintySignal } from "@/domain/meals";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
@@ -43,6 +43,8 @@ export type MealFoodQuantity = {
 
 export type MealIngredient = {
   id: string;
+  /** Stable id from the canonical model response; synthetic UI ids are not persisted. */
+  sourceId?: string;
   name: string;
   portion: string;
   preparation?: string | null;
@@ -68,6 +70,7 @@ export type MealIngredient = {
   novaGroup?: MealNovaGroup | null;
   sugarExposure?: MealSugarExposure | null;
   qualityProperties?: MealQualityProperty[];
+  observation?: MealFoodObservation;
 };
 
 export type MealAnalysis = {
@@ -85,6 +88,7 @@ export type MealAnalysis = {
   confidence?: "low" | "medium" | "high";
   note?: string;
   uncertainties?: string[];
+  uncertaintySignals?: MealUncertaintySignal[];
 };
 
 export type MealRecord = {
@@ -194,6 +198,19 @@ function mealQualityProperties(value: unknown): MealQualityProperty[] | undefine
   return value.filter((property): property is MealQualityProperty => property === "whole_food" || property === "minimally_processed" || property === "fermented" || property === "fiber_source" || property === "protein_source" || property === "unsaturated_fat_source").slice(0, 8);
 }
 
+function mealFoodObservation(value: unknown): MealFoodObservation | undefined {
+  const parsed = mealFoodObservationSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function mealUncertaintySignals(value: unknown): MealUncertaintySignal[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((signal) => {
+    const parsed = mealUncertaintySignalSchema.safeParse(signal);
+    return parsed.success ? [parsed.data] : [];
+  }).slice(0, 20);
+}
+
 export function apiMealToRecord(value: unknown): MealRecord {
   const meal = isRecord(value) ? value : {};
   const analysisRecord = isRecord(meal.analysis) ? meal.analysis : null;
@@ -216,8 +233,10 @@ export function apiMealToRecord(value: unknown): MealRecord {
       const value = range(key);
       return value.low === null && value.high === null ? undefined : value;
     };
+    const sourceId = typeof rawFood.id === "string" && rawFood.id.trim() ? rawFood.id.trim().slice(0, 120) : undefined;
     return [{
-      id: `${resultRecord?.id ?? "analysis"}-${index}`,
+      id: sourceId ?? `${resultRecord?.id ?? "analysis"}-${index}`,
+      sourceId,
       name,
       portion: typeof rawFood.portion === "string" ? rawFood.portion : "",
       preparation: typeof rawFood.preparation === "string" ? rawFood.preparation : null,
@@ -251,9 +270,11 @@ export function apiMealToRecord(value: unknown): MealRecord {
       novaGroup: mealNovaGroup(rawFood.novaGroup),
       sugarExposure: mealSugarExposure(rawFood.sugarExposure),
       qualityProperties: mealQualityProperties(rawFood.qualityProperties),
+      observation: mealFoodObservation(rawFood.observation),
     }];
   });
   const uncertainties = result && Array.isArray(result.uncertainties) ? result.uncertainties.filter((item): item is string => typeof item === "string") : [];
+  const uncertaintySignals = mealUncertaintySignals(result?.uncertaintySignals);
   const dishType = result && typeof result.dishType === "string" && result.dishType.trim() ? result.dishType.trim().slice(0, 80) : null;
   const calorieAnalysis = result && typeof result.calorieAnalysis === "string" && result.calorieAnalysis.trim() ? result.calorieAnalysis.trim().slice(0, 500) : null;
   const mealType = meal.mealType === "breakfast" || meal.mealType === "lunch" || meal.mealType === "dinner" || meal.mealType === "snack" ? meal.mealType : "lunch";
@@ -288,7 +309,9 @@ export function apiMealToRecord(value: unknown): MealRecord {
       sugarGrams: apiRange(totals.sugarGrams ?? totals.sugarsGrams ?? totals.sugars),
       addedSugarGrams: apiRange(totals.addedSugarGrams ?? totals.addedSugarsGrams ?? totals.addedSugars),
       confidence: confidence(result.confidence),
+      uncertainties,
       note: uncertainties.length ? uncertainties.join(" · ") : typeof result.summary === "string" ? result.summary : undefined,
+      uncertaintySignals,
     } : null,
     mouthHeat: typeof meal.mouthWarmthIntensity === "number" && meal.mouthWarmthIntensity >= 0 && meal.mouthWarmthIntensity <= 5 ? meal.mouthWarmthIntensity as Rating : null,
     stomachLoad: typeof meal.stomachOverfullIntensity === "number" && meal.stomachOverfullIntensity >= 0 && meal.stomachOverfullIntensity <= 5 ? meal.stomachOverfullIntensity as Rating : null,
