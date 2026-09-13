@@ -1,14 +1,23 @@
+/*
+ * Recovery uses the Observatoire language as a reading instrument:
+ * continuous black canvas, typography-led hierarchy and space-led grouping.
+ * This module only overrides the shared health shell for
+ * the Recovery route; no surface becomes a card by default.
+ */
+
 .page {
   --recovery-canvas: var(--lab-canvas, #050505);
   --recovery-surface: var(--lab-surface, #080808);
-  --recovery-subtle: var(--lab-surface-subtle, #0c0c0c);
-  --recovery-border: var(--lab-border, #292929);
-  --recovery-border-strong: var(--lab-border-strong, #3a3a3a);
+  --recovery-rule: var(--lab-border, #292929);
+  --recovery-rule-strong: var(--lab-border-strong, #3a3a3a);
   --recovery-text: var(--lab-text-primary, #f1f1f1);
   --recovery-muted: var(--lab-text-secondary, #aaaaaa);
-  --recovery-brand: var(--lab-brand, #eeeeee);
-  --recovery-signal: var(--lab-signal, #d5e5da);
-  --recovery-error: var(--lab-error, #e2b2aa);
+  --recovery-accent: var(--lab-brand, #eeeeee);
+  --recovery-header-height: 80px;
+  --recovery-flow-gap: 48px;
+  --recovery-panel-padding: calc(var(--recovery-flow-gap) / 2);
+  --recovery-title-content-gap: 16px;
+  --recovery-hero-lift: 8px;
   width: 100%;
   min-width: 0;
   min-height: 100vh;
@@ -17,985 +26,932 @@
   font-family: var(--font-soma-ui), system-ui, sans-serif;
 }
 
-.header {
-  display: flex;
-  min-height: 87px;
-  align-items: center;
-  gap: 32px;
-  padding: 4px 24px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--recovery-border) 70%, transparent);
-  background: color-mix(in srgb, var(--recovery-canvas) 88%, transparent);
-  backdrop-filter: none;
-}
-.header h1 { flex: 0 0 auto; margin: 0; color: var(--recovery-text); font-family: inherit; font-size: 26px; font-weight: 700; letter-spacing: -.65px; line-height: 39px; }
-.headerMetrics { display: grid; min-width: 0; flex: 1 1 auto; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-self: stretch; padding-top: 4px; }
-.headerMetric { display: flex; min-width: 0; min-height: 75px; flex-direction: column; justify-content: space-between; padding: 7px 9px; border: 1px solid var(--recovery-border-strong); border-radius: 4px; background: var(--recovery-surface); box-shadow: 0 1px 1px rgba(28, 37, 32, .05); }
-.metricLabel { display: block; overflow: hidden; color: var(--recovery-muted); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.headerMetricBody { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
-.headerMetricBody > div:first-child { min-width: 0; white-space: nowrap; }
-.headerMetricBody strong { display: inline-block; font-size: 28px; font-weight: 500; letter-spacing: -.5px; line-height: 30px; }
-.headerMetricBody small { margin-left: 4px; color: var(--recovery-muted); font-size: 11px; letter-spacing: .22px; }
-.headerMetricBody p { overflow: hidden; color: var(--recovery-muted); font-size: 12px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.valuePositive { color: var(--recovery-signal); }
-.valueNegative { color: var(--recovery-error); }
-.valueNeutral { color: var(--recovery-brand); }
-.historyBars, .trendBars { display: flex; height: 44px; align-items: end; justify-content: center; gap: 8px; overflow: hidden; }
-.historyBars { flex: 0 0 auto; }
-.historyBars i, .trendBars i { display: block; width: 12px; min-height: 3px; border-radius: var(--lab-radius-xs); }
-.barPositive { background: var(--recovery-brand); }
-.barNegative { background: var(--recovery-error); }
-.barNeutral { background: var(--recovery-brand); }
-.barMissing { background: var(--lab-border); }
-
-.content { display: flex; min-width: 0; flex-direction: column; gap: 24px; padding: 12px 24px 24px; }
-
-.workbench { display: grid; min-width: 0; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 32px; align-items: start; }
-.column { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
-.panel { min-width: 0; padding: 24px; overflow: hidden; border: 1px solid var(--recovery-border-strong); border-radius: var(--lab-radius-sm); background: var(--recovery-surface); }
-.panelHeader { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16px; }
-.panelHeader h2, .availability h2 { min-width: 0; color: var(--recovery-text); font-size: 22px; font-weight: 500; letter-spacing: -.33px; line-height: 28px; }
-.statGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-.statWrap { position: relative; min-width: 0; }
-.statBox { display: flex; min-width: 0; min-height: 58px; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid var(--recovery-border); border-radius: 4px; background: var(--recovery-surface); }
-.statBox span { overflow: hidden; color: var(--recovery-muted); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.statBox strong { color: var(--recovery-brand); font-size: 18px; font-weight: 700; line-height: 24px; }
-.statBoxNegative strong { color: var(--recovery-error); }
-.scoreWrap { display: flex; align-items: stretch; gap: 8px; }
-.scoreWrap > .statBox { flex: 1 1 auto; }
-.scoreAction { display: flex; flex: 0 0 44px; align-items: center; }
-.scoreAction :global(.health-score-trigger) { display: grid; width: 44px; min-width: 44px; min-height: 44px; place-items: center; padding: 0; border: 1px solid var(--recovery-border-strong); border-radius: 50%; background: var(--recovery-subtle); color: var(--recovery-brand); }
-.scoreAction :global(.health-score-trigger)::after { content: "i"; font-size: 13px; font-weight: 700; line-height: 1; }
-.scoreAction :global(.score-ring) { display: none; }
-.scoreAction :global(.health-score-trigger:hover) { border-color: var(--recovery-brand); background: var(--recovery-surface); }
-.statusLine, .supporting { margin-top: 16px; color: var(--recovery-muted); font-size: 12px; font-weight: 500; letter-spacing: .22px; line-height: 14px; }
-.sectionLabel { display: block; margin-top: 16px; color: var(--recovery-muted); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
-.driverRows { display: grid; gap: 8px; margin-top: 8px; }
-.driverRows p { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--recovery-text); font-size: 16px; line-height: 25px; }
-.driverRows strong { color: var(--recovery-muted); font-weight: 400; }
-
-.signalRows { display: grid; gap: 0; margin-top: 16px; }
-.signalRow { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid color-mix(in srgb, var(--recovery-border) 70%, transparent); }
-.signalRow:last-child { border-bottom: 0; }
-.signalRow > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.signalRow > div:first-child span, .signalRow > div:last-child strong { color: var(--recovery-text); font-size: 13px; line-height: 18px; }
-.signalRow small, .signalRow em { color: var(--recovery-muted); font-size: 12px; font-style: normal; line-height: 14px; }
-.signalRow > div:last-child { display: flex; min-width: 0; flex-direction: column; align-items: end; gap: 2px; text-align: right; }
-.signalRow > div:last-child strong { font-size: 18px; font-weight: 700; line-height: 24px; }
-
-.supporting { margin-top: 8px; }
-.panel :global(.zone-distribution) { min-height: 32px; margin-top: 16px; border: 0; border-radius: var(--lab-radius-sm); overflow: hidden; }
-.panel :global(.zone-distribution__segment--light) { background: var(--lab-border); }
-.panel :global(.zone-distribution__segment--moderate) { background: color-mix(in srgb, var(--lab-signal) 50%, var(--lab-surface)); }
-.panel :global(.zone-distribution__segment--vigorous) { background: var(--lab-signal); }
-.panel :global(.zone-distribution__segment--peak) { background: var(--recovery-brand); }
-.panel :global(.stage-legend) { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; color: var(--recovery-muted); font-size: 12px; }
-.panel :global(.stage-legend li) { gap: 5px; }
-.panel :global(.stage-legend strong) { color: var(--recovery-muted); font-size: 12px; font-weight: 500; }
-.panel :global(.stage-dot) { width: 6px; height: 6px; }
-.panel :global(.health-empty) { min-height: 72px; padding: 0; border: 0; border-radius: 0; }
-
-.trendsPanel { padding-bottom: 16px; }
-.filters { display: flex; align-items: center; gap: 4px; color: var(--recovery-muted); font-size: 12px; font-weight: 500; line-height: 16px; }
-.trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-.trendCard { display: flex; min-width: 0; min-height: 184px; flex-direction: column; justify-content: space-between; padding: 16px; border: 1px solid var(--recovery-border); border-radius: 4px; background: var(--recovery-surface); }
-.trendHeader { display: flex; min-width: 0; justify-content: space-between; gap: 4px; }
-.trendHeader > div { min-width: 0; }
-.trendHeader .metricLabel { font-size: 12px; letter-spacing: .6px; }
-.trendHeader strong { display: inline-block; font-size: 20px; font-weight: 500; letter-spacing: -.35px; line-height: 23px; }
-.trendHeader small { margin-left: 3px; color: var(--recovery-muted); font-size: 12px; }
-.trendDirection { color: var(--recovery-brand); font-size: 14px; }
-.trendBarArea { position: relative; height: 86px; }
-.trendAverageLine { position: absolute; z-index: 0; right: 0; left: 0; height: 1px; background: color-mix(in srgb, var(--recovery-muted) 42%, transparent); }
-.trendBars { position: relative; z-index: 1; height: 86px; justify-content: space-between; gap: 6px; }
-.trendBars i { width: 10px; min-height: 3px; }
-
-.heartPanel { min-height: 400px; }
-.heartPanel :global(.health-line-chart-wrap) { height: 286px; margin-top: 20px; padding-right: 0; }
-.heartPanel :global(.health-line-chart) { height: 250px; }
-
-/* The recovery reading path is also the source of truth for sparse imports. */
-.calculatedBy { margin: -8px 0 16px; color: var(--recovery-muted); font-size: 12px; line-height: 16px; }
-.empty { display: flex; min-height: 220px; align-items: center; justify-content: center; gap: 12px; text-align: center; }
-.empty > strong { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--recovery-brand); border-radius: 50%; color: var(--recovery-brand); font-size: 24px; font-weight: 400; }
-.empty h2 { color: var(--recovery-text); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: 22px; font-weight: 500; line-height: 28px; }
-.empty p { margin-top: 4px; color: var(--recovery-muted); font-size: 13px; line-height: 18px; }
-.page :global(.recovery-score-popover header button) { width: 44px; height: 44px; }
-.page :global(.health-line-chart) { min-height: 44px; }
-
-@media (prefers-reduced-motion: reduce) {
-  .page :global(.score-ring__progress),
-  .page :global(.score-ring--animated) { animation: none; transition: none; }
-}
-.heartPanel :global(.health-chart-range) { display: none; }
-.heartPanel :global(.health-chart-line) { stroke: var(--recovery-brand); stroke-width: 1.5; }
-.heartPanel :global(.health-chart-area) { fill: transparent; }
-.heartPanel :global(.health-chart-grid) { stroke: var(--recovery-border); }
-.heartPanel :global(.health-chart-point) { display: none; }
-.heartPanel :global(.health-empty) { min-height: 200px; border: 0; }
-.calculationPanel { min-height: 142px; background: var(--recovery-surface); }
-.calculationCard { padding: 16px; border: 1px solid var(--recovery-border); border-radius: var(--lab-radius-sm); background: var(--recovery-subtle); }
-.calculationHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.calculationHeader h3 { color: var(--recovery-text); font-size: 14px; font-weight: 500; line-height: 20px; }
-.calculationHeader span { padding: 2px 8px; border-radius: var(--lab-radius-xs); background: var(--recovery-brand); color: var(--lab-surface); font-size: 12px; font-weight: 600; letter-spacing: .8px; line-height: 14px; text-transform: uppercase; }
-.calculationStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.calculationStats .statBox { min-height: 58px; }
-.calculationPanel > p { margin-top: 16px; color: var(--recovery-text); font-size: 16px; line-height: 25px; }
-.calculationPanel > small { display: block; margin-top: 4px; color: var(--recovery-muted); font-size: 12px; line-height: 14px; }
-.provenancePanel { min-height: 120px; background: var(--recovery-subtle); }
-.provenancePanel .panelHeader { margin-bottom: 16px; }
-.provenanceRow { display: flex; flex-wrap: wrap; gap: 8px 32px; align-items: center; color: var(--recovery-text); font-size: 13px; line-height: 18px; }
-.provenanceRow small { color: var(--recovery-muted); font-size: 12px; font-weight: 500; letter-spacing: .22px; }
-
-.availability { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
-.availabilityGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.availabilityGrid > div { min-width: 0; min-height: 154px; padding: 16px; border: 1px solid var(--recovery-border); border-radius: var(--lab-radius-sm); background: var(--recovery-subtle); }
-.availabilityGrid > div:nth-child(even) { background: var(--recovery-surface); }
-.availabilityGrid span { color: var(--recovery-muted); font-size: 11px; font-weight: 500; letter-spacing: .22px; line-height: 14px; text-transform: uppercase; }
-.availabilityGrid p { margin-top: 8px; color: var(--recovery-text); font-size: 16px; line-height: 25px; }
-.availabilityGrid .errorLabel { color: var(--recovery-error); }
-
-@media (max-width: 1100px) {
-  .header { align-items: start; flex-direction: column; gap: 8px; padding-top: 12px; }
-  .headerMetrics { width: 100%; }
-  .workbench { gap: 16px; }
-}
-@media (max-width: 760px) {
-  .header { min-height: 0; padding: 16px; }
-  .headerMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .content { padding: 12px 16px 20px; }
-  .workbench { grid-template-columns: 1fr; }
-  .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .availabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-/* LAYOUT — readiness first, trends second, evidence last. */
-.page { container-type: inline-size; }
-.content {
-  width: min(100%, 1376px);
-  margin-inline: auto;
-  gap: 32px;
-  padding-top: 16px;
-  padding-bottom: 40px;
-}
-.workbench {
-  grid-template-columns: minmax(320px, .9fr) minmax(0, 1.1fr);
-  gap: 32px;
-}
-.column { gap: 24px; }
-.panelHeader { margin-bottom: 20px; }
-.statGrid,
-.signalRows,
-.trendGrid { margin-top: 0; }
-.trendsPanel { padding-bottom: 24px; }
-.availabilityGrid { gap: 12px; }
-
-@container (max-width: 920px) {
-  .workbench { grid-template-columns: 1fr; }
-}
-
-/* QA correction: the two Recovery KPIs own the full right-hand rail. */
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-/* Signals are a compact reference strip, like Sleep's timing band. */
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin: 0;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow {
-  display: grid;
-  min-height: 0;
-  align-content: start;
-  gap: 4px;
-  padding: 0;
+/* The shared shell owns the route title. The score is repeated in the first
+   scene below, so keep the shell's accessible copy in the reading order but
+   out of the visual layout. */
+.page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+  position: relative;
+  display: block;
+  min-height: var(--recovery-header-height);
+  height: var(--recovery-header-height);
   border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > span {
-  color: var(--health-muted);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 12px;
-  line-height: 16px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div {
+.page :global(.health-detail-page--recovery) :global(.health-detail-hero) > div:first-child {
   display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
+  min-height: var(--recovery-header-height);
+  align-items: flex-start;
+  padding-top: 4px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > strong {
-  color: var(--health-text);
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 18px;
+.page :global(.health-detail-page--recovery) :global(.health-detail-hero) h1 {
+  margin: 0;
+  color: var(--recovery-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 3vw, 40px);
   font-weight: 400;
-  line-height: 24px;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -.025em;
+  line-height: 1.05;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > small {
-  color: var(--health-muted);
-  font-size: 12px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > em {
-  margin-left: auto;
-  color: var(--health-muted);
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 12px;
-  font-style: normal;
-  line-height: 16px;
+.page :global(.health-detail-page--recovery) :global(.health-detail-hero) > :global(.health-hero-score) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div > em { margin-left: 0; }
+.page :global(.health-detail-page--recovery) :global(.health-hero-score-card) {
+  min-height: 1px;
 }
 
-/* Recovery observatory v1: one score rail, one evidence column, then the
-   trend instrument. This route-level contract intentionally mirrors Sleep
-   without changing the shared shell used by the other health pages. */
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) {
+.content {
+  width: min(100%, 1376px);
   min-width: 0;
-  overflow-x: clip;
+  margin-inline: auto;
+  padding: 0 0 40px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 24px;
+.page .heroScene,
+.page .section,
+.page .empty {
+  min-width: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+.page .heroScene {
+  display: grid;
+  grid-template-columns: minmax(0, 1.32fr) minmax(280px, .68fr);
+  gap: clamp(40px, 7vw, 96px);
+  align-items: center;
+  padding: 0;
+  transform: translateY(calc(-1 * var(--recovery-hero-lift)));
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score),
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
-  min-height: 72px;
+.radarRegion {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
+.radarRegion :global(figure) {
+  width: min(100%, 620px);
+  min-width: 0;
+  margin: 0;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) > strong,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) {
-  color: var(--health-text);
-  font-family: var(--font-soma-mono), ui-monospace, monospace !important;
-  font-size: 22px;
+.radarRegion :global(svg) {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 360px;
+  overflow: visible;
+}
+
+.radarRegion :global(.recovery-radar-label),
+.radarRegion :global(.radar-label) {
+  fill: var(--recovery-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 26px;
+}
+
+.radarRegion :global(.recovery-radar-value),
+.radarRegion :global(.radar-number) {
+  fill: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__number) > small,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) > span,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat) :global(.metric-reading) > small {
-  color: inherit;
-  font: inherit;
+.radarRegion :global(.recovery-radar-grid),
+.radarRegion :global(.radar-grid) {
+  fill: none;
+  stroke: color-mix(in srgb, var(--recovery-text) 14%, transparent);
+  stroke-width: 1;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__metric) p,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
-  color: var(--health-muted);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
+.radarRegion :global(.recovery-radar-axis),
+.radarRegion :global(.radar-axis) {
+  stroke: color-mix(in srgb, var(--recovery-text) 15%, transparent);
+  stroke-width: 1;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-content) {
-  display: flex;
-  width: min(100%, 1376px);
-  margin-inline: auto;
-  flex-direction: column;
-  gap: 0;
-  padding-top: 8px;
-  padding-bottom: 40px;
+.radarRegion :global(.recovery-radar-value),
+.radarRegion :global(.radar-value) {
+  fill: color-mix(in srgb, var(--recovery-text) 7%, transparent);
+  stroke: var(--recovery-accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel) {
-  padding: 24px 0;
-  border: 0;
-  border-top: 1px solid var(--health-rule);
-  border-radius: 0;
-  background: transparent;
+.radarRegion :global(.recovery-radar-point),
+.radarRegion :global(.radar-point) {
+  fill: var(--recovery-accent);
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel-header) {
-  margin-bottom: 16px;
+.scoreSummary {
+  min-width: 0;
+  padding-left: clamp(0px, 2vw, 24px);
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel-header) h2 {
-  color: var(--health-text);
+.summaryKicker {
+  display: block;
+  margin: 0;
+  color: var(--recovery-muted);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.scoreSummary h2,
+.sectionHeader h2,
+.empty h2 {
+  margin: 0;
+  color: var(--recovery-text);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 24px;
   font-weight: 400;
-  line-height: 28px;
+  letter-spacing: 0;
+  line-height: 30px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .factorsPanel .calculatedBy,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalPanel .supporting,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zonesPanel .supporting {
-  margin: 0 0 12px;
-  color: var(--health-muted);
+.summaryValue {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 20px;
+  color: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryValue strong {
+  font-size: clamp(72px, 9vw, 116px);
+  font-weight: 400;
+  letter-spacing: -.08em;
+  line-height: .86;
+}
+
+.summaryValue span,
+.summaryFacts dd span {
+  color: var(--recovery-muted);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -.02em;
+}
+
+.summaryRail {
+  height: 4px;
+  margin-top: 24px;
+  background: var(--recovery-rule-strong);
+}
+
+.summaryRail span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  background: var(--recovery-accent);
+}
+
+.summaryFacts {
+  display: grid;
+  gap: 8px;
+  margin: 24px 0 0;
+}
+
+.summaryFacts div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.summaryFacts dt {
+  color: var(--recovery-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.summaryFacts dd {
+  margin: 0;
+  color: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: right;
+}
+
+.summaryAction {
+  position: relative;
+  margin-top: 18px;
+}
+
+.summaryAction :global(.health-score-trigger) {
+  display: inline-flex;
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--recovery-rule-strong);
+  border-radius: var(--lab-radius-sm, 4px);
+  background: transparent;
+  color: var(--recovery-muted);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.summaryAction :global(.health-score-trigger)::after {
+  content: "Voir le calcul";
+}
+
+.summaryAction :global(.health-score-trigger:hover) {
+  border-color: var(--recovery-accent);
+  background: var(--lab-surface-subtle, #0c0c0c);
+  color: var(--recovery-text);
+}
+
+.summaryAction :global(.score-ring) {
+  display: none;
+}
+
+/* The inline score explanation is supplied by the score-control lot. Keep
+   the global hook here so its panel can open as a composition rather than a
+   card that jumps the surrounding layout. */
+.page :global(.recovery-score-inline__inner) {
+  display: grid;
+  grid-template-rows: 0fr;
+  grid-auto-rows: 0fr;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  clip-path: inset(0 0 100% 0);
+  transition: grid-template-rows 640ms cubic-bezier(.16, 1, .3, 1),
+    opacity 420ms ease-out,
+    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.page :global(.recovery-score-inline__inner) > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page :global(.recovery-score-inline[data-open]) + :global(.recovery-score-inline__inner) {
+  grid-template-rows: 1fr;
+  grid-auto-rows: 1fr;
+  overflow: visible;
+  opacity: 1;
+  clip-path: inset(0);
+}
+
+/* The current colleague implementation keeps the inner content inside the
+   stateful element. Mirror the same composition there while retaining the
+   adjacent global hook above for the final inline-panel contract. */
+.page :global(.recovery-score-inline[aria-hidden]) {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  clip-path: inset(0 0 100% 0);
+  transition: grid-template-rows 640ms cubic-bezier(.16, 1, .3, 1),
+    opacity 420ms ease-out,
+    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.page :global(.recovery-score-inline[aria-hidden]) > :global(.recovery-score-inline__inner) {
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 1;
+  clip-path: none;
+  transition: none;
+}
+
+.page :global(.recovery-score-inline[aria-hidden][data-open="true"]) {
+  grid-template-rows: 1fr;
+  overflow: visible;
+  opacity: 1;
+  clip-path: inset(0);
+}
+
+.page :global(.recovery-score-inline[aria-hidden][data-open="true"]) > :global(.recovery-score-inline__inner) {
+  overflow: visible;
+}
+
+.summaryAction :global(.recovery-score-inline[aria-hidden]) {
+  width: min(100%, 360px);
+  text-align: left;
+}
+
+.summaryAction :global(.recovery-score-inline[aria-hidden][data-open="true"]) {
+  margin-top: 16px;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) {
+  color: var(--recovery-text);
+}
+
+.summaryAction :global(.recovery-score-inline__inner) header {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) header strong {
+  color: var(--recovery-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) p {
+  margin: 0 0 16px;
+  color: var(--recovery-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.summaryAction :global(.recovery-score-inline__inner) dt {
+  color: var(--recovery-muted);
   font-size: 12px;
   line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows {
-  display: grid;
-  gap: 0;
-  margin: 0;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--health-rule);
-  color: var(--health-text);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p > span {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p small {
-  color: var(--health-muted);
-  font-size: 12px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .driverRows > p strong,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow strong {
-  color: var(--health-text);
+.summaryAction :global(.recovery-score-inline__inner) dd,
+.summaryAction :global(.recovery-score-inline__inner) small {
   font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 20px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRows {
-  display: grid;
-  gap: 0;
+.summaryAction :global(.recovery-score-inline__inner) dd {
   margin: 0;
+  color: var(--recovery-text);
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow {
+.summaryAction :global(.recovery-score-inline__inner) small {
+  color: var(--recovery-muted);
+}
+
+.page .section {
   display: flex;
-  min-height: 48px;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--recovery-title-content-gap);
+  padding: 0;
+}
+
+/* The shared Observatory panel rule also supplies 24px vertical padding with
+   higher specificity. Keep that padding explicit here so the rhythm token is
+   the source of truth; the first transition subtracts only the visual hero
+   lift, while all later transitions use the same half-gap on each side. */
+.page > :global(.health-detail-page--recovery) > .content > .heroScene,
+.page > :global(.health-detail-page--recovery) > .content > .section {
+  padding-block: var(--recovery-panel-padding);
+}
+
+.page > :global(.health-detail-page--recovery) > .content > .heroScene + .section {
+  padding-top: calc(var(--recovery-panel-padding) - var(--recovery-hero-lift));
+}
+
+.page > :global(.health-detail-page--recovery) > .content > .section + .section {
+  padding-top: var(--recovery-panel-padding);
+}
+
+.sectionHeader {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
   justify-content: space-between;
   gap: 16px;
   margin: 0;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--health-rule);
-  color: var(--health-text);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
+}
+
+.sectionHeader > span {
+  color: var(--recovery-muted);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: right;
+}
+
+.sectionHeaderMeta {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.sectionHeaderMeta .supporting { min-width: 0; }
+
+.sectionDate {
+  flex: 0 0 auto;
+  color: var(--recovery-muted);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.signalRows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(24px, 5vw, 72px);
+}
+
+.signalRow {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 4px;
+}
+
+.signalRow > span {
+  overflow: hidden;
+  color: var(--recovery-muted);
   font-size: 14px;
   line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow > div {
+.signalRow > div {
   display: flex;
+  min-width: 0;
   align-items: baseline;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 0 8px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow small,
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .signalRow em {
-  color: var(--health-muted);
+.signalRow strong {
+  color: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 24px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 28px;
+}
+
+.signalRow small,
+.signalRow em {
+  color: var(--recovery-muted);
   font-size: 12px;
   font-style: normal;
+  line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-grid) {
+.signalRow em {
+  flex-basis: 100%;
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+}
+
+.trendsSection {
+  padding-bottom: 0;
+}
+
+.page .trendGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 48px;
-  row-gap: 0;
-  margin: 0;
+  column-gap: clamp(32px, 5vw, 72px);
+  row-gap: clamp(56px, 7vw, 96px);
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) {
-  min-height: 304px;
-  padding: 24px 0;
-  border: 0;
-  border-top: 1px solid var(--health-rule);
+.trendGrid :global(.metric-trend-card) {
+  display: flex;
+  min-width: 0;
+  min-height: 248px;
+  flex-direction: column;
+  padding: 0;
+  border: 0 !important;
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(header span) {
-  color: var(--health-text);
+.trendGrid :global(.metric-trend-card) :global(header) {
+  align-items: baseline;
+}
+
+.trendGrid :global(.metric-trend-card) :global(header span) {
+  color: var(--recovery-text);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
   font-size: 16px;
   font-weight: 400;
   line-height: 20px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(header .metric-reading) {
-  margin-top: 6px;
-  color: var(--health-muted);
+.trendGrid :global(.metric-trend-card) :global(header .metric-reading) {
+  display: block;
+  margin-top: 5px;
+  color: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
   font-size: 18px;
   font-weight: 400;
   line-height: 22px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.metric-trend-card__average) {
-  color: var(--health-muted);
+.trendGrid :global(.metric-trend-card) :global(.metric-trend-card__average) {
+  color: var(--recovery-muted);
   font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.chart-frame) {
+  height: 148px;
+  margin-top: 12px;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
+  height: 140px;
+  padding-right: 24px;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
+  width: 100%;
+  height: 132px;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.chart-axis) {
+  color: var(--recovery-muted);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 11px;
   line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-frame) {
-  height: 220px;
-  margin-top: 14px;
+/* The card header already carries the useful 30-day reference. Hiding the
+   plot extrema keeps that evidence from colliding with the end date. */
+.trendGrid :global(.metric-trend-card) :global(.health-chart-range) {
+  display: none;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-  height: 208px;
-  padding-right: 26px;
+.supporting {
+  margin: 0;
+  color: var(--recovery-muted);
+  font-size: 12px;
+  line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart) {
-  width: 100%;
-  height: 198px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-axis) {
-  color: var(--health-muted);
-  font-size: 11px;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .weeklyZones {
+.weeklyZones {
   min-width: 0;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneBar {
+.zoneBar {
   display: flex;
   width: 100%;
-  height: 14px;
+  height: 16px;
   overflow: hidden;
-  border-radius: 4px;
-  background: var(--health-track);
+  border-radius: var(--lab-radius-xs, 2px);
+  background: var(--lab-control-track, #0b0b0b);
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment { min-width: 0; height: 100%; }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--light { background: var(--health-rule-strong); }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--moderate { background: color-mix(in srgb, var(--health-accent) 58%, var(--health-canvas)); }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--vigorous { background: var(--health-accent); }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneSegment--peak { background: var(--health-positive); }
+.zoneSegment {
+  min-width: 0;
+  height: 100%;
+}
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend {
+.zoneSegment--light { background: #3a3a3a; }
+.zoneSegment--moderate { background: #777777; }
+.zoneSegment--vigorous { background: #b1b1b1; }
+.zoneSegment--peak { background: #eeeeee; }
+
+.zoneLegend {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin: 16px 0 0;
+  margin: 24px 0 0;
   padding: 0;
   list-style: none;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend li {
+.zoneLegend li {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
   min-width: 0;
-  color: var(--health-muted);
+  color: var(--recovery-muted);
   font-size: 12px;
   line-height: 16px;
 }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend strong {
-  grid-column: 2;
-  color: var(--health-text);
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot {
-  width: 6px;
-  height: 6px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--health-rule-strong);
-}
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--moderate { background: var(--health-accent); opacity: .7; }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--vigorous { background: var(--health-accent); }
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneDot--peak { background: var(--health-positive); }
-
-@media (max-width: 960px) {
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-grid) { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 900px) {
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-}
-
-@media (max-width: 520px) {
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) { gap: 12px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-content) { padding-bottom: 28px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.health-observatory-panel) { padding-block: 20px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) { min-height: 284px; padding-block: 20px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.chart-frame) { height: 204px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart-wrap) { height: 192px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) :global(.metric-trend-card) :global(.health-line-chart) { height: 182px; }
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery) .zoneLegend { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-}
-
-@media (max-width: 760px) {
-  .content { gap: 24px; padding-top: 16px; padding-bottom: 28px; }
-  .column { gap: 20px; }
-  .panelHeader { margin-bottom: 16px; }
-}
-
-@media (max-width: 520px) {
-  .trendGrid,
-  .statGrid,
-  .calculationStats { grid-template-columns: 1fr; }
-  .availabilityGrid { grid-template-columns: 1fr; }
-  .signalRow { align-items: flex-start; padding-block: 12px; }
-}
-
-@media (max-width: 390px) {
-  .headerMetrics { grid-template-columns: 1fr; }
-  .dateScope > span { padding-inline: 0; font-size: 12px; }
-  .panel { padding: 16px; }
-  .panelHeader h2, .availability h2 { font-size: 20px; }
-  .panelHeader { align-items: flex-start; }
-  .panelHeader h2 { overflow-wrap: anywhere; }
-  .statGrid, .calculationStats, .trendGrid { grid-template-columns: 1fr; }
-  .availabilityGrid { grid-template-columns: 1fr; }
-  .signalRow > div:last-child strong { font-size: 16px; }
-  .heartPanel { min-height: 0; }
-  .heartPanel :global(.health-line-chart-wrap) { height: 220px; margin-top: 16px; }
-  .heartPanel :global(.health-line-chart) { height: 190px; }
-}
-
-/* FINAL shared contract: Recovery keeps its state colors, with the same
-   header height, KPI cards and typography as Sleep and Effort. */
-.page { font-family: var(--font-soma-ui), system-ui, sans-serif; }
-.header {
-  height: var(--lab-header-height);
-  min-height: var(--lab-header-height);
-  gap: var(--lab-header-gap);
-  padding: 6px 24px 0;
-  border-bottom: 0;
-  background: var(--lab-canvas);
-  backdrop-filter: none;
-}
-.header h1 {
-  width: var(--lab-header-title-width);
-  min-width: var(--lab-header-title-width);
-  flex-basis: var(--lab-header-title-width);
-  font-family: var(--font-soma-ui);
-  font-size: var(--lab-type-page);
-  line-height: 32px;
-}
-.headerMetrics {
-  height: var(--lab-header-kpi-height);
-  min-height: var(--lab-header-kpi-height);
-  gap: 8px;
-  padding-top: 0;
-  align-self: center;
-}
-.headerMetric {
-  height: var(--lab-header-kpi-height);
-  min-height: var(--lab-header-kpi-height);
-  padding: 10px 16px;
-  border: 1px solid var(--lab-border-strong);
-  border-radius: var(--lab-radius-sm);
-  background: var(--lab-surface);
-  box-shadow: var(--lab-shadow-subtle);
-}
-.metricLabel,
-.headerMetricBody small,
-.headerMetricBody p,
-.statBox span,
-.statusLine,
-.supporting,
-.sectionLabel,
-.signalRow small,
-.signalRow em,
-.panel :global(.stage-legend),
-.panel :global(.stage-legend strong),
-.availabilityGrid span,
-.availabilityGrid p,
-.provenanceRow,
-.provenanceRow small {
-  font-family: var(--font-soma-ui);
-  font-size: var(--lab-type-label);
-  line-height: 16px;
-}
-.headerMetricBody strong,
-.statBox strong,
-.driverRows strong,
-.signalRow > div:last-child strong,
-.trendHeader strong,
-.calculationStats strong {
-  font-family: var(--lab-data-font);
-}
-.headerMetricBody small { font-family: var(--lab-data-font); }
-.panelHeader h2,
-.availability h2,
-.calculationHeader h3 {
-  font-family: var(--font-soma-ui);
-}
-
-@media (max-width: 1100px) {
-  .header {
-    height: auto;
-    min-height: 0;
-  }
-  .header h1 { width: auto; min-width: 0; flex-basis: auto; }
-  .headerMetrics { height: auto; min-height: var(--lab-header-kpi-height); }
-}
-
-@media (max-width: 760px) {
-  .header { padding: 12px 16px 0; }
-  .headerMetric { height: 68px; min-height: 68px; padding: 8px 12px; }
-  .headerMetricBody strong { font-size: 24px; line-height: 28px; }
-}
-
-/* BOLDER — recovery foregrounds readiness and drivers as one instrument. */
-.header { border-bottom: 2px solid var(--recovery-brand); }
-.headerMetric:first-child {
-  border-color: var(--recovery-brand);
-  background: var(--recovery-brand);
-}
-.headerMetric:first-child :is(.metricLabel, strong, small, p) { color: var(--recovery-surface); }
-.workbench { grid-template-columns: minmax(320px, 1.12fr) minmax(0, .88fr); }
-.column:first-child > .panel:first-child {
-  border-color: var(--recovery-brand);
-  background: color-mix(in srgb, var(--recovery-brand) 6%, var(--recovery-surface));
-}
-.column:first-child > .panel:first-child .statBox { background: var(--recovery-surface); }
-.heartPanel :global(.health-chart-line) { stroke-width: 2.5; }
-
-@media (max-width: 760px) {
-  .workbench { grid-template-columns: 1fr; }
-}
-
-/* Recovery lot: readable data density without KPI overflow. */
-.header { overflow: visible; }
-.headerMetric { overflow: hidden; }
-.headerMetricBody { min-width: 0; overflow: hidden; }
-.headerMetricBody > div:first-child { flex: 1 1 auto; min-width: 0; overflow: hidden; }
-.headerMetricBody strong {
-  max-width: 100%;
+.zoneLegend li > span:nth-child(2) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.headerMetricBody p { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
 
-.trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.trendCard { min-height: 184px; padding: 16px; }
-.trendBarArea,
-.trendBars { height: 86px; }
-.trendBars { gap: 6px; }
-.trendHeader small,
-.signalRow > div:last-child > small { font-family: var(--lab-data-font); }
-
-.heartPanel { min-height: 400px; }
-.heartPanel :global(.health-line-chart-wrap) { height: 286px; margin-top: 20px; }
-.heartPanel :global(.health-line-chart) { height: 250px; }
-
-.panel,
-.statBox,
-.trendCard,
-.calculationCard,
-.availabilityGrid > div {
-  border-radius: var(--lab-radius-sm);
-}
-.panelHeader h2,
-.availability h2 { font-size: var(--lab-type-section); line-height: 28px; }
-
-@media (max-width: 760px) {
-  .headerMetricBody > div:first-child { min-width: 0; }
-  .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .trendCard { min-height: 176px; padding: 12px; }
-  .trendBarArea,
-  .trendBars { height: 76px; }
-  .heartPanel { min-height: 360px; }
-  .heartPanel :global(.health-line-chart-wrap) { height: 246px; }
-  .heartPanel :global(.health-line-chart) { height: 214px; }
-}
-
-/* Mobile composition: keep the four shell KPIs in a predictable 2 × 2 grid,
-   then let the evidence panels read as one column. These overrides stay
-   scoped to Recovery because the shared shell is also used by Sleep/Effort. */
-.page :global(.health-detail-page--recovery) {
-  min-width: 0;
-  overflow-x: clip;
-}
-.page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-@media (max-width: 900px) {
-  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
-    height: auto;
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-    height: auto;
-    min-height: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
-    height: 80px;
-    min-height: 80px;
-    padding: 8px 12px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat .metric-reading),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
-    max-width: 100%;
-    white-space: nowrap;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card) {
-    padding: 8px 10px;
-  }
-}
-
-/* MacBook Air composition: reserve a stable title rail and prevent the four
-   summary metrics from collapsing into clipped cards. */
-@media (min-width: 1101px) and (max-width: 1599px) {
-  .page :global(.health-detail-page--recovery) { max-width: none; }
-  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) { height: 112px; min-height: 112px; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) { height: 96px; min-height: 96px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) { height: 96px; min-height: 96px; }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card) { position: relative; padding-block: 8px; }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action) { position: absolute; inset: 0; }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .recovery-score-control),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .health-score-trigger) { width: 100%; height: 100%; }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score-card__action .score-ring) { opacity: 0; }
-  .workbench { grid-template-columns: minmax(320px, 1.12fr) minmax(440px, .88fr); gap: 24px; }
-}
-
-@media (max-width: 640px) {
-  .page :global(.health-detail-page--recovery) {
-    gap: 16px;
-    padding: 8px 12px 88px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) > div:first-child {
-    min-height: 52px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) h1 {
-    font-size: 24px;
-    line-height: 30px;
-  }
-  .content { padding: 0 0 20px; }
-  .workbench { gap: 16px; }
-  .panel { padding: 16px; }
-  .panelHeader { align-items: flex-start; flex-wrap: wrap; gap: 6px 10px; }
-  .panelHeader h2 { font-size: 20px; line-height: 26px; }
-  .panelHeader > * { min-width: 0; }
-  .signalRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 56px; }
-  .signalRow > div:last-child { min-width: 0; }
-  .trendGrid { grid-template-columns: 1fr; gap: 10px; }
-  .trendCard { min-height: 176px; }
-  .heartPanel { min-height: 0; }
-  .heartPanel :global(.health-line-chart-wrap) { height: 232px; margin-top: 16px; }
-  .heartPanel :global(.health-line-chart) { height: 202px; }
-  .provenancePanel { min-height: 0; }
-  .provenanceRow { align-items: flex-start; flex-direction: column; gap: 4px; }
-}
-
-/* LAYOUT cascade guard: the rendered trend component uses its shared class. */
-.trendsPanel :global(.metric-trend-grid) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 520px) {
-  .trendsPanel :global(.metric-trend-grid) {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-/* POLISH — reserve enough height for label, value and 30-day reference. */
-@media (min-width: 1101px) {
-  .page :global(.health-detail-page--recovery) :global(.health-detail-hero),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-metrics) {
-    height: auto;
-    min-height: 92px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-score),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
-    height: 80px;
-    min-height: 80px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat) {
-    align-content: center;
-    justify-items: start;
-    gap: 2px;
-  }
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat .metric-reading),
-  .page :global(.health-detail-page--recovery) :global(.health-hero-stat__average) {
-    max-width: 100%;
-    white-space: nowrap;
-  }
-}
-
-/* Final accessibility floor for the rendered shell. */
-.page :global(.health-hero-score-card__header > span),
-.page :global(.health-hero-score-card__metric p),
-.page :global(.health-hero-score-card__number small),
-.page :global(.health-hero-stat > span),
-.page :global(.health-hero-stat__average),
-.page :global(.metric-trend-card header span),
-.page :global(.metric-trend-card footer),
-.page :global(.metric-trend-card .chart-axis),
-.page :global(.stage-legend),
-.page :global(.stage-legend strong),
-.page :global(.health-signal-meta) {
-  font-size: var(--lab-type-label, 12px);
-}
-.page :global(.health-line-chart) { min-height: 44px; }
-
-/* Keep the desktop ratio out of the tablet range after the final cascade. */
-@container (max-width: 920px) {
-  .workbench { grid-template-columns: 1fr; }
-}
-
-/* Cascade guard: keep the route and its inner rail in the same global scope. */
-.page :global(.health-detail-page--recovery .health-hero-metrics) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.page :global(.health-detail-page--recovery) .signalRows {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin: 0;
-}
-
-.page :global(.health-detail-page--recovery .health-recovery-signal-rows) {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin: 0;
-}
-
-.page :global(.health-detail-page--recovery) .signalRow {
-  display: grid;
-  min-height: 0;
-  align-content: start;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-}
-
-.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 2px;
-}
-
-.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > span {
-  color: var(--health-muted);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 12px;
+.zoneLegend strong {
+  grid-column: 2;
+  color: var(--recovery-text);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
   line-height: 16px;
 }
 
-.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > div {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: start;
-  align-items: baseline;
-  gap: 0 8px;
+.zoneDot {
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #3a3a3a;
 }
 
-.page :global(.health-detail-page--recovery .health-recovery-signal-rows) .signalRow > div > em {
-  grid-column: 1 / -1;
-  margin-left: 0;
+.zoneDot--moderate { background: #777777; }
+.zoneDot--vigorous { background: #b1b1b1; }
+.zoneDot--peak { background: #eeeeee; }
+
+.page .empty {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  gap: 16px;
+  padding: 56px 0;
+}
+
+.emptyMark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--recovery-rule-strong);
+  border-radius: 50%;
+  color: var(--recovery-accent);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.empty p {
+  max-width: 65ch;
+  margin: 6px 0 0;
+  color: var(--recovery-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Recovery keeps the score context in its summary; the shell footer would
+   repeat the same provenance after the reading flow. */
+.page :global(.health-signal-meta--footer) { display: none !important; }
+
+.page [data-recovery-scroll-reveal][data-reveal="pending"] {
+  opacity: .9;
+  clip-path: inset(0 0 3% 0);
+  transition: opacity 640ms cubic-bezier(.16, 1, .3, 1),
+    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.page [data-recovery-scroll-reveal][data-reveal="visible"] {
+  opacity: 1;
+  clip-path: inset(0);
+}
+
+.page :global(.health-line-chart) {
+  min-height: 44px;
+}
+
+.page :global(.health-chart-grid) { stroke: var(--recovery-rule); }
+.page :global(.health-chart-average),
+.page :global(.health-chart-target) { stroke: var(--recovery-rule-strong); }
+.page :global(.health-chart-area) { fill: transparent; }
+.page :global(.health-chart-line) { stroke: var(--recovery-accent); stroke-width: 1.5; }
+.page :global(.health-chart-point) { fill: var(--recovery-accent); opacity: .45; }
+.page :global(.health-chart-point--latest) { opacity: 1; }
+
+.page :global(:focus-visible) {
+  outline: 2px solid var(--recovery-accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    --recovery-header-height: 72px;
+    --recovery-flow-gap: 64px;
+  }
+
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+    min-height: var(--recovery-header-height);
+    height: var(--recovery-header-height);
+  }
+
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) > div:first-child {
+    min-height: var(--recovery-header-height);
+  }
+
+  .page .heroScene {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding-bottom: 0;
+  }
+
+  .radarRegion :global(figure) {
+    width: min(100%, 560px);
+  }
+
+  .scoreSummary {
+    max-width: 560px;
+    padding-left: 0;
+  }
+
+  .summaryValue strong {
+    font-size: clamp(72px, 15vw, 104px);
+  }
 }
 
 @media (max-width: 640px) {
-  .page :global(.health-detail-page--recovery .health-hero-metrics) {
+  .page {
+    --recovery-header-height: 64px;
+    --recovery-flow-gap: 48px;
+  }
+
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
+    min-height: var(--recovery-header-height);
+    height: var(--recovery-header-height);
+  }
+
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) > div:first-child {
+    min-height: var(--recovery-header-height);
+    padding-top: 0;
+  }
+
+  .page :global(.health-detail-page--recovery) :global(.health-detail-hero) h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+
+  .content {
+    padding-bottom: 28px;
+  }
+
+  .page .heroScene {
+    gap: 32px;
+    padding-bottom: 0;
+  }
+
+  .radarRegion {
+    gap: 10px;
+  }
+
+  .radarRegion :global(svg) {
+    min-height: 300px;
+  }
+
+  .radarRegion :global(.recovery-radar-label),
+  .radarRegion :global(.radar-label) {
+    font-size: 12px;
+  }
+
+  .radarRegion :global(.recovery-radar-value),
+  .radarRegion :global(.radar-number) {
+    font-size: 13px;
+  }
+
+  .summaryKicker {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .scoreSummary h2,
+  .sectionHeader h2,
+  .empty h2 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .summaryValue {
+    margin-top: 16px;
+  }
+
+  .summaryValue strong {
+    font-size: clamp(68px, 24vw, 96px);
+  }
+
+  .page .section {
+    padding: 0;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+  }
+
+  .sectionHeader > span {
+    text-align: left;
+  }
+
+  .sectionHeaderMeta {
+    width: 100%;
+    justify-content: stretch;
+    gap: 12px;
+  }
+
+  .sectionHeaderMeta .supporting {
+    flex: 1 1 auto;
+    text-align: left;
+  }
+
+  .sectionHeaderMeta .sectionDate {
+    text-align: right;
+  }
+
+  .signalRows {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .signalRow {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .page .trendGrid {
+    grid-template-columns: 1fr;
+    row-gap: 48px;
+  }
+
+  .trendGrid :global(.metric-trend-card) {
+    min-height: 228px;
+    padding-block: 0;
+  }
+
+  .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
+    height: 132px;
+  }
+
+  .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
+    height: 124px;
+  }
+
+  .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
+    height: 116px;
+  }
+
+  .zoneLegend {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 20px;
   }
-  .page :global(.health-detail-page--recovery) .signalRows {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .page :global(.health-detail-page--recovery .health-recovery-signal-rows) {
-    grid-template-columns: 1fr;
-    gap: 12px;
+
+  .page .empty {
+    min-height: 120px;
+    padding-block: 32px;
   }
 }
 
-/* Match Sleep's desktop title rail and keep the KPI grid on the right. */
-@media (min-width: 1101px) {
-  :global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-detail-hero) {
-    grid-template-columns: minmax(0, 308px) minmax(0, 1fr);
+@media (prefers-reduced-motion: reduce) {
+  .page :global(.recovery-score-inline__inner) {
+    grid-template-rows: 1fr;
+    grid-auto-rows: 1fr;
+    overflow: visible;
+    opacity: 1;
+    clip-path: none;
+    transition: none;
   }
-}
 
-/* Final Recovery parity with Sleep: the second KPI uses the same left rail. */
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat) {
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-}
+  .page [data-recovery-scroll-reveal][data-reveal="pending"] {
+    opacity: 1;
+    clip-path: none;
+    transition: none;
+  }
 
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat .metric-reading),
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .health-hero-stat .health-hero-stat__average) {
-  align-self: flex-start;
-  margin-inline: 0;
-}
-
-/* Recovery trend cards stay completely flat; spacing carries the grouping. */
-:global(html[data-lab-theme="observatory"]) .page :global(.health-detail-page--recovery .metric-trend-grid) :global(.metric-trend-card) {
-  border-top: 0;
+  .page :global(*) {
+    animation-duration: 0ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0ms !important;
+  }
 }
