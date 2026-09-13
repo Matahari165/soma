@@ -3,9 +3,10 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createCloudflareServerClient } from "@/lib/cloudflare/server";
-import { calculateEffortScoreFromAvailable } from "@/domain/scores/effort";
+import { calculateEffortScoreFromAvailable, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
+import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export type HealthMetricDay = {
   metric_date: string;
@@ -83,6 +84,9 @@ export type HealthAnalytics = {
   latestSleepStages: SleepStageSegment[];
   heartRateSamples: HeartRateSample[];
   exercises: ExerciseSummary[];
+  /** Shared score references; active energy follows the configured calorie target when available. */
+  effortTargets: EffortScoreTargets;
+  effortTargetSource: "nutrition_targets" | "fallback";
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -257,6 +261,8 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 41, calories: 430, distanceKm: 7.2, averageHeartRate: 151, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1 },
       { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
     ],
+    effortTargets: effortScoreTargets(),
+    effortTargetSource: "fallback",
   };
 }
 
@@ -296,7 +302,7 @@ function civilDateIn(value: string, timeZone: string) {
 async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
-  if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [] };
+  if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [], effortTargets: effortScoreTargets(), effortTargetSource: "fallback" };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
   // Sleep stages and exercises do not depend on the aggregate metrics below.
@@ -308,6 +314,9 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const exercisePromise = scope === "activity" || scope === "all"
     ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20).then((result) => result)
     : Promise.resolve({ data: [], error: null });
+  const effortTargetPromise = scope === "activity" || scope === "all"
+    ? loadNutritionTargetsStateForUser(user.id)
+    : Promise.resolve(null);
   const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
@@ -320,11 +329,18 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     scope === "sleep"
       ? admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", user.id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    effortTargetPromise,
   ]);
-  const failed = baseResults.find((result) => result.error);
+  const [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult, effortTargetState] = baseResults;
+  const failed = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult].find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
-  const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = baseResults;
+  const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult];
   const timezone = profile?.timezone ?? "Europe/Paris";
+  // A missing nutrition_targets row is not a zero target. The score engine's
+  // documented 700 kcal reference remains the safe fallback until the user
+  // configures a calorie target.
+  const effortTargetSource = effortTargetState?.persisted ? "nutrition_targets" : "fallback";
+  const effortTargets = effortScoreTargets({ activeEnergyKcalTarget: effortTargetState?.persisted ? effortTargetState.targets.caloriesKcal.likely : null });
   const orderedMetrics = [...((metrics ?? []) as unknown as HealthMetricDay[])].reverse();
   const latestRecoveryDate = orderedMetrics.findLast((day) => recoveryMetricKeys.some((key) => {
     const value = day[key];
@@ -404,6 +420,8 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     latestSleepStages,
     heartRateSamples,
     exercises: exerciseSummaries,
+    effortTargets,
+    effortTargetSource,
   };
 }
 

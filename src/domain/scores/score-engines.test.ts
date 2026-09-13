@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateEffortScore, calculateEffortScoreFromAvailable, diminishingLoad } from "./effort";
+import {
+  calculateEffortScore,
+  calculateEffortScoreFromAvailable,
+  DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET,
+  diminishingLoad,
+  effortScoreTargets,
+  EFFORT_STEPS_TARGET,
+  resolveActiveEnergyKcalTarget,
+} from "./effort";
 import { calculateRecoveryScore } from "./recovery";
 import { circularMean, sleepRegularityScore } from "./regularity";
 import { estimateSleepNeed, recommendBedtime, recommendBedtimeFromAwake, recommendBedtimeFromHistory } from "./sleep-need";
@@ -76,6 +84,21 @@ describe("score engines", () => {
     expect(effort.algorithmVersion).toBe("effort-v3");
   });
 
+  it("exposes the 10,000-step target and keeps the documented active-energy fallback", () => {
+    expect(EFFORT_STEPS_TARGET).toBe(10_000);
+    expect(effortScoreTargets()).toMatchObject({ steps: 10_000, activeEnergyKcal: DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET });
+    expect(resolveActiveEnergyKcalTarget(null)).toBe(DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET);
+    expect(resolveActiveEnergyKcalTarget(0)).toBe(DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET);
+    expect(resolveActiveEnergyKcalTarget(Number.NaN)).toBe(DEFAULT_EFFORT_ACTIVE_ENERGY_KCAL_TARGET);
+  });
+
+  it("uses an explicit active-energy target in both score modes", () => {
+    const measurements = { zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 };
+    expect(calculateEffortScore(measurements, { activeEnergyKcalTarget: 1_000 }).score).toBe(50);
+    expect(calculateEffortScoreFromAvailable(measurements, { activeEnergyKcalTarget: 1_000 })).toMatchObject({ score: 50, coverage: 1 });
+    expect(calculateEffortScore(measurements).score).toBeGreaterThan(50);
+  });
+
   it("does not convert missing activity into a zero effort score", () => {
     expect(calculateEffortScoreFromAvailable({ zoneMinutes: null, activeEnergyKcal: null, exerciseMinutes: null, steps: null })).toMatchObject({ score: null, coverage: 0 });
   });
@@ -89,15 +112,15 @@ describe("score engines", () => {
   });
 
   it("normalizes a sufficiently covered score without turning absent components into zero", () => {
-    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: 12_000 })).toMatchObject({ score: 50, coverage: 0.5 });
+    expect(calculateEffortScoreFromAvailable({ zoneMinutes: 75, activeEnergyKcal: null, exerciseMinutes: null, steps: EFFORT_STEPS_TARGET })).toMatchObject({ score: 50, coverage: 0.5 });
   });
 
   it("keeps adding accomplished load above each reference with diminishing returns", () => {
-    expect(diminishingLoad(12_000, 12_000)).toBeCloseTo(.5);
-    expect(diminishingLoad(24_000, 12_000)).toBeCloseTo(.75);
-    expect(diminishingLoad(36_000, 12_000)).toBeCloseTo(.875);
-    const reference = calculateEffortScore({ zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: 12_000 });
-    const doubled = calculateEffortScore({ zoneMinutes: 150, activeEnergyKcal: 1_400, exerciseMinutes: 120, steps: 24_000 });
+    expect(diminishingLoad(EFFORT_STEPS_TARGET, EFFORT_STEPS_TARGET)).toBeCloseTo(.5);
+    expect(diminishingLoad(20_000, EFFORT_STEPS_TARGET)).toBeCloseTo(.75);
+    expect(diminishingLoad(30_000, EFFORT_STEPS_TARGET)).toBeCloseTo(.875);
+    const reference = calculateEffortScore({ zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: EFFORT_STEPS_TARGET });
+    const doubled = calculateEffortScore({ zoneMinutes: 150, activeEnergyKcal: 1_400, exerciseMinutes: 120, steps: 20_000 });
     expect(reference).toMatchObject({ score: 50, algorithmVersion: "effort-v3" });
     expect(doubled.score).toBe(75);
   });

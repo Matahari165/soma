@@ -92,7 +92,7 @@ function comparisonFor(dimension: ActivityRadarDimension) {
 function readableDimension(dimension: ActivityRadarDimension) {
   const value = dimension.valueLabel?.trim() || (measured(dimension.normalizedValue) ? "mesuré" : "indisponible");
   const comparison = comparisonFor(dimension);
-  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}`;
+  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}${dimension.scoreRole ? `. ${dimension.scoreRole}` : ""}`;
 }
 
 function descriptionFor(dimensions: readonly ActivityRadarDimension[]) {

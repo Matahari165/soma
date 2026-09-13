@@ -10,6 +10,7 @@ import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtimeFromHistory } from "@/domain/scores/sleep-need";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { createCloudflareAdminClient, healthRecordsForAnalysis } from "@/lib/cloudflare/db";
+import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export const ANALYSIS_DATA_TYPES = [
   "sleep",
@@ -168,6 +169,16 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     return { days: 0, scores: 0, insights: 0 };
   }
 
+  // The active-energy reference follows the user's configured calorie target.
+  // A missing target row is not zero: the score engine resolves null to its
+  // deterministic 700 kcal fallback.
+  const effortTargetState = await loadNutritionTargetsStateForUser(userId);
+  const effortScoreOptions = {
+    activeEnergyKcalTarget: effortTargetState.persisted
+      ? effortTargetState.targets.caloriesKcal.likely
+      : null,
+  } as const;
+
   const configuredSleepTarget = Number(sleepPreferences?.base_target_minutes);
   const baseSleepTarget = Number.isFinite(configuredSleepTarget) && configuredSleepTarget > 0 ? configuredSleepTarget : 510;
   const scoreRows: Record<string, unknown>[] = [];
@@ -195,7 +206,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
       restingHeartRateBaseline: recoveryHistory.map((item) => item.resting_heart_rate).filter((value): value is number => value !== null).slice(-30),
       sleepScore: sleep?.score ?? null,
     });
-    const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps });
+    const effort = calculateEffortScoreFromAvailable({ zoneMinutes: day.zone_minutes, activeEnergyKcal: day.active_energy_kcal, exerciseMinutes: day.exercise_minutes, steps: day.steps }, effortScoreOptions);
     effortByDate.set(day.metric_date, effort.score);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);

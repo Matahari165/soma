@@ -10,6 +10,8 @@ const testState = vi.hoisted(() => ({
   healthRecordsForAnalysis: vi.fn(),
   gteCalls: [] as GteCall[],
   upsertCalls: [] as UpsertCall[],
+  effortOptionsCalls: [] as unknown[],
+  nutritionTargetState: { persisted: false, targets: { caloriesKcal: { likely: 700 } } },
 }));
 
 vi.mock("@/lib/cloudflare/db", () => ({
@@ -31,7 +33,13 @@ vi.mock("@/domain/metrics/wellness", () => ({
   isActiveDay: () => null,
 }));
 vi.mock("@/domain/scores/effort", () => ({
-  calculateEffortScoreFromAvailable: () => ({ score: 50, status: "steady", coverage: 1, algorithmVersion: "test" }),
+  calculateEffortScoreFromAvailable: (_input: unknown, options: unknown) => {
+    testState.effortOptionsCalls.push(options);
+    return { score: 50, status: "steady", coverage: 1, algorithmVersion: "test" };
+  },
+}));
+vi.mock("./nutrition-targets", () => ({
+  loadNutritionTargetsStateForUser: () => Promise.resolve(testState.nutritionTargetState),
 }));
 vi.mock("@/domain/scores/recovery", () => ({
   calculateRecoveryScore: () => ({ score: 50, status: "steady", drivers: {}, algorithmVersion: "test" }),
@@ -198,6 +206,8 @@ describe("recomputeUserHealth analysis windows", () => {
     vi.setSystemTime(new Date("2026-08-27T12:00:00.000Z"));
     testState.gteCalls.length = 0;
     testState.upsertCalls.length = 0;
+    testState.effortOptionsCalls.length = 0;
+    testState.nutritionTargetState = { persisted: false, targets: { caloriesKcal: { likely: 700 } } };
     testState.healthRecordsForAnalysis.mockReset();
     testState.healthRecordsForAnalysis.mockResolvedValue(sourceRecords);
     configureAdminQueries();
@@ -231,5 +241,21 @@ describe("recomputeUserHealth analysis windows", () => {
     expect(noRunDay?.running_distance_km).toBeNull();
     expect(noRunDay?.running_pace_seconds_per_km).toBeNull();
     expect(noRunDay?.running_average_heart_rate).toBeNull();
+  });
+
+  it("passes the configured nutrition calorie target to every effort score", async () => {
+    testState.nutritionTargetState = { persisted: true, targets: { caloriesKcal: { likely: 1_000 } } };
+
+    await recomputeUserHealth("user-1");
+
+    expect(testState.effortOptionsCalls.length).toBeGreaterThan(0);
+    expect(testState.effortOptionsCalls.every((options) => options && (options as { activeEnergyKcalTarget?: number }).activeEnergyKcalTarget === 1_000)).toBe(true);
+  });
+
+  it("keeps a missing nutrition target as null so the score engine can use its 700 kcal fallback", async () => {
+    await recomputeUserHealth("user-1");
+
+    expect(testState.effortOptionsCalls.length).toBeGreaterThan(0);
+    expect(testState.effortOptionsCalls.every((options) => options && (options as { activeEnergyKcalTarget?: number | null }).activeEnergyKcalTarget === null)).toBe(true);
   });
 });

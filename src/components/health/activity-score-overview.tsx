@@ -12,6 +12,7 @@ export type ActivityScoreComponent = {
   sourceValueLabel: string;
   targetLabel: string;
   normalizedValue: number | null;
+  scoreNormalizedValue?: number | null;
   contribution: number | null;
   formula: string;
   normalization: string;
@@ -69,7 +70,7 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
         <dt><span>{component.label}</span><small>{component.weight} %</small></dt>
-        <dd><span><small>Mesuré</small><strong>{component.sourceValueLabel}</strong></span><span><small>Cible</small><strong>{component.targetLabel}</strong></span><span><small>Sous-score</small><strong>{formatNormalized(component.normalizedValue)}</strong></span><span><small>Contribution</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
+        <dd><span><small>Mesuré</small><strong>{component.sourceValueLabel}</strong></span><span><small>Cible</small><strong>{component.targetLabel}</strong></span><span><small>Repère visuel</small><strong>{formatNormalized(component.normalizedValue)}</strong></span><span><small>Sous-score</small><strong>{formatNormalized(component.scoreNormalizedValue ?? component.normalizedValue)}</strong></span><span><small>Contribution</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
         <dd className={styles.breakdownFormula}><span>{component.formula}</span><span>{component.normalization}</span></dd>
       </div>)}
     </dl>
@@ -87,7 +88,9 @@ function DimensionDetail({ dimension }: { dimension: ActivityRadarDimension | nu
       <div><dt>Lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div><dt>Rôle</dt><dd>{dimension.scoreRole || "Composante du score d’effort"}</dd></div>
     </dl>
-    {dimension.scoreFormula && <dl className={styles.dimensionFormula}><div><dt>Formule</dt><dd>{dimension.scoreFormula}</dd></div><div><dt>Contribution</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} · ${dimension.scoreWeight ?? 0} %` : "Indisponible"}</dd></div></dl>}
+    {dimension.scoreFormula && (dimension.scoreWeight !== undefined || dimension.scoreContribution !== undefined)
+      ? <dl className={styles.dimensionFormula}><div><dt>Formule</dt><dd>{dimension.scoreFormula}</dd></div><div><dt>Contribution</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} · ${dimension.scoreWeight ?? 0} %` : "Indisponible"}</dd></div></dl>
+      : dimension.scoreFormula ? <dl className={styles.dimensionFormula}><div><dt>Normalisation</dt><dd>{dimension.scoreFormula}</dd></div></dl> : null}
     {dimension.definition && <p className={styles.detailSummary}>{dimension.definition}</p>}
   </>;
 }

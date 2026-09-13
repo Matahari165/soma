@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } from "@/services/health-analytics";
 
-import { ActivityDetails } from "./activity-details";
+import { ActivityDetails, effortComponentDefinitions, normalizeEffortContextValue, normalizeEffortTargetValue } from "./activity-details";
 import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
 import { SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
@@ -86,6 +86,8 @@ function analytics(overrides: Partial<HealthAnalytics> = {}) {
     latestSleepStages: [],
     heartRateSamples: [],
     exercises: [],
+    effortTargets: { zoneMinutes: 75, activeEnergyKcal: 700, exerciseMinutes: 60, steps: 10_000 },
+    effortTargetSource: "fallback" as const,
     ...overrides,
   } satisfies HealthAnalytics;
 }
@@ -120,6 +122,41 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
+  it("keeps the effort targets aligned between the radar and its detail", () => {
+    const preview = buildPreviewAnalytics();
+    const markup = renderToStaticMarkup(createElement(ActivityDetails, {
+      data: {
+        ...preview,
+        effortTargets: { zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 },
+        effortTargetSource: "nutrition_targets",
+      },
+    }));
+    const readable = markup.replaceAll("\u202f", " ");
+
+    expect(readable).toContain("Radar de l’effort avec 5 composantes");
+    expect(readable).toContain("Charge hebdomadaire");
+    expect(readable).toContain("Contexte · hors score");
+    expect(readable).toContain("Activité récente");
+    expect(readable).toContain("Course");
+    expect(readable).toContain("Aujourd’hui");
+    expect(readable).toContain("Allure / vitesse");
+    expect(readable).toContain("Temps actif");
+
+    const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
+    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10\u202f000 pas" });
+    expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1\u202f000 kcal" });
+  });
+
+  it("normalizes weekly load from finite values without inventing missing data", () => {
+    expect(normalizeEffortContextValue(20, [10, 20, 30])).toBeCloseTo(0.5);
+    expect(normalizeEffortContextValue(null, [10, 20, 30])).toBeNull();
+    expect(normalizeEffortContextValue(20, [])).toBeNull();
+    expect(normalizeEffortContextValue(20, [20, 20])).toBe(1);
+    expect(normalizeEffortTargetValue(10_000, 10_000)).toBe(1);
+    expect(normalizeEffortTargetValue(12_000, 10_000)).toBe(1);
+    expect(normalizeEffortTargetValue(null, 10_000)).toBeNull();
+  });
+
   it("keeps the score unit visible after its 30-day average", () => {
     const markup = renderToStaticMarkup(createElement(HealthHeroScore, {
       label: "Score",
@@ -330,6 +367,6 @@ describe("health route states", () => {
     }));
 
     expect(markup).toMatch(/25\s*% de couverture du score/);
-    expect(markup).toContain("Renforcement musculaire");
+    expect(markup).toContain("Musculation");
   });
 });
