@@ -109,7 +109,7 @@ describe("MealJournal", () => {
     expect(html).toContain("Sucres ajoutés : 5 g");
     expect(html).toContain(">Modifier<\/button>");
     expect(html).toContain(">Collation<\/h3>");
-    expect(html.match(/aria-label="Ajouter une photo"/g)).toHaveLength(3);
+    expect(html.match(/aria-label="Ajouter une photo pour le /g)).toHaveLength(3);
     expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
   });
 

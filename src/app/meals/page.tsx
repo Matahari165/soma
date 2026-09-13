@@ -122,7 +122,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           className="meals-page-score"
         />
         {initialData ? (
-          <section className={styles.journal} aria-labelledby="meals-journal-title">
+          <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
             <h2 id="meals-journal-title">Journal des repas</h2>
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals hideAddMealButton />
           </section>
