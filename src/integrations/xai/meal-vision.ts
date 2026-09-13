@@ -173,7 +173,16 @@ export function mealAnalysisJsonSchema() {
       },
       // Omit qualityProperties when its status is unknown. An empty array means
       // the axis was reviewed and no listed descriptive property was observed.
-      qualityProperties: { type: "array", maxItems: 8, items: { type: "string", enum: ["whole_food", "minimally_processed", "fermented", "fiber_source", "protein_source", "unsaturated_fat_source"] } },
+      qualityProperties: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "array",
+            maxItems: 8,
+            items: { type: "string", enum: ["whole_food", "minimally_processed", "fermented", "fiber_source", "protein_source", "unsaturated_fat_source"] },
+          },
+        ],
+      },
       evidence: { type: "string", enum: ["visible", "inferred", "unknown"] },
       evidenceSource: { type: "string", enum: ["photo", "note", "model"] },
       evidencePhotoIds: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 120 } },
