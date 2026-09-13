@@ -7,6 +7,9 @@ import { scrollToLabSectionWhenReady } from "./lab-scroll";
 
 export function LabGlobalNavigation() {
   const pathname = usePathname();
+  const isPreHomeSurface = ["/login", "/onboarding", "/auth/", "/privacy", "/terms"].some((path) => pathname.startsWith(path));
+  if (isPreHomeSurface) return null;
+
   function scroll(event: MouseEvent<HTMLAnchorElement>) {
     if (pathname !== "/") return;
     event.preventDefault();

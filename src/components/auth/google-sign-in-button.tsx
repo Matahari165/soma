@@ -3,7 +3,7 @@ export function GoogleSignInButton() {
     <div className="auth-action">
       <a className="google-button" href="/auth/google">
         <GoogleMark />
-        Continue with Google
+        Continuer avec Google
       </a>
     </div>
   );

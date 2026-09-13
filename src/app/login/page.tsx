@@ -10,10 +10,13 @@ import { hasCloudflareConfig } from "@/lib/env";
 export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 const authErrors: Record<string, string> = {
-  auth_service: "Google sign-in is temporarily unavailable. Try again in a moment.",
-  oauth_start: "Google sign-in could not start. Try again.",
-  missing_code: "Google did not return a sign-in code. Try again.",
-  oauth_callback: "Google sign-in could not be completed. Try again.",
+  configuration: "La connexion n’est pas disponible dans cet environnement.",
+  auth_service: "Le service Google est momentanément indisponible. Réessayez dans un instant.",
+  oauth_start: "La connexion Google n’a pas pu démarrer. Réessayez.",
+  missing_code: "Google n’a pas renvoyé de code de connexion. Réessayez.",
+  oauth_callback: "La connexion Google n’a pas pu être terminée. Réessayez.",
+  oauth_state: "La session de connexion a expiré. Réessayez.",
+  oauth_profile: "Votre profil Google n’a pas pu être récupéré. Réessayez.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -21,32 +24,32 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (user) redirect("/");
   const configured = hasCloudflareConfig();
   const errorCode = params.error;
-  const errorMessage = errorCode ? authErrors[errorCode] ?? "Google sign-in could not be completed." : null;
+  const errorMessage = errorCode ? authErrors[errorCode] ?? "La connexion Google n’a pas pu être terminée." : null;
 
   return (
     <main className="auth-page" id="main-page-content">
-      <section className="auth-intro">
-        <Link className="brand brand--auth" href="/" aria-label="Soma home">
+      <section className="auth-intro" aria-labelledby="auth-intro-title">
+        <Link className="brand brand--auth" href="/" aria-label="Accueil Soma">
           <SomaLogo />
         </Link>
         <div className="auth-intro__copy">
-          <h1>Welcome<br /> <em>back.</em></h1>
+          <h1 id="auth-intro-title">Bienvenue<br /><em>chez Soma.</em></h1>
         </div>
       </section>
-      <section className="auth-card-wrap">
+      <section className="auth-card-wrap" aria-labelledby="auth-title">
         <div className="auth-card">
-          <h2>Sign in to continue</h2>
-          <p>Use the account linked to your data.</p>
+          <h2 id="auth-title">Se connecter</h2>
+          <p>Utilisez votre compte Google pour retrouver vos données.</p>
           {configured ? (
             <GoogleSignInButton />
           ) : (
-            <p className="configuration-note" role="alert">Google sign-in is not configured yet.</p>
+            <p className="configuration-note" role="alert">La connexion Google n’est pas encore configurée.</p>
           )}
           {errorMessage && <p className="form-error auth-error" role="alert">{errorMessage}</p>}
           <div className="auth-consent-note">
-            Health access is requested separately and can be removed at any time.
+            L’accès aux données de santé est demandé séparément. Vous gardez le contrôle de cette autorisation.
           </div>
-          <p className="legal-copy">By continuing, you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</p>
+          <p className="legal-copy">En continuant, vous acceptez les <Link href="/terms">Conditions d’utilisation</Link> et reconnaissez la <Link href="/privacy">Politique de confidentialité</Link>.</p>
         </div>
       </section>
     </main>
