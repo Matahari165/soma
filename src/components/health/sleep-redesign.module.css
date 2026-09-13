@@ -1,434 +1,178 @@
-/* Sommeil — a single, flat reading rail for the Observatory. */
-
+/* Sommeil — lecture continue, nocturne et borderless. */
 .root { min-width: 0; }
 
 .root :global(.health-detail-page--sleep) {
   --sleep-border: var(--lab-border, #292929);
-  --sleep-border-strong: var(--lab-border-strong, #3a3a3a);
   --sleep-primary: var(--lab-text-primary, #f1f1f1);
-  --sleep-secondary: var(--lab-text-secondary, #a7a7a7);
-  --sleep-brand: var(--lab-brand, #eeeeee);
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  padding: 12px 5vw 40px;
-  gap: 24px;
+  --sleep-secondary: var(--lab-text-secondary, #aaaaaa);
+  width: 100%; max-width: none; min-width: 0;
+  gap: 48px;
+  padding: 24px 5vw 72px;
   background: var(--lab-canvas, #050505);
   color: var(--sleep-primary);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
 }
-
-/* The title and four readings share one horizontal rail on desktop. */
 .root :global(.health-detail-page--sleep) :global(.health-detail-hero) {
-  height: 76px;
-  min-height: 76px;
-  grid-template-columns: minmax(140px, 158px) minmax(0, 1fr);
-  gap: 32px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  display: grid; min-height: 112px;
+  grid-template-columns: minmax(190px, .65fr) minmax(0, 2.35fr);
+  gap: 48px; align-items: end;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
 }
-
-.root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child {
-  min-height: 64px;
-  align-items: center;
-  padding: 0;
-}
-
+.root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child { min-height: 0; align-items: end; padding: 0 0 10px; }
 .root :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 {
-  color: var(--sleep-primary);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: var(--lab-type-page, 26px);
-  font-weight: 400;
+  margin: 0; color: var(--sleep-primary);
+  font: 400 clamp(30px, 3vw, 40px)/1.2 Georgia, "Times New Roman", serif;
   letter-spacing: -.025em;
-  line-height: 1;
 }
-
 .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
-  align-items: stretch;
-  min-height: 64px;
-  padding: 0;
+  display: grid; min-width: 0; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px; align-items: end; padding: 0;
 }
-
 .root :global(.health-detail-page--sleep) :global(.health-hero-score),
 .root :global(.health-detail-page--sleep) :global(.health-hero-stat) {
-  min-width: 0;
-  min-height: 64px;
-  padding: 0;
-  border: 0;
-  border-top: 1px solid var(--sleep-border-strong);
-  border-bottom: 1px solid var(--sleep-border-strong);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  min-width: 0; min-height: 76px; padding: 0 0 10px;
+  border: 0; border-bottom: 1px solid var(--sleep-border); border-radius: 0;
+  background: transparent; box-shadow: none;
 }
-
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card) {
-  display: grid;
-  grid-template-rows: 16px 26px 16px;
-  min-height: 64px;
-  align-content: center;
-  justify-items: start;
-  gap: 0;
-  padding: 0;
-  background: transparent;
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card),
+.headerMetric {
+  display: grid; min-height: 66px; grid-template-rows: 16px 34px 16px;
+  align-content: end; justify-items: start; gap: 0; padding: 0;
+  background: transparent; text-align: left;
 }
-
 .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__header) { display: block; }
 .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__body),
 .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) { display: contents; }
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__number) {
-  display: inline-flex;
-  grid-row: 2;
-  align-items: baseline;
-  gap: 4px;
-}
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__number) { display: inline-flex; grid-row: 2; align-items: baseline; gap: 3px; }
 .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__header) > span,
 .headerMetric > span {
-  grid-row: 1;
-  display: block;
-  overflow: hidden;
-  color: var(--sleep-secondary);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: .01em;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  grid-row: 1; overflow: hidden; color: var(--sleep-secondary);
+  font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif;
+  text-overflow: ellipsis; white-space: nowrap;
 }
-
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) > div > strong {
-  color: var(--sleep-primary);
-  font: 400 22px/26px var(--lab-data-font), monospace;
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__number) > strong {
+  color: var(--sleep-primary); font: 400 32px/34px var(--lab-data-font), monospace;
   font-variant-numeric: tabular-nums;
 }
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) > div > small { color: var(--sleep-primary); font: 400 22px/26px var(--lab-data-font), monospace; }
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) p {
-  display: block;
-  grid-row: 3;
-  margin: 0;
-  color: var(--sleep-secondary);
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__number) > small { color: var(--sleep-secondary); font: 400 12px/16px var(--lab-data-font), monospace; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) p,
+.headerMetric > :global(.health-hero-stat__average) {
+  grid-row: 3; margin: 0; overflow: hidden; color: var(--sleep-secondary);
   font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-  white-space: nowrap;
-}
-.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__bars) { display: none; }
-
-.headerMetric {
-  display: grid;
-  grid-template-rows: 16px 26px 16px;
-  align-content: center;
-  justify-items: start;
-  gap: 0;
-  text-align: left;
+  text-overflow: ellipsis; white-space: nowrap;
 }
 .headerMetric > :global(.metric-reading) {
-  grid-row: 2;
-  display: block;
-  color: var(--sleep-primary);
-  font: 400 22px/26px var(--lab-data-font), monospace !important;
+  grid-row: 2; color: var(--sleep-primary);
+  font: 400 22px/34px var(--lab-data-font), monospace !important;
   font-variant-numeric: tabular-nums;
 }
-.headerMetric > :global(.metric-reading) > span { color: inherit; }
-.headerMetric > :global(.health-hero-stat__average) {
-  grid-row: 3;
-  display: block;
-  overflow: hidden;
-  color: var(--sleep-secondary);
-  font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.headerMetric > :global(.health-hero-stat__average) strong { color: var(--sleep-secondary); font: 400 12px/16px var(--lab-data-font), monospace; }
+.headerMetric > :global(.health-hero-stat__average) strong { color: inherit; font: inherit; font-family: var(--lab-data-font), monospace; }
+.root :global(.health-detail-page--sleep) :global(.health-hero-score-card__bars) { display: none; }
 .root :global(.health-detail-page--sleep) :global(.metric-tone--positive) :global(.metric-reading) { color: var(--lab-signal, #d5e5da); }
 .root :global(.health-detail-page--sleep) :global(.metric-tone--negative) :global(.metric-reading) { color: var(--lab-error, #e2b2aa); }
 
-/* The Observatoire stylesheet also styles these shared primitives. Keep this
-   route's three-row metric rail authoritative without changing other pages. */
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card) {
-  display: grid;
-  grid-template-rows: 16px 26px 16px;
+.redesign { display: grid; min-width: 0; gap: 72px; }
+.overviewSection {
+  display: grid; min-width: 0;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
+  gap: clamp(40px, 7vw, 112px); align-items: center;
+  padding: 0; border: 0; background: transparent;
 }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__header) { display: block; }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__body),
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) { display: contents; }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__number) { grid-row: 2; }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__header) > span,
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric > span {
-  color: var(--sleep-secondary);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
+.nextNight { align-self: center; min-width: 0; }
+.nextNight h2,
+.root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) h2 {
+  margin: 0; color: var(--sleep-primary);
+  font: 400 clamp(22px, 2vw, 26px)/1.25 Georgia, "Times New Roman", serif;
+  letter-spacing: -.015em;
 }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric {
-  display: grid;
-  grid-template-rows: 16px 26px 16px;
-  align-content: center;
-  justify-items: start;
-  gap: 0;
-  text-align: left;
+.nextNightGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 24px 0 0; }
+.nextNightGrid > div, .nightMetrics > div { min-width: 0; padding: 14px 0 16px; border-top: 1px solid var(--sleep-border); }
+.nextNightGrid dt, .nightMetrics dt { color: var(--sleep-secondary); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.nextNightGrid dd, .nightMetrics dd {
+  margin: 4px 0 0; color: var(--sleep-primary);
+  font: 400 20px/26px var(--lab-data-font), monospace; font-variant-numeric: tabular-nums;
 }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric > :global(.metric-reading) { grid-row: 2; }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric > :global(.health-hero-stat__average) { grid-row: 3; }
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) > div > strong,
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric > :global(.metric-reading) {
-  font-weight: 400;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card.health-hero-score-card) :global(.health-hero-score-card__number) {
-  font-family: var(--lab-data-font), monospace;
-  font-size: var(--lab-type-section, 22px);
-  font-weight: 400;
-  line-height: 26px;
-  font-variant-numeric: tabular-nums;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card.health-hero-score-card) :global(.health-hero-score-card__number) > strong {
-  font-size: var(--lab-type-section, 22px);
-  font-weight: 400;
-  line-height: 26px;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) > div > small {
-  color: var(--sleep-primary);
-  font: 400 22px/26px var(--lab-data-font), monospace;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) p,
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .headerMetric > :global(.health-hero-stat__average) {
-  color: var(--sleep-secondary);
-  font-weight: 400;
-  line-height: 16px;
-}
+.unavailableNote, .provenance { margin: 16px 0 0; color: var(--sleep-secondary); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
 
-/* The four anchors sit directly below the header and explain the only
-   recommendation shown on this page. */
-.root :global(.health-detail-page--sleep) .timingBand {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
-  align-items: end;
-  min-width: 0;
-  padding: 16px 0;
-  border-top: 1px solid var(--sleep-border);
-  border-bottom: 1px solid var(--sleep-border);
-  background: transparent;
+.lastNightSection, .trendsSection { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) {
+  display: flex; min-width: 0; align-items: baseline; justify-content: space-between;
+  gap: 24px; margin: 0 0 24px; padding: 0; border: 0;
 }
-.timingItem { min-width: 0; }
-.timingItem span {
-  display: block;
-  color: var(--sleep-secondary);
-  font: 12px/16px var(--font-soma-ui), system-ui, sans-serif;
+.root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) > span {
+  color: var(--sleep-secondary); font: 400 12px/16px var(--lab-data-font), monospace; font-variant-numeric: tabular-nums;
 }
-.timingItem strong {
-  display: block;
-  margin-top: 2px;
-  color: var(--sleep-primary);
-  font: 500 var(--lab-type-section, 22px)/26px var(--lab-data-font), monospace;
-  font-variant-numeric: tabular-nums;
-}
-.timingFormula {
-  grid-column: 1 / -1;
-  color: var(--sleep-secondary);
-  font: 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-}
+.architectureGrid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr); gap: 40px; }
+.architecturePanel, .distributionPanel { min-width: 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--sleep-border); border-radius: 0; background: transparent; }
+.architectureHeader { min-height: 24px; }
+.architectureHeader strong { color: var(--sleep-primary); font: 400 16px/22px var(--font-soma-ui), system-ui, sans-serif; }
+.architectureTimeline { margin-top: 12px; }
+.architecturePanel :global(.sleep-stage-chart) { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; }
+.architecturePanel :global(.sleep-stage-axis) { color: var(--sleep-secondary); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.architecturePanel :global(.sleep-stage-timeline) { height: 112px; border-radius: 2px; }
+.architecturePanel :global(.sleep-stage-segment) { border-radius: 0; }
+.distributionPanel :global(.stage-distribution) { height: 12px; margin-top: 12px; border-radius: 0; }
+.distributionPanel :global(.stage-legend) { gap: 10px 16px; margin-top: 12px; color: var(--sleep-secondary); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.distributionPanel :global(.stage-legend strong) { color: var(--sleep-primary); font-family: var(--lab-data-font), monospace; font-weight: 400; }
+.nightMetrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 28px 0 0; }
+.nightMetrics dd.negative, .negative { color: var(--lab-error, #e2b2aa); }
 
-/* Trends are a full-width chart block, with no nested dashboard cards. */
-.root :global(.health-detail-page--sleep) .trendsSection,
-.root :global(.health-detail-page--sleep) .lastNightSection {
-  min-width: 0;
-  padding: 20px 0 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+.trendGrid, .secondaryTrendGrid { display: grid; min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.trendGrid :global(.metric-trend-card), .secondaryTrendGrid :global(.metric-trend-card) {
+  min-width: 0; min-height: 256px; padding: 16px 0 0;
+  border: 0; border-top: 1px solid var(--sleep-border); border-radius: 0; background: transparent; box-shadow: none;
 }
-.root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header),
-.root :global(.health-detail-page--sleep) .lastNightSection :global(.health-observatory-panel-header) {
-  margin: 0 0 16px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--sleep-border);
+.trendGrid :global(.metric-trend-card) :global(header), .secondaryTrendGrid :global(.metric-trend-card) :global(header) { align-items: start; gap: 12px; }
+.trendGrid :global(.metric-trend-card) :global(header) > div > span, .secondaryTrendGrid :global(.metric-trend-card) :global(header) > div > span { color: var(--sleep-primary); font: 400 15px/22px var(--font-soma-ui), system-ui, sans-serif; }
+.trendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading), .secondaryTrendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading) { color: var(--sleep-secondary); font: 400 13px/18px var(--lab-data-font), monospace !important; }
+.trendGrid :global(.metric-trend-card__average), .secondaryTrendGrid :global(.metric-trend-card__average) { color: var(--sleep-secondary); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; text-align: right; }
+.trendGrid :global(.metric-trend-card__average) strong, .secondaryTrendGrid :global(.metric-trend-card__average) strong { color: inherit; font: 400 12px/16px var(--lab-data-font), monospace; }
+.trendGrid :global(.metric-trend-card) :global(.chart-frame), .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 152px; margin-top: 20px; }
+.trendGrid :global(.health-chart-range), .trendGrid :global(.metric-direction), .trendGrid :global(.baseline-row), .trendGrid :global(footer),
+.secondaryTrendGrid :global(.health-chart-range), .secondaryTrendGrid :global(.metric-direction), .secondaryTrendGrid :global(.baseline-row), .secondaryTrendGrid :global(footer) { display: none; }
+.secondaryTrends { margin-top: 24px; }
+.secondaryTrends summary {
+  width: max-content; min-height: 44px; align-content: center;
+  color: var(--sleep-secondary); cursor: pointer;
+  font: 400 13px/18px var(--font-soma-ui), system-ui, sans-serif; list-style: none;
 }
-.root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) h2,
-.root :global(.health-detail-page--sleep) .lastNightSection :global(.health-observatory-panel-header) h2 {
-  color: var(--sleep-primary);
-  font: 400 22px/28px Georgia, "Times New Roman", serif;
-  letter-spacing: 0;
-}
-.root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) > span,
-.root :global(.health-detail-page--sleep) .lastNightSection :global(.health-observatory-panel-header) > span {
-  color: var(--sleep-secondary);
-  font: 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-}
+.secondaryTrends summary::-webkit-details-marker { display: none; }
+.secondaryTrends summary::after { content: " +"; font-family: var(--lab-data-font), monospace; }
+.secondaryTrends[open] summary::after { content: " −"; }
+.secondaryTrends summary:focus-visible { outline: 2px solid var(--lab-brand, #eeeeee); outline-offset: 3px; }
+.secondaryTrendGrid { margin-top: 16px; }
 
-.trendGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 32px 36px;
-  min-width: 0;
-}
-.trendGrid :global(.metric-trend-card) {
-  display: block;
-  min-width: 0;
-  min-height: 368px;
-  padding: 16px 0 0;
-  border: 0;
-  border-top: 1px solid var(--sleep-border);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.trendGrid :global(.metric-trend-card) :global(header) {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-.trendGrid :global(.metric-trend-card) :global(header) > div { min-width: 0; }
-.trendGrid :global(.metric-trend-card) :global(header) > div > span {
-  color: var(--sleep-primary);
-  font: 400 16px/24px var(--font-soma-ui), system-ui, sans-serif;
-}
-.trendGrid :global(.metric-trend-card__average) > span {
-  color: var(--sleep-secondary);
-  font: 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-}
-.trendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading) {
-  display: block;
-  margin-top: 2px;
-  color: var(--sleep-secondary);
-  font: 400 14px/20px var(--lab-data-font), monospace !important;
-  font-variant-numeric: tabular-nums;
-}
-.trendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading) > small { color: var(--sleep-secondary); font: inherit; font-size: 12px; }
-.trendGrid :global(.metric-trend-card__average) {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--sleep-secondary);
-  font: 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-  text-align: right;
-}
-.trendGrid :global(.metric-trend-card__average) strong { color: var(--sleep-secondary); font: 400 12px/16px var(--lab-data-font), monospace; }
-.trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 240px; margin-top: 24px; }
-.trendGrid :global(.metric-trend-card) :global(.chart-axis) { margin-top: 4px; color: var(--sleep-secondary); font: 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-.trendGrid :global(.metric-trend-card) :global(.health-chart-range),
-.trendGrid :global(.metric-trend-card) :global(.metric-direction),
-.trendGrid :global(.metric-trend-card) :global(.baseline-row),
-.trendGrid :global(.metric-trend-card) :global(footer) { display: none; }
-.trendGrid :global(.metric-trend-card--pending) { min-height: 120px; }
-.trendGrid :global(.metric-trend-card--pending) :global(p) { margin-top: 10px; color: var(--sleep-secondary); font: 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-
-/* The shared observatory rules use a denser chart height. Override them only
-   inside Sleep so the requested two-column reading scale is real. */
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) {
-  min-height: 368px;
-  padding: 16px 0 0;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) :global(header) > div > span {
-  color: var(--sleep-primary);
-  font: 400 16px/24px var(--font-soma-ui), system-ui, sans-serif;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading) {
-  color: var(--sleep-secondary);
-  font: 400 14px/20px var(--lab-data-font), monospace !important;
-}
-:global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 240px;
-  margin-top: 24px;
-}
-
-/* Last night's evidence stays available, but comes after the trends. */
-.architectureGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
-  gap: 32px;
-  min-width: 0;
-}
-.architecturePanel,
-.distributionPanel {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  border-top: 1px solid var(--sleep-border);
-  border-radius: 0;
-  background: transparent;
-}
-.architectureHeader { display: flex; min-height: 28px; align-items: baseline; justify-content: space-between; gap: 12px; padding-top: 12px; }
-.architectureHeader strong { color: var(--sleep-primary); font: 400 16px/24px var(--font-soma-ui), system-ui, sans-serif; }
-.architectureTimeline { margin-top: 10px; }
-.architecturePanel :global(.sleep-stage-chart) { grid-template-columns: 56px minmax(0, 1fr); gap: 10px; }
-.architecturePanel :global(.sleep-stage-axis) { color: var(--sleep-secondary); font: 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-.architecturePanel :global(.sleep-stage-timeline) { height: 104px; border-radius: 4px; }
-.architecturePanel :global(.sleep-stage-segment) { border-radius: 2px; }
-.distributionPanel :global(.stage-distribution) { height: 14px; margin-top: 10px; border-radius: 2px; }
-.distributionPanel :global(.stage-legend) { gap: 12px; margin-top: 10px; color: var(--sleep-secondary); font: 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-.distributionPanel :global(.stage-legend strong) { color: var(--sleep-primary); font: 12px/16px var(--lab-data-font), monospace; }
-.signalPositive { display: block; margin-top: 14px; color: var(--sleep-secondary); font: 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-.nightContext { margin-top: 18px; color: var(--sleep-secondary); font: 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
-.nightContext strong { color: var(--sleep-primary); font: 12px/18px var(--lab-data-font), monospace; }
-
-.empty {
-  display: flex;
-  min-height: 220px;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
-  border-top: 1px solid var(--sleep-border);
-  border-bottom: 1px solid var(--sleep-border);
-  color: var(--sleep-secondary);
-  text-align: center;
-}
-.empty h2 { color: var(--sleep-primary); font: 400 22px/28px Georgia, "Times New Roman", serif; }
-.empty p { margin-top: 4px; color: var(--sleep-secondary); font: 14px/20px var(--font-soma-ui), system-ui, sans-serif; }
+.empty { display: flex; min-height: 240px; align-items: center; justify-content: center; gap: 16px; color: var(--sleep-secondary); text-align: left; }
+.empty h2 { margin: 0; color: var(--sleep-primary); font: 400 22px/28px Georgia, "Times New Roman", serif; }
+.empty p { margin: 4px 0 0; color: var(--sleep-secondary); font: 400 14px/20px var(--font-soma-ui), system-ui, sans-serif; }
 
 @media (max-width: 1100px) {
   .root :global(.health-detail-page--sleep) { padding-inline: 32px; }
-  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { height: auto; min-height: 0; grid-template-columns: 1fr; gap: 12px; }
-  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) > div:first-child { min-height: 48px; }
-  .architectureGrid { grid-template-columns: 1fr; gap: 24px; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { grid-template-columns: 1fr; gap: 20px; }
+  .overviewSection { grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr); gap: 40px; }
+  .architectureGrid { grid-template-columns: 1fr; gap: 28px; }
+  .trendGrid, .secondaryTrendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-
-@media (max-width: 960px) {
-  .trendGrid { grid-template-columns: 1fr; gap: 24px; }
-  :global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) { min-height: 336px; }
-  :global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 208px; }
+@media (max-width: 760px) {
+  .root :global(.health-detail-page--sleep) { gap: 32px; padding-inline: 20px; }
+  .redesign { gap: 56px; }
+  .overviewSection { grid-template-columns: 1fr; gap: 40px; }
+  .nightMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trendGrid, .secondaryTrendGrid { grid-template-columns: 1fr; gap: 24px; }
 }
-
-@media (max-width: 800px) {
-  .root :global(.health-detail-page--sleep) { padding-inline: 20px; }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
-  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card) { min-height: 68px; }
-  .timingBand { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; }
+@media (max-width: 520px) {
+  .root :global(.health-detail-page--sleep) { gap: 24px; padding: 12px 16px 88px; overflow-x: clip; }
+  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { gap: 16px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+  .root :global(.health-detail-page--sleep) :global(.health-hero-score), .root :global(.health-detail-page--sleep) :global(.health-hero-stat) { min-height: 72px; }
+  .redesign { gap: 48px; }
+  .nextNightGrid { gap: 0 20px; }
+  .architecturePanel :global(.sleep-stage-chart) { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
+  .architecturePanel :global(.sleep-stage-timeline) { height: 96px; }
+  .root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .trendGrid :global(.metric-trend-card), .secondaryTrendGrid :global(.metric-trend-card) { min-height: 232px; }
+  .trendGrid :global(.metric-trend-card) :global(.chart-frame), .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 140px; }
 }
-
-@media (max-width: 640px) {
-  .root :global(.health-detail-page--sleep) { gap: 16px; padding: 8px 16px 88px; overflow-x: clip; }
-  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) { margin-inline: 0; gap: 8px; }
-  .root :global(.health-detail-page--sleep) :global(.health-detail-hero) h1 { font-size: var(--lab-type-page, 26px); }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { gap: 8px 12px; }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score),
-  .root :global(.health-detail-page--sleep) :global(.health-hero-stat),
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card) { min-height: 72px; }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) > div > strong,
-  .headerMetric > :global(.metric-reading) { font-size: var(--lab-type-section, 22px) !important; line-height: 24px; }
-  .root :global(.health-detail-page--sleep) :global(.health-hero-score-card__metric) p,
-  .headerMetric > :global(.health-hero-stat__average) { display: block; margin-left: 0; }
-  .timingBand { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; padding: 14px 0; }
-  .timingItem strong { font-size: var(--lab-type-section, 22px); line-height: 24px; }
-  .timingFormula { font-size: 12px; }
-  .trendGrid { gap: 16px; }
-  :global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) { min-height: 300px; }
-  :global(html[data-lab-theme="observatory"]) .root :global(.health-detail-page--sleep) .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 184px; }
-  .architectureGrid { gap: 20px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .root :global(.score-ring__progress),
-  .root :global(.score-ring--animated) { animation: none; transition: none; }
+  .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

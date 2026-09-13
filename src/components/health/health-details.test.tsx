@@ -130,7 +130,7 @@ describe("health route states", () => {
     expect(markup).toContain("Moy. 30 j · 81 %");
   });
 
-  it("keeps a normal sleep route concise while preserving the five requested trends", () => {
+  it("prioritizes the sleep score radar while keeping secondary trends accessible", () => {
     const first = day({ metric_date: "2026-09-09", sleep_minutes: 450, sleep_efficiency: 90, sleep_fragmentation: 1.2, sleep_deep_minutes: 80, sleep_rem_minutes: 90, bedtime: "2026-09-08T22:30:00Z", wake_time: "2026-09-09T06:30:00Z" });
     const latest = day({ metric_date: "2026-09-10", sleep_minutes: 480, sleep_efficiency: 92, sleep_fragmentation: 0.9, sleep_deep_minutes: 90, sleep_deep_percent: 18, sleep_rem_minutes: 100, sleep_rem_percent: 20, sleep_light_percent: 55, sleep_awake_percent: 7, bedtime: "2026-09-09T22:30:00Z", wake_time: "2026-09-10T06:30:00Z" });
     const markup = renderToStaticMarkup(createElement(SleepDetails, {
@@ -141,20 +141,24 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup.match(/class="metric-trend-card"/g)?.length).toBe(5);
+    expect(markup).toContain("Profil du sommeil");
+    expect(markup).toContain("Durée / besoin");
+    expect(markup).toContain("Autres mesures");
+    expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
     expect(markup).toContain("Sommeil profond + paradoxal");
   });
 
-  it("uses the exact missing recommendation copy for a partial sleep day", () => {
+  it("keeps a concise missing recommendation state for a partial sleep day", () => {
     const markup = renderToStaticMarkup(createElement(SleepDetails, {
       data: analytics({
         days: [day({ sleep_efficiency: 90, bedtime: "2026-09-09T22:30:00Z", wake_time: "2026-09-10T07:00:00Z" })],
       }),
     }));
 
-    expect(markup).toContain("Aucune heure de coucher recommandée n’est disponible.");
+    expect(markup).toContain("Repère indisponible");
+    expect(markup).toContain("Indisponible : Durée / besoin, Régularité, Continuité, Dette.");
     expect(markup).toContain("90");
   });
 

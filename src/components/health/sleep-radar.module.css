@@ -1,0 +1,155 @@
+.root {
+  --radar-grid: var(--lab-border, #292929);
+  --radar-grid-strong: var(--lab-border-strong, #3a3a3a);
+  --radar-text: var(--lab-text-primary, #f1f1f1);
+  --radar-muted: var(--lab-text-secondary, #aaaaaa);
+  --radar-data: var(--lab-brand, #eeeeee);
+  display: grid;
+  width: min(100%, 32rem);
+  min-width: 0;
+  margin: 0;
+  gap: 12px;
+  color: var(--radar-text);
+}
+
+.caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.title {
+  color: var(--radar-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.summary,
+.unavailable {
+  color: var(--radar-muted);
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.summary {
+  max-width: 28ch;
+  text-align: right;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.grid,
+.axis {
+  fill: none;
+  stroke: var(--radar-grid);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.gridOuter {
+  stroke: var(--radar-grid-strong);
+}
+
+.valueArea {
+  fill: var(--radar-data);
+  fill-opacity: .13;
+  stroke: var(--radar-data);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.valueLine {
+  fill: none;
+  stroke: var(--radar-data);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.point {
+  fill: var(--radar-data);
+  stroke: var(--lab-canvas, #050505);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes radarReveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.labelGroup {
+  pointer-events: none;
+}
+
+.label,
+.valueLabel {
+  fill: var(--radar-text);
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.valueLabel {
+  fill: var(--radar-muted);
+  font-family: var(--font-soma-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.unavailable {
+  margin: 0;
+  max-width: 62ch;
+}
+
+.empty {
+  min-height: 144px;
+  display: grid;
+  margin: 0;
+  place-items: center;
+  color: var(--radar-muted);
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .root {
+    gap: 8px;
+  }
+
+  .caption {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .summary {
+    max-width: none;
+    text-align: left;
+  }
+
+  .label {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .valueArea, .valueLine, .point { animation: none; }
+}
