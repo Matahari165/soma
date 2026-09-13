@@ -161,7 +161,7 @@ describe("Personal Lab progressive stream", () => {
   it("exposes overview and journal independently from the complete analysis", async () => {
     vi.stubEnv("SOMA_LOCAL_PREVIEW", "true");
     try {
-      const stream = createPersonalLabStream({ id: "preview-user", email: null, displayName: "Jeremy" }, { periods: [30] });
+      const stream = createPersonalLabStream({ id: "preview-user", email: null, displayName: "Jérémy" }, { periods: [30] });
       const [overview, journal] = await Promise.all([stream.overview, stream.journal]);
 
       expect(overview.today).toHaveProperty("sleepMinutes");

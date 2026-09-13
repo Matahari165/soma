@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { LabWorldWorkspace } from "./lab-world-workspace";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
+import { arrivalMessageFor } from "@/domain/lab/arrival-message";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -9,6 +10,8 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
   const mockOverview: PersonalLabOverview = {
     todayDate: "2026-09-12",
     overnightFingerprint: null,
+    greetingName: "Jérémy",
+    timeZone: "Europe/Paris",
     today: {
       sleepMinutes: 480,
       sleepRegularity: 80,
@@ -34,6 +37,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       deepWorkSource: "calendar",
       focus: 4,
       energy: 4,
+      activity: null,
     },
   };
 
@@ -92,5 +96,25 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain('aria-label="Navigation des jours"');
     expect(html).toContain('aria-label="Jour précédent"');
     expect(html).toContain('aria-label="Jour suivant"');
+  });
+
+  it("renders the personalized arrival message and marked activity note", () => {
+    const activity = { kind: "run" as const, distanceKm: 7.2, durationMinutes: 44 };
+    const html = renderToStaticMarkup(
+      <LabWorldWorkspace
+        overview={mockOverview}
+        journal={mockJournal}
+        effects={<div id="effects-test" />}
+        personalization={{
+          name: "Jérémy Delloume",
+          timeZone: "Europe/Paris",
+          activity,
+          initialMessage: arrivalMessageFor({ name: "Jérémy Delloume", timeZone: "Europe/Paris", now: new Date("2026-09-12T20:00:00+02:00"), activity }),
+        }}
+      />
+    );
+
+    expect(html).toMatch(/Jérémy/);
+    expect(html).toContain("Course enregistrée · 7,2 km · 44 min");
   });
 });

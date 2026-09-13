@@ -25,6 +25,8 @@
 .lab-experience.lab-continuous .arrival-composition { min-height: 0; padding: 28px 0 0; }
 .lab-experience.lab-continuous .arrival-kicker { display: block; margin-bottom: 14px; color: var(--world-muted); font-family: var(--font-soma-mono), ui-monospace, monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 .lab-experience.lab-continuous .arrival-heading h1 { margin: 0; color: var(--world-ink); font-size: clamp(42px, 5.4vw, 76px); line-height: .93; letter-spacing: -.045em; }
+.lab-experience.lab-continuous .arrival-heading--personalized h1 { max-width: 20ch; }
+.lab-experience.lab-continuous .arrival-signal { max-width: 34ch; margin: 16px 0 0; color: var(--world-accent); font: 12px/1.4 var(--font-soma-mono), ui-monospace, monospace; }
 .lab-experience.lab-continuous .arrival-actions { display: grid !important; min-width: 0; }
 .lab-experience.lab-continuous .arrival-action { display: grid; grid-template-columns: 28px minmax(0, 1fr) 22px; grid-template-rows: auto auto; align-items: start; gap: 4px 10px; min-height: 66px; padding: 12px 0; border: 0; border-top: 1px solid var(--world-line); border-radius: 0; color: var(--world-muted); background: transparent; text-align: left; transition: color 180ms ease, background-color 180ms ease, transform 180ms ease; }
 .lab-experience.lab-continuous .arrival-action:last-child { border-bottom: 1px solid var(--world-line); }
