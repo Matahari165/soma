@@ -165,7 +165,7 @@ describe("health route states", () => {
     expect(markup).not.toContain("metric-trend-card");
   });
 
-  it("includes sleep in recovery fallback coverage and names the Soma calculation", () => {
+  it("includes sleep in recovery fallback coverage without a redundant radar note", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
       data: analytics({
         days: [day({ sleep_minutes: 480, hrv_ms: null, resting_heart_rate: null })],
@@ -173,8 +173,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Calcul Soma");
-    expect(markup).toContain("33 % couverts");
+    expect(markup).not.toContain("Calcul Soma · VFC");
+    expect(markup).toContain("33 %");
   });
 
   it("keeps the recovery rail limited to score and resting heart rate", () => {
@@ -193,6 +193,18 @@ describe("health route states", () => {
     expect(markup).toContain("Variabilité cardiaque");
     expect(markup).toContain("VFC nocturne");
     expect(markup).toContain("Fréquence respiratoire");
+  });
+
+  it("does not render a sample-based heart-rate trend on recovery", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
+      data: analytics({
+        days: [day({ hrv_ms: 54, resting_heart_rate: 57, sleep_minutes: 480 })],
+        heartRateSamples: [{ measuredAt: "2026-09-10T08:00:00.000Z", bpm: 60 }],
+        scores: [{ score_date: "2026-09-10", kind: "recovery", score: 82, drivers: { hrv: 80, restingHeartRate: 84, sleep: 82, coverage: 1 } }],
+      }),
+    }));
+
+    expect(markup).not.toContain(">Fréquence cardiaque</span>");
   });
 
   it("provides visible weighted recovery drivers in the local analytics preview", () => {

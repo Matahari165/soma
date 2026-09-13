@@ -1,16 +1,17 @@
 import { calculateSignalFreshness } from "@/domain/health/freshness";
-import type { HealthAnalytics, HealthMetricDay, HeartRateSample, ScoreDay } from "@/services/health-analytics";
+import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
-import { LineTrendChart } from "./health-charts";
 import { averageLast30Measured, formatAverage, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
-import { HealthHeroScore, HealthPageShell } from "./health-page-shell";
-import { MetricReading } from "./metric-reading";
+import { HealthPageShell } from "./health-page-shell";
 import { MetricTrendCard } from "./metric-trend-card";
+import { RecoveryRadar } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
+import { RecoveryScrollReveal } from "./recovery-scroll-reveal";
 import styles from "./recovery-redesign.module.css";
 
 type TrendKind = "hrv_daily" | "hrv_nightly" | "resting_heart_rate" | "respiratory_rate";
 type ZoneKey = "light_zone_minutes" | "moderate_zone_minutes" | "vigorous_zone_minutes" | "peak_zone_minutes";
+type ZoneTone = "light" | "moderate" | "vigorous" | "peak";
 
 const trendLabels: Record<TrendKind, { label: string; unit: string; direction: "higher" | "lower" | "context" }> = {
   hrv_daily: { label: "Variabilité cardiaque", unit: "ms", direction: "higher" },
@@ -26,7 +27,7 @@ const metricKeys: Record<TrendKind, keyof HealthMetricDay> = {
   respiratory_rate: "respiratory_rate",
 };
 
-const zoneDefinitions: Array<{ key: ZoneKey; label: string; tone: string }> = [
+const zoneDefinitions: Array<{ key: ZoneKey; label: string; tone: ZoneTone }> = [
   { key: "light_zone_minutes", label: "Légère", tone: "light" },
   { key: "moderate_zone_minutes", label: "Modérée", tone: "moderate" },
   { key: "vigorous_zone_minutes", label: "Vigoureuse", tone: "vigorous" },
@@ -99,6 +100,11 @@ function formatCivilDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(civilDate(value)).replace(".", "");
 }
 
+function zoneDotClassName(tone: ZoneTone) {
+  if (tone === "light") return styles.zoneDot;
+  return `${styles.zoneDot} ${styles[`zoneDot--${tone}`]}`;
+}
+
 /** Averages each zone over measured days in the local Monday–Sunday week. */
 export function averageWeeklyZoneMinutes(days: HealthMetricDay[], endDate?: string) {
   const latestDate = endDate ?? [...days].map((day) => day.metric_date).sort().at(-1);
@@ -127,28 +133,6 @@ export function averageWeeklyZoneMinutes(days: HealthMetricDay[], endDate?: stri
   };
 }
 
-function localTime(value: string, timezone: string) {
-  const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat("fr-FR", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(parsed) : "—";
-}
-
-function HeartRateTrendCard({ samples, timezone }: { samples: HeartRateSample[]; timezone: string }) {
-  const ordered = samples
-    .filter((sample) => typeof sample.bpm === "number" && Number.isFinite(sample.bpm) && Number.isFinite(Date.parse(sample.measuredAt)))
-    .sort((a, b) => Date.parse(a.measuredAt) - Date.parse(b.measuredAt));
-  const values = ordered.map((sample) => sample.bpm);
-  const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-  const current = values.at(-1) ?? null;
-  const first = ordered.at(0);
-  const last = ordered.at(-1);
-  const description = `Fréquence cardiaque. ${values.length ? `${values.length} échantillons disponibles, de ${localTime(first?.measuredAt ?? "", timezone)} à ${localTime(last?.measuredAt ?? "", timezone)}.` : "Aucun échantillon disponible."}`;
-  return <article className={`metric-trend-card ${styles.sampleTrendCard}`} aria-label={description}>
-    <header><div><span>Fréquence cardiaque</span><MetricReading value={formatValue(current)} unit={current === null ? undefined : "bpm"} /></div><small className="metric-trend-card__average">avg {average === null ? "—" : `${formatAverage(average, "decimal")} bpm`}</small></header>
-    <div className="chart-frame"><LineTrendChart points={ordered.map((sample) => ({ date: sample.measuredAt, value: sample.bpm }))} label="Fréquence cardiaque" unit="bpm" /></div>
-    <div className="chart-axis" aria-hidden="true"><span>{first ? localTime(first.measuredAt, timezone) : "—"}</span><span>{last ? `${localTime(last.measuredAt, timezone)} · ${values.length} mesures` : "—"}</span></div>
-  </article>;
-}
-
 function WeeklyZoneChart({ summary }: { summary: ReturnType<typeof averageWeeklyZoneMinutes> }) {
   const measuredZones = summary.zones.filter((zone) => typeof zone.minutes === "number" && Number.isFinite(zone.minutes));
   const total = measuredZones.reduce((sum, zone) => sum + Math.max(0, zone.minutes ?? 0), 0);
@@ -159,9 +143,20 @@ function WeeklyZoneChart({ summary }: { summary: ReturnType<typeof averageWeekly
       {measuredZones.filter((zone) => (zone.minutes ?? 0) > 0).map((zone) => <span key={zone.label} className={`${styles.zoneSegment} ${styles[`zoneSegment--${zone.tone}`]}`} style={{ width: `${total ? ((zone.minutes ?? 0) / total) * 100 : 0}%` }} />)}
     </div>
     <p className="sr-only">{description}</p>
-    <ul className={styles.zoneLegend}>{summary.zones.map((zone) => <li key={zone.label}><span className={`${styles.zoneDot} ${styles[`zoneDot--${zone.tone}`]}`} /> <span>{zone.label}</span><strong>{valueText(zone.minutes)}</strong></li>)}</ul>
+    <ul className={styles.zoneLegend}>{summary.zones.map((zone) => <li key={zone.label}><span className={zoneDotClassName(zone.tone)} /> <span>{zone.label}</span><strong>{valueText(zone.minutes)}</strong></li>)}</ul>
   </div>;
 }
+
+function scoreText(value: number | null) {
+  return value === null || !Number.isFinite(value) ? "—" : Math.round(value).toLocaleString("fr-FR");
+}
+
+const freshnessLabels = {
+  current: "Actuel",
+  partial: "Partiel",
+  stale: "Obsolète",
+  missing: "Indisponible",
+} as const;
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const latest = data.days.findLast(hasRecoveryMeasurement);
@@ -179,58 +174,72 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     ? Math.min(1, Math.max(0, driverCoverage))
     : latest ? measuredCoverage([latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes]) : 0;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
-  const recentScoreValues = data.days.slice(-5).map((day) => data.scores.findLast((item) => item.kind === "recovery" && item.score_date === day.metric_date)?.score ?? null);
   const heroScoreTone = metricTone(score, averages.recovery, "higher_is_better");
   const weeklyZones = averageWeeklyZoneMinutes(data.days, latest?.metric_date);
-  const heroMetrics = latest ? <div className={`${styles.headerMetric} health-hero-stat metric-tone--${metricTone(latest.resting_heart_rate ?? null, averages.restingHeartRate, "lower_is_better")}`}>
-    <span>FC au repos</span>
-    <MetricReading value={formatValue(latest.resting_heart_rate)} unit={latest.resting_heart_rate === null ? undefined : "bpm"} />
-    <small className="health-hero-stat__average">Moy. 30 j · {formatAverage(averages.restingHeartRate, "decimal")} bpm</small>
-  </div> : undefined;
+  const dimensions = [
+    { key: "hrv", label: "VFC nocturne", score: scoreDriver(drivers, "hrv"), weight: 40 },
+    { key: "restingHeartRate", label: "FC au repos", score: scoreDriver(drivers, "restingHeartRate"), weight: 30 },
+    { key: "sleep", label: "Sommeil", score: scoreDriver(drivers, "sleep"), weight: 30 },
+  ];
+  const recoveryScoreAction = latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined;
+  const freshnessLabel = freshnessLabels[freshness.state];
 
   return <div className={styles.page}>
     <HealthPageShell
       kind="recovery"
       title="Récupération"
-      description="Score de récupération, signaux cardiaques et respiratoires."
+      description="Score de récupération, facteurs personnels et signaux de santé."
       score={score}
       freshness={freshness}
       timezone={data.timezone}
-      heroScore={<HealthHeroScore label="Score de récupération" value={score} average={averages.recovery} values={recentScoreValues} tone={heroScoreTone} action={latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined} showBars={false} />}
-      heroMetrics={heroMetrics}
+      heroScore={<span className="sr-only">Score de récupération : {scoreText(score)} sur 100. Moyenne sur 30 jours : {scoreText(averages.recovery)} sur 100.</span>}
     >
-      {latest ? <main className={`${styles.content} health-observatory-content`}>
-        <section className={`${styles.panel} ${styles.factorsPanel} health-observatory-panel`} aria-labelledby="recovery-drivers-heading">
-          <div className="health-observatory-panel-header"><h2 id="recovery-drivers-heading">Facteurs du score</h2><span className={styles.filters}>{Number.isFinite(driverCoverage) ? `${Math.round(driverCoverage * 100)} % couverts` : `${Math.round(coverage * 100)} % couverts`}</span></div>
-          <p className={`${styles.calculatedBy} health-observatory-note`}>Calcul Soma · pondération : VFC 40 %, FC au repos 30 %, sommeil 30 %.</p>
-          <div className={`${styles.driverRows} health-observatory-driver-rows`}>
-            <p><span><abbr title="Variabilité de la fréquence cardiaque">VFC nocturne</abbr><small> · 40 %</small></span><strong>{formatValue(scoreDriver(drivers, "hrv"))}</strong></p>
-            <p><span>FC au repos<small> · 30 %</small></span><strong>{formatValue(scoreDriver(drivers, "restingHeartRate"))}</strong></p>
-            <p><span>Sommeil<small> · 30 %</small></span><strong>{formatValue(scoreDriver(drivers, "sleep"))}</strong></p>
-          </div>
-        </section>
+      <main className={`${styles.content} health-observatory-content`} data-recovery-scroll-reveal-root="true">
+        <RecoveryScrollReveal />
+        {latest ? <>
+          <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
+            <div className={styles.radarRegion}>
+              <h2 className="sr-only">Facteurs du score</h2>
+              <RecoveryRadar dimensions={dimensions} />
+            </div>
+            <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
+              <span className={styles.summaryKicker}>Aujourd’hui</span>
+              <h2 id="recovery-score-summary-title">Score de récupération</h2>
+              <div className={styles.summaryValue} aria-label={`Score de récupération : ${scoreText(score)} sur 100`}><strong>{scoreText(score)}</strong><span>/100</span></div>
+              <div className={`${styles.summaryRail} metric-tone--${heroScoreTone}`} aria-hidden="true"><span style={{ width: score === null ? "0%" : `${Math.min(100, Math.max(0, score))}%` }} /></div>
+              <dl className={styles.summaryFacts}>
+                <div><dt>État</dt><dd>{freshnessLabel}</dd></div>
+                <div><dt>Couverture</dt><dd>{Math.round(coverage * 100)} %</dd></div>
+                <div><dt>Moyenne · 30 j</dt><dd>{scoreText(averages.recovery)}<span>/100</span></dd></div>
+              </dl>
+              {recoveryScoreAction ? <div className={styles.summaryAction}>{recoveryScoreAction}</div> : null}
+            </aside>
+          </section>
 
-        <section className={`${styles.panel} ${styles.signalPanel} health-observatory-panel`} aria-labelledby="latest-signals-heading">
-          <div className="health-observatory-panel-header"><h2 id="latest-signals-heading">Signaux récents</h2><span className={styles.filters}>Données de santé</span></div>
-          <div className={`${styles.signalRows} health-recovery-signal-rows`}>
-            {[["VFC nocturne", latest.hrv_ms, averages.hrv, "ms", 0], ["FC au repos", latest.resting_heart_rate, averages.restingHeartRate, "bpm", 0], ["Fréquence respiratoire", latest.respiratory_rate, averages.respiratoryRate, "rpm", 1]].map(([label, value, average, unit, decimals]) => <div className={`${styles.signalRow} health-observatory-row`} key={String(label)}><span>{label}</span><div><strong>{formatValue(value as number | null, decimals as number)}</strong>{unit ? <small>{unit}</small> : null}<em>avg {typeof average === "number" ? `${formatAverage(average, "decimal", decimals as number)}${unit === "bpm" || unit === "rpm" || unit === "ms" ? ` ${unit}` : unit}` : "—"}</em></div></div>)}
-          </div>
-        </section>
+          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="latest-signals-heading">
+            <header className={styles.sectionHeader}><h2 id="latest-signals-heading">Signaux récents</h2><span>{formatCivilDate(latest.metric_date)}</span></header>
+            <div className={styles.signalRows}>
+              {[
+                { label: "VFC nocturne", value: latest.hrv_ms, average: averages.hrv, unit: "ms", decimals: 0 },
+                { label: "FC au repos", value: latest.resting_heart_rate, average: averages.restingHeartRate, unit: "bpm", decimals: 0 },
+                { label: "Fréquence respiratoire", value: latest.respiratory_rate, average: averages.respiratoryRate, unit: "rpm", decimals: 1 },
+              ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>Moy. 30 j · {signal.average === null ? "—" : `${formatAverage(signal.average, "decimal", signal.decimals)} ${signal.unit}`}</em></div></div>)}
+            </div>
+          </section>
 
-        <section className={`${styles.panel} ${styles.trendsPanel} health-observatory-panel`} aria-labelledby="recovery-trends-heading">
-          <div className="health-observatory-panel-header"><h2 id="recovery-trends-heading">Tendances</h2><span className={styles.filters}>30 jours</span></div>
-          <div className="metric-trend-grid health-observatory-trend-grid">
-            {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} animateCurrent compact />)}
-            <HeartRateTrendCard samples={data.heartRateSamples} timezone={data.timezone} />
-          </div>
-        </section>
+          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-trends-heading">
+            <header className={styles.sectionHeader}><h2 id="recovery-trends-heading">Tendances</h2><span>30 jours</span></header>
+            <div className={styles.trendGrid}>
+              {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} animateCurrent compact />)}
+            </div>
+          </section>
 
-        <section className={`${styles.panel} ${styles.zonesPanel} health-observatory-panel`} aria-labelledby="weekly-zones-heading">
-          <div className="health-observatory-panel-header"><h2 id="weekly-zones-heading">Zones cardiaques</h2><span className={styles.filters}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div>
-          <p className={`${styles.supporting} health-observatory-note`}>Données de santé · moyenne quotidienne · jours mesurés uniquement</p>
-          <WeeklyZoneChart summary={weeklyZones} />
-        </section>
-      </main> : <section className={`${styles.panel} ${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="recovery-empty-heading"><strong aria-hidden="true">+</strong><div><h2 id="recovery-empty-heading">Aucune donnée de récupération</h2><p>Synchronisez vos signaux de santé pour calculer une récupération personnalisée.</p></div></section>}
+          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="weekly-zones-heading">
+            <header className={styles.sectionHeader}><h2 id="weekly-zones-heading">Zones cardiaques</h2><div className={styles.sectionHeaderMeta}><span className={styles.supporting}>Moyenne quotidienne · jours mesurés uniquement</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div></header>
+            <WeeklyZoneChart summary={weeklyZones} />
+          </section>
+        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">Aucune donnée de récupération</h2><p>Synchronisez vos signaux de santé pour calculer une récupération personnalisée.</p></div></section>}
+      </main>
     </HealthPageShell>
   </div>;
 }
