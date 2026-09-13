@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { calculateSleepScore } from "@/domain/scores/sleep";
 import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } from "@/services/health-analytics";
 
 import { ActivityDetails } from "./activity-details";
@@ -147,8 +148,13 @@ describe("health route states", () => {
     expect(markup).toContain("Latence");
     expect(markup).toContain("Score Sommeil");
     expect(markup).toContain("/100");
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).not.toMatch(/<g[^>]*aria-pressed=/);
     expect(markup).toContain("Répartition des phases");
-    expect(markup).toContain("Autres mesures");
+    expect(markup).not.toContain("Autres mesures");
+    expect(markup).not.toContain("<details");
+    expect(markup).not.toContain("<summary");
+    expect(markup.indexOf("Score Sommeil")).toBeLessThan(markup.indexOf("Prochaine nuit"));
     expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
@@ -227,6 +233,56 @@ describe("health route states", () => {
     const latestRecovery = buildPreviewAnalytics().scores.findLast((score) => score.kind === "recovery");
 
     expect(latestRecovery?.drivers).toMatchObject({ hrv: expect.any(Number), restingHeartRate: expect.any(Number), sleep: expect.any(Number), coverage: 1 });
+  });
+
+  it("derives the preview sleep score and drivers from the real engine inputs", () => {
+    const preview = buildPreviewAnalytics();
+    const latest = preview.days.at(-1);
+    const latestSleep = preview.scores.findLast((score) => score.kind === "sleep");
+
+    expect(latest).toBeDefined();
+    expect(latestSleep).toBeDefined();
+    const expected = calculateSleepScore({
+      actualSleepMinutes: latest?.sleep_minutes ?? 0,
+      estimatedNeedMinutes: latest?.sleep_need_minutes ?? 0,
+      efficiencyPercent: latest?.sleep_efficiency ?? 0,
+      regularityPercent: latest?.sleep_regularity ?? 0,
+    });
+
+    expect(latestSleep).toMatchObject({
+      score: expected.score,
+      algorithm_version: expected.algorithmVersion,
+      drivers: {
+        duration: expected.durationComponent,
+        efficiency: expected.efficiencyComponent,
+        regularity: expected.regularityComponent,
+      },
+    });
+    expect(latestSleep?.score).not.toBe(86);
+  });
+
+  it("does not mix sleep score algorithm versions in the 30-day average", () => {
+    const markup = renderToStaticMarkup(createElement(SleepDetails, {
+      data: analytics({
+        days: [day({
+          sleep_minutes: 480,
+          sleep_need_minutes: 480,
+          sleep_efficiency: 92,
+          sleep_regularity: 84,
+          sleep_latency_minutes: 10,
+          cumulative_sleep_debt_minutes: 0,
+        })],
+        scores: [
+          { score_date: "2026-09-07", kind: "sleep", score: 20, drivers: {}, algorithm_version: "sleep-v0.1" },
+          { score_date: "2026-09-08", kind: "sleep", score: 80, drivers: {}, algorithm_version: "sleep-v0.2" },
+          { score_date: "2026-09-09", kind: "sleep", score: 100, drivers: {}, algorithm_version: "sleep-v0.1" },
+          { score_date: "2026-09-10", kind: "sleep", score: 90, drivers: {}, algorithm_version: "sleep-v0.2" },
+        ],
+      }),
+    }));
+
+    expect(markup).toContain('Moy. 30 j · <strong>85</strong><span> /100</span>');
+    expect(markup).not.toContain('Moy. 30 j · <strong>73</strong><span> /100</span>');
   });
 
   it("keeps a recovery day when sleep and heart-rate values are absent", () => {

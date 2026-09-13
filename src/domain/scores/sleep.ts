@@ -5,12 +5,15 @@ export type SleepScoreInput = {
   regularityPercent: number;
 };
 
+export const SLEEP_SCORE_ALGORITHM_VERSION = "sleep-v0.2" as const;
+export type SleepScoreAlgorithmVersion = typeof SLEEP_SCORE_ALGORITHM_VERSION;
+
 export type SleepScoreResult = {
   score: number;
   durationComponent: number;
   efficiencyComponent: number;
   regularityComponent: number;
-  algorithmVersion: "sleep-v0.2";
+  algorithmVersion: SleepScoreAlgorithmVersion;
 };
 
 const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
@@ -38,6 +41,6 @@ export function calculateSleepScore(input: SleepScoreInput): SleepScoreResult {
     durationComponent,
     efficiencyComponent,
     regularityComponent,
-    algorithmVersion: "sleep-v0.2",
+    algorithmVersion: SLEEP_SCORE_ALGORITHM_VERSION,
   };
 }

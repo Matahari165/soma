@@ -7,7 +7,7 @@ export const previewUser = {
 };
 
 export const previewScoreHistory = {
-  sleep: [72, 76, 74, 81, 79, 84, 86],
+  sleep: [72, 76, 74, 81, 79, 84, 93],
   recovery: [64, 68, 61, 73, 76, 78, 82],
   effort: [42, 68, 35, 72, 54, 81, 63],
 } satisfies Record<"sleep" | "recovery" | "effort", number[]>;

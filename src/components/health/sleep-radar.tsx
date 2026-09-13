@@ -24,6 +24,10 @@ export type SleepRadarDimension = {
   definition?: string;
   readingDirection?: string;
   scoreRole?: string;
+  scoreWeight?: number;
+  scoreFormula?: string;
+  scoreNormalization?: string;
+  scoreContribution?: number | null;
   comparison?: "up" | "down" | "equal" | null;
   comparisonLabel?: string | null;
   comparisonTone?: "positive" | "negative" | "neutral";
@@ -234,7 +238,7 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
             <g
               aria-controls={interactiveAxis ? detailId : undefined}
               aria-label={interactiveAxis ? `${readableDimension(dimension)}. Afficher les détails de cette dimension.` : undefined}
-              aria-pressed={interactiveAxis ? selected : undefined}
+              aria-expanded={interactiveAxis ? selected : undefined}
               className={interactiveAxis ? styles.axisButton : styles.labelGroup}
               data-selected={selected}
               key={`label-${dimension.id}-${index}`}

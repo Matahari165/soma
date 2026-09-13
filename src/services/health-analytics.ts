@@ -3,6 +3,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createCloudflareServerClient } from "@/lib/cloudflare/server";
+import { calculateSleepScore } from "@/domain/scores/sleep";
 import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
 
 export type HealthMetricDay = {
@@ -67,7 +68,7 @@ export type HealthMetricDay = {
   source_freshness: { latestMeasuredAt?: string | null; byType?: Record<string, string | null> };
 };
 
-export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown> };
+export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown>; algorithm_version?: string | null };
 export type SleepStageSegment = { type: "AWAKE" | "LIGHT" | "DEEP" | "REM" | "ASLEEP" | "RESTLESS"; startTime: string; endTime: string };
 export type HeartRateSample = { measuredAt: string; bpm: number };
 export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null };
@@ -173,25 +174,6 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       active_day: steps >= 7_500, active_day_rate_28d: 71, activity_consistency_28d: 78, weekly_load: 408 + wave * 30, acute_chronic_load_ratio: 1.04 + wave * 0.04, source_freshness: { latestMeasuredAt: date.toISOString() },
     };
   });
-  const scores = days.flatMap((day, index): ScoreDay[] => {
-    const sleepScore = Math.round(76 + Math.sin(index / 5) * 7 + index * 0.05);
-    const recoveryScore = Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07);
-    const hrvDriver = Math.round(Math.min(100, Math.max(0, 72 + Math.sin(index / 5) * 10 + index * 0.04)));
-    const restingHeartRateDriver = Math.round(Math.min(100, Math.max(0, 74 - Math.sin(index / 5) * 8 + index * 0.03)));
-    const sleepDriver = Math.round(Math.min(100, Math.max(0, sleepScore)));
-    return [
-      { score_date: day.metric_date, kind: "sleep", score: sleepScore, drivers: {} },
-      { score_date: day.metric_date, kind: "recovery", score: recoveryScore, drivers: { hrv: hrvDriver, restingHeartRate: restingHeartRateDriver, sleep: sleepDriver, coverage: 1 } },
-      { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
-    ];
-  });
-  const canonicalDays = days.slice(-previewScoreHistory.sleep.length);
-  canonicalDays.forEach((day, index) => {
-    const scoreIndex = scores.findIndex((score) => score.score_date === day.metric_date);
-    scores[scoreIndex] = { ...scores[scoreIndex], score: previewScoreHistory.sleep[index] };
-    scores[scoreIndex + 1] = { ...scores[scoreIndex + 1], score: previewScoreHistory.recovery[index] };
-    scores[scoreIndex + 2] = { ...scores[scoreIndex + 2], score: previewScoreHistory.effort[index] };
-  });
   const latestDay = days.at(-1);
   if (latestDay) {
     Object.assign(latestDay, {
@@ -204,6 +186,39 @@ export function buildPreviewAnalytics(): HealthAnalytics {
       zone_minutes: 33,
     });
   }
+  const scores = days.flatMap((day, index): ScoreDay[] => {
+    const sleep = day.sleep_minutes !== null && day.sleep_need_minutes !== null && day.sleep_efficiency !== null && day.sleep_regularity !== null && day.sleep_need_minutes > 0
+      ? calculateSleepScore({
+        actualSleepMinutes: day.sleep_minutes,
+        estimatedNeedMinutes: day.sleep_need_minutes,
+        efficiencyPercent: day.sleep_efficiency,
+        regularityPercent: day.sleep_regularity,
+      })
+      : null;
+    const recoveryScore = Math.round(72 + Math.sin(index / 5) * 8 + index * 0.07);
+    const hrvDriver = Math.round(Math.min(100, Math.max(0, 72 + Math.sin(index / 5) * 10 + index * 0.04)));
+    const restingHeartRateDriver = Math.round(Math.min(100, Math.max(0, 74 - Math.sin(index / 5) * 8 + index * 0.03)));
+    const sleepDriver = sleep?.score ?? null;
+    return [
+      {
+        score_date: day.metric_date,
+        kind: "sleep",
+        score: sleep?.score ?? null,
+        drivers: sleep
+          ? { duration: sleep.durationComponent, efficiency: sleep.efficiencyComponent, regularity: sleep.regularityComponent }
+          : {},
+        algorithm_version: sleep?.algorithmVersion ?? null,
+      },
+      { score_date: day.metric_date, kind: "recovery", score: recoveryScore, drivers: { hrv: hrvDriver, restingHeartRate: restingHeartRateDriver, sleep: sleepDriver, coverage: 1 } },
+      { score_date: day.metric_date, kind: "effort", score: Math.round(58 + Math.sin(index / 5) * 12), drivers: { coverage: 1 } },
+    ];
+  });
+  const canonicalDays = days.slice(-previewScoreHistory.recovery.length);
+  canonicalDays.forEach((day, index) => {
+    const scoreIndex = scores.findIndex((score) => score.score_date === day.metric_date);
+    scores[scoreIndex + 1] = { ...scores[scoreIndex + 1], score: previewScoreHistory.recovery[index] };
+    scores[scoreIndex + 2] = { ...scores[scoreIndex + 2], score: previewScoreHistory.effort[index] };
+  });
   const lastDate = days.at(-1)?.metric_date ?? now.toISOString().slice(0, 10);
   const lastBedtime = new Date(`${lastDate}T12:00:00Z`);
   lastBedtime.setUTCDate(lastBedtime.getUTCDate() - 1);
@@ -283,7 +298,7 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
     supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
     (() => {
-      const query = supabase.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false });
+      const query = supabase.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", user.id).order("score_date", { ascending: false });
       if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(91);
       return query.limit(273);
     })(),

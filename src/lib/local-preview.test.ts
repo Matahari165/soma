@@ -12,6 +12,7 @@ describe("local preview health contract", () => {
       expect(detailedScore).toBe(metric.score);
       expect(metric.history).toEqual(previewScoreHistory[metric.kind]);
     }
+    expect(previewDashboard.scores.find((metric) => metric.kind === "sleep")?.score).toBe(93);
   });
 
   it("keeps the latest visible metrics aligned with Today", () => {

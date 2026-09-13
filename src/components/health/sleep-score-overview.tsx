@@ -10,6 +10,8 @@ export type SleepScoreComponent = {
   label: string;
   weight: number;
   sourceValueLabel: string;
+  formula: string;
+  normalization: string;
   normalizedValue: number | null;
   contribution: number | null;
 };
@@ -20,11 +22,18 @@ export type SleepScoreBreakdown = {
   components: readonly SleepScoreComponent[];
 };
 
+export type SleepScoreSupplement = {
+  title: string;
+  rows: readonly { label: string; value: string }[];
+  note?: string;
+};
+
 type SleepScoreOverviewProps = {
   dimensions: readonly SleepRadarDimension[];
   score: number | null;
   average: number | null;
   breakdown: SleepScoreBreakdown | null;
+  scoreSupplement?: SleepScoreSupplement;
 };
 
 type SelectedDetail = "score" | string;
@@ -82,6 +91,10 @@ function ScoreBreakdownDetail({ breakdown }: { breakdown: SleepScoreBreakdown | 
           <span><small>Normalisée</small><strong>{formatNormalized(component.normalizedValue)}<em>/100</em></strong></span>
           <span><small>Contribution</small><strong>{formatContribution(component.contribution)}<em> pts</em></strong></span>
         </dd>
+        <dd className={styles.sleepBreakdownFormula}>
+          <span><small>Formule</small><strong>{component.formula}</strong></span>
+          <span><small>Normalisation</small><strong>{component.normalization}</strong></span>
+        </dd>
       </div>)}
     </dl>
   </>;
@@ -97,11 +110,16 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
       <div><dt>Sens de lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div className={styles.sleepDimensionRole}><dt>Rôle</dt><dd>{dimension.scoreRole || "Métrique de contexte · non incluse dans le score Sommeil"}</dd></div>
     </dl>
+    {(dimension.scoreFormula || dimension.scoreNormalization || dimension.scoreWeight !== undefined) && <dl className={styles.sleepScoreAxisMetrics}>
+      <div><dt>Formule</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
+      <div><dt>Normalisation</dt><dd>{dimension.scoreNormalization || "—"}</dd></div>
+      <div><dt>Contribution{dimension.scoreWeight !== undefined ? ` · ${dimension.scoreWeight} %` : ""}</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} pts` : "Indisponible"}</dd></div>
+    </dl>}
     {dimension.definition && <p className={styles.sleepDetailSummary}>{dimension.definition}</p>}
   </>;
 }
 
-export function SleepScoreOverview({ dimensions, score, average, breakdown }: SleepScoreOverviewProps) {
+export function SleepScoreOverview({ dimensions, score, average, breakdown, scoreSupplement }: SleepScoreOverviewProps) {
   const [selectedDetail, setSelectedDetail] = useState<SelectedDetail | null>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -156,20 +174,29 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown }: Sl
   }
 
   return <div className={styles.sleepScoreOverview}>
-    <button
-      aria-controls={DETAIL_ID}
-      aria-expanded={selectedDetail === "score"}
-      aria-label={`${scoreDescription(score)}. Afficher la décomposition du score.`}
-      className={styles.scorePanel}
-      data-detail-selected={selectedDetail === "score"}
-      onClick={selectScore}
-      ref={scoreButtonRef}
-      type="button"
-    >
-      <span>Score Sommeil</span>
-      <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
-      <p className={styles.scoreAverage}>Moy. 30 j · <strong>{formatScore(average)}</strong><span> /100</span></p>
-    </button>
+    <div className={styles.scoreColumn}>
+      <button
+        aria-controls={DETAIL_ID}
+        aria-expanded={selectedDetail === "score"}
+        aria-label={`${scoreDescription(score)}. Afficher la décomposition du score.`}
+        className={styles.scorePanel}
+        data-detail-selected={selectedDetail === "score"}
+        onClick={selectScore}
+        ref={scoreButtonRef}
+        type="button"
+      >
+        <span>Score Sommeil</span>
+        <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
+        <p className={styles.scoreAverage}>Moy. 30 j · <strong>{formatScore(average)}</strong><span> /100</span></p>
+      </button>
+      {scoreSupplement && <div className={styles.nextNight}>
+        <h2>{scoreSupplement.title}</h2>
+        <dl className={styles.nextNightGrid}>
+          {scoreSupplement.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
+        </dl>
+        {scoreSupplement.note && <p className={styles.unavailableNote}>{scoreSupplement.note}</p>}
+      </div>}
+    </div>
 
     <div className={styles.sleepRadarStage} data-detail-open={detailOpen}>
       <SleepRadar
