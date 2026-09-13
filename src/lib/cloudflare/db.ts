@@ -842,10 +842,7 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     if (!this.mutation) return this.shape(await this.readRows());
     if (this.mutation.kind === "insert" || this.mutation.kind === "upsert") {
       const mutation = this.mutation;
-      // Physical compatibility tables have their own exact schemas. In
-      // particular, soma_sessions is keyed by token_hash and has no id
-      // column, so do not inject the logical-row id default here.
-      const rows = mutation.values.map((row) => this.isPhysicalTable() ? cleanRow(row) : withDefaults(row));
+      const rows = mutation.values.map(withDefaults);
       await writeRows(this.table, rows, mutation.kind === "upsert" ? mutation.onConflict : undefined, mutation.kind === "upsert" && mutation.ignoreDuplicates);
       return this.shape(rows);
     }
@@ -1116,7 +1113,10 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
 
     const mutation = this.mutation;
     if (mutation.kind === "insert" || mutation.kind === "upsert") {
-      const rows = mutation.values.map(withDefaults);
+      // Physical compatibility tables have their own exact schemas. In
+      // particular, soma_sessions is keyed by token_hash and has no id
+      // column, so do not inject the logical-row id default here.
+      const rows = mutation.values.map((row) => this.isPhysicalTable() ? cleanRow(row) : withDefaults(row));
       const isUpsert = mutation.kind === "upsert";
       const onConflict = isUpsert ? mutation.onConflict : undefined;
       const ignoreDuplicates = isUpsert ? mutation.ignoreDuplicates : false;
