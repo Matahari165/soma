@@ -1,7 +1,6 @@
 import "server-only";
 
-import { cloudflareArchives } from "@/lib/cloudflare/db";
-import { getR2JsonObject, putR2JsonObject } from "@/lib/r2";
+import { deleteR2Object, getR2JsonObject, putR2JsonObject } from "@/lib/r2";
 
 export const LAB_MATRIX_CACHE_VERSION = "matrix-v16";
 const LAB_MATRIX_PERIOD_KEYS = ["15", "30", "90", "all"] as const;
@@ -23,5 +22,5 @@ export async function putLabMatrixCacheObject(userId: string, periodKey: string,
 }
 
 export async function deleteLabMatrixCache(userId: string) {
-  await Promise.all(labMatrixCacheObjectKeys(userId).map((key) => cloudflareArchives().delete(key)));
+  await Promise.all(labMatrixCacheObjectKeys(userId).map((key) => deleteR2Object(key)));
 }
