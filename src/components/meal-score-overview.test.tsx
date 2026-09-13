@@ -31,15 +31,19 @@ describe("MealScoreOverviewPanel", () => {
   it("présente un état vide explicite sans transformer l'absence en zéro", () => {
     const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={null} rolling={[]} trend={[]} />);
 
-    expect(html).toContain("Équilibre alimentaire");
+    expect(html).toContain('aria-label="Équilibre alimentaire"');
+    expect(html).not.toContain(">Équilibre alimentaire</h2>");
     expect(html).toContain("Score indisponible");
     expect(html).toContain("Couverture");
     expect(html).toContain("Confiance");
     expect(html).toContain("Aucun historique de score disponible.");
+    expect(html).toContain("Aucune moyenne disponible.");
+    expect(html).toContain("Historique du score");
+    expect(html).not.toContain("Détail des 7 dimensions");
     expect(html).not.toContain(">0 %</dd>");
   });
 
-  it("rend le score complet, les sept dimensions, pondérations et contributions", () => {
+  it("rend le radar interactif et garde les axes accessibles sans confondre null et zéro", () => {
     const html = renderToStaticMarkup(
       <MealScoreOverviewPanel
         daily={completeScore}
@@ -58,18 +62,19 @@ describe("MealScoreOverviewPanel", () => {
     for (const label of ["Variété", "Qualité alimentaire", "Sucre ajouté", "Exposition liquide / concentrée", "Ultra-transformation", "Couverture nutritionnelle", "Énergie"]) {
       expect(html).toContain(label);
     }
-    for (const weight of ["15 %", "12 %", "13 %"]) expect(html).toContain(weight);
-    expect(html).toMatch(/Contribution/);
-    expect(html).toMatch(/12[,.]6/);
-    expect(html).toContain("10 / 14 jours couverts");
+    expect(html).toContain("Contribution");
+    expect(html).toContain("8 / 14 jours observés");
     expect(html).toContain("12 / 28 jours observés");
     expect(html).toContain("sans barre");
-    expect(html).toContain('role="img"');
+    expect(html.match(/role="img"/g)).toHaveLength(1);
+    expect(html.match(/role="button"/g)).toHaveLength(7);
+    expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(7);
+    expect(html).toContain('data-key="variety"');
+    expect(html).toContain('aria-label="Sucre ajouté. Score indisponible. Afficher les détails de cette dimension."');
+    expect(html).toContain("Profil des sept dimensions de l’équilibre alimentaire");
+    expect(html).not.toContain("NaN");
     expect(html).toContain("Point positif");
     expect(html).toContain("Point négatif");
-    expect(html).toMatch(/data-key="addedSugar"[^>]*data-state="insufficient"/);
-    const missingDimension = html.slice(html.indexOf('data-key="addedSugar"'), html.indexOf('data-key="sugarExposure"'));
-    expect(missingDimension).toContain("<b>—</b>");
-    expect(missingDimension).not.toContain("<b>0</b>");
+    expect(html).not.toContain("Détail des 7 dimensions");
   });
 });

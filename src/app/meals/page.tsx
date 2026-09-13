@@ -25,6 +25,8 @@ import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
+import styles from "./meals-page.module.css";
+
 export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 type LoadResult<T> = { ok: true; value: T } | { ok: false };
@@ -81,8 +83,8 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           : "Les recettes personnelles sont momentanément indisponibles.",
       })),
     isLocalPreviewMode()
-      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -29) && record.mealDate <= requestedDate))
-      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -29), to: requestedDate })),
+      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -27) && record.mealDate <= requestedDate))
+      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -27), to: requestedDate })),
     loadSafely(() => loadNutritionTargetsForUser(user.id)),
     loadSafely(async () => {
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;
@@ -110,23 +112,30 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Les compléments sont momentanément indisponibles." : null;
 
   return (
-    <div id="main-page-content" className="meals-page" lang="fr">
-      {initialData ? <MealJournal date={requestedDate} today={today} initialData={initialData} variant="meals" historyDays={6}>
+    <main id="main-page-content" className={`${styles.page} meals-page`} lang="fr">
+      <header className={styles.header}><h1>Alimentation</h1></header>
+      <div className={styles.flow}>
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
           trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore }))}
           className="meals-page-score"
         />
+        {initialData ? (
+          <section className={styles.journal} aria-labelledby="meals-journal-title">
+            <h2 id="meals-journal-title">Journal des repas</h2>
+            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals hideAddMealButton />
+          </section>
+        ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
           ? <>
-            <MealFoodCategoryTrends points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
+            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
           </>
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
-      </MealJournal> : <MealsInitialLoadError kind="meals" />}
-    </div>
+      </div>
+    </main>
   );
 }

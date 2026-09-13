@@ -569,7 +569,7 @@
 .ratingSaveStatus[role="alert"] { color: var(--danger); }
 .ratingFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .ratingFieldset legend { margin-bottom: 7px; color: var(--ink-soft); font-size: .74rem; }
-.ratingScale { display: grid; grid-template-columns: minmax(68px, 1.4fr) repeat(5, minmax(30px, 1fr)); gap: 4px; }
+.ratingScale { display: grid; grid-template-columns: minmax(68px, 1.4fr) repeat(5, minmax(44px, 1fr)); gap: 4px; }
 .ratingChoice,
 .ratingSelected { min-height: 44px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: transparent; color: var(--ink-soft); font-family: var(--font-soma-mono), monospace; font-size: .66rem; }
 .ratingChoice:hover { border-color: var(--ink); color: var(--ink); }
@@ -3019,7 +3019,7 @@
 
 :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput {
   width: min(100%, 320px);
-  transition: width 180ms ease-out;
+  transition: none;
 }
 
 :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput:focus-within {
@@ -3169,5 +3169,574 @@
   :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-supplements),
   :global(.meals-page) .mealsPageRoot .mealsSecondary :global(.meals-page-recipes) {
     grid-column: 1 / -1;
+  }
+}
+
+/* Mobile safety contract: long French labels must shrink inside the capture
+   rail instead of pushing the photo action outside the viewport. */
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealActions {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 8px;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty :is(
+    .photoInputSingle,
+    .captureButtonCompact,
+    .analyzeButton
+  ) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .captureButtonCompact {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  :global(.meals-page) .mealsPageRoot :is(.headerMetrics, .headerMetric, .headerMetric > strong) {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* /meals journal: the lab renderer is shared with Personal Lab, but the meals
+   route has the width to read each slot as one compact horizontal record. The
+   route scope keeps the homepage composition unchanged. */
+:global(.meals-page) .labRoot {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .labRoot > .labHeader {
+  position: static;
+  min-height: 0;
+  height: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+:global(.meals-page) .labRoot > .labHeader > button {
+  position: absolute;
+  top: -52px;
+  right: 0;
+}
+
+:global(.meals-page) .labRoot > .mealList {
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+  margin: 0;
+}
+
+:global(.meals-page) .labRoot > .mealList > div {
+  min-width: 0;
+  border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 10%, var(--lab-canvas));
+}
+
+:global(.meals-page) .labRoot > .mealList > div:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--lab-text-primary) 10%, var(--lab-canvas));
+}
+
+:global(.meals-page) .labRoot .mealCard,
+:global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  grid-template-columns: minmax(144px, .34fr) minmax(0, 1.66fr);
+  column-gap: clamp(20px, 3vw, 40px);
+  padding: 16px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealHeader {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealTitle,
+:global(.meals-page) .labRoot .mealCard .mealTitle h3 {
+  min-width: 0;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealTitle h3 {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealBody,
+:global(.meals-page) .labRoot .mealCard > .emptyMealPrompt,
+:global(.meals-page) .labRoot .mealCard > .skippedState {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealBody {
+  padding: 0;
+}
+
+:global(.meals-page) .labRoot .mealCard > .skippedState {
+  align-self: start;
+  padding: 0;
+}
+
+:global(.meals-page) .labRoot .labMealSummary {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  padding: 0;
+}
+
+:global(.meals-page) .labRoot .labMealDetails {
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 0 12px;
+}
+
+:global(.meals-page) .labRoot .labMealDishes {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.meals-page) .labRoot .labMealNutrition {
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0 16px;
+  padding: 8px 0 0;
+}
+
+:global(.meals-page) .labRoot .labMealNutrition > span[data-metric="calories"] {
+  grid-column: auto !important;
+  padding: 0;
+}
+
+:global(.meals-page) .labRoot .labMealNutrition [data-metric="calories"] strong {
+  font-size: 22px !important;
+  line-height: 26px;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput {
+  width: 100%;
+  min-width: 0;
+  grid-column: 1;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+  display: grid;
+  width: auto;
+  min-width: 0;
+  grid-column: 2;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: var(--lab-radius-xs);
+  font-size: var(--lab-type-label);
+  line-height: 17px;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle,
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  width: auto;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  :global(.meals-page) .labRoot > .labHeader > button { top: -48px; }
+
+  :global(.meals-page) .labRoot .mealCard,
+  :global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+    display: block;
+    padding: 20px 0 22px;
+  }
+
+  :global(.meals-page) .labRoot .mealCard .mealHeader {
+    display: flex;
+    width: 100%;
+    min-height: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  :global(.meals-page) .labRoot .mealCard .mealBody,
+  :global(.meals-page) .labRoot .mealCard > .emptyMealPrompt,
+  :global(.meals-page) .labRoot .mealCard > .skippedState {
+    width: 100%;
+  }
+
+  :global(.meals-page) .labRoot .labMealDetails { flex-wrap: wrap; }
+  :global(.meals-page) .labRoot .labMealDishes { white-space: normal; }
+  :global(.meals-page) .labRoot .labMealNutrition {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px 8px;
+  }
+
+  :global(.meals-page) .labRoot .labMealNutrition > span[data-metric="calories"] {
+    grid-column: 1 / -1 !important;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput,
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+    grid-column: 1;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+    min-width: 0;
+  }
+}
+
+/* Compact meal rhythm: let each state follow its content, then keep a clear
+   structural interval between slots. The controls themselves stay at 44px. */
+:global(html[data-lab-theme]) .labRoot > .mealList {
+  gap: 32px;
+}
+
+:global(html[data-lab-theme]) .labRoot :is(.mealCardConfirmed, .mealCardEmpty) {
+  min-height: 0;
+  padding-top: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
+  padding-bottom: 12px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealSummary {
+  gap: 16px;
+}
+
+:global(html[data-lab-theme]) .labRoot .labMealNutrition {
+  min-height: 0;
+  padding-top: 12px;
+}
+
+/* Personal Lab empty capture: keep the default state short, while the
+   44px actions remain fully usable and filled analyses can grow naturally. */
+:global(html[data-lab-theme]) :global(.personal-lab-meal-column) .labRoot .mealCardEmpty {
+  padding-bottom: 0;
+}
+
+:global(html[data-lab-theme]) :global(.personal-lab-meal-column) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  height: 52px;
+  min-height: 52px;
+  padding-bottom: 12px;
+}
+
+:global(html[data-lab-theme]) :global(.personal-lab-meal-column) .labRoot .mealCardEmpty .emptyMealActions {
+  min-height: 44px;
+  padding-top: 0;
+}
+
+/* /meals follows the same quiet, line-led date rail as the Personal Lab.
+   Keep the structure and interaction contract identical without widening the
+   global selector outside this route. */
+:global(.meals-page) .labRoot .personal-lab-day-strip {
+  display: block;
+  min-height: 44px;
+  height: auto;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  height: 44px;
+  min-height: 44px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid rgba(238, 238, 238, .14);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  flex: 1 0 96px;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(238, 238, 238, .62);
+  font: 400 12px/1.15 var(--font-soma-ui), ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button > :is(span:not(.sr-only), small) {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button > small {
+  color: inherit;
+  font: 400 12px/1.15 var(--font-soma-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button:is(:hover, :focus-visible) {
+  background: rgba(238, 238, 238, .045);
+  color: #f1f1f1;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button[aria-current="date"] {
+  background: rgba(238, 238, 238, .07);
+  box-shadow: inset 0 -1px #eee;
+  color: #f1f1f1;
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button[aria-current="date"] small {
+  color: rgba(241, 241, 241, .78);
+}
+
+:global(.meals-page) .labRoot .personal-lab-day-strip__days > button:focus-visible {
+  outline: 2px solid #ddd;
+  outline-offset: 3px;
+}
+
+/* The route has one action per meal row; its empty capture state must not
+   reserve a large blank panel or let the two actions collide. */
+:global(.meals-page) .labRoot > .mealList > div + div { padding-top: 8px; }
+
+:global(.meals-page) .labRoot .mealCard,
+:global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+  min-height: 0;
+  padding-block: 10px;
+}
+
+:global(.meals-page) .labRoot .mealCard .mealHeader {
+  margin-bottom: 0;
+  padding-bottom: 6px;
+}
+
+:global(.meals-page) .labRoot .labMealSummary { gap: 6px; }
+:global(.meals-page) .labRoot .labMealNutrition { padding-top: 6px; }
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt {
+  grid-template-columns: minmax(180px, minmax(0, 1fr)) minmax(0, max-content) !important;
+  align-items: center;
+  gap: 16px;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput {
+  width: min(100%, 360px);
+  max-width: 360px;
+  min-width: 0;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+  display: flex;
+  width: auto;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle,
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .captureButtonCompact,
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  min-height: 44px;
+  height: 44px;
+  white-space: nowrap;
+}
+
+:global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+  padding-inline: 14px;
+}
+
+@media (max-width: 700px) {
+  :global(.meals-page) .labRoot .personal-lab-day-strip__days {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  :global(.meals-page) .labRoot .personal-lab-day-strip__days::-webkit-scrollbar { display: none; }
+  :global(.meals-page) .labRoot .personal-lab-day-strip__days > button { flex-basis: 96px; }
+
+  :global(.meals-page) .labRoot .mealCard,
+  :global(.meals-page) .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+    padding-block: 12px;
+  }
+
+  :global(.meals-page) .labRoot > .mealList > div + div { padding-top: 4px; }
+
+  :global(.meals-page) .labRoot .mealCard .mealHeader {
+    margin-bottom: 6px;
+    padding-bottom: 0;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .textInput,
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+    grid-column: 1;
+    width: 100%;
+    max-width: none;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+    height: 44px;
+    min-height: 44px;
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt > .emptyMealActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 8px;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .photoInputSingle,
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton,
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .captureButtonCompact {
+    width: 100%;
+    min-width: 0;
+  }
+
+  :global(.meals-page) .labRoot .mealCardEmpty .emptyMealActions .analyzeButton {
+    padding-inline: 12px;
+  }
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 0 8px;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealActions {
+  min-height: 44px;
+  gap: 12px;
+  padding-top: 0;
+}
+
+:global(html[data-lab-theme]) .labRoot .mealCardEmpty .analyzeButton {
+  min-height: 44px;
+  height: 44px;
+}
+
+/* The meals route uses separators for rhythm; the same content-driven sizing
+   must win over the older desktop minimums above. */
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList {
+  gap: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList > div + div {
+  padding-top: 16px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot :is(.mealCard, .mealCardConfirmed, .mealCardEmpty) {
+  min-height: 0;
+  grid-template-columns: minmax(180px, .34fr) minmax(0, 1.66fr);
+  padding-block: 12px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCard .mealHeader {
+  padding-bottom: 8px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .mealCardEmpty .emptyMealPrompt .textInput textarea {
+  height: 48px;
+  min-height: 48px;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) .labRoot > .mealList {
+    gap: 24px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList {
+    gap: 0;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot :is(.mealCard, .mealCardConfirmed, .mealCardEmpty) {
+    padding-block: 16px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList > div + div {
+    padding-top: 12px;
   }
 }

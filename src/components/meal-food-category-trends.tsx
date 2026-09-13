@@ -9,25 +9,26 @@ import styles from "./meal-food-category-trends.module.css";
 export type MealFoodCategoryTrendsProps = {
   points: readonly MealFoodGroupTrendPoint[];
   className?: string;
+  illustrative?: boolean;
 };
 
 const CATEGORY_COLORS: Record<MealFoodGroup, string> = {
-  fruit: "#d4a35f",
-  vegetable: "#a8be8b",
-  legume: "#c5a87a",
-  whole_grain: "#b7a67c",
-  refined_grain: "#8f9aa0",
-  potato: "#c98d67",
-  animal_protein: "#c7877e",
-  plant_protein: "#8daa9a",
-  egg: "#e2ca83",
-  dairy: "#d1d5cc",
-  nuts_seeds: "#b9a17c",
-  added_fat: "#d6a84e",
-  sauce: "#9c8a83",
-  sweet: "#c98d9c",
-  beverage: "#7fa1b0",
-  other: "#737b82",
+  fruit: "#f1f1f1",
+  vegetable: "#dddddd",
+  legume: "#c9c9c9",
+  whole_grain: "#b5b5b5",
+  refined_grain: "#a1a1a1",
+  potato: "#8d8d8d",
+  animal_protein: "#797979",
+  plant_protein: "#e7e7e7",
+  egg: "#d3d3d3",
+  dairy: "#bfbfbf",
+  nuts_seeds: "#ababab",
+  added_fat: "#979797",
+  sauce: "#838383",
+  sweet: "#6f6f6f",
+  beverage: "#5b5b5b",
+  other: "#474747",
 };
 
 function formatDate(date: string) {
@@ -61,8 +62,24 @@ function chartDescription(points: readonly MealFoodGroupTrendPoint[], groups: re
   return `${descriptions.join(". ")}. Les familles peuvent se croiser : il s’agit d’occurrences classées, pas d’une part calorique.`;
 }
 
-export function MealFoodCategoryTrends({ points, className }: MealFoodCategoryTrendsProps) {
-  const totals = totalsFor(points);
+function withIllustrativePreview(points: readonly MealFoodGroupTrendPoint[]) {
+  const firstIllustratedIndex = Math.max(0, points.length - 12);
+  const patterns: ReadonlyArray<NonNullable<MealFoodGroupTrendPoint["counts"]>> = [
+    { vegetable: 4, animal_protein: 2, refined_grain: 2, fruit: 2, dairy: 1, nuts_seeds: 1 },
+    { vegetable: 3, plant_protein: 2, whole_grain: 2, fruit: 2, added_fat: 1 },
+    { vegetable: 5, animal_protein: 2, potato: 1, dairy: 1, fruit: 1 },
+    { vegetable: 3, egg: 2, whole_grain: 2, fruit: 2, nuts_seeds: 1 },
+  ];
+  return points.map((point, index) => (
+    index >= firstIllustratedIndex && point.counts === null
+      ? { ...point, counts: patterns[(index - firstIllustratedIndex) % patterns.length] }
+      : point
+  ));
+}
+
+export function MealFoodCategoryTrends({ points, className, illustrative = false }: MealFoodCategoryTrendsProps) {
+  const chartPoints = illustrative ? withIllustrativePreview(points) : points;
+  const totals = totalsFor(chartPoints);
   const hasClassifiedData = totals.size > 0;
   const groups = [...totals.entries()]
     .sort((first, second) => second[1] - first[1])
@@ -86,8 +103,8 @@ export function MealFoodCategoryTrends({ points, className }: MealFoodCategoryTr
         <figure className={styles.figure}>
           <div className={styles.chart} role="img" aria-labelledby="meal-category-trends-title" aria-describedby="meal-category-trends-description">
             <div className={styles.scale} aria-hidden="true"><span>100 %</span><span>50 %</span><span>0</span></div>
-            <div className={styles.columns} style={{ "--point-count": Math.max(points.length, 1) } as CSSProperties}>
-              {points.map((point) => {
+            <div className={styles.columns} style={{ "--point-count": Math.max(chartPoints.length, 1) } as CSSProperties}>
+              {chartPoints.map((point) => {
                 const counts = point.counts;
                 const total = Object.values(counts ?? {}).reduce((sum, value) => sum + (Number.isFinite(value) && value > 0 ? value : 0), 0);
                 const remainder = Object.entries(counts ?? {}).reduce((sum, [key, value]) => selectedGroups.has(key as MealFoodGroup) || key === "other" || !Number.isFinite(value) || value <= 0 ? sum : sum + value, 0);
@@ -106,12 +123,13 @@ export function MealFoodCategoryTrends({ points, className }: MealFoodCategoryTr
             </div>
           </div>
           <figcaption className={styles.caption}><span>{points[0] ? formatDate(points[0].date) : "—"}</span><span>{points.at(-1) ? formatDate(points.at(-1)!.date) : "—"}</span></figcaption>
-          <p id="meal-category-trends-description" className={styles.srOnly}>{chartDescription(points, visibleGroups)}</p>
+          <p id="meal-category-trends-description" className={styles.srOnly}>{chartDescription(chartPoints, visibleGroups)}</p>
         </figure>
       ) : <p className={styles.empty}>{points.length ? "Aucune famille alimentaire classée sur cette période." : "Aucune période disponible pour cette répartition."}</p>}
       {hasClassifiedData && <ul className={styles.legend} aria-label="Légende des familles alimentaires">
         {visibleGroups.map((group) => <li key={group}><span className={styles.swatch} style={{ background: CATEGORY_COLORS[group] }} aria-hidden="true" /><span>{MEAL_FOOD_GROUP_LABELS[group]}</span></li>)}
       </ul>}
+      {illustrative && <p className={styles.previewNote}>APERÇU LOCAL · DONNÉES ILLUSTRATIVES</p>}
     </section>
   );
 }

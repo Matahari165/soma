@@ -113,6 +113,12 @@ describe("MealJournal", () => {
     expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
   });
 
+  it("keeps seven days in the lab date rail even when a route passes a shorter hint", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation date={date} today={date} historyDays={6} initialData={{ date, meals: {} }} />);
+
+    expect(html.match(/aria-pressed=/g)).toHaveLength(7);
+  });
+
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 
@@ -592,7 +598,7 @@ describe("apiMealToRecord", () => {
         status: "completed",
         error: null,
         result: {
-          foods: [{ name: "Yaourt", portion: "1 pot", estimatedGrams: 125, preparation: "nature", course: "dessert", sugarGrams: { low: 8, likely: 10, high: 12 }, confidence: "high" }],
+        foods: [{ id: "food-1", name: "Yaourt", portion: "1 pot", estimatedGrams: 125, preparation: "nature", course: "dessert", alcoholic: false, novaGroup: 2, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["minimally_processed"], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed" }, sugarGrams: { low: 8, likely: 10, high: 12 }, confidence: "high" }],
           totals: { calories: { low: 120, likely: 150, high: 180 }, proteinGrams: null, sugarGrams: { low: 8, likely: 10, high: 12 } },
           confidence: "high",
           summary: "Petit déjeuner simple.",
@@ -606,7 +612,7 @@ describe("apiMealToRecord", () => {
     expect(meal.analysis?.calories).toEqual({ low: 120, likely: 150, high: 180 });
     expect(meal.analysis?.proteinGrams).toEqual({ low: null, likely: null, high: null });
     expect(meal.analysis?.sugarGrams).toEqual({ low: 8, likely: 10, high: 12 });
-    expect(meal.analysis?.ingredients[0]).toMatchObject({ estimatedGrams: 125, preparation: "nature", course: "dessert", sugarGrams: { low: 8, likely: 10, high: 12 } });
+    expect(meal.analysis?.ingredients[0]).toMatchObject({ id: "food-1", sourceId: "food-1", estimatedGrams: 125, preparation: "nature", course: "dessert", novaGroup: 2, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["minimally_processed"], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed" }, sugarGrams: { low: 8, likely: 10, high: 12 } });
   });
 
   it("keeps the last successful analysis visible after a failed retry", () => {
@@ -643,5 +649,27 @@ describe("apiMealToRecord", () => {
     });
 
     expect(payload.totals.calories).toEqual({ low: 300, high: 500 });
+  });
+
+  it("preserves rich food observations when confirming an analysis", () => {
+    const payload = recordAnalysisToApi({
+      ingredients: [{
+        id: "food-1",
+        sourceId: "food-1",
+        name: "Jus",
+        portion: "250 ml",
+        estimatedGrams: null,
+        countedInTotals: true,
+        novaGroup: 4,
+        sugarExposure: { concentrated: true, liquid: true },
+        qualityProperties: [],
+        observation: { portion: "observed", novaGroup: "observed", sugarExposure: "observed", qualityProperties: "none_observed" },
+        confidence: "medium",
+      }],
+      calories: { low: null, high: null },
+      proteinGrams: { low: null, high: null },
+    });
+
+    expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 });

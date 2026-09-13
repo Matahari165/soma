@@ -96,6 +96,7 @@ type Props = {
   historyDays?: number;
   variant?: "page" | "home" | "lab" | "meals";
   publishMealTotals?: boolean;
+  hideAddMealButton?: boolean;
 };
 
 type LoadState = "loading" | "ready" | "error";
@@ -409,6 +410,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
     dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
     calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
     foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({
+      id: ingredient.sourceId,
       name: ingredient.name.trim(),
       preparation: ingredient.preparation?.trim() || null,
       portion: ingredient.portion.trim() || null,
@@ -423,6 +425,10 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       evidenceSource: ingredient.evidenceSource,
       evidencePhotoIds: ingredient.evidencePhotoIds,
       quantity: ingredient.quantity ?? null,
+      novaGroup: ingredient.novaGroup ?? null,
+      sugarExposure: ingredient.sugarExposure ?? null,
+      qualityProperties: ingredient.qualityProperties,
+      observation: ingredient.observation,
       calories: normalizedApiRange(ingredient.calories),
       proteinGrams: normalizedApiRange(ingredient.proteinGrams),
       carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams),
@@ -434,7 +440,8 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
     })),
     totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
     confidence: analysis.confidence ?? "medium",
-    uncertainties: analysis.note ? [analysis.note.slice(0, 300)] : [],
+    uncertainties: analysis.uncertainties?.length ? analysis.uncertainties.slice(0, 12).map((item) => item.slice(0, 300)) : analysis.note ? [analysis.note.slice(0, 300)] : [],
+    uncertaintySignals: analysis.uncertaintySignals,
   };
 }
 
@@ -940,14 +947,14 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled }: { onAddMeal: () => void; addDisabled: boolean }) {
+function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false }: { onAddMeal: () => void; addDisabled: boolean; hideAddMealButton?: boolean }) {
   return <header className={styles.labHeader}>
     <h2 id="meal-journal-title" className="sr-only">Repas</h2>
-    <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>
+    {!hideAddMealButton && <button type="button" aria-label="Ajouter un repas" title="Ajouter un repas" disabled={addDisabled} onClick={onAddMeal} style={{ marginLeft: "auto" }}><Plus size={17} aria-hidden="true" /></button>}
   </header>;
 }
 
-export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false }: Props) {
+export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, hideAddMealButton = false }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -1329,15 +1336,17 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     void saveMeal(meal);
   };
 
-  const historyDates = mealHistoryDates(selectedDate, today, variant === "meals" ? Math.max(7, historyDays ?? 7) : historyDays ?? 7);
+  // The date rail is a seven-day contract in every journal surface. Keep the
+  // lower bound here so a route cannot accidentally render only six days.
+  const historyDates = mealHistoryDates(selectedDate, today, Math.max(7, historyDays ?? 7));
   // Keep the newest day on the left, like the shared Personal Lab selector.
   const visibleHistoryDates = historyDates;
-  const internalDateNavigation = showDateNavigation ? <nav className={styles.historyNavigation} aria-label="Historique des repas">
+  const internalDateNavigation = showDateNavigation ? <nav className={`${styles.historyNavigation} personal-lab-day-strip`} aria-label="Historique des repas">
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled} aria-label="Jours précédents" onClick={() => selectDate(shiftIsoDate(selectedDate, -1))}>‹</button>}
-    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""}`} role="group" aria-label="Sept jours">
+    <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""} personal-lab-day-strip__days`} role="group" aria-label="Jours disponibles">
       {visibleHistoryDates.map((historyDate) => {
-        const label = compactDayLabel(historyDate, variant === "meals" ? today : undefined);
-        return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-current={historyDate === selectedDate ? "date" : undefined} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><strong>{label.day}</strong></button>;
+        const label = compactDayLabel(historyDate, today);
+        return <button key={historyDate} type="button" disabled={navigationDisabled} className={historyDate === selectedDate ? styles.weekDaySelected : styles.weekDay} aria-pressed={historyDate === selectedDate} aria-current={historyDate === selectedDate ? "date" : undefined} aria-label={formatDate(historyDate)} onClick={() => selectDate(historyDate)}><span>{label.weekday}</span><small>{label.day}</small><span className="sr-only">{formatDate(historyDate)}</span></button>;
       })}
     </div>
     {variant === "meals" && <button className={styles.historyArrow} type="button" disabled={navigationDisabled || selectedDate >= today} aria-label="Jours suivants" onClick={() => selectDate(shiftIsoDate(selectedDate, 1))}>›</button>}
@@ -1348,7 +1357,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} /> : <MealPageHeader totals={currentDayTotal} targets={targets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} /> : <MealPageHeader totals={currentDayTotal} targets={targets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
