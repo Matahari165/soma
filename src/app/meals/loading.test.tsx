@@ -9,9 +9,9 @@ describe("meals loading state", () => {
     const html = renderToStaticMarkup(createElement(Loading));
 
     expect(html).toContain('lang="fr"');
-    expect(html).toContain('aria-label="Chargement des repas"');
+    expect(html).toContain('aria-label="Chargement de l’alimentation"');
     expect(html).toContain('aria-busy="true"');
-    expect(html).toContain("Chargement des repas");
+    expect(html).toContain("Chargement de l’alimentation");
     expect(html).not.toContain("style=");
     expect(html).not.toContain("system-loading__metrics");
     expect(html).toContain("system-loading__canvas");

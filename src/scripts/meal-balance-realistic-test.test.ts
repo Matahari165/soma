@@ -132,7 +132,7 @@ describe("realistic meal-balance runner", () => {
 
     expect(loaded?.cases).toHaveLength(38);
     expect(loaded?.cases.find((item) => item.id === "d05-lunch")?.origin).toBe("mixed");
-    expect(loaded?.cases.every((item) => item.images.every((image) => image.path?.startsWith("images/")) || item.images.length === 0)).toBe(true);
+    expect(loaded?.cases.every((item) => item.images.every((image) => image.path?.startsWith("images/") || image.dataRef?.startsWith("synthetic://")) || item.images.length === 0)).toBe(true);
 
     mockedProviderChain.mockResolvedValue(providerResult());
     const result = await runRealisticMealBalance({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, resultsDirectory, live: true });

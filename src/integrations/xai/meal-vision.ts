@@ -79,6 +79,7 @@ export class MealVisionError extends Error {
 export type MealVisionProvider = {
   name: string;
   model: string;
+  verification?: { provider: string; model: string };
   analyze(input: MealVisionInput): Promise<MealAnalysis>;
   analyzeText?(input: MealVisionTextInput): Promise<MealAnalysis>;
   verify?(input: MealVisionVerificationInput): Promise<MealAnalysis>;
@@ -385,6 +386,33 @@ function normalizeStructuredAnalysis(value: unknown) {
     const quantity = item.quantity && typeof item.quantity === "object" && !Array.isArray(item.quantity)
       ? { ...(item.quantity as Record<string, unknown>), value: normalizeNumericFields((item.quantity as Record<string, unknown>).value), grams: normalizeNumericFields((item.quantity as Record<string, unknown>).grams) }
       : item.quantity;
+    const observation = item.observation && typeof item.observation === "object" && !Array.isArray(item.observation)
+      ? { ...(item.observation as Record<string, unknown>) }
+      : item.observation;
+    if (observation && typeof observation === "object" && !Array.isArray(observation)) {
+      const status = observation as Record<string, unknown>;
+      const hasPortion = Boolean(
+        (typeof item.portion === "string" && item.portion.trim())
+        || item.estimatedGrams != null
+        || (quantity && typeof quantity === "object" && !Array.isArray(quantity) && ((quantity as Record<string, unknown>).value != null || (quantity as Record<string, unknown>).grams != null)),
+      );
+      status.portion = hasPortion ? "observed" : "unknown";
+      status.novaGroup = item.novaGroup == null ? "unknown" : "observed";
+      const sugar = item.sugarExposure && typeof item.sugarExposure === "object" && !Array.isArray(item.sugarExposure)
+        ? item.sugarExposure as Record<string, unknown>
+        : null;
+      const sugarKnown = sugar?.concentrated !== null && sugar?.concentrated !== undefined && sugar?.liquid !== null && sugar?.liquid !== undefined;
+      status.sugarExposure = !sugarKnown
+        ? "unknown"
+        : sugar?.concentrated === false && sugar?.liquid === false
+          ? "none_observed"
+          : "observed";
+      status.qualityProperties = !Array.isArray(item.qualityProperties)
+        ? "unknown"
+        : item.qualityProperties.length
+          ? "observed"
+          : "none_observed";
+    }
     const normalizedItem = { ...item };
     // Strict OpenAI schemas require every property to be present. `null` is
     // the wire representation of an unknown descriptive axis; the canonical
@@ -401,6 +429,7 @@ function normalizeStructuredAnalysis(value: unknown) {
       sugarGrams: normalizeRange(item.sugarGrams),
       addedSugarGrams: normalizeRange(item.addedSugarGrams),
       quantity,
+      observation,
     };
   };
   return {
@@ -849,6 +878,11 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
   return {
     name: "xai",
     model,
+    ...(validator ? {
+      verification: process.env.OPENAI_API_KEY
+        ? { provider: "openai", model: openAiValidatorModel }
+        : { provider: "xai", model: xaiValidatorModel },
+    } : {}),
     async analyze(input) {
       return requestGrokAnalysis({
         model,
@@ -918,9 +952,19 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
     })();
 
   let result = primary;
+  let validation = {
+    requested: options.verify !== false,
+    configured: Boolean(provider.verify),
+    attempted: false,
+    succeeded: false,
+    provider: provider.verification?.provider ?? null,
+    model: provider.verification?.model ?? null,
+  };
   if (options.verify !== false && provider.verify) {
+    validation = { ...validation, attempted: true };
     try {
       result = await provider.verify({ ...providerInput, primaryAnalysis: primary });
+      validation = { ...validation, succeeded: true };
     } catch (error) {
       console.warn("[meal-analysis] optional verification failed; primary result preserved", {
         requestId: providerInput.requestId,
@@ -932,5 +976,8 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
       result = primary;
     }
   }
-  return { result, provider: provider.name, model: provider.model };
+  const finalProvider = validation.succeeded && provider.verification
+    ? provider.verification
+    : { provider: provider.name, model: provider.model };
+  return { result, provider: finalProvider.provider, model: finalProvider.model, validation };
 }

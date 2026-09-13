@@ -311,7 +311,19 @@ describe("xAI meal vision contract", () => {
     const result = await analyzeMealInput({ mealType: "breakfast", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "unknown", data: new Uint8Array([1]).buffer }] }, provider);
 
     expect(provider.analyze).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ result: primary, provider: "test", model: "test-model" });
+    expect(result).toEqual({
+      result: primary,
+      provider: "test",
+      model: "test-model",
+      validation: {
+        requested: true,
+        configured: false,
+        attempted: false,
+        succeeded: false,
+        provider: null,
+        model: null,
+      },
+    });
   });
 
   it("passes a natural-language correction through the text-only verification path", async () => {

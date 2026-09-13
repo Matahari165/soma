@@ -6,7 +6,7 @@ import type { MealBalanceScore } from "@/domain/scores/meal-balance";
 import { MealScoreOverviewPanel } from "./meal-score-overview";
 
 const completeScore: MealBalanceScore = {
-  algorithmVersion: "meal-balance-v1",
+  algorithmVersion: "meal-balance-v2",
   score: 72,
   status: "limited",
   coverage: 0.86,
@@ -25,6 +25,9 @@ const completeScore: MealBalanceScore = {
     { key: "sugarExposure", label: "Exposition liquide / concentrée", direction: "negative", points: 34, summary: "Une exposition liquide a été observée." },
   ],
   reasons: ["Variété : La diversité observée est bien distribuée."],
+  baseScore: 72,
+  adversePenalty: 0,
+  worstMeal: null,
 };
 
 describe("MealScoreOverviewPanel", () => {
