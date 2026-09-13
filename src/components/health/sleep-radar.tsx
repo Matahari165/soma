@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type KeyboardEvent } from "react";
 
 import styles from "./sleep-radar.module.css";
 
@@ -20,6 +20,10 @@ export type SleepRadarDimension = {
   label: string;
   normalizedValue: number | null;
   valueLabel?: string;
+  averageLabel?: string;
+  definition?: string;
+  readingDirection?: string;
+  scoreRole?: string;
   comparison?: "up" | "down" | "equal" | null;
   comparisonLabel?: string | null;
   comparisonTone?: "positive" | "negative" | "neutral";
@@ -30,6 +34,11 @@ export type SleepRadarProps = {
   title?: string;
   summary?: string;
   className?: string;
+  detailId?: string;
+  interactive?: boolean;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  registerButton?: (id: string, node: SVGGElement | null) => void;
 };
 
 type Point = [number, number];
@@ -123,7 +132,7 @@ function chartDescription(
   return `Radar du sommeil avec ${measured.length} dimension${measured.length > 1 ? "s" : ""} mesurée${measured.length > 1 ? "s" : ""} : ${measuredText}.${unavailableText}`;
 }
 
-export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, className }: SleepRadarProps) {
+export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, className, detailId, interactive = false, selectedId, onSelect, registerButton }: SleepRadarProps) {
   const titleId = useId();
   const descriptionId = useId();
   const chartTitleId = useId();
@@ -137,11 +146,11 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
     : "Aucune mesure disponible";
   const captionSummary = summary?.trim();
 
-  if (!measured.length) {
+  if (!dimensions.length) {
     return (
       <figure className={rootClassName} aria-labelledby={titleId} aria-describedby={descriptionId}>
         <figcaption className={styles.caption}>
-          <span id={titleId} className={styles.title}>{title}</span>
+          <span id={titleId} className={styles.srOnly}>{title}</span>
           <span id={descriptionId} className={styles.summary}>{unavailableSummary}</span>
         </figcaption>
         <p className={styles.empty}>Les dimensions de sommeil sont indisponibles.</p>
@@ -159,14 +168,14 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
   return (
     <figure className={rootClassName} aria-labelledby={titleId} aria-describedby={captionSummary ? descriptionId : undefined}>
       <figcaption className={styles.caption}>
-        <span id={titleId} className={styles.title}>{title}</span>
+        <span id={titleId} className={styles.srOnly}>{title}</span>
         {captionSummary && <span id={descriptionId} className={styles.summary}>{captionSummary}</span>}
       </figcaption>
 
       <svg
         className={styles.chart}
         viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-        role="img"
+        role={interactive ? "group" : "img"}
         aria-labelledby={chartTitleId}
         aria-describedby={chartDescriptionId}
       >
@@ -214,16 +223,40 @@ export function SleepRadar({ dimensions, title = "Profil de sommeil", summary, c
           const valueLabel = dimension.valueLabel?.trim();
           const comparison = comparisonPresentation(dimension);
           const displayValue = valueLabel || (!hasNormalizedValue(dimension) ? "—" : null);
+          const interactiveAxis = interactive && Boolean(onSelect);
+          const selected = selectedId === dimension.id;
+          function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
+            if (!interactiveAxis || (event.key !== "Enter" && event.key !== " ")) return;
+            event.preventDefault();
+            onSelect?.(dimension.id);
+          }
           return (
-            <g key={`label-${dimension.id}-${index}`} className={styles.labelGroup} aria-hidden="true">
-              <title>{readableDimension(dimension)}</title>
-              <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}</text>
-              {displayValue || comparison ? (
-                <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.textAnchor}>
-                  {displayValue}
-                  {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx={displayValue ? 5 : 0}>{comparison.arrow}</tspan>}
-                </text>
-              ) : null}
+            <g
+              aria-controls={interactiveAxis ? detailId : undefined}
+              aria-label={interactiveAxis ? `${readableDimension(dimension)}. Afficher les détails de cette dimension.` : undefined}
+              aria-pressed={interactiveAxis ? selected : undefined}
+              className={interactiveAxis ? styles.axisButton : styles.labelGroup}
+              data-selected={selected}
+              key={`label-${dimension.id}-${index}`}
+              onClick={interactiveAxis ? () => onSelect?.(dimension.id) : undefined}
+              onKeyDown={interactiveAxis ? handleKeyDown : undefined}
+              ref={interactiveAxis ? (node) => registerButton?.(dimension.id, node) : undefined}
+              role={interactiveAxis ? "button" : undefined}
+              tabIndex={interactiveAxis ? 0 : undefined}
+            >
+              {interactiveAxis && <line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" />}
+              {interactiveAxis && <circle className={styles.labelHit} cx={position.x} cy={position.y} r="30" aria-hidden="true" />}
+              {interactiveAxis && <circle className={styles.focusRing} cx={position.x} cy={position.y} r="26" aria-hidden="true" />}
+              <g className={styles.labelGroup} aria-hidden="true">
+                <title>{readableDimension(dimension)}</title>
+                <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}</text>
+                {displayValue || comparison ? (
+                  <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.textAnchor}>
+                    {displayValue}
+                    {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx={displayValue ? 5 : 0}>{comparison.arrow}</tspan>}
+                  </text>
+                ) : null}
+              </g>
             </g>
           );
         })}

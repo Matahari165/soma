@@ -24,6 +24,18 @@
   min-width: 0;
 }
 
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .title {
   color: var(--radar-text);
   font-family: Georgia, "Times New Roman", serif;
@@ -102,6 +114,50 @@
 }
 
 .labelGroup {
+  pointer-events: none;
+}
+
+.axisButton {
+  cursor: pointer;
+  outline: none;
+}
+
+.axisButton[data-selected="true"] .label {
+  fill: var(--radar-text);
+  font-weight: 560;
+}
+
+.axisButton[data-selected="true"] .axisHit {
+  stroke: var(--radar-grid-strong);
+}
+
+.axisButton:focus,
+.axisButton:focus-visible {
+  outline: none;
+}
+
+.axisButton:focus-visible .focusRing {
+  opacity: 1;
+}
+
+.axisHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18;
+  pointer-events: stroke;
+}
+
+.labelHit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.focusRing {
+  fill: none;
+  stroke: var(--radar-text);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+  opacity: 0;
   pointer-events: none;
 }
 

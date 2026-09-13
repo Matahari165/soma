@@ -141,7 +141,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Profil du sommeil");
+    expect(markup).not.toContain("Profil du sommeil");
+    expect(markup).toContain("Radar du sommeil");
     expect(markup).toContain("Durée");
     expect(markup).toContain("Latence");
     expect(markup).toContain("Score Sommeil");
