@@ -65,6 +65,7 @@ describe("production-only application contract", () => {
 
   it("lets secret-authenticated machine routes reach their own authorization checks", () => {
     expect(proxySource).toContain('"/api/health/webhook"');
+    expect(proxySource).toContain('"/api/cron/meal-analysis"');
     expect(proxySource).toContain('"/api/cron/sync"');
     expect(proxySource).toContain('"/api/cron/archive-health"');
     expect(proxySource).toContain("const publicMachineRoute = publicMachinePaths.some");

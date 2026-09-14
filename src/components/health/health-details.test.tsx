@@ -196,7 +196,7 @@ describe("health route states", () => {
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
     expect(markup).toContain("Sommeil profond + paradoxal");
-    expect(markup).toContain("0h 0m");
+    expect(markup).toContain("0 h 0 min");
     expect(markup).not.toContain("health-hero-score-card");
     expect(markup).not.toContain("Objectif en périphérie");
     expect(markup).not.toContain("Continuité");

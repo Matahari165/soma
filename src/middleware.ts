@@ -5,6 +5,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 
 const publicMachinePaths = [
   "/api/health/webhook",
+  "/api/cron/meal-analysis",
   "/api/cron/sync",
   "/api/cron/archive-health",
 ];
