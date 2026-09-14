@@ -1,0 +1,10 @@
+.next
+node_modules
+.agents
+.github
+.open-next
+.wrangler
+analysis/private
+coverage
+docs
+tests
