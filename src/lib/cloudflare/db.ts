@@ -694,26 +694,40 @@ async function writeRows(table: string, rows: Row[], explicitConflict?: string, 
   }
 }
 
-export function buildCloudflareUpdatePlan(table: string, existing: Row, changed: Row): UpdatePlan {
+export function buildCloudflareUpdatePlan(table: string, existing: Row, changed: Row, conditions: Filter[] = []): UpdatePlan {
+  const where = ["table_name = ?", "row_key = ?"];
+  const conditionBindings: unknown[] = [table, stableIdentity(table, existing)];
+  for (const condition of conditions) {
+    const expression = condition.field === "user_id"
+      ? "user_id"
+      : safeJsonPath(condition.field) ? `json_extract(json_data, '$.${condition.field}')` : null;
+    if (!expression) continue;
+    if (condition.operator === "is" && condition.value === null) {
+      where.push(`${expression} IS NULL`);
+    } else if (condition.operator === "eq") {
+      where.push(`${expression} = ?`);
+      conditionBindings.push(d1Value(condition.value));
+    }
+  }
   return {
     sql: `
       UPDATE soma_rows
       SET row_key = ?, user_id = ?, json_data = ?, updated_at = ?
-      WHERE table_name = ? AND row_key = ?
+      WHERE ${where.join(" AND ")}
     `,
     bindings: [
       stableIdentity(table, changed),
       changed.user_id ?? null,
       JSON.stringify(changed),
       changed.updated_at ?? null,
-      table,
-      stableIdentity(table, existing),
+      ...conditionBindings,
     ],
   };
 }
 
-async function updateRowsInPlace(table: string, existing: Row[], changed: Row[]) {
+async function updateRowsInPlace(table: string, existing: Row[], changed: Row[], conditions: Filter[] = []) {
   const db = cloudflareDb();
+  const persisted: Row[] = [];
   for (let index = 0; index < changed.length; index += 30) {
     const existingSlice = existing.slice(index, index + 30);
     const changedSlice = changed.slice(index, index + 30);
@@ -721,7 +735,7 @@ async function updateRowsInPlace(table: string, existing: Row[], changed: Row[])
       ? [...new Set(changedSlice.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))]
       : [];
     const statements = changedSlice.map((row, rowIndex) => {
-      const plan = buildCloudflareUpdatePlan(table, existingSlice[rowIndex], row);
+      const plan = buildCloudflareUpdatePlan(table, existingSlice[rowIndex], row, conditions);
       return db.prepare(plan.sql).bind(...plan.bindings);
     });
     const results = await db.batch<D1BatchResult>([
@@ -730,7 +744,11 @@ async function updateRowsInPlace(table: string, existing: Row[], changed: Row[])
     ]);
     const failed = results.find((result) => result?.success === false);
     if (failed) throw new Error(failed.error ?? "Cloudflare D1 update failed.");
+    changedSlice.forEach((row, rowIndex) => {
+      if (results[rowIndex]?.meta?.changes !== 0) persisted.push(row);
+    });
   }
+  return persisted;
 }
 
 class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
@@ -864,8 +882,8 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
     }
     const values = this.mutation.values;
     const changed = existing.map((row) => cleanRow({ ...row, ...values, updated_at: new Date().toISOString() }));
-    await updateRowsInPlace(this.table, existing, changed);
-    return this.shape(changed);
+    const persisted = await updateRowsInPlace(this.table, existing, changed, this.filters);
+    return this.shape(persisted);
   }
 
   private async execute(): Promise<QueryResult<any>> {
@@ -987,6 +1005,11 @@ function supabaseFilterValue(filter: SupabaseFilter) {
   if (filter.operator === "in") return `in.(${(filter.value as unknown[]).map((value) => String(value)).join(",")})`;
   if (filter.operator === "not") return `not.${filter.secondaryOperator}.${String(filter.value)}`;
   return `${filter.operator}.${String(filter.value)}`;
+}
+
+function supabaseMutationFilter(filter: SupabaseFilter): [string, string] | null {
+  const field = filter.field === "user_id" ? "user_id" : supabaseJsonField(filter.field);
+  return field ? [field, supabaseFilterValue(filter)] : null;
 }
 
 function storageRow(table: string, row: Row, explicitConflict?: string): SupabaseStoredRow {
@@ -1222,16 +1245,22 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     }
 
     const changed = existing.map((row) => cleanRow({ ...row, ...mutation.values, updated_at: new Date().toISOString() }));
+    const persisted: Row[] = [];
     for (let index = 0; index < existing.length; index += 1) {
       const oldKey = stableIdentity(this.table, existing[index]);
       const newRow = changed[index];
-      await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${oldKey}`]]), {
+      const filters = this.filters.flatMap((filter) => {
+        const pair = supabaseMutationFilter(filter);
+        return pair ? [pair] : [];
+      });
+      const updated = await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${oldKey}`], ...filters]), {
         method: "PATCH",
-        headers: new Headers({ Prefer: "return=minimal" }),
+        headers: new Headers({ Prefer: "return=representation" }),
         body: JSON.stringify(storageRow(this.table, newRow)),
       });
+      if (updated.length > 0) persisted.push(newRow);
     }
-    return this.shape(changed);
+    return this.shape(persisted);
   }
 
   private async execute(): Promise<QueryResult<any>> {

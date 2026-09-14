@@ -3,7 +3,8 @@ import { mealFoodObservationSchema, mealUncertaintySignalSchema, MAX_MEAL_PHOTOS
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
 export type MealOrigin = "homemade" | "prepared" | "mixed";
-export type MealStatus = "draft" | "analyzing" | "review" | "confirmed" | "error";
+/** accepted is durable queue acceptance; analyzing is active worker execution. */
+export type MealStatus = "draft" | "accepted" | "analyzing" | "review" | "confirmed" | "error";
 export type Rating = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const MEAL_TOTALS_EVENT = "soma:meal-totals";
@@ -283,7 +284,8 @@ export function apiMealToRecord(value: unknown): MealRecord {
   const calorieAnalysis = result && typeof result.calorieAnalysis === "string" && result.calorieAnalysis.trim() ? result.calorieAnalysis.trim().slice(0, 500) : null;
   const mealType = meal.mealType === "breakfast" || meal.mealType === "lunch" || meal.mealType === "dinner" || meal.mealType === "snack" ? meal.mealType : "lunch";
   const rawStatus = meal.status;
-  const analysisStatus = analysisRecord?.status;
+  const advertisedStatus = typeof meal.analysisStatus === "string" ? meal.analysisStatus : null;
+  const analysisStatus = analysisRecord?.status ?? advertisedStatus;
   return {
     id: typeof meal.id === "string" ? meal.id : randomId("meal"),
     date: typeof meal.mealDate === "string" ? meal.mealDate : todayInLocalTime(),
@@ -319,7 +321,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
     } : null,
     mouthHeat: typeof meal.mouthWarmthIntensity === "number" && meal.mouthWarmthIntensity >= 0 && meal.mouthWarmthIntensity <= 5 ? meal.mouthWarmthIntensity as Rating : null,
     stomachLoad: typeof meal.stomachOverfullIntensity === "number" && meal.stomachOverfullIntensity >= 0 && meal.stomachOverfullIntensity <= 5 ? meal.stomachOverfullIntensity as Rating : null,
-    status: rawStatus === "confirmed" ? "confirmed" : analysisStatus === "running" ? "analyzing" : result ? "review" : analysisStatus === "failed" ? "error" : "draft",
+    status: rawStatus === "confirmed" ? "confirmed" : analysisStatus === "queued" ? "accepted" : analysisStatus === "running" ? "analyzing" : result ? "review" : analysisStatus === "failed" ? "error" : "draft",
     error: typeof analysisRecord?.error === "string" ? analysisRecord.error : null,
     confirmedAt: rawStatus === "confirmed" && typeof meal.updatedAt === "string" ? meal.updatedAt : null,
   };

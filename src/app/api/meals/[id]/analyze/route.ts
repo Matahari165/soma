@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { mealToApi } from "@/services/meal-api";
 import { analyzePreviewMeal, findPreviewMeal } from "@/services/meal-preview";
-import { analyzeMeal, findMeal, MealServiceError } from "@/services/meals";
+import { enqueueMealAnalysis, findMeal, MealServiceError } from "@/services/meals";
 
 function analysisRequestId(request: Request, fallback?: string) {
   const supplied = request.headers.get("x-analysis-request-id") ?? fallback;
@@ -45,10 +45,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
   try {
-    const result = await analyzeMeal(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
+    const result = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
     const meal = await findMeal(user.id, id);
     if (!meal) return jsonWithRequestId({ error: "The meal could not be reloaded.", code: "STORAGE_ERROR", requestId }, { status: 503 }, requestId);
-    return jsonWithRequestId({ analysis: result.analysis, fresh: result.fresh, meal: mealToApi(meal), requestId }, {}, requestId);
+    return jsonWithRequestId({ analysis: result.analysis, fresh: result.fresh, queued: result.queued, meal: mealToApi(meal), requestId }, { status: result.queued ? 202 : 200 }, requestId);
   } catch (error) {
     if (error instanceof MealServiceError) {
       const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
@@ -56,5 +56,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     console.error("[meal-analysis] route failed outside service taxonomy", { requestId, stage: "route", reason: error instanceof Error ? error.name : "unknown" });
     return jsonWithRequestId({ error: "L’analyse du repas n’est pas disponible pour le moment.", code: "UNKNOWN_ANALYSIS_ERROR", requestId }, { status: 503 }, requestId);
+  }
+}
+
+/** Durable status read used after a mobile app resumes or reconnects. */
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const { id } = await context.params;
+  try {
+    const meal = await findMeal(user.id, id);
+    if (!meal) return jsonWithRequestId({ error: "Meal not found.", code: "not_found" }, { status: 404, headers: { "Cache-Control": "private, no-store" } }, crypto.randomUUID());
+    const requestId = request.headers.get("x-analysis-request-id") ?? crypto.randomUUID();
+    return jsonWithRequestId({ analysis: meal.analysis, meal: mealToApi(meal), requestId }, { headers: { "Cache-Control": "private, no-store" } }, requestId);
+  } catch (error) {
+    console.error("[meal-analysis] status route failed", { stage: "status_route", reason: error instanceof Error ? error.name : "unknown" });
+    return NextResponse.json({ error: "L’état de l’analyse n’est pas disponible pour le moment.", code: "STORAGE_ERROR" }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
   }
 }

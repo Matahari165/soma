@@ -509,7 +509,8 @@ export type Meal = {
 export type MealAnalysisRecord = {
   id: string;
   mealId: string;
-  status: "running" | "completed" | "failed";
+  /** queued is durable acceptance; running means a worker owns the lease. */
+  status: "queued" | "running" | "completed" | "failed";
   provider: string;
   model: string;
   result: MealAnalysis | null;

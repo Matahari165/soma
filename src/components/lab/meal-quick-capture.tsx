@@ -8,9 +8,9 @@ import { MAX_MEAL_PHOTOS, type MealOrigin, type MealType } from "@/domain/meals"
 import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 
-type CaptureState = "idle" | "choosing-origin" | "uploading" | "done" | "error";
-type SlotState = { state: CaptureState; file: File | null; origin: MealOrigin | null; message: string | null; photoCount: number; filled: boolean };
-type QuickMealRecord = { status?: unknown; photos?: unknown[]; note?: unknown };
+type CaptureState = "idle" | "choosing-origin" | "uploading" | "accepted" | "analyzing" | "done" | "error";
+type SlotState = { state: CaptureState; file: File | null; origin: MealOrigin | null; message: string | null; photoCount: number; filled: boolean; mealId?: string };
+type QuickMealRecord = { id?: unknown; status?: unknown; analysisStatus?: unknown; analysis?: { status?: unknown } | null; photos?: unknown[]; note?: unknown };
 
 const slots: Array<{ id: MealType; label: string }> = [
   { id: "breakfast", label: "Petit déjeuner" },
@@ -70,11 +70,12 @@ async function uploadAndAnalyze(date: string, slot: MealType, file: File, origin
   form.set("origin", origin);
   const uploadKey = `quick-${date}-${slot}-${file.name}-${file.size}-${file.lastModified}`;
   await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId }));
-  await responseJson(await fetchMeal(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+  const analysis = await responseJson(await fetchMeal(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
     body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
   }, { operation: "analyze", requestId: analysisRequestId }));
+  return { mealId: meal.id, status: analysis.analysis && typeof analysis.analysis === "object" && typeof (analysis.analysis as { status?: unknown }).status === "string" ? (analysis.analysis as { status: string }).status : "queued" };
 }
 
 export function MealQuickCapture({ todayDate, variables, entries, days, breakfastDisabledOverride, morningJournalCompletedOverride }: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; breakfastDisabledOverride?: boolean; morningJournalCompletedOverride?: boolean }) {
@@ -85,6 +86,10 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
   const firstOriginButtons = useRef<Partial<Record<MealType, HTMLButtonElement | null>>>({});
   const submittingSlots = useRef(new Set<MealType>());
   const [slotStates, setSlotStates] = useState<Record<MealType, SlotState>>(() => ({ breakfast: { ...emptySlot(), filled: morningJournalCompleted }, lunch: emptySlot(), dinner: emptySlot(), snack: emptySlot() }));
+  const slotStatesRef = useRef(slotStates);
+  slotStatesRef.current = slotStates;
+
+  const activeJobKey = slots.map(({ id }) => `${id}:${slotStates[id].mealId ?? ""}:${slotStates[id].state}`).join("|");
 
   useEffect(() => {
     if (!breakfastDisabled) return;
@@ -107,8 +112,12 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
         }
         setSlotStates((current) => Object.fromEntries(slots.map(({ id }) => {
           const meal = mealsBySlot.get(id);
+          const analysisStatus = typeof meal?.analysisStatus === "string" ? meal.analysisStatus : typeof meal?.analysis?.status === "string" ? meal.analysis.status : null;
+          const serverState: CaptureState = analysisStatus === "queued" ? "accepted" : analysisStatus === "running" ? "analyzing" : analysisStatus === "completed" ? "done" : current[id].state;
           return [id, {
             ...current[id],
+            ...(typeof meal?.id === "string" ? { mealId: meal.id } : {}),
+            state: current[id].state === "uploading" || current[id].state === "choosing-origin" ? current[id].state : serverState,
             photoCount: counts.has(id) ? counts.get(id) ?? 0 : current[id].photoCount,
             filled: current[id].filled || mealQuickSlotIsFilled(meal) || (id === "breakfast" && morningJournalCompleted),
           }];
@@ -117,6 +126,38 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
       .catch(() => undefined);
     return () => { active = false; };
   }, [morningJournalCompleted, todayDate]);
+
+  useEffect(() => {
+    const activeSlots = slots.flatMap(({ id }) => {
+      const item = slotStatesRef.current[id];
+      return item.mealId && (item.state === "accepted" || item.state === "analyzing") ? [{ id, mealId: item.mealId }] : [];
+    });
+    if (!activeSlots.length) return;
+    let cancelled = false;
+    const refresh = async () => {
+      await Promise.all(activeSlots.map(async ({ id, mealId }) => {
+        try {
+          const body = await responseJson(await fetchMeal(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { cache: "no-store" }, { operation: "load" }));
+          const analysis = body.analysis && typeof body.analysis === "object" ? body.analysis as { status?: unknown; error?: unknown } : null;
+          if (cancelled || !analysis || typeof analysis.status !== "string") return;
+          if (analysis.status === "completed") setSlotStates((current) => ({ ...current, [id]: { ...current[id], state: "done", message: "Analyse prête" } }));
+          else if (analysis.status === "failed") setSlotStates((current) => ({ ...current, [id]: { ...current[id], state: "error", message: typeof analysis.error === "string" ? analysis.error : "L’analyse n’a pas abouti." } }));
+          else setSlotStates((current) => ({ ...current, [id]: { ...current[id], state: analysis.status === "running" ? "analyzing" : "accepted" } }));
+        } catch {
+          // Reconnect failures are not job failures; retry on the next tick.
+        }
+      }));
+    };
+    void refresh();
+    const interval = window.setInterval(() => { void refresh(); }, 5_000);
+    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [activeJobKey]);
 
   function chooseFile(slot: MealType, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -134,8 +175,8 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
     setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "uploading", origin, message: null } }));
     try {
       const prepared = await normalizeMealImage(file);
-      await uploadAndAnalyze(todayDate, slot, prepared, origin);
-      setSlotStates((current) => ({ ...current, [slot]: { state: "done", file: null, origin: null, message: "Analyse prête", photoCount: current[slot].photoCount + 1, filled: true } }));
+      const accepted = await uploadAndAnalyze(todayDate, slot, prepared, origin);
+      setSlotStates((current) => ({ ...current, [slot]: { state: accepted.status === "running" ? "analyzing" : "accepted", mealId: accepted.mealId, file: null, origin: null, message: accepted.status === "running" ? "Analyse en cours" : "Analyse acceptée", photoCount: current[slot].photoCount + 1, filled: true } }));
     } catch (error) {
       setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "error", message: error instanceof Error ? error.message : "Échec de l’envoi." } }));
     } finally {
@@ -152,7 +193,7 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
         const busy = item.state === "uploading";
         const atLimit = item.photoCount >= MAX_MEAL_PHOTOS;
         const locked = !disabled && item.filled && item.state !== "error";
-        const buttonLabel = disabled ? "Ignoré" : busy ? "Analyse…" : item.state === "error" ? "Réessayer" : locked ? "Ajouté" : "Photo";
+        const buttonLabel = disabled ? "Ignoré" : busy ? "Analyse…" : item.state === "accepted" ? "Acceptée" : item.state === "analyzing" ? "Analyse…" : item.state === "error" ? "Réessayer" : locked ? "Ajouté" : "Photo";
         return <div className={`meal-quick__row${disabled ? " is-disabled" : ""}${locked ? " is-filled" : ""}`} key={id}>
           <div className="meal-quick__summary"><strong>{label}</strong></div>
           <input ref={(node) => { inputs.current[id] = node; }} className="sr-only" type="file" accept="image/*" capture="environment" aria-label={`Choisir une photo pour ${label.toLocaleLowerCase("fr")}`} disabled={disabled || busy || atLimit || locked} onChange={(event) => chooseFile(id, event)} />

@@ -7,7 +7,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { mealToLegacyApi } from "@/services/meal-api";
 import { MealMultipartError, parseMealMultipart } from "@/services/meal-multipart";
 import { addPreviewMealPhotos, analyzePreviewMeal, createPreviewMeal, findPreviewMeal, updatePreviewMeal } from "@/services/meal-preview";
-import { addMealPhotos, analyzeMeal, createMeal, findMeal, MealServiceError, updateMealPhotoOrigins, updateMealRecord } from "@/services/meals";
+import { addMealPhotos, enqueueMealAnalysis, createMeal, findMeal, MealServiceError, updateMealPhotoOrigins, updateMealRecord } from "@/services/meals";
 
 function formFiles(form: FormData) {
   return form.getAll("photos").filter((value): value is File => typeof File !== "undefined" && value instanceof File);
@@ -113,9 +113,9 @@ export async function POST(request: Request) {
       return photoId && origin ? [{ photoId, origin }] : [];
     }).filter((item) => refreshed.photos.some((photo) => photo.id === item.photoId));
     if (retainedPhotoOrigins.length) await updateMealPhotoOrigins(user.id, refreshed.id, retainedPhotoOrigins);
-    const result = await analyzeMeal(user.id, refreshed.id, { force: false, analysisRequestId });
+    const result = await enqueueMealAnalysis(user.id, refreshed.id, { force: false, analysisRequestId });
     const analysedMeal = await findMeal(user.id, refreshed.id);
-    return NextResponse.json({ meal: mealToLegacyApi(analysedMeal ?? refreshed), analysis: result.analysis, requestId: analysisRequestId }, { headers: { "X-Analysis-Request-Id": analysisRequestId } });
+    return NextResponse.json({ meal: mealToLegacyApi(analysedMeal ?? refreshed), analysis: result.analysis, queued: result.queued, requestId: analysisRequestId }, { status: result.queued ? 202 : 200, headers: { "X-Analysis-Request-Id": analysisRequestId } });
   } catch (error) {
     return errorResponse(error, analysisRequestId);
   }

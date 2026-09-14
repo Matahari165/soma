@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: state.deleteR2 }));
 
-import { selectLatestMealAnalysis, type AnalysisRow } from "./meals";
+import { requeueStaleMealAnalyses, selectLatestMealAnalysis, type AnalysisRow } from "./meals";
 
 function analysis(overrides: Partial<AnalysisRow>): AnalysisRow {
   return {
@@ -35,6 +35,24 @@ describe("meal analysis selection", () => {
     const failed = analysis({ id: "failed", status: "failed", result: null, error: "provider unavailable", created_at: "2026-08-31T11:00:00.000Z" });
     expect(selectLatestMealAnalysis([completed, failed], true)?.id).toBe("completed");
     expect(selectLatestMealAnalysis([completed, failed], false)?.id).toBe("failed");
+  });
+
+  it("requeues abandoned workers without turning a read into a terminal failure", async () => {
+    state.responses.push({ data: [{ id: "stale-analysis" }], error: null });
+    state.createAdmin.mockImplementation(() => {
+      const query: Record<string, unknown> = {
+        update: () => query,
+        eq: () => query,
+        or: () => query,
+        select: () => query,
+        is: () => query,
+        lt: () => query,
+        then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(state.responses.shift() ?? { data: null, error: null }).then(resolve, reject),
+      };
+      return { from: () => query };
+    });
+
+    await expect(requeueStaleMealAnalyses()).resolves.toBe(1);
   });
 });
 

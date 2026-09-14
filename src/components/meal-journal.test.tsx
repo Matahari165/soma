@@ -587,6 +587,14 @@ describe("MealJournal", () => {
 });
 
 describe("apiMealToRecord", () => {
+  it("keeps durable queue acceptance distinct from active execution", () => {
+    const accepted = apiMealToRecord({ id: "meal-queued", mealDate: date, mealType: "lunch", status: "draft", photos: [], analysis: { id: "analysis-queued", status: "queued", result: null, error: null } });
+    const running = apiMealToRecord({ id: "meal-running", mealDate: date, mealType: "lunch", status: "draft", photos: [], analysis: { id: "analysis-running", status: "running", result: null, error: null } });
+
+    expect(accepted.status).toBe("accepted");
+    expect(running.status).toBe("analyzing");
+  });
+
   it("maps the canonical meal response and preserves null versus explicit zero", () => {
     const meal = apiMealToRecord({
       id: "meal-2",

@@ -524,6 +524,7 @@ function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
 function statusLabel(meal: MealRecord | null) {
   if (!meal) return "";
   if (meal.status === "confirmed") return "";
+  if (meal.status === "accepted") return "Analyse acceptée";
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
   if (meal.status === "error") return "À réessayer";
@@ -902,8 +903,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact />
       </div>
     </div>}
+    {!skipped && status === "accepted" && <div className={styles.analyzingState} role="status" aria-live="polite"><strong>Analyse acceptée</strong><span>Elle continuera en arrière-plan.</span></div>}
     {!skipped && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyse en cours</strong></div>}
-    {!skipped && !compactEmptyState && !compactDraftCapture && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
+    {!skipped && !compactEmptyState && !compactDraftCapture && status !== "accepted" && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && status !== "confirmed" && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} disabled={mutationBusy || disabled} />}
       {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
       {status === "draft" && <div className={styles.actionsRow}>
@@ -1014,7 +1016,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const mutationInFlight = useRef(false);
   const ratingSaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
   const ratingValues = useRef<Partial<Record<string, { mouthHeat: Rating | null; stomachLoad: Rating | null }>>>({});
-  const navigationDisabled = processingFiles || deletingPhotoId !== null || savingSlot !== null || Object.values(data?.meals ?? {}).some((meal) => meal?.status === "analyzing");
+  const navigationDisabled = processingFiles || deletingPhotoId !== null || savingSlot !== null || Object.values(data?.meals ?? {}).some((meal) => meal?.status === "accepted" || meal?.status === "analyzing");
 
   const selectDate = useCallback((nextDate: string) => {
     if (navigationDisabled || mutationInFlight.current) return;
@@ -1067,6 +1069,40 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     }
     void load();
   }, [initialData, initialDate, load, selectedDate]);
+
+  // The POST only accepts the job. Polling this small status endpoint lets a
+  // resumed tab reconcile the durable result without repeating the XAI call.
+  useEffect(() => {
+    if (api || !data) return;
+    const activeMeals = Object.entries(data.meals).flatMap(([slot, meal]) =>
+      meal && (meal.status === "accepted" || meal.status === "analyzing") ? [{ slot: slot as MealSlot, meal }] : [],
+    );
+    if (!activeMeals.length) return;
+    let cancelled = false;
+    const refresh = async () => {
+      await Promise.all(activeMeals.map(async ({ slot, meal }) => {
+        try {
+          const response = await fetchMeal(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, { cache: "no-store" }, { operation: "load" });
+          const body = await readJson(response) as { meal?: unknown };
+          if (cancelled || !body.meal) return;
+          const next = normalizeMeal(apiMealToRecord(body.meal), selectedDate, slot);
+          setData((current) => current ? { ...current, meals: { ...current.meals, [slot]: next } } : current);
+        } catch {
+          // A temporary reconnect failure must not turn a durable job into a
+          // false error. The next tick or visibility event retries it.
+        }
+      }));
+    };
+    void refresh();
+    const interval = window.setInterval(() => { void refresh(); }, 5_000);
+    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [api, data, selectedDate]);
 
   const controlledDate = useRef(selectedDateProp);
   useEffect(() => {
@@ -1344,7 +1380,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       return;
     }
     mutationInFlight.current = true;
-    updateMeal(slot, (current) => ({ ...current, status: "analyzing", error: null }));
+    updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
     try {
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));
@@ -1371,7 +1407,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
       const files = photoFiles.map((entry) => entry.file);
       const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onPhotosUploaded: reconcileUploadedPhotos }));
-      updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: "review", error: null }, selectedDate, slot), status: "review" }));
+      const nextStatus = analyzed.status === "accepted" || analyzed.status === "analyzing" ? analyzed.status : "review";
+      updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: null }, selectedDate, slot), status: nextStatus }));
     } catch (error) {
       updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));
     } finally {
@@ -1403,6 +1440,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   };
 
   const handleConfirm = (slot: MealSlot, meal: MealRecord) => {
+    if (meal.status === "accepted" || meal.status === "analyzing") {
+      setConfirmError((previous) => ({ ...previous, [slot]: "L’analyse est encore en cours. Tu pourras valider le repas quand le résultat sera disponible." }));
+      return;
+    }
     if (!meal.analysis) {
       setConfirmError((previous) => ({ ...previous, [slot]: "Ajoute une photo ou décris le repas, puis lance l’analyse avant de le valider." }));
       return;

@@ -53,6 +53,13 @@ type AnalysisRow = Row & {
   error_code?: MealAnalysisRecord["errorCode"];
   source_fingerprint?: string | null;
   source_photo_ids?: unknown;
+  source_note?: string | null;
+  source_meal_date?: string | null;
+  source_meal_type?: MealType | null;
+  source_correction?: string | null;
+  attempts?: number | null;
+  heartbeat_at?: string | null;
+  lease_token?: string | null;
   created_at: string;
   updated_at?: string | null;
   completed_at?: string | null;
@@ -146,30 +153,6 @@ async function rowsFor<T extends Row>(table: string, userId: string, mealId?: st
   return (result.data ?? []) as T[];
 }
 
-const STALE_ANALYSIS_AFTER_MS = 15 * 60 * 1000;
-
-async function reconcileStaleAnalyses(userId: string, rows: AnalysisRow[]) {
-  const cutoff = Date.now() - STALE_ANALYSIS_AFTER_MS;
-  for (const row of rows) {
-    if (row.status !== "running" || Date.parse(row.updated_at ?? row.created_at) >= cutoff) continue;
-    const completedAt = new Date().toISOString();
-    const result = await createCloudflareAdminClient()
-      .from("meal_analyses")
-      .update({ status: "failed", error: "L’analyse a été interrompue. Relance-la pour réessayer.", error_code: "provider_unavailable", completed_at: completedAt })
-      .eq("user_id", userId)
-      .eq("id", row.id)
-      .eq("status", "running")
-      .select("*")
-      .maybeSingle();
-    if (!result.error && result.data) {
-      row.status = "failed";
-      row.error = "L’analyse a été interrompue. Relance-la pour réessayer.";
-      row.error_code = "provider_unavailable";
-      row.completed_at = completedAt;
-    }
-  }
-}
-
 export async function findMeal(userId: string, mealId: string): Promise<Meal | null> {
   const admin = createCloudflareAdminClient();
   const [mealResult, photoRows, analysisRows, feelingsRows] = await Promise.all([
@@ -180,7 +163,6 @@ export async function findMeal(userId: string, mealId: string): Promise<Meal | n
   ]);
   if (mealResult.error) throw new Error("The meal could not be loaded.");
   if (!mealResult.data) return null;
-  await reconcileStaleAnalyses(userId, analysisRows);
   const meal = mergeFeelings(mealResult.data as MealRow, feelingsRows[0] ?? null);
   meal.photos = photoRows.map(photoFromRow);
   const latest = [...analysisRows].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
@@ -214,7 +196,6 @@ export async function listMeals(userId: string, options: ListMealsOptions = {}) 
     rowsFor<AnalysisRow>("meal_analyses", userId),
     rowsFor<FeelingsRow>("meal_feelings", userId),
   ]);
-  await reconcileStaleAnalyses(userId, analysisRows);
   const photosByMeal = new Map<string, MealPhoto[]>();
   for (const row of photoRows) photosByMeal.set(row.meal_id, [...(photosByMeal.get(row.meal_id) ?? []), photoFromRow(row)]);
   const analysisByMeal = new Map<string, AnalysisRow[]>();
@@ -351,28 +332,69 @@ export async function findMealAnalysisByRequestId(userId: string, mealId: string
   return match ? analysisFromRow(match) : null;
 }
 
+export async function findActiveMealAnalysis(userId: string, mealId: string) {
+  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
+  const active = rows
+    .filter((row) => row.status === "queued" || row.status === "running")
+    .sort((left, right) => left.created_at.localeCompare(right.created_at))[0];
+  return active ? analysisFromRow(active) : null;
+}
+
+/**
+ * Requeues only abandoned worker leases. Reading a meal must stay read-only:
+ * recovery belongs to the authenticated cron/worker path, not to a user's
+ * GET request.
+ */
+export async function requeueStaleMealAnalyses(staleAfterMs = 2 * 60 * 1000) {
+  const staleBefore = new Date(Date.now() - staleAfterMs).toISOString();
+  const requeue = (query: ReturnType<typeof createCloudflareAdminClient>["from"]) => query
+    .update({ status: "queued", error: null, error_code: null, heartbeat_at: null, lease_token: null, completed_at: null })
+    .eq("status", "running")
+    .select("id");
+  const [withoutHeartbeat, expiredHeartbeat] = await Promise.all([
+    requeue(createCloudflareAdminClient().from("meal_analyses").is("heartbeat_at", null)),
+    requeue(createCloudflareAdminClient().from("meal_analyses").lt("heartbeat_at", staleBefore)),
+  ]);
+  if (withoutHeartbeat.error || expiredHeartbeat.error) throw new Error("Stale meal analysis jobs could not be requeued.");
+  return (withoutHeartbeat.data ?? []).length + (expiredHeartbeat.data ?? []).length;
+}
+
+export async function listQueuedMealAnalyses(limit = 1) {
+  await requeueStaleMealAnalyses();
+  const result = await createCloudflareAdminClient()
+    .from("meal_analyses")
+    .select("*")
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .range(0, Math.max(0, limit - 1));
+  if (result.error) throw new Error("Queued meal analyses could not be loaded.");
+  return (result.data ?? []) as AnalysisRow[];
+}
+
 export async function insertMealAnalysis(row: AnalysisRow) {
   const { data, error } = await createCloudflareAdminClient().from("meal_analyses").insert(row).select("*").single();
   if (error || !data) throw new Error("The meal analysis could not be saved.");
   return analysisFromRow(data as AnalysisRow);
 }
 
-export async function updateMealAnalysis(userId: string, analysisId: string, values: Row, expectedStatus?: MealAnalysisRecord["status"]) {
+export async function updateMealAnalysis(userId: string, analysisId: string, values: Row, expectedStatus?: MealAnalysisRecord["status"], expectedLeaseToken?: string | null) {
   const query = createCloudflareAdminClient().from("meal_analyses").update(values).eq("user_id", userId).eq("id", analysisId);
   if (expectedStatus) query.eq("status", expectedStatus);
+  if (expectedLeaseToken) query.eq("lease_token", expectedLeaseToken);
   const { data, error } = await query.select("*").maybeSingle();
   if (error || !data) throw new Error("The meal analysis could not be updated.");
   return analysisFromRow(data as AnalysisRow);
 }
 
-export async function touchMealAnalysis(userId: string, analysisId: string) {
-  const { data, error } = await createCloudflareAdminClient()
+export async function touchMealAnalysis(userId: string, analysisId: string, leaseToken?: string | null) {
+  const query = createCloudflareAdminClient()
     .from("meal_analyses")
     .update({ heartbeat_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("id", analysisId)
-    .eq("status", "running")
-    .maybeSingle();
+    .eq("status", "running");
+  if (leaseToken) query.eq("lease_token", leaseToken);
+  const { data, error } = await query.maybeSingle();
   if (error) throw new Error("The meal analysis heartbeat could not be saved.");
   return Boolean(data);
 }

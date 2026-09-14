@@ -25,6 +25,7 @@ import {
   deletePhoto,
   findLatestMealAnalysis,
   findMealAnalysisByRequestId,
+  findActiveMealAnalysis,
   findMeal,
   findMealByIdempotencyKey,
   findMealForSlot,
@@ -34,6 +35,7 @@ import {
   insertMealAnalysis,
   insertPhoto,
   listMealPhotos,
+  listQueuedMealAnalyses,
   listMeals,
   updateMeal,
   updateMealAnalysis,
@@ -41,6 +43,7 @@ import {
   updatePhotoStorage,
   touchMealAnalysis,
   upsertMealFeelings,
+  type AnalysisRow,
 } from "@/repositories/meals";
 
 const { claimCloudflareLock, claimCloudflareLockWithToken, refreshCloudflareLockWithToken, releaseCloudflareLock, releaseCloudflareLockWithToken } = cloudflareDb;
@@ -87,7 +90,7 @@ async function setPhotoStorageState(userId: string, mealId: string, photoId: str
 }
 
 function hasPreservedAnalysis(meal: Meal, confirmedAnalysis: UpdateMealInput["confirmedAnalysis"]) {
-  if (meal.analysis?.status === "running") return Boolean(confirmedAnalysis);
+  if (meal.analysis?.status === "queued" || meal.analysis?.status === "running") return Boolean(confirmedAnalysis);
   return Boolean(
     confirmedAnalysis
       ?? (meal.analysis?.status === "completed" && meal.analysis.result ? meal.analysis.result : null)
@@ -96,7 +99,7 @@ function hasPreservedAnalysis(meal: Meal, confirmedAnalysis: UpdateMealInput["co
 }
 
 function analysisUsedForConfirmation(meal: Meal) {
-  if (meal.analysis?.status === "running") return null;
+  if (meal.analysis?.status === "queued" || meal.analysis?.status === "running") return null;
   if (meal.analysis?.status === "completed" && meal.analysis.result) return meal.analysis;
   if (meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result) return meal.lastSuccessfulAnalysis;
   return null;
@@ -399,6 +402,237 @@ export async function removeMealPhoto(userId: string, mealId: string, photoId: s
   const removed = await deletePhoto(userId, mealId, photoId);
   if (!removed) throw new MealServiceError("not_found", "Photo not found.");
   await updateMeal(userId, mealId, { status: "draft" });
+}
+
+type MealAnalysisEnqueueOptions = {
+  force?: boolean;
+  correction?: MealAnalysisCorrection;
+  analysisRequestId?: string;
+  provider?: Pick<MealVisionProvider, "name" | "model">;
+};
+
+/**
+ * Persists an analysis request and returns immediately. The provider is not
+ * contacted here: this boundary is intentionally safe to call from a mobile
+ * request that may be interrupted when the app is backgrounded.
+ */
+export async function enqueueMealAnalysis(userId: string, mealId: string, options: MealAnalysisEnqueueOptions = {}) {
+  assertMealId(mealId);
+  if (options.analysisRequestId && !/^[a-zA-Z0-9._:-]{8,160}$/.test(options.analysisRequestId)) {
+    throw new MealServiceError("invalid", "The analysis request id is invalid.");
+  }
+  const enqueueLockKey = `meal-analysis-enqueue:${userId}:${mealId}`;
+  const enqueueLease = await claimMealLease(enqueueLockKey, userId, ANALYSIS_LEASE_TTL_MS);
+  if (!enqueueLease.claimed) {
+    const [sameRequest, active] = await Promise.all([
+      options.analysisRequestId ? findMealAnalysisByRequestId(userId, mealId, options.analysisRequestId) : Promise.resolve(null),
+      findActiveMealAnalysis(userId, mealId),
+    ]);
+    if (sameRequest) {
+      if (sameRequest.status === "failed") throw new MealServiceError("unavailable", sameRequest.error ?? "L’analyse du repas a échoué. Réessaie.", sameRequest.errorCode ?? "unknown_analysis_error");
+      return { analysis: sameRequest, fresh: false, queued: sameRequest.status === "queued" || sameRequest.status === "running" };
+    }
+    if (active) return { analysis: active, fresh: false, queued: true };
+    throw new MealServiceError("conflict", "Cette analyse est déjà en cours.");
+  }
+  try {
+    return await enqueueMealAnalysisLocked(userId, mealId, options);
+  } finally {
+    await releaseMealLease(enqueueLockKey, userId, enqueueLease.token).catch((error) => {
+      console.warn("[meal-analysis] enqueue lease release failed", { requestId: options.analysisRequestId, stage: "enqueue_lease_release", reason: error instanceof Error ? error.name : "unknown" });
+    });
+  }
+}
+
+async function enqueueMealAnalysisLocked(userId: string, mealId: string, options: MealAnalysisEnqueueOptions) {
+  const meal = await findMeal(userId, mealId);
+  if (!meal) throw new MealServiceError("not_found", "Meal not found.");
+  const [requestMatch, active, latest] = await Promise.all([
+    options.analysisRequestId ? findMealAnalysisByRequestId(userId, mealId, options.analysisRequestId) : Promise.resolve(null),
+    findActiveMealAnalysis(userId, mealId),
+    findLatestMealAnalysis(userId, mealId),
+  ]);
+  if (requestMatch) {
+    if (requestMatch.status === "failed") {
+      throw new MealServiceError("unavailable", requestMatch.error ?? "L’analyse du repas a échoué. Réessaie.", requestMatch.errorCode ?? "unknown_analysis_error");
+    }
+    return { analysis: requestMatch, fresh: false, queued: requestMatch.status === "queued" || requestMatch.status === "running" };
+  }
+  if (active) return { analysis: active, fresh: false, queued: true };
+
+  const note = meal.note?.trim() ?? "";
+  const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
+  if (!availablePhotos.length && !note) {
+    const lastSuccessful = meal.lastSuccessfulAnalysis ?? (latest?.status === "completed" && latest.result ? latest : null);
+    if (lastSuccessful) return { analysis: lastSuccessful, fresh: false, queued: false };
+    throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
+  }
+  if (availablePhotos.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `Un repas ne peut pas contenir plus de ${MAX_MEAL_PHOTOS} photos pour l’analyse.`);
+  if (availablePhotos.length && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) {
+    throw new MealServiceError("invalid", "Les photos de ce repas doivent être en JPEG ou PNG avant l’analyse.");
+  }
+  const sourceFingerprint = await computeMealSourceFingerprint({ note: meal.note, photos: meal.photos });
+  const lastSuccessful = meal.lastSuccessfulAnalysis ?? (latest?.status === "completed" && latest.result ? latest : null);
+  if (!options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false, queued: false };
+
+  const configured = options.provider ?? getConfiguredMealAnalysisProvider();
+  const row: AnalysisRow = {
+    id: crypto.randomUUID(),
+    user_id: userId,
+    meal_id: mealId,
+    status: "queued",
+    provider: configured.name,
+    model: configured.model,
+    analysis_request_id: options.analysisRequestId ?? null,
+    result: null,
+    error: null,
+    error_code: null,
+    source_fingerprint: sourceFingerprint,
+    source_photo_ids: availablePhotos.map((photo) => photo.id),
+    source_note: note || null,
+    source_meal_date: meal.mealDate,
+    source_meal_type: meal.mealType,
+    source_correction: options.correction ?? null,
+    attempts: 0,
+    heartbeat_at: null,
+    lease_token: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    completed_at: null,
+  };
+  try {
+    const analysis = await insertMealAnalysis(row);
+    return { analysis, fresh: true, queued: true };
+  } catch (error) {
+    // Partial unique indexes make this race-safe across two enqueue requests:
+    // whichever insert wins is the durable job both callers can observe.
+    const [sameRequest, concurrent] = await Promise.all([
+      options.analysisRequestId ? findMealAnalysisByRequestId(userId, mealId, options.analysisRequestId) : Promise.resolve(null),
+      findActiveMealAnalysis(userId, mealId),
+    ]);
+    if (sameRequest) return { analysis: sameRequest, fresh: false, queued: sameRequest.status === "queued" || sameRequest.status === "running" };
+    if (concurrent) return { analysis: concurrent, fresh: false, queued: true };
+    console.error("[meal-analysis] durable enqueue failed", { requestId: options.analysisRequestId, stage: "enqueue", reason: error instanceof Error ? error.name : "unknown" });
+    throw new MealServiceError("unavailable", "L’analyse du repas n’a pas pu être mise en file.", "storage_error");
+  }
+}
+
+function workerFailure(error: unknown) {
+  const visionError = error instanceof MealVisionError ? error : null;
+  return {
+    message: error instanceof MealServiceError ? error.message : visionError?.message ?? "L’analyse du repas a échoué. Réessaie.",
+    code: error instanceof MealServiceError ? error.diagnosticCode ?? "source_unavailable" : visionError?.code ?? "unknown_analysis_error",
+  } as const;
+}
+
+/**
+ * Claims one durable job, executes it outside the UI request, and commits the
+ * result only while its persisted lease token still owns the row.
+ */
+export async function processNextMealAnalysis() {
+  const candidates = await listQueuedMealAnalyses(1);
+  const candidate = candidates[0];
+  if (!candidate) return { processed: false as const, analysis: null };
+  const lockKey = `meal-analysis-job:${candidate.id}`;
+  const lease = await claimMealLease(lockKey, candidate.user_id, ANALYSIS_LEASE_TTL_MS);
+  if (!lease.claimed) return { processed: false as const, analysis: null };
+  const leaseToken = lease.token ?? crypto.randomUUID();
+  const requestId = typeof candidate.analysis_request_id === "string" ? candidate.analysis_request_id : undefined;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  try {
+    let running: Awaited<ReturnType<typeof updateMealAnalysis>>;
+    try {
+      running = await updateMealAnalysis(candidate.user_id, candidate.id, {
+        status: "running",
+        attempts: Number(candidate.attempts ?? 0) + 1,
+        heartbeat_at: new Date().toISOString(),
+        lease_token: leaseToken,
+        error: null,
+        error_code: null,
+        completed_at: null,
+      }, "queued");
+    } catch {
+      return { processed: false as const, analysis: null };
+    }
+    let heartbeatInFlight = false;
+    heartbeat = setInterval(() => {
+      if (heartbeatInFlight) return;
+      heartbeatInFlight = true;
+      Promise.all([
+        refreshCloudflareLockWithToken(lockKey, candidate.user_id, leaseToken, ANALYSIS_LEASE_TTL_MS),
+        touchMealAnalysis(candidate.user_id, candidate.id, leaseToken),
+      ]).catch((error) => {
+        console.warn("[meal-analysis] worker heartbeat failed", { requestId, stage: "worker_heartbeat", reason: error instanceof Error ? error.name : "unknown" });
+      }).finally(() => { heartbeatInFlight = false; });
+    }, ANALYSIS_HEARTBEAT_MS);
+
+    const meal = await findMeal(candidate.user_id, candidate.meal_id);
+    if (!meal) throw new MealServiceError("not_found", "Meal not found.");
+    const sourcePhotoIds = Array.isArray(candidate.source_photo_ids)
+      ? candidate.source_photo_ids.filter((id): id is string => typeof id === "string")
+      : [];
+    const availablePhotos = meal.photos.filter((photo) => sourcePhotoIds.includes(photo.id) && (photo.storageStatus ?? "available") === "available");
+    if (availablePhotos.length !== sourcePhotoIds.length) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
+    const note = typeof candidate.source_note === "string" ? candidate.source_note : "";
+    const [images, recipeReferences] = await Promise.all([
+      Promise.all(availablePhotos.map(async (photo) => {
+        const object = await getR2MealPhotoObject(photo.objectPath);
+        if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
+        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() };
+      })),
+      findRelevantMealRecipeReferences(candidate.user_id, { note, correction: candidate.source_correction ?? undefined }).catch((error) => {
+        console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId, stage: "worker_recipe_context", reason: error instanceof Error ? error.name : "unknown" });
+        return [];
+      }),
+    ]);
+    const analysed = await analyzeMealInputWithFallback({
+      mealType: candidate.source_meal_type ?? meal.mealType,
+      mealDate: candidate.source_meal_date ?? meal.mealDate,
+      note: note || null,
+      images,
+      ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
+      ...(recipeReferences.length ? { recipeReferences } : {}),
+    }, { requestId });
+    let canonicalResult;
+    try {
+      canonicalResult = validateMealAnalysis(analysed.result);
+    } catch {
+      throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
+    }
+    const completed = await updateMealAnalysis(candidate.user_id, candidate.id, {
+      status: "completed",
+      provider: analysed.provider,
+      model: analysed.model,
+      result: canonicalResult,
+      error: null,
+      completed_at: new Date().toISOString(),
+      heartbeat_at: null,
+      lease_token: null,
+    }, "running", leaseToken);
+    return { processed: true as const, analysis: completed, previous: running };
+  } catch (error) {
+    const failure = workerFailure(error);
+    try {
+      const failed = await updateMealAnalysis(candidate.user_id, candidate.id, {
+        status: "failed",
+        error: failure.message,
+        error_code: failure.code,
+        completed_at: new Date().toISOString(),
+        heartbeat_at: null,
+        lease_token: null,
+      }, "running", leaseToken);
+      return { processed: true as const, analysis: failed };
+    } catch (persistError) {
+      // A lost lease means another worker owns recovery. Do not overwrite it.
+      console.error("[meal-analysis] worker result could not be persisted", { requestId, stage: "worker_failure_persistence", reason: persistError instanceof Error ? persistError.name : "unknown" });
+      throw new MealServiceError("unavailable", "Le résultat de l’analyse n’a pas pu être enregistré.", "storage_error");
+    }
+  } finally {
+    if (heartbeat !== null) clearInterval(heartbeat);
+    await releaseMealLease(lockKey, candidate.user_id, lease.token).catch((error) => {
+      console.warn("[meal-analysis] worker lease release failed", { requestId, stage: "worker_lease_release", reason: error instanceof Error ? error.name : "unknown" });
+    });
+  }
 }
 
 export async function analyzeMeal(userId: string, mealId: string, options: { force?: boolean; correction?: MealAnalysisCorrection; provider?: MealVisionProvider; analysisRequestId?: string } = {}) {
