@@ -20,7 +20,8 @@ describe("production-only application contract", () => {
   it("keeps Vercel as the active application host", () => {
     expect(vercelConfig).not.toContain('"redirects"');
     expect(vercelConfig).not.toContain("workers.dev");
-    expect(vercelConfig).not.toContain('"crons"');
+    expect(vercelConfig).toContain('"crons"');
+    expect(vercelConfig).toContain('"path": "/api/cron/sync"');
   });
 
   it("does not ship a fallback account or fabricated user data mode", () => {

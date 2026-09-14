@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/meal-analysis",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
