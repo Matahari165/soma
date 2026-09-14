@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { LabWorldWorkspace } from "./lab-world-workspace";
+import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { arrivalMessageFor } from "@/domain/lab/arrival-message";
 
@@ -66,6 +67,12 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toMatch(/2[\s\u202f]200 kcal/);
     expect(html).toContain('class="radar-value"');
     expect(html).toContain('aria-label="Jour précédent"');
+  });
+
+  it("publishes meals before the journal in the shared capture source order", () => {
+    const html = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} recentDatesFirst />);
+
+    expect(html.indexOf('class="personal-lab-meal-column"')).toBeLessThan(html.indexOf('id="daily-journal"'));
   });
 
   it("renders previous day's date and star graph when a past day is selected", () => {

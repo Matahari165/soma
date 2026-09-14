@@ -114,6 +114,17 @@ const SLOT_LABELS: Record<MealSlot, string> = {
   snack: "Collation",
 };
 
+const SLOT_ARTICLES: Record<MealSlot, "le" | "la"> = {
+  breakfast: "le",
+  lunch: "le",
+  dinner: "le",
+  snack: "la",
+};
+
+function mealLabelWithArticle(slot: MealSlot) {
+  return `${SLOT_ARTICLES[slot]} ${SLOT_LABELS[slot].toLowerCase()}`;
+}
+
 const ORIGIN_LABELS: Record<MealOrigin, string> = {
   homemade: "Maison",
   prepared: "Préparé / acheté",
@@ -737,11 +748,11 @@ function PhotoInput({ slot, onFiles, disabled = false, compact = false, single =
     event.target.value = "";
   };
   return <div className={`${styles.photoInput} ${compact ? styles.photoInputCompact : ""} ${single ? styles.photoInputSingle : ""}`}>
-    <input ref={cameraRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" capture="environment" aria-label={`Prendre une photo pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
-    <input ref={galleryRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" multiple aria-label={`Choisir des photos pour le ${SLOT_LABELS[slot]}`} disabled={disabled} onChange={readFiles} />
-    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-label={`Ajouter une photo pour le ${SLOT_LABELS[slot]}`} aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />{singleLabel}</button> : <>
-      <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
-      <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
+    <input ref={cameraRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" capture="environment" aria-label={`Prendre une photo pour ${mealLabelWithArticle(slot)}`} disabled={disabled} onChange={readFiles} />
+    <input ref={galleryRef} className={styles.visuallyHidden} tabIndex={-1} aria-hidden="true" type="file" accept="image/*" multiple aria-label={`Choisir des photos pour ${mealLabelWithArticle(slot)}`} disabled={disabled} onChange={readFiles} />
+    {single && !choiceOpen ? <button className={styles.captureButtonCompact} type="button" disabled={disabled} aria-label={`Ajouter une photo pour ${mealLabelWithArticle(slot)}`} aria-expanded={false} onClick={() => setChoiceOpen(true)}><Camera size={17} aria-hidden="true" />{singleLabel}</button> : <>
+      <button className={compact ? styles.captureButtonCompact : styles.captureButton} type="button" aria-label={`Prendre une photo pour ${mealLabelWithArticle(slot)}`} disabled={disabled} onClick={() => cameraRef.current?.click()}><Camera size={17} aria-hidden="true" />{compact ? "Caméra" : "Prendre une photo"}</button>
+      <button className={compact ? styles.galleryButtonCompact : styles.galleryButton} type="button" aria-label={`Choisir des photos pour ${mealLabelWithArticle(slot)}`} disabled={disabled} onClick={() => galleryRef.current?.click()}><ImagePlus size={17} aria-hidden="true" />{compact ? "Photos" : "Choisir dans Photos"}</button>
     </>}
   </div>;
 }
@@ -881,7 +892,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       <MealTextInput key="text" slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />
       <div className={compactEmptyState ? styles.emptyMealActions : styles.actionsRow}>
         {compactEmptyState ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} compact single /> : <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />}
-        {labCompact && <button className={styles.analyzeButton} type="button" disabled={!hasEvidence || processingFiles || mutationBusy || disabled} onClick={onAnalyze}><span>Analyser le repas</span><ArrowRight size={17} aria-hidden="true" /></button>}
+        {labCompact && <button className={styles.analyzeButton} type="button" aria-label={`Analyser ${mealLabelWithArticle(slot)}`} disabled={!hasEvidence || processingFiles || mutationBusy || disabled} onClick={onAnalyze}><span>Analyser le repas</span><ArrowRight size={17} aria-hidden="true" /></button>}
         {!compactEmptyState && !hasEvidence && <p className={styles.photoRequired}>Ajoute une photo ou décris ton repas pour lancer l’analyse.</p>}
       </div>
     </div> : null}
@@ -897,7 +908,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       {status !== "confirmed" && <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled} placeholder={labCompact ? "" : "Ex. 2 bananes et un café."} onNote={onNote} onAnalyze={onAnalyze} />}
       {status === "draft" && <div className={styles.actionsRow}>
         <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled} />
-        <button className={styles.analyzeButton} type="button" disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
+        <button className={styles.analyzeButton} type="button" aria-label={`Analyser ${mealLabelWithArticle(slot)}`} disabled={!canAnalyze || processingFiles || mutationBusy || disabled} onClick={onAnalyze}>
           <Sparkles size={17} aria-hidden="true" />Analyser
         </button>
         {!hasEvidence && <p className={styles.photoRequired}>Ajoute une photo ou décris ton repas pour lancer l’analyse.</p>}

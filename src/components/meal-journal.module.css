@@ -3883,7 +3883,7 @@
   white-space: normal;
 }
 
-:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
   padding-top: 0;
   border-top: 0;
 }
@@ -3935,8 +3935,47 @@
     gap: 12px;
   }
 
-  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
     padding-top: 8px;
     border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 6%, var(--lab-canvas));
+  }
+}
+
+/* Mobile homepage: keep each meal's title, content and actions inside one
+   quiet boundary so repeated controls cannot be mistaken for the next slot. */
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot > .mealList {
+    gap: 12px;
+  }
+
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot .mealCard,
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot :is(.mealCardEmpty, .mealCardConfirmed) {
+    width: 100%;
+    min-height: 0;
+    padding: 16px 12px 20px;
+    border: 1px solid color-mix(in srgb, var(--lab-text-primary) 14%, var(--lab-canvas));
+    border-radius: var(--lab-radius-sm);
+    background: var(--lab-surface);
+    box-shadow: none;
+  }
+
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot .mealCard .mealHeader {
+    min-height: 44px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--lab-text-primary) 10%, var(--lab-canvas));
+  }
+
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot .mealCard .mealBody {
+    padding-top: 12px;
+  }
+
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot .mealCardEmpty .emptyMealPrompt {
+    padding: 0;
+  }
+
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot .mealCardEmpty .emptyMealActions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 10%, var(--lab-canvas));
   }
 }
