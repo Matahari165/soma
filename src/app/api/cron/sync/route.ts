@@ -214,7 +214,9 @@ async function queueAutomaticJobs(now = new Date()) {
       else throw new Error("Complete Google Health history could not be queued.");
       continue;
     }
-    if (historyImportOpen) continue;
+    // A full-history import is lower priority than a current automatic window.
+    // Keep the latter queueable so selectNextGoogleHealthSyncJob can prevent a
+    // long historical import from starving fresh effort, sleep, and recovery data.
     const range = clampGoogleHealthRangeToConnection(automaticGoogleHealthRange(now), connection.metadata);
     const { error } = await admin.from("sync_jobs").insert({
       user_id: connection.user_id,

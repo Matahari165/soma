@@ -1,39 +1,83 @@
 import observatoryStyles from "./health-observatory.module.css";
+import styles from "./health-loading-shell.module.css";
 
 type HealthLoadingShellProps = {
   kind: "sleep" | "recovery" | "activity";
   title: string;
-  labels: string[];
 };
 
-export function HealthLoadingShell({ kind, title, labels }: HealthLoadingShellProps) {
+const signalSlots = ["first", "second", "third", "fourth"];
+const trendSlots = ["first", "second"];
+
+export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
   return (
     <div
-      className={`health-observatory-route ${observatoryStyles.observatory} health-detail-page health-detail-page--${kind} health-detail-page--loading`}
+      className={`${observatoryStyles.observatory} ${styles.shell} health-observatory-route`}
       id="main-page-content"
+      data-health-kind={kind}
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label={`Chargement des données ${kind === "activity" ? "d’effort" : `de ${title.toLocaleLowerCase("fr-FR")}`}`}
+      aria-label={`Chargement de la page ${title}`}
     >
-      <header className="health-detail-hero health-detail-hero--with-metrics">
-        <div><h1>{title}</h1></div>
-        <div className="health-hero-metrics health-loading-metrics" aria-hidden="true">
-          {labels.map((label, index) => (
-            <div className={index === 0 ? "health-hero-score health-loading-card" : "health-hero-stat health-loading-card"} key={label}>
-              <span>{label}</span>
-              <span className="health-loading-value" />
-              <span className="health-loading-meta" />
+      <header className={styles.header}>
+        <h1>{title}</h1>
+        <p className={styles.status}>Chargement des données…</p>
+      </header>
+
+      <section className={styles.overview} aria-hidden="true">
+        <div className={styles.overviewVisual} />
+        <div className={styles.overviewSummary}>
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineShort}`} />
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineValue}`} />
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineMeta}`} />
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineRule}`} />
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="health-loading-recent-heading">
+        <header className={styles.sectionHeader}>
+          <h2 id="health-loading-recent-heading">Indicateurs récents</h2>
+          <span className={styles.sectionMeta} aria-hidden="true" />
+        </header>
+        <div className={styles.signalGrid} aria-hidden="true">
+          {signalSlots.map((slot) => <span className={styles.signal} data-testid="health-loading-signal-slot" key={slot} />)}
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="health-loading-trends-heading">
+        <header className={styles.sectionHeader}>
+          <h2 id="health-loading-trends-heading">Tendances</h2>
+          <span className={styles.sectionMeta}>30 jours</span>
+        </header>
+        <div className={styles.trendGrid} aria-hidden="true">
+          {trendSlots.map((slot) => (
+            <div className={styles.trend} data-testid="health-loading-trend-slot" key={slot}>
+              <span className={`${styles.skeletonLine} ${styles.skeletonLineShort}`} />
+              <div className={styles.trendLines}>
+                <span />
+                <span className={styles.trendLineShort} />
+                <span />
+              </div>
             </div>
           ))}
         </div>
-      </header>
-      <div className="health-loading-content" aria-hidden="true">
-        <span className="health-loading-panel" />
-        <span className="health-loading-panel health-loading-panel--tall" />
-        <span className="health-loading-panel" />
-      </div>
-      <span className="sr-only">Chargement…</span>
+      </section>
+
+      <section className={styles.section} aria-labelledby="health-loading-evidence-heading">
+        <header className={styles.sectionHeader}>
+          <h2 id="health-loading-evidence-heading">Données complémentaires</h2>
+        </header>
+        <div className={styles.evidence} aria-hidden="true">
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineMedium}`} />
+          <span className={`${styles.skeletonLine} ${styles.skeletonLineLong}`} />
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.provenance}`} aria-labelledby="health-loading-quality-heading">
+        <h2 id="health-loading-quality-heading">Qualité des données</h2>
+        <span className={styles.provenanceLine} aria-hidden="true" />
+      </section>
     </div>
   );
 }

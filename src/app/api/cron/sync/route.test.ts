@@ -6,6 +6,8 @@ const testState = vi.hoisted(() => ({
   adminFrom: vi.fn(),
   claimCloudflareLock: vi.fn(),
   inserts: [] as Array<{ table: string; values: unknown; options?: unknown }>,
+  openJobs: [] as Array<Record<string, unknown>>,
+  connectionMetadata: { takeout_imported_through: "2026-08-19" } as Record<string, unknown>,
 }));
 
 vi.mock("@/lib/env", () => ({ requireServerEnv: () => "cron-secret" }));
@@ -67,11 +69,13 @@ function configureAdmin() {
 
 function valueFor(table: string, query: { selector: string; operation: string }) {
   if (query.operation === "insert" || query.operation === "update") return { data: [], error: null };
-  if (table === "provider_connections" && query.selector.includes("last_lab_synced_at")) return { data: [connection], error: null };
+  if (table === "provider_connections" && query.selector.includes("last_lab_synced_at")) {
+    return { data: [{ ...connection, metadata: testState.connectionMetadata }], error: null };
+  }
   if (table === "provider_connections" && query.selector === "user_id,last_synced_at") return { data: null, error: null };
   if (table === "profiles") return { data: [{ user_id: "user-1", timezone: "Europe/Paris" }], error: null };
   if (table === "webhook_events") return { data: [], error: null };
-  if (table === "sync_jobs" && query.selector.includes("scheduled_civil_date")) return { data: [], error: null };
+  if (table === "sync_jobs" && query.selector.includes("scheduled_civil_date")) return { data: testState.openJobs, error: null };
   if (table === "sync_jobs" && query.selector === "connection_id") return { data: [], error: null };
   if (table === "sync_jobs") return { data: [], error: null };
   return { data: [], error: null };
@@ -82,6 +86,8 @@ describe("Google Health cron historical repair", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-20T09:05:00.000Z"));
     testState.inserts.length = 0;
+    testState.openJobs = [];
+    testState.connectionMetadata = { takeout_imported_through: "2026-08-19" };
     testState.claimCloudflareLock.mockReset();
     testState.claimCloudflareLock.mockResolvedValue(true);
     configureAdmin();
@@ -119,5 +125,23 @@ describe("Google Health cron historical repair", () => {
 
     expect(response.status).toBe(200);
     expect(testState.inserts.filter((insert) => insert.table === "sync_jobs")).toHaveLength(0);
+  });
+
+  it("queues the current automatic window while a full-history import is open", async () => {
+    testState.connectionMetadata = { analytics_backfill_version: 1 };
+    testState.openJobs = [{ connection_id: "connection-1", sync_trigger: "initial", import_range: "all_history" }];
+
+    const response = await GET(new Request("https://soma.example/api/cron/sync", { headers: { authorization: "Bearer cron-secret" } }));
+
+    expect(response.status).toBe(200);
+    const jobs = testState.inserts.filter((insert) => insert.table === "sync_jobs").map((insert) => insert.values as Record<string, unknown>);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      connection_id: "connection-1",
+      import_range: "90_days",
+      sync_trigger: "automatic",
+      scheduled_civil_date: "2026-08-20",
+      scheduled_sync_slot: "2026-08-20T09:00:00.000Z",
+    });
   });
 });

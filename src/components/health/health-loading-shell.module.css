@@ -1,0 +1,35 @@
+.shell { --loading-rule: var(--lab-border, #292929); --loading-rule-strong: var(--lab-border-strong, #3a3a3a); --loading-text: var(--lab-text-primary, #f1f1f1); --loading-muted: var(--lab-text-secondary, #aaaaaa); display: grid; width: 100%; min-width: 0; min-height: 100%; margin: 0; padding: 32px 5vw 64px; gap: 0; background: var(--lab-canvas, #050505); color: var(--loading-text); font-family: var(--font-soma-ui), system-ui, sans-serif; }
+.header { display: grid; min-height: 72px; align-content: center; gap: 8px; }
+.header h1 { margin: 0; color: var(--loading-text); font: 400 clamp(30px, 3vw, 40px)/1.2 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
+.status { margin: 0; color: var(--loading-muted); font-size: 14px; line-height: 20px; }
+.overview { display: grid; min-width: 0; min-height: 420px; grid-template-columns: minmax(0, 420px) minmax(280px, 1fr); align-items: center; gap: 48px; padding-block: 8px 16px; }
+.overviewVisual { width: min(100%, 420px); aspect-ratio: 1; border: 1px solid var(--loading-rule); opacity: .62; }
+.overviewSummary { display: grid; min-height: 240px; align-content: center; gap: 16px; padding-inline-start: clamp(24px, 4vw, 48px); border-inline-start: 1px solid var(--loading-rule); }
+.skeletonLine { display: block; height: 10px; background: var(--loading-rule-strong); opacity: .62; }
+.skeletonLineShort { width: min(34%, 160px); }
+.skeletonLineValue { width: min(48%, 240px); height: 56px; opacity: .78; }
+.skeletonLineMeta { width: min(30%, 140px); height: 10px; }
+.skeletonLineRule { width: 100%; height: 1px; margin-top: 8px; background: var(--loading-rule); }
+.skeletonLineMedium { width: min(34%, 240px); }
+.skeletonLineLong { width: min(72%, 680px); }
+.section { min-width: 0; margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--loading-rule); }
+.sectionHeader { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.sectionHeader h2, .provenance h2 { margin: 0; color: var(--loading-text); font: 400 22px/28px Georgia, "Times New Roman", serif; }
+.sectionMeta { min-width: 64px; min-height: 12px; color: var(--loading-muted); font: 400 12px/18px var(--font-soma-mono), ui-monospace, monospace; text-align: end; }
+.signalGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.signal { display: block; min-width: 0; min-height: 80px; padding-top: 12px; border-top: 1px solid var(--loading-rule); }
+.signal::before, .signal::after { display: block; height: 10px; background: var(--loading-rule-strong); content: ""; opacity: .62; }
+.signal::before { width: 58%; }
+.signal::after { width: 38%; height: 1px; margin-top: 20px; background: var(--loading-rule); }
+.trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.trend { min-width: 0; min-height: 160px; padding-top: 12px; border-top: 1px solid var(--loading-rule); }
+.trendLines { display: grid; gap: 16px; margin-top: 48px; }
+.trendLines span { display: block; width: 100%; height: 1px; background: var(--loading-rule); }
+.trendLines .trendLineShort { width: 72%; background: var(--loading-rule-strong); }
+.evidence { display: grid; min-height: 180px; align-content: center; gap: 16px; padding-block: 24px; border-top: 1px solid var(--loading-rule); }
+.provenance { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 64px; }
+.provenanceLine { display: block; width: min(38%, 280px); height: 10px; background: var(--loading-rule-strong); opacity: .62; }
+@media (max-width: 900px) { .overview { min-height: 0; grid-template-columns: 1fr; gap: 24px; } .overviewVisual { justify-self: center; width: min(100%, 320px); } .overviewSummary { min-height: 180px; padding-block: 24px 0; padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid var(--loading-rule); } .signalGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .shell { padding: 24px 16px 48px; } .header { min-height: 64px; } .section { margin-top: 40px; } .sectionHeader { align-items: flex-start; flex-wrap: wrap; gap: 4px 12px; } .sectionMeta { text-align: start; } .trendGrid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .signalGrid { grid-template-columns: 1fr; gap: 16px; } .provenance { align-items: flex-start; flex-direction: column; } .provenanceLine { width: min(70%, 280px); } }
+@media (prefers-reduced-motion: reduce) { .shell, .shell *, .shell *::before, .shell *::after { animation: none !important; scroll-behavior: auto !important; transition: none !important; } }

@@ -92,3 +92,23 @@ it("renders no transform by default", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={data} />);
   expect(html).not.toContain("translate(");
 });
+
+it("keeps explicit zeroes measured and ignores invalid runtime numbers", () => {
+  const html = renderToStaticMarkup(<ObservatoryRadar data={{
+    ...data,
+    sleepMinutes: 0,
+    recoveryScore: 0,
+    effortScore: 0,
+    caloriesKcal: 0,
+    averageSleepMinutes: undefined,
+    averageRecoveryScore: Number.NaN,
+    averageEffortScore: Number.POSITIVE_INFINITY,
+  }} />);
+
+  expect((html.match(/class="radar-point"/g) ?? []).length).toBe(4);
+  expect(html).toContain("0h 00");
+  expect(html).toContain("Récupération : 0");
+  expect(html).toContain("Effort : 0.0");
+  expect(html).not.toContain("NaN");
+  expect(html).not.toContain("Infinity");
+});

@@ -2,18 +2,32 @@
 import { Fragment, startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
-type RadarData = { sleepMinutes:number|null; recoveryScore:number|null; effortScore:number|null; caloriesKcal:number|null; calorieTarget?:number|null; averageSleepMinutes:number|null; averageRecoveryScore:number|null; averageEffortScore:number|null; averageCaloriesKcal:number|null };
+type RadarNumber = number | null | undefined;
+type RadarData = { sleepMinutes:RadarNumber; recoveryScore:RadarNumber; effortScore:RadarNumber; caloriesKcal:RadarNumber; calorieTarget?:RadarNumber; averageSleepMinutes:RadarNumber; averageRecoveryScore:RadarNumber; averageEffortScore:RadarNumber; averageCaloriesKcal:RadarNumber };
 const DEFAULT_RADAR_RADIUS = 430;
 const SLEEP_TARGET_MINUTES = 510;
+function measured(value: RadarNumber): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function nullable(value: RadarNumber): number | null {
+  return measured(value) ? value : null;
+}
 export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
   const router = useRouter();
-  const caloriesRef = useRef(data.caloriesKcal);
-  const [calories,setCalories] = useState(data.caloriesKcal);
-  const calorieTargetRef = useRef<number|null>(data.calorieTarget ?? null);
-  const [calorieTarget,setCalorieTarget] = useState<number|null>(data.calorieTarget ?? null);
-  useEffect(()=>{ caloriesRef.current=data.caloriesKcal; startTransition(()=>setCalories(data.caloriesKcal)); },[data.caloriesKcal]);
+  const sleepMinutes = nullable(data.sleepMinutes);
+  const recoveryScore = nullable(data.recoveryScore);
+  const effortScore = nullable(data.effortScore);
+  const averageSleepMinutes = nullable(data.averageSleepMinutes);
+  const averageRecoveryScore = nullable(data.averageRecoveryScore);
+  const averageEffortScore = nullable(data.averageEffortScore);
+  const averageCaloriesKcal = nullable(data.averageCaloriesKcal);
+  const caloriesRef = useRef<number|null>(nullable(data.caloriesKcal));
+  const [calories,setCalories] = useState<number|null>(nullable(data.caloriesKcal));
+  const calorieTargetRef = useRef<number|null>(nullable(data.calorieTarget));
+  const [calorieTarget,setCalorieTarget] = useState<number|null>(nullable(data.calorieTarget));
+  useEffect(()=>{ const next=nullable(data.caloriesKcal); caloriesRef.current=next; startTransition(()=>setCalories(next)); },[data.caloriesKcal]);
   useEffect(()=>{
-    const next = data.calorieTarget ?? null;
+    const next = nullable(data.calorieTarget);
     const current = calorieTargetRef.current;
     const merged = current !== null && (next === null || next < current) ? current : next;
     calorieTargetRef.current = merged;
@@ -24,11 +38,13 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
       const detail=(event as CustomEvent<MealTotalsEventDetail>).detail;
       const matches = date ? detail?.date === date : detail?.isToday;
       if(matches){
-        const changed=caloriesRef.current!==detail.calories;
-        caloriesRef.current=detail.calories;
-        setCalories(detail.calories);
-        calorieTargetRef.current=detail.calorieTarget;
-        setCalorieTarget(detail.calorieTarget);
+        const nextCalories=nullable(detail.calories);
+        const nextTarget=nullable(detail.calorieTarget);
+        const changed=caloriesRef.current!==nextCalories;
+        caloriesRef.current=nextCalories;
+        setCalories(nextCalories);
+        calorieTargetRef.current=nextTarget;
+        setCalorieTarget(nextTarget);
         if(changed)router.refresh();
       }
     };
@@ -36,10 +52,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     return()=>window.removeEventListener(MEAL_TOTALS_EVENT,update);
   },[router, date]);
   const axes=[
-    {label:"Sommeil",average:data.averageSleepMinutes,value:data.sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:data.sleepMinutes===null?"—":`${Math.floor(data.sleepMinutes/60)}h ${Math.round(data.sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h 30"},
-    {label:"Récupération",average:data.averageRecoveryScore,value:data.recoveryScore,target:100,unit:"",display:data.recoveryScore===null?"—":`${Math.round(data.recoveryScore)}`,goal:"100 %"},
-    {label:"Effort",average:data.averageEffortScore===null?null:data.averageEffortScore*.21,value:data.effortScore===null?null:data.effortScore*.21,target:21,unit:"",display:data.effortScore===null?"—":`${(data.effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
-    {label:"Calories",average:data.averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:3000,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:3000).toLocaleString("fr-FR")} kcal`},
+    {label:"Sommeil",average:averageSleepMinutes,value:sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:sleepMinutes===null?"—":`${Math.floor(sleepMinutes/60)}h ${Math.round(sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h 30"},
+    {label:"Récupération",average:averageRecoveryScore,value:recoveryScore,target:100,unit:"",display:recoveryScore===null?"—":`${Math.round(recoveryScore)}`,goal:"100 %"},
+    {label:"Effort",average:averageEffortScore===null?null:averageEffortScore*.21,value:effortScore===null?null:effortScore*.21,target:21,unit:"",display:effortScore===null?"—":`${(effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
+    {label:"Calories",average:averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:3000,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:3000).toLocaleString("fr-FR")} kcal`},
   ];
   const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
   // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.

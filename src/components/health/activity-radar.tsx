@@ -107,7 +107,8 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
   const measuredPoints = dimensions.map((dimension, index) => measured(dimension.normalizedValue)
     ? pointFor(index, Math.max(count, 1), RADIUS * dimension.normalizedValue)
     : null);
-  const allMeasured = count >= 3 && measuredPoints.every((point): point is Point => point !== null);
+  const availablePoints = measuredPoints.filter((point): point is Point => point !== null);
+  const hasValueShape = count >= 3 && availablePoints.length >= 3;
   const hasMeasuredPoint = measuredPoints.some((point) => point !== null);
   const description = descriptionFor(dimensions);
   const rootClassName = className ? `${styles.root} ${className}` : styles.root;
@@ -129,7 +130,7 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
       })}
 
       {hasMeasuredPoint && <g className={styles.dataLayer} aria-hidden="true">
-        {allMeasured && <polygon className={styles.valueArea} points={pointString(measuredPoints.filter((point): point is Point => point !== null))} />}
+        {hasValueShape && <polygon className={styles.valueArea} points={pointString(availablePoints)} />}
         {measuredPoints.map((point, index) => point && <circle key={`point-${dimensions[index].id}`} className={styles.point} cx={point[0]} cy={point[1]} r="4" />)}
       </g>}
 
