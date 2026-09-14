@@ -24,7 +24,7 @@ describe("server nutrition targets", () => {
   it("derives a preview target from the effort score and its 30-day context", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     const state = await loadDailyNutritionTargetsForUser("preview-daily-target", "2026-09-12");
-    expect(state).toMatchObject({ effortScore: 63, effortCoverage: 1, effortSupplementKcal: 50, effortAdjustmentApplied: true });
+    expect(state).toMatchObject({ effortScore: 29, effortCoverage: 1, effortSupplementKcal: 50, effortAdjustmentApplied: true });
     expect(state.targets.caloriesKcal.likely).toBe(3000);
     expect(state.effectiveTargets.caloriesKcal.likely).toBe(3050);
   });

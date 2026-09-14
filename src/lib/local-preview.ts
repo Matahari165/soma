@@ -1,4 +1,5 @@
 import type { DashboardSnapshot } from "@/domain/health";
+import { SOMA_LOCALE } from "@/lib/locale";
 
 export const previewUser = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -17,30 +18,30 @@ export const previewScoreHistory = {
 export const previewDashboard: DashboardSnapshot = {
   dataDate: new Date().toISOString().slice(0, 10),
   isCurrentDay: true,
-  dateLabel: new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date()),
-  greeting: "Good morning",
+  dateLabel: new Intl.DateTimeFormat(SOMA_LOCALE, { weekday: "long", month: "long", day: "numeric" }).format(new Date()),
+  greeting: "Bonjour",
   greetingName: "Jérémy",
   scores: [
-    { kind: "sleep", score: previewScoreHistory.sleep.at(-1) ?? null, status: "restorative", label: "Sleep", value: "7h 48m", target: "of 8h 10m needed", delta: "84% regularity", detail: "Duration, efficiency, and regularity are combined transparently.", action: "Keep tonight close to your established sleep window.", href: "/sleep", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.sleep },
-    { kind: "recovery", score: previewScoreHistory.recovery.at(-1) ?? null, status: "restorative", label: "Recovery", value: "Above recent range", target: "HRV 57 ms · RHR 57 bpm", delta: "Uses your own recent range", detail: "HRV, resting heart rate, and sleep support today's score.", action: "Use this signal alongside how you feel today.", href: "/recovery", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.recovery },
-    { kind: "effort", score: previewScoreHistory.effort.at(-1) ?? null, status: "steady", label: "Effort", value: "29/100 accomplished", target: "Today's accumulated load", delta: "8,900 steps · 33 zone min", detail: "Every additional activity adds load, with progressively smaller gains.", action: "Interpret this accomplished load alongside your recovery.", href: "/activity", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.effort },
+    { kind: "sleep", score: previewScoreHistory.sleep.at(-1) ?? null, status: "restorative", label: "Sommeil", value: "7 h 48", target: "sur 8 h 10 nécessaires", delta: "84 % de régularité", detail: "Durée, efficacité et régularité sont combinées de manière transparente.", action: "Garde ce soir une heure de sommeil proche de ton rythme établi.", href: "/sleep", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.sleep },
+    { kind: "recovery", score: previewScoreHistory.recovery.at(-1) ?? null, status: "restorative", label: "Récupération", value: "Au-dessus de ta plage récente", target: "VFC 57 ms · FC repos 57 bpm", delta: "Utilise ta propre plage récente", detail: "La VFC, la fréquence cardiaque au repos et le sommeil contribuent au score du jour.", action: "Lis ce signal avec ton ressenti du jour.", href: "/recovery", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.recovery },
+    { kind: "effort", score: previewScoreHistory.effort.at(-1) ?? null, status: "steady", label: "Effort", value: "29/100 accomplis", target: "Charge accumulée aujourd’hui", delta: "8 900 pas · 33 min en zone", detail: "Chaque activité supplémentaire ajoute de la charge, avec des gains progressivement plus faibles.", action: "Interprète cette charge avec ton niveau de récupération.", href: "/activity", freshness: { measuredAt: new Date().toISOString(), importedAt: new Date().toISOString(), state: "current", coverage: 1 }, history: previewScoreHistory.effort },
   ],
-  summary: "Sleep and recovery are both above your recent range. Today's activity has accumulated 29 load points so far.",
+  summary: "Le sommeil et la récupération sont au-dessus de ta plage récente. L’activité du jour totalise déjà 29 points de charge.",
   insights: [
-    { id: "preview-insight-1", category: "positive", title: "Sleep regularity is strengthening", description: "Your last four complete nights stayed closer to your usual window.", evidence: "Demo · 7 complete nights" },
-    { id: "preview-insight-2", category: "information", title: "Recovery moved with sleep", description: "Both signals improved across the latest complete days.", evidence: "Demo · 7 complete nights" },
+    { id: "preview-insight-1", category: "positive", title: "La régularité du sommeil se renforce", description: "Tes quatre dernières nuits complètes sont restées plus proches de ton rythme habituel.", evidence: "Démo · 7 nuits complètes" },
+    { id: "preview-insight-2", category: "information", title: "La récupération évolue avec le sommeil", description: "Les deux signaux se sont améliorés sur les derniers jours complets.", evidence: "Démo · 7 nuits complètes" },
   ],
   weeklyEffort: { current: 163, days: previewScoreHistory.effort.map((value, index) => ({ label: ["M", "T", "W", "T", "F", "S", "S"][index], value, today: index === 6 })) },
-  recoveryTrend: [64, 68, 61, 73, 76, 78, 82].map((value, index) => ({ label: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index], value })),
-  sleepRegularity: { bedtime: "10:52 PM", wakeTime: "7:04 AM", consistency: 84 },
+  recoveryTrend: [64, 68, 61, 73, 76, 78, 82].map((value, index) => ({ label: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"][index], value })),
+  sleepRegularity: { bedtime: "22:52", wakeTime: "07:04", consistency: 84 },
 };
 
 export const previewExercises = [
-  { id: "10000000-0000-4000-8000-000000000001", name: "Back squat", muscle_groups: ["Quadriceps", "Glutes"], equipment: ["Barbell"], instructions: ["Brace", "Descend under control", "Drive through the floor"] },
-  { id: "10000000-0000-4000-8000-000000000002", name: "Bench press", muscle_groups: ["Chest", "Triceps"], equipment: ["Barbell", "Bench"], instructions: ["Set shoulders", "Lower under control", "Press steadily"] },
-  { id: "10000000-0000-4000-8000-000000000003", name: "Romanian deadlift", muscle_groups: ["Hamstrings", "Glutes"], equipment: ["Barbell"], instructions: ["Hinge at the hips", "Keep the bar close", "Stand tall"] },
+  { id: "10000000-0000-4000-8000-000000000001", name: "Squat barre", muscle_groups: ["Quadriceps", "Fessiers"], equipment: ["Barre"], instructions: ["Gaine le corps", "Descends sous contrôle", "Pousse dans le sol"] },
+  { id: "10000000-0000-4000-8000-000000000002", name: "Développé couché", muscle_groups: ["Pectoraux", "Triceps"], equipment: ["Barre", "Banc"], instructions: ["Place tes épaules", "Descends sous contrôle", "Pousse régulièrement"] },
+  { id: "10000000-0000-4000-8000-000000000003", name: "Soulevé de terre roumain", muscle_groups: ["Ischio-jambiers", "Fessiers"], equipment: ["Barre"], instructions: ["Bascule les hanches", "Garde la barre près du corps", "Redresse-toi"] },
 ];
 
-export const previewPrograms = [{ id: "20000000-0000-4000-8000-000000000001", name: "Full Body A", description: "Balanced strength session", exercises: [{ exercise: previewExercises[0], sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 }] }];
+export const previewPrograms = [{ id: "20000000-0000-4000-8000-000000000001", name: "Corps entier A", description: "Séance de renforcement équilibrée", exercises: [{ exercise: previewExercises[0], sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 }] }];
 
 export const previewProfile = { displayName: "Jérémy", dateOfBirth: "1998-06-12", heightCm: 178, weightKg: 74, primaryGoal: "build_muscle", baseSleepTargetMinutes: 510, usualWakeTime: "07:00", importRange: "all_history" as const };

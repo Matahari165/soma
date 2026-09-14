@@ -347,13 +347,15 @@ export async function findActiveMealAnalysis(userId: string, mealId: string) {
  */
 export async function requeueStaleMealAnalyses(staleAfterMs = 2 * 60 * 1000) {
   const staleBefore = new Date(Date.now() - staleAfterMs).toISOString();
-  const requeue = (query: ReturnType<typeof createCloudflareAdminClient>["from"]) => query
-    .update({ status: "queued", error: null, error_code: null, heartbeat_at: null, lease_token: null, completed_at: null })
-    .eq("status", "running")
-    .select("id");
+  const requeue = async (stale: "missing-heartbeat" | "expired-heartbeat") => {
+    const query = createCloudflareAdminClient().from("meal_analyses").update({ status: "queued", error: null, error_code: null, heartbeat_at: null, lease_token: null, completed_at: null }).eq("status", "running");
+    if (stale === "missing-heartbeat") query.is("heartbeat_at", null);
+    else query.lt("heartbeat_at", staleBefore);
+    return query.select("id");
+  };
   const [withoutHeartbeat, expiredHeartbeat] = await Promise.all([
-    requeue(createCloudflareAdminClient().from("meal_analyses").is("heartbeat_at", null)),
-    requeue(createCloudflareAdminClient().from("meal_analyses").lt("heartbeat_at", staleBefore)),
+    requeue("missing-heartbeat"),
+    requeue("expired-heartbeat"),
   ]);
   if (withoutHeartbeat.error || expiredHeartbeat.error) throw new Error("Stale meal analysis jobs could not be requeued.");
   return (withoutHeartbeat.data ?? []).length + (expiredHeartbeat.data ?? []).length;

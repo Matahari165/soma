@@ -51,7 +51,7 @@ const azeretMono = Azeret_Mono({
 export const metadata: Metadata = {
   title: "Soma",
   applicationName: "Soma",
-  description: "A personal lab for the relationships between health, focus, energy, recovery, and Deep Work.",
+  description: "Un laboratoire personnel pour comprendre les relations entre santé, concentration, énergie, récupération et travail profond.",
   icons: {
     icon: [{ url: "/icon.png?v=discobolus-5", type: "image/png" }],
     shortcut: [{ url: "/favicon.ico?v=discobolus-5" }],

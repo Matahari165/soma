@@ -25,7 +25,7 @@ type Exercise = { id: string; name: string; muscle_groups: string[]; equipment: 
 type ProgramExercise = { exercise: Exercise; sets: number; repsMin: number; repsMax: number; restSeconds: number };
 type Program = { id: string; name: string; description?: string; exercises: ProgramExercise[] };
 type ActiveSession = { program: Program; sessionId: string; exerciseIndex: number; setIndex: number; elapsed: number; rest: number; paused: boolean };
-const goalLabels: Record<string, string> = { build_muscle: "Build muscle", improve_endurance: "Improve endurance", improve_cardio: "Improve cardio", general_fitness: "General fitness", maintain_health: "Maintain health", other: "Other" };
+const goalLabels: Record<string, string> = { build_muscle: "Développer la masse musculaire", improve_endurance: "Améliorer l’endurance", improve_cardio: "Améliorer le cardio", general_fitness: "Forme générale", maintain_health: "Maintenir la santé", other: "Autre" };
 
 function formatTimer(seconds: number) {
   return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
@@ -163,13 +163,13 @@ export function WorkoutStudio() {
     try {
       const response = await fetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), exercises: selected.map((item) => ({ exerciseId: item.exercise.id, sets: item.sets, repsMin: item.repsMin, repsMax: item.repsMax, restSeconds: item.restSeconds })) }) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Program could not be saved.");
+      if (!response.ok) throw new Error(result.error ?? "Le programme n’a pas pu être enregistré.");
       const program = { id: result.id, name: name.trim(), exercises: selected };
       setPrograms((current) => [program, ...current]);
       setBuilderOpen(false);
       resetBuilder();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Program could not be saved.");
+      setActionError(error instanceof Error ? error.message : "Le programme n’a pas pu être enregistré.");
     } finally {
       setSaving(false);
     }
@@ -182,20 +182,20 @@ export function WorkoutStudio() {
     try {
       const response = await fetch("/api/workouts/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ programId: program.id, name: program.name }) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Workout could not be started.");
+      if (!response.ok) throw new Error(result.error ?? "La séance n’a pas pu démarrer.");
       setActive({ program, sessionId: result.id, exerciseIndex: 0, setIndex: 1, elapsed: 0, rest: 0, paused: false });
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Workout could not be started.");
+      setActionError(error instanceof Error ? error.message : "La séance n’a pas pu démarrer.");
     } finally {
       setStartingId(null);
     }
   }
 
   async function patchSession(body: Record<string, unknown>) {
-    if (!active) throw new Error("No active workout.");
+    if (!active) throw new Error("Aucune séance active.");
     const response = await fetch(`/api/workouts/sessions/${active.sessionId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error ?? "Workout progress could not be saved.");
+    if (!response.ok) throw new Error(result.error ?? "La progression de la séance n’a pas pu être enregistrée.");
     return result;
   }
 
@@ -207,7 +207,7 @@ export function WorkoutStudio() {
       await patchSession({ action: active.paused ? "resume" : "pause" });
       setActive((current) => current ? { ...current, paused: !current.paused } : null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Workout timer could not be updated.");
+      setActionError(error instanceof Error ? error.message : "Le minuteur de la séance n’a pas pu être mis à jour.");
     } finally { setUpdatingSession(false); }
   }
 
@@ -220,7 +220,7 @@ export function WorkoutStudio() {
       setActive(null);
       setStopConfirmation(false);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Workout could not be finished.");
+      setActionError(error instanceof Error ? error.message : "La séance n’a pas pu être terminée.");
       setStopConfirmation(false);
     } finally { setUpdatingSession(false); }
   }
@@ -235,24 +235,24 @@ export function WorkoutStudio() {
       const lastExercise = active.exerciseIndex >= active.program.exercises.length - 1;
       if (lastSet && lastExercise) {
         const response = await fetch(`/api/workouts/sessions/${active.sessionId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "complete", durationSeconds: active.elapsed }) });
-        if (!response.ok) throw new Error("The final set was saved, but the workout could not be finished.");
+        if (!response.ok) throw new Error("La dernière série a été enregistrée, mais la séance n’a pas pu être terminée.");
         setActive(null);
         return;
       }
       setActive((current) => current ? { ...current, exerciseIndex: lastSet ? current.exerciseIndex + 1 : current.exerciseIndex, setIndex: lastSet ? 1 : current.setIndex + 1, rest: currentExercise.restSeconds } : null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Set could not be saved.");
+      setActionError(error instanceof Error ? error.message : "La série n’a pas pu être enregistrée.");
     } finally { setUpdatingSession(false); }
   }
 
-  if (loading) return <div className="workout-loading" id="main-page-content" role="status"><LoaderCircle className="spin" />Loading workout studio…</div>;
-  if (loadError) return <div className="workout-page" id="main-page-content"><div className="load-error" role="alert"><AlertCircle /><h1>Workout studio could not load</h1><p>{loadError}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setLoadError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Try again</button></div></div>;
+  if (loading) return <div className="workout-loading" id="main-page-content" role="status"><LoaderCircle className="spin" />Chargement de l’espace entraînement…</div>;
+  if (loadError) return <div className="workout-page" id="main-page-content"><div className="load-error" role="alert"><AlertCircle /><h1>L’espace entraînement n’a pas pu être chargé</h1><p>{loadError}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setLoadError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Réessayer</button></div></div>;
 
   return <div className="workout-page" id="main-page-content">
-    <header className="workout-header"><h1>Workouts</h1><button className="primary-button" type="button" onClick={() => setBuilderOpen(true)}><Plus size={17} />New program</button></header>
-    <section className="workout-summary" aria-label="Workout summary"><article><span>Programs</span><strong>{programs.length}</strong></article><article><span>Planned sets</span><strong>{totalSets}</strong></article><article><span>Primary goal</span><strong>{goalLabels[primaryGoal] ?? "Other"}</strong></article></section>
+    <header className="workout-header"><h1>Entraînements</h1><button className="primary-button" type="button" onClick={() => setBuilderOpen(true)}><Plus size={17} />Nouveau programme</button></header>
+    <section className="workout-summary" aria-label="Résumé des entraînements"><article><span>Programmes</span><strong>{programs.length}</strong></article><article><span>Séries prévues</span><strong>{totalSets}</strong></article><article><span>Objectif principal</span><strong>{goalLabels[primaryGoal] ?? "Autre"}</strong></article></section>
     {actionError && !builderOpen && !active && <p className="form-error" role="alert">{actionError}</p>}
-    {programs.length ? <section className="program-grid" aria-label="Your workout programs">{programs.map((program) => <article className="program-card" key={program.id}><div className="program-icon"><Dumbbell /></div><span>{program.exercises.length} exercise{program.exercises.length === 1 ? "" : "s"}</span><h2>{program.name}</h2><ul>{program.exercises.slice(0, 4).map((item) => <li key={item.exercise.id}>{item.exercise.name}<span>{item.sets} × {item.repsMin}–{item.repsMax}</span></li>)}</ul><button disabled={Boolean(startingId)} type="button" onClick={() => void start(program)}>{startingId === program.id ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}{startingId === program.id ? "Starting…" : "Start workout"}</button></article>)}</section> : <section className="workout-empty"><Dumbbell size={28} /><h2>Create your first program</h2><p>Use <strong>New program</strong> above to choose exercises, sets, repetitions, and rest.</p></section>}
+    {programs.length ? <section className="program-grid" aria-label="Vos programmes d’entraînement">{programs.map((program) => <article className="program-card" key={program.id}><div className="program-icon"><Dumbbell /></div><span>{program.exercises.length} exercice{program.exercises.length === 1 ? "" : "s"}</span><h2>{program.name}</h2><ul>{program.exercises.slice(0, 4).map((item) => <li key={item.exercise.id}>{item.exercise.name}<span>{item.sets} × {item.repsMin}–{item.repsMax}</span></li>)}</ul><button disabled={Boolean(startingId)} type="button" onClick={() => void start(program)}>{startingId === program.id ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}{startingId === program.id ? "Démarrage…" : "Démarrer la séance"}</button></article>)}</section> : <section className="workout-empty"><Dumbbell size={28} /><h2>Créez votre premier programme</h2><p>Utilisez <strong>Nouveau programme</strong> pour choisir vos exercices, séries, répétitions et temps de repos.</p></section>}
 
     {builderOpen && <><button className="panel-backdrop" type="button" onClick={requestCloseBuilder} aria-label="Close program builder" /><div ref={builderRef} className="workout-modal" role="dialog" aria-modal="true" aria-labelledby="builder-title"><header><div><span className="eyebrow">Program builder</span><h2 id="builder-title">Design your session</h2></div><button className="icon-button" onClick={requestCloseBuilder} type="button" aria-label="Close builder"><X /></button></header><label className="builder-name">Program name<input maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label><div className="builder-layout"><section><div className="builder-section-heading"><h3>Exercise library</h3><span>{selected.length} selected</span></div><label className="exercise-search"><Search size={16} aria-hidden="true" /><span className="sr-only">Search exercises</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search exercises" /></label><div className="exercise-picker">{filteredExercises.length ? filteredExercises.map((exercise) => <button className={selected.some((item) => item.exercise.id === exercise.id) ? "is-selected" : ""} aria-pressed={selected.some((item) => item.exercise.id === exercise.id)} key={exercise.id} onClick={() => toggleExercise(exercise)} type="button"><span>{exercise.name}<small>{exercise.muscle_groups.join(" · ")}</small></span>{selected.some((item) => item.exercise.id === exercise.id) ? <Check size={17} /> : <Plus size={17} />}</button>) : <p className="empty-state">No exercises match “{query}”.</p>}</div></section><section><h3>Program details</h3>{selected.length ? <div className="selected-exercises">{selected.map((item) => <article key={item.exercise.id}><strong>{item.exercise.name}</strong><button type="button" className="remove-exercise" onClick={() => toggleExercise(item.exercise)} aria-label={`Remove ${item.exercise.name}`}><X size={15} /></button><div><label>Sets<input type="number" min="1" max="20" value={item.sets} onChange={(event) => updateExercise(item.exercise.id, "sets", Number(event.target.value))} /></label><label>Min reps<input type="number" min="1" max="1000" value={item.repsMin} onChange={(event) => updateExercise(item.exercise.id, "repsMin", Number(event.target.value))} /></label><label>Max reps<input type="number" min={item.repsMin} max="1000" value={item.repsMax} onChange={(event) => updateExercise(item.exercise.id, "repsMax", Number(event.target.value))} /></label><label>Rest (sec)<input type="number" min="0" max="3600" value={item.restSeconds} onChange={(event) => updateExercise(item.exercise.id, "restSeconds", Number(event.target.value))} /></label></div>{item.repsMax < item.repsMin && <p className="field-error">Maximum reps must be at least the minimum.</p>}</article>)}</div> : <p className="empty-state">Select at least one exercise to build the session.</p>}</section></div><footer><span>{invalidProgram && selected.length ? "Check every set, rep, and rest value." : `${selected.length} exercise${selected.length === 1 ? "" : "s"}`}</span><button className="primary-button" disabled={invalidProgram || saving} onClick={() => void saveProgram()} type="button">{saving ? <LoaderCircle className="spin" size={17} /> : <Save size={17} />}{saving ? "Saving…" : "Save program"}</button></footer>{actionError && <p className="modal-error" role="alert">{actionError}</p>}{discardConfirmation && <div className="modal-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="discard-title"><h3 id="discard-title">Discard this draft?</h3><p>Your selected exercises and changes will be lost.</p><div><button autoFocus className="secondary-button" type="button" onClick={() => setDiscardConfirmation(false)}>Keep editing</button><button className="danger-button" type="button" onClick={() => { setBuilderOpen(false); resetBuilder(); }}>Discard draft</button></div></div>}</div></>}
 

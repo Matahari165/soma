@@ -32,7 +32,7 @@ type D1PreparedStatement = {
   run(): Promise<{ success: boolean; error?: string; meta?: { changes?: number } }>;
 };
 
-type D1BatchResult = { success?: boolean; error?: string };
+type D1BatchResult = { success?: boolean; error?: string; meta?: { changes?: number } };
 
 type D1DatabaseLike = {
   prepare(query: string): D1PreparedStatement;
