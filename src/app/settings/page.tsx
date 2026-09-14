@@ -11,12 +11,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const healthStatus = Array.isArray(params.health) ? params.health[0] : params.health;
   const calendarStatus = Array.isArray(params.calendar) ? params.calendar[0] : params.calendar;
   const calendarNotices: Record<string, CalendarConnectionNotice> = {
-    connected: { message: "Google Calendar connected and aggregated.", tone: "success" },
-    connected_sync_failed: { message: "Google Calendar connected, but its first aggregation needs to be retried.", tone: "error" },
-    permission_denied: { message: "Calendar access was not granted.", tone: "error" },
-    invalid_state: { message: "The Calendar connection expired before it completed. Try again.", tone: "error" },
-    unavailable: { message: "Google Calendar is not configured yet.", tone: "error" },
-    connection_failed: { message: "Google Calendar could not be connected.", tone: "error" },
+    connected: { message: "Google Calendar est connecté et agrégé.", tone: "success" },
+    connected_sync_failed: { message: "Google Calendar est connecté, mais son premier agrégat doit être relancé.", tone: "error" },
+    permission_denied: { message: "L’accès au calendrier n’a pas été accordé.", tone: "error" },
+    invalid_state: { message: "La connexion au calendrier a expiré avant de se terminer. Réessayez.", tone: "error" },
+    unavailable: { message: "Google Calendar n’est pas encore configuré.", tone: "error" },
+    connection_failed: { message: "Google Calendar n’a pas pu être connecté.", tone: "error" },
   };
   return <SettingsConsole initialHealthNotice={getGoogleHealthNotice(healthStatus)} initialCalendarNotice={calendarStatus ? calendarNotices[calendarStatus] ?? null : null} />;
 }

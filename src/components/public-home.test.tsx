@@ -10,7 +10,7 @@ describe("PublicHome", () => {
 
     expect(html).toContain("Soma");
     expect(html).toContain("Google Health");
-    expect(html).toContain("Sign in to Soma");
+    expect(html).toContain("Se connecter à Soma");
     expect(html).toContain('href="/privacy"');
     expect(html).toContain('href="/terms"');
     expect(html).not.toMatch(/demo|sample score|84\/100/i);

@@ -2,14 +2,13 @@ import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { filterCalendarWindow, summarizeTrend, type MetricPoint, type TrendDirection } from "@/domain/metrics/trends";
+import { formatDate as formatLocaleDate, formatNumber } from "@/lib/locale";
 
 import { LineTrendChart, type ChartValueFormat } from "./health-charts";
 import { AnimatedMetricReading, type AnimatedValueFormat } from "./animated-value";
 import { MetricReading } from "./metric-reading";
 
-function defaultFormat(value: number) { return Math.round(value * 10) / 10 + ""; }
-const shortDateFormat = new Intl.DateTimeFormat("fr-FR", { month: "short", day: "numeric" });
-
+function defaultFormat(value: number) { return formatNumber(value, { maximumFractionDigits: 1 }); }
 function formatCompactAverage(value: number, format: (value: number) => string, unit?: string) {
   const formatted = format(value);
   return `${formatted}${unit === "%" || unit?.startsWith("/") ? unit : unit ? ` ${unit}` : ""}`;
@@ -39,7 +38,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   const delta = comparison.percentDelta;
   const favorable = delta === null || direction === "context_only" ? "neutral" : (direction === "higher_is_better" ? delta > 0 : delta < 0) ? "positive" : "negative";
   const Icon = delta === null || Math.abs(delta) < 0.05 ? ArrowRight : delta > 0 ? ArrowUpRight : ArrowDownRight;
-  const formatDate = (value: string | undefined) => value ? shortDateFormat.format(new Date(`${value}T12:00:00`)) : "";
+  const formatDate = (value: string | undefined) => value ? formatLocaleDate(value) : "";
   const firstDate = formatDate(chartPoints.at(0)?.date);
   const lastDate = formatDate(chartPoints.at(-1)?.date);
   const compactAverageValues = chartPoints.map((point) => point.value).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
@@ -48,7 +47,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
     ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} />
     : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />;
   if (completeCount < 2) {
-    const pendingContent = <><header><div><span>{label}</span>{currentContent}</div>{compact && <small className="metric-trend-card__average">avg —</small>}</header><p>D’autres mesures sont nécessaires</p></>;
+    const pendingContent = <><header><div><span>{label}</span>{currentContent}</div>{compact && <small className="metric-trend-card__average">moy. —</small>}</header><p>D’autres mesures sont nécessaires</p></>;
     return href
       ? <Link className="metric-trend-card metric-trend-card--pending metric-trend-card--link" href={href} aria-label={`Ouvrir le détail de ${label}`}>{pendingContent}</Link>
       : <article className="metric-trend-card metric-trend-card--pending">{pendingContent}</article>;
@@ -56,7 +55,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   if (compact) {
     const accessibleSummary = `${label}. Valeur actuelle : ${current === null ? "indisponible" : `${format(current)}${unit ? ` ${unit}` : ""}`}. Moyenne sur 30 jours : ${compactAverage === null ? "indisponible" : `${format(compactAverage)}${unit ? ` ${unit}` : ""}`}.`;
     const compactContent = <>
-      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)}`}</small></header>
+      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "moy. —" : `moy. ${formatCompactAverage(compactAverage, format, unit)}`}</small></header>
       <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} /></div>
       <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     </>;
@@ -66,7 +65,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   }
   const variability = trend.variability30d === null ? "indisponible" : format(trend.variability30d);
   const cardContent = <>
-    <header><div><span>{label}</span>{animateCurrent ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} /> : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />}</div><span className={`metric-direction metric-direction--${favorable}`}><Icon size={15} aria-hidden="true" />{delta === null ? "Référence en attente" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)} % vs 7 j`}</span></header>
+    <header><div><span>{label}</span>{animateCurrent ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} /> : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />}</div><span className={`metric-direction metric-direction--${favorable}`}><Icon size={15} aria-hidden="true" />{delta === null ? "Référence en attente" : `${delta > 0 ? "+" : ""}${formatNumber(Math.abs(delta), { maximumFractionDigits: 1 })} % vs 7 j`}</span></header>
     <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} /></div>
     <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     <div className="baseline-row">{trend.comparisons.map((item) => <span key={item.days}><small>moy. {item.days} j · {item.sampleSize}/{item.days}</small><strong>{item.average === null ? "—" : format(item.average)}</strong></span>)}</div>

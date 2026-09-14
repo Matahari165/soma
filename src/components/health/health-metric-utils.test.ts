@@ -22,7 +22,7 @@ describe("health metric comparisons", () => {
   });
 
   it("rounds duration averages without producing 60 minutes", () => {
-    expect(formatDurationMinutes(480.6)).toBe("8h 1m");
+    expect(formatDurationMinutes(480.6)).toBe("8 h 1 min");
   });
 
   it("counts an explicit zero as measured while preserving null as absent", () => {

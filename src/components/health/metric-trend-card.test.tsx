@@ -35,7 +35,7 @@ describe("MetricTrendCard", () => {
       direction: "higher_is_better",
     }));
 
-    expect(markup).toMatch(/class="chart-axis"[^>]*><span>8 sept\.<\/span><span>10 sept\.<\/span>/);
+    expect(markup).toMatch(/class="chart-axis"[^>]*><span>8 sept<\/span><span>10 sept<\/span>/);
   });
 
   it("passes custom duration formatting to the chart's accessible labels", () => {
@@ -52,7 +52,7 @@ describe("MetricTrendCard", () => {
     }));
 
     expect(markup).toContain("Moyenne 7h 39m");
-    expect(markup).toContain("avg 7h 39m");
+    expect(markup).toContain("moy. 7h 39m");
     expect(markup).toContain("2026-09-10 : 7h 48m");
     expect(markup).not.toContain("468.0");
   });
@@ -74,7 +74,7 @@ describe("MetricTrendCard", () => {
     }));
 
     expect(markup).toContain("Moyenne 0:04");
-    expect(markup).toContain("avg 0:04");
+    expect(markup).toContain("moy. 0:04");
     expect(markup).toContain("2026-09-10 : 0:10");
     expect(markup).not.toContain("1450.0");
   });
@@ -101,8 +101,8 @@ describe("MetricTrendCard", () => {
       compact: true,
     }));
 
-    expect(percentageMarkup).toContain("avg 91.1%");
-    expect(percentageMarkup).not.toContain("avg 91.1 %");
-    expect(rateMarkup).toContain("avg 1.1/h");
+    expect(percentageMarkup).toContain("moy. 91,1%");
+    expect(percentageMarkup).not.toContain("moy. 91,1 %");
+    expect(rateMarkup).toContain("moy. 1,1/h");
   });
 });

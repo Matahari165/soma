@@ -8,20 +8,20 @@ export const metadata: Metadata = { title: { absolute: "Soma" } };
 export default function TermsPage() {
   return (
     <main className="legal-page" id="main-page-content">
-      <Link className="brand brand--auth" href="/" aria-label="Soma home"><SomaLogo /></Link>
+      <Link className="brand brand--auth" href="/" aria-label="Accueil Soma"><SomaLogo /></Link>
       <article>
-        <span className="eyebrow">Terms · Version 1.0</span>
-        <h1>Use Soma as guidance, not a diagnosis.</h1>
-        <p>Last updated August 7, 2026.</p>
-        <h2>Purpose</h2>
-        <p>Soma helps you understand general sleep, recovery, activity, and training patterns from data you authorize.</p>
-        <h2>Your responsibility</h2>
-        <p>Device readings can be incomplete or inaccurate. Consider how you feel and seek qualified medical advice for symptoms, diagnoses, treatment, or urgent concerns.</p>
-        <h2>Availability</h2>
-        <p>Google Health, xAI, and hosting services can be interrupted or change their interfaces. Soma shows missing or stale states instead of presenting absent data as current.</p>
-        <h2>Account control</h2>
-        <p>You can stop using Soma, export your data, or permanently delete your account at any time.</p>
-        <Link href="/settings">Return to settings</Link>
+        <span className="eyebrow">Conditions · Version 1.0</span>
+        <h1>Utilisez Soma comme un guide, pas comme un diagnostic.</h1>
+        <p>Dernière mise à jour : 7 août 2026.</p>
+        <h2>Objectif</h2>
+        <p>Soma vous aide à comprendre les tendances générales de sommeil, de récupération, d’activité et d’entraînement à partir des données que vous autorisez.</p>
+        <h2>Votre responsabilité</h2>
+        <p>Les mesures des appareils peuvent être incomplètes ou inexactes. Tenez compte de votre ressenti et demandez un avis médical qualifié en cas de symptômes, de diagnostic, de traitement ou d’urgence.</p>
+        <h2>Disponibilité</h2>
+        <p>Google Health, xAI et les services d’hébergement peuvent être interrompus ou modifier leurs interfaces. Soma affiche les données absentes ou obsolètes comme telles au lieu de les présenter comme actuelles.</p>
+        <h2>Contrôle du compte</h2>
+        <p>Vous pouvez cesser d’utiliser Soma, exporter vos données ou supprimer définitivement votre compte à tout moment.</p>
+        <Link href="/settings">Retour aux réglages</Link>
       </article>
     </main>
   );

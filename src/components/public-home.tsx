@@ -11,17 +11,17 @@ export function PublicHome() {
           <SomaLogo />
         </div>
         <div className="auth-intro__copy">
-          <h1>Read your<br /> <em>own rhythm.</em></h1>
-          <p>Sleep, recovery, movement, and training — measured against you.</p>
+          <h1>Lisez votre<br /> <em>propre rythme.</em></h1>
+          <p>Sommeil, récupération, mouvement et entraînement — mesurés par rapport à vous.</p>
         </div>
       </section>
       <section className="auth-card-wrap">
         <div className="auth-card">
-          <h2>Your signals. One view.</h2>
-          <p>Useful patterns emerge as your history grows.</p>
-          <a className="google-button" href="/login"><LogIn size={19} /> Sign in to Soma</a>
-          <div className="auth-consent-note">Google Health is optional, read-only, and reversible.</div>
-          <p className="legal-copy"><Link href="/privacy">Privacy Policy</Link> · <Link href="/terms">Terms of Service</Link></p>
+          <h2>Vos signaux. Une seule vue.</h2>
+          <p>Des tendances utiles apparaissent au fil de votre historique.</p>
+          <a className="google-button" href="/login"><LogIn size={19} /> Se connecter à Soma</a>
+          <div className="auth-consent-note">Google Health est facultatif, en lecture seule et réversible.</div>
+          <p className="legal-copy"><Link href="/privacy">Politique de confidentialité</Link> · <Link href="/terms">Conditions d’utilisation</Link></p>
         </div>
       </section>
     </main>

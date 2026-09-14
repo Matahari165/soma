@@ -109,6 +109,8 @@ const metricUnits: Record<string, string> = {
   floors: "étages",
   count: "occurrences",
   "yes/no": "oui/non",
+  rounds: "cycles",
+  drinks: "verres",
 };
 
 const metricSentenceLabels: Record<string, string> = {

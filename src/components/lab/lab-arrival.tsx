@@ -47,7 +47,7 @@ export function LabArrival({
   const canGoNext = onDateChange && availableDates && currentIndex >= 0 && currentIndex < availableDates.length - 1 && selectedDate !== todayDate;
   const displayDate = date ? `${date.charAt(0).toLocaleUpperCase("fr-FR")}${date.slice(1)}` : date;
 
-  return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Accueil Personal Lab" key={theme}>
+  return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Accueil du laboratoire personnel" key={theme}>
     <div className="arrival-composition" style={{ position: "relative" }}>
       <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}`} style={{ position: "relative", zIndex: 1 }}>
         <h1 id="arrival-title" tabIndex={-1}>

@@ -1,3 +1,5 @@
+import { formatDurationMinutes as formatLocaleDuration, formatNumber } from "@/lib/locale";
+
 export type HealthMetricDirection = "higher_is_better" | "lower_is_better" | "context_only";
 export type HealthMetricTone = "positive" | "negative" | "neutral";
 
@@ -57,14 +59,12 @@ export function metricTone(value: number | null, average: number | null, directi
 }
 
 export function formatDurationMinutes(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "—";
-  const rounded = Math.abs(Math.round(value));
-  return `${Math.floor(rounded / 60)}h ${rounded % 60}m`;
+  return formatLocaleDuration(value);
 }
 
 export function formatAverage(value: number | null, format: "number" | "decimal" | "duration", decimals = 1) {
   if (value === null) return "—";
   if (format === "duration") return formatDurationMinutes(value);
-  if (format === "decimal") return value.toFixed(decimals);
-  return Math.round(value).toLocaleString("fr-FR");
+  if (format === "decimal") return formatNumber(value, { maximumFractionDigits: decimals });
+  return formatNumber(Math.round(value));
 }

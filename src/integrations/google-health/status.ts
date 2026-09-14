@@ -5,27 +5,27 @@ export type GoogleHealthNotice = {
 
 const notices: Record<string, GoogleHealthNotice> = {
   connected: {
-    message: "Google Health is connected. Your first import has started in the background.",
+    message: "Google Health est connecté. Votre premier import a démarré en arrière-plan.",
     tone: "success",
   },
   connected_partial: {
-    message: "Google Health is connected with partial access. Available signals are importing now; you can add the remaining permissions at any time.",
+    message: "Google Health est connecté avec un accès partiel. Les signaux disponibles sont importés ; vous pouvez ajouter les autorisations restantes à tout moment.",
     tone: "neutral",
   },
   permission_denied: {
-    message: "Google Health permission was not granted. Your Soma profile is saved, and you can connect whenever you are ready.",
+    message: "L’autorisation Google Health n’a pas été accordée. Votre profil Soma est enregistré ; vous pourrez vous connecter quand vous le souhaiterez.",
     tone: "neutral",
   },
   invalid_state: {
-    message: "This Google Health connection link expired or was interrupted. Start the connection again.",
+    message: "Le lien de connexion Google Health a expiré ou a été interrompu. Recommencez la connexion.",
     tone: "error",
   },
   connection_failed: {
-    message: "Google Health could not be connected. No health data was imported. Try the connection again.",
+    message: "Google Health n’a pas pu être connecté. Aucune donnée de santé n’a été importée. Recommencez la connexion.",
     tone: "error",
   },
   unavailable: {
-    message: "Google Health is temporarily unavailable. Your Soma profile is saved. Try the connection again in a moment.",
+    message: "Google Health est temporairement indisponible. Votre profil Soma est enregistré. Recommencez la connexion dans un instant.",
     tone: "error",
   },
 };
@@ -60,7 +60,7 @@ export function toSyncStatus(job: SyncJobState | null, perType: Record<string, S
     phase,
     progress: Math.min(100, Math.max(0, progress)),
     perType,
-    lastError: job?.error_message ?? (Object.keys(job?.cursor?.typeErrors ?? {}).length ? "Some permitted Google Health signals could not be imported." : null),
+    lastError: job?.error_message ?? (Object.keys(job?.cursor?.typeErrors ?? {}).length ? "Certains signaux Google Health autorisés n’ont pas pu être importés." : null),
     retryable: phase === "retrying" || (phase === "failed" && job?.error_code !== "GOOGLE_HEALTH_SYNC_FAILED"),
   };
 }
