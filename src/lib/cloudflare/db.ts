@@ -942,24 +942,42 @@ async function supabaseRequest<T>(path: string, init: RequestInit = {}): Promise
   headers.set("Authorization", `Bearer ${key}`);
   headers.set("Accept", "application/json");
   if (init.body !== undefined) headers.set("Content-Type", "application/json");
-  const response = await fetch(`${url}/rest/v1/${path}`, { ...init, headers });
-  const body = await response.text();
-  let parsed: unknown = null;
-  if (body) {
-    try { parsed = JSON.parse(body); } catch { parsed = body; }
+  const controller = new AbortController();
+  const upstreamSignal = init.signal;
+  const relayAbort = () => controller.abort();
+  if (upstreamSignal) {
+    if (upstreamSignal.aborted) controller.abort();
+    else upstreamSignal.addEventListener("abort", relayAbort, { once: true });
   }
-  if (!response.ok) {
-    const message = typeof parsed === "object" && parsed && "message" in parsed
-      ? String((parsed as { message: unknown }).message)
-      : `Supabase request failed (${response.status}).`;
-    throw new Error(message);
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(`${url}/rest/v1/${path}`, { ...init, headers, signal: controller.signal });
+    const body = await response.text();
+    let parsed: unknown = null;
+    if (body) {
+      try { parsed = JSON.parse(body); } catch { parsed = body; }
+    }
+    if (!response.ok) {
+      const message = typeof parsed === "object" && parsed && "message" in parsed
+        ? String((parsed as { message: unknown }).message)
+        : `Supabase request failed (${response.status}).`;
+      throw new Error(message);
+    }
+    return parsed as T;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Supabase request timed out.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    upstreamSignal?.removeEventListener("abort", relayAbort);
   }
-  return parsed as T;
 }
 
 function supabasePath(table: string, filters: Array<[string, string]>) {
   const params = new URLSearchParams();
-  for (const [key, value] of filters) params.set(key, value);
+  for (const [key, value] of filters) params.append(key, value);
   const query = params.toString();
   return `${encodeURIComponent(table)}${query ? `?${query}` : ""}`;
 }
@@ -989,24 +1007,72 @@ function logicalRow(item: SupabaseStoredRow) {
   return row;
 }
 
-async function readSupabaseStorageRows(table: string, filters: SupabaseFilter[]) {
+function supabaseJsonField(field: string) {
+  return /^[A-Za-z0-9_]+$/.test(field) ? `json_data->>${field}` : null;
+}
+
+function canPushSupabaseFilter(filter: SupabaseFilter) {
+  if (filter.value === null && filter.operator !== "is") return false;
+  if (filter.field === "user_id") return filter.operator !== "contains" && filter.operator !== "not" && filter.operator !== "neq";
+  if (!supabaseJsonField(filter.field)) return false;
+  if (["contains", "not", "neq"].includes(filter.operator)) return false;
+  if (filter.operator === "in") return Array.isArray(filter.value) && filter.value.length > 0;
+  return filter.operator === "is" ? filter.value === null : true;
+}
+
+function canPushSupabaseSort(sort: Sort) {
+  return Boolean(supabaseJsonField(sort.field));
+}
+
+async function readSupabaseStorageRows(
+  table: string,
+  filters: SupabaseFilter[],
+  sorts: Sort[],
+  orFilterCount: number,
+  fromIndex: number,
+  toIndex: number | undefined,
+  maxRows: number | undefined,
+  exactCount: boolean,
+) {
   const serverFilters: Array<[string, string]> = [
     ["select", "table_name,row_key,user_id,json_data,created_at,updated_at"],
     ["table_name", `eq.${table}`],
-    ["order", "row_key.asc"],
   ];
+  let allFiltersPushed = true;
   for (const filter of filters) {
-    if (filter.field === "user_id") serverFilters.push(["user_id", supabaseFilterValue(filter)]);
+    if (!canPushSupabaseFilter(filter)) {
+      allFiltersPushed = false;
+      continue;
+    }
+    const field = filter.field === "user_id" ? "user_id" : supabaseJsonField(filter.field);
+    if (field) serverFilters.push([field, supabaseFilterValue(filter)]);
   }
+  const allSortsPushed = sorts.every(canPushSupabaseSort);
+  if (allSortsPushed && sorts.length) {
+    serverFilters.push(["order", sorts.map((sort) => `${supabaseJsonField(sort.field)}.${sort.ascending ? "asc" : "desc"}`).join(",")]);
+  } else {
+    serverFilters.push(["order", "row_key.asc"]);
+  }
+
+  const paginationPushed = allFiltersPushed && allSortsPushed && orFilterCount === 0 && !exactCount;
+  const rangeSize = toIndex === undefined ? undefined : Math.max(0, toIndex - fromIndex + 1);
+  const requestedLimit = rangeSize === undefined ? maxRows : maxRows === undefined ? rangeSize : Math.min(rangeSize, maxRows);
+  const hasBoundedPage = paginationPushed && (requestedLimit !== undefined || fromIndex > 0);
+
+  if (hasBoundedPage && requestedLimit !== undefined) serverFilters.push(["limit", String(Math.max(0, requestedLimit))]);
+  if (hasBoundedPage && fromIndex > 0) serverFilters.push(["offset", String(Math.max(0, fromIndex))]);
+
   const storedRows: SupabaseStoredRow[] = [];
+  const pageFilters: Array<[string, string]> = hasBoundedPage
+    ? []
+    : [["limit", String(SUPABASE_STORAGE_PAGE_SIZE)], ["offset", "0"]];
   for (let offset = 0; ; offset += SUPABASE_STORAGE_PAGE_SIZE) {
     const page = await supabaseRequest<SupabaseStoredRow[]>(supabasePath("soma_rows", [
       ...serverFilters,
-      ["limit", String(SUPABASE_STORAGE_PAGE_SIZE)],
-      ["offset", String(offset)],
+      ...pageFilters.map(([key, value]) => [key, key === "offset" ? String(offset) : value] as [string, string]),
     ]));
     storedRows.push(...page);
-    if (page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
+    if (hasBoundedPage || page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
   }
   return storedRows.map(logicalRow);
 }
@@ -1062,7 +1128,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       return rows;
     }
 
-    let rows = await readSupabaseStorageRows(this.table, this.filters);
+    let rows = await readSupabaseStorageRows(this.table, this.filters, this.sorts, this.orFilters.length, this.fromIndex, this.toIndex, this.maxRows, this.selectOptions?.count === "exact");
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
     for (const sort of [...this.sorts].reverse()) {

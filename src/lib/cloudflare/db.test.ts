@@ -118,6 +118,51 @@ describe("Cloudflare D1 read planning", () => {
 });
 
 describe("Supabase storage pagination", () => {
+  it("pushes health filters, repeated time bounds, ordering, and limits to Supabase", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("table_name")).toBe("eq.health_records");
+      expect(url.searchParams.get("user_id")).toBe("eq.user-1");
+      expect(url.searchParams.get("json_data->>data_type")).toBe("eq.heart-rate");
+      expect(url.searchParams.getAll("json_data->>measured_at")).toEqual([
+        "gte.2026-09-14T00:00:00.000Z",
+        "lt.2026-09-15T00:00:00.000Z",
+      ]);
+      expect(url.searchParams.get("order")).toBe("json_data->>measured_at.desc");
+      expect(url.searchParams.get("limit")).toBe("2000");
+      expect(url.searchParams.get("offset")).toBeNull();
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient()
+        .from("health_records")
+        .select("payload")
+        .eq("user_id", "user-1")
+        .eq("data_type", "heart-rate")
+        .gte("measured_at", "2026-09-14T00:00:00.000Z")
+        .lt("measured_at", "2026-09-15T00:00:00.000Z")
+        .order("measured_at", { ascending: false })
+        .limit(2_000);
+
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
   it("reads logical rows beyond Supabase's first 1,000-row page", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
