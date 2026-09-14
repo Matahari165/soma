@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { mealAnalysisCorrectionSchema, mealAnalysisRequestSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { mealToApi } from "@/services/meal-api";
 import { analyzePreviewMeal, findPreviewMeal } from "@/services/meal-preview";
-import { enqueueMealAnalysis, findMeal, MealServiceError } from "@/services/meals";
+import { enqueueMealAnalysis, findMeal, MealServiceError, processNextMealAnalysis } from "@/services/meals";
 
 function analysisRequestId(request: Request, fallback?: string) {
   const supplied = request.headers.get("x-analysis-request-id") ?? fallback;
@@ -16,6 +16,20 @@ function jsonWithRequestId(body: unknown, init: ResponseInit, requestId: string)
   const headers = new Headers(init.headers);
   headers.set("X-Analysis-Request-Id", requestId);
   return NextResponse.json(body, { ...init, headers });
+}
+
+function startQueuedMealAnalysis(requestId: string) {
+  after(async () => {
+    try {
+      await processNextMealAnalysis();
+    } catch (error) {
+      console.error("[meal-analysis] immediate background worker failed", {
+        requestId,
+        stage: "immediate_worker",
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  });
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -46,6 +60,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   try {
     const result = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
+    if (result.queued) startQueuedMealAnalysis(requestId);
     const meal = await findMeal(user.id, id);
     if (!meal) return jsonWithRequestId({ error: "The meal could not be reloaded.", code: "STORAGE_ERROR", requestId }, { status: 503 }, requestId);
     return jsonWithRequestId({ analysis: result.analysis, fresh: result.fresh, queued: result.queued, meal: mealToApi(meal), requestId }, { status: result.queued ? 202 : 200 }, requestId);

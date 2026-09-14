@@ -1,17 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
+  after: vi.fn(),
   getCurrentUser: vi.fn(),
   isLocalPreviewMode: vi.fn(),
   enqueueMealAnalysis: vi.fn(),
   findMeal: vi.fn(),
+  processNextMealAnalysis: vi.fn(),
 }));
 
+vi.mock("next/server", async () => {
+  const actual = await vi.importActual<typeof import("next/server")>("next/server");
+  return { ...actual, after: state.after };
+});
 vi.mock("@/lib/auth", () => ({ getCurrentUser: state.getCurrentUser }));
 vi.mock("@/lib/env", () => ({ isLocalPreviewMode: state.isLocalPreviewMode }));
 vi.mock("@/services/meals", () => ({
   enqueueMealAnalysis: state.enqueueMealAnalysis,
   findMeal: state.findMeal,
+  processNextMealAnalysis: state.processNextMealAnalysis,
   MealServiceError: class MealServiceError extends Error {},
 }));
 
@@ -50,6 +57,7 @@ describe("meal analysis durable HTTP contract", () => {
     state.isLocalPreviewMode.mockReturnValue(false);
     state.enqueueMealAnalysis.mockResolvedValue({ analysis: meal.analysis, fresh: true, queued: true });
     state.findMeal.mockResolvedValue(meal);
+    state.processNextMealAnalysis.mockResolvedValue({ processed: true, analysis: meal.analysis });
   });
 
   it("returns accepted without waiting for XAI", async () => {
@@ -65,6 +73,7 @@ describe("meal analysis durable HTTP contract", () => {
     expect(response.status).toBe(202);
     expect(await response.json()).toMatchObject({ queued: true, analysis: { status: "queued" }, meal: { analysis: { status: "queued" } } });
     expect(state.enqueueMealAnalysis).toHaveBeenCalledWith("user-1", meal.id, expect.objectContaining({ analysisRequestId: "analysis-request-5" }));
+    expect(state.after).toHaveBeenCalledTimes(1);
   });
 
   it("exposes the durable status for a returning client", async () => {
