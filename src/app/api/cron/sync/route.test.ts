@@ -140,8 +140,21 @@ describe("Google Health cron historical repair", () => {
       connection_id: "connection-1",
       import_range: "90_days",
       sync_trigger: "automatic",
+      idempotency_key: "google-health-automatic-2026-08-20T09:00:00.000Z",
       scheduled_civil_date: "2026-08-20",
       scheduled_sync_slot: "2026-08-20T09:00:00.000Z",
     });
+  });
+
+  it("queues the current window while the initial recent import is still open", async () => {
+    testState.connectionMetadata = { analytics_backfill_version: 1 };
+    testState.openJobs = [{ connection_id: "connection-1", sync_trigger: "initial", import_range: "90_days" }];
+
+    const response = await GET(new Request("https://soma.example/api/cron/sync", { headers: { authorization: "Bearer cron-secret" } }));
+
+    expect(response.status).toBe(200);
+    const jobs = testState.inserts.filter((insert) => insert.table === "sync_jobs").map((insert) => insert.values as Record<string, unknown>);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({ sync_trigger: "automatic", import_range: "90_days" });
   });
 });

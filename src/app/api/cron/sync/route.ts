@@ -163,12 +163,12 @@ async function queueAutomaticJobs(now = new Date()) {
       timezone,
       lastLabSyncedAt: connection.last_lab_synced_at,
     });
-    if (!schedule.due) continue;
-    const openJobs = openJobsByConnection.get(connection.id) ?? [];
-    windowOpen = true;
     const automaticDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
     if (!automaticDataTypes.length) continue;
+    const openJobs = openJobsByConnection.get(connection.id) ?? [];
+    if (schedule.due) windowOpen = true;
     if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
+
     const analyticsBackfillOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "90_days");
     if (shouldQueueGoogleHealthAnalyticsBackfill({
       metadata: connection.metadata,
@@ -195,7 +195,34 @@ async function queueAutomaticJobs(now = new Date()) {
       else if (error.code !== "23505") throw new Error("Historical Google Health analytics repair could not be queued.");
       continue;
     }
-    if (analyticsBackfillOpen) continue;
+
+    // A long initial import must not prevent the short current window from
+    // being queued. The initial job may already contain today's raw records,
+    // but it only refreshes the Lab after every requested type has finished.
+    // Give the current window its own idempotency key so two cron ticks cannot
+    // enqueue the same 15-minute slot during a race.
+    let automaticQueued = false;
+    if (schedule.due) {
+      const range = clampGoogleHealthRangeToConnection(automaticGoogleHealthRange(now), connection.metadata);
+      const { error } = await admin.from("sync_jobs").upsert({
+        user_id: connection.user_id,
+        connection_id: connection.id,
+        idempotency_key: `google-health-automatic-${schedule.slot}`,
+        import_range: "90_days",
+        data_types: [...automaticDataTypes],
+        range_start: range.start,
+        range_end: range.end,
+        status: "queued",
+        sync_trigger: "automatic",
+        scheduled_civil_date: schedule.civilDate,
+        scheduled_sync_slot: schedule.slot,
+      }, { onConflict: "connection_id,idempotency_key", ignoreDuplicates: true });
+      if (error) throw new Error("Automatic Google Health sync could not be queued.");
+      queued += 1;
+      automaticQueued = true;
+    }
+
+    if (automaticQueued || analyticsBackfillOpen || !schedule.due) continue;
     const historyImportOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "all_history");
     const historySeeded = googleHealthHistorySeededFromTakeout(connection.metadata);
     if (!historySeeded && !fullHistoryConnections.has(connection.id) && !historyImportOpen) {
@@ -214,24 +241,6 @@ async function queueAutomaticJobs(now = new Date()) {
       else throw new Error("Complete Google Health history could not be queued.");
       continue;
     }
-    // A full-history import is lower priority than a current automatic window.
-    // Keep the latter queueable so selectNextGoogleHealthSyncJob can prevent a
-    // long historical import from starving fresh effort, sleep, and recovery data.
-    const range = clampGoogleHealthRangeToConnection(automaticGoogleHealthRange(now), connection.metadata);
-    const { error } = await admin.from("sync_jobs").insert({
-      user_id: connection.user_id,
-      connection_id: connection.id,
-      import_range: "90_days",
-      data_types: [...automaticDataTypes],
-      range_start: range.start,
-      range_end: range.end,
-      status: "queued",
-      sync_trigger: "automatic",
-      scheduled_civil_date: schedule.civilDate,
-      scheduled_sync_slot: schedule.slot,
-    });
-    if (!error) queued += 1;
-    else if (error.code !== "23505") throw new Error("Automatic Google Health sync could not be queued.");
   }
 
   return { queued, windowOpen };

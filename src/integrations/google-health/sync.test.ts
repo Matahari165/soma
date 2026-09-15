@@ -63,13 +63,13 @@ describe("Google Health sync failures", () => {
     expect(googleHealthSyncRuntimeState({ cursor: { typeIndex: 2 }, attempts: 1 })).toEqual({ cursor: { typeIndex: 2 }, attempts: 1 });
   });
 
-  it("finishes the initial recent import before recurring refresh jobs", () => {
+  it("keeps recurring freshness ahead of an initial recent import", () => {
     const jobs = [
       { id: "automatic", sync_trigger: "automatic", import_range: "90_days", created_at: "2026-08-25T07:00:00.000Z" },
       { id: "history", sync_trigger: "initial", import_range: "all_history", created_at: "2026-08-25T06:00:00.000Z" },
       { id: "recent", sync_trigger: "initial", import_range: "90_days", created_at: "2026-08-25T06:00:00.000Z" },
     ];
-    expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("recent");
+    expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("automatic");
   });
 
   it("keeps recurring refreshes ahead of the older full-history backfill", () => {

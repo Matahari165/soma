@@ -61,10 +61,13 @@ export type GoogleHealthSyncQueueCandidate = {
 };
 
 function googleHealthSyncJobPriority(job: GoogleHealthSyncQueueCandidate) {
-  if (job.sync_trigger === "initial" && job.import_range === "90_days") return 0;
-  if (job.sync_trigger === "automatic" || job.sync_trigger === "manual") return 1;
-  if (job.sync_trigger === "webhook") return 2;
-  return 2;
+  // Freshness wins over historical work. A recent automatic window is small
+  // and is what turns newly imported raw records into today's Lab metrics.
+  if (job.sync_trigger === "automatic" || job.sync_trigger === "manual") return 0;
+  if (job.sync_trigger === "initial" && job.import_range === "90_days") return 1;
+  if (job.sync_trigger === "initial" && job.import_range === "all_history") return 2;
+  if (job.sync_trigger === "webhook") return 3;
+  return 3;
 }
 
 export function selectNextGoogleHealthSyncJob<T extends GoogleHealthSyncQueueCandidate>(jobs: readonly T[]) {
