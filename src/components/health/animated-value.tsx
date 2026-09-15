@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type AnimatedValueFormat = "number" | "decimal" | "duration";
 
-const ANIMATION_DURATION_MS = 420;
+const ANIMATION_DURATION_MS = 200;
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -17,8 +17,11 @@ export function useAnimatedNumber(value: number | null, enabled = true) {
   useClientLayoutEffect(() => {
     const previous = previousTarget.current;
     const firstMount = !mounted.current;
-    const from = firstMount ? (target === null ? null : 0) : previous;
-    const changed = firstMount || previous !== target;
+    // Jamais d’animation depuis zéro si le départ est inconnu (—) :
+    // la première apparition affiche la valeur finale, seules les
+    // transitions connue → connue sont interpolées en 200 ms.
+    const from = firstMount ? target : previous;
+    const changed = !firstMount && previous !== target;
     mounted.current = true;
     previousTarget.current = target;
 
@@ -99,8 +102,9 @@ export function AnimatedValueText({
   useClientLayoutEffect(() => {
     const previous = previousTarget.current;
     const firstMount = !mounted.current;
-    const from = firstMount ? (target === null ? null : 0) : previous;
-    const changed = firstMount || previous !== target;
+    // Première apparition : affichage immédiat, jamais 0 → valeur.
+    const from = firstMount ? target : previous;
+    const changed = !firstMount && previous !== target;
     mounted.current = true;
     previousTarget.current = target;
 

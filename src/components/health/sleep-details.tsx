@@ -213,6 +213,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_minutes, averageSleep),
       comparisonLabel: comparisonLabel(averageSleep, formatDurationMinutes),
       comparisonTone: metricTone(latest.sleep_minutes, averageSleep, "higher_is_better"),
+      sourceLabel: "Google Health",
     },
     {
       id: "efficiency",
@@ -230,6 +231,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_efficiency, averageEfficiency),
       comparisonLabel: comparisonLabel(averageEfficiency, formatPercent),
       comparisonTone: metricTone(latest.sleep_efficiency, averageEfficiency, "higher_is_better"),
+      sourceLabel: "Google Health",
     },
     {
       id: "regularity",
@@ -247,6 +249,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_regularity, averageRegularity),
       comparisonLabel: comparisonLabel(averageRegularity, formatPercent),
       comparisonTone: metricTone(latest.sleep_regularity, averageRegularity, "higher_is_better"),
+      sourceLabel: "Google Health",
     },
     {
       id: "latency",
@@ -260,6 +263,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_latency_minutes, averageLatency),
       comparisonLabel: comparisonLabel(averageLatency, formatMinutesOnly),
       comparisonTone: metricTone(latest.sleep_latency_minutes, averageLatency, "lower_is_better"),
+      sourceLabel: "Google Health",
     },
     {
       id: "debt",
@@ -273,11 +277,12 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.cumulative_sleep_debt_minutes, averageDebt),
       comparisonLabel: comparisonLabel(averageDebt, formatDurationMinutes),
       comparisonTone: metricTone(latest.cumulative_sleep_debt_minutes, averageDebt, "lower_is_better"),
+      sourceLabel: "Soma",
     },
   ] : [];
 
-  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, efficacité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={false}>
-    <main className={`${styles.redesign} health-observatory-content`}>
+  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, efficacité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={true}>
+    <section className={`${styles.redesign} health-observatory-content`} aria-label="Contenu sommeil">
       {latest ? <>
         <section className={`${styles.overviewSection} health-observatory-panel`} aria-label="Synthèse du sommeil">
           <SleepScoreOverview
@@ -316,7 +321,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
             <MetricTrendCard label="Heure du coucher" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
           </div>
         </section>
-      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">Aucune donnée de sommeil</h2><p>Aucune nuit mesurée sur la période.</p></div></section>}
-    </main>
+      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">Aucune donnée de sommeil</h2><p>0 nuit mesurée sur les 30 derniers jours. Importez vos nuits depuis Google Health, puis revenez ici.</p><p><a href="/settings">Vérifier la connexion Google Health</a></p></div></section>}
+    </section>
   </HealthPageShell></div>;
 }

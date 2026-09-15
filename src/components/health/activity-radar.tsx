@@ -20,6 +20,7 @@ export type ActivityRadarDimension = {
   comparison?: "up" | "down" | "equal" | null;
   comparisonLabel?: string | null;
   comparisonTone?: "positive" | "negative" | "neutral";
+  sourceLabel?: string;
 };
 
 type Point = [number, number];
@@ -92,7 +93,8 @@ function comparisonFor(dimension: ActivityRadarDimension) {
 function readableDimension(dimension: ActivityRadarDimension) {
   const value = dimension.valueLabel?.trim() || (measured(dimension.normalizedValue) ? "mesuré" : "indisponible");
   const comparison = comparisonFor(dimension);
-  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}${dimension.scoreRole ? `. ${dimension.scoreRole}` : ""}`;
+  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
+  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}${dimension.scoreRole ? `. ${dimension.scoreRole}` : ""}${source}`;
 }
 
 function descriptionFor(dimensions: readonly ActivityRadarDimension[]) {
@@ -139,10 +141,29 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
         const interactiveAxis = interactive && Boolean(onSelect);
         const selected = selectedId === dimension.id;
         const comparison = comparisonFor(dimension);
+        const sourceLabel = dimension.sourceLabel?.trim() || null;
         function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
-          if (!interactiveAxis || (event.key !== "Enter" && event.key !== " ")) return;
-          event.preventDefault();
-          onSelect?.(dimension.id);
+          if (!interactiveAxis) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect?.(dimension.id);
+            return;
+          }
+          const svg = event.currentTarget.closest("svg");
+          const buttons = svg ? Array.from(svg.querySelectorAll<SVGGElement>('[role="button"]')) : [];
+          if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+            event.preventDefault();
+            buttons[(index + 1) % count]?.focus();
+          } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+            event.preventDefault();
+            buttons[(index - 1 + count) % count]?.focus();
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            buttons[0]?.focus();
+          } else if (event.key === "End") {
+            event.preventDefault();
+            buttons[count - 1]?.focus();
+          }
         }
         return <g
           key={`label-${dimension.id}`}
@@ -159,11 +180,12 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
         >
           {interactiveAxis && <><line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" /><circle className={styles.labelHit} cx={position.x} cy={position.y} r="34" aria-hidden="true" /><circle className={styles.focusRing} cx={position.x} cy={position.y} r="29" aria-hidden="true" /></>}
           <g className={styles.labelGroup} aria-hidden="true">
-            <text className={styles.label} x={position.x} y={position.y} textAnchor={position.anchor}>{dimension.label}</text>
+            <text className={styles.label} x={position.x} y={position.y} textAnchor={position.anchor}>{dimension.label}{selected ? " ●" : ""}</text>
             <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.anchor}>
               {dimension.valueLabel?.trim() || (!measured(dimension.normalizedValue) ? "—" : "mesuré")}
               {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx="6">{comparison.arrow}</tspan>}
             </text>
+            {sourceLabel ? <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy + 14} textAnchor={position.anchor}>{sourceLabel}</text> : null}
           </g>
         </g>;
       })}

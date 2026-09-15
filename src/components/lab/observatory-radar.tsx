@@ -1,18 +1,36 @@
 "use client";
-import { Fragment, startTransition, useEffect, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MEAL_TOTALS_EVENT, MEAL_TOTALS_REQUEST_EVENT, type MealTotalsEventDetail } from "@/domain/meal-record";
 type RadarNumber = number | null | undefined;
 type RadarData = { sleepMinutes:RadarNumber; recoveryScore:RadarNumber; effortScore:RadarNumber; caloriesKcal:RadarNumber; calorieTarget?:RadarNumber; averageSleepMinutes:RadarNumber; averageRecoveryScore:RadarNumber; averageEffortScore:RadarNumber; averageCaloriesKcal:RadarNumber };
 const DEFAULT_RADAR_RADIUS = 430;
 const SLEEP_TARGET_MINUTES = 510;
+const CALORIE_REFERENCE_FALLBACK = 3000;
 function measured(value: RadarNumber): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 function nullable(value: RadarNumber): number | null {
   return measured(value) ? value : null;
 }
-export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number}) {
+function formatDuration(minutes: number) {
+  return `${Math.floor(minutes/60)}h ${Math.round(minutes%60).toString().padStart(2,"0")}`;
+}
+function moveRadarFocus(event: KeyboardEvent<SVGGElement>, index: number, count: number) {
+  const svg = event.currentTarget.closest("svg");
+  if (!svg) return;
+  const buttons = Array.from(svg.querySelectorAll<SVGGElement>('[role="button"]'));
+  if (!buttons.length) return;
+  let next = index;
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % count;
+  else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + count) % count;
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = count - 1;
+  else return;
+  event.preventDefault();
+  buttons[next]?.focus();
+}
+export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shiftX = 0, shiftY = 0, detailId: detailIdProp, selectedId: selectedIdProp, onSelect: onSelectProp}:{data:RadarData; date?:string; radius?:number; shiftX?:number; shiftY?:number; detailId?:string; selectedId?:string|null; onSelect?:(id:string|null)=>void}) {
   const router = useRouter();
   const sleepMinutes = nullable(data.sleepMinutes);
   const recoveryScore = nullable(data.recoveryScore);
@@ -28,8 +46,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   useEffect(()=>{ const next=nullable(data.caloriesKcal); caloriesRef.current=next; startTransition(()=>setCalories(next)); },[data.caloriesKcal]);
   useEffect(()=>{
     const next = nullable(data.calorieTarget);
-    const current = calorieTargetRef.current;
-    const merged = current !== null && (next === null || next < current) ? current : next;
+    // Une réponse partielle sans cible garde la cible courante ; une cible
+    // reçue remplace l’ancienne même si elle est plus basse (pas de max conservé).
+    const merged = next === null ? calorieTargetRef.current : next;
     calorieTargetRef.current = merged;
     startTransition(()=>setCalorieTarget(merged));
   },[data.calorieTarget]);
@@ -51,11 +70,13 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     window.addEventListener(MEAL_TOTALS_EVENT,update);window.dispatchEvent(new Event(MEAL_TOTALS_REQUEST_EVENT));
     return()=>window.removeEventListener(MEAL_TOTALS_EVENT,update);
   },[router, date]);
+  const calorieTargetMeasured = calorieTarget !== null && calorieTarget > 0 ? calorieTarget : null;
+  const caloriePlotTarget = calorieTargetMeasured ?? CALORIE_REFERENCE_FALLBACK;
   const axes=[
-    {label:"Sommeil",average:averageSleepMinutes,value:sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:sleepMinutes===null?"—":`${Math.floor(sleepMinutes/60)}h ${Math.round(sleepMinutes%60).toString().padStart(2,"0")}`,goal:"8 h 30"},
-    {label:"Récupération",average:averageRecoveryScore,value:recoveryScore,target:100,unit:"",display:recoveryScore===null?"—":`${Math.round(recoveryScore)}`,goal:"100 %"},
-    {label:"Effort",average:averageEffortScore===null?null:averageEffortScore*.21,value:effortScore===null?null:effortScore*.21,target:21,unit:"",display:effortScore===null?"—":`${(effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)"},
-    {label:"Calories",average:averageCaloriesKcal,value:calories,target:calorieTarget&&calorieTarget>0?calorieTarget:3000,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:`${Math.round(calorieTarget&&calorieTarget>0?calorieTarget:3000).toLocaleString("fr-FR")} kcal`},
+    {id:"sleep",label:"Sommeil",average:averageSleepMinutes,value:sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:sleepMinutes===null?"—":formatDuration(sleepMinutes),goal:"8 h 30",source:"Google Health",definition:"Temps de sommeil mesuré comparé au besoin de 8 h 30.",readingDirection:"Plus proche de 8 h 30 = meilleur",role:"Indicateur du jour",formula:"minutes mesurées",normalization:"minutes ÷ 510, plafonné à 100 %"},
+    {id:"recovery",label:"Récupération",average:averageRecoveryScore,value:recoveryScore,target:100,unit:"",display:recoveryScore===null?"—":`${Math.round(recoveryScore)}`,goal:"100",source:"Soma",definition:"Score de récupération calculé par Soma à partir de vos signaux.",readingDirection:"Plus élevé = meilleur",role:"Indicateur du jour",formula:"moteur de récupération Soma",normalization:"0–100"},
+    {id:"effort",label:"Effort",average:averageEffortScore===null?null:averageEffortScore*.21,value:effortScore===null?null:effortScore*.21,target:21,unit:"",display:effortScore===null?"—":`${(effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)",source:"Soma",definition:"Score d’effort converti sur 21 points.",readingDirection:"Plus élevé = plus de charge accomplie",role:"Indicateur du jour",formula:"score d’effort × 0,21",normalization:"0–21"},
+    {id:"calories",label:"Calories",average:averageCaloriesKcal,value:calories,target:caloriePlotTarget,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:calorieTargetMeasured!==null?`${Math.round(calorieTargetMeasured).toLocaleString("fr-FR")} kcal`:`Indisponible · repère ${CALORIE_REFERENCE_FALLBACK.toLocaleString("fr-FR")} kcal (aucune cible définie)`,source:"Journal",definition:calorieTargetMeasured!==null?"Énergie des repas confirmés comparée à votre cible.":"Énergie des repas confirmés. Aucune cible personnelle définie : le contour à 3 000 kcal est un simple repère visuel.",readingDirection:"Proche de la cible = meilleur",role:"Indicateur du jour",formula:"somme des repas confirmés",normalization:"kcal ÷ cible, plafonné à 100 %",targetMissing:calorieTargetMeasured===null},
   ];
   const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
   // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.
@@ -65,8 +86,45 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   const hasCompleteValueShape = validPoints.length === axes.length;
+  const generatedDetailId = useId();
+  const detailId = detailIdProp ?? `observatory-radar-detail-${generatedDetailId.replace(/[^a-zA-Z0-9]/g, "")}`;
+  const detailTitleId = `${detailId}-title`;
+  const [internalSelected, setInternalSelected] = useState<string|null>(null);
+  const controlled = selectedIdProp !== undefined && onSelectProp !== undefined;
+  const selectedId = controlled ? selectedIdProp : internalSelected;
+  const select = (id: string) => {
+    const next = selectedId === id ? null : id;
+    if (controlled) onSelectProp?.(next);
+    else setInternalSelected(next);
+  };
+  const buttonRefs = useRef<Record<string, SVGGElement|null>>({});
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const selectedAxis = axes.find((axis) => axis.id === selectedId) ?? null;
+  const detailOpen = selectedAxis !== null;
+  useEffect(() => {
+    if (selectedId) headingRef.current?.focus({ preventScroll: true });
+  }, [selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      const id = selectedId;
+      if (controlled) onSelectProp?.(null);
+      else setInternalSelected(null);
+      window.requestAnimationFrame(() => buttonRefs.current[id ?? ""]?.focus());
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedId, controlled, onSelectProp]);
+  function closeDetail(restoreId?: string) {
+    const id = restoreId ?? selectedId;
+    if (controlled) onSelectProp?.(null);
+    else setInternalSelected(null);
+    if (id) window.requestAnimationFrame(() => buttonRefs.current[id]?.focus());
+  }
   return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
-    <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
+    <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}. Source : ${axis.source}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
         <polygon className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
@@ -77,6 +135,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
       {axes.map((axis,i)=>{
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";
         const comparison=trend==="↑"?"Au-dessus de la moyenne sur 30 jours":trend==="↓"?"Sous la moyenne sur 30 jours":trend==="↔"?"Au niveau de la moyenne sur 30 jours":"Moyenne indisponible";
+        const selected = selectedId === axis.id;
+        const readable = `${axis.label} : ${axis.display}${axis.unit ? ` ${axis.unit}` : ""}. ${comparison}. Objectif : ${axis.goal}. Source : ${axis.source}. Afficher les détails de cette dimension.`;
         let labelX = 330;
         let labelY = 280;
         let numberX = 330;
@@ -115,18 +175,48 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
 
         const valueText = axis.label === "Calories"
           ? (trend ? `${trend} ${axis.display} kcal` : `${axis.display} kcal`)
-          : (`${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}`);
+          : (`${axis.display}${axis.unit === "kcal" ? " kcal" : ""}${trend ? ` ${trend}` : ""}${selected ? " ●" : ""}`);
+
+        function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            select(axis.id);
+            return;
+          }
+          if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+            moveRadarFocus(event, i, axes.length);
+          }
+        }
 
         return (
-          <g key={axis.label} className={`radar-axis-label radar-axis-label--${i}`}>
-            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}.`}</title>
-            <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label">{axis.label}</text>
-            <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number">{valueText}</text>
+          <g key={axis.id} className={`radar-axis-label radar-axis-label--${i}`} role="button" tabIndex={0} aria-controls={detailId} aria-expanded={selected} aria-label={readable} data-selected={selected} onClick={() => select(axis.id)} onKeyDown={handleKeyDown} ref={(node) => { buttonRefs.current[axis.id] = node; }}>
+            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}. Source : ${axis.source}.`}</title>
+            <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label" aria-hidden="true">{axis.label}</text>
+            <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number" aria-hidden="true">{valueText}</text>
+            <text x={numberX} y={numberY + 16} textAnchor={textAnchor} className="radar-number" aria-hidden="true" fontSize={11}>{axis.source}</text>
           </g>
         );
       })}
     </svg>
-
+    <aside id={detailId} aria-labelledby={detailTitleId} aria-hidden={!detailOpen} inert={!detailOpen} style={{ display: detailOpen ? "block" : "none", minHeight: 44 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
+        <h3 id={detailTitleId} ref={headingRef} tabIndex={-1} style={{ margin: 0 }}>{selectedAxis ? selectedAxis.label : "Détail"}</h3>
+        <button type="button" onClick={() => closeDetail()} tabIndex={detailOpen ? 0 : -1} style={{ minHeight: 44, minWidth: 44 }} aria-label={selectedAxis ? `Fermer les détails de ${selectedAxis.label}` : "Fermer les détails"}>Fermer</button>
+      </div>
+      {selectedAxis && (
+        <dl>
+          <div><dt>Valeur actuelle</dt><dd>{selectedAxis.display}{selectedAxis.unit ? ` ${selectedAxis.unit}` : ""}</dd></div>
+          <div><dt>Moy. 30 j</dt><dd>{selectedAxis.average === null ? "—" : selectedAxis.id === "sleep" ? formatDuration(Math.round(selectedAxis.average)) : selectedAxis.id === "effort" ? selectedAxis.average.toFixed(1) : selectedAxis.id === "calories" ? Math.round(selectedAxis.average).toLocaleString("fr-FR") : Math.round(selectedAxis.average)}</dd></div>
+          <div><dt>Sens de lecture</dt><dd>{selectedAxis.readingDirection}</dd></div>
+          <div><dt>Rôle</dt><dd>{selectedAxis.role}</dd></div>
+          <div><dt>Formule</dt><dd>{selectedAxis.formula}</dd></div>
+          <div><dt>Normalisation</dt><dd>{selectedAxis.normalization}</dd></div>
+          <div><dt>Objectif</dt><dd>{selectedAxis.goal}</dd></div>
+          <div><dt>Source</dt><dd>{selectedAxis.source}</dd></div>
+        </dl>
+      )}
+      {selectedAxis && <p>{selectedAxis.definition}</p>}
+    </aside>
   </figure>;
 }
 

@@ -13,7 +13,7 @@ const variables: JournalVariable[] = defaultJournalVariables.map((variable, inde
 
 describe("journal motion states", () => {
   it("keeps save and validation language distinct", () => {
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Brouillon");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Brouillon local non envoyé");
     expect(journalStatusText({ validated: false, validating: false, saveStatus: "saving" })).toBe("Enregistrement…");
     expect(journalStatusText({ validated: false, validating: false, saveStatus: "saved" })).toBe("Brouillon sauvegardé");
     expect(journalStatusText({ validated: true, validating: false, saveStatus: "saved" })).toBe("Journée validée");
@@ -28,10 +28,10 @@ describe("journal motion states", () => {
     expect(html).toContain('class="checkin-state journal-save-status"');
     expect(html).toContain('class="journal-card__header"');
     expect(html).toContain('class="journal-card__heading"');
-    expect(html.indexOf("Brouillon")).toBeLessThan(html.indexOf("Valider la journée"));
+    expect(html.indexOf("Brouillon local non envoyé")).toBeLessThan(html.indexOf("Valider la journée"));
     expect(html.indexOf("Valider la journée")).toBeLessThan(html.indexOf("Modifier les champs du journal"));
     expect(html).toContain('aria-live="polite"');
-    expect(html).toContain(">Brouillon</span>");
+    expect(html).toContain(">Brouillon local non envoyé</span>");
     expect(html).toContain("Valider la journée");
     expect(html).not.toContain('button type="button">—</button>');
     expect(html).not.toContain(">À confirmer<");

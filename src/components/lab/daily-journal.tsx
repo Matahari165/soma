@@ -90,7 +90,7 @@ export function journalStatusText({ validated, validating, saveStatus }: { valid
   if (saveStatus === "error") return "Échec de l’enregistrement";
   if (validated) return "Journée validée";
   if (saveStatus === "saved") return "Brouillon sauvegardé";
-  return "Brouillon";
+  return "Brouillon local non envoyé";
 }
 
 function splitOptions(value: string) {
@@ -124,6 +124,7 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
   const [minute, setMinute] = useState(displayMinute);
   const [invalid, setInvalid] = useState(false);
   const minuteRef = useRef<HTMLInputElement>(null);
+  const errorId = `${inputId}-error`;
 
   function commit() {
     if (!hour && !minute) {
@@ -147,17 +148,18 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
     return value.replace(/\D/g, "").slice(0, maximumLength);
   }
 
-  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Heure de fin du dîner" onBlur={(event) => {
+  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Heure de fin du dîner" aria-describedby={invalid ? errorId : undefined} onBlur={(event) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
   }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
-    <input disabled={disabled} aria-label="Heure de fin du dîner" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
+    <input disabled={disabled} aria-label="Heure de fin du dîner" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
       const next = digits(event.target.value, 2);
       setHour(next);
       setInvalid(false);
       if (next.length === 2) minuteRef.current?.focus();
     }} />
     <span aria-hidden="true">:</span>
-    <input ref={minuteRef} disabled={disabled} aria-label="Minutes de fin du dîner" aria-invalid={invalid} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+    <input ref={minuteRef} disabled={disabled} aria-label="Minutes de fin du dîner" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+    {invalid && <p id={errorId} className="journal-clock__error" role="alert">Heure invalide · utilisez HH:MM entre 00:00 et 23:59.</p>}
   </div>;
 }
 
@@ -276,6 +278,9 @@ function VariableManager({ variables, open, onClose, managerRef }: { variables: 
   const [editTrackingCadence, setEditTrackingCadence] = useState<JournalTrackingCadence>("daily");
   const [draft, setDraft] = useState<NewVariable>({ name: "", variableType: "boolean", unit: "", options: "", emoji: "🧪", dayPeriod: "day", defaultValue: "false", captureMode: "manual", automaticMetricId: null, trackingCadence: "daily" });
   const [error, setError] = useState<string | null>(null);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [lastRemoved, setLastRemoved] = useState<{ id: string; label: string } | null>(null);
+  const lastFailedRequest = useRef<{ method: "POST" | "PATCH"; body: unknown; busy: string } | null>(null);
   const activeVariables = variables.filter((variable) => variable.isActive);
   const activeNames = new Set(activeVariables.map((variable) => variable.name.toLocaleLowerCase("en")));
   const suggestions = journalVariableSuggestions.filter((suggestion) => !activeNames.has(suggestion.name.toLocaleLowerCase("en")));
@@ -283,10 +288,12 @@ function VariableManager({ variables, open, onClose, managerRef }: { variables: 
   async function request(method: "POST" | "PATCH", body: unknown, busy: string) {
     setBusyId(busy);
     setError(null);
+    lastFailedRequest.current = { method, body, busy };
     try {
       const response = await fetch("/api/lab/variables", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Cette mesure n’a pas pu être enregistrée.");
+      lastFailedRequest.current = null;
       router.refresh();
       return true;
     } catch (requestError) {
@@ -295,6 +302,26 @@ function VariableManager({ variables, open, onClose, managerRef }: { variables: 
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function retryLastRequest() {
+    const failed = lastFailedRequest.current;
+    if (!failed) return;
+    await request(failed.method, failed.body, failed.busy);
+  }
+
+  async function confirmRemove(variable: JournalVariable) {
+    const ok = await request("PATCH", { id: variable.id, isActive: false }, variable.id);
+    if (ok) {
+      setPendingRemoveId(null);
+      setLastRemoved({ id: variable.id, label: journalVariableLabel(variable) });
+    }
+  }
+
+  async function undoRemove() {
+    if (!lastRemoved) return;
+    const ok = await request("PATCH", { id: lastRemoved.id, isActive: true }, lastRemoved.id);
+    if (ok) setLastRemoved(null);
   }
 
   async function create() {
@@ -362,7 +389,14 @@ function VariableManager({ variables, open, onClose, managerRef }: { variables: 
           <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tôt`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
           <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tard`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
           <button type="button" aria-label={`Modifier ${journalVariableLabel(variable)}`} onClick={() => startEdit(variable)}>Modifier</button>
-          <button type="button" disabled={busyId === variable.id} title={`Retirer ${journalVariableLabel(variable)} du journal quotidien`} onClick={() => void request("PATCH", { id: variable.id, isActive: false }, variable.id)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Retirer</button>
+          {pendingRemoveId === variable.id ? (
+            <span role="group" aria-label={`Confirmer le retrait de ${journalVariableLabel(variable)}`}>
+              <button type="button" disabled={busyId === variable.id} onClick={() => void confirmRemove(variable)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Confirmer le retrait</button>
+              <button type="button" onClick={() => setPendingRemoveId(null)}>Annuler</button>
+            </span>
+          ) : (
+            <button type="button" disabled={busyId === variable.id} title={`Retirer ${journalVariableLabel(variable)} du journal quotidien`} aria-label={`Retirer ${journalVariableLabel(variable)} du journal quotidien`} onClick={() => { setLastRemoved(null); setPendingRemoveId(variable.id); }}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Retirer</button>
+          )}
         </div>)}
       </div>
 
@@ -392,7 +426,11 @@ function VariableManager({ variables, open, onClose, managerRef }: { variables: 
         <div className="journal-new-variable__actions"><button className="primary-button" type="button" disabled={!canCreate || busyId === "new"} onClick={() => void create()}>{busyId === "new" ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Ajouter la mesure</button><button className="text-link" type="button" onClick={() => setCreating(false)}>Annuler</button></div>
       </div>}
 
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {lastRemoved && (
+        <p className="journal-manager__hint" role="status">« {lastRemoved.label} » retirée du journal quotidien. L’historique est conservé. <button type="button" onClick={() => void undoRemove()}>Annuler le retrait</button></p>
+      )}
+
+      {error && <p className="form-error" role="alert">{error} <button type="button" onClick={() => void retryLastRequest()}>Réessayer</button></p>}
     </div>
   </section>;
 }
@@ -453,7 +491,14 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   }), [activeVariables]);
   const defaultAvailableDates = useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(todayDate, -index)), [todayDate]);
   const dateOptions = availableDates ?? defaultAvailableDates;
-  const [internalEntryDate, setInternalEntryDate] = useState(todayDate);
+  const [internalEntryDate, setInternalEntryDate] = useState(() => {
+    if (selectedDateProp !== undefined) return todayDate;
+    if (typeof window !== "undefined") {
+      const urlDate = new URLSearchParams(window.location.search).get("date");
+      if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && dateOptions.includes(urlDate)) return urlDate;
+    }
+    return todayDate;
+  });
   const entryDate = selectedDateProp ?? internalEntryDate;
   const selectedDateRef = useRef(entryDate);
   const initialDrafts = useMemo(() => journalDraftsForDates(dateOptions, activeVariables, entries, days), [activeVariables, dateOptions, days, entries]);
@@ -603,6 +648,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   }
 
   function changeDate(date: string) {
+    // La validation d’une autre date ne bloque jamais la navigation.
     if (!dateOptions.includes(date)) return;
     selectedDateRef.current = date;
     if (selectedDateProp === undefined) setInternalEntryDate(date);
@@ -655,7 +701,31 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const statusText = journalStatusText({ validated, validating, saveStatus });
   const personalLabIndexes: Record<string, string> = { morning: "01", day: "02", evening: "03", context: "04" };
   const placeValidationInMorning = isPersonalLab && sections.some((section) => section.id === "morning");
-  const validationAction = !validated ? <button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validatingDate !== null}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validation…</> : "Valider la journée"}</button> : null;
+  const emptyCount = activeVariables.filter((variable) => (values[variable.id] ?? null) === null).length;
+  const validationSummary = validated ? null : emptyCount === 0 ? "Toutes les mesures sont renseignées." : `${emptyCount} mesure${emptyCount > 1 ? "s" : ""} sans valeur resteront vides.`;
+  // Non bloquant : seule la date en cours de validation désactive son bouton.
+  const validationAction = !validated ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validating} aria-label={validationSummary ? `Valider la journée. ${validationSummary}` : "Valider la journée"}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validation…</> : "Valider la journée"}</button>{validationSummary && <small aria-live="polite">{validationSummary}</small>}</span> : null;
+  function retryJournalSave() {
+    const date = selectedDateRef.current;
+    const draftValues = drafts.current[date] ?? journalValuesForDate(activeVariables, entries, days, date);
+    setError(null);
+    setSaveStatus("saving");
+    saveQueue.current = saveQueue.current
+      .catch(() => undefined)
+      .then(() => persist(date, "draft", draftValues))
+      .then(() => {
+        if (date === selectedDateRef.current) {
+          setSaveStatus("saved");
+          setError(null);
+        }
+      })
+      .catch((saveError) => {
+        if (date === selectedDateRef.current) {
+          setSaveStatus("error");
+          setError(saveError instanceof Error ? saveError.message : "Le journal n’a pas pu être enregistré.");
+        }
+      });
+  }
   const managerTrigger = <button ref={managerTriggerRef} className="journal-manager-trigger" type="button" aria-label="Modifier les champs du journal" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => setManagerOpen(true)}>Modifier</button>;
   return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""}`} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Actions du journal"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
       {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
@@ -676,7 +746,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       <div className="journal-grid">{section.variables.map((variable) => <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} dayValidated={validated} automatic={automaticIds.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} onChange={(value) => changeValue(variable.id, value)} key={variable.id} />)}</div>
     </section>;
     })}</div> : <p className="journal-empty">Ajoute ta première mesure suivie ci-dessous.</p>}
-    {error && <p className="form-error" role="alert">{error}</p>}
+    {error && <p className="form-error" role="alert">{error} <button type="button" onClick={retryJournalSave}>Réessayer</button></p>}
     {validated && <p className="journal-save-note" role="status">Les modifications sont enregistrées automatiquement et restent incluses dans tes relations.</p>}
     <VariableManager variables={variables} open={managerOpen} managerRef={managerRef} onClose={() => { setManagerOpen(false); managerTriggerRef.current?.focus(); }} />
   </section>;

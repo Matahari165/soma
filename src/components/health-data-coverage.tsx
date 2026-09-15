@@ -36,10 +36,11 @@ export function HealthDataCoverageIndicator({ coverage, phase, error = false }: 
       <span className={`health-data-coverage__status health-data-coverage__status--${status.tone}`}>{status.label}</span>
     </header>
     <dl>
-      <div><dt>Jours du bracelet utilisés / disponibles</dt><dd>{days}</dd></div>
-      <div><dt>Nuits du bracelet utilisées / disponibles</dt><dd>{nights}</dd></div>
+      <div><dt>Jours importés / utilisés</dt><dd>{days}</dd></div>
+      <div><dt>Nuits importées / utilisées</dt><dd>{nights}</dd></div>
       <div className="health-data-coverage__period"><dt>Période</dt><dd>{period}</dd></div>
     </dl>
+    <p className="health-data-coverage__source">Source : Google Health · données importées distinguées des calculs Soma.</p>
     {coverage && (coverage.missingDays > 0 || coverage.missingNights > 0) ? <p role="status">
       {coverage.missingDays} jour{coverage.missingDays === 1 ? "" : "s"} non encore utilisé{coverage.missingDays === 1 ? "" : "s"} · {coverage.missingNights} nuit{coverage.missingNights === 1 ? "" : "s"} non encore utilisée{coverage.missingNights === 1 ? "" : "s"}
     </p> : null}

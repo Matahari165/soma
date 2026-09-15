@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type KeyboardEvent } from "react";
 
 import styles from "./recovery-radar.module.css";
 
@@ -9,10 +9,28 @@ export type RecoveryRadarDimension = {
   label: string;
   score: number | null;
   weight?: number;
+  valueLabel?: string;
+  averageLabel?: string;
+  definition?: string;
+  readingDirection?: string;
+  scoreRole?: string;
+  scoreFormula?: string;
+  scoreNormalization?: string;
+  scoreContribution?: number | null;
+  comparison?: "up" | "down" | "equal" | null;
+  comparisonLabel?: string | null;
+  comparisonTone?: "positive" | "negative" | "neutral";
+  sourceLabel?: string;
 };
 
 export type RecoveryRadarProps = {
   dimensions: readonly RecoveryRadarDimension[];
+  title?: string;
+  detailId?: string;
+  interactive?: boolean;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  registerButton?: (id: string, node: SVGGElement | null) => void;
 };
 
 const VIEWBOX_WIDTH = 640;
@@ -78,14 +96,17 @@ function axisAnchor(index: number, count: number): "start" | "middle" | "end" {
   return "middle";
 }
 
+function readableDimension(dimension: RecoveryRadarDimension) {
+  const value = dimension.valueLabel?.trim() ?? (isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible");
+  const weight = formatWeight(dimension.weight);
+  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
+  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}${source}`;
+}
+
 function descriptionFor(dimensions: readonly RecoveryRadarDimension[]) {
   if (!dimensions.length) return "Graphique radar de récupération indisponible : aucune dimension n’est fournie.";
 
-  const values = dimensions.map((dimension) => {
-    const value = isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible";
-    const weight = formatWeight(dimension.weight);
-    return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
-  });
+  const values = dimensions.map(readableDimension);
   return `Graphique radar de récupération. ${values.join(". ")}.`;
 }
 
@@ -96,7 +117,7 @@ function descriptionFor(dimensions: readonly RecoveryRadarDimension[]) {
  * is only drawn when every supplied dimension has a measured score; missing
  * dimensions remain visible as unavailable labels and isolated measured dots.
  */
-export function RecoveryRadar({ dimensions }: RecoveryRadarProps) {
+export function RecoveryRadar({ dimensions, title = "Dimensions de récupération", detailId, interactive = false, selectedId = null, onSelect, registerButton }: RecoveryRadarProps) {
   const titleId = useId();
   const descriptionId = useId();
   const description = descriptionFor(dimensions);
@@ -112,18 +133,18 @@ export function RecoveryRadar({ dimensions }: RecoveryRadarProps) {
 
   return (
     <figure className={styles.root} data-testid="recovery-radar">
-      <figcaption id={titleId} className={styles.srOnly}>Dimensions de récupération</figcaption>
+      <figcaption id={titleId} className={styles.srOnly}>{title}</figcaption>
       <svg
         className={styles.chart}
         viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-        role="img"
-        tabIndex={0}
+        role={interactive ? "group" : "img"}
+        tabIndex={interactive ? undefined : 0}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         aria-label={description}
         data-testid="recovery-radar-chart"
       >
-        <title id={`${titleId}-svg`}>Dimensions de récupération</title>
+        <title id={`${titleId}-svg`}>{title}</title>
         <desc id={descriptionId}>{description}</desc>
 
         {hasRadarGeometry && GRID_RATIOS.map((ratio) => (
@@ -176,14 +197,93 @@ export function RecoveryRadar({ dimensions }: RecoveryRadarProps) {
           const lines = wrapLabel(dimension.label);
           const startY = labelY - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
           const valueY = startY + lines.length * LABEL_LINE_HEIGHT + 8;
+          const sourceY = valueY + LABEL_LINE_HEIGHT;
           const anchor = axisAnchor(index, Math.max(dimensions.length, 1));
+          const interactiveAxis = interactive && Boolean(onSelect);
+          const selected = selectedId === dimension.key;
+          const sourceLabel = dimension.sourceLabel?.trim() || null;
+          const displayValue = dimension.valueLabel?.trim() ?? formatScore(dimension.score);
+          function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
+            if (!interactiveAxis) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect?.(dimension.key);
+              return;
+            }
+            const svg = event.currentTarget.closest("svg");
+            const buttons = svg ? Array.from(svg.querySelectorAll<SVGGElement>('[role="button"]')) : [];
+            const count = dimensions.length;
+            if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+              event.preventDefault();
+              buttons[(index + 1) % count]?.focus();
+            } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+              event.preventDefault();
+              buttons[(index - 1 + count) % count]?.focus();
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              buttons[0]?.focus();
+            } else if (event.key === "End") {
+              event.preventDefault();
+              buttons[count - 1]?.focus();
+            }
+          }
+          if (!interactiveAxis) {
+            return (
+              <g
+                key={`${dimension.key}-${index}`}
+                className={styles.axisLabel}
+                data-testid="recovery-radar-label"
+                data-dimension-key={dimension.key}
+              >
+                {lines.map((line, lineIndex) => (
+                  <text
+                    key={`${line}-${lineIndex}`}
+                    className={styles.axisName}
+                    data-dimension-label={dimension.key}
+                    x={labelX}
+                    y={startY + lineIndex * LABEL_LINE_HEIGHT}
+                    textAnchor={anchor}
+                  >
+                    {line}
+                  </text>
+                ))}
+                <text
+                  className={styles.axisValue}
+                  data-dimension-value={dimension.key}
+                  x={labelX}
+                  y={valueY}
+                  textAnchor={anchor}
+                >
+                  {displayValue}
+                </text>
+                {sourceLabel ? (
+                  <text className={styles.axisName} x={labelX} y={sourceY} textAnchor={anchor} fontSize={11}>
+                    {sourceLabel}
+                  </text>
+                ) : null}
+              </g>
+            );
+          }
           return (
             <g
               key={`${dimension.key}-${index}`}
               className={styles.axisLabel}
               data-testid="recovery-radar-label"
               data-dimension-key={dimension.key}
+              data-selected={selected}
+              role="button"
+              tabIndex={0}
+              aria-controls={detailId}
+              aria-expanded={selected}
+              aria-label={`${readableDimension(dimension)}. Afficher les détails de cette dimension.`}
+              onClick={() => onSelect?.(dimension.key)}
+              onKeyDown={handleKeyDown}
+              ref={(node) => registerButton?.(dimension.key, node)}
+              style={{ cursor: "pointer", outline: "none" }}
             >
+              {selected ? (
+                <circle cx={labelX} cy={startY} r={30} fill="none" stroke="currentColor" strokeWidth={1.5} strokeDasharray="3 3" aria-hidden="true" />
+              ) : null}
               {lines.map((line, lineIndex) => (
                 <text
                   key={`${line}-${lineIndex}`}
@@ -193,7 +293,7 @@ export function RecoveryRadar({ dimensions }: RecoveryRadarProps) {
                   y={startY + lineIndex * LABEL_LINE_HEIGHT}
                   textAnchor={anchor}
                 >
-                  {line}
+                  {lineIndex === 0 && selected ? `${line} ●` : line}
                 </text>
               ))}
               <text
@@ -203,8 +303,13 @@ export function RecoveryRadar({ dimensions }: RecoveryRadarProps) {
                 y={valueY}
                 textAnchor={anchor}
               >
-                {formatScore(dimension.score)}
+                {displayValue}
               </text>
+              {sourceLabel ? (
+                <text className={styles.axisName} x={labelX} y={sourceY} textAnchor={anchor} fontSize={11}>
+                  {sourceLabel}
+                </text>
+              ) : null}
             </g>
           );
         })}

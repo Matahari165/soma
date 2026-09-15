@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
@@ -100,6 +102,14 @@ function formatCivilDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(civilDate(value)).replace(".", "");
 }
 
+function recoveryDateLabel(metricDate: string, currentDate: string) {
+  if (metricDate === currentDate) return "Aujourd’hui";
+  const yesterday = new Date(`${currentDate}T12:00:00.000Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  if (metricDate === yesterday.toISOString().slice(0, 10)) return "Hier";
+  return formatCivilDate(metricDate);
+}
+
 function zoneDotClassName(tone: ZoneTone) {
   if (tone === "light") return styles.zoneDot;
   return `${styles.zoneDot} ${styles[`zoneDot--${tone}`]}`;
@@ -159,6 +169,7 @@ const freshnessLabels = {
 } as const;
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
+  const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const latest = data.days.findLast(hasRecoveryMeasurement);
   const recoveryScore = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date);
   const score = recoveryScore?.score ?? null;
@@ -176,11 +187,38 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
   const heroScoreTone = metricTone(score, averages.recovery, "higher_is_better");
   const weeklyZones = averageWeeklyZoneMinutes(data.days, latest?.metric_date);
+  const [selectedAxis, setSelectedAxis] = useState<string | null>(null);
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const radarButtonRefs = useRef<Record<string, SVGGElement | null>>({});
+  const detailId = "recovery-radar-detail";
+  const detailTitleId = "recovery-radar-detail-title";
+  const detailOpen = selectedAxis !== null;
   const dimensions = [
-    { key: "hrv", label: "VFC nocturne", score: scoreDriver(drivers, "hrv"), weight: 40 },
-    { key: "restingHeartRate", label: "FC au repos", score: scoreDriver(drivers, "restingHeartRate"), weight: 30 },
-    { key: "sleep", label: "Sommeil", score: scoreDriver(drivers, "sleep"), weight: 30 },
+    { key: "hrv", label: "VFC nocturne", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")} /100`, averageLabel: averages.hrv === null ? undefined : `Moy. 30 j · ${Math.round(averages.hrv)} ms`, definition: "Variabilité de la fréquence cardiaque nocturne comparée à votre référence personnelle.", readingDirection: "Plus élevé = meilleur", scoreRole: "Composante du score · 40 %", scoreFormula: "écart à la référence personnelle", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "restingHeartRate", label: "FC au repos", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")} /100`, averageLabel: averages.restingHeartRate === null ? undefined : `Moy. 30 j · ${Math.round(averages.restingHeartRate)} bpm`, definition: "Fréquence cardiaque au repos comparée à votre référence personnelle.", readingDirection: "Plus bas = meilleur", scoreRole: "Composante du score · 30 %", scoreFormula: "écart à la référence personnelle", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "sleep", label: "Sommeil", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")} /100`, averageLabel: averages.recovery === null ? undefined : `Moy. 30 j · ${Math.round(averages.recovery)} /100`, definition: "Score de sommeil repris comme composante de la récupération.", readingDirection: "Plus élevé = meilleur", scoreRole: "Composante du score · 30 %", scoreFormula: "score Sommeil Soma", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
   ];
+  const selectedDimension = dimensions.find((dimension) => dimension.key === selectedAxis) ?? null;
+  useEffect(() => {
+    if (selectedAxis) detailHeadingRef.current?.focus({ preventScroll: true });
+  }, [selectedAxis]);
+  useEffect(() => {
+    if (!selectedAxis) return;
+    const activeId: string = selectedAxis;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setSelectedAxis(null);
+      window.requestAnimationFrame(() => radarButtonRefs.current[activeId]?.focus());
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedAxis]);
+  function closeAxisDetail() {
+    const id = selectedAxis;
+    setSelectedAxis(null);
+    if (id) window.requestAnimationFrame(() => radarButtonRefs.current[id as string]?.focus());
+  }
   const recoveryScoreAction = latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined;
   const freshnessLabel = freshnessLabels[freshness.state];
 
@@ -194,16 +232,35 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       timezone={data.timezone}
       heroScore={<span className="sr-only">Score de récupération : {scoreText(score)} sur 100. Moyenne sur 30 jours : {scoreText(averages.recovery)} sur 100.</span>}
     >
-      <main className={`${styles.content} health-observatory-content`} data-recovery-scroll-reveal-root="true">
+      <section className={`${styles.content} health-observatory-content`} aria-label="Contenu récupération" data-recovery-scroll-reveal-root="true">
         <RecoveryScrollReveal />
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
             <div className={styles.radarRegion}>
               <h2 className="sr-only">Facteurs du score</h2>
-              <RecoveryRadar dimensions={dimensions} />
+              <RecoveryRadar dimensions={dimensions} detailId={detailId} interactive selectedId={selectedAxis} onSelect={(id) => setSelectedAxis((current) => (current === id ? null : id))} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
+              <aside id={detailId} aria-labelledby={detailTitleId} aria-hidden={!detailOpen} inert={!detailOpen} style={{ display: detailOpen ? "block" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <h3 id={detailTitleId} ref={detailHeadingRef} tabIndex={-1} style={{ margin: 0 }}>{selectedDimension?.label ?? "Détail"}</h3>
+                  <button type="button" onClick={closeAxisDetail} tabIndex={detailOpen ? 0 : -1} style={{ minHeight: 44, minWidth: 44 }} aria-label={selectedDimension ? `Fermer les détails de ${selectedDimension.label}` : "Fermer les détails"}>Fermer</button>
+                </div>
+                {selectedDimension && (
+                  <dl>
+                    <div><dt>Valeur actuelle</dt><dd>{selectedDimension.valueLabel ?? "—"}</dd></div>
+                    <div><dt>Moy. 30 j</dt><dd>{selectedDimension.averageLabel ?? "—"}</dd></div>
+                    <div><dt>Sens de lecture</dt><dd>{selectedDimension.readingDirection ?? "—"}</dd></div>
+                    <div><dt>Rôle</dt><dd>{selectedDimension.scoreRole ?? "—"}</dd></div>
+                    <div><dt>Formule</dt><dd>{selectedDimension.scoreFormula ?? "—"}</dd></div>
+                    <div><dt>Normalisation</dt><dd>{selectedDimension.scoreNormalization ?? "—"}</dd></div>
+                    <div><dt>Contribution</dt><dd>{selectedDimension.scoreContribution === null || selectedDimension.scoreContribution === undefined ? "Indisponible" : `${selectedDimension.scoreContribution}`}</dd></div>
+                    <div><dt>Source</dt><dd>{selectedDimension.sourceLabel ?? "—"}</dd></div>
+                  </dl>
+                )}
+                {selectedDimension?.definition && <p>{selectedDimension.definition}</p>}
+              </aside>
             </div>
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
-              <span className={styles.summaryKicker}>Aujourd’hui</span>
+              <span className={styles.summaryKicker}>{recoveryDateLabel(latest.metric_date, currentDate)}</span>
               <h2 id="recovery-score-summary-title">Score de récupération</h2>
               <div className={styles.summaryValue} aria-label={`Score de récupération : ${scoreText(score)} sur 100`}><strong>{scoreText(score)}</strong><span>/100</span></div>
               <div className={`${styles.summaryRail} metric-tone--${heroScoreTone}`} aria-hidden="true"><span style={{ width: score === null ? "0%" : `${Math.min(100, Math.max(0, score))}%` }} /></div>
@@ -238,8 +295,8 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             <header className={styles.sectionHeader}><h2 id="weekly-zones-heading">Zones cardiaques</h2><div className={styles.sectionHeaderMeta}><span className={styles.supporting}>Moyenne quotidienne · jours mesurés uniquement</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div></header>
             <WeeklyZoneChart summary={weeklyZones} />
           </section>
-        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">Aucune donnée de récupération</h2><p>Synchronisez vos signaux de santé pour calculer une récupération personnalisée.</p></div></section>}
-      </main>
+        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">Aucune donnée de récupération</h2><p>0 jour mesuré sur les 30 derniers jours. Importez vos signaux depuis Google Health, puis revenez ici.</p><p><a href="/settings">Vérifier la connexion Google Health</a></p></div></section>}
+      </section>
     </HealthPageShell>
   </div>;
 }
