@@ -35,10 +35,10 @@ export type ActivityRadarProps = {
   registerButton?: (id: string, node: SVGGElement | null) => void;
 };
 
-const VIEWBOX_WIDTH = 600;
-const VIEWBOX_HEIGHT = 470;
-const CENTER_X = VIEWBOX_WIDTH / 2;
-const CENTER_Y = 222;
+const VIEWBOX_WIDTH = 420;
+const VIEWBOX_HEIGHT = 420;
+const CENTER_X = 210;
+const CENTER_Y = 210;
 const RADIUS = 150;
 const LABEL_RADIUS = RADIUS + 38;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
@@ -131,7 +131,7 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
 
       {hasMeasuredPoint && <g className={styles.dataLayer} aria-hidden="true">
         {hasValueShape && <polygon className={styles.valueArea} points={pointString(availablePoints)} />}
-        {measuredPoints.map((point, index) => point && <circle key={`point-${dimensions[index].id}`} className={styles.point} cx={point[0]} cy={point[1]} r="4" />)}
+        {measuredPoints.map((point, index) => point && <circle key={`point-${dimensions[index].id}`} className={styles.point} cx={point[0]} cy={point[1]} r="5" />)}
       </g>}
 
       {dimensions.map((dimension, index) => {
