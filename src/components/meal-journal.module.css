@@ -413,7 +413,8 @@
 .sourceNote > span { color: var(--lab-text-secondary); font-size: 12px; font-weight: 600; line-height: 16px; }
 
 .originFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-.originFieldset legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.originFieldset legend { margin-bottom: 4px; padding: 0; color: var(--ink-soft); font-size: 12px; font-weight: 600; line-height: 16px; }
+.originHint { margin: 0 0 6px; color: var(--muted); font-size: 12px; line-height: 16px; }
 .originChoices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .originChoice,
 .originChoiceSelected {
@@ -1507,12 +1508,13 @@
 @media (max-width: 700px) {
   .mealsPageRoot .mealsPageHeader h1 { font-size: 24px; line-height: 30px; }
   .mealsPageRoot .headerMetrics {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 0 0 4px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    gap: 12px 20px;
+    overflow: visible;
+    padding: 0;
+    scroll-snap-type: none;
   }
   .mealsPageRoot .headerMetric {
     min-width: 132px;
@@ -1597,8 +1599,8 @@
   .mealsPageRoot .headerMetric > strong { min-width: 0; font-size: 16px; line-height: 20px; }
   .mealsPageRoot .headerMetric > strong small { font-size: 12px; line-height: 16px; }
   .mealsPageRoot .historyNavigation { margin-top: 12px; }
-  .mealsPageRoot .mealsWeekStrip { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
-  .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { display: none; }
+  .mealsPageRoot .mealsWeekStrip { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { height: 6px; }
   .mealsPageRoot .mealsWeekStrip .weekDay,
   .mealsPageRoot .mealsWeekStrip .weekDaySelected { flex: 0 0 44px; flex-direction: column; gap: 0; padding-inline: 2px; font-size: 12px; }
   .mealsPageRoot .mealsWeekStrip .weekDay span,
@@ -2722,9 +2724,9 @@
   :global(.meals-page) .mealsPageRoot .mealsWeekStrip { height: 44px; min-height: 44px; }
 
   .mealsPageRoot .mealsWeekStrip,
-  :global(.meals-page) .mealsPageRoot .mealsWeekStrip { overflow-x: auto; scrollbar-width: none; }
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip { overflow-x: auto; scrollbar-width: thin; }
   .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar,
-  :global(.meals-page) .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { display: none; }
+  :global(.meals-page) .mealsPageRoot .mealsWeekStrip::-webkit-scrollbar { height: 6px; }
   .mealsPageRoot .mealsWeekStrip .weekDay,
   .mealsPageRoot .mealsWeekStrip .weekDaySelected,
   :global(.meals-page) .mealsPageRoot .mealsWeekStrip .weekDay,
@@ -3981,3 +3983,89 @@
     border-top: 1px solid color-mix(in srgb, var(--lab-text-primary) 10%, var(--lab-canvas));
   }
 }
+
+/* Lot A — correctifs audit : navigation datée, compteur, dialogue, statuts. */
+.labHeaderButtons { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.historyNavigationWithArrows { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: stretch; }
+
+.historyArrow {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.historyArrow:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
+.historyArrow:disabled { cursor: not-allowed; opacity: .38; }
+.historyArrow:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+
+.labRoot .historyArrow { border-color: var(--lab-border); border-radius: var(--lab-radius-xs); color: var(--lab-text-secondary); }
+.labRoot .historyArrow:hover:not(:disabled) { border-color: var(--lab-brand); background: var(--lab-surface-selected); color: var(--lab-text-primary); }
+
+.datePickerRow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.datePickerRow label { color: var(--muted); font-size: 12px; line-height: 16px; white-space: nowrap; }
+.datePicker {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  color-scheme: light;
+  font-family: var(--font-soma-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+.datePicker:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+.labRoot .datePickerRow label { color: var(--lab-text-secondary); }
+.labRoot .datePicker { border-color: var(--lab-border); border-radius: var(--lab-radius-xs); color: var(--lab-text-primary); color-scheme: dark; }
+.mealsPageRoot .datePicker { color-scheme: dark; }
+
+.noteCounter { margin: 4px 0 0; color: var(--muted); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; }
+.labRoot .noteCounter,
+.mealsJournalPanel .noteCounter { color: var(--lab-text-secondary); }
+
+.saveNotice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  font-size: .78rem;
+}
+.labRoot .saveNotice,
+.mealsJournalPanel .saveNotice { border-color: var(--lab-border); border-radius: var(--lab-radius-sm); }
+
+.deleteBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .6);
+}
+
+.deleteDialog {
+  width: min(100%, 380px);
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.deleteDialog h3 { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
+.deleteDialog p { margin: 0 0 16px; color: var(--ink-soft); font-size: .8rem; line-height: 1.5; }
+.deleteActions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.labRoot .deleteDialog,
+.mealsJournalPanel .deleteDialog { border-color: var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); color: var(--lab-text-primary); }
+.labRoot .deleteDialog p,
+.mealsJournalPanel .deleteDialog p { color: var(--lab-text-secondary); }

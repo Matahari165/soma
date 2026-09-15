@@ -105,6 +105,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
+  const missingSlots = MEAL_SLOTS.filter((slot) => !records.some((meal) => meal.slot === slot));
   const initialData: MealJournalData | null = mealResult.ok
     ? {
       date: requestedDate,
@@ -128,12 +129,15 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
           trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, status: point.balanceStatus, coverage: point.balanceCoverage, confidence: point.balanceConfidence }))}
+          date={requestedDate}
+          today={today}
+          missingSlots={missingSlots}
           className="meals-page-score"
         />
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
             <h2 id="meals-journal-title">Journal des repas</h2>
-            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals hideAddMealButton />
+            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
