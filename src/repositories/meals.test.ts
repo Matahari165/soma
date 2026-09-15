@@ -5,12 +5,14 @@ const state = vi.hoisted(() => ({
   deleteR2: vi.fn(),
   responses: [] as unknown[],
   tables: [] as string[],
+  selectors: [] as Array<{ table: string; columns: string }>,
+  filters: [] as Array<{ table: string; field: string; values: unknown }>,
 }));
 
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: state.deleteR2 }));
 
-import { requeueStaleMealAnalyses, selectLatestMealAnalysis, type AnalysisRow } from "./meals";
+import { listMeals, requeueStaleMealAnalyses, selectLatestMealAnalysis, type AnalysisRow } from "./meals";
 
 function analysis(overrides: Partial<AnalysisRow>): AnalysisRow {
   return {
@@ -60,14 +62,25 @@ describe("meal photo deletion", () => {
   beforeEach(() => {
     state.responses = [];
     state.tables = [];
+    state.selectors = [];
+    state.filters = [];
     state.deleteR2.mockReset();
     state.createAdmin.mockImplementation(() => ({
       from(table: string) {
         state.tables.push(table);
         const response = state.responses.shift() ?? { data: null, error: null };
         const query: Record<string, unknown> = {
-          select: () => query,
+          select: (columns: string) => {
+            state.selectors.push({ table, columns });
+            return query;
+          },
           eq: () => query,
+          gte: () => query,
+          lte: () => query,
+          in: (field: string, values: unknown[]) => {
+            state.filters.push({ table, field, values });
+            return query;
+          },
           order: () => query,
           maybeSingle: () => query,
           delete: () => query,
@@ -77,6 +90,40 @@ describe("meal photo deletion", () => {
         return query;
       },
     }));
+  });
+
+  it("limits list children to the returned meal ids and selects only list columns", async () => {
+    state.responses.push(
+      { data: [{ id: "meal-current", user_id: "user-1", meal_date: "2026-09-15", meal_type: "lunch", status: "confirmed", created_at: "2026-09-15T12:00:00.000Z", updated_at: "2026-09-15T12:00:00.000Z" }], error: null },
+      { data: [{ id: "photo-current", user_id: "user-1", meal_id: "meal-current", origin: "homemade", object_path: "private/photo", mime_type: "image/jpeg", bytes: 10, created_at: "2026-09-15T12:01:00.000Z" }], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    );
+
+    const meals = await listMeals("user-1", { from: "2026-09-01", to: "2026-09-15" });
+
+    expect(meals).toHaveLength(1);
+    expect(meals[0]).toMatchObject({ id: "meal-current", status: "confirmed", photos: [{ id: "photo-current" }] });
+    expect(state.tables).toEqual(["meals", "meal_photos", "meal_analyses", "meal_feelings"]);
+    expect(state.filters).toEqual([
+      { table: "meal_photos", field: "meal_id", values: ["meal-current"] },
+      { table: "meal_analyses", field: "meal_id", values: ["meal-current"] },
+      { table: "meal_feelings", field: "meal_id", values: ["meal-current"] },
+    ]);
+    expect(state.selectors).toEqual([
+      expect.objectContaining({ table: "meals", columns: "id,user_id,meal_date,meal_type,note,status,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
+      expect.objectContaining({ table: "meal_photos", columns: "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at" }),
+      expect.objectContaining({ table: "meal_analyses", columns: "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at" }),
+      expect.objectContaining({ table: "meal_feelings", columns: "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
+    ]);
+  });
+
+  it("does not read child tables when the date range has no meals", async () => {
+    state.responses.push({ data: [], error: null });
+
+    await expect(listMeals("user-1", { from: "2026-09-02", to: "2026-09-02" })).resolves.toEqual([]);
+
+    expect(state.tables).toEqual(["meals"]);
   });
 
   it("restores metadata when R2 deletion fails so the operation can be retried", async () => {

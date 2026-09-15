@@ -268,6 +268,9 @@ export function buildPreviewAnalytics(): HealthAnalytics {
 
 type HealthAnalyticsScope = "all" | "sleep" | "recovery" | "activity" | "trends";
 
+const FIRST_SCREEN_DAYS = 30;
+const FIRST_SCREEN_SCORE_ROWS = FIRST_SCREEN_DAYS * 3;
+
 const metricColumns: Record<HealthAnalyticsScope, string> = {
   all: "*",
   sleep: "metric_date,sleep_minutes,sleep_need_minutes,sleep_efficiency,sleep_regularity,sleep_latency_minutes,sleep_awake_minutes,sleep_awake_percent,sleep_awakenings,sleep_fragmentation,sleep_deep_minutes,sleep_deep_percent,sleep_rem_minutes,sleep_rem_percent,sleep_light_minutes,sleep_light_percent,daily_sleep_debt_minutes,cumulative_sleep_debt_minutes,bedtime,wake_time,source_freshness",
@@ -299,6 +302,61 @@ function civilDateIn(value: string, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
+function datePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes) {
+  return Number(parts.find((part) => part.type === type)?.value ?? NaN);
+}
+
+function timeZoneOffsetMillisecondsAt(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const localAsUtc = Date.UTC(
+    datePart(parts, "year"),
+    datePart(parts, "month") - 1,
+    datePart(parts, "day"),
+    datePart(parts, "hour"),
+    datePart(parts, "minute"),
+    datePart(parts, "second"),
+  );
+  return localAsUtc - value.getTime();
+}
+
+function localMidnightUtc(civilDate: string, timeZone: string) {
+  const target = new Date(`${civilDate}T00:00:00.000Z`);
+  if (!Number.isFinite(target.getTime())) return null;
+
+  // Resolve the timezone offset twice so DST transitions use the offset at the
+  // target local midnight rather than the server's timezone or a fixed offset.
+  let timestamp = target.getTime();
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const nextTimestamp = target.getTime() - timeZoneOffsetMillisecondsAt(new Date(timestamp), timeZone);
+    if (nextTimestamp === timestamp) break;
+    timestamp = nextTimestamp;
+  }
+  return new Date(timestamp);
+}
+
+function nextCivilDate(civilDate: string) {
+  const value = new Date(`${civilDate}T12:00:00.000Z`);
+  if (!Number.isFinite(value.getTime())) return null;
+  value.setUTCDate(value.getUTCDate() + 1);
+  return value.toISOString().slice(0, 10);
+}
+
+export function heartRateWindowForCivilDate(civilDate: string, timeZone: string) {
+  const nextDate = nextCivilDate(civilDate);
+  const start = localMidnightUtc(civilDate, timeZone);
+  const end = nextDate ? localMidnightUtc(nextDate, timeZone) : null;
+  return start && end ? { start: start.toISOString(), end: end.toISOString() } : null;
+}
+
 async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
   const user = await getCurrentUser();
@@ -319,11 +377,11 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     : Promise.resolve(null);
   const baseResults = await Promise.all([
     supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(91),
+    supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(FIRST_SCREEN_DAYS),
     (() => {
       const query = supabase.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", user.id).order("score_date", { ascending: false });
-      if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(91);
-      return query.limit(273);
+      if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(FIRST_SCREEN_DAYS);
+      return query.limit(FIRST_SCREEN_SCORE_ROWS);
     })(),
     admin.from("provider_connections").select("last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
     scope === "sleep"
@@ -346,14 +404,11 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     const value = day[key];
     return typeof value === "number" && Number.isFinite(value);
   }))?.metric_date;
-  const recoveryStart = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
-  recoveryStart?.setUTCDate(recoveryStart.getUTCDate() - 1);
-  const recoveryEnd = latestRecoveryDate ? new Date(`${latestRecoveryDate}T12:00:00.000Z`) : null;
-  recoveryEnd?.setUTCDate(recoveryEnd.getUTCDate() + 2);
+  const heartRateWindow = latestRecoveryDate ? heartRateWindowForCivilDate(latestRecoveryDate, timezone) : null;
   const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
     sleepPromise,
-    (scope === "recovery" || scope === "all") && recoveryStart && recoveryEnd
-      ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", recoveryStart.toISOString()).lt("measured_at", recoveryEnd.toISOString()).order("measured_at", { ascending: false }).limit(2000)
+    (scope === "recovery" || scope === "all") && heartRateWindow
+      ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", heartRateWindow.start).lt("measured_at", heartRateWindow.end).order("measured_at", { ascending: false }).limit(2000)
       : Promise.resolve({ data: [], error: null }),
     exercisePromise,
   ]);

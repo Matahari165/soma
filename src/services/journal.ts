@@ -119,6 +119,8 @@ export async function ensureJournalVariables(userId: string) {
 }
 
 export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[]; dailyTargetKcal?: number | null } = {}) {
+  // Loading the journal remains backwards-compatible for write boundaries, but
+  // page reads opt out explicitly so they never provision or rewrite variables.
   if (options.ensureDefaults !== false) await ensureJournalVariables(userId);
   const admin = createCloudflareAdminClient();
   let entryQuery = admin.from("journal_entries").select("variable_id,entry_date,value").eq("user_id", userId).order("entry_date", { ascending: true });

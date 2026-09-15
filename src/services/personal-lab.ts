@@ -263,6 +263,15 @@ export function analysisWindowForPeriods(periods: AnalysisPeriod[] | undefined, 
   return { start: start.toISOString().slice(0, 10), days };
 }
 
+/**
+ * The first screen needs the 30-day averages and the 28-day journal
+ * achievements, not the full analysis window requested by the page.
+ * Analysis callers keep their requested period unchanged.
+ */
+export function readWindowForStream(includeAnalysis: boolean, periods: AnalysisPeriod[] | undefined, now: Date = new Date()) {
+  return analysisWindowForPeriods(includeAnalysis ? periods : [30], now);
+}
+
 export function latestLabDate(healthDates: readonly string[], journalDates: readonly string[], fallback: string) {
   const dates = [...healthDates, ...journalDates];
   return dates.reduce((latest, date) => date > latest ? date : latest, dates[0] ?? fallback);
@@ -1058,6 +1067,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   }
   const admin = createCloudflareAdminClient();
   const analysisWindow = analysisWindowForPeriods(options.periods);
+  const readWindow = readWindowForStream(includeAnalysis, options.periods);
   const matrixCacheKey = labMatrixCacheKey(options.periods);
   const matrixCachePromise = includeAnalysis && matrixCacheKey ? (async () => {
     try {
@@ -1077,15 +1087,16 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     }
   })() : Promise.resolve(null);
   const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  let healthQuery = admin.from("daily_health_metrics").select("*").eq("user_id", user.id).order("metric_date", { ascending: false });
+  const overviewHealthFields = "metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,vigorous_zone_minutes,peak_zone_minutes,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality";
+  let healthQuery = admin.from("daily_health_metrics").select(includeAnalysis ? "*" : overviewHealthFields).eq("user_id", user.id).order("metric_date", { ascending: false });
   let scoresQuery = admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false });
-  let calendarQuery = admin.from("daily_calendar_metrics").select("metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at").eq("user_id", user.id).order("metric_date", { ascending: false });
-  let checkinQuery = admin.from("daily_checkins").select("checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false });
-  if (analysisWindow) {
-    healthQuery = healthQuery.gte("metric_date", analysisWindow.start).limit(analysisWindow.days);
-    scoresQuery = scoresQuery.gte("score_date", analysisWindow.start).limit(analysisWindow.days * 3);
-    calendarQuery = calendarQuery.gte("metric_date", analysisWindow.start).limit(analysisWindow.days);
-    checkinQuery = checkinQuery.gte("checkin_date", analysisWindow.start).limit(analysisWindow.days);
+  let calendarQuery = admin.from("daily_calendar_metrics").select(includeAnalysis ? "metric_date,deep_work_minutes,deep_work_event_count,total_scheduled_minutes,synced_at" : "metric_date,deep_work_minutes").eq("user_id", user.id).order("metric_date", { ascending: false });
+  let checkinQuery = admin.from("daily_checkins").select(includeAnalysis ? "checkin_date,energy,focus,stress,mood,soreness,caffeine_servings,alcohol_servings,late_meal,illness,deep_work_minutes_override" : "checkin_date,energy,focus,deep_work_minutes_override").eq("user_id", user.id).order("checkin_date", { ascending: false });
+  if (readWindow) {
+    healthQuery = healthQuery.gte("metric_date", readWindow.start).limit(readWindow.days);
+    scoresQuery = scoresQuery.gte("score_date", readWindow.start).limit(readWindow.days * 3);
+    calendarQuery = calendarQuery.gte("metric_date", readWindow.start).limit(readWindow.days);
+    checkinQuery = checkinQuery.gte("checkin_date", readWindow.start).limit(readWindow.days);
   }
   // Converting the query builders to real promises starts every independent
   // read now and lets the streamed sections share the same database results.
@@ -1096,7 +1107,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const calendarPromise = calendarQuery.then((result) => result);
   const checkinPromise = checkinQuery.then((result) => result);
   const connectionPromise = admin.from("provider_connections").select("provider,status,last_synced_at").eq("user_id", user.id).in("provider", ["google_health", "google_calendar"]).then((result) => result);
-  const mealPromise = loadConfirmedMealRecords(user.id, analysisWindow ? { from: analysisWindow.start } : {});
+  const mealPromise = loadConfirmedMealRecords(user.id, readWindow ? { from: readWindow.start } : {});
   const supplementPromise: Promise<PersonalLabSupplements> = Promise.resolve(profilePromise).then(async (profileResult) => {
     const today = dateInTimezone(profileResult.data?.timezone ?? "Europe/Paris");
     const [definitions, entries] = await Promise.all([
@@ -1106,9 +1117,10 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     return { definitions: definitions.map(supplementDefinitionToView), entries: entries.map(supplementEntryToView), error: null };
   }).catch(() => ({ definitions: [], entries: [], error: "Les compléments sont momentanément indisponibles." }));
   const journalPromise = Promise.all([profilePromise, mealPromise]).then(([profileResult, mealRecords]) => loadJournalData(user.id, {
-    ...(analysisWindow ? { from: analysisWindow.start } : {}),
+    ...(readWindow ? { from: readWindow.start } : {}),
     timeZone: profileResult.data?.timezone ?? "Europe/Paris",
     mealRecords,
+    ensureDefaults: false,
   }));
   const corePromise = Promise.all([profilePromise, healthPromise, scoresPromise, calendarPromise, checkinPromise, connectionPromise]).then((results) => {
     const failed = results.find((result) => result.error);

@@ -9,6 +9,7 @@ import MealSupplements from "@/components/meal-supplements";
 import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
 import { mealFoodGroupHistory, mealNutritionHistory } from "@/domain/lab/meals";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
+import type { Meal } from "@/domain/meals";
 import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
 import { supplementDefinitionToView, supplementEntryToView } from "@/domain/supplements";
 import { buildMealScoreOverview } from "@/domain/scores/meal-overview";
@@ -54,6 +55,10 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
+function mealsForDate(meals: readonly Meal[], date: string) {
+  return meals.filter((meal) => meal.mealDate === date);
+}
+
 function goalMode(value: unknown): "build_muscle" | "maintain" {
   return value === "build_muscle" ? "build_muscle" : "maintain";
 }
@@ -69,11 +74,12 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
   }
   const today = todayIn(timeZone);
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
+  const historyFrom = addDays(requestedDate, -27);
 
   const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult, supplementDefinitionsResult, supplementEntriesResult] = await Promise.all([
     isLocalPreviewMode()
       ? loadSafely(() => listPreviewMeals(user.id, { from: requestedDate, to: requestedDate }))
-      : loadSafely(() => listMeals(user.id, { from: requestedDate, to: requestedDate })),
+      : loadSafely(() => listMeals(user.id, { from: historyFrom, to: requestedDate })),
     listMealRecipes(user.id)
       .then((value) => ({ recipes: value, error: undefined }))
       .catch((error) => ({
@@ -83,8 +89,8 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
           : "Les recettes personnelles sont momentanément indisponibles.",
       })),
     isLocalPreviewMode()
-      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= addDays(requestedDate, -27) && record.mealDate <= requestedDate))
-      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: addDays(requestedDate, -27), to: requestedDate })),
+      ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= historyFrom && record.mealDate <= requestedDate))
+      : loadSafely(() => loadConfirmedMealRecords(user.id, { from: historyFrom, to: requestedDate })),
     loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
     loadSafely(async () => {
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;
@@ -96,7 +102,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
     loadSafely(() => listSupplementEntries(user.id, { from: requestedDate, to: requestedDate })),
   ]);
 
-  const records = mealResult.ok ? mealResult.value.map((meal) => apiMealToRecord(mealToApi(meal))) : [];
+  const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
   const initialData: MealJournalData | null = mealResult.ok
     ? {
       date: requestedDate,

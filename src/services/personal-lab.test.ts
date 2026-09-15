@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { analysisWindowForPeriods, createPersonalLabStream, hasReliableActivityCoverage, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, recentAverages, runningDaySeries, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, createPersonalLabStream, hasReliableActivityCoverage, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, readWindowForStream, recentAverages, runningDaySeries, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
@@ -14,6 +14,11 @@ describe("Personal Lab analysis window", () => {
   it("keeps all history available when the all-history period is requested", () => {
     expect(analysisWindowForPeriods(["all"], now)).toBeNull();
     expect(analysisWindowForPeriods(undefined, now)).toBeNull();
+  });
+
+  it("bounds the non-analysis stream to the first screen needs", () => {
+    expect(readWindowForStream(false, [90], now)).toEqual({ start: "2026-07-25", days: 32 });
+    expect(readWindowForStream(true, [90], now)).toEqual({ start: "2026-05-26", days: 92 });
   });
 
   it("caches exact single-period matrices without combining oversized payloads", () => {

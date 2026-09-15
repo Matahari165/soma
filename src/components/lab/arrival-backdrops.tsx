@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export const BACKDROP_OPTIONS = [
@@ -22,10 +23,20 @@ const HERO_LAYER_STYLE = {
 
 const SCROLL_RANGE_PX = 560;
 
-function Photo({ src, alt, className }: { src: string; alt: string; className: string }) {
+function Photo({ src, alt, className, width, height }: { src: string; alt: string; className: string; width: number; height: number }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
-  return <img src={src} alt={alt} className={className} loading="eager" decoding="async" onError={() => setFailed(true)} />;
+  return <Image
+    src={src}
+    alt={alt}
+    className={className}
+    width={width}
+    height={height}
+    unoptimized
+    loading="eager"
+    decoding="async"
+    onError={() => setFailed(true)}
+  />;
 }
 
 function DiscoLarge() {
@@ -33,6 +44,8 @@ function DiscoLarge() {
     src="/images/backdrops/discobole-wide.png"
     alt="Statue du Discobole de Myron, en grand"
     className="arrival-backdrop__image arrival-backdrop__image--disco"
+    width={1376}
+    height={768}
   />;
 }
 
@@ -42,6 +55,8 @@ function MontNuages({ source, alt }: { source: string; alt: string }) {
       src={source}
       alt={alt}
       className="arrival-backdrop__image arrival-backdrop__image--crepuscule"
+      width={1672}
+      height={941}
     />
   </>;
 }
@@ -75,7 +90,7 @@ export function ArrivalBackdrop({ variant }: { variant: ArrivalBackdropId }) {
   if (!BACKDROP_OPTIONS.some((option) => option.id === variant)) return null;
   return <div ref={layerRef} className="arrival-backdrop" data-backdrop={variant} aria-hidden="true" style={HERO_LAYER_STYLE}>
     {variant === "disco-large" && <DiscoLarge />}
-    {variant === "mont-nuages-user" && <MontNuages source="/images/backdrops/montagnes-nuages-utilisateur-v3.png" alt="Sommets alpins émergeant d'une vaste mer de nuages" />}
+    {variant === "mont-nuages-user" && <MontNuages source="/images/backdrops/montagnes-nuages-utilisateur-v3.jpg" alt="Sommets alpins émergeant d'une vaste mer de nuages" />}
     <div className="arrival-backdrop__tone" />
     <div className="arrival-backdrop__fade" />
   </div>;

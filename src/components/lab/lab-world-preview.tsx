@@ -1,12 +1,20 @@
+import { Suspense } from "react";
+
 import type { PersonalLabStream } from "@/services/personal-lab";
 import { StrongestEffectsPanel } from "./correlation-matrix";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
+import { PersonalLabJournalLoading } from "./personal-lab";
 import { ObservatoryRadar } from "./observatory-radar";
 import { LabWorldWorkspace } from "./lab-world-workspace";
 import { arrivalMessageFor } from "@/domain/lab/arrival-message";
 
+export async function LabWorldJournalPreview({ stream }: { stream: Pick<PersonalLabStream, "journal"> }) {
+  const journal = await stream.journal;
+  return <PersonalLabJournalWorkspace data={journal} recentDatesFirst />;
+}
+
 export async function LabWorldPreview({ stream }: { stream: Pick<PersonalLabStream, "overview" | "journal"> }) {
-  const [overview, journal] = await Promise.all([stream.overview, stream.journal]);
+  const overview = await stream.overview;
   const date = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${overview.todayDate}T12:00:00`));
   const personalization = {
     name: overview.greetingName,
@@ -16,7 +24,7 @@ export async function LabWorldPreview({ stream }: { stream: Pick<PersonalLabStre
   } as const;
   return <LabWorldWorkspace date={date} radar={<ObservatoryRadar data={overview.today} />}
     effects={<StrongestEffectsPanel />}
-    capture={<PersonalLabJournalWorkspace data={journal} recentDatesFirst />}
+    capture={<Suspense fallback={<PersonalLabJournalLoading />}><LabWorldJournalPreview stream={stream} /></Suspense>}
     personalization={personalization}
   />;
 }

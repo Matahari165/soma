@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import type {
   Meal,
   MealAnalysis,
@@ -74,6 +76,11 @@ type FeelingsRow = Row & {
   updated_at: string;
 };
 
+const mealListColumns = "id,user_id,meal_date,meal_type,note,status,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
+const mealListPhotoColumns = "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at";
+const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at";
+const mealListFeelingColumns = "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
+
 function asNullableString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
@@ -145,9 +152,17 @@ function mergeFeelings(meal: MealRow, feelings: FeelingsRow | null): Meal {
   };
 }
 
-async function rowsFor<T extends Row>(table: string, userId: string, mealId?: string) {
-  const query = createCloudflareAdminClient().from(table).select("*").eq("user_id", userId);
-  if (mealId) query.eq("meal_id", mealId);
+type RowsForOptions = {
+  mealId?: string;
+  mealIds?: readonly string[];
+  columns?: string;
+};
+
+async function rowsFor<T extends Row>(table: string, userId: string, options: RowsForOptions = {}) {
+  if (options.mealIds && options.mealIds.length === 0) return [] as T[];
+  const query = createCloudflareAdminClient().from(table).select(options.columns ?? "*").eq("user_id", userId);
+  if (options.mealId) query.eq("meal_id", options.mealId);
+  if (options.mealIds) query.in("meal_id", [...options.mealIds]);
   const result = await query.order("created_at", { ascending: true });
   if (result.error) throw new Error(`Meal ${table} could not be loaded.`);
   return (result.data ?? []) as T[];
@@ -157,9 +172,9 @@ export async function findMeal(userId: string, mealId: string): Promise<Meal | n
   const admin = createCloudflareAdminClient();
   const [mealResult, photoRows, analysisRows, feelingsRows] = await Promise.all([
     admin.from("meals").select("*").eq("user_id", userId).eq("id", mealId).maybeSingle(),
-    rowsFor<PhotoRow>("meal_photos", userId, mealId),
-    rowsFor<AnalysisRow>("meal_analyses", userId, mealId),
-    rowsFor<FeelingsRow>("meal_feelings", userId, mealId),
+    rowsFor<PhotoRow>("meal_photos", userId, { mealId }),
+    rowsFor<AnalysisRow>("meal_analyses", userId, { mealId }),
+    rowsFor<FeelingsRow>("meal_feelings", userId, { mealId }),
   ]);
   if (mealResult.error) throw new Error("The meal could not be loaded.");
   if (!mealResult.data) return null;
@@ -182,20 +197,36 @@ export function selectLatestMealAnalysis(rows: AnalysisRow[], preferLatestComple
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
 }
 
-export async function listMeals(userId: string, options: ListMealsOptions = {}) {
+type MealListRead = {
+  meals: MealRow[];
+  photoRows: PhotoRow[];
+  analysisRows: AnalysisRow[];
+  feelingsRows: FeelingsRow[];
+};
+
+// The page and the Personal Lab adapter request the same range during one
+// server render. React's request cache shares the DB read while keeping data
+// isolated between requests.
+const readMealList = cache(async (userId: string, from?: string, to?: string): Promise<MealListRead> => {
   const admin = createCloudflareAdminClient();
-  let query = admin.from("meals").select("*").eq("user_id", userId).order("meal_date", { ascending: false }).order("created_at", { ascending: false });
-  if (options.from) query = query.gte("meal_date", options.from);
-  if (options.to) query = query.lte("meal_date", options.to);
+  let query = admin.from("meals").select(mealListColumns).eq("user_id", userId).order("meal_date", { ascending: false }).order("created_at", { ascending: false });
+  if (from) query = query.gte("meal_date", from);
+  if (to) query = query.lte("meal_date", to);
   const mealResult = await query;
   if (mealResult.error) throw new Error("Meals could not be loaded.");
   const meals = (mealResult.data ?? []) as MealRow[];
-  if (!meals.length) return [];
+  if (!meals.length) return { meals, photoRows: [], analysisRows: [], feelingsRows: [] };
+  const mealIds = meals.map((meal) => meal.id);
   const [photoRows, analysisRows, feelingsRows] = await Promise.all([
-    rowsFor<PhotoRow>("meal_photos", userId),
-    rowsFor<AnalysisRow>("meal_analyses", userId),
-    rowsFor<FeelingsRow>("meal_feelings", userId),
+    rowsFor<PhotoRow>("meal_photos", userId, { mealIds, columns: mealListPhotoColumns }),
+    rowsFor<AnalysisRow>("meal_analyses", userId, { mealIds, columns: mealListAnalysisColumns }),
+    rowsFor<FeelingsRow>("meal_feelings", userId, { mealIds, columns: mealListFeelingColumns }),
   ]);
+  return { meals, photoRows, analysisRows, feelingsRows };
+});
+
+export async function listMeals(userId: string, options: ListMealsOptions = {}) {
+  const { meals, photoRows, analysisRows, feelingsRows } = await readMealList(userId, options.from, options.to);
   const photosByMeal = new Map<string, MealPhoto[]>();
   for (const row of photoRows) photosByMeal.set(row.meal_id, [...(photosByMeal.get(row.meal_id) ?? []), photoFromRow(row)]);
   const analysisByMeal = new Map<string, AnalysisRow[]>();
@@ -275,7 +306,7 @@ export async function updatePhotoStorage(userId: string, mealId: string, photoId
 }
 
 export async function findPhotosByUploadIdempotencyKey(userId: string, mealId: string, key: string) {
-  const rows = await rowsFor<PhotoRow>("meal_photos", userId, mealId);
+  const rows = await rowsFor<PhotoRow>("meal_photos", userId, { mealId });
   return rows.filter((row) => row.upload_idempotency_key === key).map(photoFromRow);
 }
 
@@ -311,7 +342,7 @@ export async function deleteMeal(userId: string, mealId: string) {
 }
 
 export async function listMealPhotos(userId: string, mealId: string) {
-  return rowsFor<PhotoRow>("meal_photos", userId, mealId).then((rows) => rows.map(photoFromRow));
+  return rowsFor<PhotoRow>("meal_photos", userId, { mealId }).then((rows) => rows.map(photoFromRow));
 }
 
 export async function findMealPhoto(userId: string, mealId: string, photoId: string) {
@@ -321,19 +352,19 @@ export async function findMealPhoto(userId: string, mealId: string, photoId: str
 }
 
 export async function findLatestMealAnalysis(userId: string, mealId: string) {
-  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
+  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, { mealId });
   const latest = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
   return latest ? analysisFromRow(latest) : null;
 }
 
 export async function findMealAnalysisByRequestId(userId: string, mealId: string, requestId: string) {
-  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
+  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, { mealId });
   const match = rows.find((row) => row.analysis_request_id === requestId);
   return match ? analysisFromRow(match) : null;
 }
 
 export async function findActiveMealAnalysis(userId: string, mealId: string) {
-  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, mealId);
+  const rows = await rowsFor<AnalysisRow>("meal_analyses", userId, { mealId });
   const active = rows
     .filter((row) => row.status === "queued" || row.status === "running")
     .sort((left, right) => left.created_at.localeCompare(right.created_at))[0];

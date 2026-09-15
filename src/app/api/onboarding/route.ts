@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { onboardingSchema } from "@/domain/profile";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { isLocalPreviewMode } from "@/lib/env";
+import { ensureJournalVariables } from "@/services/journal";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -41,6 +42,12 @@ export async function POST(request: Request) {
   });
 
   if (error) return NextResponse.json({ error: "Votre profil n’a pas pu être enregistré." }, { status: 500 });
+
+  try {
+    await ensureJournalVariables(user.id);
+  } catch {
+    return NextResponse.json({ error: "Votre profil a été enregistré, mais le journal n’a pas pu être initialisé." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -24,6 +24,6 @@ it("renders the user-supplied Discobolus photo fully inside the frame", () => {
 
 it("renders the selected user cloud photo", () => {
   const userPhoto = renderToStaticMarkup(<ArrivalBackdrop variant="mont-nuages-user" />);
-  expect(userPhoto).toContain("montagnes-nuages-utilisateur-v3.png");
+  expect(userPhoto).toContain("montagnes-nuages-utilisateur-v3.jpg");
   expect(userPhoto).toContain("arrival-backdrop__image--crepuscule");
 });
