@@ -4,12 +4,12 @@
   --radar-axis: color-mix(in srgb, var(--radar-text) 11%, transparent);
   --radar-text: var(--lab-text-primary, #f1f1f1);
   --radar-muted: var(--lab-text-secondary, #aaaaaa);
-  --radar-data: var(--lab-brand, #eeeeee);
-  --radar-data-surface: color-mix(in srgb, var(--radar-data) 10%, transparent);
+  --radar-data: var(--lab-text-primary, #f1f1f1);
+  --radar-data-surface: color-mix(in srgb, var(--radar-data) 9%, transparent);
   --radar-signal: var(--lab-signal, #d5e5da);
   --radar-error: var(--lab-error, #e2b2aa);
   display: grid;
-  width: min(100%, 32rem);
+  width: min(100%, 420px);
   min-width: 0;
   margin: 0;
   gap: 12px;
@@ -62,6 +62,7 @@
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 1 / 1;
   overflow: visible;
 }
 
@@ -83,13 +84,15 @@
 }
 
 .dataLayer {
-  animation: radarReveal 240ms cubic-bezier(.2, .8, .2, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: radarReveal 220ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .valueArea {
   fill: var(--radar-data-surface);
   stroke: var(--radar-data);
-  stroke-width: 1.5;
+  stroke-width: 1.75;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
@@ -108,9 +111,15 @@
   vector-effect: non-scaling-stroke;
 }
 
+.pointActive {
+  fill: var(--radar-signal);
+  stroke: var(--lab-canvas, #050505);
+  stroke-width: 2;
+}
+
 @keyframes radarReveal {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: scale(.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .labelGroup {
@@ -163,16 +172,20 @@
 
 .label,
 .valueLabel {
-  fill: var(--radar-text);
+  fill: var(--radar-muted);
   font-family: var(--font-soma-ui, system-ui, sans-serif);
   font-size: 13px;
   font-weight: 500;
 }
 
+.axisButton[data-selected="true"] .label {
+  fill: var(--radar-text);
+}
+
 .valueLabel {
   fill: var(--radar-muted);
   font-family: var(--font-soma-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
 }
@@ -180,6 +193,7 @@
 .comparison {
   font-family: var(--font-soma-ui, system-ui, sans-serif);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
 

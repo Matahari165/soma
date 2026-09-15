@@ -1,10 +1,12 @@
+import { useEffect, useRef, useState, type RefObject } from "react";
+
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
 import { averageLast30Measured, formatAverage, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { HealthPageShell } from "./health-page-shell";
 import { MetricTrendCard } from "./metric-trend-card";
-import { RecoveryRadar } from "./recovery-radar";
+import { RecoveryRadar, type RecoveryRadarDimension } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
 import { RecoveryScrollReveal } from "./recovery-scroll-reveal";
 import styles from "./recovery-redesign.module.css";
@@ -151,6 +153,41 @@ function scoreText(value: number | null) {
   return value === null || !Number.isFinite(value) ? "—" : Math.round(value).toLocaleString("fr-FR");
 }
 
+function dimensionValueText(score: number | null) {
+  return score === null || !Number.isFinite(score) ? "—" : `${formatValue(score)} /100`;
+}
+
+const DETAIL_ID = "recovery-radar-detail";
+const DETAIL_TITLE_ID = "recovery-radar-detail-title";
+
+function DetailCloseButton({ label, onClose, closeButtonRef, tabIndex }: { label: string; onClose: () => void; closeButtonRef: RefObject<HTMLButtonElement | null>; tabIndex: number }) {
+  return <button
+    aria-label={`Fermer les détails de ${label}`}
+    className={styles.recoveryDetailClose}
+    onClick={onClose}
+    ref={closeButtonRef}
+    tabIndex={tabIndex}
+    type="button"
+  >Fermer</button>;
+}
+
+function DimensionDetail({ dimension }: { dimension: RecoveryRadarDimension | null }) {
+  if (!dimension) return null;
+
+  return <>
+    <dl className={styles.recoveryDimensionMetrics}>
+      <div><dt>Valeur actuelle</dt><dd>{dimensionValueText(dimension.score)}</dd></div>
+      <div><dt>Moy. 30 j</dt><dd>Indisponible</dd></div>
+      <div><dt>Sens de lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
+      <div className={styles.recoveryDimensionRole}><dt>Rôle</dt><dd>{dimension.scoreRole || "—"}</dd></div>
+    </dl>
+    <dl className={styles.recoveryRuleMetrics}>
+      <div><dt>Formule</dt><dd>Comparaison avec votre référence personnelle.</dd></div>
+      <div><dt>Contribution</dt><dd>Indisponible</dd></div>
+    </dl>
+  </>;
+}
+
 const freshnessLabels = {
   current: "Actuel",
   partial: "Partiel",
@@ -176,11 +213,54 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
   const heroScoreTone = metricTone(score, averages.recovery, "higher_is_better");
   const weeklyZones = averageWeeklyZoneMinutes(data.days, latest?.metric_date);
-  const dimensions = [
-    { key: "hrv", label: "VFC nocturne", score: scoreDriver(drivers, "hrv"), weight: 40 },
-    { key: "restingHeartRate", label: "FC au repos", score: scoreDriver(drivers, "restingHeartRate"), weight: 30 },
-    { key: "sleep", label: "Sommeil", score: scoreDriver(drivers, "sleep"), weight: 30 },
+  const dimensions: RecoveryRadarDimension[] = [
+    { key: "hrv", label: "VFC nocturne", score: scoreDriver(drivers, "hrv"), weight: 40, readingDirection: "Plus élevé = meilleur", scoreRole: "Composante du score Récupération · 40 %" },
+    { key: "restingHeartRate", label: "FC au repos", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, readingDirection: "Plus faible = meilleur", scoreRole: "Composante du score Récupération · 30 %" },
+    { key: "sleep", label: "Sommeil", score: scoreDriver(drivers, "sleep"), weight: 30, readingDirection: "Plus élevé = meilleur", scoreRole: "Composante du score Récupération · 30 %" },
   ];
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const radarButtonRefs = useRef<Record<string, SVGGElement | null>>({});
+  const selectedDimension = selectedKey ? dimensions.find((dimension) => dimension.key === selectedKey) ?? null : null;
+  const detailOpen = selectedKey !== null;
+
+  useEffect(() => {
+    if (selectedKey) detailHeadingRef.current?.focus({ preventScroll: true });
+  }, [selectedKey]);
+
+  useEffect(() => {
+    if (!selectedKey) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeDetail();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  // `closeDetail` intentionally reads the current selected trigger from the closure.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
+
+  function restoreFocus(key: string) {
+    const restore = () => {
+      radarButtonRefs.current[key]?.focus();
+    };
+    if (typeof window === "undefined") restore();
+    else window.requestAnimationFrame(restore);
+  }
+
+  function closeDetail() {
+    if (!selectedKey) return;
+    const key = selectedKey;
+    setSelectedKey(null);
+    restoreFocus(key);
+  }
+
+  function selectDimension(key: string) {
+    if (selectedKey === key) closeDetail();
+    else setSelectedKey(key);
+  }
   const recoveryScoreAction = latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined;
   const freshnessLabel = freshnessLabels[freshness.state];
 
@@ -198,9 +278,31 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
         <RecoveryScrollReveal />
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
-            <div className={styles.radarRegion}>
-              <h2 className="sr-only">Facteurs du score</h2>
-              <RecoveryRadar dimensions={dimensions} />
+            <div className={styles.recoveryRadarStage} data-detail-open={detailOpen}>
+              <div className={styles.radarRegion}>
+                <h2 className="sr-only">Facteurs du score</h2>
+                <RecoveryRadar
+                  dimensions={dimensions}
+                  detailId={DETAIL_ID}
+                  interactive
+                  onSelect={selectDimension}
+                  registerButton={(key, node) => { radarButtonRefs.current[key] = node; }}
+                  selectedId={selectedKey}
+                />
+              </div>
+              <aside
+                aria-hidden={!detailOpen}
+                aria-labelledby={DETAIL_TITLE_ID}
+                className={styles.recoveryDetailPanel}
+                data-open={detailOpen}
+                id={DETAIL_ID}
+              >
+                <div className={styles.recoveryDetailHeader}>
+                  <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDimension?.label ?? "Détail de la récupération"}</h3>
+                  <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDimension?.label ?? "récupération"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
+                </div>
+                <DimensionDetail dimension={selectedDimension} />
+              </aside>
             </div>
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
               <span className={styles.summaryKicker}>Aujourd’hui</span>
