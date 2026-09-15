@@ -4,7 +4,7 @@ export function GoogleSignInButton({ next = null }: { next?: string | null }) {
     <div className="auth-action">
       <a className="google-button" href={href}>
         <GoogleMark />
-        Continuer avec Google
+        Continue with Google
       </a>
     </div>
   );

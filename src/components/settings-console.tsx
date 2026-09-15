@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { CalendarConnectionCard, type CalendarConnectionNotice } from "@/components/calendar-connection-card";
+import { AppleHealthSyncCard } from "@/components/health/apple-health-sync-card";
 import { HealthDataCoverageIndicator } from "@/components/health-data-coverage";
+import { AiCostCard } from "@/components/settings/ai-cost-card";
 import type { GoogleHealthNotice } from "@/integrations/google-health/status";
 import type { SyncStatus } from "@/domain/health";
 import type { HealthDataCoverage } from "@/domain/health/data-coverage";
@@ -17,9 +19,16 @@ type SyncState = { status: SyncStatus; connection?: { lastSyncedAt?: string | nu
 type Connection = { status: string; last_error_code?: string | null; scopes?: string[]; last_synced_at?: string | null; last_lab_synced_at?: string | null; metadata?: { consent_complete?: boolean } };
 type SettingsTab = "profile" | "connections" | "privacy";
 const tabOrder: SettingsTab[] = ["profile", "connections", "privacy"];
-const tabToSlug: Record<SettingsTab, string> = { profile: "profil", connections: "connexions", privacy: "donnees" };
-const slugToTab: Record<string, SettingsTab> = { profil: "profile", connexions: "connections", donnees: "privacy" };
-const goals = { build_muscle: "Développer la masse musculaire", improve_endurance: "Améliorer l’endurance", improve_cardio: "Améliorer le cardio", general_fitness: "Forme générale", maintain_health: "Maintenir la santé", other: "Autre" };
+const tabToSlug: Record<SettingsTab, string> = { profile: "profile", connections: "connections", privacy: "privacy" };
+const slugToTab: Record<string, SettingsTab> = {
+  profile: "profile",
+  connections: "connections",
+  privacy: "privacy",
+  profil: "profile",
+  connexions: "connections",
+  donnees: "privacy",
+};
+const goals = { build_muscle: "Build muscle", improve_endurance: "Improve endurance", improve_cardio: "Improve cardio", general_fitness: "General fitness", maintain_health: "Maintain health", other: "Other" };
 
 export function SettingsConsole({ initialHealthNotice = null, initialCalendarNotice = null }: { initialHealthNotice?: GoogleHealthNotice | null; initialCalendarNotice?: CalendarConnectionNotice | null }) {
   const router = useRouter();
@@ -59,8 +68,8 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
 
   useEffect(() => {
     const controller = new AbortController();
-    const profileRequest = fetch("/api/profile", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Votre profil n’a pas pu être chargé.")));
-    const connectionRequest = fetch("/api/health/connection", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Votre connexion de santé n’a pas pu être chargée.")));
+    const profileRequest = fetch("/api/profile", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Your profile could not be loaded.")));
+    const connectionRequest = fetch("/api/health/connection", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Your health connection could not be loaded.")));
     Promise.allSettled([
       profileRequest,
       connectionRequest,
@@ -80,7 +89,7 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     const controller = new AbortController();
     const active = Boolean(syncPhase && ["queued", "fetching", "materializing", "retrying"].includes(syncPhase));
     const loadSync = (details = false) => fetch(`/api/health/sync${details ? "?details=1" : ""}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("L’état de la synchronisation est temporairement indisponible.")))
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Sync state is temporarily unavailable.")))
       .then((state: SyncState) => {
         setSyncState((current) => ({
           ...(current ?? state),
@@ -152,28 +161,28 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     try {
       const response = await fetch("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Votre profil n’a pas pu être enregistré.");
+      if (!response.ok) throw new Error(result.error ?? "Your profile could not be saved.");
       setSavedProfile(profile);
-      showMessage("Modifications du profil enregistrées.", "success");
+      showMessage("Profile changes saved.", "success");
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Votre profil n’a pas pu être enregistré.", "error");
+      showMessage(error instanceof Error ? error.message : "Your profile could not be saved.", "error");
     } finally { setBusyAction(null); }
   }
 
   function cancelProfileEdits() {
     if (!savedProfile || busyAction) return;
     setProfile(savedProfile);
-    showMessage("Modifications annulées.", "neutral");
+    showMessage("Changes discarded.", "neutral");
   }
 
   async function exportData() {
     if (busyAction) return;
     setBusyAction("export");
     setExportError(null);
-    showMessage("Préparation de l’export…");
+    showMessage("Preparing data export…");
     try {
       const response = await fetch("/api/account/export");
-      if (!response.ok) throw new Error("L’export n’a pas pu être préparé.");
+      if (!response.ok) throw new Error("Data export could not be prepared.");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -183,9 +192,9 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      showMessage("Export téléchargé en JSON.", "success");
+      showMessage("Data export downloaded as JSON.", "success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "L’export n’a pas pu être préparé.";
+      const message = error instanceof Error ? error.message : "Data export could not be prepared.";
       setExportError(message);
       showMessage(message, "error");
     } finally { setBusyAction(null); }
@@ -194,15 +203,15 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
   async function sync() {
     if (busyAction) return;
     setBusyAction("sync");
-    showMessage("Synchronisation de Google Health…");
+    showMessage("Syncing Google Health…");
     try {
       const response = await fetch("/api/health/sync", { method: "POST" });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "La synchronisation n’a pas pu démarrer.");
+      if (!response.ok) throw new Error(result.error ?? "Sync could not start.");
       if (result.status) setSyncState((current) => ({ ...(current ?? {}), status: result.status } as SyncState));
-      showMessage(result.message ?? "L’import Google Health continue en arrière-plan.", "success");
+      showMessage(result.message ?? "Google Health import continues in the background.", "success");
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "La synchronisation n’a pas pu démarrer.", "error");
+      showMessage(error instanceof Error ? error.message : "Sync could not start.", "error");
     } finally { setBusyAction(null); }
   }
 
@@ -212,13 +221,13 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     try {
       const response = await fetch("/api/health/connection", { method: "DELETE" });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error ?? "Google Health n’a pas pu être déconnecté.");
+      if (!response.ok) throw new Error(result.error ?? "Google Health could not be disconnected.");
       setConnection(null);
       setDisconnectConfirm(false);
-      showMessage("Google Health est déconnecté. Les données importées restent disponibles dans Soma.", "success");
+      showMessage("Google Health disconnected. Imported data remains available in Soma.", "success");
       window.requestAnimationFrame(() => panelRef.current?.focus());
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Google Health n’a pas pu être déconnecté.", "error");
+      showMessage(error instanceof Error ? error.message : "Google Health could not be disconnected.", "error");
     } finally { setBusyAction(null); }
   }
 
@@ -229,12 +238,12 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     try {
       const response = await fetch("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: deleteText }) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Votre compte n’a pas pu être supprimé.");
+      if (!response.ok) throw new Error(result.error ?? "Your account could not be deleted.");
       window.localStorage.clear();
       router.push("/login?deleted=1");
       router.refresh();
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Votre compte n’a pas pu être supprimé.", "error");
+      showMessage(error instanceof Error ? error.message : "Your account could not be deleted.", "error");
       setBusyAction(null);
     }
   }
@@ -244,49 +253,49 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     setBusyAction("signout");
     try {
       const response = await fetch("/api/auth/signout", { method: "POST" });
-      if (!response.ok) throw new Error("La déconnexion a échoué.");
+      if (!response.ok) throw new Error("Sign out failed.");
       router.push("/login");
       router.refresh();
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "La déconnexion a échoué.", "error");
+      showMessage(error instanceof Error ? error.message : "Sign out failed.", "error");
       setBusyAction(null);
     }
   }
 
-  if (loading) return <div className="settings-page" id="main-page-content" role="status" aria-busy="true" aria-live="polite" aria-label="Chargement des réglages"><header><h1>Réglages</h1><p>Chargement des réglages…</p></header><div className="settings-layout" aria-hidden="true"><div className="settings-card"><div className="system-loading__panel" /><div className="system-loading__panel" /><div className="system-loading__panel system-loading__panel--wide" /></div></div><span className="sr-only">Chargement…</span></div>;
-  if (loadError || !profile) return <div className="settings-page" id="main-page-content"><div className="load-error" role="alert"><AlertCircle /><h1>Les réglages n’ont pas pu être chargés</h1><p>{loadError ?? "Votre profil est indisponible."}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setLoadError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Réessayer</button></div></div>;
+  if (loading) return <div className="settings-page" id="main-page-content" role="status" aria-busy="true" aria-live="polite" aria-label="Loading settings"><header><h1>Settings</h1><p>Loading settings…</p></header><div className="settings-layout" aria-hidden="true"><div className="settings-card"><div className="system-loading__panel" /><div className="system-loading__panel" /><div className="system-loading__panel system-loading__panel--wide" /></div></div><span className="sr-only">Loading…</span></div>;
+  if (loadError || !profile) return <div className="settings-page" id="main-page-content"><div className="load-error" role="alert"><AlertCircle /><h1>Settings could not be loaded</h1><p>{loadError ?? "Your profile is unavailable."}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setLoadError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Retry</button></div></div>;
 
-  return <div className="settings-page" id="main-page-content"><header><h1>Réglages</h1></header><div className="settings-layout"><nav role="tablist" aria-label="Sections des réglages"><button id="profile-tab" role="tab" tabIndex={tab === "profile" ? 0 : -1} aria-selected={tab === "profile"} aria-controls="settings-panel" className={tab === "profile" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "profile")} onClick={() => selectTab("profile", { focusPanel: true })} type="button">Profil et objectifs</button><button id="connections-tab" role="tab" tabIndex={tab === "connections" ? 0 : -1} aria-selected={tab === "connections"} aria-controls="settings-panel" className={tab === "connections" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "connections")} onClick={() => selectTab("connections", { focusPanel: true })} type="button">Connexions</button><button id="privacy-tab" role="tab" tabIndex={tab === "privacy" ? 0 : -1} aria-selected={tab === "privacy"} aria-controls="settings-panel" className={tab === "privacy" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "privacy")} onClick={() => selectTab("privacy", { focusPanel: true })} type="button">Données et confidentialité</button></nav><section id="settings-panel" ref={panelRef} tabIndex={-1} role="tabpanel" aria-labelledby={`${tab}-tab`} className="settings-content">
-   {tab === "profile" && <section className="settings-card"><div><h2>Profil et objectifs</h2><p>Ces valeurs servent à vos estimations personnelles. Google ne les modifie pas automatiquement.</p></div><div className="settings-form"><label>Nom<input required maxLength={80} autoComplete="name" value={profile.displayName} onChange={(event) => update("displayName", event.target.value)} /></label><label>Date de naissance<input required type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" value={profile.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label><label>Taille (cm)<input required min="50" max="260" type="number" value={profile.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label><label>Poids (kg)<input required min="20" max="400" type="number" step="0.1" value={profile.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label><label>Objectif principal<select value={profile.primaryGoal} onChange={(event) => update("primaryGoal", event.target.value)}>{Object.entries(goals).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Besoin de sommeil (minutes)<input required min="240" max="720" step="5" type="number" value={profile.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))} aria-describedby="sleep-target-help" /><small id="sleep-target-help">510 minutes = 8 h 30. Fourchette acceptée : 240 à 720 minutes.</small></label><label>Heure habituelle de réveil<input type="time" required value={profile.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /></label><label>Import initial<select value={profile.importRange} onChange={(event) => update("importRange", event.target.value as Profile["importRange"])}><option value="90_days">90 derniers jours</option><option value="all_history">Tout l’historique disponible</option></select></label></div>{!profileValid && <p className="form-error" role="alert">Vérifiez votre nom, votre date de naissance, votre taille, votre poids, votre besoin de sommeil et votre heure de réveil.</p>}{profileDirty && profileValid && <p className="settings-message" role="status">Modifications non enregistrées.</p>}<div className="form-navigation"><button className="secondary-button" onClick={() => void cancelProfileEdits()} disabled={!profileDirty || Boolean(busyAction)} type="button">Annuler</button><button className="primary-button" onClick={() => void save()} disabled={!profileDirty || !profileValid || Boolean(busyAction)} type="button">{busyAction === "save" ? <LoaderCircle className="spin" /> : message === "Modifications du profil enregistrées." ? <Check /> : <Save />}{busyAction === "save" ? "Enregistrement…" : profileDirty ? "Enregistrer les modifications" : "Aucune modification"}</button></div></section>}
-  {tab === "connections" && <section className="settings-card"><div><h2>Sources du laboratoire personnel</h2><p>La santé décrit votre physiologie. Le calendrier et le journal quotidien apportent le contexte nécessaire pour comprendre ce qui caractérise vos meilleures journées.</p></div>{connectionError && <div className="inline-empty" role="alert"><AlertCircle size={18} /><div><strong>État de la connexion indisponible</strong><p>{connectionError}</p></div></div>}<article className="connection-card"><span className="connection-logo" aria-hidden="true"><HeartPulse size={19} /></span><div><strong>Google Health</strong><p>{connection ? `${requiresReconnection ? "Reconnexion nécessaire" : partialAccess ? "Accès partiel" : "Connecté"} · Dernier import terminé : ${connection.last_synced_at ? formatDateTime(connection.last_synced_at) : "en attente"}` : "Non connecté"}</p></div>{connection ? <div className="connection-actions"><button className="sync-now-button" disabled={Boolean(busyAction) || requiresReconnection} onClick={() => void sync()} type="button">{busyAction === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Synchroniser</button>{(partialAccess || requiresReconnection) && <a href="/api/health/google/connect">{requiresReconnection ? "Reconnecter Google Health" : "Revoir les autorisations"} <ExternalLink /></a>}<button ref={disconnectButtonRef} disabled={Boolean(busyAction)} onClick={() => setDisconnectConfirm(true)} type="button"><Unplug />Déconnecter</button></div> : <a href="/api/health/google/connect">Connecter <ExternalLink /></a>}</article>{connection && <p className="sync-schedule"><Clock3 aria-hidden="true" />Les métriques du laboratoire sont actualisées environ toutes les 15 minutes. Les flux bruts sont mis à jour au fil des envois de Google.</p>}{connection && <HealthDataCoverageIndicator coverage={syncState?.coverage} phase={syncState?.status.phase} error={syncState?.coverageError} />}{message && <p className={`settings-message settings-message--${messageTone} settings-message--inline`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}{syncError && <div className="form-error" role="alert"><p>{syncError}</p><button className="secondary-button" type="button" onClick={() => { setSyncError(null); setSyncRetryVersion((current) => current + 1); }}>Réessayer</button></div>}{connection && syncState && <SyncStatusSummary state={syncState} />}{connection && <details className="sync-advanced" open={diagnosticsOpen} onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}><summary>Détails avancés</summary>{diagnosticsOpen && syncState ? <SyncDiagnostics state={syncState} /> : null}</details>}{disconnectConfirm && <div className="inline-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="disconnect-health-title"><div><strong id="disconnect-health-title">Déconnecter Google Health ?</strong><p>La révocation coupe l’accès futur. Les données importées restent dans Soma jusqu’à la suppression de votre compte.</p></div><div><button ref={disconnectCancelRef} className="secondary-button" type="button" onClick={() => { setDisconnectConfirm(false); disconnectButtonRef.current?.focus(); }}>Annuler</button><button className="danger-button" disabled={busyAction === "disconnect"} onClick={() => void disconnect()} type="button">{busyAction === "disconnect" ? "Déconnexion…" : "Déconnecter"}</button></div></div>}<div className="scope-note"><Shield /><div><strong>Lecture seule par conception</strong><p>Sommeil, activité et forme, ainsi que métriques de santé. Les jetons OAuth sont chiffrés et ne sont jamais envoyés à votre navigateur.</p></div></div><CalendarConnectionCard initialNotice={initialCalendarNotice} /></section>}
-    {tab === "privacy" && <section className="settings-card"><div><h2>Vos données Soma</h2><p>Soma conserve votre historique jusqu’à son exportation ou sa suppression. Les secrets OAuth des fournisseurs sont exclus des exports.</p></div><div className="privacy-actions"><article><Database /><div><strong>Exporter toutes les données</strong><p>Téléchargez le profil, les données de santé, les scores, les analyses et les entraînements au format JSON.</p>{exportError && <p className="form-error" role="alert">{exportError}</p>}</div><button disabled={busyAction === "export"} onClick={() => void exportData()} type="button">{busyAction === "export" ? <LoaderCircle className="spin" size={16} /> : <Download />}{busyAction === "export" ? "Préparation…" : "Exporter le JSON"}</button></article><article><LogOut /><div><strong>Se déconnecter</strong><p>Fermez cette session du navigateur sans supprimer vos données.</p></div><button disabled={Boolean(busyAction)} onClick={() => void signOut()} type="button">{busyAction === "signout" ? "Déconnexion…" : "Se déconnecter"}</button></article><article className="danger-zone"><Trash2 /><div><strong>Supprimer le compte et toutes les données Soma</strong><p>Cette action est irréversible et supprime tout l’historique.</p><label htmlFor="delete-confirm">Confirmation — saisissez DELETE MY SOMA DATA</label><small id="delete-confirm-help">Phrase exacte en majuscules, espaces compris. Clavier AZERTY compatible, aucune autre donnée demandée.</small><input id="delete-confirm" aria-describedby="delete-confirm-help" aria-label="Saisissez DELETE MY SOMA DATA pour confirmer la suppression" value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="DELETE MY SOMA DATA" autoComplete="off" /></div><button disabled={deleteText !== "DELETE MY SOMA DATA" || Boolean(busyAction)} onClick={() => void deleteAccount()} type="button">{busyAction === "delete" ? "Suppression…" : "Supprimer définitivement"}</button></article></div></section>}
+  return <div className="settings-page" id="main-page-content"><header><h1>Settings</h1></header><div className="settings-layout"><nav role="tablist" aria-label="Settings sections"><button id="profile-tab" role="tab" tabIndex={tab === "profile" ? 0 : -1} aria-selected={tab === "profile"} aria-controls="settings-panel" className={tab === "profile" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "profile")} onClick={() => selectTab("profile", { focusPanel: true })} type="button">Profile &amp; Goals</button><button id="connections-tab" role="tab" tabIndex={tab === "connections" ? 0 : -1} aria-selected={tab === "connections"} aria-controls="settings-panel" className={tab === "connections" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "connections")} onClick={() => selectTab("connections", { focusPanel: true })} type="button">Connections</button><button id="privacy-tab" role="tab" tabIndex={tab === "privacy" ? 0 : -1} aria-selected={tab === "privacy"} aria-controls="settings-panel" className={tab === "privacy" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "privacy")} onClick={() => selectTab("privacy", { focusPanel: true })} type="button">Data &amp; Privacy</button></nav><section id="settings-panel" ref={panelRef} tabIndex={-1} role="tabpanel" aria-labelledby={`${tab}-tab`} className="settings-content">
+   {tab === "profile" && <section className="settings-card"><div><h2>Profile &amp; Goals</h2><p>These values drive your personalized estimates. Wearable integrations will not overwrite them.</p></div><div className="settings-form"><label>Display name<input required maxLength={80} autoComplete="name" value={profile.displayName} onChange={(event) => update("displayName", event.target.value)} /></label><label>Date of birth<input required type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" value={profile.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label><label>Height (cm)<input required min="50" max="260" type="number" value={profile.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label><label>Weight (kg)<input required min="20" max="400" type="number" step="0.1" value={profile.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label><label>Primary goal<select value={profile.primaryGoal} onChange={(event) => update("primaryGoal", event.target.value)}>{Object.entries(goals).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Sleep target (minutes)<input required min="240" max="720" step="5" type="number" value={profile.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))} aria-describedby="sleep-target-help" /><small id="sleep-target-help">510 minutes = 8 h 30. Accepted range: 240 to 720 minutes.</small></label><label>Usual wake time<input type="time" required value={profile.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /></label><label>Initial import<select value={profile.importRange} onChange={(event) => update("importRange", event.target.value as Profile["importRange"])}><option value="90_days">Last 90 days</option><option value="all_history">All available history</option></select></label></div>{!profileValid && <p className="form-error" role="alert">Please check your name, date of birth, height, weight, sleep target, and wake time.</p>}{profileDirty && profileValid && <p className="settings-message" role="status">Unsaved changes.</p>}<div className="form-navigation"><button className="secondary-button" onClick={() => void cancelProfileEdits()} disabled={!profileDirty || Boolean(busyAction)} type="button">Discard</button><button className="primary-button" onClick={() => void save()} disabled={!profileDirty || !profileValid || Boolean(busyAction)} type="button">{busyAction === "save" ? <LoaderCircle className="spin" /> : message === "Profile changes saved." ? <Check /> : <Save />}{busyAction === "save" ? "Saving…" : profileDirty ? "Save changes" : "No changes"}</button></div></section>}
+   {tab === "connections" && <section className="settings-card"><div><h2>Personal Lab Sources</h2><p>Health metrics track your physiology. Calendar and your daily journal provide the context needed to discover what drives your best days.</p></div>{connectionError && <div className="inline-empty" role="alert"><AlertCircle size={18} /><div><strong>Connection state unavailable</strong><p>{connectionError}</p></div></div>}<article className="connection-card"><span className="connection-logo" aria-hidden="true"><HeartPulse size={19} /></span><div><strong>Google Health</strong><p>{connection ? `${requiresReconnection ? "Reconnection required" : partialAccess ? "Partial access" : "Connected"} · Last sync: ${connection.last_synced_at ? formatDateTime(connection.last_synced_at) : "pending"}` : "Not connected"}</p></div>{connection ? <div className="connection-actions"><button className="sync-now-button" disabled={Boolean(busyAction) || requiresReconnection} onClick={() => void sync()} type="button">{busyAction === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Sync now</button>{(partialAccess || requiresReconnection) && <a href="/api/health/google/connect">{requiresReconnection ? "Reconnect Google Health" : "Review permissions"} <ExternalLink /></a>}<button ref={disconnectButtonRef} disabled={Boolean(busyAction)} onClick={() => setDisconnectConfirm(true)} type="button"><Unplug />Disconnect</button></div> : <a href="/api/health/google/connect">Connect <ExternalLink /></a>}</article>{connection && <p className="sync-schedule"><Clock3 aria-hidden="true" />Lab metrics refresh approximately every 15 minutes. Raw wearable streams sync as events arrive from providers.</p>}{connection && <HealthDataCoverageIndicator coverage={syncState?.coverage} phase={syncState?.status.phase} error={syncState?.coverageError} />}{message && <p className={`settings-message settings-message--${messageTone} settings-message--inline`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}{syncError && <div className="form-error" role="alert"><p>{syncError}</p><button className="secondary-button" type="button" onClick={() => { setSyncError(null); setSyncRetryVersion((current) => current + 1); }}>Retry</button></div>}{connection && syncState && <SyncStatusSummary state={syncState} />}{connection && <details className="sync-advanced" open={diagnosticsOpen} onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}><summary>Advanced diagnostics</summary>{diagnosticsOpen && syncState ? <SyncDiagnostics state={syncState} /> : null}</details>}{disconnectConfirm && <div className="inline-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="disconnect-health-title"><div><strong id="disconnect-health-title">Disconnect Google Health?</strong><p>Revoking cuts off future access. Imported data remains in Soma until you delete your account.</p></div><div><button ref={disconnectCancelRef} className="secondary-button" type="button" onClick={() => { setDisconnectConfirm(false); disconnectButtonRef.current?.focus(); }}>Cancel</button><button className="danger-button" disabled={busyAction === "disconnect"} onClick={() => void disconnect()} type="button">{busyAction === "disconnect" ? "Disconnecting…" : "Disconnect"}</button></div></div>}<div className="scope-note"><Shield /><div><strong>Read-only by design</strong><p>Sleep, activity, readiness, and vital health metrics. OAuth tokens are encrypted and never sent to your browser.</p></div></div><AppleHealthSyncCard /><CalendarConnectionCard initialNotice={initialCalendarNotice} /></section>}
+    {tab === "privacy" && <section className="settings-card"><div><h2>Your Soma Data</h2><p>Soma retains your history until you export or delete it. Provider OAuth secrets are never included in exports.</p></div><div className="privacy-actions"><article><Database /><div><strong>Export all data</strong><p>Download profile, health data, scores, analyses, and workouts in JSON format.</p>{exportError && <p className="form-error" role="alert">{exportError}</p>}</div><button disabled={busyAction === "export"} onClick={() => void exportData()} type="button">{busyAction === "export" ? <LoaderCircle className="spin" size={16} /> : <Download />}{busyAction === "export" ? "Preparing…" : "Export JSON"}</button></article><AiCostCard /><article><LogOut /><div><strong>Sign out</strong><p>Close this browser session without deleting your data.</p></div><button disabled={Boolean(busyAction)} onClick={() => void signOut()} type="button">{busyAction === "signout" ? "Signing out…" : "Sign out"}</button></article><article className="danger-zone"><Trash2 /><div><strong>Delete account and all Soma data</strong><p>This action is irreversible and deletes all your history.</p><label htmlFor="delete-confirm">Confirmation — type DELETE MY SOMA DATA</label><small id="delete-confirm-help">Exact uppercase phrase with spaces included.</small><input id="delete-confirm" aria-describedby="delete-confirm-help" aria-label="Type DELETE MY SOMA DATA to confirm deletion" value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="DELETE MY SOMA DATA" autoComplete="off" /></div><button disabled={deleteText !== "DELETE MY SOMA DATA" || Boolean(busyAction)} onClick={() => void deleteAccount()} type="button">{busyAction === "delete" ? "Deleting…" : "Delete permanently"}</button></article></div></section>}
    {message && tab !== "connections" && <p className={`settings-message settings-message--${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}
   </section></div></div>;
 }
 
 function SyncDiagnostics({ state }: { state: SyncState }) {
   const latest = state.jobs?.[0];
-  const labels: Record<string, string> = { sleep: "Sommeil", "daily-heart-rate-variability": "VFC", "daily-resting-heart-rate": "FC au repos", steps: "Pas" };
-  const statusLabels: Record<string, string> = { queued: "En attente", running: "En cours", completed: "Terminé", failed: "Échec" };
+  const labels: Record<string, string> = { sleep: "Sleep", "daily-heart-rate-variability": "HRV", "daily-resting-heart-rate": "Resting HR", steps: "Steps" };
+  const statusLabels: Record<string, string> = { queued: "Queued", running: "In progress", completed: "Completed", failed: "Failed" };
   const importedRecords = (key: string) => {
     const value = state.importedRecords?.[key];
-    return typeof value === "number" && Number.isFinite(value) ? `${formatNumber(value)} enregistrement${value === 1 ? "" : "s"}` : "—";
+    return typeof value === "number" && Number.isFinite(value) ? `${formatNumber(value)} record${value === 1 ? "" : "s"}` : "—";
   };
   return <section className="sync-diagnostics" aria-labelledby="sync-diagnostics-title">
-    <div><strong id="sync-diagnostics-title">Diagnostic de l’import</strong><span>{latest ? `${statusLabels[latest.status] ?? latest.status} · ${formatNumber(latest.progress)} %` : "Aucun import démarré"}</span></div>
-    {latest && <progress max="100" value={latest.progress} aria-label={`Progression de l’import : ${formatNumber(latest.progress)} %`} />}
+    <div><strong id="sync-diagnostics-title">Import diagnostics</strong><span>{latest ? `${statusLabels[latest.status] ?? latest.status} · ${formatNumber(latest.progress)} %` : "No import running"}</span></div>
+    {latest && <progress max="100" value={latest.progress} aria-label={`Import progress: ${formatNumber(latest.progress)} %`} />}
     {state.importedRecords && <dl>{Object.entries(labels).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{importedRecords(key)}</dd></div>)}</dl>}
-    {state.analytics && <dl><div><dt>Enregistrements datés</dt><dd>{formatNumber(state.analytics.datedRecords)}</dd></div><div><dt>Jours du tableau de bord</dt><dd>{formatNumber(state.analytics.metricDays)}</dd></div><div><dt>Lignes de score</dt><dd>{formatNumber(state.analytics.scoreRows)}</dd></div></dl>}
-    {!state.analytics && <p>Chargement des compteurs de diagnostic…</p>}
+    {state.analytics && <dl><div><dt>Dated records</dt><dd>{formatNumber(state.analytics.datedRecords)}</dd></div><div><dt>Metric days</dt><dd>{formatNumber(state.analytics.metricDays)}</dd></div><div><dt>Score rows</dt><dd>{formatNumber(state.analytics.scoreRows)}</dd></div></dl>}
+    {!state.analytics && <p>Loading diagnostic counters…</p>}
     {latest?.error_message && <p role="alert">{latest.error_message}</p>}
   </section>;
 }
 
 function SyncStatusSummary({ state }: { state: SyncState }) {
   const labels: Record<SyncStatus["phase"], string> = {
-    queued: "En attente", fetching: "Récupération des données Google", materializing: "Mise à jour de vos scores", up_to_date: "À jour",
-    partial: "À jour avec un accès partiel", retrying: "Nouvelle tentative automatique", needs_reconnect: "Reconnexion requise", failed: "Échec de la mise à jour",
+    queued: "Queued", fetching: "Fetching Google Health data", materializing: "Updating scores", up_to_date: "Up to date",
+    partial: "Up to date with partial access", retrying: "Retrying automatically", needs_reconnect: "Reconnection required", failed: "Update failed",
   };
   const active = ["queued", "fetching", "materializing", "retrying"].includes(state.status.phase);
-  return <section className={`sync-summary sync-summary--${state.status.phase}`} aria-live="polite"><div><strong>{labels[state.status.phase]}</strong><span>{formatNumber(state.status.progress)} %</span></div>{active && <progress max="100" value={state.status.progress} aria-label={`Mise à jour Google Health : ${formatNumber(state.status.progress)} %`} />}{state.status.lastError && <p>{state.status.lastError}</p>}</section>;
+  return <section className={`sync-summary sync-summary--${state.status.phase}`} aria-live="polite"><div><strong>{labels[state.status.phase]}</strong><span>{formatNumber(state.status.progress)} %</span></div>{active && <progress max="100" value={state.status.progress} aria-label={`Google Health sync: ${formatNumber(state.status.progress)} %`} />}{state.status.lastError && <p>{state.status.lastError}</p>}</section>;
 }

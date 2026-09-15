@@ -20,8 +20,7 @@ vi.mock("@/lib/cloudflare/db", () => ({
   releaseCloudflareLockWithToken: state.releaseCloudflareLockWithToken,
 }));
 
-import { variableFromRow, type JournalVariableRow } from "./journal";
-import { loadJournalData } from "./journal";
+import { ensureJournalVariables, loadJournalData, variableFromRow, type JournalVariableRow } from "./journal";
 
 function query(data: unknown[] = []) {
   const builder = {} as {
@@ -39,8 +38,14 @@ function query(data: unknown[] = []) {
   builder.order = vi.fn(() => builder);
   builder.gte = vi.fn(() => builder);
   builder.lte = vi.fn(() => builder);
-  builder.insert = state.insert;
-  builder.update = state.update;
+  builder.insert = vi.fn((rows) => {
+    state.insert(rows);
+    return Promise.resolve({ error: null });
+  });
+  builder.update = vi.fn((updates) => {
+    state.update(updates);
+    return Promise.resolve({ error: null });
+  });
   builder.then = (resolve, reject) => Promise.resolve({ data, error: null }).then(resolve, reject);
   return builder;
 }
@@ -101,5 +106,44 @@ describe("journal read path", () => {
     expect(state.from).toHaveBeenCalledTimes(3);
     expect(state.insert).not.toHaveBeenCalled();
     expect(state.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("ensureJournalVariables invariant", () => {
+  it("never overwrites, inserts or modifies variables for an existing user who already has variables", async () => {
+    const existingJeremyVariables = [
+      { id: "1", name: "WHM", is_active: true, variable_type: "count", unit: "rounds", default_value: 0, day_period: "morning", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
+      { id: "2", name: "Masturbation", is_active: true, variable_type: "boolean", unit: null, default_value: false, day_period: "day", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
+      { id: "3", name: "Caffeine", is_active: true, variable_type: "number", unit: "mg", default_value: 0, day_period: "day", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
+    ];
+    state.from.mockImplementation(() => query(existingJeremyVariables));
+
+    await ensureJournalVariables("jeremy-user-id");
+
+    expect(state.insert).not.toHaveBeenCalled();
+    expect(state.update).not.toHaveBeenCalled();
+  });
+
+  it("provisions starter variables for a new user with no existing variables", async () => {
+    state.from.mockImplementation(() => query([]));
+
+    await ensureJournalVariables("new-user-id", {
+      selectedHabitNames: ["Coucher avant 23 h", "Added sugar"],
+      customHabits: [{ name: "Méditation 10 min", category: "sleep", emoji: "🧘" }],
+    });
+
+    expect(state.insert).toHaveBeenCalledTimes(1);
+    const inserted = state.insert.mock.calls[0][0];
+    // Must include context variables (Vacation, Illness)
+    expect(inserted.some((v: { name: string }) => v.name === "Vacation")).toBe(true);
+    expect(inserted.some((v: { name: string }) => v.name === "Illness")).toBe(true);
+    // Must include selected habits
+    expect(inserted.some((v: { name: string }) => v.name === "Coucher avant 23 h")).toBe(true);
+    expect(inserted.some((v: { name: string }) => v.name === "Added sugar")).toBe(true);
+    // Must include custom habit
+    expect(inserted.some((v: { name: string }) => v.name === "Méditation 10 min")).toBe(true);
+    // Must NOT include WHM or Masturbation
+    expect(inserted.some((v: { name: string }) => v.name === "WHM")).toBe(false);
+    expect(inserted.some((v: { name: string }) => v.name === "Masturbation")).toBe(false);
   });
 });

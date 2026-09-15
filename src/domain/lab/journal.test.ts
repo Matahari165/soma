@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, journalAutomaticDefaultMatches, journalAutomaticMetricIds, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, healthyHabitCatalog, journalAutomaticDefaultMatches, journalAutomaticMetricIds, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -128,10 +128,8 @@ describe("journal values", () => {
       "Illness",
       "Breakfast",
       "Light breakfast",
-      "WHM",
       "Caffeine",
       "Added sugar",
-      "Masturbation",
       "Running",
       "Alcohol",
       "Strength training",
@@ -147,6 +145,19 @@ describe("journal values", () => {
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.dayPeriod).toBe("day");
     expect(defaultJournalVariables.map((item) => String(item.name))).toContain("Bedtime");
     expect(journalVariableSuggestions.map((item) => item.name)).toContain("Late meal");
+  });
+
+  it("provides a curated catalogue of healthy habits across three key pillars", () => {
+    const sleepHabits = healthyHabitCatalog.filter((h) => h.category === "sleep");
+    const nutritionHabits = healthyHabitCatalog.filter((h) => h.category === "nutrition");
+    const activityHabits = healthyHabitCatalog.filter((h) => h.category === "activity");
+
+    expect(sleepHabits.length).toBeGreaterThanOrEqual(4);
+    expect(nutritionHabits.length).toBeGreaterThanOrEqual(4);
+    expect(activityHabits.length).toBeGreaterThanOrEqual(3);
+    expect(healthyHabitCatalog.some((h) => h.name.includes("Coucher"))).toBe(true);
+    expect(healthyHabitCatalog.some((h) => h.name.includes("sucres ajoutés"))).toBe(true);
+    expect(healthyHabitCatalog.some((h) => h.name.includes("Running"))).toBe(true);
   });
 
   it("configures every automatic journal source as a starter field", () => {

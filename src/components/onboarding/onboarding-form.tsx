@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, LoaderCircle, Plus, Sparkles, Trash2, Watch } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { SomaLogo } from "@/components/soma-logo";
-import { goalLabels, type OnboardingInput } from "@/domain/profile";
+import { healthyHabitCatalog, type HabitCategory } from "@/domain/lab/journal";
+import { goalLabels, type CustomHabitInput, type OnboardingInput } from "@/domain/profile";
 
-const steps = ["Vous", "Objectif", "Sommeil", "Données de santé"];
+const steps = ["Vous", "Objectif", "Habitudes", "Sommeil", "Données de santé"];
 
 const localizedGoalLabels: Record<keyof typeof goalLabels, string> = {
   build_muscle: "Développer sa masse musculaire",
@@ -19,9 +20,17 @@ const localizedGoalLabels: Record<keyof typeof goalLabels, string> = {
   other: "Autre objectif",
 };
 
+const categoryLabels: Record<HabitCategory, { title: string; subtitle: string; defaultEmoji: string }> = {
+  sleep: { title: "Sommeil & Récupération", subtitle: "Régularité et hygiène nocturne", defaultEmoji: "🌙" },
+  nutrition: { title: "Nutrition & Énergie", subtitle: "Stabilité métabolique et hydratation", defaultEmoji: "🥗" },
+  activity: { title: "Activité & Mouvement", subtitle: "Cardio, force et mobilité", defaultEmoji: "⚡" },
+};
+
 type OnboardingDraft = Omit<OnboardingInput, "heightCm" | "weightKg"> & {
   heightCm: number | "";
   weightKg: number | "";
+  selectedHabits: string[];
+  customHabits: CustomHabitInput[];
 };
 
 const defaultForm: OnboardingDraft = {
@@ -36,6 +45,8 @@ const defaultForm: OnboardingDraft = {
   usualWakeTime: "07:00",
   importRange: "all_history",
   timezone: "UTC",
+  selectedHabits: healthyHabitCatalog.filter((h) => h.defaultSelected).map((h) => h.name),
+  customHabits: [],
 };
 
 function createInitialForm(initialDisplayName: string): OnboardingDraft {
@@ -45,16 +56,85 @@ function createInitialForm(initialDisplayName: string): OnboardingDraft {
   };
 }
 
-export function OnboardingForm({ initialDisplayName }: { initialDisplayName: string }) {
+export function formatSleepDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours} h ${mins === 0 ? "00" : String(mins).padStart(2, "0")}`;
+}
+
+export const sleepTicks = [
+  { minutes: 300, label: "5 h" },
+  { minutes: 360, label: "6 h" },
+  { minutes: 420, label: "7 h" },
+  { minutes: 480, label: "8 h" },
+  { minutes: 540, label: "9 h" },
+  { minutes: 600, label: "10 h" },
+  { minutes: 660, label: "11 h" },
+];
+
+export function OnboardingForm({
+  initialDisplayName,
+  initialStep = 0,
+}: {
+  initialDisplayName: string;
+  initialStep?: number;
+}) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(initialStep);
   const [form, setForm] = useState<OnboardingDraft>(() => createInitialForm(initialDisplayName));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const [newHabitName, setNewHabitName] = useState("");
+  const [newHabitCategory, setNewHabitCategory] = useState<HabitCategory>("sleep");
+
   function update<K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleHabit(habitName: string) {
+    setForm((current) => {
+      const exists = current.selectedHabits.includes(habitName);
+      return {
+        ...current,
+        selectedHabits: exists
+          ? current.selectedHabits.filter((h) => h !== habitName)
+          : [...current.selectedHabits, habitName],
+      };
+    });
+  }
+
+  function addCustomHabit(event: React.MouseEvent) {
+    event.preventDefault();
+    const trimmed = newHabitName.trim();
+    if (!trimmed) return;
+
+    const emoji = categoryLabels[newHabitCategory].defaultEmoji;
+    const newHabit: CustomHabitInput = {
+      name: trimmed,
+      category: newHabitCategory,
+      emoji,
+    };
+
+    setForm((current) => ({
+      ...current,
+      customHabits: [...current.customHabits, newHabit],
+      selectedHabits: current.selectedHabits.includes(trimmed)
+        ? current.selectedHabits
+        : [...current.selectedHabits, trimmed],
+    }));
+
+    setNewHabitName("");
+  }
+
+  function removeCustomHabit(habitName: string, event: React.MouseEvent) {
+    event.stopPropagation();
+    setForm((current) => ({
+      ...current,
+      customHabits: current.customHabits.filter((h) => h.name !== habitName),
+      selectedHabits: current.selectedHabits.filter((h) => h !== habitName),
+    }));
   }
 
   function goToStep(nextStep: number) {
@@ -75,7 +155,7 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
       typeof form.heightCm === "number" && Number.isFinite(form.heightCm) && form.heightCm >= 50 && form.heightCm <= 260 &&
       typeof form.weightKg === "number" && Number.isFinite(form.weightKg) && form.weightKg >= 20 && form.weightKg <= 400,
     );
-    const sleepStepValid = step !== 2 || Boolean(/^([01]\d|2[0-3]):[0-5]\d$/.test(form.usualWakeTime));
+    const sleepStepValid = step !== 3 || Boolean(/^([01]\d|2[0-3]):[0-5]\d$/.test(form.usualWakeTime));
     if (!currentStepValid || !sleepStepValid || !formRef.current?.reportValidity()) {
       setError(step === 0 ? "Vérifiez le nom, la date de naissance, la taille et le poids." : "Saisissez une heure de réveil valide.");
       return;
@@ -95,7 +175,14 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
         return;
       }
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || form.timezone;
-      const input: OnboardingInput = { ...form, heightCm: form.heightCm, weightKg: form.weightKg, timezone };
+      const input: OnboardingInput = {
+        ...form,
+        heightCm: form.heightCm,
+        weightKg: form.weightKg,
+        timezone,
+        selectedHabits: form.selectedHabits,
+        customHabits: form.customHabits,
+      };
       const response = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,6 +204,12 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
       setSaving(false);
     }
   }
+
+  const sleepMin = 300; // 5h00
+  const sleepMax = 660; // 11h00
+  const sleepPercent = Math.round(((form.baseSleepTargetMinutes - sleepMin) / (sleepMax - sleepMin)) * 100);
+  const toleranceLow = formatSleepDuration(Math.max(sleepMin, form.baseSleepTargetMinutes - 10));
+  const toleranceHigh = formatSleepDuration(Math.min(sleepMax, form.baseSleepTargetMinutes + 10));
 
   return (
     <div className="onboarding-shell">
@@ -174,25 +267,213 @@ export function OnboardingForm({ initialDisplayName }: { initialDisplayName: str
           )}
           {step === 2 && (
             <fieldset>
-              <legend tabIndex={-1}>Poser votre base de sommeil</legend>
-              <p className="form-intro">Votre objectif de sommeil reste le même en semaine, le week-end et en vacances.</p>
-              <div className="sleep-target-control">
-                <span>Objectif de sommeil</span>
-                <strong>8 h 30</strong>
-                <small>Fourchette acceptée&nbsp;: 8 h 20 à 8 h 40</small>
+              <legend tabIndex={-1}>Vos habitudes de santé</legend>
+              <p className="form-intro">Sélectionnez les repères utiles pour votre journal quotidien. Vous pourrez les modifier à tout moment.</p>
+
+              {(["sleep", "nutrition", "activity"] as const).map((cat) => {
+                const catalogItems = healthyHabitCatalog.filter((item) => item.category === cat);
+                const customItems = form.customHabits.filter((item) => item.category === cat);
+                const meta = categoryLabels[cat];
+
+                return (
+                  <div className="habits-theme-group" key={cat}>
+                    <div className="habits-theme-header">
+                      <h2 className="habits-theme-title">{meta.title}</h2>
+                      <span className="habits-theme-count">· {meta.subtitle}</span>
+                    </div>
+
+                    <div className="habits-grid" role="group" aria-label={meta.title}>
+                      {catalogItems.map((item) => {
+                        const isSelected = form.selectedHabits.includes(item.name);
+                        return (
+                          <label
+                            className={`habit-card ${isSelected ? "is-selected" : ""}`}
+                            key={item.id}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleHabit(item.name)}
+                              aria-label={item.name}
+                            />
+                            <span className="habit-card__emoji" aria-hidden="true">{item.emoji}</span>
+                            <span className="habit-card__content">
+                              <span className="habit-card__title">{item.name}</span>
+                              <span className="habit-card__desc">{item.description}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+
+                      {customItems.map((item) => {
+                        const isSelected = form.selectedHabits.includes(item.name);
+                        return (
+                          <div
+                            className={`habit-card ${isSelected ? "is-selected" : ""}`}
+                            key={item.name}
+                            onClick={() => toggleHabit(item.name)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHabit(item.name); } }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleHabit(item.name)}
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={item.name}
+                            />
+                            <span className="habit-card__emoji" aria-hidden="true">{item.emoji ?? "✨"}</span>
+                            <span className="habit-card__content">
+                              <span className="habit-card__title">{item.name}</span>
+                              <span className="habit-card__badge">Sur-mesure</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="habit-card__remove"
+                              onClick={(e) => removeCustomHabit(item.name, e)}
+                              aria-label={`Supprimer l'habitude ${item.name}`}
+                              title="Supprimer"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="habit-custom-creator">
+                <span className="habit-custom-creator-title">Ajouter une habitude sur-mesure</span>
+                <div className="habit-custom-row">
+                  <input
+                    type="text"
+                    className="habit-custom-input"
+                    placeholder="Ex. Méditation 10 min, Pas d'écran après 22 h…"
+                    value={newHabitName}
+                    maxLength={80}
+                    onChange={(e) => setNewHabitName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomHabit(e as unknown as React.MouseEvent); } }}
+                    aria-label="Nom de l'habitude sur-mesure"
+                  />
+                  <select
+                    className="habit-custom-select"
+                    value={newHabitCategory}
+                    onChange={(e) => setNewHabitCategory(e.target.value as HabitCategory)}
+                    aria-label="Thématique de l'habitude"
+                  >
+                    <option value="sleep">Sommeil</option>
+                    <option value="nutrition">Nutrition</option>
+                    <option value="activity">Activité</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="secondary-button habit-custom-add-btn"
+                    onClick={addCustomHabit}
+                    disabled={!newHabitName.trim()}
+                  >
+                    <Plus size={15} aria-hidden="true" /> Ajouter
+                  </button>
+                </div>
               </div>
-              <label className="field field--wake">Heure habituelle de réveil<input type="time" required value={form.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /><small>Cette heure sert de repère à votre première recommandation de coucher.</small></label>
             </fieldset>
           )}
           {step === 3 && (
             <fieldset>
+              <legend tabIndex={-1}>Poser votre base de sommeil</legend>
+              <p className="form-intro">Votre objectif de sommeil reste le même en semaine, le week-end et en vacances.</p>
+
+              <div className="sleep-slider-control">
+                <div className="sleep-slider-header">
+                  <div className="sleep-slider-labels">
+                    <span className="sleep-slider-title">Objectif de sommeil</span>
+                    <small className="sleep-slider-tolerance">
+                      Fourchette acceptée&nbsp;: {toleranceLow} à {toleranceHigh}
+                    </small>
+                  </div>
+                  <strong className="sleep-slider-value" aria-live="polite">
+                    {formatSleepDuration(form.baseSleepTargetMinutes)}
+                  </strong>
+                </div>
+
+                <div className="sleep-slider-track-wrap">
+                  <div className="sleep-slider-rail">
+                    <div className="sleep-slider-fill" style={{ width: `${sleepPercent}%` }} />
+                  </div>
+                  <input
+                    type="range"
+                    min={sleepMin}
+                    max={sleepMax}
+                    step={15}
+                    value={form.baseSleepTargetMinutes}
+                    onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))}
+                    aria-label="Objectif de sommeil"
+                    aria-valuemin={sleepMin}
+                    aria-valuemax={sleepMax}
+                    aria-valuenow={form.baseSleepTargetMinutes}
+                    aria-valuetext={formatSleepDuration(form.baseSleepTargetMinutes)}
+                    className="sleep-slider-input"
+                  />
+                  <div className="sleep-slider-ticks" aria-hidden="true">
+                    {sleepTicks.map((tick) => {
+                      const tickPercent = ((tick.minutes - sleepMin) / (sleepMax - sleepMin)) * 100;
+                      const isActive = Math.abs(tick.minutes - form.baseSleepTargetMinutes) < 8;
+                      return (
+                        <div
+                          key={tick.minutes}
+                          className={`sleep-slider-tick ${isActive ? "is-active" : ""}`}
+                          style={{ left: `${tickPercent}%` }}
+                        >
+                          <span className="sleep-slider-tick-mark" />
+                          <span className="sleep-slider-tick-label">{tick.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <label className="field field--wake">Heure habituelle de réveil<input type="time" required value={form.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /><small>Cette heure sert de repère à votre première recommandation de coucher.</small></label>
+            </fieldset>
+          )}
+          {step === 4 && (
+            <fieldset>
               <legend tabIndex={-1}>Connecter vos données de santé</legend>
               <p className="form-intro">Soma peut importer vos données de sommeil, d’activité et de santé. Si Fitbit est relié à Google Health, ces données pourront aussi être utilisées. L’import commence par les 90 derniers jours&nbsp;; l’historique plus ancien suit en arrière-plan.</p>
+
               <div className="import-choices">
                 <label className={form.importRange === "90_days" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "90_days"} onChange={() => update("importRange", "90_days")} /><span><strong>Les 90 derniers jours</strong><small>Un premier import plus rapide, suffisant pour établir des repères utiles.</small></span></label>
                 <label className={form.importRange === "all_history" ? "import-card is-selected" : "import-card"}><input type="radio" name="importRange" checked={form.importRange === "all_history"} onChange={() => update("importRange", "all_history")} /><span><strong>Tout l’historique disponible</strong><small>Les données récentes apparaissent d’abord&nbsp;; l’ancien suit en arrière-plan.</small></span></label>
               </div>
-              <div className="consent-preview" role="note"><strong>Vous vérifierez les accès sur Google ensuite.</strong><p>Soma demande uniquement la lecture des données de sommeil, d’activité et de santé. Vous pouvez refuser certains accès, terminer sans connecter Google Health ou déconnecter plus tard.</p></div>
+
+              <div className="consent-preview" role="note">
+                <strong>Vous vérifierez les accès sur Google ensuite.</strong>
+                <p>Soma demande uniquement la lecture des données de sommeil, d’activité et de santé. Vous pouvez refuser certains accès, terminer sans connecter Google Health ou déconnecter plus tard.</p>
+              </div>
+
+              {/* Welcoming Card for users without a connected watch */}
+              <div className="no-watch-welcoming-card" role="region" aria-label="Option sans montre connectée">
+                <div className="no-watch-welcoming-card__header">
+                  <Watch className="no-watch-welcoming-card__icon" size={22} aria-hidden="true" />
+                  <div className="no-watch-welcoming-card__body">
+                    <strong>Pas de montre connectée ? Vous pouvez utiliser le journal quotidien et le suivi des repas dès aujourd&apos;hui.</strong>
+                    <p>Soma fonctionne parfaitement comme carnet de bord personnel : suivez vos repas, vos scores d&apos;alimentation et vos habitudes sans aucun capteur matériel.</p>
+                  </div>
+                </div>
+                <div className="no-watch-welcoming-card__action">
+                  <button
+                    className="no-watch-button"
+                    type="button"
+                    onClick={() => void finish(false)}
+                    disabled={saving}
+                  >
+                    {saving ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}
+                    <span>Terminer sans connecter</span>
+                  </button>
+                </div>
+              </div>
             </fieldset>
           )}
 

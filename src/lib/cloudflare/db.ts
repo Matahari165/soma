@@ -58,6 +58,7 @@ const conflictKeys: Record<string, string[]> = {
   dashboard_layouts: ["user_id"],
   provider_connections: ["user_id", "provider"],
   sync_jobs: ["connection_id", "idempotency_key"],
+  soma_credentials: ["email"],
   webhook_events: ["deduplication_key"],
   ingestion_checkpoints: ["user_id", "provider", "data_type"],
   health_records: ["user_id", "provider", "data_type", "source_record_id"],
@@ -1169,7 +1170,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
   maybeSingle() { this.cardinality = "maybeSingle"; return this as unknown as PromiseLike<SingleResult>; }
 
   private isPhysicalTable() {
-    return this.table === "soma_users" || this.table === "soma_sessions";
+    return this.table === "soma_users" || this.table === "soma_sessions" || this.table === "soma_credentials";
   }
 
   private async readRows() {
@@ -1228,7 +1229,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
 
   private async updatePhysical(existing: Row[], values: Row) {
     for (const row of existing) {
-      const key = this.table === "soma_sessions" ? "token_hash" : "id";
+      const key = this.table === "soma_sessions" ? "token_hash" : this.table === "soma_credentials" ? "user_id" : "id";
       const updated = { ...row, ...values };
       await supabaseRequest<unknown[]>(supabasePath(this.table, [[key, `eq.${String(row[key])}`]]), { method: "PATCH", headers: new Headers({ Prefer: "return=representation" }), body: JSON.stringify(updated) });
     }
