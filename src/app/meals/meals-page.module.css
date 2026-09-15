@@ -51,6 +51,30 @@
   padding: 0;
 }
 
+.provenance {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--lab-border);
+}
+
+.provenance h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
+.provenance p {
+  margin: 0;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 700px) {
   .page { padding: 24px 16px 48px; }
   .flow { gap: 40px; margin-top: 20px; }

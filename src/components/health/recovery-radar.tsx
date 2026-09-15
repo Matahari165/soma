@@ -272,7 +272,7 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
                 </text>
               </g>
               {sourceLabel ? (
-                <text className={styles.axisName} x={labelX} y={sourceY} textAnchor={anchor} fontSize={11}>
+                <text className={styles.axisValue} x={labelX} y={sourceY} textAnchor={anchor}>
                   {sourceLabel}
                 </text>
               ) : null}

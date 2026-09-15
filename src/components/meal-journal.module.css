@@ -1367,12 +1367,16 @@
   .mealsMealDetails { grid-template-columns: 1fr; gap: 8px; }
 }
 
-/* Recorded meals keep the same compact 4px geometry as every other state. */
+/* Recorded meals stay borderless like every other journal row: separation comes
+   from the 1px rule below, never from a card. */
 .labRoot .mealCardConfirmed {
   min-height: 0;
-  border: 1px solid var(--lab-border);
-  border-radius: 4px;
-  background: var(--lab-surface-subtle);
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--lab-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .labRoot .mealCardConfirmed .mealHeader { background: transparent; }

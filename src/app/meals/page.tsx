@@ -67,6 +67,10 @@ function goalMode(value: unknown): "build_muscle" | "maintain" {
 
 type MealsPageProps = { searchParams: Promise<{ date?: string | string[] }> };
 
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${value}T12:00:00`)).replace(".", "");
+}
+
 async function MealsPageContent({ searchParams, user }: MealsPageProps & { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
   const params = await searchParams;
   let timeZone = "Europe/Paris";
@@ -148,6 +152,11 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
+        <footer className={styles.provenance} aria-label="Alimentation provenance des données">
+          <h2>Provenance</h2>
+          <p>Repas confirmés saisis dans Soma · Score et totaux calculés par Soma sur les repas confirmés uniquement</p>
+          <p>Période du {formatShortDate(historyFrom)} au {formatShortDate(requestedDate)} · Les jours non renseignés restent vides, jamais zéro</p>
+        </footer>
       </div>
     </main>
   );

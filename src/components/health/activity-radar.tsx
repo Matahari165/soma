@@ -178,7 +178,7 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
           onKeyDown={interactiveAxis ? handleKeyDown : undefined}
           ref={interactiveAxis ? (node) => registerButton?.(dimension.id, node) : undefined}
         >
-          {interactiveAxis && <><line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" /><circle className={styles.labelHit} cx={position.x} cy={position.y} r="34" aria-hidden="true" /><circle className={styles.focusRing} cx={position.x} cy={position.y} r="29" aria-hidden="true" /></>}
+          {interactiveAxis && <><line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" /><circle className={styles.labelHit} cx={position.x} cy={position.y} r="30" aria-hidden="true" /><circle className={styles.focusRing} cx={position.x} cy={position.y} r="26" aria-hidden="true" /></>}
           <g className={styles.labelGroup} aria-hidden="true">
             <text className={styles.label} x={position.x} y={position.y} textAnchor={position.anchor}>{dimension.label}{selected ? " ●" : ""}</text>
             <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.anchor}>

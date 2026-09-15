@@ -1,14 +1,15 @@
 .root {
-  --score-canvas: var(--health-canvas, var(--canvas, #050505));
-  --score-surface: var(--health-subtle, var(--paper, #0b0b0b));
-  --score-rule: var(--health-rule, var(--line, #292929));
-  --score-rule-strong: var(--health-rule-strong, var(--line-strong, #3a3a3a));
-  --score-text: var(--health-text, var(--ink, #f1f1f1));
-  --score-muted: var(--health-muted, var(--ink-soft, #a7a7a7));
-  --score-positive: var(--health-positive, var(--moss-signal, #d5e5da));
-  --score-negative: var(--health-negative, var(--danger, #e2b2aa));
-  --score-caution: var(--ochre, #d5c397);
+  --score-canvas: var(--lab-canvas, #050505);
+  --score-surface: var(--lab-surface-subtle, #0c0c0c);
+  --score-rule: var(--lab-border, #292929);
+  --score-rule-strong: var(--lab-border-strong, #3a3a3a);
+  --score-text: var(--lab-text-primary, #f1f1f1);
+  --score-muted: var(--lab-text-secondary, #aaaaaa);
+  --score-positive: var(--lab-signal, #d5e5da);
+  --score-negative: var(--lab-error, #e2b2aa);
+  --score-caution: var(--lab-warning, #d5c397);
   --score-motion: 220ms;
+  --score-ease: cubic-bezier(.2, .8, .2, 1);
   --score-radar-motion: 220ms;
   --score-radar-ease: cubic-bezier(.22, .61, .36, 1);
   --score-display-size: clamp(64px, 7vw, 96px);
@@ -26,7 +27,7 @@
 .scoreTop { display: grid; min-width: 0; }
 
 .root :focus-visible {
-  outline: 2px solid var(--focus-color, #eeeeee);
+  outline: 2px solid var(--lab-brand, #eeeeee);
   outline-offset: 3px;
 }
 
@@ -97,7 +98,7 @@
 .radarLabelHit { fill: transparent; pointer-events: all; }
 .radarFocusRing { fill: none; stroke: var(--score-text); stroke-dasharray: 3 3; stroke-width: 1.5; opacity: 0; pointer-events: none; }
 .radarValue { fill: color-mix(in srgb, var(--score-text) 8%, transparent); stroke: var(--score-text); stroke-linejoin: round; stroke-width: 1.75; pointer-events: none; }
-.radarPoint { fill: var(--score-text); pointer-events: none; }
+.radarPoint { fill: var(--score-text); stroke: var(--lab-canvas, #050505); stroke-width: 1.5; pointer-events: none; }
 .radarLabel { fill: var(--score-muted); font: 400 13px/1.2 var(--font-soma-ui), sans-serif; pointer-events: none; }
 .radarLabelValue { fill: var(--score-text); font-family: var(--font-soma-mono), monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
 
