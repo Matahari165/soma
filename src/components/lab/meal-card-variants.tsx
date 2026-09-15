@@ -251,18 +251,11 @@ export function LabMealCard({
 
         {isFilled ? (
           <div className={styles.v1FilledSummary}>
-            <p className={styles.v1DishText}>
-              {meal?.analysis?.dishType || meal?.note || "Repas enregistré"}
-            </p>
             {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
               <p className={styles.v1DishSubTitle}>
                 {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
               </p>
             )}
-            {meal?.note && meal.note !== meal?.analysis?.dishType && (
-              <p className={styles.v1DishSubTitle}>Note : {meal.note}</p>
-            )}
-            {purgedPhotoCount > 0 && <p className={styles.v1DishSubTitle}>Photo analysée puis supprimée.</p>}
             
             <div className={styles.v1NutritionLine} aria-label="Valeurs nutritionnelles">
               <span className={styles.v1MetricItem} aria-label={`Calories : ${calValue} kcal`}>
@@ -319,6 +312,8 @@ export function LabMealCard({
                         ))}
                       </ul>
                     )}
+                    {meal.note && <p className={styles.v1DetailsNote}><strong>Note du jour</strong>{meal.note}</p>}
+                    {purgedPhotoCount > 0 && <p className={styles.v1DetailsNote}><strong>Preuve photo</strong>Photo analysée puis supprimée.</p>}
                     {meal.analysis.calorieAnalysis && (
                       <p>{meal.analysis.calorieAnalysis}</p>
                     )}

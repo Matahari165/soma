@@ -51,10 +51,11 @@
 .slotHeading {
   margin: 0;
   font-family: var(--font-soma-ui), -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 560;
   color: var(--lab-text-primary, #f1f1f1);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 28px;
 }
 
 .headerActions {
@@ -679,6 +680,21 @@
 .v1DetailsPanel p {
   margin: 0;
 }
+.v1DetailsNote {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.v1DetailsNote strong {
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .v1CancelBtn {
   background: transparent;
   border: 1px solid var(--lab-border, #292929);
@@ -692,6 +708,11 @@
   white-space: nowrap;
 }
 @media (max-width: 600px) {
+  .slotHeading {
+    font-size: 20px;
+    line-height: 24px;
+  }
+
   .v1CancelBtn {
     min-height: 44px;
     height: auto;
