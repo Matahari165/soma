@@ -9,7 +9,7 @@ const date = "2026-08-31";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
-  it("expose la photo et la note originales après confirmation sans rouvrir le formulaire", () => {
+  it("garde la photo et la note modifiables après confirmation avec un badge visible", () => {
     const html = renderToStaticMarkup(<MealJournal initialData={{
       date,
       meals: {
@@ -35,8 +35,9 @@ describe("MealJournal", () => {
     expect(lunch).toContain("Déjeuner pris au calme.");
     expect(lunch).toContain('alt="Photo originale 1 du repas"');
     expect(lunch).toContain("/api/meals/meal-confirmed-source/photos/photo-source");
-    expect(lunch).not.toContain("<textarea");
-    expect(lunch).not.toContain("Ajouter une photo");
+    expect(lunch).toContain("Confirmé");
+    expect(lunch).toContain("<textarea");
+    expect(lunch).toContain("Origine de la photo");
   });
 
   it("explique clairement les photos refusées au-delà de la limite", () => {
@@ -111,9 +112,12 @@ describe("MealJournal", () => {
     expect(html).toContain(">Collation<\/h3>");
     expect(html).toContain('aria-label="Analyser le déjeuner"');
     expect(html).toContain('aria-label="Prendre une photo pour le déjeuner"');
-    expect(html).toContain('aria-label="Ajouter une photo pour le déjeuner"');
-    expect(html).toContain('aria-label="Ajouter une photo pour la collation"');
-    expect(html).toContain('aria-label="Ajouter une photo pour le dîner"');
+    expect(html).toContain('aria-label="Choisir des photos pour le déjeuner"');
+    expect(html).toContain('aria-label="Choisir des photos pour la collation"');
+    expect(html).toContain('aria-label="Choisir des photos pour le dîner"');
+    expect(html).not.toContain("Ajouter une photo pour");
+    expect(html.match(/>Caméra<\/button>/g)).toHaveLength(3);
+    expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
   });
 
@@ -434,6 +438,71 @@ describe("MealJournal", () => {
     expect(html).not.toContain("Aliment manquant");
     expect(html).not.toContain("Incertitudes");
   });
+  it("rend la navigation lointaine accessible en variant lab avec flèches et choix direct", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(html).toContain('aria-label="Jour précédent"');
+    expect(html).toContain('aria-label="Jour suivant"');
+    expect(html).toContain('type="date"');
+    expect(html).toContain('id="meal-date-picker"');
+    expect(html).toContain("Choisir un jour");
+    expect(html).toContain(`max="${date}"`);
+  });
+  it("affiche les badges Confirmé et Brouillon ainsi que le compteur de note", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{
+      date,
+      meals: {
+        lunch: {
+          id: "meal-draft-brouillon",
+          date,
+          slot: "lunch",
+          note: "",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "draft",
+        },
+        dinner: {
+          id: "meal-confirmed-badge",
+          date,
+          slot: "dinner",
+          note: "Soupe",
+          photos: [],
+          analysis: { ingredients: [], calories: { low: 200, likely: 250, high: 300 }, proteinGrams: { low: 10, likely: 12, high: 15 } },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Brouillon");
+    expect(html).toContain("Confirmé");
+    expect(html).toContain("0/500");
+    expect(html).toContain('aria-describedby="meal-lunch-analyze-hint"');
+  });
+  it("propose d’annuler une analyse en cours depuis le créneau concerné", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{
+      date,
+      meals: {
+        lunch: {
+          id: "meal-analyzing",
+          date,
+          slot: "lunch",
+          note: "Pâtes",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "analyzing",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Analyse en cours");
+    expect(html).toContain(">Annuler</button>");
+  });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
       "2026-08-31", "2026-08-30", "2026-08-29", "2026-08-28", "2026-08-27", "2026-08-26", "2026-08-25",
@@ -499,7 +568,8 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html).not.toContain("Origine de la photo");
+    expect(html).toContain("Origine de la photo");
+    expect(html).toContain("L’origine aide l’analyse");
     expect(html).toContain("Bouche chaude");
     expect(html).toContain("Repas qui m&#x27;a cassé");
     expect(html).toContain('aria-pressed="true"');

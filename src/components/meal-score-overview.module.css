@@ -115,7 +115,20 @@
 }
 .dimensionDetail[data-open="true"] { border-left-color: var(--score-rule); opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(-50%) translateX(0); transition-delay: 0s; }
 .dimensionDetailHeader { display: flex; min-width: 0; align-items: start; gap: 12px; }
-.dimensionDetailHeader h3 { min-width: 0; margin: 0; color: var(--score-text); font-size: var(--lab-type-group, 16px); font-weight: 560; line-height: 1.3; }
+.dimensionDetailHeader h3 { min-width: 0; flex: 1 1 auto; margin: 0; color: var(--score-text); font-size: var(--lab-type-group, 16px); font-weight: 560; line-height: 1.3; }
+.detailClose {
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  border: 1px solid var(--score-rule-strong);
+  border-radius: var(--lab-radius-sm, 4px);
+  background: transparent;
+  color: var(--score-text);
+  font-size: var(--lab-type-label, 11px);
+  cursor: pointer;
+}
+.detailClose:hover { background: color-mix(in srgb, var(--score-text) 8%, transparent); }
 .dimensionDetailMetrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 24px 0 0; }
 .dimensionDetailMetrics div { min-width: 0; }
 .dimensionDetailMetrics dt { margin: 0; }
@@ -133,6 +146,9 @@
 .coverageList { display: grid; gap: 8px; margin: 24px 0 0; }
 .coverageList div { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 16px; padding-block: 6px; border-bottom: 1px solid var(--score-rule); }
 .coverageList dd { margin: 0; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--lab-type-group); font-variant-numeric: tabular-nums; }
+.coverageNote { margin: 12px 0 0; color: var(--score-muted); font-size: var(--lab-type-label, 11px); line-height: 1.5; }
+.missingNote { margin: 8px 0 0; color: var(--score-muted); font-size: var(--lab-type-label, 11px); line-height: 1.5; }
+.missingNote a { color: var(--score-text); }
 
 .historySection { min-width: 0; padding: 28px 0 32px; border-bottom: 1px solid var(--score-rule-strong); }
 .historyContent { display: grid; grid-template-columns: minmax(180px, .45fr) minmax(0, 1.55fr); gap: clamp(24px, 5vw, 72px); margin-top: 20px; }
