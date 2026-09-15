@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 
 const state = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
@@ -80,7 +81,10 @@ describe("MealsPage initial meal reads", () => {
     state.loadConfirmedMealRecords.mockResolvedValue([]);
     state.mappedMeals = [];
 
-    await MealsPage({ searchParams: Promise.resolve({ date: "2026-09-15" }) });
+    const page = await MealsPage({ searchParams: Promise.resolve({ date: "2026-09-15" }) });
+    const content = (page as ReactElement<{ children: ReactElement }>).props.children;
+    const renderContent = content.type as unknown as (props: typeof content.props) => Promise<ReactElement>;
+    await renderContent(content.props);
 
     expect(state.listMeals).toHaveBeenCalledWith("user-1", { from: "2026-08-19", to: "2026-09-15" });
     expect(state.loadConfirmedMealRecords).toHaveBeenCalledWith("user-1", { from: "2026-08-19", to: "2026-09-15" });

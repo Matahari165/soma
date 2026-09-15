@@ -270,6 +270,8 @@ type HealthAnalyticsScope = "all" | "sleep" | "recovery" | "activity" | "trends"
 
 const FIRST_SCREEN_DAYS = 30;
 const FIRST_SCREEN_SCORE_ROWS = FIRST_SCREEN_DAYS * 3;
+const CRITICAL_QUERY_TIMEOUT_MS = 4_000;
+const SECONDARY_QUERY_TIMEOUT_MS = 2_500;
 
 const metricColumns: Record<HealthAnalyticsScope, string> = {
   all: "*",
@@ -278,6 +280,44 @@ const metricColumns: Record<HealthAnalyticsScope, string> = {
   activity: "metric_date,steps,active_energy_kcal,total_energy_kcal,zone_minutes,light_zone_minutes,moderate_zone_minutes,vigorous_zone_minutes,peak_zone_minutes,active_minutes,sedentary_minutes,exercise_minutes,distance_km,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,floors,weight_kg,body_fat_percent,altitude_gain_m,active_day,active_day_rate_28d,activity_consistency_28d,weekly_load,acute_chronic_load_ratio,source_freshness",
   trends: "metric_date,sleep_minutes,hrv_ms,resting_heart_rate,steps,source_freshness",
 };
+
+type QueryResult<T> = { data: T | null; error: unknown | null };
+
+function applyQueryTimeout<T>(query: T, timeoutMs: number): T {
+  const withTimeout = (query as { withTimeout?: (value: number) => T }).withTimeout;
+  return typeof withTimeout === "function" ? withTimeout.call(query, timeoutMs) : query;
+}
+
+function withFallbackTimeout<T>(value: PromiseLike<T>, fallback: T, timeoutMs: number): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+    Promise.resolve(value).then((result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    }, () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(fallback);
+    });
+  });
+}
+
+function optionalQuery<T>(query: PromiseLike<QueryResult<T>>, fallback: T, timeoutMs = SECONDARY_QUERY_TIMEOUT_MS): Promise<QueryResult<T>> {
+  const fallbackResult: QueryResult<T> = { data: fallback, error: null };
+  const settled = Promise.resolve(query).then((result) => result.error ? fallbackResult : { data: result.data ?? fallback, error: null });
+  return withFallbackTimeout(settled, fallbackResult, timeoutMs);
+}
+
+function optionalValue<T>(value: PromiseLike<T>, fallback: T, timeoutMs = SECONDARY_QUERY_TIMEOUT_MS): Promise<T> {
+  return withFallbackTimeout(Promise.resolve(value).catch(() => fallback), fallback, timeoutMs);
+}
 
 const recoveryMetricKeys: Array<keyof HealthMetricDay> = [
   "sleep_minutes",
@@ -363,34 +403,52 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [], effortTargets: effortScoreTargets(), effortTargetSource: "fallback" };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
-  // Sleep stages and exercises do not depend on the aggregate metrics below.
-  // Start these remote reads immediately so they do not create a second
-  // database round trip after the first group resolves.
+  // Detail reads are useful context, but the daily metrics and persisted scores
+  // are the primary page data. Start every read immediately, then give the
+  // secondary reads a short budget so one stalled chart cannot hold the page.
   const sleepPromise = scope === "sleep" || scope === "all"
-    ? supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1).then((result) => result)
+    ? optionalQuery(
+      applyQueryTimeout(supabase.from("health_records").select("payload").eq("user_id", user.id).eq("data_type", "sleep").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(1), SECONDARY_QUERY_TIMEOUT_MS).then((result) => result),
+      [],
+    )
     : Promise.resolve({ data: [], error: null });
   const exercisePromise = scope === "activity" || scope === "all"
-    ? supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20).then((result) => result)
+    ? optionalQuery(
+      applyQueryTimeout(supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(20), SECONDARY_QUERY_TIMEOUT_MS).then((result) => result),
+      [],
+    )
     : Promise.resolve({ data: [], error: null });
   const effortTargetPromise = scope === "activity" || scope === "all"
-    ? loadNutritionTargetsStateForUser(user.id)
+    ? optionalValue(loadNutritionTargetsStateForUser(user.id, { timeoutMs: SECONDARY_QUERY_TIMEOUT_MS }), null)
     : Promise.resolve(null);
-  const baseResults = await Promise.all([
-    supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(),
-    supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(FIRST_SCREEN_DAYS),
-    (() => {
-      const query = supabase.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", user.id).order("score_date", { ascending: false });
-      if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(FIRST_SCREEN_DAYS);
-      return query.limit(FIRST_SCREEN_SCORE_ROWS);
-    })(),
-    admin.from("provider_connections").select("last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(),
-    scope === "sleep"
-      ? admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", user.id).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+
+  const profilePromise = applyQueryTimeout(supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(), CRITICAL_QUERY_TIMEOUT_MS);
+  const metricsPromise = applyQueryTimeout(supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(FIRST_SCREEN_DAYS), CRITICAL_QUERY_TIMEOUT_MS);
+  const scoresPromise = applyQueryTimeout((() => {
+    const query = supabase.from("daily_scores").select("score_date,kind,score,drivers,algorithm_version").eq("user_id", user.id).order("score_date", { ascending: false });
+    if (scope === "sleep" || scope === "recovery" || scope === "activity") return query.eq("kind", scope === "activity" ? "effort" : scope).limit(FIRST_SCREEN_DAYS);
+    return query.limit(FIRST_SCREEN_SCORE_ROWS);
+  })(), CRITICAL_QUERY_TIMEOUT_MS);
+  const connectionPromise = optionalQuery(
+    applyQueryTimeout(admin.from("provider_connections").select("last_synced_at").eq("user_id", user.id).eq("provider", "google_health").maybeSingle(), SECONDARY_QUERY_TIMEOUT_MS),
+    null,
+  );
+  const sleepPreferencesPromise = scope === "sleep"
+    ? optionalQuery(
+      applyQueryTimeout(admin.from("sleep_preferences").select("base_target_minutes,usual_wake_time,wind_down_minutes").eq("user_id", user.id).maybeSingle(), SECONDARY_QUERY_TIMEOUT_MS),
+      null,
+    )
+    : Promise.resolve({ data: null, error: null });
+
+  const [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult, effortTargetState] = await Promise.all([
+    profilePromise,
+    metricsPromise,
+    scoresPromise,
+    connectionPromise,
+    sleepPreferencesPromise,
     effortTargetPromise,
   ]);
-  const [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult, effortTargetState] = baseResults;
-  const failed = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult].find((result) => result.error);
+  const failed = [profileResult, metricsResult, scoresResult].find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
   const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult];
   const timezone = profile?.timezone ?? "Europe/Paris";
@@ -408,11 +466,13 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
     sleepPromise,
     (scope === "recovery" || scope === "all") && heartRateWindow
-      ? supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", heartRateWindow.start).lt("measured_at", heartRateWindow.end).order("measured_at", { ascending: false }).limit(2000)
+      ? optionalQuery(
+        applyQueryTimeout(supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", heartRateWindow.start).lt("measured_at", heartRateWindow.end).order("measured_at", { ascending: false }).limit(2000), SECONDARY_QUERY_TIMEOUT_MS),
+        [],
+      )
       : Promise.resolve({ data: [], error: null }),
     exercisePromise,
   ]);
-  if (sleepResult.error || heartRateResult.error || exerciseResult.error) throw new Error("Health detail records are temporarily unavailable.");
   const sleeps = sleepResult.data;
   const heartRates = heartRateResult.data;
   const exercises = exerciseResult.data;

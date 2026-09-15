@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import MealJournal from "@/components/meal-journal";
 import MealFoodCategoryTrends from "@/components/meal-food-category-trends";
@@ -7,6 +8,7 @@ import { MealRecipeLibrary } from "@/components/meal-recipe-library";
 import MealScoreOverviewPanel from "@/components/meal-score-overview";
 import MealSupplements from "@/components/meal-supplements";
 import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
+import { LoadingSurface } from "@/components/loading-surface";
 import { mealFoodGroupHistory, mealNutritionHistory } from "@/domain/lab/meals";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
 import type { Meal } from "@/domain/meals";
@@ -63,10 +65,10 @@ function goalMode(value: unknown): "build_muscle" | "maintain" {
   return value === "build_muscle" ? "build_muscle" : "maintain";
 }
 
-export default async function MealsPage({ searchParams }: { searchParams: Promise<{ date?: string | string[] }> }) {
+type MealsPageProps = { searchParams: Promise<{ date?: string | string[] }> };
+
+async function MealsPageContent({ searchParams, user }: MealsPageProps & { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
   const params = await searchParams;
-  const user = await getCurrentUser();
-  if (!user) return <PublicHome />;
   let timeZone = "Europe/Paris";
   if (!isLocalPreviewMode()) {
     const profile = await createCloudflareAdminClient().from("profiles").select("timezone").eq("user_id", user.id).maybeSingle();
@@ -145,4 +147,11 @@ export default async function MealsPage({ searchParams }: { searchParams: Promis
       </div>
     </main>
   );
+}
+
+export default async function MealsPage({ searchParams }: MealsPageProps) {
+  const user = await getCurrentUser();
+  if (!user) return <PublicHome />;
+
+  return <Suspense fallback={<LoadingSurface eyebrow="Alimentation" title="Chargement de l’alimentation" label="Chargement de l’alimentation" variant="meals" />}><MealsPageContent searchParams={searchParams} user={user} /></Suspense>;
 }
