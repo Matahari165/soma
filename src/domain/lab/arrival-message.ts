@@ -249,7 +249,7 @@ function stableIndex(value: string, length: number) {
 }
 
 function firstName(name: string) {
-  return name.trim().split(/\s+/)[0] || "Jérémy";
+  return name.trim().split(/\s+/)[0] || "Friend";
 }
 
 function formatActivityNote(activity: ArrivalActivity) {

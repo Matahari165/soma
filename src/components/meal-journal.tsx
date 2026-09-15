@@ -916,10 +916,6 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const entryOpen = !compactEmpty || Boolean(meal) || entryStarted || Boolean(openRequest);
   const compactEmptyState = compactEmpty && !meal && !inactive && !entryOpen;
   const integratedEmpty = mealsCompact || labCompact;
-  // Keep the compact capture form mounted while a note creates its draft meal.
-  // The first keystroke changes `meal` from null to a local draft; rendering
-  // the textarea through a different parent at that moment would replace the
-  // DOM node and make the browser lose focus.
   const compactDraftCapture = integratedEmpty && !inactive && status === "draft";
 
   useEffect(() => {
@@ -931,7 +927,6 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     });
     return () => cancelAnimationFrame(frame);
   }, [inactive, openRequest, slot]);
-
 
   const handleFiles = (files: File[]) => {
     if (files.length > 0) setEntryStarted(true);

@@ -408,11 +408,19 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
   return <section ref={sectionRef} className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
       <div>
-        {standalone ? <h2 id="strongest-effects-title">Analyses</h2> : <h3 id="strongest-effects-title">Analyses</h3>}
+        {standalone ? <h2 id="strongest-effects-title">Strongest Effects</h2> : <h3 id="strongest-effects-title">Strongest Effects</h3>}
       </div>
       <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
     </header>
-    {!meaningful.length ? <p className="strongest-effects__empty" role="status">Aucune association n’est à la fois fiable et suffisamment marquée{requireTemporalStability ? " et cohérente dans le temps" : ""} sur cette période.</p> : meaningfulGroups.map(([group, influences]) => {
+    {!meaningful.length ? (
+      <div className="strongest-effects__empty-maturity" role="status">
+        <h4>Statistical maturity in progress</h4>
+        <p>Soma evaluates within-person associations with HAC standard errors once at least 10 observations have been validated.</p>
+        <div className="strongest-effects__maturity-callout">
+          <span>Continue recording your daily journal entries and meals to uncover your strongest personal effects.</span>
+        </div>
+      </div>
+    ) : meaningfulGroups.map(([group, influences]) => {
       const groupId = group.replaceAll(" ", "-").toLowerCase();
       return <section className="strongest-effects__group" aria-labelledby={`strongest-${groupId}`} key={group}>
       <h4 id={`strongest-${groupId}`}>{group}</h4>

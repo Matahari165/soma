@@ -2,7 +2,7 @@ import "server-only";
 
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
-import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, isAddedSugarVariable, journalAutomaticDefaultMatches, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, healthyHabitCatalog, isAddedSugarVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, normalizedJournalVariableName, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 import { explicitNoBreakfastByDate, mealRecordsByDate as mealRecordsByDateForJournal } from "@/domain/lab/journal-meal-automatic";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadConfirmedMealRecords } from "@/services/meals";
@@ -27,15 +27,13 @@ export type JournalVariableRow = {
 type JournalEntryRow = { variable_id: string; entry_date: string; value: unknown };
 
 export function variableFromRow(row: JournalVariableRow): JournalVariable {
-  const variable: JournalVariable = {
+  return upgradeLegacyAddedSugarVariable({
     id: row.id,
     name: row.name,
     variableType: row.variable_type,
     unit: row.unit,
     options: Array.isArray(row.options) ? row.options.filter((value): value is string => typeof value === "string") : [],
     position: row.position,
-    // Legacy D1 rows predate the explicit flag. Database defaults are not
-    // applied to sparse JSON, so only an explicit false means archived.
     isActive: row.is_active !== false,
     emoji: row.emoji || "🧪",
     defaultValue: typeof row.default_value === "string" || typeof row.default_value === "number" || typeof row.default_value === "boolean" ? row.default_value : null,
@@ -43,10 +41,10 @@ export function variableFromRow(row: JournalVariableRow): JournalVariable {
     captureMode: row.capture_mode === "automatic" ? "automatic" : "manual",
     automaticMetricId: typeof row.automatic_metric_id === "string" ? row.automatic_metric_id : null,
     trackingCadence: row.tracking_cadence === "weekly" ? "weekly" : row.tracking_cadence === "daily" ? "daily" : journalAutomaticSource(row.automatic_metric_id)?.defaultTrackingCadence ?? "daily",
-  };
-  // Existing installations already have this field as a manual number. Keep
-  // the row and its history, but give it the new meal-derived source without a
-  // destructive migration or a page-load write.
+  });
+}
+
+function upgradeLegacyAddedSugarVariable(variable: JournalVariable): JournalVariable {
   if (!isAddedSugarVariable(variable)) return variable;
   return { ...variable, variableType: "number", unit: variable.unit ?? "g", defaultValue: null, captureMode: "automatic", automaticMetricId: ADDED_SUGAR_AUTOMATIC_METRIC_ID, trackingCadence: "daily" };
 }
@@ -56,65 +54,99 @@ function entryFromRow(row: JournalEntryRow): JournalEntry | null {
   return { variableId: row.variable_id, entryDate: row.entry_date, value: row.value as JournalEntryValue, source: "manual" };
 }
 
-export async function ensureJournalVariables(userId: string) {
+export async function ensureJournalVariables(
+  userId: string,
+  options: {
+    selectedHabitNames?: string[];
+    customHabits?: Array<{ name: string; category?: string; emoji?: string }>;
+  } = {},
+) {
   const admin = createCloudflareAdminClient();
   const { data: existing, error } = await admin.from("journal_variables").select("id,name,is_active,variable_type,unit,default_value,day_period,capture_mode,automatic_metric_id,tracking_cadence").eq("user_id", userId);
   if (error) throw new Error("Your journal variables could not be loaded.");
   const existingRows = (existing ?? []) as Array<Pick<JournalVariableRow, "id" | "name" | "is_active" | "variable_type" | "unit" | "default_value" | "day_period" | "capture_mode" | "automatic_metric_id" | "tracking_cadence">>;
-  const matchesDefinition = (row: typeof existingRows[number], definition: typeof defaultJournalVariables[number]) => journalAutomaticDefaultMatches(
-    { name: row.name, automaticMetricId: typeof row.automatic_metric_id === "string" ? row.automatic_metric_id : null },
-    { name: definition.name, automaticMetricId: definition.automaticMetricId ?? null },
-  );
-  const missing = defaultJournalVariables.filter((definition) => !existingRows.some((row) => (
-    definition.automaticMetricId
-      ? matchesDefinition(row, definition)
-      : row.name.toLocaleLowerCase("en") === definition.name.toLocaleLowerCase("en")
-  )));
-  if (missing.length) {
-    const { error: insertError } = await admin.from("journal_variables").insert(missing.map((variable) => ({
-    user_id: userId,
-    name: variable.name,
-    variable_type: variable.variableType,
-    unit: variable.unit,
-    options: [...variable.options],
-    position: variable.position,
-    emoji: variable.emoji,
-    default_value: variable.defaultValue,
-    day_period: variable.dayPeriod,
-    capture_mode: variable.captureMode ?? "manual",
-    automatic_metric_id: variable.automaticMetricId ?? null,
-    tracking_cadence: variable.trackingCadence ?? "daily",
-    is_active: true,
-    })));
-    if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
+
+  // INVARIANT ABSOLU : Ne pas modifier les 18 variables de journal actuelles de Jérémy.
+  // Pour un utilisateur existant qui a déjà des variables, ensureJournalVariables() ne doit rien écraser.
+  if (existingRows.length > 0) {
+    return;
   }
 
-  const automaticUpdates = existingRows.flatMap((row) => {
-    const definition = defaultJournalVariables.find((candidate) => candidate.automaticMetricId && matchesDefinition(row, candidate));
-    if (!definition || !definition.automaticMetricId) return [];
-    const target = {
-      variable_type: definition.variableType,
-      unit: definition.unit,
-      default_value: null,
-      day_period: definition.dayPeriod,
-      capture_mode: "automatic",
-      automatic_metric_id: definition.automaticMetricId,
-      tracking_cadence: definition.trackingCadence ?? journalAutomaticSource(definition.automaticMetricId)?.defaultTrackingCadence ?? "daily",
+  const categoryPeriodMap: Record<string, JournalVariable["dayPeriod"]> = {
+    sleep: "evening",
+    nutrition: "morning",
+    activity: "day",
+    other: "day",
+  };
+
+  let baseDefinitions: readonly (typeof defaultJournalVariables)[number][];
+
+  if (options.selectedHabitNames && options.selectedHabitNames.length > 0) {
+    const selectedNormalized = new Set(options.selectedHabitNames.map((name) => normalizedJournalVariableName(name)));
+    baseDefinitions = defaultJournalVariables.filter((def) => {
+      // Toujours inclure les variables de contexte (Vacances, Maladie) indispensables à la baseline
+      if (def.dayPeriod === "context") return true;
+      // Correspondance directe de nom
+      if (selectedNormalized.has(normalizedJournalVariableName(def.name))) return true;
+      // Correspondance via le catalogue d'habitudes saines
+      const matchingCatalogItem = healthyHabitCatalog.find((item) => item.journalVariableName === def.name);
+      if (matchingCatalogItem) {
+        if (selectedNormalized.has(normalizedJournalVariableName(matchingCatalogItem.name))) return true;
+        if (selectedNormalized.has(normalizedJournalVariableName(matchingCatalogItem.id))) return true;
+      }
+      // Conserver l'heure de coucher si le coucher avant 23h est coché
+      if (def.name === "Bedtime" && (
+        selectedNormalized.has(normalizedJournalVariableName("Coucher avant 23 h")) ||
+        selectedNormalized.has("coucher_23")
+      )) {
+        return true;
+      }
+      // Conserver le petit-déjeuner léger automatique si le petit-déjeuner est coché
+      if (def.name === "Light breakfast" && selectedNormalized.has(normalizedJournalVariableName("Breakfast"))) {
+        return true;
+      }
+      return false;
+    });
+  } else {
+    baseDefinitions = defaultJournalVariables;
+  }
+
+  const variablesToInsert = [
+    ...baseDefinitions.map((variable) => ({
+      user_id: userId,
+      name: variable.name,
+      variable_type: variable.variableType,
+      unit: variable.unit,
+      options: [...variable.options],
+      position: variable.position,
+      emoji: variable.emoji,
+      default_value: variable.defaultValue,
+      day_period: variable.dayPeriod,
+      capture_mode: variable.captureMode ?? "manual",
+      automatic_metric_id: variable.automaticMetricId ?? null,
+      tracking_cadence: variable.trackingCadence ?? "daily",
       is_active: true,
-    } as const;
-    const changed = row.variable_type !== target.variable_type
-      || row.unit !== target.unit
-      || row.default_value !== target.default_value
-      || row.day_period !== target.day_period
-      || row.capture_mode !== target.capture_mode
-      || row.automatic_metric_id !== target.automatic_metric_id
-      || row.tracking_cadence !== target.tracking_cadence
-      || row.is_active !== target.is_active;
-    return changed ? [{ id: row.id, target }] : [];
-  });
-  for (const update of automaticUpdates) {
-    const { error: updateError } = await admin.from("journal_variables").update(update.target).eq("id", update.id).eq("user_id", userId);
-    if (updateError) throw new Error("Your automatic journal variables could not be configured.");
+    })),
+    ...(options.customHabits ?? []).map((custom, index) => ({
+      user_id: userId,
+      name: custom.name,
+      variable_type: "boolean" as const,
+      unit: null,
+      options: [],
+      position: 120 + index * 5,
+      emoji: custom.emoji || "✨",
+      default_value: false,
+      day_period: categoryPeriodMap[custom.category ?? "other"] ?? "day",
+      capture_mode: "manual" as const,
+      automatic_metric_id: null,
+      tracking_cadence: "daily" as const,
+      is_active: true,
+    })),
+  ];
+
+  if (variablesToInsert.length > 0) {
+    const { error: insertError } = await admin.from("journal_variables").insert(variablesToInsert);
+    if (insertError && insertError.code !== "23505") throw new Error("Your starter journal could not be created.");
   }
 }
 

@@ -9,6 +9,14 @@ export const fitnessGoalSchema = z.enum([
   "other",
 ]);
 
+export const customHabitInputSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  category: z.enum(["sleep", "nutrition", "activity", "other"]).default("other"),
+  emoji: z.string().trim().max(8).optional(),
+});
+
+export type CustomHabitInput = z.infer<typeof customHabitInputSchema>;
+
 export const onboardingSchema = z
   .object({
     displayName: z.string().trim().min(1).max(80),
@@ -22,6 +30,8 @@ export const onboardingSchema = z
     usualWakeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     importRange: z.enum(["90_days", "all_history"]),
     timezone: z.string().min(1).max(80),
+    selectedHabits: z.array(z.string().trim().min(1).max(80)).optional().default([]),
+    customHabits: z.array(customHabitInputSchema).optional().default([]),
   })
   .refine(({ primaryGoal, secondaryGoal }) => secondaryGoal !== primaryGoal, {
     message: "Choose a different secondary goal.",

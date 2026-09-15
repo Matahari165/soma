@@ -91,6 +91,27 @@ export function PersonalLabJournalWorkspace({
   const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
 
+  const activeEffectsByVariable = useMemo(() => {
+    const rawMatrix = "matrix" in data ? (data as unknown as { matrix?: { meaningfulRelations?: Array<{ predictorId: string; period: unknown }> } }).matrix : undefined;
+    const map = new Map<string, Array<15 | 30 | 90>>();
+    if (!rawMatrix?.meaningfulRelations) return map;
+    for (const rel of rawMatrix.meaningfulRelations) {
+      if (typeof rel.predictorId === "string" && rel.predictorId.startsWith("journal:")) {
+        const id = rel.predictorId.slice("journal:".length);
+        const period = Number(rel.period);
+        if (period === 15 || period === 30 || period === 90) {
+          const list = map.get(id) ?? [];
+          if (!list.includes(period as 15 | 30 | 90)) {
+            list.push(period as 15 | 30 | 90);
+            list.sort((a, b) => a - b);
+            map.set(id, list);
+          }
+        }
+      }
+    }
+    return map;
+  }, [data]);
+
   return <div className="personal-lab-workspace">
     {sharedDateNavigation}
     <div className="personal-lab-workbench">
@@ -98,7 +119,7 @@ export function PersonalLabJournalWorkspace({
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant="v1" />
       </div>
       <div className="personal-lab-journal-column" id="daily-journal">
-        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} />
+        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
     </div>

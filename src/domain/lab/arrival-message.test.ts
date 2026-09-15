@@ -34,6 +34,12 @@ describe("arrival message personalization", () => {
     expect(ARRIVAL_PHRASE_COUNTS.intense).toBeGreaterThanOrEqual(20);
   });
 
+  it("uses a neutral fallback when name is missing or empty", () => {
+    const fallback = arrivalMessageFor({ name: "", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:00:00+02:00") });
+    expect(fallback.lines.join(" ")).toContain("Friend");
+    expect(fallback.lines.join(" ")).not.toContain("Jérémy");
+  });
+
   it("adds a concise factual note for the marked activity", () => {
     const run = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T20:00:00+02:00"), activity: { kind: "run", distanceKm: 7.2, durationMinutes: 44 } });
     const intense = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T15:00:00+02:00"), activity: { kind: "intense", intensityMinutes: 24 } });
