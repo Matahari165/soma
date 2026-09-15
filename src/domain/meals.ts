@@ -171,6 +171,44 @@ export const mealUncertaintySignalSchema = z.object({
 });
 export type MealUncertaintySignal = z.infer<typeof mealUncertaintySignalSchema>;
 
+/**
+ * Provider provenance is optional because historical analyses predate the
+ * durable pipeline metadata. When present, it describes the models involved
+ * without carrying prompts, credentials, image data, or other sensitive input.
+ */
+export type MealAnalysisPipelineStage = {
+  provider: string;
+  model: string;
+};
+
+export type MealAnalysisValidation = {
+  requested: boolean;
+  configured: boolean;
+  attempted: boolean;
+  succeeded: boolean;
+  provider: string | null;
+  model: string | null;
+};
+
+export type MealAnalysisFallback = {
+  configured: boolean;
+  attempted: boolean;
+  used: boolean;
+  provider: string | null;
+  model: string | null;
+};
+
+export type MealAnalysisPipelineProvenance = {
+  promptVersion: string;
+  schemaVersion: string;
+  primary: MealAnalysisPipelineStage;
+  final: MealAnalysisPipelineStage;
+  validation: MealAnalysisValidation;
+  /** Canonical name used by the persisted pipeline contract. */
+  validator?: MealAnalysisValidation;
+  fallback: MealAnalysisFallback;
+};
+
 export const mealEvidenceSchema = z.enum(["visible", "inferred", "unknown"]);
 export type MealEvidence = z.infer<typeof mealEvidenceSchema>;
 
@@ -439,14 +477,47 @@ export const mealAnalysisSchema = z.object({
 });
 export type MealAnalysis = z.infer<typeof mealAnalysisSchema>;
 
+function sourcePhotoEvidenceIssues(value: MealAnalysis, sourcePhotoIds: readonly string[]) {
+  const sourceIds = new Set(sourcePhotoIds);
+  const issues: z.core.$ZodIssue[] = [];
+  value.foods.forEach((food, index) => {
+    const evidencePhotoIds = food.evidencePhotoIds ?? [];
+    evidencePhotoIds.forEach((photoId, evidenceIndex) => {
+      if (!sourceIds.has(photoId)) {
+        issues.push({
+          code: "custom",
+          path: ["foods", index, "evidencePhotoIds", evidenceIndex],
+          message: "An evidencePhotoId must reference a source photo in the same analysis.",
+        });
+      }
+    });
+    if (food.evidenceSource === "photo" && evidencePhotoIds.length === 0) {
+      issues.push({
+        code: "custom",
+        path: ["foods", index, "evidencePhotoIds"],
+        message: "Photo evidence must reference at least one source photo.",
+      });
+    }
+  });
+  return issues;
+}
+
 /**
  * Single canonical entry point for validating model or user-confirmed meal data.
  * It deliberately does not compare exact nutrient sums: rounded/wide ranges
  * need not add up exactly. New responses only reject totals whose interval is
  * disjoint from the interval sum of all counted foods.
  */
-export function validateMealAnalysis(value: unknown): MealAnalysis {
-  return mealAnalysisSchema.parse(value);
+export function validateMealAnalysis(value: unknown, options: { sourcePhotoIds?: readonly string[] } = {}): MealAnalysis {
+  const parsed = mealAnalysisSchema.parse(value);
+  if (!options.sourcePhotoIds) return parsed;
+
+  // Run the same canonical schema with the source-aware invariant enabled.
+  // Keeping this opt-in preserves readability of historical rows, while all
+  // provider adapters pass the actual source list at their boundary.
+  const issues = sourcePhotoEvidenceIssues(parsed, options.sourcePhotoIds);
+  if (issues.length > 0) throw new z.ZodError(issues);
+  return parsed;
 }
 
 export const createMealInputSchema = z.object({
@@ -532,6 +603,10 @@ export type MealAnalysisRecord = {
   error: string | null;
   /** Optional provenance of the source snapshot; old analysis rows omit it. */
   sourceFingerprint?: string | null;
+  /** Optional non-sensitive record of the models and contract versions used. */
+  pipeline?: MealAnalysisPipelineProvenance | null;
+  /** Legacy in-memory alias used by provider adapters before persistence. */
+  provenance?: MealAnalysisPipelineProvenance | null;
   /** Stable, non-sensitive diagnostic category for UI/log correlation. */
   errorCode?: "provider_auth" | "provider_rate_limited" | "provider_request" | "provider_timeout" | "provider_unavailable" | "provider_empty_response" | "response_parse_error" | "response_schema_error" | "invalid_response" | "source_unavailable" | "storage_error" | "unknown_analysis_error" | "photo_purge_pending" | null;
   sourcePhotoIds: string[];

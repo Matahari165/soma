@@ -2,13 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MEAL_ACTIVE_QUALITY_PROPERTIES, MEAL_IGNORED_QUALITY_PROPERTIES, isPositiveMealVarietyFood, mealPositiveVarietyKey } from "@/domain/meal-taxonomy";
 import { createOpenAiMealVisionProvider } from "@/integrations/openai/meal-vision";
-import { analyzeMealInput, createXaiMealVisionProvider, makePrompt, makeTextPrompt, mealAnalysisJsonSchema } from "./meal-vision";
+import { analyzeMealInput, createXaiMealVisionProvider, makePrompt, makeTextPrompt, mealAnalysisJsonSchema, MEAL_ANALYSIS_PROMPT_VERSION, MEAL_ANALYSIS_SCHEMA_VERSION } from "./meal-vision";
 
-function structuredAnalysis() {
+function structuredAnalysis(evidenceSource: "photo" | "note" = "note") {
   const range = { low: 400, likely: 500, high: 650 };
+  const evidencePhotoIds = evidenceSource === "photo" ? ["photo-1"] : [];
   return {
     summary: "A bowl with grains, vegetables, and a protein source.",
-    foods: [{ id: "food-1", name: "Rice", preparation: "cooked", portion: "one bowl", estimatedGrams: 250, kind: "ingredient", parentId: null, course: "main", countedInTotals: true, foodGroups: ["refined_grain"], varietyKey: "riz", alcoholic: false, novaGroup: 1, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["minimally_processed"], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed", confidence: { portion: "medium", novaGroup: "low", sugarExposure: "medium", qualityProperties: "medium" } }, evidence: "visible", evidenceSource: "photo", evidencePhotoIds: ["photo-1"], quantity: { value: 250, unit: "g", basis: "visible portion", grams: 250 }, calories: range, proteinGrams: { low: 0, likely: 7, high: 40 }, carbohydrateGrams: { low: 0, likely: 75, high: 120 }, fatGrams: { low: 0, likely: 3, high: 40 }, fiberGrams: { low: 0, likely: 4, high: 20 }, sugarGrams: { low: 0, likely: 0, high: 10 }, addedSugarGrams: { low: 0, likely: 0, high: 4 }, confidence: "medium" }],
+    foods: [{ id: "food-1", name: "Rice", preparation: "cooked", portion: "one bowl", estimatedGrams: 250, kind: "ingredient", parentId: null, course: "main", countedInTotals: true, foodGroups: ["refined_grain"], varietyKey: "riz", alcoholic: false, novaGroup: 1, sugarExposure: { concentrated: false, liquid: false }, qualityProperties: ["minimally_processed"], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "none_observed", qualityProperties: "observed", confidence: { portion: "medium", novaGroup: "low", sugarExposure: "medium", qualityProperties: "medium" } }, evidence: "visible", evidenceSource, evidencePhotoIds, quantity: { value: 250, unit: "g", basis: "visible portion", grams: 250 }, calories: range, proteinGrams: { low: 0, likely: 7, high: 40 }, carbohydrateGrams: { low: 0, likely: 75, high: 120 }, fatGrams: { low: 0, likely: 3, high: 40 }, fiberGrams: { low: 0, likely: 4, high: 20 }, sugarGrams: { low: 0, likely: 0, high: 10 }, addedSugarGrams: { low: 0, likely: 0, high: 4 }, confidence: "medium" }],
     totals: { calories: range, proteinGrams: { low: 20, likely: 28, high: 36 }, carbohydrateGrams: { low: 65, likely: 80, high: 100 }, fatGrams: { low: 12, likely: 18, high: 25 }, fiberGrams: { low: 4, likely: 7, high: 10 }, sugarGrams: { low: 0, likely: 2, high: 8 }, addedSugarGrams: { low: 0, likely: 0, high: 2 } },
     confidence: "medium",
     uncertainties: ["The amount of oil is not visible."],
@@ -35,14 +36,16 @@ describe("xAI meal vision contract", () => {
     expect(schema.required).toContain("uncertaintySignals");
     expect(schema.properties.foods.items.required).toContain("id");
     expect(schema.properties.foods.items.required).toContain("observation");
-    expect(schema.properties.foods.items.required).not.toContain("qualityProperties");
-    expect(schema.properties.foods.items.required).not.toContain("sugarGrams");
-    expect(schema.properties.foods.items.required).not.toContain("addedSugarGrams");
-    expect(schema.properties.totals.required).not.toContain("sugarGrams");
-    expect(schema.properties.totals.required).not.toContain("addedSugarGrams");
+    expect(schema.properties.foods.items.required).toContain("qualityProperties");
+    expect(schema.properties.foods.items.required).toContain("sugarGrams");
+    expect(schema.properties.foods.items.required).toContain("addedSugarGrams");
+    expect(schema.properties.totals.required).toContain("sugarGrams");
+    expect(schema.properties.totals.required).toContain("addedSugarGrams");
     expect(schema.properties.foods.items.properties.qualityProperties.anyOf[1]?.items?.enum).toEqual([...MEAL_ACTIVE_QUALITY_PROPERTIES]);
     expect(schema.properties.foods.items.properties.novaGroup.anyOf[0]).toMatchObject({ type: "integer", minimum: 1, maximum: 4 });
     expect(schema.properties.foods.items.properties.sugarExposure).toBeDefined();
+    expect(MEAL_ANALYSIS_PROMPT_VERSION).toMatch(/^meal-analysis-prompt-v/);
+    expect(MEAL_ANALYSIS_SCHEMA_VERSION).toMatch(/^meal-analysis-schema-v/);
   });
 
   it("keeps only the positive variety taxonomy and active quality roles", () => {
@@ -72,6 +75,23 @@ describe("xAI meal vision contract", () => {
       expect(prompt).toContain("bonbons");
       expect(prompt).toContain("whole_food");
     }
+    expect(imagePrompt).toContain("éléments différents");
+    expect(imagePrompt).toContain("angles différents");
+    expect(imagePrompt).toContain("evidencePhotoIds");
+    expect(imagePrompt).toContain("null signifie indisponible");
+  });
+
+  it("rejects a photo evidence id that was not supplied with the request", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const invalid = structuredAnalysis("photo");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(invalid) }), { status: 200 }));
+
+    await expect(createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({
+      mealType: "lunch",
+      mealDate: "2026-08-31",
+      note: null,
+      images: [{ id: "photo-other", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+    })).rejects.toMatchObject({ code: "response_schema_error" });
   });
 
   it("propagates the same sugar, NOVA and variety contract through OpenAI", async () => {
@@ -170,14 +190,14 @@ describe("xAI meal vision contract", () => {
     expect(result).toMatchObject({ confidence: "low", totals: { calories: range } });
   });
 
-  it("does not abort a provider request after a fixed client-side delay", async () => {
+  it("passes a cancellable signal to each provider request", async () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
 
     await createXaiMealVisionProvider().analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "Trois croissants et une banane" });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("signal");
+    expect(fetchMock.mock.calls[0]?.[1]).toHaveProperty("signal");
   });
 
   it("uses personal recipes only as variable context", async () => {
@@ -293,8 +313,8 @@ describe("xAI meal vision contract", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
     const validatorBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { model: string; reasoning: { effort: string }; input: Array<{ content: Array<{ detail?: string }> }> };
     expect(validatorBody).toMatchObject({ model: "gpt-5.6-sol", reasoning: { effort: "low" } });
-    expect(validatorBody.input[0]?.content[1]?.detail).toBe("low");
-    expect(validatorBody.input[0]?.content.filter((item) => item.detail === "low")).toHaveLength(4);
+    expect(validatorBody.input[0]?.content[1]?.detail).toBe("high");
+    expect(validatorBody.input[0]?.content.filter((item) => item.detail === "high")).toHaveLength(4);
   });
 
   it("keeps four photos in one high-detail primary request", async () => {

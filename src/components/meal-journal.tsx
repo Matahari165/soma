@@ -352,7 +352,7 @@ type DefaultAnalyzeOptions = {
 };
 
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
-  const hasPhotoEvidence = files.length > 0 || meal.photos.some((photo) => photo.storageStatus !== "purged");
+  const hasPhotoEvidence = files.length > 0 || (meal.status !== "confirmed" && meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available"));
   const hasTextEvidence = Boolean(meal.note.trim());
   if (!hasPhotoEvidence && !hasTextEvidence) throw new Error("Ajoute une photo ou une description du repas avant de lancer l’analyse.");
   const analysisRequestId = randomId("analysis");
@@ -390,7 +390,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("Le serveur n’a pas confirmé toutes les photos du repas.");
     options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetchMeal(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, { operation: "analyze", requestId: analysisRequestId });
+  const response = await fetchMeal(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction || meal.analysis), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, { operation: "analyze", requestId: analysisRequestId });
   const body = await readJson(response);
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("Le serveur n’a pas retourné le repas analysé.");
   return apiMealToRecord(body.meal);
@@ -572,7 +572,7 @@ function statusLabel(meal: MealRecord | null) {
   if (meal.status === "analyzing") return "Analyse…";
   if (meal.status === "review") return "À relire";
   if (meal.status === "error") return "À réessayer";
-  const hasPhotos = meal.photos.some((photo) => photo.storageStatus !== "purged");
+  const hasPhotos = meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available");
   const hasText = Boolean(meal.note.trim());
   if (hasPhotos && hasText) return "À analyser";
   if (hasPhotos) return "Photos à analyser";
@@ -738,17 +738,15 @@ export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: Me
   </div>;
 }
 
-function MealCompletionControls({ status, saving, mutationBusy, onEdit, onConfirm }: {
+function MealCompletionControls({ mutationBusy, onEdit }: {
   status: "review" | "confirmed";
   saving: boolean;
   mutationBusy: boolean;
   onEdit: () => void;
-  onConfirm: () => void;
 }) {
   return <div className={styles.mealCompletionControls}>
     <div className={styles.reviewActions}>
       <button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Modifier</button>
-      {status === "review" && <button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>{saving ? <span className={styles.progressTrace} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}Confirmer</button>}
     </div>
   </div>;
 }
@@ -819,7 +817,9 @@ function PhotoInput({ slot, onFiles, disabled = false, compact = false, single =
 }
 
 function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; onRemove: (photoId: string) => void; onOrigin: (photoId: string, origin: MealOrigin) => void; disabled: boolean }) {
-  const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const availablePhotos = meal.status === "confirmed" ? [] : meal.photos.filter((photo) =>
+    (photo.storageStatus ?? "available") === "available" && Boolean(photo.url),
+  );
   return <div className={styles.photoGrid} role="list" aria-label={`${availablePhotos.length} photo${availablePhotos.length > 1 ? "s" : ""} du repas`}>
     {availablePhotos.map((photo, index) => <figure className={styles.photo} role="listitem" key={photo.id}>
       <div className={styles.photoFrame}>
@@ -834,14 +834,20 @@ function PhotoStrip({ meal, onRemove, onOrigin, disabled }: { meal: MealRecord; 
 }
 
 /**
- * Confirmed meals keep their original evidence available without reopening
- * the editable capture form. This is intentionally read-only: the existing
- * "Modifier" action remains the single way to change a note or photo.
+ * Confirmed meals expose only currently available evidence. Successful photo
+ * analyses intentionally show a deletion notice after the binary is purged;
+ * the existing "Modifier" action remains the single way to change a note or
+ * add new evidence.
  */
 function MealSourceEvidence({ meal }: { meal: MealRecord }) {
-  const photos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const photos = meal.status === "confirmed"
+    ? []
+    : meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available" && Boolean(photo.url));
+  const purgedPhotoCount = meal.status === "confirmed"
+    ? meal.photos.length
+    : meal.photos.filter((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url).length;
   const note = meal.note.trim();
-  if (!photos.length && !note) return null;
+  if (!photos.length && !note && purgedPhotoCount === 0) return null;
   return <details className={styles.sourceDetails}>
     <summary>Photo et note du jour</summary>
     <div className={styles.sourceDetailsBody}>
@@ -853,12 +859,13 @@ function MealSourceEvidence({ meal }: { meal: MealRecord }) {
           <figcaption>Photo {index + 1}</figcaption>
         </figure>)}
       </div>}
+      {purgedPhotoCount > 0 && <p className={styles.sourceNote}><span>Preuve photo</span>Photo analysée puis supprimée.</p>}
       {note && <p className={styles.sourceNote}><span>Note du jour</span>{note}</p>}
     </div>
   </details>;
 }
 
-function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onCancelAnalysis, onConfirm, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onCancelAnalysis, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
   saving: boolean;
@@ -874,7 +881,6 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   onOrigin: (photoId: string, origin: MealOrigin) => void;
   onAnalyze: () => void;
   onCancelAnalysis: () => void;
-  onConfirm: () => void;
   onRating: (key: "mouthHeat" | "stomachLoad", value: Rating | null) => void | Promise<boolean>;
   onRetry: () => void;
   onNote: (note: string) => void;
@@ -894,7 +900,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const headingId = `meal-${slot}-title`;
   const analysisContentId = `meal-${slot}-analysis-content`;
   const analyzeHintId = `meal-${slot}-analyze-hint`;
-  const hasPhotos = Boolean(meal && meal.photos.some((photo) => photo.storageStatus !== "purged"));
+  const hasPhotos = Boolean(meal && status !== "confirmed" && meal.photos.some((photo) =>
+    (photo.storageStatus ?? "available") === "available" && Boolean(photo.url),
+  ));
   const hasText = Boolean(meal && meal.note.trim().length > 0);
   const hasEvidence = hasPhotos || hasText;
   const canAnalyze = Boolean(meal) && hasEvidence && status === "draft";
@@ -949,7 +957,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact ? <div className={styles.labHeaderActions}>
         {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.status}>{visibleStatus}</span> : null}
-        {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} onConfirm={onConfirm} /> : null}
+        {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
         {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.status ?? "empty"}>{meal?.status === "confirmed" && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
@@ -1004,7 +1012,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         {!labCompact && <>
           <MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} onConfirm={onConfirm} />
+          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => setCorrectionMode(true)} />
         </>}
         {labCompact && confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
       </>}
@@ -1200,9 +1208,14 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
 
   // The POST only accepts the job. Polling this small status endpoint lets a
   // resumed tab reconcile the durable result without repeating the XAI call.
+  // Keep the dependency stable while a job stays in the same state; otherwise
+  // every refresh would recreate the effect and reset its backoff to 2 seconds.
+  const activeAnalysisKey = Object.entries(data?.meals ?? {})
+    .flatMap(([slot, meal]) => meal && (meal.status === "accepted" || meal.status === "analyzing") ? [`${slot}:${meal.id}:${meal.status}`] : [])
+    .join("|");
   useEffect(() => {
-    if (api || !data) return;
-    const activeMeals = Object.entries(data.meals).flatMap(([slot, meal]) =>
+    if (api || !activeAnalysisKey) return;
+    const activeMeals = Object.entries(dataRef.current?.meals ?? {}).flatMap(([slot, meal]) =>
       meal && (meal.status === "accepted" || meal.status === "analyzing") ? [{ slot: slot as MealSlot, meal }] : [],
     );
     if (!activeMeals.length) return;
@@ -1222,16 +1235,31 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         }
       }));
     };
-    void refresh();
-    const interval = window.setInterval(() => { void refresh(); }, 5_000);
-    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    let timer: number | null = null;
+    let delayIndex = 0;
+    const delays = [2_000, 5_000, 10_000, 20_000, 30_000];
+    const schedule = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(async () => {
+        await refresh();
+        delayIndex = Math.min(delayIndex + 1, delays.length - 1);
+        schedule();
+      }, delays[delayIndex]);
+    };
+    void refresh().finally(schedule);
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (timer !== null) window.clearTimeout(timer);
+      delayIndex = 0;
+      void refresh().finally(schedule);
+    };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (timer !== null) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [api, data, selectedDate]);
+  }, [activeAnalysisKey, api, selectedDate]);
 
   const controlledDate = useRef(selectedDateProp);
   useEffect(() => {
@@ -1500,16 +1528,24 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     setProcessingFiles(true);
     setFileError(null);
     const prepared: File[] = [];
+    const normalizationStartedAt = Date.now();
     try {
-      for (const file of incoming) prepared.push(await normalizeMealImage(file));
+      // Keep memory bounded on mobile while avoiding the fully sequential
+      // normalization that made a six-photo capture feel unnecessarily slow.
+      for (let index = 0; index < incoming.length; index += 2) {
+        const batch = await Promise.all(incoming.slice(index, index + 2).map((file) => normalizeMealImage(file)));
+        prepared.push(...batch);
+      }
+      console.info("[meal-analysis] stage", { stage: "normalization", photoCount: prepared.length, durationMs: Date.now() - normalizationStartedAt });
     } catch (error) {
+      console.warn("[meal-analysis] stage failed", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
       setFileError(error instanceof Error ? error.message : "Cette photo n’a pas pu être préparée. Prends-la à nouveau en JPEG ou PNG.");
       setProcessingFiles(false);
       inFlightSlots.current.delete(slot);
       return;
     }
     const currentMeal = dataRef.current?.meals[slot] ?? emptyMeal(selectedDate, slot);
-    const activePhotoCount = currentMeal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+    const activePhotoCount = currentMeal.status === "confirmed" ? 0 : currentMeal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
     const limitMessage = mealPhotoLimitMessage(activePhotoCount, prepared.length);
     const accepted = prepared.slice(0, Math.max(0, MAX_MEAL_PHOTOS - activePhotoCount));
     if (limitMessage) setFileError(limitMessage);
@@ -1637,7 +1673,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const analyzeMeal = async (slot: MealSlot, correction?: MealCorrection) => {
     const meal = dataRef.current?.meals[slot];
     if (!meal || inFlightSlots.current.has(slot)) return;
-    const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+    const activePhotos = meal.status === "confirmed" ? [] : meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
     const hasPhotosForAnalyze = activePhotos.length > 0;
     const hasTextForAnalyze = Boolean(meal.note.trim());
     if (correction) {
@@ -1688,7 +1724,11 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: null }));
         return;
       }
-      const nextStatus = analyzed.status === "accepted" || analyzed.status === "analyzing" ? analyzed.status : "review";
+      const nextStatus = analyzed.status === "accepted" || analyzed.status === "analyzing"
+        ? analyzed.status
+        : (analyzed.analysis || analyzed.status === "confirmed")
+          ? "confirmed"
+          : "draft";
       updateMeal(slot, (current) => ({ ...current, ...normalizeMeal({ ...analyzed, note: typeof analyzed.note === "string" && analyzed.note ? analyzed.note : current.note, photos: analyzed.photos?.length ? analyzed.photos : current.photos, status: nextStatus, error: null }, selectedDate, slot), status: nextStatus }));
     } catch (error) {
       updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "error", error: error instanceof Error ? error.message : "L’analyse n’a pas pu aboutir." }));
@@ -1729,20 +1769,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       return saved;
     }
     return true;
-  };
-
-  const handleConfirm = (slot: MealSlot, meal: MealRecord) => {
-    if (meal.status === "accepted" || meal.status === "analyzing") {
-      setConfirmError((previous) => ({ ...previous, [slot]: "L’analyse est encore en cours. Tu pourras valider le repas quand le résultat sera disponible." }));
-      return;
-    }
-    if (!meal.analysis) {
-      setConfirmError((previous) => ({ ...previous, [slot]: "Ajoute une photo ou décris le repas, puis lance l’analyse avant de le valider." }));
-      return;
-    }
-    // Ressentis optionnels : ne plus bloquer la validation
-    setConfirmError((previous) => ({ ...previous, [slot]: null }));
-    void saveMeal(meal);
   };
 
   // The date rail is a seven-day contract in every journal surface. Keep the

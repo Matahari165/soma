@@ -4,7 +4,7 @@ import { mealOriginSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { getR2MealPhotoObject } from "@/lib/r2";
-import { findPreviewPhoto, removePreviewPhoto, updatePreviewPhotoOrigin } from "@/services/meal-preview";
+import { findPreviewMeal, findPreviewPhoto, removePreviewPhoto, updatePreviewPhotoOrigin } from "@/services/meal-preview";
 import { findMealPhoto, MealServiceError, removeMealPhoto, updateMealPhotoOrigin, findMeal } from "@/services/meals";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string; photoId: string }> }) {
@@ -14,13 +14,18 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (isLocalPreviewMode()) {
     const photo = findPreviewPhoto(user.id, id, photoId);
     if (!photo) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    if (photo.storageStatus === "purge_pending") return NextResponse.json({ error: "Photo en cours de suppression après analyse.", code: "photo_purge_pending" }, { status: 410 });
     if (photo.storageStatus === "purged") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
+    if (findPreviewMeal(user.id, id)?.status === "confirmed") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
     return new Response(photo.data, { headers: { "Content-Type": photo.mimeType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   }
   try {
     const photo = await findMealPhoto(user.id, id, photoId);
     if (!photo) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+    if (photo.storageStatus === "purge_pending") return NextResponse.json({ error: "Photo en cours de suppression après analyse.", code: "photo_purge_pending" }, { status: 410 });
     if (photo.storageStatus === "purged") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
+    const confirmedMeal = await findMeal(user.id, id);
+    if (confirmedMeal?.status === "confirmed") return NextResponse.json({ error: "Photo supprimée après confirmation, analyse conservée.", code: "photo_purged" }, { status: 410 });
     const object = await getR2MealPhotoObject(photo.objectPath);
     if (!object?.body) {
       const meal = await findMeal(user.id, id).catch(() => null);

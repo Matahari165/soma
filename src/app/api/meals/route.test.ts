@@ -70,7 +70,7 @@ describe("meal API local preview flow", () => {
     const analysed = await legacyAnalyzeMeal(new Request("https://soma.example/api/meals/analyze", { method: "POST", body: form }));
     expect(analysed.status).toBe(200);
     const meal = (await analysed.json()).meal as { id: string; status: string; analysis: { calories: { low: number; high: number } } };
-    expect(meal.status).toBe("review");
+    expect(meal.status).toBe("confirmed");
     const saved = await saveMeal(new Request("https://soma.example/api/meals", { method: "PUT", body: JSON.stringify({ meal: { ...meal, status: "confirmed", mouthHeat: 2, stomachLoad: null } }), headers: { "content-type": "application/json" } }));
     expect(saved.status).toBe(200);
     const loaded = await listMeals(new Request("https://soma.example/api/meals?date=2026-09-01"));

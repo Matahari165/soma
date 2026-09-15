@@ -37,8 +37,9 @@ export async function GET() {
     return [Promise.resolve({ path: manifest.object_path, signedUrl: createR2ArchiveDownloadUrl(manifest.object_path) })];
   })).catch(() => null);
   if (!archiveDownloads) return NextResponse.json({ error: "Archived health records could not be added to the export." }, { status: 500 });
+  const confirmedMealIds = new Set(((exported.meals ?? []) as Array<{ id?: unknown; status?: unknown }>).flatMap((meal) => meal.status === "confirmed" && typeof meal.id === "string" ? [meal.id] : []));
   const mealPhotoDownloads = ((exported.meal_photos ?? []) as Array<{ id?: unknown; meal_id?: unknown; storage_status?: unknown }>).flatMap((photo) =>
-    typeof photo.id === "string" && typeof photo.meal_id === "string" && photo.storage_status !== "purged"
+    typeof photo.id === "string" && typeof photo.meal_id === "string" && !confirmedMealIds.has(photo.meal_id) && photo.storage_status !== "purged" && photo.storage_status !== "purge_pending"
       ? [{ mealId: photo.meal_id, photoId: photo.id, path: `/api/meals/${encodeURIComponent(photo.meal_id)}/photos/${encodeURIComponent(photo.id)}` }]
       : [],
   );

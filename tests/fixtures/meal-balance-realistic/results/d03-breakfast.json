@@ -3,7 +3,7 @@
   "caseId": "d03-breakfast",
   "mealDate": "2026-09-03",
   "mealType": "breakfast",
-  "inputFingerprint": "sha256:d6d4b43bc4103deec640b0e71eac1b3882f2515eb7a8152db3722fd0c9549d4a",
+  "inputFingerprint": "sha256:1abdadc7beaafeeb5d932763bb1793124fa80d7a7a51b235f5074c9c3502c499",
   "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
   "provider": "xai",
   "model": "grok-4.6",

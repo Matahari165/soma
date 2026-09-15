@@ -17,10 +17,13 @@ const worker = {
     if (!env.NEXT_PUBLIC_SITE_URL || !env.CRON_SECRET) {
       throw new Error("NEXT_PUBLIC_SITE_URL and CRON_SECRET are required for scheduled sync.");
     }
-    const response = await openNextWorker.fetch(new Request(new URL("/api/cron/sync", env.NEXT_PUBLIC_SITE_URL), {
-      headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-    }), env, context);
-    if (!response.ok) throw new Error(`Scheduled Soma sync failed with HTTP ${response.status}.`);
+    const headers = { Authorization: `Bearer ${env.CRON_SECRET}` };
+    const [syncResponse, mealAnalysisResponse] = await Promise.all([
+      openNextWorker.fetch(new Request(new URL("/api/cron/sync", env.NEXT_PUBLIC_SITE_URL), { headers }), env, context),
+      openNextWorker.fetch(new Request(new URL("/api/cron/meal-analysis", env.NEXT_PUBLIC_SITE_URL), { headers }), env, context),
+    ]);
+    if (!syncResponse.ok) throw new Error(`Scheduled Soma sync failed with HTTP ${syncResponse.status}.`);
+    if (!mealAnalysisResponse.ok) throw new Error(`Scheduled Soma meal analysis failed with HTTP ${mealAnalysisResponse.status}.`);
   },
 };
 

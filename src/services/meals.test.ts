@@ -83,7 +83,7 @@ describe("meal analysis provenance", () => {
     expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
   });
 
-  it("keeps purge_pending and exposes an R2 failure", async () => {
+  it("confirms immediately and keeps purge_pending when R2 is unavailable", async () => {
     state.findMeal.mockResolvedValue({
       id: "12345678-1234-1234-1234-123456789012",
       userId: "user-1",
@@ -100,16 +100,17 @@ describe("meal analysis provenance", () => {
     });
     vi.mocked(deleteR2MealPhotoObject).mockRejectedValueOnce(new Error("R2 unavailable"));
 
-    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" })).resolves.toMatchObject({ status: "draft" });
     expect(state.updatePhotoStorage).toHaveBeenCalledTimes(1);
     expect(state.updatePhotoStorage).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012", "photo-1", { storageStatus: "purge_pending", purgedAt: null });
     expect(state.updateMeal).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" });
   });
 
-  it("does not delete R2 when the pending marker cannot be written", async () => {
+  it("confirms even when the pending marker cannot be written", async () => {
     state.updatePhotoStorage.mockRejectedValueOnce(new Error("D1 unavailable"));
 
-    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", confirmedAnalysis: canonicalCorrection })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", confirmedAnalysis: canonicalCorrection })).resolves.toMatchObject({ status: "draft" });
+    expect(state.updateMeal).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed" });
     expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
   });
 
@@ -131,7 +132,8 @@ describe("meal analysis provenance", () => {
     };
     state.findMeal.mockResolvedValue(meal);
 
-    await expect(updateMealRecord("user-1", meal.id, { status: "confirmed" })).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "photo_purge_pending" });
+    await expect(updateMealRecord("user-1", meal.id, { status: "confirmed" })).resolves.toMatchObject({ status: "draft" });
+    expect(state.updateMeal).toHaveBeenCalledWith("user-1", meal.id, { status: "confirmed" });
     expect(deleteR2MealPhotoObject).toHaveBeenCalledWith("private/photo");
     expect(state.updatePhotoStorage).toHaveBeenCalledTimes(2);
   });
