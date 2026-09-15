@@ -5,7 +5,7 @@ import { HealthLoadingShell } from "@/components/health/health-loading-shell";
 import { ActivityDetails } from "@/components/health/activity-details";
 import { getActivityAnalytics } from "@/services/health-analytics";
 
-export const metadata: Metadata = { title: { absolute: "Soma" } };
+export const metadata: Metadata = { title: { absolute: "Effort — Soma" } };
 
 async function ActivityPageContent() {
   return <ActivityDetails data={await getActivityAnalytics()} />;

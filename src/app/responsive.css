@@ -87,9 +87,9 @@
 
 @media (max-width: 1100px) {
   :root { --sidebar-width: 0px; }
-  body { padding-bottom: 0; }
+  body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .sidebar { display: none; }
-  .main-content { margin-left: 0; padding-top: calc(64px + env(safe-area-inset-top)); }
+  .main-content { margin-left: 0; padding-top: calc(64px + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom, 0px); padding-inline: env(safe-area-inset-inline-start, 0px) env(safe-area-inset-inline-end, 0px); }
   .app-shell--sidebar-collapsed .main-content { margin-left: 0; }
   .app-shell--preview .main-content { padding-top: calc(92px + env(safe-area-inset-top)); }
   .preview-banner { top: calc(64px + env(safe-area-inset-top)); left: 0; }
@@ -104,7 +104,7 @@
     min-height: calc(64px + env(safe-area-inset-top));
     align-items: end;
     justify-content: space-between;
-    padding: env(safe-area-inset-top) 14px 8px;
+    padding: env(safe-area-inset-top) calc(14px + env(safe-area-inset-inline-end, 0px)) 8px calc(14px + env(safe-area-inset-inline-start, 0px));
     border-bottom: 1px solid var(--ink);
     background: var(--paper);
   }
@@ -173,7 +173,7 @@
   .onboarding-steps li { min-height: 64px; flex-direction: column; justify-content: center; gap: 5px; padding: 6px 3px; text-align: center; }
   .onboarding-steps li > .onboarding-step__index { width: 24px; height: 24px; flex-basis: 24px; }
   .onboarding-step__label { font-size: .6875rem; line-height: 1.2; }
-  .onboarding-main { padding: 32px 20px 48px; }
+  .onboarding-main { padding: 32px 20px calc(48px + env(safe-area-inset-bottom, 0px)); }
 
   .auth-page { grid-template-columns: 1fr; }
   .auth-intro { min-height: auto; padding: 24px 20px 36px; border-right: 0; border-bottom: 1px solid var(--lab-border); }
@@ -181,7 +181,7 @@
   .auth-intro__copy h1 { font-size: clamp(3rem, 17vw, 5rem); line-height: .98; }
   .auth-card-wrap { min-height: auto; align-items: start; padding: 32px 20px 48px; }
   .builder-layout { grid-template-columns: 1fr; overflow-y: auto; }
-  .workout-modal { inset: 0; }
+  .workout-modal { inset: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
   .live-workout-content { grid-template-columns: 1fr; overflow-y: auto; }
 }
 
@@ -258,7 +258,7 @@
   .settings-page > header { min-height: 92px; }
   .settings-page > header h1 { font-size: 3rem; }
   .settings-layout > nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
-  .settings-layout > nav button { min-width: 0; padding-inline: 6px; font-size: .76rem; text-align: center; white-space: normal; }
+  .settings-layout > nav button { min-width: 0; min-height: 44px; padding-inline: 6px; font-size: .875rem; text-align: center; white-space: normal; }
   .settings-form, .form-grid { grid-template-columns: 1fr; }
   .field--wide { grid-column: auto; }
   .connection-card, .privacy-actions article { grid-template-columns: auto 1fr; }

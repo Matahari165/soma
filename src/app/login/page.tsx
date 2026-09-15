@@ -7,7 +7,7 @@ import { SomaLogo } from "@/components/soma-logo";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCloudflareConfig } from "@/lib/env";
 
-export const metadata: Metadata = { title: { absolute: "Soma" } };
+export const metadata: Metadata = { title: { absolute: "Connexion — Soma" } };
 
 const authErrors: Record<string, string> = {
   configuration: "La connexion n’est pas disponible dans cet environnement.",
@@ -19,12 +19,15 @@ const authErrors: Record<string, string> = {
   oauth_profile: "Votre profil Google n’a pas pu être récupéré. Réessayez.",
 };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; deleted?: string }> }) {
   const [params, user] = await Promise.all([searchParams, getCurrentUser()]);
   if (user) redirect("/");
   const configured = hasCloudflareConfig();
   const errorCode = params.error;
   const errorMessage = errorCode ? authErrors[errorCode] ?? "La connexion Google n’a pas pu être terminée." : null;
+  const nextParam = typeof params.next === "string" ? params.next : null;
+  const nextPath = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") && nextParam.length <= 200 && !nextParam.includes("\\") && !/\s/.test(nextParam) && !nextParam.includes("@") && !nextParam.includes(":") ? nextParam : null;
+  const deleted = params.deleted === "1";
 
   return (
     <main className="auth-page" id="main-page-content">
@@ -39,8 +42,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="auth-card-wrap" aria-labelledby="auth-title">
         <div className="auth-card">
           <h2 id="auth-title">Se connecter</h2>
+          {deleted && <p className="configuration-note" role="status">Votre compte et vos données Soma ont été supprimés.</p>}
           {configured ? (
-            <GoogleSignInButton />
+            <GoogleSignInButton next={nextPath} />
           ) : (
             <p className="configuration-note" role="alert">La connexion Google n’est pas encore configurée.</p>
           )}
