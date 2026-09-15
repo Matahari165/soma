@@ -138,8 +138,8 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
           ? <>
-            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
+            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
           </>
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />

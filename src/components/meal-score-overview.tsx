@@ -169,18 +169,18 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         <desc id="meal-balance-radar-description">
           {description}. Une valeur absente reste indisponible et n’est pas représentée comme zéro. Sélectionnez une étiquette pour afficher ses détails.
         </desc>
-        {[32, 64, 96, 128].map((radius) => (
+        {[37.5, 75, 112.5, 150].map((radius) => (
           <polygon className={styles.radarGrid} key={radius} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />
         ))}
         {axes.map((axis, index) => {
-          const edge = radarPoint(index, 128);
-          const [x, y] = radarPoint(index, 166);
+          const edge = radarPoint(index, 150);
+          const [x, y] = radarPoint(index, 188);
           const anchor = x < 185 ? "end" : x > 235 ? "start" : "middle";
           const lines = RADAR_LABEL_LINES[axis.keyName];
           const firstDy = lines.length > 1 ? -7 : 0;
           const point = axis.score === null || !Number.isFinite(axis.score)
             ? null
-            : radarPoint(index, 128 * Math.min(Math.max(axis.score, 0), 100) / 100);
+            : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100);
           const selected = selectedKey === axis.keyName;
           const actionLabel = selected ? "Masquer les détails de cette dimension" : "Afficher les détails de cette dimension";
           return (
@@ -201,7 +201,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
             >
               <line className={styles.radarAxis} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
               <line className={styles.radarAxisHit} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
-              {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="3" aria-hidden="true" /> : null}
+              {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
               <circle className={styles.radarLabelHit} cx={x} cy={y} r="30" aria-hidden="true" />
               <circle className={styles.radarFocusRing} cx={x} cy={y} r="26" aria-hidden="true" />
               <text className={styles.radarLabel} x={x} y={y} textAnchor={anchor} aria-hidden="true">
@@ -212,7 +212,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
           );
         })}
         {complete ? (
-          <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 128 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" />
+          <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" />
         ) : null}
       </svg>
       <figcaption className={styles.srOnly}>Graphique interactif. Les axes sont des boutons accessibles au clavier.</figcaption>

@@ -101,7 +101,7 @@
 }
 
 .card {
-  --metric-color: var(--moss);
+  --metric-color: var(--lab-text-primary);
   display: grid;
   min-width: 0;
   min-height: 292px;
@@ -114,23 +114,23 @@
 }
 
 .card[data-metric="caloriesKcal"] {
-  --metric-color: var(--ochre);
+  --metric-color: var(--lab-warning);
 }
 
 .card[data-metric="proteinG"] {
-  --metric-color: var(--moss);
+  --metric-color: var(--lab-signal);
 }
 
 .card[data-metric="addedSugarG"] {
-  --metric-color: color-mix(in srgb, var(--nutrition-sugar-soft) 35%, var(--ink));
+  --metric-color: color-mix(in srgb, var(--lab-text-primary) 68%, var(--lab-surface));
 }
 
 .card[data-metric="fatG"] {
-  --metric-color: var(--clay);
+  --metric-color: var(--lab-error);
 }
 
 .card[data-metric="carbsG"] {
-  --metric-color: var(--cobalt);
+  --metric-color: var(--lab-info);
 }
 
 .cardHeader {
@@ -204,7 +204,7 @@
   gap: clamp(2px, .55vw, 7px);
   padding: 10px 2px 0;
   border-bottom: 1px solid var(--line-strong);
-  background: linear-gradient(to bottom, transparent 32%, var(--line) 32%, transparent 33%, transparent 65%, var(--line) 65%, transparent 66%);
+  background: none;
 }
 
 .barColumn {
