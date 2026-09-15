@@ -2,7 +2,7 @@
 
 import { AlertCircle, Check, Clock3, Database, Download, ExternalLink, HeartPulse, LoaderCircle, LogOut, RefreshCw, RotateCcw, Save, Shield, Trash2, Unplug } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CalendarConnectionCard, type CalendarConnectionNotice } from "@/components/calendar-connection-card";
 import { HealthDataCoverageIndicator } from "@/components/health-data-coverage";
@@ -17,11 +17,19 @@ type SyncState = { status: SyncStatus; connection?: { lastSyncedAt?: string | nu
 type Connection = { status: string; last_error_code?: string | null; scopes?: string[]; last_synced_at?: string | null; last_lab_synced_at?: string | null; metadata?: { consent_complete?: boolean } };
 type SettingsTab = "profile" | "connections" | "privacy";
 const tabOrder: SettingsTab[] = ["profile", "connections", "privacy"];
+const tabToSlug: Record<SettingsTab, string> = { profile: "profil", connections: "connexions", privacy: "donnees" };
+const slugToTab: Record<string, SettingsTab> = { profil: "profile", connexions: "connections", donnees: "privacy" };
 const goals = { build_muscle: "Développer la masse musculaire", improve_endurance: "Améliorer l’endurance", improve_cardio: "Améliorer le cardio", general_fitness: "Forme générale", maintain_health: "Maintenir la santé", other: "Autre" };
 
 export function SettingsConsole({ initialHealthNotice = null, initialCalendarNotice = null }: { initialHealthNotice?: GoogleHealthNotice | null; initialCalendarNotice?: CalendarConnectionNotice | null }) {
   const router = useRouter();
-  const [tab, setTab] = useState<SettingsTab>(initialHealthNotice || initialCalendarNotice ? "connections" : "profile");
+  const [tab, setTab] = useState<SettingsTab>(() => {
+    if (typeof window !== "undefined") {
+      const requested = new URLSearchParams(window.location.search).get("tab");
+      if (requested && slugToTab[requested]) return slugToTab[requested];
+    }
+    return initialHealthNotice || initialCalendarNotice ? "connections" : "profile";
+  });
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savedProfile, setSavedProfile] = useState<Profile | null>(null);
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -35,6 +43,11 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [deleteText, setDeleteText] = useState("");
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [syncRetryVersion, setSyncRetryVersion] = useState(0);
+  const disconnectButtonRef = useRef<HTMLButtonElement>(null);
+  const disconnectCancelRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [message, setMessage] = useState<string | null>(initialHealthNotice?.message ?? null);
   const [messageTone, setMessageTone] = useState<GoogleHealthNotice["tone"]>(initialHealthNotice?.tone ?? "neutral");
   const syncPhase = syncState?.status.phase;
@@ -85,17 +98,22 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     void loadSync(true);
     const interval = active ? window.setInterval(() => void loadSync(diagnosticsOpen), 3000) : null;
     return () => { controller.abort(); if (interval) window.clearInterval(interval); };
-  }, [connection, diagnosticsOpen, syncPhase, tab]);
+  }, [connection, diagnosticsOpen, syncPhase, syncRetryVersion, tab]);
 
   function update<K extends keyof Profile>(key: K, value: Profile[K]) {
     setProfile((current) => current ? { ...current, [key]: value } : current);
     showMessage(null);
   }
 
-  function selectTab(nextTab: SettingsTab) {
+  function selectTab(nextTab: SettingsTab, options?: { focusPanel?: boolean }) {
     setTab(nextTab);
-    showMessage(null);
     setDisconnectConfirm(false);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", tabToSlug[nextTab]);
+      window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+    }
+    if (options?.focusPanel) window.requestAnimationFrame(() => panelRef.current?.focus());
   }
 
   function handleTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, currentTab: SettingsTab) {
@@ -108,7 +126,21 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     window.requestAnimationFrame(() => document.getElementById(`${nextTab}-tab`)?.focus());
   }
 
-  const profileValid = Boolean(profile && profile.displayName.trim() && profile.displayName.length <= 80 && profile.dateOfBirth && Number.isFinite(profile.heightCm) && profile.heightCm >= 50 && profile.heightCm <= 260 && Number.isFinite(profile.weightKg) && profile.weightKg >= 20 && profile.weightKg <= 400 && /^([01]\d|2[0-3]):[0-5]\d$/.test(profile.usualWakeTime));
+  useEffect(() => {
+    if (!disconnectConfirm) return;
+    disconnectCancelRef.current?.focus();
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDisconnectConfirm(false);
+        disconnectButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [disconnectConfirm]);
+
+  const profileValid = Boolean(profile && profile.displayName.trim() && profile.displayName.length <= 80 && profile.dateOfBirth && Number.isFinite(profile.heightCm) && profile.heightCm >= 50 && profile.heightCm <= 260 && Number.isFinite(profile.weightKg) && profile.weightKg >= 20 && profile.weightKg <= 400 && Number.isInteger(profile.baseSleepTargetMinutes) && profile.baseSleepTargetMinutes >= 240 && profile.baseSleepTargetMinutes <= 720 && /^([01]\d|2[0-3]):[0-5]\d$/.test(profile.usualWakeTime));
   const profileDirty = Boolean(profile && savedProfile && JSON.stringify(profile) !== JSON.stringify(savedProfile));
   const partialAccess = Boolean(connection && (connection.metadata?.consent_complete === false || (connection.scopes?.length ?? 0) < 3));
   const requiresReconnection = Boolean(connection && (connection.status === "expired" || connection.last_error_code === "GOOGLE_HEALTH_AUTH_EXPIRED"));
@@ -125,6 +157,37 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
       showMessage("Modifications du profil enregistrées.", "success");
     } catch (error) {
       showMessage(error instanceof Error ? error.message : "Votre profil n’a pas pu être enregistré.", "error");
+    } finally { setBusyAction(null); }
+  }
+
+  function cancelProfileEdits() {
+    if (!savedProfile || busyAction) return;
+    setProfile(savedProfile);
+    showMessage("Modifications annulées.", "neutral");
+  }
+
+  async function exportData() {
+    if (busyAction) return;
+    setBusyAction("export");
+    setExportError(null);
+    showMessage("Préparation de l’export…");
+    try {
+      const response = await fetch("/api/account/export");
+      if (!response.ok) throw new Error("L’export n’a pas pu être préparé.");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `soma-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      showMessage("Export téléchargé en JSON.", "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "L’export n’a pas pu être préparé.";
+      setExportError(message);
+      showMessage(message, "error");
     } finally { setBusyAction(null); }
   }
 
@@ -153,6 +216,7 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
       setConnection(null);
       setDisconnectConfirm(false);
       showMessage("Google Health est déconnecté. Les données importées restent disponibles dans Soma.", "success");
+      window.requestAnimationFrame(() => panelRef.current?.focus());
     } catch (error) {
       showMessage(error instanceof Error ? error.message : "Google Health n’a pas pu être déconnecté.", "error");
     } finally { setBusyAction(null); }
@@ -189,13 +253,13 @@ export function SettingsConsole({ initialHealthNotice = null, initialCalendarNot
     }
   }
 
-  if (loading) return <div className="workout-loading" id="main-page-content" role="status"><LoaderCircle className="spin" />Chargement des réglages…</div>;
+  if (loading) return <div className="settings-page" id="main-page-content" role="status" aria-busy="true" aria-live="polite" aria-label="Chargement des réglages"><header><h1>Réglages</h1><p>Chargement des réglages…</p></header><div className="settings-layout" aria-hidden="true"><div className="settings-card"><div className="system-loading__panel" /><div className="system-loading__panel" /><div className="system-loading__panel system-loading__panel--wide" /></div></div><span className="sr-only">Chargement…</span></div>;
   if (loadError || !profile) return <div className="settings-page" id="main-page-content"><div className="load-error" role="alert"><AlertCircle /><h1>Les réglages n’ont pas pu être chargés</h1><p>{loadError ?? "Votre profil est indisponible."}</p><button className="secondary-button" type="button" onClick={() => { setLoading(true); setLoadError(null); setRetryVersion((current) => current + 1); }}><RotateCcw size={16} />Réessayer</button></div></div>;
 
-  return <div className="settings-page" id="main-page-content"><header><h1>Réglages</h1></header><div className="settings-layout"><nav role="tablist" aria-label="Sections des réglages"><button id="profile-tab" role="tab" tabIndex={tab === "profile" ? 0 : -1} aria-selected={tab === "profile"} aria-controls="settings-panel" className={tab === "profile" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "profile")} onClick={() => selectTab("profile")} type="button">Profil et objectifs</button><button id="connections-tab" role="tab" tabIndex={tab === "connections" ? 0 : -1} aria-selected={tab === "connections"} aria-controls="settings-panel" className={tab === "connections" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "connections")} onClick={() => selectTab("connections")} type="button">Connexions</button><button id="privacy-tab" role="tab" tabIndex={tab === "privacy" ? 0 : -1} aria-selected={tab === "privacy"} aria-controls="settings-panel" className={tab === "privacy" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "privacy")} onClick={() => selectTab("privacy")} type="button">Données et confidentialité</button></nav><section id="settings-panel" role="tabpanel" aria-labelledby={`${tab}-tab`} className="settings-content">
-   {tab === "profile" && <section className="settings-card"><div><h2>Profil et objectifs</h2><p>Ces valeurs servent à vos estimations personnelles. Google ne les modifie pas automatiquement.</p></div><div className="settings-form"><label>Nom<input required maxLength={80} autoComplete="name" value={profile.displayName} onChange={(event) => update("displayName", event.target.value)} /></label><label>Date de naissance<input required type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" value={profile.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label><label>Taille (cm)<input required min="50" max="260" type="number" value={profile.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label><label>Poids (kg)<input required min="20" max="400" type="number" step="0.1" value={profile.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label><label>Objectif principal<select value={profile.primaryGoal} onChange={(event) => update("primaryGoal", event.target.value)}>{Object.entries(goals).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Besoin de sommeil<input value="8 h 30 min (8 h 20–8 h 40)" readOnly /></label><label>Heure habituelle de réveil<input type="time" required value={profile.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /></label><label>Import initial<select value={profile.importRange} onChange={(event) => update("importRange", event.target.value as Profile["importRange"])}><option value="90_days">90 derniers jours</option><option value="all_history">Tout l’historique disponible</option></select></label></div>{!profileValid && <p className="form-error" role="alert">Vérifiez votre nom, votre date de naissance, votre taille, votre poids et votre heure de réveil.</p>}<button className="primary-button" onClick={() => void save()} disabled={!profileDirty || !profileValid || Boolean(busyAction)} type="button">{busyAction === "save" ? <LoaderCircle className="spin" /> : message === "Modifications du profil enregistrées." ? <Check /> : <Save />}{busyAction === "save" ? "Enregistrement…" : profileDirty ? "Enregistrer les modifications" : "Aucune modification"}</button></section>}
-  {tab === "connections" && <section className="settings-card"><div><h2>Sources du laboratoire personnel</h2><p>La santé décrit votre physiologie. Le calendrier et le journal quotidien apportent le contexte nécessaire pour comprendre ce qui caractérise vos meilleures journées.</p></div>{connectionError && <div className="inline-empty" role="alert"><AlertCircle size={18} /><div><strong>État de la connexion indisponible</strong><p>{connectionError}</p></div></div>}<article className="connection-card"><span className="connection-logo" aria-hidden="true"><HeartPulse size={19} /></span><div><strong>Google Health</strong><p>{connection ? `${requiresReconnection ? "Reconnexion nécessaire" : partialAccess ? "Accès partiel" : "Connecté"} · Dernier import terminé : ${connection.last_synced_at ? formatDateTime(connection.last_synced_at) : "en attente"}` : "Non connecté"}</p></div>{connection ? <div className="connection-actions"><button className="sync-now-button" disabled={Boolean(busyAction) || requiresReconnection} onClick={() => void sync()} type="button">{busyAction === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Synchroniser</button>{(partialAccess || requiresReconnection) && <a href="/api/health/google/connect">{requiresReconnection ? "Reconnecter Google Health" : "Revoir les autorisations"} <ExternalLink /></a>}<button disabled={Boolean(busyAction)} onClick={() => setDisconnectConfirm(true)} type="button"><Unplug />Déconnecter</button></div> : <a href="/api/health/google/connect">Connecter <ExternalLink /></a>}</article>{connection && <p className="sync-schedule"><Clock3 aria-hidden="true" />Les métriques du laboratoire sont actualisées environ toutes les 15 minutes. Les flux bruts sont mis à jour au fil des envois de Google.</p>}{connection && <HealthDataCoverageIndicator coverage={syncState?.coverage} phase={syncState?.status.phase} error={syncState?.coverageError} />}{message && <p className={`settings-message settings-message--${messageTone} settings-message--inline`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}{syncError && <p className="form-error" role="alert">{syncError}</p>}{connection && syncState && <SyncStatusSummary state={syncState} />}{connection && <details className="sync-advanced" open={diagnosticsOpen} onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}><summary>Détails avancés</summary>{diagnosticsOpen && syncState ? <SyncDiagnostics state={syncState} /> : null}</details>}{disconnectConfirm && <div className="inline-confirmation" role="alert"><div><strong>Déconnecter Google Health ?</strong><p>Les données importées restent dans Soma jusqu’à la suppression de votre compte.</p></div><div><button className="secondary-button" type="button" onClick={() => setDisconnectConfirm(false)}>Annuler</button><button className="danger-button" disabled={busyAction === "disconnect"} onClick={() => void disconnect()} type="button">{busyAction === "disconnect" ? "Déconnexion…" : "Déconnecter"}</button></div></div>}<div className="scope-note"><Shield /><div><strong>Lecture seule par conception</strong><p>Sommeil, activité et forme, ainsi que métriques de santé. Les jetons OAuth sont chiffrés et ne sont jamais envoyés à votre navigateur.</p></div></div><CalendarConnectionCard initialNotice={initialCalendarNotice} /></section>}
-    {tab === "privacy" && <section className="settings-card"><div><h2>Vos données Soma</h2><p>Soma conserve votre historique jusqu’à son exportation ou sa suppression. Les secrets OAuth des fournisseurs sont exclus des exports.</p></div><div className="privacy-actions"><article><Database /><div><strong>Exporter toutes les données</strong><p>Téléchargez le profil, les données de santé, les scores, les analyses et les entraînements au format JSON.</p></div><a href="/api/account/export" download><Download />Exporter le JSON</a></article><article><LogOut /><div><strong>Se déconnecter</strong><p>Fermez cette session du navigateur sans supprimer vos données.</p></div><button disabled={Boolean(busyAction)} onClick={() => void signOut()} type="button">{busyAction === "signout" ? "Déconnexion…" : "Se déconnecter"}</button></article><article className="danger-zone"><Trash2 /><div><strong>Supprimer le compte et toutes les données Soma</strong><p>Cette action est irréversible. Saisissez DELETE MY SOMA DATA pour confirmer.</p><input aria-label="Saisissez DELETE MY SOMA DATA pour confirmer" value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="DELETE MY SOMA DATA" autoComplete="off" /></div><button disabled={deleteText !== "DELETE MY SOMA DATA" || Boolean(busyAction)} onClick={() => void deleteAccount()} type="button">{busyAction === "delete" ? "Suppression…" : "Supprimer définitivement"}</button></article></div></section>}
+  return <div className="settings-page" id="main-page-content"><header><h1>Réglages</h1></header><div className="settings-layout"><nav role="tablist" aria-label="Sections des réglages"><button id="profile-tab" role="tab" tabIndex={tab === "profile" ? 0 : -1} aria-selected={tab === "profile"} aria-controls="settings-panel" className={tab === "profile" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "profile")} onClick={() => selectTab("profile", { focusPanel: true })} type="button">Profil et objectifs</button><button id="connections-tab" role="tab" tabIndex={tab === "connections" ? 0 : -1} aria-selected={tab === "connections"} aria-controls="settings-panel" className={tab === "connections" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "connections")} onClick={() => selectTab("connections", { focusPanel: true })} type="button">Connexions</button><button id="privacy-tab" role="tab" tabIndex={tab === "privacy" ? 0 : -1} aria-selected={tab === "privacy"} aria-controls="settings-panel" className={tab === "privacy" ? "is-active" : ""} onKeyDown={(event) => handleTabKeyDown(event, "privacy")} onClick={() => selectTab("privacy", { focusPanel: true })} type="button">Données et confidentialité</button></nav><section id="settings-panel" ref={panelRef} tabIndex={-1} role="tabpanel" aria-labelledby={`${tab}-tab`} className="settings-content">
+   {tab === "profile" && <section className="settings-card"><div><h2>Profil et objectifs</h2><p>Ces valeurs servent à vos estimations personnelles. Google ne les modifie pas automatiquement.</p></div><div className="settings-form"><label>Nom<input required maxLength={80} autoComplete="name" value={profile.displayName} onChange={(event) => update("displayName", event.target.value)} /></label><label>Date de naissance<input required type="date" max={new Date().toISOString().slice(0, 10)} autoComplete="bday" value={profile.dateOfBirth} onChange={(event) => update("dateOfBirth", event.target.value)} /></label><label>Taille (cm)<input required min="50" max="260" type="number" value={profile.heightCm} onChange={(event) => update("heightCm", Number(event.target.value))} /></label><label>Poids (kg)<input required min="20" max="400" type="number" step="0.1" value={profile.weightKg} onChange={(event) => update("weightKg", Number(event.target.value))} /></label><label>Objectif principal<select value={profile.primaryGoal} onChange={(event) => update("primaryGoal", event.target.value)}>{Object.entries(goals).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Besoin de sommeil (minutes)<input required min="240" max="720" step="5" type="number" value={profile.baseSleepTargetMinutes} onChange={(event) => update("baseSleepTargetMinutes", Number(event.target.value))} aria-describedby="sleep-target-help" /><small id="sleep-target-help">510 minutes = 8 h 30. Fourchette acceptée : 240 à 720 minutes.</small></label><label>Heure habituelle de réveil<input type="time" required value={profile.usualWakeTime} onChange={(event) => update("usualWakeTime", event.target.value)} /></label><label>Import initial<select value={profile.importRange} onChange={(event) => update("importRange", event.target.value as Profile["importRange"])}><option value="90_days">90 derniers jours</option><option value="all_history">Tout l’historique disponible</option></select></label></div>{!profileValid && <p className="form-error" role="alert">Vérifiez votre nom, votre date de naissance, votre taille, votre poids, votre besoin de sommeil et votre heure de réveil.</p>}{profileDirty && profileValid && <p className="settings-message" role="status">Modifications non enregistrées.</p>}<div className="form-navigation"><button className="secondary-button" onClick={() => void cancelProfileEdits()} disabled={!profileDirty || Boolean(busyAction)} type="button">Annuler</button><button className="primary-button" onClick={() => void save()} disabled={!profileDirty || !profileValid || Boolean(busyAction)} type="button">{busyAction === "save" ? <LoaderCircle className="spin" /> : message === "Modifications du profil enregistrées." ? <Check /> : <Save />}{busyAction === "save" ? "Enregistrement…" : profileDirty ? "Enregistrer les modifications" : "Aucune modification"}</button></div></section>}
+  {tab === "connections" && <section className="settings-card"><div><h2>Sources du laboratoire personnel</h2><p>La santé décrit votre physiologie. Le calendrier et le journal quotidien apportent le contexte nécessaire pour comprendre ce qui caractérise vos meilleures journées.</p></div>{connectionError && <div className="inline-empty" role="alert"><AlertCircle size={18} /><div><strong>État de la connexion indisponible</strong><p>{connectionError}</p></div></div>}<article className="connection-card"><span className="connection-logo" aria-hidden="true"><HeartPulse size={19} /></span><div><strong>Google Health</strong><p>{connection ? `${requiresReconnection ? "Reconnexion nécessaire" : partialAccess ? "Accès partiel" : "Connecté"} · Dernier import terminé : ${connection.last_synced_at ? formatDateTime(connection.last_synced_at) : "en attente"}` : "Non connecté"}</p></div>{connection ? <div className="connection-actions"><button className="sync-now-button" disabled={Boolean(busyAction) || requiresReconnection} onClick={() => void sync()} type="button">{busyAction === "sync" ? <LoaderCircle className="spin" /> : <RefreshCw />}Synchroniser</button>{(partialAccess || requiresReconnection) && <a href="/api/health/google/connect">{requiresReconnection ? "Reconnecter Google Health" : "Revoir les autorisations"} <ExternalLink /></a>}<button ref={disconnectButtonRef} disabled={Boolean(busyAction)} onClick={() => setDisconnectConfirm(true)} type="button"><Unplug />Déconnecter</button></div> : <a href="/api/health/google/connect">Connecter <ExternalLink /></a>}</article>{connection && <p className="sync-schedule"><Clock3 aria-hidden="true" />Les métriques du laboratoire sont actualisées environ toutes les 15 minutes. Les flux bruts sont mis à jour au fil des envois de Google.</p>}{connection && <HealthDataCoverageIndicator coverage={syncState?.coverage} phase={syncState?.status.phase} error={syncState?.coverageError} />}{message && <p className={`settings-message settings-message--${messageTone} settings-message--inline`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}{syncError && <div className="form-error" role="alert"><p>{syncError}</p><button className="secondary-button" type="button" onClick={() => { setSyncError(null); setSyncRetryVersion((current) => current + 1); }}>Réessayer</button></div>}{connection && syncState && <SyncStatusSummary state={syncState} />}{connection && <details className="sync-advanced" open={diagnosticsOpen} onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}><summary>Détails avancés</summary>{diagnosticsOpen && syncState ? <SyncDiagnostics state={syncState} /> : null}</details>}{disconnectConfirm && <div className="inline-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="disconnect-health-title"><div><strong id="disconnect-health-title">Déconnecter Google Health ?</strong><p>La révocation coupe l’accès futur. Les données importées restent dans Soma jusqu’à la suppression de votre compte.</p></div><div><button ref={disconnectCancelRef} className="secondary-button" type="button" onClick={() => { setDisconnectConfirm(false); disconnectButtonRef.current?.focus(); }}>Annuler</button><button className="danger-button" disabled={busyAction === "disconnect"} onClick={() => void disconnect()} type="button">{busyAction === "disconnect" ? "Déconnexion…" : "Déconnecter"}</button></div></div>}<div className="scope-note"><Shield /><div><strong>Lecture seule par conception</strong><p>Sommeil, activité et forme, ainsi que métriques de santé. Les jetons OAuth sont chiffrés et ne sont jamais envoyés à votre navigateur.</p></div></div><CalendarConnectionCard initialNotice={initialCalendarNotice} /></section>}
+    {tab === "privacy" && <section className="settings-card"><div><h2>Vos données Soma</h2><p>Soma conserve votre historique jusqu’à son exportation ou sa suppression. Les secrets OAuth des fournisseurs sont exclus des exports.</p></div><div className="privacy-actions"><article><Database /><div><strong>Exporter toutes les données</strong><p>Téléchargez le profil, les données de santé, les scores, les analyses et les entraînements au format JSON.</p>{exportError && <p className="form-error" role="alert">{exportError}</p>}</div><button disabled={busyAction === "export"} onClick={() => void exportData()} type="button">{busyAction === "export" ? <LoaderCircle className="spin" size={16} /> : <Download />}{busyAction === "export" ? "Préparation…" : "Exporter le JSON"}</button></article><article><LogOut /><div><strong>Se déconnecter</strong><p>Fermez cette session du navigateur sans supprimer vos données.</p></div><button disabled={Boolean(busyAction)} onClick={() => void signOut()} type="button">{busyAction === "signout" ? "Déconnexion…" : "Se déconnecter"}</button></article><article className="danger-zone"><Trash2 /><div><strong>Supprimer le compte et toutes les données Soma</strong><p>Cette action est irréversible et supprime tout l’historique.</p><label htmlFor="delete-confirm">Confirmation — saisissez DELETE MY SOMA DATA</label><small id="delete-confirm-help">Phrase exacte en majuscules, espaces compris. Clavier AZERTY compatible, aucune autre donnée demandée.</small><input id="delete-confirm" aria-describedby="delete-confirm-help" aria-label="Saisissez DELETE MY SOMA DATA pour confirmer la suppression" value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="DELETE MY SOMA DATA" autoComplete="off" /></div><button disabled={deleteText !== "DELETE MY SOMA DATA" || Boolean(busyAction)} onClick={() => void deleteAccount()} type="button">{busyAction === "delete" ? "Suppression…" : "Supprimer définitivement"}</button></article></div></section>}
    {message && tab !== "connections" && <p className={`settings-message settings-message--${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>}
   </section></div></div>;
 }

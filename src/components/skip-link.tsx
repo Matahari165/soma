@@ -12,5 +12,5 @@ export function SkipLink() {
     });
   }
 
-  return <a className="skip-link" href="#main-page-content" onClick={focusMainContent}>Skip to content</a>;
+  return <a className="skip-link" href="#main-page-content" onClick={focusMainContent}>Aller au contenu</a>;
 }

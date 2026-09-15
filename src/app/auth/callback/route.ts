@@ -11,7 +11,9 @@ function loginError(origin: string, code: string) {
 }
 
 function safeNextPath(value: string | undefined) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+  if (!value || value.length > 200 || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (value.includes("\\") || /\s/.test(value) || value.includes("@") || value.includes(":")) return "/";
+  return value;
 }
 
 function postLoginDestination(nextPath: string, onboardingCompleted: boolean) {

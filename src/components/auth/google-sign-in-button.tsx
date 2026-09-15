@@ -1,7 +1,8 @@
-export function GoogleSignInButton() {
+export function GoogleSignInButton({ next = null }: { next?: string | null }) {
+  const href = next ? `/auth/google?next=${encodeURIComponent(next)}` : "/auth/google";
   return (
     <div className="auth-action">
-      <a className="google-button" href="/auth/google">
+      <a className="google-button" href={href}>
         <GoogleMark />
         Continuer avec Google
       </a>

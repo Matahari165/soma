@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
   const hasSessionCookie = Boolean(request.cookies.get("soma_session")?.value);
   if (!hasSessionCookie && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
+    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
