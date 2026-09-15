@@ -6,6 +6,7 @@ import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime } from "@
 
 const SESSION_COOKIE = "soma_session";
 const SESSION_DAYS = 30;
+const SESSION_READ_TIMEOUT_MS = 4_000;
 
 export type SessionUser = {
   id: string;
@@ -69,11 +70,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   if (hasSupabaseRuntime()) {
-    const sessionResult = await createCloudflareAdminClient().from("soma_sessions").select("user_id,expires_at").eq("token_hash", await sha256(token)).maybeSingle();
+    // The compatibility migration declares the user foreign key, so let
+    // PostgREST resolve the session and its user in one request. This removes
+    // one sequential network round trip while keeping the same fail-closed
+    // authentication contract when either record is unavailable.
+    const sessionResult = await createCloudflareAdminClient().from("soma_sessions").select("user_id,expires_at,soma_users(id,email,display_name)").eq("token_hash", await sha256(token)).withTimeout(SESSION_READ_TIMEOUT_MS).maybeSingle();
     if (sessionResult.error || !sessionResult.data || new Date(sessionResult.data.expires_at).getTime() <= Date.now()) return null;
-    const userResult = await createCloudflareAdminClient().from("soma_users").select("id,email,display_name").eq("id", sessionResult.data.user_id).maybeSingle();
-    if (userResult.error || !userResult.data) return null;
-    return { id: userResult.data.id, email: userResult.data.email, displayName: userResult.data.display_name };
+    const relatedUser = Array.isArray(sessionResult.data.soma_users) ? sessionResult.data.soma_users[0] : sessionResult.data.soma_users;
+    if (!relatedUser || typeof relatedUser !== "object" || typeof relatedUser.id !== "string") return null;
+    return { id: relatedUser.id, email: typeof relatedUser.email === "string" ? relatedUser.email : null, displayName: typeof relatedUser.display_name === "string" ? relatedUser.display_name : "Soma user" };
   }
   const row = await cloudflareDb().prepare(`
     SELECT users.id, users.email, users.display_name

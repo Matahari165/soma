@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type QueryResult = { data: unknown; error: null };
+type QueryResult = { data: unknown; error: unknown | null };
 type QueryCall = {
   table: string;
   filters: Array<{ method: string; column?: string; value?: unknown }>;
@@ -15,6 +15,7 @@ const testState = vi.hoisted(() => ({
   sleeps: [] as Array<Record<string, unknown>>,
   exercises: [] as Array<Record<string, unknown>>,
   heartRates: [] as Array<Record<string, unknown>>,
+  errorTables: new Set<string>(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -34,6 +35,7 @@ vi.mock("./nutrition-targets", () => ({
 import { getActivityAnalytics, getRecoveryAnalytics, getSleepAnalytics, heartRateWindowForCivilDate } from "./health-analytics";
 
 function resultFor(query: QueryCall): QueryResult {
+  if (testState.errorTables.has(query.table)) return { data: null, error: { message: "temporary failure" } };
   if (query.table === "profiles") return { data: { timezone: "Europe/Paris" }, error: null };
   if (query.table === "provider_connections") return { data: { last_synced_at: null }, error: null };
   if (query.table === "sleep_preferences") return { data: { base_target_minutes: 510, usual_wake_time: "07:00", wind_down_minutes: 30 }, error: null };
@@ -113,6 +115,7 @@ describe("health analytics first-screen loading", () => {
       { measured_at: "2026-09-10T08:00:00.000Z", payload: { beatsPerMinute: 0 } },
       { measured_at: "2026-09-09T21:59:59.000Z", payload: { beatsPerMinute: 75 } },
     ];
+    testState.errorTables.clear();
     configureQueries();
   });
 
@@ -157,5 +160,30 @@ describe("health analytics first-screen loading", () => {
     const sleepQuery = queriesFor("health_records").find((query) => query.filters.some((filter) => filter.column === "data_type" && filter.value === "sleep"));
     expect(sleepQuery?.limits).toEqual([1]);
     expect(queriesFor("health_records").some((query) => query.filters.some((filter) => filter.value === "heart-rate"))).toBe(false);
+  });
+
+  it("keeps the main sleep page available when an optional detail read fails", async () => {
+    testState.errorTables.add("health_records");
+
+    const analytics = await getSleepAnalytics();
+
+    expect(analytics.days).toHaveLength(2);
+    expect(analytics.latestSleepStages).toEqual([]);
+    expect(analytics.heartRateSamples).toEqual([]);
+  });
+
+  it("keeps metrics available when freshness metadata fails", async () => {
+    testState.errorTables.add("provider_connections");
+
+    const analytics = await getRecoveryAnalytics();
+
+    expect(analytics.days).toHaveLength(2);
+    expect(analytics.importedAt).toBeNull();
+  });
+
+  it("fails critical metrics reads instead of presenting invented data", async () => {
+    testState.errorTables.add("daily_health_metrics");
+
+    await expect(getRecoveryAnalytics()).rejects.toThrow("Health analytics are temporarily unavailable.");
   });
 });

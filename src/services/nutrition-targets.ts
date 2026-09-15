@@ -48,13 +48,13 @@ export function nutritionTargetsFromRow(row: unknown): NutritionTargets {
   return parseNutritionTargets(value.targets) ?? DEFAULT_NUTRITION_TARGETS;
 }
 
-export async function loadNutritionTargetsStateForUser(userId: string): Promise<{ targets: NutritionTargets; persisted: boolean }> {
+export async function loadNutritionTargetsStateForUser(userId: string, options: { timeoutMs?: number } = {}): Promise<{ targets: NutritionTargets; persisted: boolean }> {
   if (isLocalPreviewMode()) return { targets: previewTargets.get(userId) ?? DEFAULT_NUTRITION_TARGETS, persisted: previewTargets.has(userId) };
-  const result = await createCloudflareAdminClient()
+  const query = createCloudflareAdminClient()
     .from("nutrition_targets")
     .select("targets")
-    .eq("user_id", userId)
-    .maybeSingle();
+    .eq("user_id", userId);
+  const result = await (options.timeoutMs === undefined ? query : query.withTimeout(options.timeoutMs)).maybeSingle();
   if (result.error) throw new Error("Nutrition targets could not be loaded.");
   return { targets: nutritionTargetsFromRow(result.data), persisted: Boolean(result.data) };
 }

@@ -787,6 +787,7 @@ class CloudflareQueryBuilder implements PromiseLike<ManyResult> {
   order(field: string, options?: { ascending?: boolean; nullsFirst?: boolean }) { this.sorts.push({ field, ascending: options?.ascending !== false }); return this; }
   limit(value: number) { this.maxRows = value; return this; }
   range(from: number, to: number) { this.fromIndex = from; this.toIndex = to; return this; }
+  withTimeout(timeoutMs: number) { void timeoutMs; return this; }
   single() { this.cardinality = "single"; return this as unknown as PromiseLike<SingleResult>; }
   maybeSingle() { this.cardinality = "maybeSingle"; return this as unknown as PromiseLike<SingleResult>; }
 
@@ -941,6 +942,7 @@ type SupabaseStoredRow = {
 type SupabaseFilter = Filter & { field: string };
 
 const SUPABASE_STORAGE_PAGE_SIZE = 1_000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
 
 export function hasSupabaseRuntime() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -953,7 +955,7 @@ function supabaseConfig() {
   return { url, key };
 }
 
-async function supabaseRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function supabaseRequest<T>(path: string, init: RequestInit = {}, timeoutMs = SUPABASE_REQUEST_TIMEOUT_MS): Promise<T> {
   const { url, key } = supabaseConfig();
   const headers = new Headers(init.headers);
   headers.set("apikey", key);
@@ -967,7 +969,7 @@ async function supabaseRequest<T>(path: string, init: RequestInit = {}): Promise
     if (upstreamSignal.aborted) controller.abort();
     else upstreamSignal.addEventListener("abort", relayAbort, { once: true });
   }
-  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  const timeoutId = setTimeout(() => controller.abort(), Math.max(1, Math.floor(timeoutMs)));
   try {
     const response = await fetch(`${url}/rest/v1/${path}`, { ...init, headers, signal: controller.signal });
     const body = await response.text();
@@ -1056,6 +1058,7 @@ async function readSupabaseStorageRows(
   toIndex: number | undefined,
   maxRows: number | undefined,
   exactCount: boolean,
+  requestTimeoutMs: number | undefined,
 ) {
   const serverFilters: Array<[string, string]> = [
     ["select", "table_name,row_key,user_id,json_data,created_at,updated_at"],
@@ -1093,7 +1096,7 @@ async function readSupabaseStorageRows(
     const page = await supabaseRequest<SupabaseStoredRow[]>(supabasePath("soma_rows", [
       ...serverFilters,
       ...pageFilters.map(([key, value]) => [key, key === "offset" ? String(offset) : value] as [string, string]),
-    ]));
+    ]), {}, requestTimeoutMs ?? SUPABASE_REQUEST_TIMEOUT_MS);
     storedRows.push(...page);
     if (hasBoundedPage || page.length < SUPABASE_STORAGE_PAGE_SIZE) break;
   }
@@ -1111,6 +1114,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
   private toIndex: number | undefined;
   private cardinality: "many" | "single" | "maybeSingle" = "many";
   private mutation: Mutation | undefined;
+  private requestTimeoutMs: number | undefined;
 
   constructor(private table: string) {}
 
@@ -1136,6 +1140,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
   order(field: string, options?: { ascending?: boolean; nullsFirst?: boolean }) { this.sorts.push({ field, ascending: options?.ascending !== false }); return this; }
   limit(value: number) { this.maxRows = value; return this; }
   range(from: number, to: number) { this.fromIndex = from; this.toIndex = to; return this; }
+  withTimeout(timeoutMs: number) { this.requestTimeoutMs = timeoutMs; return this; }
   single() { this.cardinality = "single"; return this as unknown as PromiseLike<SingleResult>; }
   maybeSingle() { this.cardinality = "maybeSingle"; return this as unknown as PromiseLike<SingleResult>; }
 
@@ -1147,11 +1152,11 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     if (this.isPhysicalTable()) {
       const filters: Array<[string, string]> = [["select", this.selector?.trim() || "*"]];
       for (const filter of this.filters) filters.push([filter.field, supabaseFilterValue(filter)]);
-      const rows = await supabaseRequest<Row[]>(supabasePath(this.table, filters));
+      const rows = await supabaseRequest<Row[]>(supabasePath(this.table, filters), {}, this.requestTimeoutMs ?? SUPABASE_REQUEST_TIMEOUT_MS);
       return rows;
     }
 
-    let rows = await readSupabaseStorageRows(this.table, this.filters, this.sorts, this.orFilters.length, this.fromIndex, this.toIndex, this.maxRows, this.selectOptions?.count === "exact");
+    let rows = await readSupabaseStorageRows(this.table, this.filters, this.sorts, this.orFilters.length, this.fromIndex, this.toIndex, this.maxRows, this.selectOptions?.count === "exact", this.requestTimeoutMs);
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
     for (const sort of [...this.sorts].reverse()) {
