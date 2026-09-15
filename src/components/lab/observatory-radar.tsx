@@ -64,6 +64,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*radarRadius*ratio,280+Math.sin(angle)*radarRadius*ratio];};
   const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
+  const hasCompleteValueShape = validPoints.length === axes.length;
   return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
     <svg viewBox="0 0 660 560" role="img" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
@@ -71,8 +72,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
       </Fragment>)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
-      {validPoints.length>=3&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
-      {validPoints.length===2&&<line className="radar-value" x1={validPoints[0][0]} y1={validPoints[0][1]} x2={validPoints[1][0]} y2={validPoints[1][1]}/>}
+      {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
       {validPoints.map((point,i)=><circle className="radar-point" key={i} cx={point[0]} cy={point[1]} r={Math.round(8*unit*10)/10}/>)}
       {axes.map((axis,i)=>{
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";

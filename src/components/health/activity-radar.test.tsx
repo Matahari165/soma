@@ -20,17 +20,28 @@ it("relie les points mesurés du radar complet", () => {
   expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(5);
 });
 
-it("garde un contour partiel sans transformer null en zéro", () => {
+it("garde les points partiels sans relier une mesure absente", () => {
   const html = renderToStaticMarkup(<ActivityRadar dimensions={[
     ...dimensions.slice(0, 4),
     { ...dimensions[4], normalizedValue: null, valueLabel: undefined },
   ]} />);
 
-  expect(html).toContain("valueArea");
+  expect(html).not.toContain("valueArea");
   expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
   expect(html).toContain(">Charge hebdomadaire<");
   expect(html).toContain(">—<");
   expect(html).not.toContain('cx="300" cy="222"');
+});
+
+it("ne relie pas deux axes en traversant une mesure absente", () => {
+  const html = renderToStaticMarkup(<ActivityRadar dimensions={[
+    dimensions[0],
+    { ...dimensions[1], normalizedValue: null, valueLabel: undefined },
+    ...dimensions.slice(2),
+  ]} />);
+
+  expect(html).not.toContain("valueArea");
+  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
 });
 
 it("keeps an explicit zero at the center as a measured point", () => {

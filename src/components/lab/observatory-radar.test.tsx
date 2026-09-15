@@ -19,9 +19,18 @@ it("compares each value with its own 30-day average, including equality", () => 
 it("does not invent a zero or close the radar when a measure is absent", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={{...data, caloriesKcal:null, effortScore:null, averageRecoveryScore:null}} />);
   expect(html).not.toContain('<polygon className="radar-value"');
+  expect(html).not.toContain('<line className="radar-value"');
   expect(html).toContain("— kcal");
   expect(html).toContain("Moyenne indisponible");
   expect(html).not.toContain("70 ↑");
+});
+
+it("does not bridge across an absent interior axis", () => {
+  const html = renderToStaticMarkup(<ObservatoryRadar data={{ ...data, recoveryScore: null }} />);
+
+  expect(html).not.toContain('<polygon className="radar-value"');
+  expect((html.match(/class="radar-point"/g) ?? []).length).toBe(3);
+  expect(html).toContain("Récupération : —");
 });
 
 it("renders radar metrics for a specific past date", () => {

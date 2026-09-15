@@ -108,7 +108,7 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
     ? pointFor(index, Math.max(count, 1), RADIUS * dimension.normalizedValue)
     : null);
   const availablePoints = measuredPoints.filter((point): point is Point => point !== null);
-  const hasValueShape = count >= 3 && availablePoints.length >= 3;
+  const hasValueShape = count >= 3 && availablePoints.length === count;
   const hasMeasuredPoint = measuredPoints.some((point) => point !== null);
   const description = descriptionFor(dimensions);
   const rootClassName = className ? `${styles.root} ${className}` : styles.root;
