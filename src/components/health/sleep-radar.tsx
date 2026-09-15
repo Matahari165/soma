@@ -31,6 +31,7 @@ export type SleepRadarDimension = {
   comparison?: "up" | "down" | "equal" | null;
   comparisonLabel?: string | null;
   comparisonTone?: "positive" | "negative" | "neutral";
+  sourceLabel?: string;
 };
 
 export type SleepRadarProps = {
@@ -98,7 +99,8 @@ function readableDimension(dimension: SleepRadarDimension) {
       ? `${dimension.label} : mesurée à 0`
       : `${dimension.label} : mesure disponible`;
   const comparison = comparisonPresentation(dimension);
-  return comparison ? `${description}. ${comparison.label}` : description;
+  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
+  return comparison ? `${description}. ${comparison.label}${source}` : `${description}${source}`;
 }
 
 function comparisonPresentation(dimension: SleepRadarDimension) {
@@ -253,6 +255,7 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
           const displayValue = valueLabel || (!hasNormalizedValue(dimension) ? "—" : null);
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.id;
+          const sourceLabel = dimension.sourceLabel?.trim() || null;
           return (
             <g
               aria-controls={interactiveAxis ? detailId : undefined}
@@ -272,12 +275,15 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
               {interactiveAxis && <circle className={styles.focusRing} cx={position.x} cy={position.y} r="26" aria-hidden="true" />}
               <g className={styles.labelGroup} aria-hidden="true">
                 <title>{readableDimension(dimension)}</title>
-                <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}</text>
+                <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}{selected ? " ●" : ""}</text>
                 {displayValue || comparison ? (
                   <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy} textAnchor={position.textAnchor}>
                     {displayValue}
                     {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx={displayValue ? 5 : 0}>{comparison.arrow}</tspan>}
                   </text>
+                ) : null}
+                {sourceLabel ? (
+                  <text className={styles.valueLabel} x={position.x} y={position.y} dy="2.6em" textAnchor={position.textAnchor}>{sourceLabel}</text>
                 ) : null}
               </g>
             </g>

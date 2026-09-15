@@ -87,6 +87,7 @@ function DimensionDetail({ dimension }: { dimension: ActivityRadarDimension | nu
       <div><dt>Moy. 30 j</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
       <div><dt>Lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div><dt>Rôle</dt><dd>{dimension.scoreRole || "Composante du score d’effort"}</dd></div>
+      <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {dimension.scoreFormula && (dimension.scoreWeight !== undefined || dimension.scoreContribution !== undefined)
       ? <dl className={styles.dimensionFormula}><div><dt>Formule</dt><dd>{dimension.scoreFormula}</dd></div><div><dt>Contribution</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} · ${dimension.scoreWeight ?? 0} %` : "Indisponible"}</dd></div></dl>

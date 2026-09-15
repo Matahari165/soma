@@ -109,6 +109,7 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
       <div><dt>Moy. 30 j</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
       <div><dt>Sens de lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div className={styles.sleepDimensionRole}><dt>Rôle</dt><dd>{dimension.scoreRole || "Métrique de contexte · non incluse dans le score Sommeil"}</dd></div>
+      <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {(dimension.scoreFormula || dimension.scoreNormalization || dimension.scoreWeight !== undefined) && <dl className={styles.sleepScoreAxisMetrics}>
       <div><dt>Formule</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
@@ -190,6 +191,7 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         className={styles.sleepDetailPanel}
         data-open={detailOpen}
         id={DETAIL_ID}
+        inert={!detailOpen}
       >
         <div className={styles.sleepDetailHeader}>
           <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "Détail du sommeil"}</h3>

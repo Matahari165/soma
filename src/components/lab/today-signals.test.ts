@@ -98,7 +98,7 @@ describe("Today signals", () => {
     expect(refreshed.history[0]?.caloriesKcal).toBe(3_100);
   });
 
-  it("does not lower the displayed target during a partial refresh", () => {
+  it("keeps the current target only when a partial refresh omits it", () => {
     const values = {
       sleepMinutes: null,
       recoveryScore: null,
@@ -111,8 +111,10 @@ describe("Today signals", () => {
       averageCaloriesKcal: null,
       history: [],
     };
-    expect(mergePersonalLabMetricRefresh(values, { calorieTarget: 3_000 }).calorieTarget).toBe(3_300);
+    // La dernière cible reçue fait foi même si elle est plus basse : pas de max conservé.
+    expect(mergePersonalLabMetricRefresh(values, { calorieTarget: 3_000 }).calorieTarget).toBe(3_000);
     expect(mergePersonalLabMetricRefresh(values, { calorieTarget: null }).calorieTarget).toBe(3_300);
+    expect(mergePersonalLabMetricRefresh(values, {}).calorieTarget).toBe(3_300);
     expect(mergePersonalLabMetricRefresh(values, { calorieTarget: 3_350 }).calorieTarget).toBe(3_350);
   });
 

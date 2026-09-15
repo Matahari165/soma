@@ -53,11 +53,13 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
       : <article className="metric-trend-card metric-trend-card--pending">{pendingContent}</article>;
   }
   if (compact) {
-    const accessibleSummary = `${label}. Valeur actuelle : ${current === null ? "indisponible" : `${format(current)}${unit ? ` ${unit}` : ""}`}. Moyenne sur 30 jours : ${compactAverage === null ? "indisponible" : `${format(compactAverage)}${unit ? ` ${unit}` : ""}`}.`;
+    const coverage = chartPoints.length ? Math.round((completeCount / chartPoints.length) * 100) : 0;
+    const accessibleSummary = `${label}. Valeur actuelle : ${current === null ? "indisponible" : `${format(current)}${unit ? ` ${unit}` : ""}`}. Moyenne sur ${displayDays} jours : ${compactAverage === null ? "indisponible" : `${format(compactAverage)}${unit ? ` ${unit}` : ""}`} (${compactAverageValues.length} jours mesurés). Couverture : ${completeCount}/${chartPoints.length} jours mesurés · ${coverage} %.`;
     const compactContent = <>
-      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "moy. —" : `moy. ${formatCompactAverage(compactAverage, format, unit)}`}</small></header>
+      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "moy. —" : `moy. ${formatCompactAverage(compactAverage, format, unit)} · n=${compactAverageValues.length}`}</small></header>
       <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} /></div>
       <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
+      <footer><span>{completeCount}/{chartPoints.length} jours mesurés · {coverage} % de couverture</span></footer>
     </>;
     return href
       ? <Link className="metric-trend-card metric-trend-card--link" href={href} aria-label={`Ouvrir le détail. ${accessibleSummary}`}>{compactContent}</Link>

@@ -9,8 +9,18 @@ export type RecoveryRadarDimension = {
   label: string;
   score: number | null;
   weight?: number;
+  valueLabel?: string;
+  averageLabel?: string;
+  definition?: string;
   readingDirection?: string;
   scoreRole?: string;
+  scoreFormula?: string;
+  scoreNormalization?: string;
+  scoreContribution?: number | null;
+  comparison?: "up" | "down" | "equal" | null;
+  comparisonLabel?: string | null;
+  comparisonTone?: "positive" | "negative" | "neutral";
+  sourceLabel?: string;
 };
 
 export type RecoveryRadarProps = {
@@ -72,9 +82,10 @@ function wrapLabel(label: string, maxCharacters = 20) {
 }
 
 function readableDimension(dimension: RecoveryRadarDimension) {
-  const value = isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible";
+  const value = dimension.valueLabel?.trim() ?? (isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible");
   const weight = formatWeight(dimension.weight);
-  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
+  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
+  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}${source}`;
 }
 
 function pointFor(index: number, count: number, distance: number): [number, number] {
@@ -96,11 +107,7 @@ function axisAnchor(index: number, count: number): "start" | "middle" | "end" {
 function descriptionFor(dimensions: readonly RecoveryRadarDimension[]) {
   if (!dimensions.length) return "Graphique radar de récupération indisponible : aucune dimension n’est fournie.";
 
-  const values = dimensions.map((dimension) => {
-    const value = isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible";
-    const weight = formatWeight(dimension.weight);
-    return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
-  });
+  const values = dimensions.map(readableDimension);
   return `Graphique radar de récupération. ${values.join(". ")}.`;
 }
 
@@ -217,9 +224,12 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
           const lines = wrapLabel(dimension.label);
           const startY = labelY - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
           const valueY = startY + lines.length * LABEL_LINE_HEIGHT + 8;
+          const sourceY = valueY + LABEL_LINE_HEIGHT;
           const anchor = axisAnchor(index, Math.max(dimensions.length, 1));
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.key;
+          const sourceLabel = dimension.sourceLabel?.trim() || null;
+          const displayValue = dimension.valueLabel?.trim() ?? formatScore(dimension.score);
           return (
             <g
               key={`${dimension.key}-${index}`}
@@ -258,9 +268,14 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
                   y={valueY}
                   textAnchor={anchor}
                 >
-                  {formatScore(dimension.score)}
+                  {displayValue}
                 </text>
               </g>
+              {sourceLabel ? (
+                <text className={styles.axisName} x={labelX} y={sourceY} textAnchor={anchor} fontSize={11}>
+                  {sourceLabel}
+                </text>
+              ) : null}
             </g>
           );
         })}
