@@ -15,6 +15,7 @@ import type { Meal } from "@/domain/meals";
 import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
 import { supplementDefinitionToView, supplementEntryToView } from "@/domain/supplements";
 import { buildMealScoreOverview } from "@/domain/scores/meal-overview";
+import type { MealSlotState } from "@/domain/scores/meal-balance";
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
@@ -61,6 +62,17 @@ function mealsForDate(meals: readonly Meal[], date: string) {
   return meals.filter((meal) => meal.mealDate === date);
 }
 
+function slotStatesByDate(meals: readonly Meal[]) {
+  const states = new Map<string, Partial<Record<(typeof MEAL_SLOTS)[number], MealSlotState>>>();
+  for (const meal of meals) {
+    const bySlot = states.get(meal.mealDate) ?? {};
+    const entryState = (meal as Meal & { entryState?: string }).entryState === "skipped" ? "skipped" : "recorded";
+    bySlot[meal.mealType] = entryState;
+    states.set(meal.mealDate, bySlot);
+  }
+  return states;
+}
+
 function goalMode(value: unknown): "build_muscle" | "maintain" {
   return value === "build_muscle" ? "build_muscle" : "maintain";
 }
@@ -84,7 +96,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
 
   const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult, supplementDefinitionsResult, supplementEntriesResult] = await Promise.all([
     isLocalPreviewMode()
-      ? loadSafely(() => listPreviewMeals(user.id, { from: requestedDate, to: requestedDate }))
+      ? loadSafely(() => listPreviewMeals(user.id, { from: historyFrom, to: requestedDate }))
       : loadSafely(() => listMeals(user.id, { from: historyFrom, to: requestedDate })),
     listMealRecipes(user.id)
       .then((value) => ({ recipes: value, error: undefined }))
@@ -109,7 +121,6 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
-  const missingSlots = MEAL_SLOTS.filter((slot) => !records.some((meal) => meal.slot === slot));
   const initialData: MealJournalData | null = mealResult.ok
     ? {
       date: requestedDate,
@@ -118,8 +129,9 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
     : null;
   const targets = targetsResult.ok ? targetsResult.value.targets : DEFAULT_NUTRITION_TARGETS;
   const effectiveTargets = targetsResult.ok ? targetsResult.value.effectiveTargets : targets;
+  const statesByDate = mealResult.ok ? slotStatesByDate(mealResult.value) : undefined;
   const balanceOverview = nutritionResult.ok
-    ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.ok ? goalResult.value : null) })
+    ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.ok ? goalResult.value : null), slotStatesByDate: statesByDate })
     : null;
   const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
   const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];
@@ -132,10 +144,9 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
-          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, status: point.balanceStatus, coverage: point.balanceCoverage, confidence: point.balanceConfidence }))}
+          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }))}
           date={requestedDate}
           today={today}
-          missingSlots={missingSlots}
           className="meals-page-score"
         />
         {initialData ? (

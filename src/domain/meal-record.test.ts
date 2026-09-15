@@ -10,7 +10,13 @@ describe("meal record server boundary", () => {
       date: "2026-09-05",
       slot: "lunch",
       status: "draft",
+      entryState: "recorded",
     });
+  });
+
+  it("keeps the explicit skipped state while preserving the rest of the record", () => {
+    const record = apiMealToRecord({ id: "meal-skipped", mealDate: "2026-09-05", mealType: "lunch", status: "draft", entryState: "skipped", note: null, photos: [], analysis: null });
+    expect(record).toMatchObject({ id: "meal-skipped", entryState: "skipped", note: "", photos: [], analysis: null });
   });
 
   it("keeps structured food signals when adapting a confirmed analysis", () => {

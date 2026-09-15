@@ -8,7 +8,12 @@ import {
   mealUncertaintySignalSchema,
   type Meal,
   type MealAnalysis,
+  type MealEntryState,
 } from "@/domain/meals";
+
+function entryStateForApi(meal: Meal): MealEntryState {
+  return meal.entryState === "skipped" ? "skipped" : "recorded";
+}
 
 export function mealToApi(meal: Meal) {
   return {
@@ -17,6 +22,7 @@ export function mealToApi(meal: Meal) {
     mealType: meal.mealType,
     note: meal.note,
     status: meal.status,
+    entryState: entryStateForApi(meal),
     mouthWarmthIntensity: meal.mouthWarmthIntensity,
     stomachOverfullIntensity: meal.stomachOverfullIntensity,
     createdAt: meal.createdAt,
@@ -197,11 +203,13 @@ export function mealToLegacyApi(meal: Meal) {
     id: meal.id,
     date: meal.mealDate,
     slot: meal.mealType,
+    note: meal.note,
     photos: meal.photos.map((photo) => ({ id: photo.id, url: `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}`, filename: photo.filename ?? undefined, origin: photo.origin, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null })),
     analysis: legacyAnalysis,
     mouthHeat: meal.mouthWarmthIntensity,
     stomachLoad: meal.stomachOverfullIntensity,
     status: meal.status === "confirmed" ? "confirmed" : meal.analysis?.status === "queued" || meal.analysis?.status === "running" ? "analyzing" : meal.analysis?.status === "failed" ? "error" : meal.analysis?.status === "completed" ? "review" : meal.lastSuccessfulAnalysis ? "review" : "draft",
+    entryState: entryStateForApi(meal),
     analysisStatus: meal.analysis?.status ?? null,
     error: meal.analysis?.error ?? null,
     errorCode: meal.analysis?.errorCode ?? null,

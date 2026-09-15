@@ -12,6 +12,34 @@ describe("meal API local preview flow", () => {
     delete process.env.SOMA_LOCAL_PREVIEW;
   });
 
+  it("creates a skipped entry without a note, nutrition or AI analysis", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-09-10", mealType: "lunch", entryState: "skipped" }), headers: { "content-type": "application/json" } }));
+    expect(created.status).toBe(201);
+    const body = await created.json() as { meal: { id: string; entryState: string; note: string | null; analysis: unknown; photos: unknown[] } };
+    expect(body.meal).toMatchObject({ entryState: "skipped", note: null, analysis: null, photos: [] });
+
+    const listed = await listMeals(new Request("https://soma.example/api/meals?date=2026-09-10"));
+    expect((await listed.json()).meals.lunch).toMatchObject({ id: body.meal.id, entryState: "skipped", analysis: null });
+  });
+
+  it("reactivates a skipped entry without losing its note or analysis", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-09-11", mealType: "dinner", note: "Pâtes et tomates", entryState: "recorded" }), headers: { "content-type": "application/json" } }));
+    const initial = (await created.json()).meal as { id: string };
+    const analysed = await analyzeMeal(new Request(`https://soma.example/api/meals/${initial.id}/analyze`, { method: "POST", body: "{}", headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: initial.id }) });
+    expect(analysed.status).toBe(200);
+    const analysedMeal = (await analysed.json()).meal as { analysis: { id: string } };
+
+    const skipped = await patchMeal(new Request(`https://soma.example/api/meals/${initial.id}`, { method: "PATCH", body: JSON.stringify({ entryState: "skipped" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: initial.id }) });
+    expect(skipped.status).toBe(200);
+    expect((await skipped.json()).meal).toMatchObject({ entryState: "skipped", note: "Pâtes et tomates", analysis: { id: analysedMeal.analysis.id } });
+
+    const reactivated = await patchMeal(new Request(`https://soma.example/api/meals/${initial.id}`, { method: "PATCH", body: JSON.stringify({ entryState: "recorded" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: initial.id }) });
+    expect(reactivated.status).toBe(200);
+    expect((await reactivated.json()).meal).toMatchObject({ entryState: "recorded", note: "Pâtes et tomates", analysis: { id: analysedMeal.analysis.id } });
+  });
+
   it("creates, uploads, analyses and confirms a meal on an iPhone-like request", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-08-31", mealType: "lunch", idempotencyKey: "route-preview-idempotency" }), headers: { "content-type": "application/json" } }));

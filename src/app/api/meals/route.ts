@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createMealInputSchema } from "@/domain/meals";
+import { createMealInputSchema, mealEntryStateSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
+import { setMealEntryState } from "@/repositories/meals";
 import { legacyAnalysisToStructured, mealToApi, mealToLegacyApi } from "@/services/meal-api";
 import { createPreviewMeal, listPreviewMeals } from "@/services/meal-preview";
 import { createMeal, listMeals, MealServiceError, updateMealRecord } from "@/services/meals";
@@ -18,6 +19,12 @@ function serviceError(error: unknown) {
   if (!(error instanceof MealServiceError)) return NextResponse.json({ error: "Meals are temporarily unavailable." }, { status: 500 });
   const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
   return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code }, { status });
+}
+
+async function persistMealEntryState(userId: string, mealId: string, entryState: "recorded" | "skipped") {
+  const meal = await setMealEntryState(userId, mealId, entryState);
+  if (!meal) throw new MealServiceError("unavailable", "The meal state could not be saved.");
+  return meal;
 }
 
 export async function GET(request: Request) {
@@ -54,6 +61,10 @@ export async function PUT(request: Request) {
   const mealType = rawMeal?.slot === "breakfast" || rawMeal?.slot === "lunch" || rawMeal?.slot === "dinner" || rawMeal?.slot === "snack" ? rawMeal.slot : null;
   if (!mealId || !mealDate || !mealType) return NextResponse.json({ error: "The meal is invalid." }, { status: 400 });
   const status = rawMeal?.status === "confirmed" ? "confirmed" : "draft";
+  const hasEntryState = Object.prototype.hasOwnProperty.call(rawMeal ?? {}, "entryState");
+  const parsedEntryState = hasEntryState ? mealEntryStateSchema.safeParse(rawMeal?.entryState) : null;
+  if (hasEntryState && !parsedEntryState?.success) return NextResponse.json({ error: "The meal entry state is invalid." }, { status: 400 });
+  const entryState = parsedEntryState?.success ? parsedEntryState.data : undefined;
   const note = typeof rawMeal?.note === "string" ? rawMeal.note : rawMeal?.note === null ? null : undefined;
   const mouthHeat = rawMeal?.mouthHeat === null || rawMeal?.mouthHeat === undefined ? null : rawMeal.mouthHeat;
   const stomachLoad = rawMeal?.stomachLoad === null || rawMeal?.stomachLoad === undefined ? null : rawMeal.stomachLoad;
@@ -66,15 +77,16 @@ export async function PUT(request: Request) {
     const current = findPreviewMeal(user.id, mealId);
     if (!current) return NextResponse.json({ error: "Meal not found." }, { status: 404 });
     try {
-      const updated = updatePreviewMeal(user.id, mealId, { mealDate, mealType, note, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
+      const updated = updatePreviewMeal(user.id, mealId, { mealDate, mealType, note, status, ...(entryState ? { entryState } : {}), mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
       return NextResponse.json({ meal: mealToLegacyApi(updated as NonNullable<typeof updated>), preview: true });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Meal could not be saved." }, { status: 400 });
     }
   }
   try {
-    const updated = await updateMealRecord(user.id, mealId, { mealDate, mealType, note, status, mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
-    return NextResponse.json({ meal: mealToLegacyApi(updated) });
+    const updated = await updateMealRecord(user.id, mealId, { mealDate, mealType, note, status, ...(entryState ? { entryState } : {}), mouthWarmthIntensity: typeof mouthHeat === "number" ? mouthHeat as 1 | 2 | 3 | 4 | 5 : null, stomachOverfullIntensity: typeof stomachLoad === "number" ? stomachLoad as 1 | 2 | 3 | 4 | 5 : null, confirmedAnalysis });
+    const persisted = entryState ? await persistMealEntryState(user.id, mealId, entryState) : updated;
+    return NextResponse.json({ meal: mealToLegacyApi(persisted) });
   } catch (error) {
     return serviceError(error);
   }
@@ -87,17 +99,23 @@ export async function POST(request: Request) {
   const headerKey = request.headers.get("Idempotency-Key") ?? undefined;
   const parsed = createMealInputSchema.safeParse({ ...(body ?? {}), ...(headerKey ? { idempotencyKey: headerKey } : {}) });
   if (!parsed.success) return NextResponse.json({ error: "Check the meal date, slot, and feelings." }, { status: 400 });
+  // A skipped slot is not a confirmed meal. Keep the existing service's
+  // evidence checks for recorded meals, while allowing an empty skip.
+  const createInput = parsed.data.entryState === "skipped" ? { ...parsed.data, status: undefined } : parsed.data;
   if (isLocalPreviewMode()) {
     try {
-      const meal = createPreviewMeal(user.id, parsed.data);
+      const meal = createPreviewMeal(user.id, createInput);
       return NextResponse.json({ meal: mealToApi(meal), created: true, preview: true }, { status: 201 });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Meal could not be created." }, { status: 400 });
     }
   }
   try {
-    const result = await createMeal(user.id, parsed.data);
-    return NextResponse.json({ meal: mealToApi(result.meal), created: result.created }, { status: result.created ? 201 : 200 });
+    const result = await createMeal(user.id, createInput);
+    const meal = parsed.data.entryState
+      ? await persistMealEntryState(user.id, result.meal.id, parsed.data.entryState)
+      : result.meal;
+    return NextResponse.json({ meal: mealToApi(meal), created: result.created }, { status: result.created ? 201 : 200 });
   } catch (error) {
     return serviceError(error);
   }

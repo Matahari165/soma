@@ -1,16 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import type { ConfirmedMealRecord } from "@/domain/lab/meals";
+import type { ConfirmedMealFood, ConfirmedMealRecord } from "@/domain/lab/meals";
+import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
 
 import { buildMealScoreOverview } from "./meal-overview";
 
 const targets = {
-  caloriesKcal: { low: 900, likely: 1000, high: 1100 },
+  ...DEFAULT_NUTRITION_TARGETS,
+  caloriesKcal: { low: 900, likely: 1_000, high: 1_100 },
   proteinG: { low: 40, likely: 50, high: 60 },
-  fatG: { low: 20, likely: 30, high: 40 },
   carbsG: { low: 100, likely: 130, high: 160 },
-  fiberG: { low: 15, likely: 20, high: 25 },
+  fatG: { low: 20, likely: 30, high: 40 },
+  fiberG: { low: 20, likely: 25, high: 30 },
 };
+
+function food(name: string, foodGroups: ConfirmedMealFood["foodGroups"] = ["vegetable"]): ConfirmedMealFood {
+  return { name, varietyKey: name.toLocaleLowerCase("fr-FR"), foodGroups, novaGroup: 1, qualityProperties: ["fiber_source"] };
+}
 
 function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "id" | "mealDate">): ConfirmedMealRecord {
   return {
@@ -18,83 +24,82 @@ function meal(input: Partial<ConfirmedMealRecord> & Pick<ConfirmedMealRecord, "i
     mealDate: input.mealDate,
     mealType: input.mealType ?? "lunch",
     status: "confirmed",
+    entryState: input.entryState,
     origin: input.origin ?? "homemade",
-    caloriesKcal: input.caloriesKcal === undefined ? { low: 950, likely: 1000, high: 1050 } : input.caloriesKcal,
-    proteinG: input.proteinG === undefined ? { low: 45, likely: 50, high: 55 } : input.proteinG,
-    carbsG: input.carbsG === undefined ? { low: 120, likely: 130, high: 140 } : input.carbsG,
-    fatG: input.fatG === undefined ? { low: 25, likely: 30, high: 35 } : input.fatG,
-    fiberG: input.fiberG === undefined ? { low: 18, likely: 20, high: 22 } : input.fiberG,
-    foods: input.foods,
-    analysisConfidence: input.analysisConfidence,
+    caloriesKcal: input.caloriesKcal === undefined ? { low: 1_000, likely: 1_000, high: 1_000 } : input.caloriesKcal,
+    proteinG: input.proteinG === undefined ? { low: 50, likely: 50, high: 50 } : input.proteinG,
+    carbsG: input.carbsG === undefined ? { low: 130, likely: 130, high: 130 } : input.carbsG,
+    fatG: input.fatG === undefined ? { low: 30, likely: 30, high: 30 } : input.fatG,
+    fiberG: input.fiberG === undefined ? { low: 25, likely: 25, high: 25 } : input.fiberG,
+    sugarG: input.sugarG,
+    addedSugarG: input.addedSugarG === undefined ? { low: 0, likely: 0, high: 0 } : input.addedSugarG,
+    foods: input.foods ?? [food("courgette")],
+    analysisConfidence: input.analysisConfidence ?? "high",
     mouthHeat: null,
     stomachOverfullness: null,
   };
 }
 
 describe("buildMealScoreOverview", () => {
-  it("returns current scores and a sparse trend without converting unknown days to zero", () => {
+  it("construit cinq dimensions et conserve les jours absents à null", () => {
     const overview = buildMealScoreOverview({
-      date: "2026-09-06",
+      date: "2026-09-15",
       targets,
-      records: [
-        meal({
-          id: "meal-current",
-          mealDate: "2026-09-06",
-          analysisConfidence: "high",
-          foods: [
-            { name: "Tomate", varietyKey: "tomate", foodGroups: ["vegetable"] },
-            { name: "Riz", varietyKey: "riz", foodGroups: ["refined_grain"] },
-          ],
-        }),
-        meal({ id: "meal-previous", mealDate: "2026-09-04", proteinG: null }),
-      ],
+      records: [meal({ id: "current", mealDate: "2026-09-15" })],
     });
 
-    expect(overview.targetScore).toMatchObject({ score: 100, status: "ready", coverage: 1 });
-    expect(overview.evidenceScore.components).toMatchObject({ mealCoverage: 25, analysisCoverage: 100, analysisConfidence: 100 });
-    expect(overview.foodVarietyCount).toBe(2);
-    expect(overview.foodGroupCount).toBe(2);
     expect(overview.balanceScore?.score).toEqual(expect.any(Number));
-    expect(overview.rolling).toEqual([
-      expect.objectContaining({ days: 14, coveredDays: 2, readyDays: 0, observedDays: 2, totalDays: 14 }),
-      expect.objectContaining({ days: 28, coveredDays: 2, readyDays: 0, observedDays: 2, totalDays: 28 }),
-    ]);
-    expect(overview.rolling[0]?.effectiveDays).toBeLessThan(2);
-    expect(overview.rolling[0]?.effectiveDays).toBeGreaterThan(0);
+    expect(Object.keys(overview.dimensionScores)).toHaveLength(5);
     expect(overview.scoreTrend).toHaveLength(28);
+    expect(overview.scoreTrend.at(-1)?.balanceScore).toEqual(expect.any(Number));
     expect(overview.scoreTrend.at(-2)?.balanceScore).toBeNull();
-    expect(overview.trend).toEqual([
-      expect.objectContaining({ date: "2026-09-04", targetScore: 100 }),
-      expect.objectContaining({ date: "2026-09-06", targetScore: 100, evidenceScore: 85 }),
+    expect(overview.scoreTrend.at(-2)?.dimensionScores).toEqual({});
+    expect(overview.rolling).toEqual([
+      expect.objectContaining({ days: 14, observedDays: 1, readyDays: 1, totalDays: 14 }),
+      expect.objectContaining({ days: 28, observedDays: 1, readyDays: 1, totalDays: 28 }),
     ]);
   });
 
-  it("discounts limited days in a rolling balance instead of averaging them equally", () => {
-    const completeDay = [
-      meal({ id: "complete-breakfast", mealDate: "2026-09-01", mealType: "breakfast", analysisConfidence: "high", foods: [{ name: "Avoine", qualityProperties: ["whole_food"], novaGroup: 1, sugarExposure: { liquid: false, concentrated: false } }] }),
-      meal({ id: "complete-lunch", mealDate: "2026-09-01", mealType: "lunch", analysisConfidence: "high", foods: [{ name: "Lentilles", qualityProperties: ["whole_food", "protein_source"], novaGroup: 1, sugarExposure: { liquid: false, concentrated: false } }] }),
-      meal({ id: "complete-snack", mealDate: "2026-09-01", mealType: "snack", analysisConfidence: "high", foods: [{ name: "Pomme", qualityProperties: ["whole_food", "fiber_source"], novaGroup: 1, sugarExposure: { liquid: false, concentrated: false } }] }),
-      meal({ id: "complete-dinner", mealDate: "2026-09-01", mealType: "dinner", analysisConfidence: "high", foods: [{ name: "Riz", qualityProperties: ["whole_food"], novaGroup: 1, sugarExposure: { liquid: false, concentrated: false } }] }),
-    ];
-    const limitedDay = [meal({ id: "limited", mealDate: "2026-09-02", mealType: "lunch", analysisConfidence: "low", addedSugarG: { low: 100, likely: 100, high: 100 }, foods: [{ name: "Soda", qualityProperties: [], novaGroup: 4, sugarExposure: { liquid: true, concentrated: true } }] })];
-    const overview = buildMealScoreOverview({ records: [...completeDay, ...limitedDay], targets, date: "2026-09-02" });
-    const points = overview.scoreTrend.filter((point) => point.balanceScore !== null);
-    const complete = points.find((point) => point.date === "2026-09-01")!;
-    const limited = points.find((point) => point.date === "2026-09-02")!;
+  it("moyenne les jours observés sans utiliser de couverture cachée", () => {
+    const overview = buildMealScoreOverview({
+      date: "2026-09-15",
+      targets,
+      records: [
+        meal({ id: "low", mealDate: "2026-09-14", addedSugarG: { low: 20, likely: 20, high: 20 } }),
+        meal({ id: "high", mealDate: "2026-09-15", addedSugarG: { low: 0, likely: 0, high: 0 } }),
+      ],
+    });
+    const previous = overview.scoreTrend.find((point) => point.date === "2026-09-14")?.balanceScore;
+    const current = overview.scoreTrend.find((point) => point.date === "2026-09-15")?.balanceScore;
 
-    expect(complete.balanceStatus).toBe("ready");
-    expect(limited.balanceStatus).toBe("limited");
-    expect(overview.rolling[1]?.effectiveDays).toBeCloseTo((complete.balanceCoverage! * complete.balanceConfidence!) + (limited.balanceCoverage! * limited.balanceConfidence!), 1);
-    expect(overview.rolling[1]?.score).toBeGreaterThan(Math.min(complete.balanceScore!, limited.balanceScore!));
-    expect(overview.rolling[1]?.score).toBeLessThan(Math.max(complete.balanceScore!, limited.balanceScore!));
+    expect(previous).not.toBeNull();
+    expect(current).not.toBeNull();
+    expect(overview.rolling[0]?.score).toBe(Math.round(((previous ?? 0) + (current ?? 0)) / 2));
+    expect(overview.rolling[0]).not.toHaveProperty("coverage");
+    expect(overview.rolling[0]).not.toHaveProperty("effectiveDays");
+    expect(overview.balanceScore).not.toHaveProperty("coverage");
   });
 
-  it("keeps a day without a confirmed meal distinguishable from a limited score", () => {
-    const overview = buildMealScoreOverview({ records: [], targets, date: "2026-09-06" });
+  it("laisse l'adéquation indisponible lorsqu'un repas principal est non renseigné", () => {
+    const overview = buildMealScoreOverview({
+      date: "2026-09-15",
+      targets,
+      records: [meal({ id: "lunch", mealDate: "2026-09-15", mealType: "lunch" })],
+      slotStatesByDate: new Map([
+        ["2026-09-15", { breakfast: "recorded", lunch: "recorded", dinner: "not_recorded" }],
+      ]),
+    });
 
-    expect(overview.targetScore).toBeNull();
-    expect(overview.evidenceScore.score).toBeNull();
-    expect(overview.foodVarietyCount).toBeNull();
-    expect(overview.trend).toEqual([]);
+    expect(overview.balanceScore?.components.find((item) => item.key === "nutritionAdequacy")?.score).toBeNull();
+    expect(overview.balanceScore?.score).toEqual(expect.any(Number));
+  });
+
+  it("retourne un aperçu sans score pour une journée sans repas", () => {
+    const overview = buildMealScoreOverview({ date: "2026-09-15", targets, records: [] });
+
+    expect(overview.balanceScore).toBeNull();
+    expect(overview.dimensionScores).toEqual({});
+    expect(overview.scoreTrend.every((point) => point.balanceScore === null)).toBe(true);
+    expect(overview.rolling.every((item) => item.score === null && item.observedDays === 0)).toBe(true);
   });
 });

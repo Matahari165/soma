@@ -8,6 +8,7 @@ import {
   validateMealAnalysis,
   type CreateMealInput,
   type Meal,
+  type MealAnalysis,
   type MealAnalysisCorrection,
   type MealFeeling,
   type MealOrigin,
@@ -58,6 +59,11 @@ export class MealServiceError extends Error {
 const PHOTO_PURGE_ERROR = "Les photos du repas n’ont pas pu être purgées. Réessaie pour terminer la confirmation.";
 const ANALYSIS_LEASE_TTL_MS = 120_000;
 const ANALYSIS_HEARTBEAT_MS = 30_000;
+
+type ConfirmedMealFoodWithSugar = NonNullable<ConfirmedMealRecord["foods"]>[number] & {
+  sugarG?: NutritionEstimate | null;
+  addedSugarG?: NutritionEstimate | null;
+};
 
 async function claimMealLease(lockKey: string, userId: string, ttlMs: number) {
   if (typeof claimCloudflareLockWithToken === "function") {
@@ -787,6 +793,29 @@ function nutritionEstimate(value: { low: number; likely: number; high: number } 
   return { low: value.low, likely: value.likely, high: value.high };
 }
 
+function confirmedMealFood(food: MealAnalysis["foods"][number]): ConfirmedMealFoodWithSugar {
+  return {
+    id: food.id,
+    name: food.name,
+    kind: food.kind,
+    parentId: food.parentId,
+    portion: food.portion ?? null,
+    estimatedGrams: food.estimatedGrams ?? null,
+    quantity: food.quantity ?? null,
+    sugarG: nutritionEstimate(food.sugarGrams),
+    addedSugarG: nutritionEstimate(food.addedSugarGrams),
+    varietyKey: food.varietyKey ?? null,
+    foodGroups: food.foodGroups,
+    alcoholic: food.alcoholic,
+    novaGroup: food.novaGroup,
+    sugarExposure: food.sugarExposure,
+    qualityProperties: food.qualityProperties,
+    observation: food.observation,
+    countedInTotals: food.countedInTotals,
+    confidence: food.confidence,
+  };
+}
+
 function mealOrigin(meal: Meal): ConfirmedMealRecord["origin"] {
   const origins = new Set(meal.photos.map((photo) => photo.origin));
   return origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
@@ -812,6 +841,7 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
       mealDate: meal.mealDate,
       mealType: meal.mealType,
       status: "confirmed" as const,
+      entryState: meal.entryState,
       origin: mealOrigin(meal),
       caloriesKcal: nutritionEstimate(totals?.calories),
       proteinG: nutritionEstimate(totals?.proteinGrams),
@@ -820,24 +850,7 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
       fiberG: nutritionEstimate(totals?.fiberGrams),
       sugarG: nutritionEstimate(totals?.sugarGrams),
       addedSugarG: nutritionEstimate(totals?.addedSugarGrams),
-      foods: result?.foods.map((food) => ({
-        id: food.id,
-        name: food.name,
-        kind: food.kind,
-        parentId: food.parentId,
-        portion: food.portion ?? null,
-        estimatedGrams: food.estimatedGrams ?? null,
-        quantity: food.quantity ?? null,
-        varietyKey: food.varietyKey ?? null,
-        foodGroups: food.foodGroups,
-        alcoholic: food.alcoholic,
-        novaGroup: food.novaGroup,
-        sugarExposure: food.sugarExposure,
-        qualityProperties: food.qualityProperties,
-        observation: food.observation,
-        countedInTotals: food.countedInTotals,
-        confidence: food.confidence,
-      })),
+      foods: result?.foods.map(confirmedMealFood),
       analysisConfidence: result?.confidence,
       mouthHeat: meal.mouthWarmthIntensity,
       stomachOverfullness: meal.stomachOverfullIntensity,

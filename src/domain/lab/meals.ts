@@ -29,6 +29,8 @@ export type ConfirmedMealRecord = {
   mealDate: string;
   mealType: MealType;
   status: "confirmed";
+  /** Explicit journal state; old records omit it and remain recorded. */
+  entryState?: "recorded" | "skipped";
   origin: ConfirmedMealOrigin;
   caloriesKcal: NutritionEstimate | null;
   proteinG: NutritionEstimate | null;
@@ -65,6 +67,9 @@ export type ConfirmedMealFood = {
   alcoholic?: boolean;
   novaGroup?: MealNovaGroup | null;
   sugarExposure?: MealSugarExposure | null;
+  /** Per-food values used by the unified sugar dimension. */
+  sugarG?: NutritionEstimate | null;
+  addedSugarG?: NutritionEstimate | null;
   qualityProperties?: readonly MealQualityProperty[];
   countedInTotals?: boolean;
   confidence?: "low" | "medium" | "high";
@@ -231,7 +236,7 @@ function sumNutrition(records: readonly ConfirmedMealRecord[], read: (record: Co
 export function aggregateConfirmedMeals(records: readonly ConfirmedMealRecord[]): MealDailyAggregate[] {
   const byId = new Map<string, ConfirmedMealRecord>();
   for (const record of records) {
-    if (!record || typeof record.id !== "string" || !record.id || record.status !== "confirmed") continue;
+    if (!record || typeof record.id !== "string" || !record.id || record.status !== "confirmed" || record.entryState === "skipped") continue;
     // The last confirmed version is the current analysis when a meal was
     // re-analysed after the user corrected its photos or portions.
     byId.set(record.id, record);

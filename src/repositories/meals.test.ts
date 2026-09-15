@@ -94,7 +94,7 @@ describe("meal photo deletion", () => {
 
   it("limits list children to the returned meal ids and selects only list columns", async () => {
     state.responses.push(
-      { data: [{ id: "meal-current", user_id: "user-1", meal_date: "2026-09-15", meal_type: "lunch", status: "confirmed", created_at: "2026-09-15T12:00:00.000Z", updated_at: "2026-09-15T12:00:00.000Z" }], error: null },
+      { data: [{ id: "meal-current", user_id: "user-1", meal_date: "2026-09-15", meal_type: "lunch", status: "confirmed", entry_state: "skipped", created_at: "2026-09-15T12:00:00.000Z", updated_at: "2026-09-15T12:00:00.000Z" }], error: null },
       { data: [{ id: "photo-current", user_id: "user-1", meal_id: "meal-current", origin: "homemade", object_path: "private/photo", mime_type: "image/jpeg", bytes: 10, created_at: "2026-09-15T12:01:00.000Z" }], error: null },
       { data: [], error: null },
       { data: [], error: null },
@@ -103,7 +103,7 @@ describe("meal photo deletion", () => {
     const meals = await listMeals("user-1", { from: "2026-09-01", to: "2026-09-15" });
 
     expect(meals).toHaveLength(1);
-    expect(meals[0]).toMatchObject({ id: "meal-current", status: "confirmed", photos: [{ id: "photo-current" }] });
+    expect(meals[0]).toMatchObject({ id: "meal-current", status: "confirmed", entryState: "skipped", photos: [{ id: "photo-current" }] });
     expect(state.tables).toEqual(["meals", "meal_photos", "meal_analyses", "meal_feelings"]);
     expect(state.filters).toEqual([
       { table: "meal_photos", field: "meal_id", values: ["meal-current"] },
@@ -111,7 +111,7 @@ describe("meal photo deletion", () => {
       { table: "meal_feelings", field: "meal_id", values: ["meal-current"] },
     ]);
     expect(state.selectors).toEqual([
-      expect.objectContaining({ table: "meals", columns: "id,user_id,meal_date,meal_type,note,status,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
+      expect.objectContaining({ table: "meals", columns: "id,user_id,meal_date,meal_type,note,status,entry_state,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
       expect.objectContaining({ table: "meal_photos", columns: "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at" }),
       expect.objectContaining({ table: "meal_analyses", columns: "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at" }),
       expect.objectContaining({ table: "meal_feelings", columns: "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
@@ -143,6 +143,6 @@ describe("meal photo deletion", () => {
       { data: [{ id: "feeling-1", user_id: "user-1", meal_id: "meal-1", mouth_warmth_intensity: null, stomach_overfull_intensity: 2, created_at: "2026-08-31T10:00:00.000Z", updated_at: "2026-08-31T10:00:00.000Z" }], error: null },
     );
     const { findMeal } = await import("./meals");
-    await expect(findMeal("user-1", "meal-1")).resolves.toMatchObject({ mouthWarmthIntensity: null, stomachOverfullIntensity: 2 });
+    await expect(findMeal("user-1", "meal-1")).resolves.toMatchObject({ entryState: "recorded", mouthWarmthIntensity: null, stomachOverfullIntensity: 2 });
   });
 });

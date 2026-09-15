@@ -230,6 +230,10 @@
 .photoInputCompact { display: flex; gap: 6px; }
 
 .skippedState {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 18px;
   border-top: 1px solid var(--line);
   color: var(--muted);
@@ -237,6 +241,8 @@
   font-size: .66rem;
   text-transform: uppercase;
 }
+
+.skippedState > span { flex: 1 1 auto; }
 
 .draftMeal {
   display: grid;

@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { mealAnalysisSchema, normalizeMealFeeling, validateMealAnalysis } from "./meals";
+import { createMealInputSchema, mealAnalysisSchema, normalizeMealFeeling, updateMealInputSchema, validateMealAnalysis } from "./meals";
 
 describe("meal domain", () => {
   it("keeps explicit none separate from an unanswered feeling", () => {
     expect(normalizeMealFeeling("none")).toBe(0);
     expect(normalizeMealFeeling(undefined)).toBeNull();
     expect(normalizeMealFeeling(5)).toBe(5);
+  });
+
+  it("accepts an explicit skipped meal entry without requiring meal evidence", () => {
+    expect(createMealInputSchema.parse({ mealDate: "2026-09-15", mealType: "lunch", entryState: "skipped" })).toMatchObject({ entryState: "skipped" });
+    expect(updateMealInputSchema.parse({ entryState: "skipped" })).toEqual({ entryState: "skipped" });
+    expect(() => createMealInputSchema.parse({ mealDate: "2026-09-15", mealType: "lunch", entryState: "absent" })).toThrow();
   });
 
   it("requires low, likely, and high nutrition estimates in order", () => {

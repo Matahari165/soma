@@ -11,6 +11,7 @@ import type {
 } from "@/domain/meals";
 import { MAX_MEAL_PHOTO_BYTES, MAX_MEAL_PHOTOS, MAX_MEAL_PHOTOS_BYTES, normalizeMealFeeling } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
+import { MEAL_PLANT_FOOD_GROUPS } from "@/domain/meal-taxonomy";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewUser } from "@/lib/local-preview";
 
@@ -41,11 +42,10 @@ function previewDemoQuantity(value: number, unit: string, grams: number) {
 
 function previewDemoFoodMetadata(food: MealAnalysis["foods"][number]) {
   const groups = new Set(food.foodGroups ?? []);
-  const isWholeFood = groups.has("fruit") || groups.has("vegetable") || groups.has("legume") || groups.has("whole_grain");
-  const isFiberSource = isWholeFood || groups.has("nuts_seeds");
+  const isPlantFood = [...MEAL_PLANT_FOOD_GROUPS].some((group) => groups.has(group));
+  const isFiberSource = isPlantFood || groups.has("nuts_seeds");
   const isProteinSource = groups.has("animal_protein") || groups.has("plant_protein") || groups.has("egg") || groups.has("dairy");
   const properties = [
-    isWholeFood ? "whole_food" as const : null,
     isFiberSource ? "fiber_source" as const : null,
     isProteinSource ? "protein_source" as const : null,
     groups.has("nuts_seeds") ? "unsaturated_fat_source" as const : null,
@@ -110,6 +110,7 @@ function ensureLocalPreviewDemoMeal(userId: string) {
     userId,
     mealDate,
     mealType: "lunch",
+    entryState: "recorded",
     note: "Déjeuner de démonstration : poulet grillé, riz basmati, légumes rôtis, salade verte aux noix, yaourt grec, fruits rouges et miel.",
     status: "confirmed",
     mouthWarmthIntensity: null,
@@ -150,6 +151,7 @@ export function createPreviewMeal(userId: string, input: CreateMealInput): Meal 
     userId,
     mealDate: input.mealDate,
     mealType: input.mealType,
+    entryState: input.entryState ?? "recorded",
     note: input.note ?? null,
     status: input.status ?? "draft",
     mouthWarmthIntensity: normalizeMealFeeling(input.mouthWarmthIntensity),
@@ -198,6 +200,7 @@ export function updatePreviewMeal(userId: string, mealId: string, input: UpdateM
   if (input.status === "confirmed" && activePhotos.length > 0 && !hasPreservedAnalysis(meal, input.confirmedAnalysis)) throw new Error("Analyse les photos avant de confirmer ce repas.");
   if (input.mealDate !== undefined) meal.mealDate = input.mealDate;
   if (input.mealType !== undefined) meal.mealType = input.mealType;
+  if (input.entryState !== undefined) meal.entryState = input.entryState;
   if (input.note !== undefined) meal.note = input.note;
   if (input.status !== undefined) meal.status = input.status;
   if (input.mouthWarmthIntensity !== undefined) meal.mouthWarmthIntensity = normalizeMealFeeling(input.mouthWarmthIntensity);
@@ -284,6 +287,7 @@ export function analyzePreviewMeal(userId: string, mealId: string, options?: { c
   void options;
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
+  if (meal.entryState === "skipped") throw new Error("Réactive ce créneau avant de lancer l’analyse.");
   const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
   const note = meal.note?.trim() ?? "";
   if (!availablePhotos.length && !note) throw new Error("Add a photo or a description before analysing a meal.");
@@ -311,6 +315,34 @@ function previewNutrition(value: NutritionEstimate | null | undefined): Nutritio
   return value ? { ...value } : null;
 }
 
+type PreviewConfirmedMealFoodWithSugar = NonNullable<ConfirmedMealRecord["foods"]>[number] & {
+  sugarG?: NutritionEstimate | null;
+  addedSugarG?: NutritionEstimate | null;
+};
+
+function previewConfirmedMealFood(food: MealAnalysis["foods"][number]): PreviewConfirmedMealFoodWithSugar {
+  return {
+    id: food.id,
+    name: food.name,
+    kind: food.kind,
+    parentId: food.parentId,
+    portion: food.portion ?? null,
+    estimatedGrams: food.estimatedGrams ?? null,
+    quantity: food.quantity ?? null,
+    sugarG: previewNutrition(food.sugarGrams),
+    addedSugarG: previewNutrition(food.addedSugarGrams),
+    varietyKey: food.varietyKey ?? null,
+    foodGroups: food.foodGroups,
+    alcoholic: food.alcoholic,
+    novaGroup: food.novaGroup,
+    sugarExposure: food.sugarExposure,
+    qualityProperties: food.qualityProperties,
+    observation: food.observation,
+    countedInTotals: food.countedInTotals,
+    confidence: food.confidence,
+  };
+}
+
 export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRecord[] {
   return listPreviewMeals(userId).flatMap((meal) => {
     if (meal.status !== "confirmed") return [];
@@ -318,6 +350,6 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
     const origins = new Set(meal.photos.map((photo) => photo.origin));
     const origin = origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
     const totals = result?.totals;
-    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map((food) => ({ id: food.id, name: food.name, kind: food.kind, parentId: food.parentId, portion: food.portion ?? null, estimatedGrams: food.estimatedGrams ?? null, quantity: food.quantity ?? null, varietyKey: food.varietyKey ?? null, foodGroups: food.foodGroups, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, observation: food.observation, countedInTotals: food.countedInTotals, confidence: food.confidence })), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
+    return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, entryState: meal.entryState, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map(previewConfirmedMealFood), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
 }

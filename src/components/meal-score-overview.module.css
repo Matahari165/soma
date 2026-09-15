@@ -49,7 +49,6 @@
 .panelHeading h3 { font-size: var(--lab-type-group, 16px); font-weight: 560; line-height: 1.25; }
 
 .rollingLabel,
-.coverageList dt,
 .dimensionDetailMetrics dt,
 .chartScale,
 .chartCaption {
@@ -143,15 +142,32 @@
 
 .dailyPanel { min-width: 0; padding: 20px 0 20px 24px; border-left: 1px solid var(--score-rule); }
 .dailyScore { display: flex; align-items: baseline; gap: 5px; margin-top: 12px; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--score-display-size); font-weight: 400; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-.dailyScore span, .rollingScore span, .effectScore small { color: var(--score-muted); font: inherit; font-size: var(--lab-type-ui); letter-spacing: -.02em; }
+.dailyScore span, .rollingScore span { color: var(--score-muted); font: inherit; font-size: var(--lab-type-ui); letter-spacing: -.02em; }
 .scoreRail { height: 2px; margin-top: 24px; border: 0; border-radius: 2px; background: var(--score-rule); }
 .scoreRail span { display: block; height: 100%; min-width: 2px; background: var(--score-positive); }
-.coverageList { display: grid; gap: 8px; margin: 24px 0 0; }
-.coverageList div { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 16px; padding-block: 6px; border-bottom: 1px solid var(--score-rule); }
-.coverageList dd { margin: 0; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--lab-type-group); font-variant-numeric: tabular-nums; }
-.coverageNote { margin: 12px 0 0; color: var(--score-muted); font-size: var(--lab-type-label, 11px); line-height: 1.5; }
-.missingNote { margin: 8px 0 0; color: var(--score-muted); font-size: var(--lab-type-label, 11px); line-height: 1.5; }
-.missingNote a { color: var(--score-text); }
+.scoreMetaList { display: grid; gap: 8px; margin: 24px 0 0; }
+.scoreMetaList div { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 16px; padding-block: 6px; border-bottom: 1px solid var(--score-rule); }
+.scoreMetaList dt { color: var(--score-muted); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--lab-type-label, 11px); letter-spacing: .02em; }
+.scoreMetaList dd { margin: 0; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--lab-type-group); font-variant-numeric: tabular-nums; }
+.scoreNote { margin: 12px 0 0; color: var(--score-muted); font-size: var(--lab-type-label, 11px); line-height: 1.5; }
+
+.subscoreSection,
+.dimensionHistory { margin-top: 24px; }
+.subscoreSection h4,
+.dimensionHistory h4 { margin: 0 0 10px; color: var(--score-text); font-size: var(--lab-type-label, 11px); font-weight: 560; letter-spacing: .02em; text-transform: uppercase; }
+.subscoreList { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.subscoreItem { min-width: 0; }
+.subscoreItem > div:first-child { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 12px; }
+.subscoreItem strong { min-width: 0; color: var(--score-text); font-size: 12px; font-weight: 520; }
+.subscoreItem > div:first-child > span { flex: 0 0 auto; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 12px; font-variant-numeric: tabular-nums; }
+.subscoreItem > div:first-child small { color: var(--score-muted); font-size: 10px; }
+.subscoreMeta { display: flex; justify-content: space-between; gap: 12px; margin-top: 3px; color: var(--score-muted); font-size: 11px; line-height: 1.35; }
+.subscoreMeta span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subscoreRail { height: 2px; margin-top: 6px; background: var(--score-rule); }
+.subscoreRail span { display: block; height: 100%; min-width: 2px; background: var(--score-positive); }
+.dimensionHistory p { margin: 0; color: var(--score-muted); font-size: 12px; }
+.dimensionHistoryBars { display: grid; min-width: 0; grid-template-columns: repeat(28, minmax(2px, 1fr)); align-items: end; gap: 2px; height: 52px; padding-top: 8px; border-bottom: 1px solid var(--score-rule); }
+.dimensionHistoryBars span { display: block; min-height: 2px; height: 100%; background: var(--score-positive); transform: scaleY(var(--bar-scale, 0)); transform-origin: bottom; }
 
 .historySection { min-width: 0; padding: 28px 0 32px; border-bottom: 1px solid var(--score-rule-strong); }
 .historyContent { display: grid; grid-template-columns: minmax(180px, .45fr) minmax(0, 1.55fr); gap: clamp(24px, 5vw, 72px); margin-top: 20px; }
@@ -191,12 +207,10 @@
   .dimensionDetailShell[data-open="true"] { grid-template-rows: 1fr; }
   .dimensionDetail { position: static; width: auto; max-height: none; min-height: 0; padding: 16px 0 0; border: 0; border-top: 1px solid transparent; transform: none; transition: opacity var(--score-radar-motion) var(--score-radar-ease), border-color var(--score-radar-motion) var(--score-radar-ease), visibility 0s linear var(--score-radar-motion); }
   .dimensionDetail[data-open="true"] { border-top-color: var(--score-rule); transform: none; transition-delay: 0s; }
-  .coverageList dd { font-size: 14px; }
+  .scoreMetaList dd { font-size: 14px; }
   .rollingList { grid-template-columns: 1fr; }
   .chart { height: 148px; }
   .barColumn { height: 132px; }
-  .effectRow { grid-template-columns: minmax(0, 1fr) auto; }
-  .effectHeading { align-items: start; flex-direction: column; gap: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

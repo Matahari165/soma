@@ -3,9 +3,16 @@ import { NextResponse } from "next/server";
 import { updateMealInputSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
+import { setMealEntryState } from "@/repositories/meals";
 import { mealToApi } from "@/services/meal-api";
 import { deletePreviewMeal, findPreviewMeal, updatePreviewMeal } from "@/services/meal-preview";
 import { deleteMeal, findMeal, MealServiceError, updateMealRecord } from "@/services/meals";
+
+async function persistMealEntryState(userId: string, mealId: string, entryState: "recorded" | "skipped") {
+  const meal = await setMealEntryState(userId, mealId, entryState);
+  if (!meal) throw new MealServiceError("unavailable", "The meal state could not be saved.");
+  return meal;
+}
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -39,7 +46,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
   try {
     const meal = await updateMealRecord(user.id, id, parsed.data);
-    return NextResponse.json({ meal: mealToApi(meal) });
+    const persisted = parsed.data.entryState ? await persistMealEntryState(user.id, id, parsed.data.entryState) : meal;
+    return NextResponse.json({ meal: mealToApi(persisted) });
   } catch (error) {
     if (error instanceof MealServiceError) {
       const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : 503;
@@ -53,7 +61,10 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const { id } = await context.params;
-  if (isLocalPreviewMode()) return deletePreviewMeal(user.id, id) ? NextResponse.json({ ok: true, preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
+  if (isLocalPreviewMode()) {
+    const deleted = deletePreviewMeal(user.id, id);
+    return deleted ? NextResponse.json({ ok: true, preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
+  }
   try {
     const deleted = await deleteMeal(user.id, id);
     return deleted ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });

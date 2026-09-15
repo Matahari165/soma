@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -157,6 +157,32 @@ describe("MealJournal", () => {
     expect(html).toContain('aria-label="Modifier les cibles du jour"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain(">Cibles du jour<");
+  });
+
+  it("affiche un créneau explicitement pas pris sans lancer ni afficher une analyse", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {
+      snack: {
+        id: "meal-skipped-snack",
+        date,
+        slot: "snack",
+        note: "",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "confirmed",
+        entryState: "skipped",
+      },
+    } }} />);
+    const snackStart = html.indexOf('id="meal-snack-title"');
+    const dinnerStart = html.indexOf('id="meal-dinner-title"');
+    const snack = html.slice(snackStart, dinnerStart);
+
+    expect(snack).toContain("Pas pris");
+    expect(snack).toContain("Renseigner ce repas");
+    expect(snack).toContain("exclu du score");
+    expect(snack).not.toContain("<textarea");
+    expect(snack).not.toContain("Analyser");
   });
 
   it("expose la synthèse KPI mobile comme un rail parcourable au clavier", () => {
@@ -592,6 +618,20 @@ describe("MealJournal", () => {
     await defaultSave({ id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "lunch", note: "Pâtes", photos: [], analysis: null, mouthHeat: 3, stomachLoad: 4, status: "confirmed", error: null, confirmedAt: null });
 
     expect(payload).toMatchObject({ status: "confirmed", mouthWarmthIntensity: 3, stomachOverfullIntensity: 4 });
+  });
+
+  it("enregistre un état pas pris par une seule requête, sans analyse ni zéro nutritionnel", async () => {
+    let request: { url: string; method?: string; body?: string } | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      request = { url: typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url, method: init?.method, body: String(init?.body ?? "") };
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "snack", status: "draft", entryState: "skipped", note: null, photos: [], analysis: null } }, { status: 201 });
+    }));
+
+    const result = await defaultSetEntryState({ id: "meal-local-skip", date, slot: "snack", note: "", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" }, "skipped");
+
+    expect(request).toMatchObject({ url: "/api/meals", method: "POST" });
+    expect(JSON.parse(request?.body ?? "{}")).toEqual({ mealDate: date, mealType: "snack", entryState: "skipped" });
+    expect(result).toMatchObject({ entryState: "skipped", analysis: null });
   });
 
   it("shows each ingredient quantity once in parentheses", () => {

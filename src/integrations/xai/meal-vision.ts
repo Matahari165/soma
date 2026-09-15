@@ -8,6 +8,12 @@ import {
   type MealOrigin,
   type MealType,
 } from "@/domain/meals";
+import {
+  MEAL_ACTIVE_QUALITY_PROPERTIES,
+  MEAL_IGNORED_QUALITY_PROPERTIES,
+  MEAL_VARIETY_EXCLUDED_FOOD_GROUPS,
+  MEAL_VARIETY_POSITIVE_FOOD_GROUPS,
+} from "@/domain/meal-taxonomy";
 import { requireServerEnv } from "@/lib/env";
 
 export type MealVisionImage = {
@@ -98,6 +104,26 @@ const MAX_PROVIDER_ATTEMPTS = 2;
 
 type VisionImageDetail = "low" | "high";
 
+const MEAL_VARIETY_CONTRACT_PROMPT = [
+  `Pour la variété positive, utilise uniquement les familles foodGroups positives : ${MEAL_VARIETY_POSITIVE_FOOD_GROUPS.join(", ")}. Un aliment sans famille justifiée ne compte pas.`,
+  `Les familles ${MEAL_VARIETY_EXCLUDED_FOOD_GROUPS.join(", ")} sont toujours exclues de la variété positive ; cela couvre notamment les bonbons, desserts sucrés, sodas, jus, boissons sucrées, sauces et aliments non classés. Ces éléments peuvent rester dans foods pour décrire le repas, les sucres ou l'exposition, mais ne doivent jamais recevoir un signal de variété positive. Une famille exclue est prioritaire si plusieurs familles sont présentes.`,
+].join(" ");
+
+const MEAL_QUALITY_CONTRACT_PROMPT = [
+  `Pour qualityProperties, transmets uniquement les rôles actifs ${MEAL_ACTIVE_QUALITY_PROPERTIES.join(", ")}.`,
+  `Le rôle plant est porté par les foodGroups positives et non par qualityProperties. Les propriétés historiques ${MEAL_IGNORED_QUALITY_PROPERTIES.join(", ")} peuvent encore apparaître dans d'anciennes analyses, mais elles ne sont jamais des signaux actifs et ne doivent pas être émises dans une nouvelle réponse.`,
+].join(" ");
+
+const MEAL_SUGAR_CONTRACT_PROMPT = "Pour chaque aliment et dans totals, transmets sugarGrams pour les sucres totaux et addedSugarGrams pour les sucres ajoutés quand les preuves le permettent. Ne confonds jamais glucides et sucres. Utilise null quand une valeur n'est pas estimable ; le contrat accepte aussi l'absence de ces champs dans les anciennes réponses et la normalise comme donnée indisponible. Respecte addedSugarGrams <= sugarGrams <= carbohydrateGrams quand les intervalles sont connus.";
+
+const MEAL_NOVA_CONTRACT_PROMPT = "Pour novaGroup, utilise uniquement 1, 2, 3 ou 4 lorsque le niveau de transformation est raisonnablement identifiable ; utilise null sinon et n'infère jamais NOVA depuis le seul caractère sain ou malsain.";
+
+export const MEAL_PHOTO_PROVIDER_INSTRUCTIONS = `You are a careful food-photo analyst. Return stable food ids, per-axis observation statuses and per-axis confidence. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high, nulls when not estimable, and structured uncertainty signals for important unknowns. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Labels in French. Return only the requested JSON object.`;
+
+export const MEAL_TEXT_PROVIDER_INSTRUCTIONS = `You are a careful food-description analyst. List only foods named in the user description and return stable food ids with structured observation statuses. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and nulls when not estimable. Default confidence to low unless the description is very precise. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties and machine-readable uncertaintySignals for important unknowns. Labels in French. Return only the requested JSON object.`;
+
+export const MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS = `Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, parentId, alcoholic/countInTotals, statuts observation, sauces/préparations, NOVA et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, la compatibilité des intervalles sans exiger leur addition exacte, les relations addedSugarGrams <= sugarGrams <= carbohydrateGrams quand elles sont connues, et les nulls quand une donnée ne peut pas être estimée. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Ne transforme pas unknown en none_observed et conserve uncertaintySignals structurés. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.`;
+
 export function imageDataUri(image: MealVisionImage) {
   return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
 }
@@ -121,7 +147,7 @@ export function mealAnalysisJsonSchema() {
   const food = {
     type: "object",
     additionalProperties: false,
-    required: ["id", "name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "course", "countedInTotals", "foodGroups", "varietyKey", "alcoholic", "novaGroup", "sugarExposure", "observation", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams", "confidence"],
+    required: ["id", "name", "preparation", "portion", "estimatedGrams", "kind", "parentId", "course", "countedInTotals", "foodGroups", "varietyKey", "alcoholic", "novaGroup", "sugarExposure", "observation", "evidence", "evidenceSource", "evidencePhotoIds", "quantity", "calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "confidence"],
     properties: {
       id: { type: "string", minLength: 1, maxLength: 120 },
       name: { type: "string", maxLength: 120 },
@@ -179,8 +205,8 @@ export function mealAnalysisJsonSchema() {
           { type: "null" },
           {
             type: "array",
-            maxItems: 8,
-            items: { type: "string", enum: ["whole_food", "minimally_processed", "fermented", "fiber_source", "protein_source", "unsaturated_fat_source"] },
+            maxItems: MEAL_ACTIVE_QUALITY_PROPERTIES.length,
+            items: { type: "string", enum: [...MEAL_ACTIVE_QUALITY_PROPERTIES] },
           },
         ],
       },
@@ -225,7 +251,7 @@ export function mealAnalysisJsonSchema() {
       totals: {
         type: "object",
         additionalProperties: false,
-        required: ["calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams", "sugarGrams", "addedSugarGrams"],
+        required: ["calories", "proteinGrams", "carbohydrateGrams", "fatGrams", "fiberGrams"],
         properties: {
           calories: range,
           proteinGrams: range,
@@ -426,18 +452,28 @@ function normalizeStructuredAnalysis(value: unknown) {
       carbohydrateGrams: normalizeRange(item.carbohydrateGrams),
       fatGrams: normalizeRange(item.fatGrams),
       fiberGrams: normalizeRange(item.fiberGrams),
-      sugarGrams: normalizeRange(item.sugarGrams),
-      addedSugarGrams: normalizeRange(item.addedSugarGrams),
+      // Sugar fields were added after older analyses had already been stored.
+      // Missing is therefore normalized to null, never to zero or an estimate.
+      sugarGrams: item.sugarGrams === undefined ? null : normalizeRange(item.sugarGrams),
+      addedSugarGrams: item.addedSugarGrams === undefined ? null : normalizeRange(item.addedSugarGrams),
       quantity,
       observation,
     };
   };
+  const totals = source.totals && typeof source.totals === "object" && !Array.isArray(source.totals)
+    ? Object.fromEntries(Object.entries(source.totals as Record<string, unknown>).map(([key, entry]) => [key, key.endsWith("Grams") || key === "calories" ? normalizeRange(entry) : entry]))
+    : source.totals;
+  if (totals && typeof totals === "object" && !Array.isArray(totals)) {
+    const normalizedTotals = totals as Record<string, unknown>;
+    // Keep old provider responses readable while making unavailability
+    // explicit for downstream adapters.
+    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "sugarGrams")) normalizedTotals.sugarGrams = null;
+    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "addedSugarGrams")) normalizedTotals.addedSugarGrams = null;
+  }
   return {
     ...source,
     foods: Array.isArray(source.foods) ? source.foods.map(normalizeFood) : source.foods,
-    totals: source.totals && typeof source.totals === "object" && !Array.isArray(source.totals)
-      ? Object.fromEntries(Object.entries(source.totals as Record<string, unknown>).map(([key, entry]) => [key, key.endsWith("Grams") || key === "calories" ? normalizeRange(entry) : entry]))
-      : source.totals,
+    totals,
   };
 }
 
@@ -490,12 +526,13 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "Pour un plat composé, distingue le plat, ses composants et les ingrédients seulement si cela évite une ambiguïté. Le parent doit avoir kind=dish, chaque enfant un parentId qui référence son id, et countedInTotals=false pour le parent si ses composants sont comptés. Ne double jamais les totaux.",
     "Pour chaque aliment, renseigne course avec starter, main, side ou dessert seulement si la description indique clairement sa place dans le repas ; utilise null sinon. course sert uniquement à structurer l'affichage (entrée, plat, accompagnement, dessert), pas à juger l'aliment.",
     "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires justifiées par la description. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Renseigne alcoholic=true uniquement pour une boisson ou un aliment alcoolisé : l'alcool est conservé pour trace mais exclu des dimensions du score et ne doit pas être inclus dans countedInTotals ni dans les totaux nutritionnels. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    MEAL_VARIETY_CONTRACT_PROMPT,
     "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable ; null sinon. N'infère jamais NOVA depuis le seul caractère sain ou malsain d'un aliment. Renseigne sugarExposure avec concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; les deux peuvent être vrais. Si l'axe sucre a été examiné et qu'aucune exposition n'est observée, utilise {concentrated:false, liquid:false}; si la forme ou la recette est inconnue, utilise null.",
-    "Pour les propriétés qualitatives, renseigne qualityProperties avec les propriétés descriptives justifiées (whole_food, minimally_processed, fermented, fiber_source, protein_source, unsaturated_fat_source). Si l'axe a été examiné et aucune propriété n'est observée, utilise []; si l'information est insuffisante, omets qualityProperties. Ne déduis jamais une qualité globale.",
+    MEAL_QUALITY_CONTRACT_PROMPT + " Si l'axe a été examiné et aucun rôle actif n'est observé, utilise []; si l'information est insuffisante, omets qualityProperties. Ne déduis jamais une qualité globale.",
     "Renseigne observation avec le statut de chaque axe : observed si une valeur est soutenue, none_observed si l'axe a été examiné sans propriété observée, unknown si la preuve manque. Pour portion et novaGroup, utilise uniquement observed ou unknown. Ajoute confidence avec low, medium ou high pour chacun des quatre axes, séparément de la confiance globale.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme éléments inferred/unknown structurés quand elles sont pertinentes, sans en inventer la quantité. Utilise kind, parentId, evidence, evidenceSource et quantity seulement quand ils sont justifiés.",
     "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
-    "Estime séparément les sucres totaux et les sucres ajoutés lorsque la description le permet. Ne confonds jamais glucides et sucres ; utilise null si ce n’est pas estimable. Inclus sugarGrams et addedSugarGrams pour chaque aliment et dans totals.",
+    MEAL_SUGAR_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Ne fabrique aucune quantité : quantity et estimatedGrams restent null quand la description ne permet pas une estimation responsable.",
     "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
     "confidence à low par défaut, sauf si la description est très précise (aliments, quantités et préparation explicites). Remplis uncertaintySignals avec des codes structurés et un détail concret pour chaque incertitude importante ; conserve aussi uncertainties pour une explication lisible.",
@@ -516,12 +553,13 @@ export function makePrompt(input: MealVisionInput) {
     "Pour un plat composé, utilise kind=dish pour le plat et kind=component ou ingredient pour ses éléments seulement si cela clarifie ce qui est visible. Chaque parentId doit référencer l'id du plat parent. Ne double jamais le plat avec ses composants : si les composants sont comptés dans les totaux, countedInTotals=false pour le plat parent.",
     "Pour chaque aliment, renseigne course avec starter, main, side ou dessert seulement si sa place est justifiée par la note ou une preuve claire ; utilise null sinon. course sert uniquement à structurer l'affichage (entrée, plat, accompagnement, dessert), pas à juger l'aliment.",
     "Pour chaque aliment, renseigne foodGroups avec les grandes familles alimentaires visibles ou fortement inférées. Renseigne varietyKey avec un nom canonique court en français pour reconnaître le même aliment dans le temps (par exemple « tomate », « poulet », « riz »), ou null si l'identité est trop incertaine. Renseigne alcoholic=true uniquement pour une boisson ou un aliment alcoolisé : l'alcool est conservé pour trace mais exclu des dimensions du score et ne doit pas être inclus dans countedInTotals ni dans les totaux nutritionnels. Ces champs décrivent la composition ; ils ne constituent pas un jugement de qualité.",
+    MEAL_VARIETY_CONTRACT_PROMPT,
     "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable depuis la photo ou la note ; null sinon. N'infère jamais NOVA depuis le seul caractère sain ou malsain. Pour sugarExposure, indique concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; si l'axe est examiné sans exposition, utilise {concentrated:false, liquid:false}; si la forme ou la recette est inconnue, utilise null.",
-    "Pour qualityProperties, utilise uniquement les propriétés descriptives justifiées (whole_food, minimally_processed, fermented, fiber_source, protein_source, unsaturated_fat_source). Utilise [] si l'axe a été examiné et aucune propriété n'est observée ; omets le champ si l'information est inconnue. Ne déduis jamais une qualité globale.",
+    MEAL_QUALITY_CONTRACT_PROMPT + " Utilise [] si l'axe a été examiné et aucun rôle actif n'est observé ; omets le champ si l'information est inconnue. Ne déduis jamais une qualité globale.",
     "Renseigne observation avec observed, none_observed ou unknown pour portion, novaGroup, sugarExposure et qualityProperties. Pour portion et novaGroup, none_observed n'est pas valide : utilise unknown si la preuve manque. Ajoute confidence avec low, medium ou high pour chacun des quatre axes, séparément de la confiance globale.",
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte son identifiant dans evidencePhotoIds. Ne les invente pas et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
-    "Estimate total sugars and added sugars separately when the food or preparation supports it. Use null rather than guessing, and never treat all carbohydrates as sugar. Include sugarGrams and addedSugarGrams for every food and in totals.",
+    MEAL_SUGAR_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs de confiance et d'incertitude sont internes au contrat, pas une consigne d'affichage.",
     "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
     "Include the main preparation (for example grilled, fried, raw, or with sauce) only when visible or stated.",
@@ -538,6 +576,9 @@ function makeVerificationPrompt(input: MealVisionVerificationInput) {
   return [
     "Relis cette analyse primaire d'un repas avec bienveillance et précision pour un journal alimentaire personnel. Réponds avec des libellés en français.",
     "Vérifie les ids uniques, les quantités, les plats composés, les parentId, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey, le label alcoholic, les statuts observation, les labels de transformation et d'exposition au sucre, et la cohérence nutritionnelle avec les photos et la note. Les intervalles des aliments comptés doivent seulement rester compatibles avec l'intervalle des totaux ; n'exige jamais une addition exacte des bornes. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
+    MEAL_VARIETY_CONTRACT_PROMPT,
+    MEAL_QUALITY_CONTRACT_PROMPT,
+    MEAL_SUGAR_CONTRACT_PROMPT,
     "Un parent kind=dish ne doit pas être compté avec ses composants comptés ; alcoholic=true impose countedInTotals=false et aucune valeur nutritionnelle de contribution. Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds.",
     "Ne transforme pas unknown en none_observed : unknown signifie que l'axe n'est pas déterminable, tandis que none_observed signifie qu'il a été examiné et qu'aucune propriété n'a été observée. Pour qualityProperties, omets le champ si unknown et utilise [] seulement pour none_observed. Pour sugarExposure, utilise null si unknown et {concentrated:false, liquid:false} si none_observed.",
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence, uncertainties et uncertaintySignals restent internes à l'analyse.",
@@ -848,7 +889,7 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
     endpoint: process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses",
     apiKeyEnv: "OPENAI_API_KEY",
     model,
-    instructions: "Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, parentId, alcoholic/countInTotals, statuts observation, sauces/préparations et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte les fourchettes low <= likely <= high, la compatibilité des intervalles sans exiger leur addition exacte, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues, et les nulls quand une donnée ne peut pas être estimée. Ne transforme pas unknown en none_observed et conserve uncertaintySignals structurés. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
+    instructions: MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS,
     promptText: makeVerificationPrompt(input),
     imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "low" })),
     maxOutputTokens: 6_000,
@@ -867,7 +908,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
     : process.env.XAI_MEAL_VALIDATOR_MODEL
       ? (input) => requestGrokAnalysis({
         model: xaiValidatorModel,
-        instructions: "Tu es un vérificateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, sauces/préparations, statuts observation et nutrition, puis corrige uniquement si les preuves le justifient. Ne fabrique jamais de quantité ou de précision. Respecte low <= likely <= high, les relations addedSugar <= sugar <= carbohydrates quand elles sont connues, la compatibilité des intervalles sans exiger leur addition exacte, et les nulls quand une donnée ne peut pas être estimée. unknown signifie indéterminable ; none_observed signifie axe examiné sans propriété observée. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.",
+        instructions: MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS,
         promptText: makeVerificationPrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 6_000,
@@ -886,7 +927,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
     async analyze(input) {
       return requestGrokAnalysis({
         model,
-        instructions: "You are a careful food-photo analyst. Return stable food ids and structured observation statuses. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Use ranges with low <= likely <= high, nulls when not estimable, and structured uncertainty signals for important unknowns. Labels in French. Return only the requested JSON object.",
+        instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
         promptText: makePrompt(input),
         imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
         maxOutputTokens: 6_000,
@@ -897,7 +938,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
     async analyzeText(input) {
       return requestGrokAnalysis({
         model,
-        instructions: "You are a careful food-description analyst. List only foods named in the user description and return stable food ids with structured observation statuses. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and nulls when not estimable. Default confidence to low unless the description is very precise. Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties and machine-readable uncertaintySignals for important unknowns. Labels in French. Return only the requested JSON object.",
+        instructions: MEAL_TEXT_PROVIDER_INSTRUCTIONS,
         promptText: makeTextPrompt(input),
         imageContents: [],
         maxOutputTokens: 3_000,

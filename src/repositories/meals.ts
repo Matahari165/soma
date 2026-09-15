@@ -6,6 +6,7 @@ import type {
   Meal,
   MealAnalysis,
   MealAnalysisRecord,
+  MealEntryState,
   MealFeeling,
   MealOrigin,
   MealPhoto,
@@ -23,6 +24,7 @@ type MealRow = Row & {
   meal_type: MealType;
   note?: string | null;
   status?: MealStatus;
+  entry_state?: MealEntryState;
   mouth_warmth_intensity?: number | null;
   stomach_overfull_intensity?: number | null;
   created_at: string;
@@ -76,7 +78,7 @@ type FeelingsRow = Row & {
   updated_at: string;
 };
 
-const mealListColumns = "id,user_id,meal_date,meal_type,note,status,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
+const mealListColumns = "id,user_id,meal_date,meal_type,note,status,entry_state,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
 const mealListPhotoColumns = "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at";
 const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at";
 const mealListFeelingColumns = "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
@@ -143,6 +145,7 @@ function mergeFeelings(meal: MealRow, feelings: FeelingsRow | null): Meal {
     mealType: meal.meal_type,
     note: asNullableString(meal.note),
     status: meal.status === "confirmed" ? "confirmed" : "draft",
+    entryState: meal.entry_state === "skipped" ? "skipped" : "recorded",
     mouthWarmthIntensity: feelingValue("mouth_warmth_intensity", meal.mouth_warmth_intensity),
     stomachOverfullIntensity: feelingValue("stomach_overfull_intensity", meal.stomach_overfull_intensity),
     createdAt: meal.created_at,
@@ -258,7 +261,8 @@ export async function findMealForSlot(userId: string, mealDate: string, mealType
 }
 
 export async function insertMeal(row: MealRow) {
-  const { data, error } = await createCloudflareAdminClient().from("meals").upsert(row, { onConflict: "user_id,meal_date,meal_type", ignoreDuplicates: true }).select("*").single();
+  const persistedRow = { ...row, entry_state: row.entry_state ?? "recorded" };
+  const { data, error } = await createCloudflareAdminClient().from("meals").upsert(persistedRow, { onConflict: "user_id,meal_date,meal_type", ignoreDuplicates: true }).select("*").single();
   if (error || !data) throw new Error("The meal could not be saved.");
   return data as MealRow;
 }
@@ -267,6 +271,12 @@ export async function updateMeal(userId: string, mealId: string, values: Row) {
   const { data, error } = await createCloudflareAdminClient().from("meals").update(values).eq("user_id", userId).eq("id", mealId).select("*").maybeSingle();
   if (error) throw new Error("The meal could not be updated.");
   return data as MealRow | null;
+}
+
+/** Persist the explicit journal state and return the complete record for API serialization. */
+export async function setMealEntryState(userId: string, mealId: string, entryState: MealEntryState) {
+  const updated = await updateMeal(userId, mealId, { entry_state: entryState });
+  return updated ? findMeal(userId, mealId) : null;
 }
 
 export async function upsertMealFeelings(userId: string, mealId: string, values: { mouthWarmthIntensity?: MealFeeling; stomachOverfullIntensity?: MealFeeling }) {

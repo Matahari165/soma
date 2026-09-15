@@ -205,7 +205,7 @@ describe("meal analysis provenance", () => {
           summary: "Jus et riz",
           dishType: null,
           calorieAnalysis: null,
-          foods: [{ name: "Jus", preparation: null, portion: "250 ml", estimatedGrams: 250, quantity: { value: 250, unit: "ml", basis: "étiquette", grams: 250 }, alcoholic: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "observed", qualityProperties: "none_observed" }, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "medium" }],
+          foods: [{ name: "Jus", preparation: null, portion: "250 ml", estimatedGrams: 250, quantity: { value: 250, unit: "ml", basis: "étiquette", grams: 250 }, alcoholic: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { portion: "observed", novaGroup: "observed", sugarExposure: "observed", qualityProperties: "none_observed" }, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: { low: 18, likely: 22, high: 28 }, addedSugarGrams: { low: 0, likely: 0, high: 0 }, confidence: "medium" }],
           totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
           confidence: "medium",
           uncertainties: [],
@@ -219,7 +219,47 @@ describe("meal analysis provenance", () => {
 
     const records = await loadConfirmedMealRecords("user-1");
 
-    expect(records[0]?.foods?.[0]).toMatchObject({ name: "Jus", portion: "250 ml", estimatedGrams: 250, quantity: { grams: 250 }, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+    expect(records[0]?.foods?.[0]).toMatchObject({ name: "Jus", portion: "250 ml", estimatedGrams: 250, quantity: { grams: 250 }, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, sugarG: { low: 18, likely: 22, high: 28 }, addedSugarG: { low: 0, likely: 0, high: 0 }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+  });
+
+  it("normalizes missing per-food sugar in an old analysis to null", async () => {
+    state.listMeals.mockResolvedValue([{
+      id: "12345678-1234-1234-1234-123456789012",
+      userId: "user-1",
+      mealDate: "2026-08-31",
+      mealType: "lunch",
+      note: "Ancienne analyse",
+      status: "confirmed",
+      mouthWarmthIntensity: null,
+      stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z",
+      updatedAt: "2026-08-31T10:00:00.000Z",
+      photos: [],
+      analysis: {
+        id: "analysis-legacy",
+        mealId: "12345678-1234-1234-1234-123456789012",
+        status: "completed",
+        provider: "xai",
+        model: "grok-old",
+        result: {
+          summary: "Ancienne analyse",
+          dishType: null,
+          calorieAnalysis: null,
+          foods: [{ name: "Riz", preparation: null, portion: null, estimatedGrams: null, calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "low" }],
+          totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+          confidence: "low",
+          uncertainties: [],
+        },
+        error: null,
+        sourcePhotoIds: [],
+        createdAt: "2026-08-31T10:00:00.000Z",
+        completedAt: "2026-08-31T10:00:01.000Z",
+      },
+    }]);
+
+    const records = await loadConfirmedMealRecords("user-1");
+
+    expect(records[0]?.foods?.[0]).toMatchObject({ sugarG: null, addedSugarG: null });
   });
 
   it("updates a photo origin and returns not-found from the repository", async () => {

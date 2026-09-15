@@ -20,7 +20,7 @@ describe("local meal preview store", () => {
     expect(confirmed?.status).toBe("confirmed");
     expect(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")).toMatchObject({ storageStatus: "purged", purgedAt: expect.any(String) });
     expect(new Uint8Array(findPreviewPhoto(userId, meal.id, photos?.[0]?.id ?? "")?.data ?? new ArrayBuffer(0))).toEqual(new Uint8Array());
-    expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "mixed", caloriesKcal: { low: 450, likely: 600, high: 800 }, foods: [{ observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown" } }] });
+    expect(loadPreviewConfirmedMealRecords(userId)[0]).toMatchObject({ id: meal.id, origin: "mixed", caloriesKcal: { low: 450, likely: 600, high: 800 }, foods: [{ sugarG: null, addedSugarG: null, observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown" } }] });
     expect(deletePreviewMeal(userId, meal.id)).toBe(true);
     expect(findPreviewMeal(userId, meal.id)).toBeNull();
   });
@@ -54,6 +54,18 @@ describe("local meal preview store", () => {
     expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({ id: meal.id, caloriesKcal: null, proteinG: null, carbsG: null, fatG: null, fiberG: null });
     expect(records[0]?.foods).toBeUndefined();
+  });
+
+  it("keeps an explicit skipped slot out of analysis and scoring until reactivated", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-07", mealType: "breakfast", note: "Petit déjeuner conservé", entryState: "skipped" });
+
+    expect(meal).toMatchObject({ entryState: "skipped", status: "draft", note: "Petit déjeuner conservé", analysis: null });
+    expect(() => analyzePreviewMeal(userId, meal.id)).toThrow("Réactive ce créneau");
+    expect(loadPreviewConfirmedMealRecords(userId)).toEqual([]);
+
+    const reactivated = updatePreviewMeal(userId, meal.id, { entryState: "recorded" });
+    expect(reactivated).toMatchObject({ entryState: "recorded", note: "Petit déjeuner conservé", analysis: null });
   });
 
   it("combines the note and available photos in one preview analysis", () => {

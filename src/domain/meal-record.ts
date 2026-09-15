@@ -1,4 +1,4 @@
-import { mealFoodObservationSchema, mealUncertaintySignalSchema, MAX_MEAL_PHOTOS, type MealFoodCourse, type MealFoodGroup, type MealFoodObservation, type MealNovaGroup, type MealQualityProperty, type MealSugarExposure, type MealUncertaintySignal } from "@/domain/meals";
+import { mealFoodObservationSchema, mealUncertaintySignalSchema, normalizeMealEntryState, MAX_MEAL_PHOTOS, type MealEntryState, type MealFoodCourse, type MealFoodGroup, type MealFoodObservation, type MealNovaGroup, type MealQualityProperty, type MealSugarExposure, type MealUncertaintySignal } from "@/domain/meals";
 
 export const MEAL_SLOTS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type MealSlot = (typeof MEAL_SLOTS)[number];
@@ -102,6 +102,8 @@ export type MealRecord = {
   mouthHeat: Rating | null;
   stomachLoad: Rating | null;
   status: MealStatus;
+  /** API responses always normalize missing legacy values to recorded. */
+  entryState?: MealEntryState;
   error?: string | null;
   confirmedAt?: string | null;
 };
@@ -127,6 +129,7 @@ export type MealJournalApi = {
   load?: (date: string) => Promise<MealJournalData>;
   analyze?: (input: AnalyzeMealInput) => Promise<MealRecord>;
   save?: (meal: MealRecord) => Promise<MealRecord>;
+  setEntryState?: (meal: MealRecord, entryState: MealEntryState) => Promise<MealRecord>;
   removePhoto?: (mealId: string, photoId: string) => Promise<void>;
   updatePhotoOrigin?: (mealId: string, photoId: string, origin: MealOrigin) => Promise<void>;
 };
@@ -284,6 +287,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
   const calorieAnalysis = result && typeof result.calorieAnalysis === "string" && result.calorieAnalysis.trim() ? result.calorieAnalysis.trim().slice(0, 500) : null;
   const mealType = meal.mealType === "breakfast" || meal.mealType === "lunch" || meal.mealType === "dinner" || meal.mealType === "snack" ? meal.mealType : "lunch";
   const rawStatus = meal.status;
+  const entryState = normalizeMealEntryState(meal.entryState ?? meal.entry_state);
   const advertisedStatus = typeof meal.analysisStatus === "string" ? meal.analysisStatus : null;
   const analysisStatus = analysisRecord?.status ?? advertisedStatus;
   return {
@@ -322,6 +326,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
     mouthHeat: typeof meal.mouthWarmthIntensity === "number" && meal.mouthWarmthIntensity >= 0 && meal.mouthWarmthIntensity <= 5 ? meal.mouthWarmthIntensity as Rating : null,
     stomachLoad: typeof meal.stomachOverfullIntensity === "number" && meal.stomachOverfullIntensity >= 0 && meal.stomachOverfullIntensity <= 5 ? meal.stomachOverfullIntensity as Rating : null,
     status: rawStatus === "confirmed" ? "confirmed" : analysisStatus === "queued" ? "accepted" : analysisStatus === "running" ? "analyzing" : result ? "review" : analysisStatus === "failed" ? "error" : "draft",
+    entryState,
     error: typeof analysisRecord?.error === "string" ? analysisRecord.error : null,
     confirmedAt: rawStatus === "confirmed" && typeof meal.updatedAt === "string" ? meal.updatedAt : null,
   };

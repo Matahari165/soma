@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { legacyAnalysisToStructured, mealToLegacyApi } from "./meal-api";
+import { legacyAnalysisToStructured, mealToApi, mealToLegacyApi } from "./meal-api";
 import type { Meal } from "@/domain/meals";
 
 const meal = {
@@ -43,6 +43,14 @@ describe("legacy meal API adapter", () => {
     expect(legacy.mouthHeat).toBe(0);
     expect(legacy.stomachLoad).toBe(0);
     expect(legacy.analysis?.calories).toEqual({ low: 400, likely: 500, high: 600 });
+    expect(legacy.entryState).toBe("recorded");
+    expect(mealToApi(meal).entryState).toBe("recorded");
+  });
+
+  it("exposes a skipped state without manufacturing nutrition or analysis", () => {
+    const skipped = { ...meal, status: "draft" as const, entryState: "skipped" as const, note: null, analysis: null } satisfies Meal;
+    expect(mealToApi(skipped)).toMatchObject({ entryState: "skipped", note: null, analysis: null });
+    expect(mealToLegacyApi(skipped)).toMatchObject({ entryState: "skipped", note: null, analysis: null });
   });
 
   it("does not invent a midpoint for a legacy range without likely", () => {

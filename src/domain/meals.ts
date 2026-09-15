@@ -31,6 +31,15 @@ export function serializeMealFeeling(value: MealFeeling): MealFeelingInput | nul
 export const mealStatusSchema = z.enum(["draft", "confirmed"]);
 export type MealStatus = z.infer<typeof mealStatusSchema>;
 
+/** Whether the journal entry describes a meal or an explicitly skipped slot. */
+export const mealEntryStateSchema = z.enum(["recorded", "skipped"]);
+export type MealEntryState = z.infer<typeof mealEntryStateSchema>;
+
+/** Historical rows did not carry this field and are treated as recorded meals. */
+export function normalizeMealEntryState(value: unknown): MealEntryState {
+  return value === "skipped" ? "skipped" : "recorded";
+}
+
 export const mealPhotoMimeSchema = z.enum([
   "image/jpeg",
   "image/png",
@@ -446,6 +455,8 @@ export const createMealInputSchema = z.object({
   /** La note (max 500) fait foi comme contenu : un repas texte sans photo est valide. Confirmation exige photos > 0 OU note non-vide. */
   note: z.string().trim().max(500).nullable().optional(),
   status: mealStatusSchema.optional(),
+  /** Separate from the workflow status: a skipped slot has no meal evidence. */
+  entryState: mealEntryStateSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),
   stomachOverfullIntensity: mealFeelingInputSchema.nullable().optional(),
   /** A client-generated value makes retries safe across mobile reconnects. */
@@ -459,6 +470,8 @@ export const updateMealInputSchema = z.object({
   /** Même règle que create : la note non-vide autorise confirmed sans photo. */
   note: z.string().trim().max(500).nullable().optional(),
   status: mealStatusSchema.optional(),
+  /** Omitted means keep the current entry state when updating an existing row. */
+  entryState: mealEntryStateSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),
   stomachOverfullIntensity: mealFeelingInputSchema.nullable().optional(),
   /** A user-confirmed correction is a new provenance-preserving analysis row. */
@@ -496,6 +509,8 @@ export type Meal = {
   mealType: MealType;
   note: string | null;
   status: MealStatus;
+  /** Optional only for source compatibility; API adapters always emit a value. */
+  entryState?: MealEntryState;
   mouthWarmthIntensity: MealFeeling;
   stomachOverfullIntensity: MealFeeling;
   createdAt: string;

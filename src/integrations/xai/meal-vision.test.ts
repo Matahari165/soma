@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MEAL_ACTIVE_QUALITY_PROPERTIES, MEAL_IGNORED_QUALITY_PROPERTIES, isPositiveMealVarietyFood, mealPositiveVarietyKey } from "@/domain/meal-taxonomy";
+import { createOpenAiMealVisionProvider } from "@/integrations/openai/meal-vision";
 import { analyzeMealInput, createXaiMealVisionProvider, makePrompt, makeTextPrompt, mealAnalysisJsonSchema } from "./meal-vision";
 
 function structuredAnalysis() {
@@ -28,12 +30,31 @@ describe("xAI meal vision contract", () => {
   it("requires structured observation and uncertainty fields in new provider output", () => {
     const schema = mealAnalysisJsonSchema() as {
       required: string[];
-      properties: { foods: { items: { required: string[]; properties: Record<string, unknown> } }; uncertaintySignals: unknown };
+      properties: { foods: { items: { required: string[]; properties: { qualityProperties: { anyOf: Array<{ items?: { enum?: string[] } }> }; novaGroup: { anyOf: Array<Record<string, unknown>> }; sugarExposure: unknown } } }; totals: { required: string[] }; uncertaintySignals: unknown };
     };
     expect(schema.required).toContain("uncertaintySignals");
     expect(schema.properties.foods.items.required).toContain("id");
     expect(schema.properties.foods.items.required).toContain("observation");
     expect(schema.properties.foods.items.required).not.toContain("qualityProperties");
+    expect(schema.properties.foods.items.required).not.toContain("sugarGrams");
+    expect(schema.properties.foods.items.required).not.toContain("addedSugarGrams");
+    expect(schema.properties.totals.required).not.toContain("sugarGrams");
+    expect(schema.properties.totals.required).not.toContain("addedSugarGrams");
+    expect(schema.properties.foods.items.properties.qualityProperties.anyOf[1]?.items?.enum).toEqual([...MEAL_ACTIVE_QUALITY_PROPERTIES]);
+    expect(schema.properties.foods.items.properties.novaGroup.anyOf[0]).toMatchObject({ type: "integer", minimum: 1, maximum: 4 });
+    expect(schema.properties.foods.items.properties.sugarExposure).toBeDefined();
+  });
+
+  it("keeps only the positive variety taxonomy and active quality roles", () => {
+    expect(isPositiveMealVarietyFood({ name: "Pomme", varietyKey: "pomme", foodGroups: ["fruit"] })).toBe(true);
+    expect(mealPositiveVarietyKey({ name: "Pomme", varietyKey: "Pomme", foodGroups: ["fruit"] })).toBe("pomme");
+    for (const group of ["sweet", "beverage", "sauce", "other"] as const) {
+      expect(isPositiveMealVarietyFood({ name: "Élément", foodGroups: [group] })).toBe(false);
+    }
+    expect(isPositiveMealVarietyFood({ name: "Jus d'orange", foodGroups: ["fruit"] })).toBe(false);
+    expect(isPositiveMealVarietyFood({ name: "Légumes avec sauce", foodGroups: ["vegetable", "sauce"] })).toBe(false);
+    expect(isPositiveMealVarietyFood({ name: "Aliment sans classement", foodGroups: [] })).toBe(false);
+    expect(MEAL_IGNORED_QUALITY_PROPERTIES).toEqual(["whole_food", "minimally_processed", "fermented"]);
   });
 
   it("makes unknown versus none_observed explicit in text and image prompts", () => {
@@ -45,7 +66,27 @@ describe("xAI meal vision contract", () => {
       expect(prompt).toContain("uncertaintySignals");
       expect(prompt).toContain("qualityProperties");
       expect(prompt).toContain("novaGroup");
+      expect(prompt).toContain("sugarExposure");
+      expect(prompt).toContain("sugarGrams");
+      expect(prompt).toContain("addedSugarGrams");
+      expect(prompt).toContain("bonbons");
+      expect(prompt).toContain("whole_food");
     }
+  });
+
+  it("propagates the same sugar, NOVA and variety contract through OpenAI", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
+
+    await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Riz, légumes et poulet" });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
+    expect(body.instructions).toContain("sugarGrams");
+    expect(body.instructions).toContain("addedSugarGrams");
+    expect(body.instructions).toContain("NOVA");
+    expect(body.instructions).toContain("bonbons");
+    expect(body.instructions).toContain("whole_food");
+    expect(body.input[0]?.content[0]?.text).toContain("Riz, légumes et poulet");
   });
 
   it("sends the note and all photos in one structured vision request", async () => {
@@ -82,6 +123,23 @@ describe("xAI meal vision contract", () => {
 
     expect(result.foods[0]?.estimatedGrams).toBe(250);
     expect(result.totals.calories?.likely).toBe(500);
+  });
+
+  it("accepts a legacy response without sugar fields and keeps them unavailable", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const legacy = structuredAnalysis();
+    const legacyFood = { ...legacy.foods[0] } as Record<string, unknown>;
+    const legacyTotals = { ...legacy.totals } as Record<string, unknown>;
+    delete legacyFood.sugarGrams;
+    delete legacyFood.addedSugarGrams;
+    delete legacyTotals.sugarGrams;
+    delete legacyTotals.addedSugarGrams;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify({ ...legacy, foods: [legacyFood], totals: legacyTotals }) }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Riz sans quantité de sucre connue" });
+
+    expect(result.foods[0]).toMatchObject({ sugarGrams: null, addedSugarGrams: null });
+    expect(result.totals).toMatchObject({ sugarGrams: null, addedSugarGrams: null });
   });
 
   it("rejects an invalid provider response instead of persisting guesses", async () => {

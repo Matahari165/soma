@@ -3,15 +3,15 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import type { MealBalanceWorstMeal } from "@/domain/scores/meal-balance";
+import type { MealBalanceScore } from "@/domain/scores/meal-balance";
 import { CANONICAL_RESULTS_DIRECTORY, DEFAULT_FIXTURE_DIRECTORY, runRealisticMealBalance } from "../../scripts/meal-balance-realistic-test";
 
 type CanonicalRunArtifact = {
-  scores: Array<{ date: string; score: { score: number | null; baseScore: number | null; adversePenalty: number; worstMeal: MealBalanceWorstMeal | null } }>;
+  scores: Array<{ date: string; score: Pick<MealBalanceScore, "algorithmVersion" | "score" | "rawScore"> }>;
 };
 
 function scoreValues(scores: CanonicalRunArtifact["scores"]) {
-  return scores.map(({ date, score }) => ({ date, score: score.score, baseScore: score.baseScore, adversePenalty: score.adversePenalty, worstMeal: score.worstMeal }));
+  return scores.map(({ date, score }) => ({ date, algorithmVersion: score.algorithmVersion, score: score.score, rawScore: score.rawScore }));
 }
 
 describe("realistic meal-balance replay corpus", () => {

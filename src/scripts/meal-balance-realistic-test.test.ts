@@ -178,7 +178,7 @@ describe("realistic meal-balance runner", () => {
     expect(result.cases[0]).toMatchObject({ caseId: "case-lunch", status: "completed", provider: "stub-production-chain", model: "stub-model" });
     expect(result.records).toHaveLength(1);
     expect(result.aggregates[0]).toMatchObject({ date: "2026-09-12", mealCount: 1, caloriesKcal: 500, foodVarietyCount: 1 });
-    expect(result.scores[0]?.score.algorithmVersion).toBe("meal-balance-v2");
+    expect(result.scores[0]?.score.algorithmVersion).toBe("meal-balance-v3");
     expect(result.scores[0]?.score.score).toEqual(expect.any(Number));
 
     const saved = JSON.parse(await readFile(join(resultsDirectory, "case-lunch.json"), "utf8")) as Record<string, unknown>;
@@ -221,7 +221,7 @@ describe("realistic meal-balance runner", () => {
 
     expect(replay.mode).toBe("replay");
     expect(replay.cases[0]).toMatchObject({ status: "completed", provider: "stub-production-chain" });
-    expect(replay.scores[0]?.score.algorithmVersion).toBe("meal-balance-v2");
+    expect(replay.scores[0]?.score.algorithmVersion).toBe("meal-balance-v3");
     expect(mockedProviderChain).not.toHaveBeenCalled();
   });
 
