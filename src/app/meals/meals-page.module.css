@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  padding: 16px 5vw 64px;
+  padding: 32px 5vw 64px;
   background: var(--lab-canvas);
   color: var(--lab-text-primary);
 }
@@ -21,26 +21,30 @@
 .flow {
   display: grid;
   width: min(100%, 1180px);
-  gap: clamp(32px, 5vw, 56px);
-  margin: 16px auto 0;
+  gap: 48px;
+  margin: 24px auto 0;
 }
 
 .flow > * {
   min-width: 0;
 }
 
+.flow > :nth-child(2) {
+  margin-top: -16px;
+}
+
 .journal {
   display: grid;
-  gap: 24px;
+  gap: 16px;
 }
 
 .journal > h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 400;
-  letter-spacing: -.02em;
-  line-height: 1.25;
+  letter-spacing: 0;
+  line-height: 28px;
 }
 
 .journal :global(.meal-journal-lab) {
@@ -48,8 +52,9 @@
 }
 
 @media (max-width: 700px) {
-  .page { padding: 16px 16px 48px; }
-  .flow { gap: 32px; margin-top: 12px; }
-  .journal { gap: 16px; }
-  .journal > h2 { font-size: 22px; }
+  .page { padding: 24px 16px 48px; }
+  .flow { gap: 40px; margin-top: 20px; }
+  .flow > :nth-child(2) { margin-top: -8px; }
+  .journal { gap: 12px; }
+  .journal > h2 { font-size: 22px; line-height: 28px; }
 }

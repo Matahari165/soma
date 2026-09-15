@@ -1,7 +1,7 @@
 .lineChart:focus-visible {
-  outline: 2px solid var(--lab-brand, #264d38);
+  outline: 2px solid var(--lab-brand);
   outline-offset: 4px;
-  border-radius: var(--lab-radius-xs, 2px);
+  border-radius: var(--lab-radius-xs);
 }
 
 @media (prefers-reduced-motion: reduce) {
