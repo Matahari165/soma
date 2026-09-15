@@ -9,7 +9,7 @@ import { calculateRecoveryScore } from "@/domain/scores/recovery";
 import { sleepRegularityScore } from "@/domain/scores/regularity";
 import { estimateSleepNeed, recommendBedtimeFromHistory } from "@/domain/scores/sleep-need";
 import { calculateSleepScore } from "@/domain/scores/sleep";
-import { createCloudflareAdminClient, healthRecordsForAnalysis } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export const ANALYSIS_DATA_TYPES = [
@@ -45,6 +45,9 @@ export const ANALYSIS_DATA_TYPES = [
 
 export const DEFAULT_ANALYSIS_WINDOW_DAYS = 45 as const;
 export const HISTORICAL_ANALYSIS_WINDOW_DAYS = 90 as const;
+export const ANALYSIS_RECORD_PAGE_SIZE = 500 as const;
+
+const ANALYSIS_RECORD_COLUMNS = "id,provider,data_type,civil_date,start_time,end_time,measured_at,source_device,recording_method,payload";
 
 export type RecomputeUserHealthOptions = {
   windowDays?: typeof DEFAULT_ANALYSIS_WINDOW_DAYS | typeof HISTORICAL_ANALYSIS_WINDOW_DAYS;
@@ -60,6 +63,65 @@ export function analysisWindowFor(now: Date, options: RecomputeUserHealthOptions
     throw new Error("Health analysis window must be 45 or 90 days.");
   }
   return { days, start: rollingAnalysisStart(now, days) } as const;
+}
+
+type AnalysisHealthRecord = NormalizedHealthRecord & { id?: string | null };
+
+function analysisRecordIdentity(record: AnalysisHealthRecord) {
+  if (record.id) return `id:${record.id}`;
+  return JSON.stringify([
+    record.provider ?? null,
+    record.data_type,
+    record.civil_date,
+    record.start_time,
+    record.end_time,
+    record.measured_at,
+    record.source_device ?? null,
+    record.recording_method ?? null,
+    record.payload,
+  ]);
+}
+
+/**
+ * Reads only the analysis projection and keeps each storage request bounded.
+ * The four independent date reads are equivalent to the old OR predicate,
+ * while allowing the Cloudflare storage adapter to push a bounded LIMIT and
+ * id cursor into both D1 and Supabase. Records matching multiple date fields
+ * are deduplicated.
+ */
+export async function loadHealthRecordsForAnalysis(userId: string, analysisStart: string) {
+  const admin = createCloudflareAdminClient();
+  const records = new Map<string, AnalysisHealthRecord>();
+  const dateFilters = [
+    ["civil_date", analysisStart],
+    ["end_time", `${analysisStart}T00:00:00.000Z`],
+    ["start_time", `${analysisStart}T00:00:00.000Z`],
+    ["measured_at", `${analysisStart}T00:00:00.000Z`],
+  ] as const;
+
+  for (const [dateColumn, lowerBound] of dateFilters) {
+    let afterId: string | null = null;
+    for (;;) {
+      const query = admin.from("health_records")
+        .select(ANALYSIS_RECORD_COLUMNS)
+        .eq("user_id", userId)
+        .in("data_type", [...ANALYSIS_DATA_TYPES]);
+      if (afterId) query.gt("id", afterId);
+      const { data, error } = await query
+        .gte(dateColumn, lowerBound)
+        .order("id", { ascending: true })
+        .limit(ANALYSIS_RECORD_PAGE_SIZE);
+      if (error) throw new Error(error.message);
+      const page = (data ?? []) as AnalysisHealthRecord[];
+      for (const record of page) records.set(analysisRecordIdentity(record), record);
+      if (page.length < ANALYSIS_RECORD_PAGE_SIZE) break;
+      const lastId = page.at(-1)?.id;
+      if (!lastId) throw new Error("Health analysis records are missing stable ids.");
+      afterId = lastId;
+    }
+  }
+
+  return [...records.values()].sort((first, second) => String(first.id ?? "").localeCompare(String(second.id ?? "")));
 }
 
 function canonicalDerivedValue(value: unknown): unknown {
@@ -142,7 +204,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   // preserves older derived history; historical/manual jobs can request 90 days.
   const { start: analysisStart } = analysisWindowFor(new Date(), options);
   const [recordsResult, { data: profile, error: profileError }, { data: sleepPreferences, error: sleepPreferencesError }, currentMetrics, currentScores] = await Promise.all([
-    healthRecordsForAnalysis(userId, ANALYSIS_DATA_TYPES, analysisStart)
+    loadHealthRecordsForAnalysis(userId, analysisStart)
       .then((data) => ({ data: data as NormalizedHealthRecord[], error: null }))
       .catch((error: unknown) => ({ data: null, error })),
     admin.from("profiles").select("timezone,display_name").eq("user_id", userId).single(),

@@ -4,19 +4,21 @@ import { aggregateHealthRecords, type NormalizedHealthRecord } from "@/domain/he
 
 type GteCall = { table: string; column: string; value: string };
 type UpsertCall = { table: string; rows: unknown };
+type TestHealthRecord = NormalizedHealthRecord & { id: string };
+type AnalysisReadCall = { columns: string; dateColumn: string; lowerBound: string; afterId: string | null; limit: number };
 
 const testState = vi.hoisted(() => ({
   adminFrom: vi.fn(),
-  healthRecordsForAnalysis: vi.fn(),
   gteCalls: [] as GteCall[],
   upsertCalls: [] as UpsertCall[],
+  analysisReadCalls: [] as AnalysisReadCall[],
+  analysisRecords: [] as TestHealthRecord[],
   effortOptionsCalls: [] as unknown[],
   nutritionTargetState: { persisted: false, targets: { caloriesKcal: { likely: 700 } } },
 }));
 
 vi.mock("@/lib/cloudflare/db", () => ({
   createCloudflareAdminClient: () => ({ from: testState.adminFrom }),
-  healthRecordsForAnalysis: testState.healthRecordsForAnalysis,
 }));
 vi.mock("@/domain/briefs/generate", () => ({
   generateEveningBrief: () => "evening",
@@ -55,9 +57,11 @@ vi.mock("@/domain/scores/sleep", () => ({
 
 import {
   ANALYSIS_DATA_TYPES,
+  ANALYSIS_RECORD_PAGE_SIZE,
   analysisWindowFor,
   changedDerivedRows,
   healthRecordCoverageDates,
+  loadHealthRecordsForAnalysis,
   minutesSinceMidnightIn,
   recomputeUserHealth,
   rollingAnalysisStart,
@@ -67,15 +71,57 @@ type TestQuery = {
   select: (columns?: string) => TestQuery;
   eq: (column: string, value: unknown) => TestQuery;
   gte: (column: string, value: string) => TestQuery;
+  gt: (column: string, value: string) => TestQuery;
   single: () => Promise<{ data: unknown; error: null }>;
   upsert: (rows: unknown) => Promise<{ error: null }>;
   delete: () => TestQuery;
   in: (column: string, values: unknown[]) => Promise<{ error: null }>;
+  order: (column: string, options?: unknown) => TestQuery;
+  limit: (value: number) => TestQuery;
   then: Promise<unknown>["then"];
 };
 
+function configureHealthRecordQuery() {
+  const query = {} as TestQuery;
+  let columns = "*";
+  let dateColumn = "";
+  let lowerBound = "";
+  let afterId: string | null = null;
+  let limit = 0;
+  query.select = vi.fn((value = "*") => {
+    columns = value;
+    return query;
+  });
+  query.eq = vi.fn(() => query);
+  query.in = vi.fn(() => query) as unknown as TestQuery["in"];
+  query.gte = vi.fn((column, value) => {
+    dateColumn = column;
+    lowerBound = value;
+    return query;
+  });
+  query.gt = vi.fn((_column, value) => {
+    afterId = value;
+    return query;
+  });
+  query.order = vi.fn(() => query);
+  query.limit = vi.fn((value) => {
+    limit = value;
+    return query;
+  });
+  query.then = ((resolve, reject) => {
+    const page = testState.analysisRecords.filter((record) => {
+      const value = (record as unknown as Record<string, unknown>)[dateColumn];
+      return typeof value === "string" && value >= lowerBound && (!afterId || record.id > afterId);
+    }).slice(0, limit);
+    testState.analysisReadCalls.push({ columns, dateColumn, lowerBound, afterId, limit });
+    return Promise.resolve({ data: page, error: null }).then(resolve, reject);
+  }) as TestQuery["then"];
+  return query;
+}
+
 function configureAdminQueries() {
   testState.adminFrom.mockImplementation((table: string) => {
+    if (table === "health_records") return configureHealthRecordQuery();
     const result = table === "profiles"
       ? { data: { timezone: "UTC", display_name: "Test" }, error: null }
       : table === "sleep_preferences"
@@ -95,13 +141,17 @@ function configureAdminQueries() {
     });
     query.delete = vi.fn(() => query);
     query.in = vi.fn(() => Promise.resolve({ error: null }));
+    query.gt = vi.fn(() => query);
+    query.order = vi.fn(() => query);
+    query.limit = vi.fn(() => query);
     query.then = ((resolve, reject) => Promise.resolve(result).then(resolve, reject)) as TestQuery["then"];
     return query;
   });
 }
 
-const sourceRecords: NormalizedHealthRecord[] = [
+const sourceRecords: TestHealthRecord[] = [
   {
+    id: "record-exercise",
     data_type: "exercise",
     civil_date: "2026-08-01",
     start_time: "2026-08-01T10:00:00Z",
@@ -110,6 +160,7 @@ const sourceRecords: NormalizedHealthRecord[] = [
     payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 5_000_000 } } },
   },
   {
+    id: "record-steps",
     data_type: "steps",
     civil_date: "2026-08-02",
     start_time: null,
@@ -118,6 +169,7 @@ const sourceRecords: NormalizedHealthRecord[] = [
     payload: { steps: { count: 4_200 } },
   },
   {
+    id: "record-old-steps",
     data_type: "steps",
     civil_date: "2026-05-01",
     start_time: null,
@@ -206,10 +258,10 @@ describe("recomputeUserHealth analysis windows", () => {
     vi.setSystemTime(new Date("2026-08-27T12:00:00.000Z"));
     testState.gteCalls.length = 0;
     testState.upsertCalls.length = 0;
+    testState.analysisReadCalls.length = 0;
+    testState.analysisRecords = sourceRecords;
     testState.effortOptionsCalls.length = 0;
     testState.nutritionTargetState = { persisted: false, targets: { caloriesKcal: { likely: 700 } } };
-    testState.healthRecordsForAnalysis.mockReset();
-    testState.healthRecordsForAnalysis.mockResolvedValue(sourceRecords);
     configureAdminQueries();
   });
 
@@ -218,18 +270,70 @@ describe("recomputeUserHealth analysis windows", () => {
     vi.clearAllMocks();
   });
 
-  it("uses the same selected start for source reads, daily reads and stale-row cleanup", async () => {
+  it("uses the selected analysis start for each bounded source read and derived read", async () => {
     await recomputeUserHealth("user-1");
-    const recentSourceStart = testState.healthRecordsForAnalysis.mock.calls.at(-1)?.[2];
-    expect(recentSourceStart).toBe("2026-07-13");
-    expect(testState.gteCalls.filter((call) => call.table === "daily_health_metrics" || call.table === "daily_scores").every((call) => call.value === recentSourceStart)).toBe(true);
+    expect(testState.analysisReadCalls.map((call) => [call.dateColumn, call.lowerBound])).toEqual([
+      ["civil_date", "2026-07-13"],
+      ["end_time", "2026-07-13T00:00:00.000Z"],
+      ["start_time", "2026-07-13T00:00:00.000Z"],
+      ["measured_at", "2026-07-13T00:00:00.000Z"],
+    ]);
+    expect(testState.analysisReadCalls.every((call) => call.limit === ANALYSIS_RECORD_PAGE_SIZE && call.afterId === null)).toBe(true);
+    expect(testState.gteCalls.filter((call) => call.table === "daily_health_metrics" || call.table === "daily_scores").every((call) => call.value === "2026-07-13")).toBe(true);
 
     testState.gteCalls.length = 0;
     testState.upsertCalls.length = 0;
+    testState.analysisReadCalls.length = 0;
     await recomputeUserHealth("user-1", { windowDays: 90 });
-    const historicalSourceStart = testState.healthRecordsForAnalysis.mock.calls.at(-1)?.[2];
-    expect(historicalSourceStart).toBe("2026-05-29");
-    expect(testState.gteCalls.filter((call) => call.table === "daily_health_metrics" || call.table === "daily_scores").every((call) => call.value === historicalSourceStart)).toBe(true);
+    expect(testState.analysisReadCalls.map((call) => call.lowerBound)).toEqual([
+      "2026-05-29",
+      "2026-05-29T00:00:00.000Z",
+      "2026-05-29T00:00:00.000Z",
+      "2026-05-29T00:00:00.000Z",
+    ]);
+    expect(testState.gteCalls.filter((call) => call.table === "daily_health_metrics" || call.table === "daily_scores").every((call) => call.value === "2026-05-29")).toBe(true);
+  });
+
+  it("uses a bounded projection, paginates large reads, and deduplicates overlapping date matches", async () => {
+    const records = Array.from({ length: ANALYSIS_RECORD_PAGE_SIZE + 1 }, (_, index): TestHealthRecord => ({
+      id: `record-${String(index).padStart(4, "0")}`,
+      data_type: "steps",
+      civil_date: "2026-07-20",
+      start_time: null,
+      end_time: null,
+      measured_at: "2026-07-20T12:00:00Z",
+      payload: { steps: { count: index } },
+    }));
+    testState.analysisRecords = records;
+
+    const loaded = await loadHealthRecordsForAnalysis("user-1", "2026-07-13");
+
+    expect(loaded).toHaveLength(records.length);
+    expect(testState.analysisReadCalls.filter((call) => call.dateColumn === "civil_date").map((call) => [call.afterId, call.limit])).toEqual([
+      [null, ANALYSIS_RECORD_PAGE_SIZE],
+      [`record-${String(ANALYSIS_RECORD_PAGE_SIZE - 1).padStart(4, "0")}`, ANALYSIS_RECORD_PAGE_SIZE],
+    ]);
+    expect(testState.analysisReadCalls.every((call) => call.columns === "id,provider,data_type,civil_date,start_time,end_time,measured_at,source_device,recording_method,payload")).toBe(true);
+  });
+
+  it("keeps measured zero distinct from an unavailable metric after the bounded read", async () => {
+    testState.analysisRecords = [{
+      id: "record-zero-energy",
+      data_type: "active-energy-burned",
+      civil_date: "2026-08-03",
+      start_time: null,
+      end_time: null,
+      measured_at: "2026-08-03T12:00:00Z",
+      payload: { kilocalories: 0 },
+    }];
+
+    await recomputeUserHealth("user-1", { windowDays: 90 });
+
+    const metricRows = (testState.upsertCalls.find((call) => call.table === "daily_health_metrics")?.rows ?? []) as Array<Record<string, unknown>>;
+    const day = metricRows.find((row) => row.metric_date === "2026-08-03");
+    expect(day?.active_energy_kcal).toBe(0);
+    expect(day?.steps).toBeNull();
+    expect(day?.sleep_minutes).toBeNull();
   });
 
   it("persists null running metrics on a covered day without a run", async () => {

@@ -546,7 +546,9 @@ function matches(row: Row, filter: Filter): boolean {
   }
 }
 
-function parseOrExpression(expression: string) {
+type SupabaseOrTerm = { field: string; operator: string; value: string | null };
+
+function parseOrExpression(expression: string): SupabaseOrTerm[] {
   return expression.split(",").map((part) => {
     const [field, operator, ...raw] = part.split(".");
     const joined = raw.join(".");
@@ -1061,7 +1063,7 @@ async function readSupabaseStorageRows(
   table: string,
   filters: SupabaseFilter[],
   sorts: Sort[],
-  orFilterCount: number,
+  orFilters: SupabaseOrTerm[][],
   fromIndex: number,
   toIndex: number | undefined,
   maxRows: number | undefined,
@@ -1088,7 +1090,21 @@ async function readSupabaseStorageRows(
     serverFilters.push(["order", "row_key.asc"]);
   }
 
-  const paginationPushed = allFiltersPushed && allSortsPushed && orFilterCount === 0 && !exactCount;
+  let allOrFiltersPushed = true;
+  for (const expressions of orFilters) {
+    const terms = expressions.map(({ field, operator, value }) => {
+      const column = field === "user_id" ? "user_id" : supabaseJsonField(field);
+      if (!column || !["eq", "gte", "gt", "lte", "lt", "is"].includes(operator) || (value === null && operator !== "is")) return null;
+      return `${column}.${operator === "is" && value === null ? "is.null" : `${operator}.${value}`}`;
+    });
+    if (terms.some((term) => term === null)) {
+      allOrFiltersPushed = false;
+      continue;
+    }
+    serverFilters.push(["or", `(${terms.join(",")})`]);
+  }
+
+  const paginationPushed = allFiltersPushed && allSortsPushed && allOrFiltersPushed && !exactCount;
   const rangeSize = toIndex === undefined ? undefined : Math.max(0, toIndex - fromIndex + 1);
   const requestedLimit = rangeSize === undefined ? maxRows : maxRows === undefined ? rangeSize : Math.min(rangeSize, maxRows);
   const hasBoundedPage = paginationPushed && (requestedLimit !== undefined || fromIndex > 0);
@@ -1164,7 +1180,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
       return rows;
     }
 
-    let rows = await readSupabaseStorageRows(this.table, this.filters, this.sorts, this.orFilters.length, this.fromIndex, this.toIndex, this.maxRows, this.selectOptions?.count === "exact", this.requestTimeoutMs);
+    let rows = await readSupabaseStorageRows(this.table, this.filters, this.sorts, this.orFilters, this.fromIndex, this.toIndex, this.maxRows, this.selectOptions?.count === "exact", this.requestTimeoutMs);
     rows = rows.filter((row) => this.filters.every((filter) => matches(row, filter)));
     rows = rows.filter((row) => this.orFilters.every((expressions) => matchesOr(row, expressions)));
     for (const sort of [...this.sorts].reverse()) {

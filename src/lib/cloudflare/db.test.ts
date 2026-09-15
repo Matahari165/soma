@@ -175,6 +175,41 @@ describe("Supabase storage pagination", () => {
     }
   });
 
+  it("pushes compound OR date filters to Supabase instead of scanning all history", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("or")).toBe("(json_data->>civil_date.gte.2026-09-14,json_data->>end_time.gte.2026-09-14T00:00:00.000Z)");
+      expect(url.searchParams.get("limit")).toBe("1000");
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient()
+        .from("health_records")
+        .select("*")
+        .eq("user_id", "user-1")
+        .in("data_type", ["sleep", "exercise"])
+        .or("civil_date.gte.2026-09-14,end_time.gte.2026-09-14T00:00:00.000Z")
+        .order("id");
+
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
   it("reads logical rows beyond Supabase's first 1,000-row page", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
