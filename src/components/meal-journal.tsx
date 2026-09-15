@@ -49,6 +49,7 @@ import {
 } from "@/domain/nutrition-targets";
 import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
+import { LabMealCard, type MealDesignVariant } from "@/components/lab/meal-card-variants";
 import styles from "./meal-journal.module.css";
 
 export { apiMealToRecord, MEAL_SLOTS };
@@ -121,6 +122,7 @@ type Props = {
   initialEffectiveTargets?: NutritionTargets;
   initialEffortTargetContext?: EffortTargetContext;
   hideAddMealButton?: boolean;
+  designVariant?: MealDesignVariant;
 };
 
 type LoadState = "loading" | "ready" | "error";
@@ -1075,7 +1077,7 @@ function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false, onTo
   </header>;
 }
 
-export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false }: Props) {
+export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, designVariant = "v1" }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -1834,13 +1836,35 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         </header>
         <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-          return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
+          return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
         })}</div>
       </section>
       <div className={styles.mealsSecondary}>{children}</div>
     </div> : <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
         const meal = readyData.meals[slot] ?? null;
-        return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty={variant !== "page"} labCompact={variant === "lab"} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onConfirm={() => { if (meal) handleConfirm(slot, meal); }} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
+        return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}>{
+          variant === "lab" ? (
+            <LabMealCard
+              meal={meal}
+              slot={slot}
+              designVariant={designVariant}
+              disabled={disabledSlots.includes(slot)}
+              saving={savingSlot === slot}
+              processingFiles={processingFiles}
+              mutationBusy={slotBusy(slot)}
+              confirmError={confirmError[slot]}
+              onFiles={(files) => addFiles(slot, files)}
+              onRemovePhoto={(photoId) => removePhoto(slot, photoId)}
+              onAnalyze={() => void analyzeMeal(slot)}
+              onCancelAnalysis={() => cancelAnalysis(slot)}
+              onNote={(note) => setNote(slot, note)}
+              onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
+              onMarkSkipped={() => void changeEntryState(slot, "skipped")}
+            />
+          ) : (
+            <MealCard meal={meal} slot={slot} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
+          )
+        }</div>;
       })}</div>}
     {pendingDelete && <div className={styles.deleteBackdrop} onClick={(event) => { if (event.target === event.currentTarget) cancelPendingDelete(); }}>
       <div id="meal-photo-delete-dialog" className={styles.deleteDialog} role="alertdialog" aria-modal="true" aria-labelledby="meal-photo-delete-title" aria-describedby="meal-photo-delete-description">

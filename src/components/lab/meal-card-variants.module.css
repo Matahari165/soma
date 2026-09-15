@@ -1,0 +1,703 @@
+/* SOMA — Personal Lab Meal Card Variants (V1, V2, V3)
+   100% conforme à DESIGN.md : fond continu noir, borderless, typographie Schibsted Grotesk + Azeret Mono,
+   espacements sur l'échelle 4/8/16/24 px, rayons max 4px, pas de décorations superficielles. */
+
+.visuallyHidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ==========================================================================
+   Base Card Container
+   ========================================================================== */
+.cardRoot {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--lab-border, #292929);
+  background: transparent;
+  transition: opacity 180ms ease;
+}
+
+.cardRoot:last-child {
+  border-bottom: 0;
+}
+
+/* ==========================================================================
+   En-tête de créneau commun
+   ========================================================================== */
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  margin-bottom: 10px;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slotHeading {
+  margin: 0;
+  font-family: var(--font-soma-ui), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lab-text-primary, #f1f1f1);
+  letter-spacing: -0.01em;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  min-height: 28px;
+  background: transparent;
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.editButton:hover {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface, #080808);
+}
+
+.editButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 2px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-family: var(--font-soma-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface-subtle, #0c0c0c);
+  border-radius: var(--lab-radius-xs, 2px);
+}
+
+/* ==========================================================================
+   Zone de photos en attente d'analyse
+   ========================================================================== */
+.photoThumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.photoThumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--lab-radius-xs, 2px);
+  overflow: hidden;
+  border: 1px solid var(--lab-border, #292929);
+}
+
+.photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoRemoveBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(5, 5, 5, 0.85);
+  border: 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ==========================================================================
+   Boutons d'action partagés
+   ========================================================================== */
+.analyzeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  background: var(--lab-brand, #eeeeee);
+  color: var(--lab-canvas, #050505);
+  border: 1px solid var(--lab-brand, #eeeeee);
+  border-radius: var(--lab-radius-sm, 4px);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 150ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.analyzeButton:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.analyzeButton:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.analyzeButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 3px;
+}
+
+.mediaIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.mediaIconButton:hover:not(:disabled) {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface-selected, #222222);
+}
+
+.mediaIconButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 2px;
+}
+
+.mediaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.mediaButton:hover:not(:disabled) {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface-selected, #222222);
+}
+
+.mediaButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 2px;
+}
+
+.mediaButton:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.mediaPillButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.mediaPillButton:hover:not(:disabled) {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-border-strong, #3a3a3a);
+}
+
+.mediaPillButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   VERSION 1 : HORIZON SILENCIEUX (Linéaire épuré)
+   ========================================================================== */
+.v1InputRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.v1TextInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 12px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  transition: min-height 200ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.v1TextInputExpanded {
+  min-height: 76px;
+}
+
+@media (max-width: 600px) {
+  .v1TextInput {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  
+  .v1InputRow > button {
+    flex: 1 1 auto;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
+.v1TextInput:focus {
+  outline: none;
+  border-color: var(--lab-border-strong, #3a3a3a);
+  background: var(--lab-surface-subtle, #0c0c0c);
+}
+
+.v1TextInput::placeholder {
+  color: #555555;
+}
+
+.v1FilledSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v1DishText {
+  margin: 0;
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--lab-text-primary, #f1f1f1);
+  line-height: 20px;
+}
+
+.v1NutritionLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.v1MetricItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.v1MetricLabel {
+  font-size: 11px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.v1MetricValue {
+  font-weight: 500;
+}
+
+.v1MetricUnit {
+  font-size: 11px;
+  color: var(--lab-text-secondary, #aaaaaa);
+}
+
+.v1Divider {
+  color: var(--lab-border, #292929);
+  user-select: none;
+}
+
+/* ==========================================================================
+   VERSION 2 : INSTRUMENT FÉDÉRÉ (2 étages & 5 colonnes)
+   ========================================================================== */
+.v2EmptyContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2TextInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+}
+
+.v2TextInput:focus {
+  outline: none;
+  border-color: var(--lab-border-strong, #3a3a3a);
+}
+
+.v2TextInput::placeholder {
+  color: #555555;
+}
+
+.v2ActionsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2MediaGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v2FilledSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v2DishText {
+  margin: 0;
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 14px;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.v2NutritionGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--lab-border, #292929);
+}
+
+.v2MetricCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v2MetricLabel {
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 10px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2MetricValue {
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--lab-text-primary, #f1f1f1);
+  white-space: nowrap;
+}
+
+.v2MetricValue small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--lab-text-secondary, #aaaaaa);
+  margin-left: 2px;
+}
+
+/* ==========================================================================
+   VERSION 3 : MATRICE SPLIT (Asymétrique & Compacte)
+   ========================================================================== */
+.v3Row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 600px) {
+  .v3Row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.v3SlotSide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.v3SlotHeading {
+  margin: 0;
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 14px;
+  font-weight: 560;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.v3ContentSide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v3InputGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v3TextInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+}
+
+.v3TextInput:focus {
+  outline: none;
+  border-color: var(--lab-border-strong, #3a3a3a);
+}
+
+.v3TextInput::placeholder {
+  color: #555555;
+}
+
+.v3CompactAnalyze {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 12px;
+  background: var(--lab-brand, #eeeeee);
+  color: var(--lab-canvas, #050505);
+  border: 1px solid var(--lab-brand, #eeeeee);
+  border-radius: var(--lab-radius-xs, 2px);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 560;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.v3CompactAnalyze:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.v3PillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.v3Pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 2px 6px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+}
+
+.v3PillLabel {
+  font-size: 10px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   États d'analyse en cours / erreur
+   ========================================================================== */
+.analyzingState {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.progressTrace {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--lab-text-secondary, #aaaaaa);
+  border-top-color: var(--lab-brand, #eeeeee);
+  border-radius: 50%;
+  animation: spinTrace 800ms linear infinite;
+}
+
+@keyframes spinTrace {
+  to { transform: rotate(360deg); }
+}
+
+.cancelButton {
+  background: transparent;
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-text-secondary, #aaaaaa);
+}
+
+.v1DishSubTitle {
+  margin: 0;
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  line-height: 1.4;
+}
+.v1DetailsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 4px;
+}
+.v1DetailsToggle:hover {
+  color: var(--lab-text-primary, #f1f1f1);
+}
+.v1DetailsPanel {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  font-size: 13px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  line-height: 1.5;
+}
+.v1DetailsPanel ul {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+.v1DetailsPanel p {
+  margin: 0;
+}
+.v1CancelBtn {
+  background: transparent;
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-secondary, #aaaaaa);
+  padding: 0 12px;
+  height: 32px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .v1CancelBtn {
+    min-height: 44px;
+    height: auto;
+  }
+}
+.v1CancelBtn:hover {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-text-secondary, #aaaaaa);
+}

@@ -840,4 +840,42 @@ describe("apiMealToRecord", () => {
 
     expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
+
+  it("renders lab meal card in V1 with synthetic dish title, 5 metrics, and no confirm button", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
+      date,
+      meals: {
+        breakfast: {
+          id: "meal-lab-1",
+          date,
+          slot: "breakfast",
+          note: "mon petit déjeuner",
+          photos: [],
+          analysis: {
+            dishType: "Omelette aux fines herbes",
+            ingredients: [
+              { id: "ing-1", name: "Œufs", portion: "2 pièces", calories: { low: null, likely: 140, high: null } },
+              { id: "ing-2", name: "Fines herbes", portion: "10 g", calories: { low: null, likely: 10, high: null } },
+            ],
+            calories: { low: null, likely: 250, high: null },
+            proteinGrams: { low: null, likely: 18, high: null },
+            carbohydratesGrams: { low: null, likely: 2, high: null },
+            fatGrams: { low: null, likely: 19, high: null },
+            addedSugarGrams: { low: null, likely: 0, high: null },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Omelette aux fines herbes");
+    expect(html).toContain("Œufs · Fines herbes");
+    expect(html).toContain("250");
+    expect(html).toContain("18");
+    expect(html).toContain("Modifier");
+    expect(html).toContain("Détails de l’analyse");
+    expect(html).not.toContain("Confirmer le repas");
+  });
 });

@@ -25,20 +25,21 @@ describe("MealJournal note focus", () => {
       root.render(<MealJournal variant={variant} showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
     });
 
-    const textarea = container.querySelector<HTMLTextAreaElement>('[id="meal-breakfast-note"]');
-    expect(textarea).not.toBeNull();
-    textarea?.focus();
-    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-    setValue?.call(textarea, "P");
+    const inputElement = container.querySelector<HTMLInputElement | HTMLTextAreaElement>('[id="meal-breakfast-note"]');
+    expect(inputElement).not.toBeNull();
+    inputElement?.focus();
+    const proto = inputElement instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setValue = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    setValue?.call(inputElement, "P");
 
     await act(async () => {
-      textarea?.dispatchEvent(new Event("input", { bubbles: true }));
+      inputElement?.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    const nextTextarea = container.querySelector<HTMLTextAreaElement>('[id="meal-breakfast-note"]');
-    expect(nextTextarea).toBe(textarea);
-    expect(document.activeElement).toBe(textarea);
-    expect(nextTextarea?.value).toBe("P");
+    const nextInputElement = container.querySelector<HTMLInputElement | HTMLTextAreaElement>('[id="meal-breakfast-note"]');
+    expect(nextInputElement).toBe(inputElement);
+    expect(document.activeElement).toBe(inputElement);
+    expect(nextInputElement?.value).toBe("P");
 
     await act(async () => root.unmount());
   });
