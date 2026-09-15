@@ -3,7 +3,7 @@
 .lab-global-nav a { flex-shrink:0; display:flex; align-items:center; min-height:44px; color:var(--lab-text-secondary); font-size:12px; white-space:nowrap; text-decoration:none; transition:color 180ms ease,background-color 180ms ease; }
 .lab-global-nav a:first-child { color:var(--lab-text-primary); font-weight:600; margin-right:auto; }
 .lab-global-nav a:hover { color:var(--lab-text-primary); }
-.lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title,#world-effects) { scroll-margin-top:160px!important; }
+.lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title) { scroll-margin-top:160px!important; }
 .lab-rail-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .lab-rail-controls button { min-height:44px; padding:10px 18px; border:0; background:var(--lab-surface-selected); color:var(--lab-text-primary); cursor:pointer; }
 .lab-rail-controls span { color:var(--lab-text-secondary); font-size:12px; }

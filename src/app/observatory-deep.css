@@ -145,7 +145,7 @@ html[data-lab-theme="observatory"] .lab-global-nav {
 /* Le journal passe devant le fond immersif fixe pour rester parfaitement lisible. */
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world { position:relative; z-index:1; }
 html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:82px; }
-html[data-lab-theme="observatory"] .lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title,#world-effects) { scroll-margin-top:94px!important; }
+html[data-lab-theme="observatory"] .lab-continuous :is(#arrival-title,#daily-journal,#meal-journal-title) { scroll-margin-top:94px!important; }
 html[data-lab-theme="observatory"] .lab-global-nav a:hover { color:#fff; }
 .observatory-radar { grid-template-rows:minmax(0,1fr); padding-bottom:0; }
 html[data-lab-theme="observatory"] .journal-save-status[data-draft="true"] { display:none; }
@@ -426,22 +426,9 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   outline: 2px solid #ddd;
   outline-offset: 6px;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header {
-  align-items: center;
-}
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header h3 {
-  color: #eee;
-  font: 400 18px/1.25 var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif;
-}
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header p,
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__hint,
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__empty {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__hint {
   color: #8a8a8a;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-row {
-  border-bottom-color: rgba(238, 238, 238, .14);
-}
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-row button,
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-edit button,
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-new-variable__actions button {
   border: 0 !important;
@@ -450,7 +437,6 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   background: #111;
   color: #aaa;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-row button:is(:hover, :focus-visible),
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-edit button:is(:hover, :focus-visible),
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-new-variable__actions button:is(:hover, :focus-visible) {
   background: #1c1c1c;
@@ -472,6 +458,134 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   color: #f1f1f1;
 }
 
+/* Inline habit editing: keep the instrument continuous and remove the former bottom panel. */
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 0;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period__header-actions .journal-manager-trigger {
+  min-width: 0;
+  gap: 6px;
+  border: 1px solid transparent !important;
+  border-bottom: 1px solid rgba(238, 238, 238, .28) !important;
+  background: transparent;
+  color: #aaa;
+  font-size: 13px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period__header-actions .journal-manager-trigger:is(:hover, :focus-visible),
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period__header-actions .journal-manager-trigger[aria-expanded="true"] {
+  border-bottom-color: #eee !important;
+  background: #151515;
+  color: #f1f1f1;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-validation-action {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-validation-action small {
+  color: #858585;
+  font: 400 11px/1.2 var(--font-soma-mono), monospace;
+  white-space: nowrap;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab[data-managing="true"] .journal-grid {
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 0;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field-stack {
+  min-width: 0;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field-stack > .journal-field {
+  width: 100%;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field__edit-trigger {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field__edit-trigger:hover .journal-field__label-text,
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field__edit-trigger[aria-expanded="true"] .journal-field__label-text {
+  color: #f1f1f1;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-field__edit-trigger:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: 3px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline {
+  display: grid;
+  gap: 10px;
+  margin: -2px 0 8px;
+  padding: 0 0 14px 32px;
+  border-bottom: 1px solid rgba(238, 238, 238, .14);
+  animation: journal-inline-editor-enter 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline .journal-variable-edit {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 12px 0 0;
+  border: 0;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(input, select) {
+  min-height: 36px;
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(238, 238, 238, .24);
+  border-radius: 0;
+  background: transparent;
+  color: #eee;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button) {
+  min-height: 36px;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(238, 238, 238, .22) !important;
+  border-radius: 0;
+  background: transparent;
+  color: #aaa;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button):is(:hover, :focus-visible) {
+  background: #151515;
+  color: #f1f1f1;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab :is(.journal-field, .journal-field--confirmed, .journal-field--skipped, .journal-period--complete, .journal-period--complete .journal-field, .journal-period--complete .journal-period__header) {
+  background: transparent !important;
+}
+
+@keyframes journal-inline-editor-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline {
+    animation: none;
+  }
+}
+
 @media(max-width:700px) {
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period__header-row--morning .journal-period__header-actions {
     width: 100%;
@@ -481,12 +595,14 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     min-width: 0;
     flex: 1 1 0;
   }
-  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-manager__header-actions {
     width: 100%;
     justify-content: flex-start;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline {
+    padding-left: 0;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline .journal-variable-edit {
+    grid-template-columns: 1fr;
   }
 }

@@ -73,7 +73,7 @@ export function PersonalLabJournalWorkspace({
     const url = new URL(window.location.href);
     if (url.searchParams.get("date") === selectedDate) return;
     url.searchParams.set("date", selectedDate);
-    window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+    window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
   }, [selectedDate, controlledSelectedDate]);
   useEffect(() => {
     if (controlledSelectedDate !== undefined) return;

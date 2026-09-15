@@ -84,7 +84,7 @@
 .lab-experience.lab-continuous .lab-world__effects .strongest-effects__periods { border: 1px solid var(--world-line); border-radius: var(--world-radius); background: var(--world-surface); }
 .lab-experience.lab-continuous .lab-world__effects .strongest-effects__periods button { min-width: 48px; min-height: 42px; border: 0; background: transparent; color: var(--world-muted); font-size: 12px; }
 .lab-experience.lab-continuous .lab-world__effects .strongest-effects__periods button[aria-pressed="true"] { background: var(--world-accent); color: var(--world-bg); }
-.lab-experience.lab-continuous :is(#daily-journal, #meal-journal-title, #world-effects) { scroll-margin-top: 112px; }
+.lab-experience.lab-continuous :is(#daily-journal, #meal-journal-title) { scroll-margin-top: 112px; }
 
 /* Observatory: instrument panel, with a wide reading surface and paired capture columns. */
 .lab-experience.lab-continuous[data-continuous-theme="observatory"] { --world-bg: #090c0e; --world-surface: #111719; --world-surface-strong: #192124; --world-ink: #edf2f0; --world-muted: #a6b3b4; --world-line: #29363a; --world-accent: #b8d2c0; font-family: var(--font-soma-sans), ui-sans-serif, system-ui, sans-serif; }

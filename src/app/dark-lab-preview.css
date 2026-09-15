@@ -25,7 +25,7 @@ html[data-lab-theme] .sidebar.sidebar--collapsed { border: 0; box-shadow: none; 
 html[data-lab-theme] :focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
 html[data-lab-theme] ::selection { background: var(--lab-brand); color: var(--lab-canvas); }
 html[data-lab-theme] :is(input, textarea) { caret-color: var(--lab-brand); }
-html[data-lab-theme] :is(#daily-journal, #meal-journal-title, #world-effects) { scroll-margin-top: 164px; }
+html[data-lab-theme] :is(#daily-journal, #meal-journal-title) { scroll-margin-top: 164px; }
 .lab-world, .lab-world-loading { color: var(--lab-text-primary); background: var(--lab-canvas); min-height: calc(100dvh - 88px); padding: 28px; }
 .lab-world { display: grid; gap: 28px; align-items: start; }
 .lab-world > * { min-width: 0; }

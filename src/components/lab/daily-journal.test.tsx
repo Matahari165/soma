@@ -29,7 +29,9 @@ describe("journal motion states", () => {
     expect(html).toContain('class="journal-card__header"');
     expect(html).toContain('class="journal-card__heading"');
     expect(html.indexOf("Brouillon local non envoyé")).toBeLessThan(html.indexOf("Valider la journée"));
-    expect(html.indexOf("Valider la journée")).toBeLessThan(html.indexOf("Modifier les champs du journal"));
+    expect(html.indexOf("Valider la journée")).toBeLessThan(html.indexOf("Modifier les habitudes"));
+    expect(html).toContain('aria-label="Modifier les habitudes"');
+    expect(html).not.toContain('id="journal-manager"');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain(">Brouillon local non envoyé</span>");
     expect(html).toContain("Valider la journée");

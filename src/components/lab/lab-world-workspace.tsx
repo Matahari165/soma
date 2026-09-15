@@ -7,7 +7,6 @@ import { LabArrival, type LabArrivalPersonalization } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
-import { scrollToLabSectionWhenReady } from "./lab-scroll";
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -30,7 +29,7 @@ function writeDateToUrl(date: string) {
   const url = new URL(window.location.href);
   if (url.searchParams.get("date") === date) return;
   url.searchParams.set("date", date);
-  window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+  window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
 }
 
 export function LabWorldWorkspace({
@@ -127,10 +126,6 @@ export function LabWorldWorkspace({
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
   useEffect(() => {
-    if (window.location.hash !== "#world-effects") return;
-    return scrollToLabSectionWhenReady("world-effects");
-  }, []);
-  useEffect(() => {
     const elements = root.current?.querySelectorAll<HTMLElement>(".lab-live-metrics .personal-lab-metric, .journal-period, .meal-journal-lab article");
     if (!elements || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
@@ -161,7 +156,7 @@ export function LabWorldWorkspace({
     </div>
     <div className="lab-world" lang="fr">
       <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{activeCapture}</section>
-      <section className="lab-world__effects" id="world-effects" aria-label="Associations personnelles">{effects}</section>
+      <section className="lab-world__effects" aria-label="Associations personnelles">{effects}</section>
     </div>
   </div>;
 }

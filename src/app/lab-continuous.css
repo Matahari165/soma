@@ -24,7 +24,7 @@ html[data-lab-theme] .app-shell:has(.lab-continuous) .main-content { margin-left
 .lab-live-metrics .personal-lab-metric__label,.lab-live-metrics .personal-lab-metric__average { color:var(--lab-text-secondary); font-size:12px; }
 .lab-live-metrics .personal-lab-metric__trace { display:none; }
 .lab-live-metrics .personal-lab-metric__bars { height:36px; }
-.lab-continuous :is(#daily-journal,#meal-journal-title,#world-effects) { scroll-margin-top:110px; }
+.lab-continuous :is(#daily-journal,#meal-journal-title) { scroll-margin-top:110px; }
 /* Progressive enhancement: the artwork recedes as the useful content arrives. */
 @supports (animation-timeline: scroll()) {
  .lab-continuous .lab-intro .arrival-art { animation:lab-scroll-art linear both; animation-timeline:scroll(root); animation-range:0px 650px; }

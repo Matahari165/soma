@@ -38,7 +38,6 @@
   .journal-field > select { width: 148px; }
   .journal-choice button, .journal-field input, .journal-field select { min-height: 44px; }
   .journal-suggestions button,
-  .journal-variable-row button,
   .journal-variable-edit button,
   .journal-variable-edit input,
   .journal-variable-edit select,
@@ -334,8 +333,6 @@
   .journal-field > input,
   .journal-field > select { width: 100%; }
   .journal-field > .journal-choice--scale { width: 148px; }
-  .journal-variable-row { grid-template-columns: 1fr auto; }
-  .journal-variable-row > button:last-child { grid-column: 2; }
   .journal-variable-edit,
   .journal-new-variable { grid-template-columns: 1fr; }
   .journal-actions .primary-button { width: 100%; justify-content: center; }
