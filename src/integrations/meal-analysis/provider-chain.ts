@@ -3,11 +3,14 @@ import "server-only";
 import {
   analyzeMealInput,
   createXaiMealVisionProvider,
+  MEAL_ANALYSIS_PROMPT_VERSION,
+  MEAL_ANALYSIS_SCHEMA_VERSION,
   MealVisionError,
   type MealVisionInput,
   type MealVisionProvider,
 } from "@/integrations/xai/meal-vision";
 import { createOpenAiMealVisionProvider } from "@/integrations/openai/meal-vision";
+import type { MealAnalysisPipelineProvenance } from "@/domain/meals";
 
 function configuredProviderName() {
   return process.env.MEAL_ANALYSIS_PRIMARY_PROVIDER === "openai" ? "openai" : "xai";
@@ -60,6 +63,20 @@ function fallbackProvider(primary: MealVisionProvider) {
   return null;
 }
 
+function pipelineProvenance(input: {
+  primary: { provider: string; model: string };
+  final: { provider: string; model: string };
+  validation: MealAnalysisPipelineProvenance["validation"];
+  fallback: MealAnalysisPipelineProvenance["fallback"];
+}): MealAnalysisPipelineProvenance {
+  return {
+    promptVersion: MEAL_ANALYSIS_PROMPT_VERSION,
+    schemaVersion: MEAL_ANALYSIS_SCHEMA_VERSION,
+    ...input,
+    validator: input.validation,
+  };
+}
+
 /**
  * Runs one configured provider and only falls back after a retryable provider
  * failure. Invalid input, authentication, schema and storage bugs must remain
@@ -76,12 +93,12 @@ export async function analyzeMealInputWithFallback(
     const analysed = await analyzeMealInput(input, primary, { verify: options.verify, requestId: options.requestId });
     return {
       ...analysed,
-      provenance: {
+      provenance: pipelineProvenance({
         primary: primaryConfiguration,
         final: { provider: analysed.provider, model: analysed.model },
         validation: analysed.validation,
         fallback: { configured: Boolean(secondary), attempted: false, used: false, provider: secondary?.name ?? null, model: secondary?.model ?? null },
-      },
+      }),
     };
   } catch (error) {
     if (!secondary || !(error instanceof MealVisionError) || !error.retryable) throw error;
@@ -105,12 +122,12 @@ export async function analyzeMealInputWithFallback(
       });
       return {
         ...result,
-        provenance: {
+        provenance: pipelineProvenance({
           primary: primaryConfiguration,
           final: { provider: secondary.name, model: secondary.model },
           validation: result.validation,
           fallback: { configured: true, attempted: true, used: true, provider: secondary.name, model: secondary.model },
-        },
+        }),
       };
     } catch (fallbackError) {
       console.error("[meal-analysis] fallback provider failed", {

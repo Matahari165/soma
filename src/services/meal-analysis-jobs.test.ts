@@ -8,6 +8,9 @@ const state = vi.hoisted(() => ({
   insertMealAnalysis: vi.fn(),
   listQueuedMealAnalyses: vi.fn(),
   updateMealAnalysis: vi.fn(),
+  updateMeal: vi.fn(),
+  listFailedMealAnalyses: vi.fn(),
+  listMealPhotoRowsForReconciliation: vi.fn(),
   findRelevantMealRecipeReferences: vi.fn(),
   analyzeMealInputWithFallback: vi.fn(),
   claimCloudflareLock: vi.fn(),
@@ -27,6 +30,9 @@ vi.mock("@/repositories/meals", async (importOriginal) => ({
   insertMealAnalysis: state.insertMealAnalysis,
   listQueuedMealAnalyses: state.listQueuedMealAnalyses,
   updateMealAnalysis: state.updateMealAnalysis,
+  updateMeal: state.updateMeal,
+  listFailedMealAnalyses: state.listFailedMealAnalyses,
+  listMealPhotoRowsForReconciliation: state.listMealPhotoRowsForReconciliation,
 }));
 vi.mock("@/lib/cloudflare/db", () => ({
   claimCloudflareLock: state.claimCloudflareLock,
@@ -106,6 +112,9 @@ describe("durable meal analysis jobs", () => {
     state.refreshCloudflareLockWithToken.mockResolvedValue(true);
     state.releaseCloudflareLockWithToken.mockResolvedValue(undefined);
     state.updateMealAnalysis.mockImplementation(async (_userId: string, _id: string, values: Record<string, unknown>) => rowToAnalysis(values));
+    state.updateMeal.mockResolvedValue(null);
+    state.listFailedMealAnalyses.mockResolvedValue([]);
+    state.listMealPhotoRowsForReconciliation.mockResolvedValue([]);
   });
 
   it("accepts a request durably without contacting the provider", async () => {

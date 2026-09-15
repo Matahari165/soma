@@ -3,7 +3,7 @@ import { arrivalActivityFor, type ArrivalActivity } from "@/domain/lab/arrival-m
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
 import { journalAchievementsFor, type JournalAchievement } from "@/domain/lab/journal-achievement";
 import { defaultJournalVariables, journalValueAsNumber, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
-import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, isPersonalLabPublishedRelation, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabMetricAllowed, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 import { aggregateConfirmedMeals, mealDailySeries, isMealMetric, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { metricDefinitionsForHealth, metricRoleFor, type LabMetricDefinition, type MetricRole } from "@/domain/lab/metrics";
 import { DEFAULT_NUTRITION_TARGETS, nutritionTargetsForEffort, type NutritionTargets } from "@/domain/nutrition-targets";
@@ -15,7 +15,6 @@ import { getLabMatrixCacheObject, LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObj
 import { loadJournalData } from "@/services/journal";
 import { loadConfirmedMealRecords } from "@/services/meals";
 import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
-import { evidenceCandidatesForNarrative, isWeeklyNarrativeCurrent, LAB_NARRATIVE_ITEM_COUNT } from "@/services/lab-narrative-policy";
 import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
@@ -119,20 +118,6 @@ export type PersonalLabSnapshot = {
     energy: number | null;
     activity: ArrivalActivity | null;
   };
-  aiNarrative: {
-    isCurrent: boolean;
-    id: string | null;
-    headline: string;
-    summary: string;
-    highlights: string[];
-    model: string;
-    generatedAt: string;
-    liked: boolean;
-    sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }>;
-    evidenceCandidates: unknown[];
-    history: Array<{ id: string; headline: string; summary: string; highlights: string[]; generatedAt: string; liked: boolean; sourceFacts: Array<{ predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }> }>;
-  } | null;
-  needsNarrativeRefresh: boolean;
   metricRegistry: Array<LabMetricDefinition & { role: MetricRole; recordedDays: number; received: boolean; sources: Array<{ source: string; days: number }> }>;
   matrix: {
     outcomes: Array<{ id: string; label: string; unit: string; direction: "higher" | "lower" | "target" }>;
@@ -895,10 +880,7 @@ function buildSnapshot(input: {
   journal: { variables: JournalVariable[]; entries: JournalEntry[]; days: import("@/domain/lab/journal").JournalDay[] };
   meals?: readonly ConfirmedMealRecord[];
   targets?: NutritionTargets;
-  narrative: { id?: string; headline: string; summary: string; highlights: unknown; source_facts: unknown; evidence_candidates?: unknown; model: string; generated_at: string; liked?: boolean; overnight_fingerprint?: string | null } | null;
-  narrativeHistory?: Array<{ id: string; headline: string; summary: string; highlights: unknown; generated_at: string; liked: boolean; source_facts: unknown; evidence_candidates?: unknown }>;
   metricPreferences?: Array<{ metric_id: string; role: MetricRole }>;
-  allowNarrativeRefresh?: boolean;
   connections: Array<{ provider: string; status: string; last_synced_at: string | null }>;
   requestedPeriods?: AnalysisPeriod[];
   cachedMatrix?: PersonalLabSnapshot["matrix"];
@@ -945,72 +927,8 @@ function buildSnapshot(input: {
       sources: [...sourceDays].map(([source, days]) => ({ source, days })).sort((first, second) => second.days - first.days),
     };
   });
-  const parseSourceFacts = (value: unknown) => Array.isArray(value) ? value.flatMap((item) => {
-    if (typeof item !== "object" || item === null) return [];
-    const fact = item as Record<string, unknown>;
-    const period = fact.analysisPeriod;
-    if (typeof fact.predictor !== "string" || typeof fact.outcome !== "string" || (period !== 15 && period !== 30 && period !== 90 && period !== "all")) return [];
-    return [{ predictor: fact.predictor, outcome: fact.outcome, period: period as AnalysisPeriod, lagDays: typeof fact.lagDays === "number" ? fact.lagDays : 0, effect: typeof fact.effect === "number" ? fact.effect : null }];
-  }) : [];
-  const parseHighlights = (value: unknown) => Array.isArray(value) ? value.flatMap((item, index) => {
-    if (typeof item === "string") return [{ label: "", text: item, factIndex: index }];
-    if (typeof item !== "object" || item === null) return [];
-    const record = item as Record<string, unknown>;
-    return typeof record.text === "string" && Number.isInteger(record.factIndex) ? [{ label: typeof record.label === "string" ? record.label : "", text: record.text, factIndex: Number(record.factIndex) }] : [];
-  }) : [];
-  const facts = parseSourceFacts(input.narrative?.source_facts);
-  const highlights = parseHighlights(input.narrative?.highlights);
-  const availableRelations = matrix.rows.flatMap((row) => row.relations);
   const todayHealth = input.health.find((day) => day.metric_date === todayDate);
   const currentOvernightFingerprint = overnightFingerprint(todayHealth);
-  const narrativeIsCurrent = Boolean(input.narrative
-    && input.narrative.model === "grok-4.6-weekly-v1"
-    && isWeeklyNarrativeCurrent(input.narrative.generated_at));
-  const validatedEvidenceCandidates = evidenceCandidatesForNarrative(input.narrative).filter((candidate) => {
-    if (!candidate || typeof candidate !== "object") return false;
-    const fact = candidate as Record<string, unknown>;
-    return availableRelations.some((relation) => isPersonalLabPublishedRelation(relation)
-      && relation.predictorLabel === fact.predictor
-      && relation.outcomeLabel === fact.outcome
-      && relation.period === fact.analysisPeriod
-      && relation.lagDays === fact.lagDays
-      && relation.effect === fact.effect);
-  });
-  const relationMatchesFact = (relation: MatrixRelation, fact: { predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number }) => isPersonalLabPublishedRelation(relation)
-    && relation.predictorLabel === fact.predictor
-    && relation.outcomeLabel === fact.outcome
-    && relation.period === fact.period
-    && relation.lagDays === fact.lagDays;
-  const history = (input.narrativeHistory ?? []).flatMap((item) => {
-    const itemFacts = parseSourceFacts(item.source_facts);
-    const itemHighlights = parseHighlights(item.highlights);
-    if (!itemHighlights.length || !itemHighlights.every((highlight) => {
-      const fact = itemFacts[highlight.factIndex];
-      return fact ? availableRelations.some((relation) => relationMatchesFact(relation, fact)) : false;
-    })) return [];
-    return [{
-      id: item.id,
-      headline: item.headline,
-      summary: item.summary,
-      highlights: itemHighlights.map((highlight) => highlight.label ? `${highlight.label}\n${highlight.text}` : highlight.text),
-      generatedAt: item.generated_at,
-      liked: item.liked,
-      sourceFacts: itemHighlights.map((highlight) => itemFacts[highlight.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)),
-    }];
-  });
-  const aiNarrative = input.narrative || history.length ? {
-    isCurrent: narrativeIsCurrent,
-    id: narrativeIsCurrent ? input.narrative?.id ?? null : null,
-    headline: narrativeIsCurrent ? input.narrative?.headline ?? "" : "",
-    summary: narrativeIsCurrent ? input.narrative?.summary ?? "" : "",
-    highlights: narrativeIsCurrent ? highlights.map((item) => item.label ? `${item.label}\n${item.text}` : item.text) : [],
-    model: narrativeIsCurrent ? input.narrative?.model ?? "" : "",
-    generatedAt: narrativeIsCurrent ? input.narrative?.generated_at ?? "" : "",
-    liked: narrativeIsCurrent ? input.narrative?.liked ?? false : false,
-    sourceFacts: narrativeIsCurrent ? highlights.map((item) => facts[item.factIndex]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact)) : [],
-    evidenceCandidates: narrativeIsCurrent ? validatedEvidenceCandidates : [],
-    history,
-  } : null;
   const connection = (provider: string) => input.connections.find((item) => item.provider === provider);
   const healthConnection = connection("google_health");
   const calendarConnection = connection("google_calendar");
@@ -1027,11 +945,6 @@ function buildSnapshot(input: {
       achievements: journalAchievementsFor({ variables: journal.variables, entries: journal.entries, days: journal.days, todayDate }),
     },
     today,
-    aiNarrative,
-    needsNarrativeRefresh: Boolean(input.allowNarrativeRefresh !== false
-      && hasReliableOvernightData(todayHealth)
-      && Math.max(...[30, 90].map((period) => matrix.topRelations.filter((relation) => relation.period === period).length)) >= LAB_NARRATIVE_ITEM_COUNT
-      && !narrativeIsCurrent),
     metricRegistry,
     matrix,
     coverage: {
@@ -1054,7 +967,7 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
   const includeAnalysis = options.includeAnalysis !== false;
   if (isLocalPreviewMode()) {
     const preview = previewData();
-    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, narrative: null, allowNarrativeRefresh: false, connections: [
+    const input = { user, timeZone: "Europe/Paris", ...preview, meals: loadPreviewConfirmedMealRecords(user.id), requestedPeriods: options.periods, connections: [
       { provider: "google_health", status: "connected", last_synced_at: new Date().toISOString() },
       { provider: "google_calendar", status: "connected", last_synced_at: new Date().toISOString() },
     ] };
@@ -1086,7 +999,6 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       return null;
     }
   })() : Promise.resolve(null);
-  const insightHistoryStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const overviewHealthFields = "metric_date,sleep_minutes,sleep_regularity,bedtime,wake_time,sleep_efficiency,sleep_deep_minutes,sleep_rem_minutes,hrv_ms,resting_heart_rate,vigorous_zone_minutes,peak_zone_minutes,running_distance_km,running_duration_minutes,running_pace_seconds_per_km,running_average_heart_rate,data_quality";
   let healthQuery = admin.from("daily_health_metrics").select(includeAnalysis ? "*" : overviewHealthFields).eq("user_id", user.id).order("metric_date", { ascending: false });
   let scoresQuery = admin.from("daily_scores").select("score_date,kind,score,drivers").eq("user_id", user.id).order("score_date", { ascending: false });
@@ -1136,15 +1048,13 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
     };
   });
   const detailPromise = includeAnalysis ? Promise.all([
-    admin.from("lab_narratives").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).maybeSingle(),
-    admin.from("lab_narrative_history").select("id,headline,summary,highlights,source_facts,evidence_candidates,model,liked,generated_at,overnight_fingerprint").eq("user_id", user.id).gte("generated_at", insightHistoryStart).order("generated_at", { ascending: false }).limit(31),
     admin.from("lab_metric_preferences").select("metric_id,role").eq("user_id", user.id),
     matrixCachePromise,
   ]).then((results) => {
-    const [narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache] = results;
-    const failed = [narrativeResult, narrativeHistoryResult, metricPreferenceResult].find((result) => result.error);
+    const [metricPreferenceResult, matrixCache] = results;
+    const failed = [metricPreferenceResult].find((result) => result.error);
     if (failed?.error) throw new Error("Your Personal Lab is temporarily unavailable.");
-    return { narrativeResult, narrativeHistoryResult, metricPreferenceResult, matrixCache };
+    return { metricPreferenceResult, matrixCache };
   }) : null;
 
   const overview = Promise.all([corePromise, mealPromise, targetsPromise]).then(([core, meals, targets]) => buildOverview({ ...core, meals, targets, greetingName: user.displayName }));
@@ -1160,8 +1070,6 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       journal: journalData,
       meals,
       targets,
-      narrative: detail.narrativeHistoryResult.data?.[0] ?? detail.narrativeResult.data,
-      narrativeHistory: (detail.narrativeHistoryResult.data ?? []).map((item) => ({ id: item.id, headline: item.headline, summary: item.summary, highlights: item.highlights, generated_at: item.generated_at, liked: item.liked, source_facts: item.source_facts, evidence_candidates: item.evidence_candidates })),
       metricPreferences: (detail.metricPreferenceResult.data ?? []) as Array<{ metric_id: string; role: MetricRole }>,
       requestedPeriods: options.periods,
       cachedMatrix: detail.matrixCache?.cachedMatrix ?? undefined,

@@ -113,7 +113,7 @@ describe("meal photo deletion", () => {
     expect(state.selectors).toEqual([
       expect.objectContaining({ table: "meals", columns: "id,user_id,meal_date,meal_type,note,status,entry_state,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
       expect.objectContaining({ table: "meal_photos", columns: "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at" }),
-      expect.objectContaining({ table: "meal_analyses", columns: "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at" }),
+      expect.objectContaining({ table: "meal_analyses", columns: "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at,pipeline" }),
       expect.objectContaining({ table: "meal_feelings", columns: "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at" }),
     ]);
   });

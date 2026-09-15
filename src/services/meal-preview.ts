@@ -196,7 +196,7 @@ export function updatePreviewMeal(userId: string, mealId: string, input: UpdateM
   if (!meal) return null;
   if (input.confirmedAnalysis && input.status !== "confirmed") throw new Error("An edited analysis is saved when the meal is confirmed.");
   if (input.status === "confirmed" && !meal.photos.length && !meal.note?.trim()) throw new Error("Add photos or a description before confirming a meal.");
-  const activePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const activePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
   if (input.status === "confirmed" && activePhotos.length > 0 && !hasPreservedAnalysis(meal, input.confirmedAnalysis)) throw new Error("Analyse les photos avant de confirmer ce repas.");
   if (input.mealDate !== undefined) meal.mealDate = input.mealDate;
   if (input.mealType !== undefined) meal.mealType = input.mealType;
@@ -224,7 +224,7 @@ export function updatePreviewMeal(userId: string, mealId: string, input: UpdateM
 export function addPreviewMealPhotos(userId: string, mealId: string, files: Array<{ filename?: string | null; mimeType: MealPhotoMime; size: number; data: ArrayBuffer; origin: MealOrigin }>) {
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
-  const activePhotoCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+  const activePhotoCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
   if (!files.length || activePhotoCount + files.length > MAX_MEAL_PHOTOS) throw new Error(`A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
   if (files.some((file) => file.size <= 0 || file.size > MAX_MEAL_PHOTO_BYTES) || files.reduce((total, file) => total + file.size, 0) > MAX_MEAL_PHOTOS_BYTES) throw new Error("The selected photos are too large.");
   const now = new Date().toISOString();
@@ -288,12 +288,22 @@ export function analyzePreviewMeal(userId: string, mealId: string, options?: { c
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
   if (meal.entryState === "skipped") throw new Error("Réactive ce créneau avant de lancer l’analyse.");
-  const availablePhotos = meal.photos.filter((photo) => photo.storageStatus !== "purged");
+  const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
   const note = meal.note?.trim() ?? "";
   if (!availablePhotos.length && !note) throw new Error("Add a photo or a description before analysing a meal.");
   const now = new Date().toISOString();
   const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note, hasPhotos: availablePhotos.length > 0 }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
   meal.analysis = analysis;
+  // Preview follows production semantics: a successful analysis is complete
+  // immediately and local photo bytes are discarded without a confirmation
+  // click. Metadata stays available for the UI and scoring preview.
+  meal.status = "confirmed";
+  const purgedAt = new Date().toISOString();
+  for (const photo of meal.photos) {
+    photo.data = new ArrayBuffer(0);
+    photo.storageStatus = "purged";
+    photo.purgedAt = purgedAt;
+  }
   meal.updatedAt = now;
   return { analysis, fresh: true };
 }

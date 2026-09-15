@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const processNextMealAnalysis = vi.hoisted(() => vi.fn());
-vi.mock("@/services/meals", () => ({ processNextMealAnalysis }));
+const requeueRetryableMealAnalyses = vi.hoisted(() => vi.fn());
+const purgeExpiredFailedAnalysisPhotos = vi.hoisted(() => vi.fn());
+const reconcileMealPhotoPurges = vi.hoisted(() => vi.fn());
+vi.mock("@/services/meals", () => ({ processNextMealAnalysis, requeueRetryableMealAnalyses, purgeExpiredFailedAnalysisPhotos, reconcileMealPhotoPurges }));
 
 import { GET } from "./route";
 
@@ -10,6 +13,9 @@ describe("meal analysis worker route", () => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "cron-test-secret";
     processNextMealAnalysis.mockResolvedValue({ processed: true, analysis: { status: "completed" } });
+    requeueRetryableMealAnalyses.mockResolvedValue(0);
+    purgeExpiredFailedAnalysisPhotos.mockResolvedValue(0);
+    reconcileMealPhotoPurges.mockResolvedValue({ attempted: 0, purged: 0 });
   });
 
   it("requires the machine cron secret", async () => {

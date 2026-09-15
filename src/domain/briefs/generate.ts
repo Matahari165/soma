@@ -6,13 +6,6 @@ export type BriefInput = {
   insightTitles: string[];
 };
 
-export type WeeklyBriefInput = {
-  averageSleepScore: number | null;
-  averageRecoveryScore: number | null;
-  weeklyEffort: number | null;
-  insightTitles: string[];
-};
-
 function scorePhrase(label: string, score: number | null) {
   return score === null ? `${label} has limited data` : `${label} is ${score}/100`;
 }
@@ -31,13 +24,4 @@ export function generateEveningBrief(input: BriefInput) {
     : `Today's accomplished load is ${input.effortScore}/100.`;
   const bedtime = input.bedtime ? `Aim for a ${input.bedtime} bedtime.` : "A bedtime recommendation needs more sleep data.";
   return `${effort} ${bedtime}`;
-}
-
-export function generateWeeklyBrief(input: WeeklyBriefInput) {
-  const scores = [scorePhrase("Average sleep", input.averageSleepScore), scorePhrase("average recovery", input.averageRecoveryScore)].join(" and ");
-  const effort = input.weeklyEffort === null
-    ? "Weekly accumulated load is still being calculated."
-    : `Weekly accumulated load is ${input.weeklyEffort}.`;
-  const pattern = input.insightTitles[0] ? ` Main pattern: ${input.insightTitles[0].toLowerCase()}.` : "";
-  return `${scores}. ${effort}${pattern}`;
 }

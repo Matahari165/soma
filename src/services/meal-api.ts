@@ -37,7 +37,11 @@ export function mealToApi(meal: Meal) {
       createdAt: photo.createdAt,
       storageStatus: photo.storageStatus ?? "available",
       purgedAt: photo.purgedAt ?? null,
-      url: `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}`,
+      // A confirmed meal is the privacy boundary: even if a legacy row still
+      // says `available` after an interrupted purge, never expose an image URL.
+      url: meal.status !== "confirmed" && (photo.storageStatus ?? "available") === "available"
+        ? `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}`
+        : null,
     })),
     analysis: meal.analysis,
     lastSuccessfulAnalysis: meal.lastSuccessfulAnalysis ?? null,
@@ -204,7 +208,7 @@ export function mealToLegacyApi(meal: Meal) {
     date: meal.mealDate,
     slot: meal.mealType,
     note: meal.note,
-    photos: meal.photos.map((photo) => ({ id: photo.id, url: `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}`, filename: photo.filename ?? undefined, origin: photo.origin, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null })),
+    photos: meal.photos.map((photo) => ({ id: photo.id, url: meal.status !== "confirmed" && (photo.storageStatus ?? "available") === "available" ? `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}` : null, filename: photo.filename ?? undefined, origin: photo.origin, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null })),
     analysis: legacyAnalysis,
     mouthHeat: meal.mouthWarmthIntensity,
     stomachLoad: meal.stomachOverfullIntensity,

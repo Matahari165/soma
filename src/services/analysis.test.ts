@@ -23,7 +23,6 @@ vi.mock("@/lib/cloudflare/db", () => ({
 vi.mock("@/domain/briefs/generate", () => ({
   generateEveningBrief: () => "evening",
   generateMorningBrief: () => "morning",
-  generateWeeklyBrief: () => "weekly",
 }));
 vi.mock("@/domain/correlations/spearman", () => ({
   spearmanCorrelation: () => ({ coefficient: null, sampleSize: 0, quality: "insufficient" }),

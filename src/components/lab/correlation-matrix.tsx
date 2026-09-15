@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRight, Check, ThumbsUp, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
-import { isPersonalLabDisplayableRelation, isPersonalLabPublishedRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
+import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
@@ -73,13 +73,6 @@ function scrollToMatrixElement(element: Element | null) {
   element?.scrollIntoView({ behavior: matrixScrollBehavior(), block: "start" });
 }
 
-type RelationLocator = { predictor: string; outcome: string; period: AnalysisPeriod; lagDays: number };
-
-function openRelation(locator: RelationLocator | undefined) {
-  scrollToMatrixElement(document.querySelector("#relations"));
-  if (locator) window.dispatchEvent(new CustomEvent<RelationLocator>("soma:open-relation", { detail: locator }));
-}
-
 function effectDirection(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
   void direction;
   return relation.effect === null || relation.effect === 0 ? 0 : relation.effect > 0 ? 1 : -1;
@@ -143,7 +136,7 @@ function strongestTimingText(lagDays: number) {
   return lagDays > 0 ? `J+${lagDays}` : "J";
 }
 
-/** Details opened from a published finding must stay within the published relation set. */
+/** Relation details must stay within the published relation set. */
 export function publishedRelationsForPair(
   relations: MatrixRelation[],
   relation: Pick<MatrixRelation, "predictorId" | "outcomeId">,
@@ -578,55 +571,8 @@ export function StrongestEffectsPanel() {
   </div>;
 }
 
-function InsightCopy({ value }: { value: string }) {
-  const [label, ...detailParts] = value.split("\n");
-  const detail = detailParts.join(" ");
-  return detail ? <span className="lab-insight-copy"><strong>{label}</strong><span>{detail}</span></span> : <>{value}</>;
-}
-
-export function TimeScaleSummary({ matrix, narrative }: { matrix: PersonalLabSnapshot["matrix"]; narrative: PersonalLabSnapshot["aiNarrative"] }) {
-  const [historyLikes, setHistoryLikes] = useState<Record<string, boolean>>(() => Object.fromEntries((narrative?.history ?? []).map((item) => [item.id, item.liked])));
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const lines = narrative?.highlights ?? [];
-  async function saveLike(id: string, next: boolean) {
-    return fetch("/api/lab/insights/like", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, liked: next }) });
-  }
-  async function likeHistory(id: string) {
-    const previous = historyLikes[id] ?? false;
-    setHistoryLikes((current) => ({ ...current, [id]: !previous }));
-    const response = await saveLike(id, !previous);
-    if (!response.ok) setHistoryLikes((current) => ({ ...current, [id]: previous }));
-  }
-  const hasHistory = (narrative?.history?.length ?? 0) > 0;
-  const insightTitle = narrative?.isCurrent ? narrative.headline : "En attente des données nocturnes.";
-  return <section className="lab-insight-panel" aria-labelledby="lab-insight-title">
-    <header>
-      <h2 id="lab-insight-title">{hasHistory ? <button type="button" className="lab-insight-header-trigger" aria-expanded={historyOpen} aria-controls="lab-insight-history" onClick={() => setHistoryOpen((current) => !current)}>{insightTitle}</button> : insightTitle}</h2>
-    </header>
-    {narrative?.isCurrent && narrative.summary && <p>{narrative.summary}</p>}
-    {lines.length > 0 && <ol aria-label="Mesures de la semaine">{lines.slice(0, 10).map((line, index) => <li key={`${line}-${index}`}><span aria-hidden="true"><ArrowRight size={16} /></span><button type="button" className="lab-insight-link" aria-label={`Ouvrir la mesure ${index + 1} : ${line.replace("\n", ". ")}`} onClick={() => openRelation(narrative?.sourceFacts[index])}><InsightCopy value={line} /></button></li>)}</ol>}
-    {historyOpen && narrative?.history && <div id="lab-insight-history" className="lab-insight-history">{narrative.history.map((item) => <article key={item.id}>
-      <header><time>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(item.generatedAt))}</time><button type="button" className="lab-insight-history__like" aria-label={`${historyLikes[item.id] ? "Ne plus aimer" : "Aimer"} l’insight du ${new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(item.generatedAt))}`} aria-pressed={historyLikes[item.id] ?? false} onClick={() => void likeHistory(item.id)}><ThumbsUp size={14} fill={historyLikes[item.id] ? "currentColor" : "none"} /></button></header>
-      <button type="button" className="lab-insight-link lab-insight-history__headline" onClick={() => openRelation(item.sourceFacts[0])}><strong>{item.headline}</strong></button>
-      {item.summary && <p>{item.summary}</p>}
-      {item.highlights.length > 0 && <ol>{item.highlights.map((highlight, index) => <li key={`${item.id}-${index}`}><button type="button" className="lab-insight-link" onClick={() => openRelation(item.sourceFacts[index])}><InsightCopy value={highlight} /></button></li>)}</ol>}
-    </article>)}</div>}
-    {!narrative && matrix.topRelations.length === 0 && <span className="sr-only">Aucune relation significative n’est encore disponible.</span>}
-  </section>;
-}
-
 export function MatrixDisclosure({ matrix }: { matrix: PersonalLabSnapshot["matrix"] }) {
-  const disclosureRef = useRef<HTMLDetailsElement | null>(null);
-
-  useEffect(() => {
-    const openForRelation = () => {
-      if (disclosureRef.current) disclosureRef.current.open = true;
-    };
-    window.addEventListener("soma:open-relation", openForRelation);
-    return () => window.removeEventListener("soma:open-relation", openForRelation);
-  }, []);
-
-  return <details ref={disclosureRef} className="matrix-disclosure">
+  return <details className="matrix-disclosure">
     <summary>Afficher la matrice de relations</summary>
     <CorrelationMatrix matrix={matrix} />
   </details>;
@@ -690,26 +636,6 @@ export function CorrelationMatrix({ matrix }: { matrix: PersonalLabSnapshot["mat
     setLoadError(false);
     await loadPeriod(nextPeriod);
   }
-
-  useEffect(() => {
-    const listener = (event: Event) => {
-      const locator = (event as CustomEvent<RelationLocator>).detail;
-      setPeriod(locator.period);
-      setPeriodAnimationSequence((current) => current + 1);
-      setSelected(null);
-      setSelectedInfluence(null);
-      setSelectedOutcome(null);
-      setLoadError(false);
-      void loadPeriod(locator.period).then((loadedRows) => {
-        const relation = loadedRows.flatMap((row) => row.relations)
-          .find((candidate) => candidate.predictorLabel === locator.predictor && candidate.outcomeLabel === locator.outcome && candidate.lagDays === locator.lagDays);
-        if (!relation || !isPersonalLabPublishedRelation(relation)) return setSelected(null);
-        setSelected(publishedRelationsForPair(loadedRows.flatMap((row) => row.relations), relation));
-      });
-    };
-    window.addEventListener("soma:open-relation", listener);
-    return () => window.removeEventListener("soma:open-relation", listener);
-  }, [loadPeriod]);
 
   useEffect(() => {
     if (!selected) return;

@@ -31,6 +31,33 @@ describe("meal domain", () => {
     expect(result.totals.addedSugarGrams).toBeNull();
   });
 
+  it("requires photo evidence ids to belong to the supplied source photos", () => {
+    const analysis = {
+      summary: "Repas photographié",
+      foods: [{
+        name: "Salade",
+        preparation: null,
+        portion: null,
+        estimatedGrams: null,
+        evidenceSource: "photo" as const,
+        evidencePhotoIds: ["photo-1"],
+        calories: null,
+        proteinGrams: null,
+        carbohydrateGrams: null,
+        fatGrams: null,
+        fiberGrams: null,
+        confidence: "low" as const,
+      }],
+      totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null },
+      confidence: "low" as const,
+      uncertainties: [],
+    };
+
+    expect(() => validateMealAnalysis(analysis, { sourcePhotoIds: ["photo-1", "photo-2"] })).not.toThrow();
+    expect(() => validateMealAnalysis(analysis, { sourcePhotoIds: ["photo-2"] })).toThrow(/evidencePhotoId/);
+    expect(() => validateMealAnalysis({ ...analysis, foods: [{ ...analysis.foods[0], evidencePhotoIds: [] }] }, { sourcePhotoIds: [] })).toThrow(/Photo evidence/);
+  });
+
   it("accepts optional dish provenance and structured quantity fields", () => {
     const result = mealAnalysisSchema.parse({
       summary: "Plat composé",

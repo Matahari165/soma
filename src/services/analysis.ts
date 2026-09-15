@@ -1,6 +1,6 @@
 import { aggregateHealthRecords, type NormalizedHealthRecord } from "@/domain/health/aggregate";
 import { recordsInsideWearableWindow } from "@/domain/health/wearable-window";
-import { generateEveningBrief, generateMorningBrief, generateWeeklyBrief } from "@/domain/briefs/generate";
+import { generateEveningBrief, generateMorningBrief } from "@/domain/briefs/generate";
 import { spearmanCorrelation, type CorrelationPoint } from "@/domain/correlations/spearman";
 import { generateHealthInsights } from "@/domain/insights/engine";
 import { acuteChronicLoadRatio, activityRegularity, isActiveDay } from "@/domain/metrics/wellness";
@@ -172,11 +172,6 @@ function todayIn(timezone: string) {
 function formatClock(minutes: number) {
   const hours = Math.floor(minutes / 60) % 24;
   return `${hours.toString().padStart(2, "0")}:${Math.round(minutes % 60).toString().padStart(2, "0")}`;
-}
-
-function roundedAverage(values: Array<number | null>) {
-  const available = values.filter((value): value is number => value !== null);
-  return available.length ? Math.round(available.reduce((sum, value) => sum + value, 0) / available.length) : null;
 }
 
 async function deleteStaleDerivedRows(userId: string, analysisStart: string, activeDates: Set<string>) {
@@ -359,19 +354,10 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   const effortScore = latestScores.find((score) => score.kind === "effort");
   const bedtimeMinutes = latestScores.find((score) => score.kind === "sleep")?.drivers?.bedtimeRecommendationMinutes;
   const briefInput = { sleepScore, recoveryScore, effortScore: effortScore?.score ?? null, bedtime: typeof bedtimeMinutes === "number" ? formatClock(bedtimeMinutes) : null, insightTitles: insights.map((insight) => insight.title) };
-  const recentScores = scoreRows.slice(-21) as Array<{ kind: string; score: number | null; drivers: Record<string, unknown> }>;
-  const weeklyEffort = recentScores.filter((score) => score.kind === "effort").reduce((sum, score) => sum + (score.score ?? 0), 0);
-  const weeklyBrief = generateWeeklyBrief({
-    averageSleepScore: roundedAverage(recentScores.filter((score) => score.kind === "sleep").map((score) => score.score)),
-    averageRecoveryScore: roundedAverage(recentScores.filter((score) => score.kind === "recovery").map((score) => score.score)),
-    weeklyEffort,
-    insightTitles: briefInput.insightTitles,
-  });
   const briefDate = todayIn(timezone);
   const { error: briefError } = await admin.from("briefs").upsert([
     { user_id: userId, kind: "morning", brief_date: briefDate, deterministic_facts: facts, generated_text: generateMorningBrief(briefInput), ai_generated: false },
     { user_id: userId, kind: "evening", brief_date: briefDate, deterministic_facts: facts, generated_text: generateEveningBrief(briefInput), ai_generated: false },
-    { user_id: userId, kind: "weekly", brief_date: briefDate, deterministic_facts: { ...facts, periodDays: Math.min(days.length, 7) }, generated_text: weeklyBrief, ai_generated: false },
   ], { onConflict: "user_id,kind,brief_date" });
   if (briefError) throw new Error("Health summaries could not be stored.");
   const result = { days: metricRows.length, scores: scoreRows.length, insights: insights.length };

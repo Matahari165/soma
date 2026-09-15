@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     if (isLocalPreviewMode()) {
       let meal = findPreviewMeal(user.id, mealId);
       if (!meal) meal = createPreviewMeal(user.id, { mealDate: parsedDate.data, mealType: parsedType.data, note, idempotencyKey: `legacy-${mealId}` });
-      const existingCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+      const existingCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
       const fileOrigins = files.map((_, index) => origins[existingCount + index] ?? (existingCount === 0 ? origins[index] : null));
       if (fileOrigins.some((origin) => !origin)) return NextResponse.json({ error: "Choose an origin for every new photo." }, { status: 400 });
       if (files.length) {
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     } else {
       meal = await updateMealRecord(user.id, meal.id, { mealDate: parsedDate.data, mealType: parsedType.data, ...(note !== null ? { note } : {}) });
     }
-    const existingCount = meal.photos.filter((photo) => photo.storageStatus !== "purged").length;
+    const existingCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
     const fileOrigins = files.map((_, index) => origins[existingCount + index] ?? (existingCount === 0 ? origins[index] : null));
     if (fileOrigins.some((origin) => !origin)) throw new MealServiceError("invalid", "Choose an origin for every new photo.");
     if (files.length) {

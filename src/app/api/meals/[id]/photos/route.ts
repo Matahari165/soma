@@ -42,12 +42,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
   if (isLocalPreviewMode()) {
     const meal = findPreviewMeal(user.id, id);
-    return meal ? NextResponse.json({ photos: meal.photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })), preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
+    return meal ? NextResponse.json({ photos: meal.photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: meal.status !== "confirmed" && (photo.storageStatus ?? "available") === "available" ? `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` : null })), preview: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
   }
   try {
     const meal = await findMeal(user.id, id);
     if (!meal) return NextResponse.json({ error: "Meal not found." }, { status: 404 });
-    return NextResponse.json({ photos: (await listMealPhotos(user.id, id)).map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })) }, { headers: { "Cache-Control": "private, no-store" } });
+    const photos = await listMealPhotos(user.id, id);
+    return NextResponse.json({ photos: photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: meal?.status !== "confirmed" && (photo.storageStatus ?? "available") === "available" ? `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` : null })) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return errorResponse(error);
   }
@@ -73,14 +74,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     try {
       const photos = addPreviewMealPhotos(user.id, id, await Promise.all(files.map(async (file, index) => ({ filename: file.name, mimeType: file.type as Parameters<typeof addPreviewMealPhotos>[2][number]["mimeType"], size: file.size, data: await file.arrayBuffer(), origin: origins[index] as NonNullable<typeof origins[number]> }))));
       if (!photos) return NextResponse.json({ error: "Meal not found." }, { status: 404 });
-      return NextResponse.json({ photos: photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })), preview: true }, { status: 201 });
+      return NextResponse.json({ photos: photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })), preview: true }, { status: 201 });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Meal photos could not be saved." }, { status: 400 });
     }
   }
   try {
     const photos = await addMealPhotos(user.id, id, await Promise.all(files.map(async (file, index) => ({ filename: file.name, mimeType: file.type as Parameters<typeof addMealPhotos>[2][number]["mimeType"], size: file.size, data: await file.arrayBuffer(), origin: origins[index] as NonNullable<typeof origins[number]> }))), { idempotencyKey: request.headers.get("Idempotency-Key") ?? undefined });
-    return NextResponse.json({ photos: photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, createdAt: photo.createdAt, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })) }, { status: 201 });
+    return NextResponse.json({ photos: photos.map((photo) => ({ id: photo.id, mealId: photo.mealId, origin: photo.origin, mimeType: photo.mimeType, bytes: photo.bytes, filename: photo.filename ?? null, storageStatus: photo.storageStatus ?? "available", purgedAt: photo.purgedAt ?? null, createdAt: photo.createdAt, url: `/api/meals/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}` })) }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

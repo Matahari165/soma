@@ -9,7 +9,7 @@ const date = "2026-08-31";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MealJournal", () => {
-  it("garde la photo et la note modifiables après confirmation avec un badge visible", () => {
+  it("garde la note modifiable et masque la photo après confirmation", () => {
     const html = renderToStaticMarkup(<MealJournal initialData={{
       date,
       meals: {
@@ -33,11 +33,12 @@ describe("MealJournal", () => {
     expect(lunch).toContain("Photo et note du jour");
     expect(lunch).toContain("Note du jour");
     expect(lunch).toContain("Déjeuner pris au calme.");
-    expect(lunch).toContain('alt="Photo originale 1 du repas"');
-    expect(lunch).toContain("/api/meals/meal-confirmed-source/photos/photo-source");
+    expect(lunch).toContain("Photo analysée puis supprimée.");
+    expect(lunch).not.toContain('alt="Photo originale 1 du repas"');
+    expect(lunch).not.toContain("/api/meals/meal-confirmed-source/photos/photo-source");
     expect(lunch).toContain("Confirmé");
     expect(lunch).toContain("<textarea");
-    expect(lunch).toContain("Origine de la photo");
+    expect(lunch).not.toContain("Origine de la photo");
   });
 
   it("explique clairement les photos refusées au-delà de la limite", () => {
@@ -325,6 +326,38 @@ describe("MealJournal", () => {
     expect(result.id).toBe("0199a111-b222-7ccc-8ddd-eeeeeeeeeeee");
   });
 
+  it("forces re-analysis when meal already has an existing analysis", async () => {
+    const requests: Array<{ url: string; method: string; body?: { force?: boolean } }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      requests.push({ url, method, body });
+      return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "breakfast", note: "Omelette et café", status: "confirmed", photos: [], analysis: { calories: { likely: 350 } } } });
+    }));
+
+    await defaultAnalyze({
+      date,
+      slot: "breakfast",
+      files: [],
+      meal: {
+        id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee",
+        date,
+        slot: "breakfast",
+        note: "Omelette et café",
+        photos: [],
+        analysis: { ingredients: [], calories: { low: null, likely: 300, high: null }, proteinGrams: { low: null, likely: 20, high: null } },
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "confirmed",
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests[1]?.url).toBe("/api/meals/0199a111-b222-7ccc-8ddd-eeeeeeeeeeee/analyze");
+    expect(requests[1]?.body?.force).toBe(true);
+  });
+
   it("rejects analysis when neither photo nor note is provided", async () => {
     const requests: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -566,7 +599,7 @@ describe("MealJournal", () => {
     expect(calorieProgressForDisplay(6000, 3000)).toBe(200);
   });
 
-  it("keeps one origin control and the two compact feelings per meal", () => {
+  it("masque les contrôles photo après confirmation et garde les ressentis", () => {
     const data: MealJournalData = {
       date,
       meals: {
@@ -594,8 +627,9 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html).toContain("Origine de la photo");
-    expect(html).toContain("L’origine aide l’analyse");
+    expect(html).toContain("Photo analysée puis supprimée.");
+    expect(html).not.toContain("Origine de la photo");
+    expect(html).not.toContain("L’origine aide l’analyse");
     expect(html).toContain("Bouche chaude");
     expect(html).toContain("Repas qui m&#x27;a cassé");
     expect(html).toContain('aria-pressed="true"');
@@ -805,5 +839,43 @@ describe("apiMealToRecord", () => {
     });
 
     expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+  });
+
+  it("renders lab meal card in V1 with synthetic dish title, 5 metrics, and no confirm button", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
+      date,
+      meals: {
+        breakfast: {
+          id: "meal-lab-1",
+          date,
+          slot: "breakfast",
+          note: "mon petit déjeuner",
+          photos: [],
+          analysis: {
+            dishType: "Omelette aux fines herbes",
+            ingredients: [
+              { id: "ing-1", name: "Œufs", portion: "2 pièces", calories: { low: null, likely: 140, high: null } },
+              { id: "ing-2", name: "Fines herbes", portion: "10 g", calories: { low: null, likely: 10, high: null } },
+            ],
+            calories: { low: null, likely: 250, high: null },
+            proteinGrams: { low: null, likely: 18, high: null },
+            carbohydratesGrams: { low: null, likely: 2, high: null },
+            fatGrams: { low: null, likely: 19, high: null },
+            addedSugarGrams: { low: null, likely: 0, high: null },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Omelette aux fines herbes");
+    expect(html).toContain("Œufs · Fines herbes");
+    expect(html).toContain("250");
+    expect(html).toContain("18");
+    expect(html).toContain("Modifier");
+    expect(html).toContain("Détails de l’analyse");
+    expect(html).not.toContain("Confirmer le repas");
   });
 });

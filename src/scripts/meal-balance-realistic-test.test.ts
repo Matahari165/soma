@@ -96,6 +96,8 @@ function providerResult(provider = "stub-production-chain", model = "stub-model"
     model,
     validation,
     provenance: {
+      promptVersion: "2026-09-01",
+      schemaVersion: "2026-09-01",
       primary: { provider, model },
       final: { provider, model },
       validation,

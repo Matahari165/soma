@@ -61,12 +61,16 @@ type AnalysisRow = Row & {
   source_meal_date?: string | null;
   source_meal_type?: MealType | null;
   source_correction?: string | null;
+  source_previous_analysis?: MealAnalysis | null;
   attempts?: number | null;
   heartbeat_at?: string | null;
   lease_token?: string | null;
   created_at: string;
   updated_at?: string | null;
   completed_at?: string | null;
+  retry_after_at?: string | null;
+  failure_started_at?: string | null;
+  pipeline?: unknown;
 };
 type FeelingsRow = Row & {
   id: string;
@@ -80,7 +84,7 @@ type FeelingsRow = Row & {
 
 const mealListColumns = "id,user_id,meal_date,meal_type,note,status,entry_state,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
 const mealListPhotoColumns = "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at";
-const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at";
+const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at,pipeline";
 const mealListFeelingColumns = "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
 
 function asNullableString(value: unknown) {
@@ -132,6 +136,7 @@ function analysisFromRow(row: AnalysisRow): MealAnalysisRecord {
     sourcePhotoIds: Array.isArray(row.source_photo_ids) ? row.source_photo_ids.filter((id): id is string => typeof id === "string") : [],
     createdAt: row.created_at,
     completedAt: asNullableString(row.completed_at),
+    ...(row.pipeline && typeof row.pipeline === "object" ? { pipeline: row.pipeline as MealAnalysisRecord["pipeline"] } : {}),
   };
 }
 
@@ -411,6 +416,36 @@ export async function listQueuedMealAnalyses(limit = 1) {
     .order("created_at", { ascending: true })
     .range(0, Math.max(0, limit - 1));
   if (result.error) throw new Error("Queued meal analyses could not be loaded.");
+  return (result.data ?? []) as AnalysisRow[];
+}
+
+/** Rows used by the scheduled photo-purge and failed-analysis reconcilers. */
+export async function listMealPhotoRowsForReconciliation(limit = 100) {
+  const safeLimit = Math.max(1, Math.floor(limit));
+  const admin = createCloudflareAdminClient();
+  const rowsForState = (state: "purge_pending" | "available" | "legacy") => {
+    const query = admin.from("meal_photos").select("*").order("created_at", { ascending: true }).limit(safeLimit);
+    if (state === "legacy") query.is("storage_status", null);
+    else query.eq("storage_status", state);
+    return query;
+  };
+  const [pending, available, legacy] = await Promise.all([
+    rowsForState("purge_pending"),
+    rowsForState("available"),
+    rowsForState("legacy"),
+  ]);
+  if (pending.error || available.error || legacy.error) throw new Error("Meal photos pending reconciliation could not be loaded.");
+  return [...(pending.data ?? []), ...(available.data ?? []), ...(legacy.data ?? [])].slice(0, safeLimit) as PhotoRow[];
+}
+
+export async function listFailedMealAnalyses(limit = 100) {
+  const result = await createCloudflareAdminClient()
+    .from("meal_analyses")
+    .select("*")
+    .eq("status", "failed")
+    .order("completed_at", { ascending: true })
+    .limit(Math.max(1, Math.floor(limit)));
+  if (result.error) throw new Error("Failed meal analyses could not be loaded.");
   return (result.data ?? []) as AnalysisRow[];
 }
 

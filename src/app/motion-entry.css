@@ -11,12 +11,6 @@
 .lab-entry__relations { --entry-delay: 180ms; }
 .lab-entry__registry { --entry-delay: 240ms; }
 
-/* The full headline remains in the DOM and can be read immediately. The mask only
-   controls its visual reveal, so the animation never hides usable content. */
-.lab-entry__insight .lab-insight-panel > header h2 {
-  animation: soma-insight-open 480ms cubic-bezier(.16, 1, .3, 1) 120ms both;
-}
-
 .lab-signal__value {
   display: inline-block;
   min-width: 2ch;
@@ -28,16 +22,9 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes soma-insight-open {
-  from { clip-path: inset(0 14% 0 0); opacity: .68; }
-  to { clip-path: inset(0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .lab-entry__section,
-  .lab-entry__insight .lab-insight-panel > header h2 {
+  .lab-entry__section {
     animation: none;
-    clip-path: none;
     opacity: 1;
     transform: none;
   }

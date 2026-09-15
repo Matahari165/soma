@@ -149,12 +149,30 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
       }));
     };
     void refresh();
-    const interval = window.setInterval(() => { void refresh(); }, 5_000);
-    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    const delays = [2_000, 5_000, 10_000, 20_000, 30_000];
+    let timer: number | null = null;
+    let delayIndex = 0;
+    const schedule = () => {
+      timer = window.setTimeout(async () => {
+        await refresh();
+        delayIndex = Math.min(delayIndex + 1, delays.length - 1);
+        schedule();
+      }, delays[delayIndex]);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        delayIndex = 0;
+        if (timer !== null) window.clearTimeout(timer);
+        timer = null;
+        void refresh();
+        schedule();
+      }
+    };
+    schedule();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (timer !== null) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [activeJobKey]);
@@ -173,11 +191,14 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
     if (!file) return;
     submittingSlots.current.add(slot);
     setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "uploading", origin, message: null } }));
+    const normalizationStartedAt = Date.now();
     try {
       const prepared = await normalizeMealImage(file);
+      console.info("[meal-analysis] stage", { stage: "normalization", photoCount: 1, durationMs: Date.now() - normalizationStartedAt });
       const accepted = await uploadAndAnalyze(todayDate, slot, prepared, origin);
       setSlotStates((current) => ({ ...current, [slot]: { state: accepted.status === "running" ? "analyzing" : "accepted", mealId: accepted.mealId, file: null, origin: null, message: accepted.status === "running" ? "Analyse en cours" : "Analyse acceptée", photoCount: current[slot].photoCount + 1, filled: true } }));
     } catch (error) {
+      if (Date.now() - normalizationStartedAt > 0) console.warn("[meal-analysis] stage failed", { stage: "normalization_or_upload", durationMs: Date.now() - normalizationStartedAt });
       setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "error", message: error instanceof Error ? error.message : "Échec de l’envoi." } }));
     } finally {
       submittingSlots.current.delete(slot);
