@@ -34,6 +34,7 @@
   --lab-sp-md: 16px;
   --lab-sp-lg: 24px;
   --lab-sp-xl: 32px;
+  --lab-sp-2xl: 48px;
   --lab-journal-control-width: 124px;
   --lab-journal-control-height: 40px;
   --lab-journal-stepper-action-width: 30px;
@@ -103,6 +104,11 @@
   --fast: 150ms;
   --normal: 240ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --motion-instant: 110ms;
+  --motion-fast: 165ms;
+  --motion-standard: 220ms;
+  --motion-composition: 300ms;
+  --ease-arrival: cubic-bezier(.16, 1, .3, 1);
 
   /* Compatibility aliases used by existing health components. */
   --soma-void: var(--canvas);
@@ -193,14 +199,14 @@ svg { flex: 0 0 auto; }
 
 h1, h2, h3, p { margin-block: 0; }
 h1, h2 {
-  font-family: var(--font-soma-ui);
-  font-weight: 500;
-  letter-spacing: -.035em;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -.025em;
   text-wrap: balance;
 }
-h1 { font-size: var(--lab-type-page); line-height: 32px; }
-h2 { font-size: var(--lab-type-section); line-height: 28px; }
-h3 { font-family: var(--font-soma-ui); font-size: var(--lab-type-group); line-height: 24px; }
+h1 { font-size: clamp(30px, 3vw, 40px); line-height: 1.2; }
+h2 { font-size: 22px; line-height: 28px; }
+h3 { font-family: var(--font-soma-ui); font-size: 16px; font-weight: 500; line-height: 24px; }
 small { font-size: var(--lab-type-label); line-height: 1.35; }
 
 button:focus-visible,
@@ -413,7 +419,7 @@ textarea:focus-visible,
 @keyframes soma-spin { to { transform: rotate(360deg); } }
 svg.spin {
   transform-origin: center;
-  animation: soma-spin 800ms linear infinite;
+  animation: soma-spin 1200ms linear 3;
 }
 
 .lab-entry__relations,
