@@ -24,7 +24,7 @@ export type TodaySignalValues = {
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-const ANIMATION_DURATION_MS = 1_020;
+const ANIMATION_DURATION_MS = 200;
 
 function AnimatedSignalNumber({
   value,
@@ -44,12 +44,16 @@ function AnimatedSignalNumber({
       : `${Math.round(value)}${format === "percentage" ? "%" : ""}`;
 
   useClientLayoutEffect(() => {
-    const from = !mounted.current ? 0 : previousValue.current ?? 0;
+    const firstMount = !mounted.current;
+    const from = firstMount ? value : previousValue.current;
     const target = value;
     mounted.current = true;
     previousValue.current = value;
 
-    if (target === null || from === target) {
+    // Première apparition : affichage immédiat. Seules les transitions
+    // connue → connue sont interpolées en 200 ms, jamais 0 → valeur
+    // quand le départ est —.
+    if (firstMount || target === null || from === null || from === target) {
       if (spanRef.current) spanRef.current.textContent = formatted;
       return;
     }
@@ -148,8 +152,10 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
           ...current,
           ...next,
           calorieProgress: "calorieProgress" in next ? next.calorieProgress : current.calorieProgress,
-          calorieTarget: current.calorieTarget !== null && current.calorieTarget !== undefined
-            && (calorieTarget === null || calorieTarget === undefined || calorieTarget < current.calorieTarget)
+          // Ne jamais conserver un maximum obsolète : seule une absence
+          // dans la réponse partielle garde la cible courante, sinon la
+          // dernière valeur reçue fait foi même si elle est plus basse.
+          calorieTarget: calorieTarget === null || calorieTarget === undefined
             ? current.calorieTarget
             : calorieTarget,
         };
@@ -212,10 +218,10 @@ export function applyMealTotals(values: PersonalLabMetricValues, detail: MealTot
 }
 
 export function mergePersonalLabMetricRefresh(values: PersonalLabMetricValues, next: PersonalLabMetricRefresh) {
-  const calorieTarget = values.calorieTarget !== null && values.calorieTarget !== undefined
-    && (next.calorieTarget === null || next.calorieTarget === undefined || next.calorieTarget < values.calorieTarget)
-    ? values.calorieTarget
-    : next.calorieTarget ?? values.calorieTarget;
+  // Une réponse partielle sans cible garde la cible courante ; une cible
+  // reçue remplace toujours l’ancienne, même plus basse. Pas de max conservé.
+  const hasTarget = next.calorieTarget !== null && next.calorieTarget !== undefined;
+  const calorieTarget = hasTarget ? next.calorieTarget : values.calorieTarget;
   return {
     ...values,
     ...next,
@@ -302,20 +308,30 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, calorieTar
   const max = historyMax(keyName, visibleHistory);
   const trend = comparison(value, averageValue);
   const accessibleHistory = visibleHistory.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
+  const historyDetails = visibleHistory.map((point) => ({
+    date: point.date,
+    label: `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`,
+    empty: valueForHistory(keyName, point) === null,
+  }));
   return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label} : ${metricValue(keyName, value)}. Historique des cinq derniers jours : ${accessibleHistory}`}>
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
       <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>
       <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue, calorieTarget)}</small>
     </span>
-    <span className="personal-lab-metric__bars" aria-hidden="true">
-      {visibleHistory.map((point) => {
+    <span className="personal-lab-metric__bars" role="group" aria-label={`Détail des cinq derniers jours · ${label}`}>
+      {visibleHistory.map((point, barIndex) => {
         const pointValue = valueForHistory(keyName, point);
-        const height = pointValue === null ? 7 : Math.max(12, Math.round(pointValue / max * 100));
-        return <span className={`personal-lab-metric__bar${pointValue === null ? " is-empty" : ""}`} style={{ height: `${height}%` }} key={point.date} />;
+        const detail = historyDetails[barIndex];
+        // Absence = trou explicite, jamais une mini-barre fantôme.
+        if (pointValue === null) {
+          return <span className="personal-lab-metric__bar is-empty" data-empty="true" style={{ height: "2%" }} key={point.date} role="img" aria-label={`${detail.label} · absence de mesure`} title={`${detail.label} · absence de mesure`} tabIndex={0} />;
+        }
+        const height = Math.max(12, Math.round(pointValue / max * 100));
+        return <span className="personal-lab-metric__bar" style={{ height: `${height}%` }} key={point.date} role="img" aria-label={detail.label} title={detail.label} tabIndex={0} />;
       })}
     </span>
-    {showTrace && <MetricHistoryTrace values={visibleHistory.map(point => valueForHistory(keyName, point))} maximum={max} />}
+    {showTrace && <MetricHistoryTrace values={visibleHistory.map(point => valueForHistory(keyName, point))} maximum={max} labels={visibleHistory.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`)} />}
   </Link>;
 }
 

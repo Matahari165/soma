@@ -21,6 +21,7 @@
   width: 100%;
   min-width: 0;
   min-height: 100vh;
+  overflow-x: clip;
   background: var(--recovery-canvas);
   color: var(--recovery-text);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
@@ -54,7 +55,7 @@
   font-size: clamp(30px, 3vw, 40px);
   font-weight: 400;
   letter-spacing: -.025em;
-  line-height: 1.05;
+  line-height: 1.2;
 }
 
 .page :global(.health-detail-page--recovery) :global(.health-detail-hero) > :global(.health-hero-score) {
@@ -72,7 +73,7 @@
 }
 
 .content {
-  width: min(100%, 1376px);
+  width: min(100%, 1180px);
   min-width: 0;
   margin-inline: auto;
   padding: 0 0 40px;
@@ -90,9 +91,9 @@
 
 .page .heroScene {
   display: grid;
-  grid-template-columns: minmax(0, 1.32fr) minmax(280px, .68fr);
-  gap: clamp(40px, 7vw, 96px);
-  align-items: center;
+  grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
+  gap: 48px;
+  align-items: start;
   padding: 0;
   transform: translateY(calc(-1 * var(--recovery-hero-lift)));
 }
@@ -101,12 +102,12 @@
   display: grid;
   min-width: 0;
   place-items: center;
-  align-content: center;
-  gap: 14px;
+  align-content: start;
+  gap: 16px;
 }
 
 .radarRegion :global(figure) {
-  width: min(100%, 620px);
+  width: min(100%, 420px);
   min-width: 0;
   margin: 0;
 }
@@ -115,50 +116,118 @@
   display: block;
   width: 100%;
   height: auto;
-  min-height: 360px;
+  aspect-ratio: 1 / 1;
   overflow: visible;
 }
 
-.radarRegion :global(.recovery-radar-label),
-.radarRegion :global(.radar-label) {
-  fill: var(--recovery-muted);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 400;
+.recoveryRadarStage {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+  align-items: center;
+  gap: 0;
+  transition: grid-template-columns 220ms cubic-bezier(.16, 1, .3, 1), gap 220ms cubic-bezier(.16, 1, .3, 1);
 }
 
-.radarRegion :global(.recovery-radar-value),
-.radarRegion :global(.radar-number) {
-  fill: var(--recovery-text);
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 15px;
+.recoveryRadarStage[data-detail-open="true"] {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, .92fr);
+  gap: 24px;
+}
+
+.recoveryDetailPanel {
+  max-width: 0;
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+  padding-left: 0;
+  border-left: 0 solid var(--recovery-rule);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(10px);
+  transition: opacity 220ms cubic-bezier(.16, 1, .3, 1), transform 220ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 220ms;
+}
+
+.recoveryDetailPanel[data-open="true"] {
+  max-width: 32rem;
+  padding-left: 20px;
+  border-left-width: 1px;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition-delay: 0s;
+}
+
+.recoveryDetailHeader {
+  display: flex;
+  min-width: 0;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recoveryDetailHeader h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--recovery-text);
+  font: 500 16px/24px var(--font-soma-ui), system-ui, sans-serif;
+}
+
+.recoveryDetailClose {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--recovery-rule);
+  border-radius: var(--lab-radius-sm, 4px);
+  color: var(--recovery-muted);
+  background: transparent;
+  font: 400 12px/1.35 var(--font-soma-ui), system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.recoveryDetailClose:hover {
+  color: var(--recovery-text);
+  border-color: var(--recovery-rule-strong);
+}
+
+.recoveryDetailClose:focus-visible {
+  outline: 2px solid var(--recovery-accent);
+  outline-offset: 3px;
+}
+
+.recoveryDimensionMetrics,
+.recoveryRuleMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 0;
+}
+
+.recoveryDimensionMetrics > div,
+.recoveryRuleMetrics > div { min-width: 0; }
+
+.recoveryDimensionMetrics dt,
+.recoveryRuleMetrics dt {
+  margin: 0;
+  color: var(--recovery-muted);
+  font: 500 11px/1.35 var(--font-soma-mono), ui-monospace, monospace;
+}
+
+.recoveryDimensionMetrics dd,
+.recoveryRuleMetrics dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--recovery-text);
+  font: 400 12px/1.35 var(--font-soma-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-.radarRegion :global(.recovery-radar-grid),
-.radarRegion :global(.radar-grid) {
-  fill: none;
-  stroke: color-mix(in srgb, var(--recovery-text) 14%, transparent);
-  stroke-width: 1;
-}
+.recoveryDimensionRole { grid-column: 1 / -1; }
 
-.radarRegion :global(.recovery-radar-axis),
-.radarRegion :global(.radar-axis) {
-  stroke: color-mix(in srgb, var(--recovery-text) 15%, transparent);
-  stroke-width: 1;
-}
-
-.radarRegion :global(.recovery-radar-value),
-.radarRegion :global(.radar-value) {
-  fill: color-mix(in srgb, var(--recovery-text) 7%, transparent);
-  stroke: var(--recovery-accent);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-}
-
-.radarRegion :global(.recovery-radar-point),
-.radarRegion :global(.radar-point) {
-  fill: var(--recovery-accent);
+.recoveryDimensionRole dd {
+  color: var(--recovery-muted);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 12px;
 }
 
 .scoreSummary {
@@ -170,8 +239,8 @@
   display: block;
   margin: 0;
   color: var(--recovery-muted);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .scoreSummary h2,
@@ -180,10 +249,10 @@
   margin: 0;
   color: var(--recovery-text);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 30px;
+  line-height: 28px;
 }
 
 .summaryValue {
@@ -197,31 +266,31 @@
 }
 
 .summaryValue strong {
-  font-size: clamp(72px, 9vw, 116px);
+  font-size: clamp(64px, 7vw, 96px);
   font-weight: 400;
-  letter-spacing: -.08em;
-  line-height: .86;
+  letter-spacing: -.02em;
+  line-height: 1;
 }
 
 .summaryValue span,
 .summaryFacts dd span {
   color: var(--recovery-muted);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
-  letter-spacing: -.02em;
+  letter-spacing: 0;
 }
 
 .summaryRail {
   height: 4px;
   margin-top: 24px;
-  background: var(--recovery-rule-strong);
+  background: var(--lab-border, #292929);
 }
 
 .summaryRail span {
   display: block;
   height: 100%;
   min-width: 0;
-  background: var(--recovery-accent);
+  background: var(--lab-text-primary, #f1f1f1);
 }
 
 .summaryFacts {
@@ -373,9 +442,9 @@
 
 .summaryAction :global(.recovery-score-inline__inner) header strong {
   color: var(--recovery-text);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  font-weight: 400;
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
   line-height: 24px;
 }
 
@@ -544,8 +613,8 @@
 .page .trendGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(32px, 5vw, 72px);
-  row-gap: clamp(56px, 7vw, 96px);
+  column-gap: 32px;
+  row-gap: 48px;
 }
 
 .trendGrid :global(.metric-trend-card) {
@@ -592,18 +661,18 @@
 }
 
 .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 148px;
+  height: 120px;
   margin-top: 12px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-  height: 140px;
+  height: 120px;
   padding-right: 24px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
   width: 100%;
-  height: 132px;
+  height: 112px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.chart-axis) {
@@ -635,7 +704,7 @@
   width: 100%;
   height: 16px;
   overflow: hidden;
-  border-radius: var(--lab-radius-xs, 2px);
+  border-radius: 0;
   background: var(--lab-control-track, #0b0b0b);
 }
 
@@ -644,16 +713,16 @@
   height: 100%;
 }
 
-.zoneSegment--light { background: #3a3a3a; }
-.zoneSegment--moderate { background: #777777; }
-.zoneSegment--vigorous { background: #b1b1b1; }
-.zoneSegment--peak { background: #eeeeee; }
+.zoneSegment--light { background: var(--zone-light); }
+.zoneSegment--moderate { background: var(--zone-moderate); }
+.zoneSegment--vigorous { background: var(--zone-vigorous); }
+.zoneSegment--peak { background: var(--zone-peak); }
 
 .zoneLegend {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin: 24px 0 0;
+  gap: 12px 20px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -678,22 +747,22 @@
   grid-column: 2;
   color: var(--recovery-text);
   font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 16px;
 }
 
 .zoneDot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   margin-top: 5px;
   border-radius: 50%;
-  background: #3a3a3a;
+  background: var(--zone-light);
 }
 
-.zoneDot--moderate { background: #777777; }
-.zoneDot--vigorous { background: #b1b1b1; }
-.zoneDot--peak { background: #eeeeee; }
+.zoneDot--moderate { background: var(--zone-moderate); }
+.zoneDot--vigorous { background: var(--zone-vigorous); }
+.zoneDot--peak { background: var(--zone-peak); }
 
 .page .empty {
   display: flex;
@@ -729,15 +798,12 @@
 .page :global(.health-signal-meta--footer) { display: none !important; }
 
 .page [data-recovery-scroll-reveal][data-reveal="pending"] {
-  opacity: .9;
-  clip-path: inset(0 0 3% 0);
-  transition: opacity 640ms cubic-bezier(.16, 1, .3, 1),
-    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+  opacity: 0;
+  transition: opacity 220ms ease-out;
 }
 
 .page [data-recovery-scroll-reveal][data-reveal="visible"] {
   opacity: 1;
-  clip-path: inset(0);
 }
 
 .page :global(.health-line-chart) {
@@ -760,7 +826,7 @@
 @media (max-width: 900px) {
   .page {
     --recovery-header-height: 72px;
-    --recovery-flow-gap: 64px;
+    --recovery-flow-gap: 48px;
   }
 
   .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
@@ -774,28 +840,24 @@
 
   .page .heroScene {
     grid-template-columns: 1fr;
-    gap: 32px;
+    gap: 24px;
     padding-bottom: 0;
   }
 
   .radarRegion :global(figure) {
-    width: min(100%, 560px);
+    width: min(100%, 420px);
   }
 
   .scoreSummary {
     max-width: 560px;
     padding-left: 0;
   }
-
-  .summaryValue strong {
-    font-size: clamp(72px, 15vw, 104px);
-  }
 }
 
 @media (max-width: 640px) {
   .page {
     --recovery-header-height: 64px;
-    --recovery-flow-gap: 48px;
+    --recovery-flow-gap: 40px;
   }
 
   .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
@@ -818,38 +880,42 @@
   }
 
   .page .heroScene {
-    gap: 32px;
+    gap: 24px;
     padding-bottom: 0;
   }
 
   .radarRegion {
-    gap: 10px;
+    gap: 8px;
   }
 
-  .radarRegion :global(svg) {
-    min-height: 300px;
+  .radarRegion :global(figure) {
+    width: min(100%, 320px);
   }
 
-  .radarRegion :global(.recovery-radar-label),
-  .radarRegion :global(.radar-label) {
-    font-size: 12px;
+  .recoveryRadarStage,
+  .recoveryRadarStage[data-detail-open="true"] {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .radarRegion :global(.recovery-radar-value),
-  .radarRegion :global(.radar-number) {
-    font-size: 13px;
+  .recoveryDetailPanel {
+    max-height: 0;
+    padding: 0;
+    border: 0;
+    transform: translateY(8px);
   }
 
-  .summaryKicker {
-    font-size: 14px;
-    line-height: 20px;
+  .recoveryDetailPanel[data-open="true"] {
+    max-width: none;
+    max-height: 40rem;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--recovery-rule);
+    transform: translateY(0);
   }
 
-  .scoreSummary h2,
-  .sectionHeader h2,
-  .empty h2 {
-    font-size: 22px;
-    line-height: 28px;
+  .recoveryDimensionMetrics,
+  .recoveryRuleMetrics {
+    grid-template-columns: 1fr;
   }
 
   .summaryValue {
@@ -857,7 +923,8 @@
   }
 
   .summaryValue strong {
-    font-size: clamp(68px, 24vw, 96px);
+    font-size: 64px;
+    line-height: 64px;
   }
 
   .page .section {
@@ -911,15 +978,15 @@
   }
 
   .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-    height: 132px;
+    height: 112px;
   }
 
   .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-    height: 124px;
+    height: 112px;
   }
 
   .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
-    height: 116px;
+    height: 112px;
   }
 
   .zoneLegend {
@@ -945,7 +1012,6 @@
 
   .page [data-recovery-scroll-reveal][data-reveal="pending"] {
     opacity: 1;
-    clip-path: none;
     transition: none;
   }
 

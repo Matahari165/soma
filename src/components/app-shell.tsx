@@ -2,17 +2,13 @@
 
 import {
   Activity,
-  Beaker,
   BedDouble,
-  Heart,
   HeartPulse,
   LayoutDashboard,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Utensils,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,26 +25,18 @@ const navigation = [
   { label: "Effort", href: "/activity", icon: Activity },
 ];
 
-// Show the remaining product destinations directly on mobile instead of hiding
-// them behind a second menu.
-const mobileNavigation = navigation.filter(({ href }) => href !== "/");
-const personalLabNavigation = [
-  { label: "Laboratoire", href: "/", icon: Beaker },
-  { label: "Alimentation", href: "/meals", icon: Utensils },
-  { label: "Sommeil", href: "/sleep", icon: Moon },
-  { label: "Récupération", href: "/recovery", icon: Heart },
-  { label: "Effort", href: "/activity", icon: Zap },
-];
+// Une seule source de navigation : le mobile reprend les mêmes destinations,
+// sans le Laboratoire déjà accessible via la marque.
 
 export function AppShell({ children, user, localPreview = false }: { children: React.ReactNode; user: SomaUser | null; localPreview?: boolean }) {
   const pathname = usePathname();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const displayName = user?.displayName ?? "Utilisateur Soma";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const isPersonalLab = pathname === "/";
   const isStitchWorkspace = ["/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
-  const activeNavigation = isStitchWorkspace ? personalLabNavigation : navigation;
-  const activeMobileNavigation = isStitchWorkspace ? personalLabNavigation.slice(1) : mobileNavigation;
+  const activeNavigation = navigation;
+  const activeMobileNavigation = navigation.filter(({ href }) => href !== "/");
 
   if (
     ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
@@ -126,6 +114,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
               aria-label={label}
             >
               <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+              <span className="sr-only">{label}</span>
             </Link>
           ))}
         </nav>

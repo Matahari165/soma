@@ -44,7 +44,7 @@
 .redesign {
   display: grid;
   min-width: 0;
-  gap: 56px;
+  gap: 48px;
 }
 
 .overviewSection {
@@ -61,7 +61,6 @@
 .scoreColumn {
   display: grid;
   min-width: 0;
-  grid-area: score;
   align-content: start;
   gap: 32px;
   padding-left: clamp(20px, 3vw, 40px);
@@ -108,11 +107,11 @@
   display: flex;
   min-width: 0;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   color: var(--sleep-primary);
-  font: 400 clamp(56px, 7vw, 88px)/.9 var(--lab-data-font), monospace;
+  font: 400 clamp(64px, 7vw, 96px)/1 var(--lab-data-font), monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.05em;
+  letter-spacing: -.02em;
 }
 
 .scoreValue small {
@@ -140,29 +139,27 @@
 .sleepScoreOverview {
   display: grid;
   min-width: 0;
-  grid-template-areas: "radar score";
-  grid-template-columns: minmax(0, 1fr) minmax(180px, .34fr);
-  gap: clamp(24px, 3vw, 40px);
+  grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
+  gap: 48px;
   align-items: start;
 }
 
 .sleepRadarStage {
   display: grid;
   min-width: 0;
-  grid-area: radar;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
   align-items: center;
   gap: 0;
-  transition: grid-template-columns 240ms cubic-bezier(.16, 1, .3, 1), gap 240ms cubic-bezier(.16, 1, .3, 1);
+  transition: grid-template-columns 220ms cubic-bezier(.16, 1, .3, 1), gap 220ms cubic-bezier(.16, 1, .3, 1);
 }
 
 .sleepRadarStage[data-detail-open="true"] {
   grid-template-columns: minmax(0, 1fr) minmax(280px, .92fr);
-  gap: 28px;
+  gap: 24px;
 }
 
 .sleepRadarStage > figure {
-  width: min(100%, 32rem);
+  width: min(100%, 420px);
   margin-inline: auto;
 }
 
@@ -176,7 +173,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translateX(10px);
-  transition: opacity 240ms cubic-bezier(.16, 1, .3, 1), transform 240ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 240ms;
+  transition: opacity 220ms cubic-bezier(.16, 1, .3, 1), transform 220ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 220ms;
 }
 
 .sleepDetailPanel[data-open="true"] {
@@ -201,12 +198,13 @@
   min-width: 0;
   margin: 0;
   color: var(--sleep-primary);
-  font: 560 16px/1.3 var(--font-soma-ui), system-ui, sans-serif;
+  font: 500 16px/1.5 var(--font-soma-ui), system-ui, sans-serif;
 }
 
 .sleepDetailClose {
   flex: 0 0 auto;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--sleep-border);
   border-radius: var(--lab-radius-sm, 4px);
@@ -368,7 +366,7 @@
 .root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) h2 {
   margin: 0;
   color: var(--sleep-primary);
-  font: 400 clamp(20px, 2vw, 24px)/1.25 Georgia, "Times New Roman", serif;
+  font: 400 22px/28px Georgia, "Times New Roman", serif;
   letter-spacing: -.015em;
 }
 
@@ -457,7 +455,7 @@
 .secondaryTrendGrid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 32px;
 }
 
@@ -505,7 +503,7 @@
 
 .trendGrid :global(.metric-trend-card) :global(.chart-frame),
 .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 152px;
+  height: 120px;
   margin-top: 20px;
 }
 
@@ -545,8 +543,8 @@
 
 @media (max-width: 1100px) {
   .root :global(.health-detail-page--sleep) { padding-inline: 32px; }
-  .sleepScoreOverview { grid-template-columns: minmax(0, 1fr) minmax(156px, .36fr); gap: 24px; }
-  .sleepRadarStage[data-detail-open="true"] { grid-template-columns: minmax(0, 1fr) minmax(260px, .82fr); gap: 20px; }
+  .sleepScoreOverview { grid-template-columns: minmax(0, 420px) minmax(280px, 1fr); gap: 32px; }
+  .sleepRadarStage[data-detail-open="true"] { grid-template-columns: minmax(0, 1fr) minmax(260px, .82fr); gap: 24px; }
   .trendGrid,
   .secondaryTrendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -555,7 +553,7 @@
   .root :global(.health-detail-page--sleep) { gap: 24px; padding-inline: 20px; }
   .redesign { gap: 48px; }
   .scoreColumn { padding-left: 0; border-left: 0; gap: 32px; }
-  .sleepScoreOverview { grid-template-areas: "score" "radar"; grid-template-columns: 1fr; gap: 32px; }
+  .sleepScoreOverview { grid-template-columns: 1fr; gap: 24px; }
   .scoreColumn > .scorePanel { padding: 0 0 24px; border-top: 1px solid var(--sleep-border); }
   .trendGrid,
   .secondaryTrendGrid { grid-template-columns: 1fr; gap: 24px; }
@@ -566,6 +564,7 @@
   .root :global(.health-detail-page--sleep) { gap: 20px; padding: 12px 16px 72px; overflow-x: clip; }
   .redesign { gap: 40px; }
   .sleepScoreOverview { gap: 24px; }
+  .sleepRadarStage > figure { width: min(100%, 320px); }
   .sleepRadarStage,
   .sleepRadarStage[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
   .sleepDetailPanel { max-height: 0; padding: 0; border: 0; transform: translateY(8px); }
@@ -584,7 +583,7 @@
   .trendGrid :global(.metric-trend-card),
   .secondaryTrendGrid :global(.metric-trend-card) { min-height: 208px; }
   .trendGrid :global(.metric-trend-card) :global(.chart-frame),
-  .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 140px; }
+  .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 112px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

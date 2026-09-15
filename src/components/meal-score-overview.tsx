@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from "react";
 
 import {
   MEAL_BALANCE_COMPONENT_WEIGHTS,
@@ -35,6 +35,16 @@ export type MealScoreOverviewPanelProps = {
   rolling: readonly MealScoreRolling[];
   trend: readonly MealScoreTrendPoint[];
   className?: string;
+  date?: string;
+  today?: string;
+  missingSlots?: readonly string[];
+};
+
+const SLOT_LABELS: Record<string, string> = {
+  breakfast: "Petit déjeuner",
+  lunch: "Déjeuner",
+  snack: "Collation",
+  dinner: "Dîner",
 };
 
 const DIMENSION_KEYS: readonly MealBalanceComponentKey[] = [
@@ -155,11 +165,27 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
   const axes = axisData(daily);
   const complete = axes.every((axis) => axis.score !== null && Number.isFinite(axis.score));
   const description = axes.map((axis) => `${axis.label} : ${scoreDescription(axis.score)}`).join(". ");
+  const axisNodes = useRef(new Map<MealBalanceComponentKey, SVGGElement | null>());
+
+  function focusAxis(key: MealBalanceComponentKey) {
+    axisNodes.current.get(key)?.focus();
+  }
 
   function handleKeyDown(event: KeyboardEvent<SVGGElement>, key: MealBalanceComponentKey) {
-    if (event.key !== "Enter" && event.key !== " ") return;
+    const index = DIMENSION_KEYS.indexOf(key);
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelect(key);
+      return;
+    }
+    let next: MealBalanceComponentKey | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = DIMENSION_KEYS[(index + 1) % DIMENSION_KEYS.length];
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = DIMENSION_KEYS[(index - 1 + DIMENSION_KEYS.length) % DIMENSION_KEYS.length];
+    else if (event.key === "Home") next = DIMENSION_KEYS[0];
+    else if (event.key === "End") next = DIMENSION_KEYS[DIMENSION_KEYS.length - 1];
+    if (!next) return;
     event.preventDefault();
-    onSelect(key);
+    focusAxis(next);
   }
 
   return (
@@ -169,18 +195,18 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         <desc id="meal-balance-radar-description">
           {description}. Une valeur absente reste indisponible et n’est pas représentée comme zéro. Sélectionnez une étiquette pour afficher ses détails.
         </desc>
-        {[32, 64, 96, 128].map((radius) => (
+        {[37.5, 75, 112.5, 150].map((radius) => (
           <polygon className={styles.radarGrid} key={radius} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />
         ))}
         {axes.map((axis, index) => {
-          const edge = radarPoint(index, 128);
-          const [x, y] = radarPoint(index, 166);
+          const edge = radarPoint(index, 150);
+          const [x, y] = radarPoint(index, 188);
           const anchor = x < 185 ? "end" : x > 235 ? "start" : "middle";
           const lines = RADAR_LABEL_LINES[axis.keyName];
           const firstDy = lines.length > 1 ? -7 : 0;
           const point = axis.score === null || !Number.isFinite(axis.score)
             ? null
-            : radarPoint(index, 128 * Math.min(Math.max(axis.score, 0), 100) / 100);
+            : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100);
           const selected = selectedKey === axis.keyName;
           const actionLabel = selected ? "Masquer les détails de cette dimension" : "Afficher les détails de cette dimension";
           return (
@@ -195,13 +221,16 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
               key={axis.keyName}
               onClick={() => onSelect(axis.keyName)}
               onKeyDown={(event) => handleKeyDown(event, axis.keyName)}
-              ref={(node) => registerButton(axis.keyName, node)}
+              ref={(node) => {
+                axisNodes.current.set(axis.keyName, node);
+                registerButton(axis.keyName, node);
+              }}
               role="button"
               tabIndex={0}
             >
               <line className={styles.radarAxis} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
               <line className={styles.radarAxisHit} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
-              {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="3" aria-hidden="true" /> : null}
+              {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
               <circle className={styles.radarLabelHit} cx={x} cy={y} r="30" aria-hidden="true" />
               <circle className={styles.radarFocusRing} cx={x} cy={y} r="26" aria-hidden="true" />
               <text className={styles.radarLabel} x={x} y={y} textAnchor={anchor} aria-hidden="true">
@@ -212,7 +241,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
           );
         })}
         {complete ? (
-          <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 128 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" />
+          <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" />
         ) : null}
       </svg>
       <figcaption className={styles.srOnly}>Graphique interactif. Les axes sont des boutons accessibles au clavier.</figcaption>
@@ -224,9 +253,10 @@ type DimensionDetailProps = {
   dimension: RadarAxis | null;
   open: boolean;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  onClose: () => void;
 };
 
-function DimensionDetail({ dimension, open, headingRef }: DimensionDetailProps) {
+function DimensionDetail({ dimension, open, headingRef, onClose }: DimensionDetailProps) {
   const component = dimension?.component ?? null;
   const score = component?.score ?? null;
   const weight = component?.weight ?? (dimension ? MEAL_BALANCE_COMPONENT_WEIGHTS[dimension.keyName] : null);
@@ -236,6 +266,7 @@ function DimensionDetail({ dimension, open, headingRef }: DimensionDetailProps) 
     <aside aria-hidden={!open} aria-labelledby="meal-score-dimension-detail-title" className={styles.dimensionDetail} data-open={open} id={RADAR_DETAIL_ID}>
       <div className={styles.dimensionDetailHeader}>
         <h3 id="meal-score-dimension-detail-title" ref={headingRef} tabIndex={-1}>{label}</h3>
+        {open && <button type="button" className={styles.detailClose} onClick={onClose} aria-label="Fermer le panneau de détail">Fermer</button>}
       </div>
       <dl className={styles.dimensionDetailMetrics}>
         <div><dt>Score</dt><dd>{formatScore(score)}<span>/100</span></dd></div>
@@ -248,8 +279,11 @@ function DimensionDetail({ dimension, open, headingRef }: DimensionDetailProps) 
   );
 }
 
-export function MealScoreOverviewPanel({ daily, rolling, trend, className }: MealScoreOverviewPanelProps) {
+export function MealScoreOverviewPanel({ daily, rolling, trend, className, date, today, missingSlots }: MealScoreOverviewPanelProps) {
   const dailyScore = daily?.score ?? null;
+  // « Aujourd’hui » est réservé au jour courant : une date passée affiche sa
+  // date réelle dans le résumé du score.
+  const isToday = !date || !today || date === today;
   const observedTrend = trend.filter((point) => point.score !== null && Number.isFinite(point.score));
   const rolling14 = rolling.find((item) => item.days === 14);
   const rolling28 = rolling.find((item) => item.days === 28);
@@ -267,17 +301,33 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
     if (selectedKey) detailHeadingRef.current?.focus({ preventScroll: true });
   }, [selectedKey]);
 
-  function restoreRadarFocus(key: MealBalanceComponentKey) {
+  const restoreRadarFocus = useCallback((key: MealBalanceComponentKey) => {
     const restore = () => radarButtonRefs.current[key]?.focus();
     if (typeof window === "undefined") restore();
     else window.requestAnimationFrame(restore);
-  }
+  }, []);
+
+  const closeDimension = useCallback(() => {
+    if (!selectedKey) return;
+    const key = selectedKey;
+    setSelectedKey(null);
+    restoreRadarFocus(key);
+  }, [restoreRadarFocus, selectedKey]);
+
+  useEffect(() => {
+    if (!selectedKey || typeof document === "undefined") return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeDimension();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeDimension, selectedKey]);
 
   function toggleDimension(key: MealBalanceComponentKey) {
-    if (selectedKey === key) {
-      setSelectedKey(null);
-      restoreRadarFocus(key);
-    } else setSelectedKey(key);
+    if (selectedKey === key) closeDimension();
+    else setSelectedKey(key);
   }
 
   return (
@@ -287,11 +337,11 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
           <div className={styles.radarStage} data-detail-open={selectedDimension ? "true" : "false"}>
             <MealBalanceRadar daily={daily} onSelect={toggleDimension} registerButton={(key, node) => { radarButtonRefs.current[key] = node; }} selectedKey={selectedKey} />
             <div className={styles.dimensionDetailShell} data-open={selectedDimension !== null}>
-              <DimensionDetail dimension={selectedDimension} headingRef={detailHeadingRef} open={selectedDimension !== null} />
+              <DimensionDetail dimension={selectedDimension} headingRef={detailHeadingRef} open={selectedDimension !== null} onClose={closeDimension} />
             </div>
           </div>
           <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-daily-title">Aujourd’hui</h3></div>
+            <div className={styles.panelHeading}><h3 id="meal-score-daily-title">{isToday ? "Aujourd’hui" : formatDate(date ?? "", true)}</h3></div>
             <strong className={styles.dailyScore} aria-label={scoreDescription(dailyScore)}>{formatScore(dailyScore)}<span>/100</span></strong>
             <div className={styles.scoreRail} aria-hidden="true">{dailyScore === null ? null : <span style={{ width: `${Math.min(Math.max(dailyScore, 0), 100)}%` }} />}</div>
             <dl className={styles.coverageList}>
@@ -299,6 +349,8 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className }: Mea
               <div><dt>Couverture</dt><dd>{formatPercent(daily?.coverage)}</dd></div>
               <div><dt>Confiance</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
             </dl>
+            <p className={styles.coverageNote}>Score et totaux calculés sur les repas confirmés uniquement.</p>
+            {missingSlots && missingSlots.length > 0 && <p className={styles.missingNote}>À compléter : {missingSlots.map((slot, index) => <Fragment key={slot}>{index > 0 && " · "}<a href={`#meal-${slot}`}>{SLOT_LABELS[slot] ?? slot}</a></Fragment>)}</p>}
           </article>
         </div>
 

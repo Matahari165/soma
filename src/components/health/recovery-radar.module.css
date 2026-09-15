@@ -1,21 +1,26 @@
 .root {
-  width: 100%;
+  width: min(100%, 420px);
   min-width: 0;
   margin: 0;
+  margin-inline: auto;
+  display: grid;
+  gap: 12px;
   color: var(--lab-text-primary, #f1f1f1);
 
   /* The Observatory theme intentionally makes generic rules transparent.
      The radar still needs a quiet local scale so its geometry remains legible. */
   --radar-grid: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 16%, transparent);
-  --radar-axis: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 24%, transparent);
-  --radar-reference: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 38%, transparent);
+  --radar-axis: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 12%, transparent);
+  --radar-reference: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 32%, transparent);
+  --radar-signal: var(--lab-signal, #d5e5da);
 }
 
 .chart {
   display: block;
   width: 100%;
-  max-width: 640px;
+  max-width: 420px;
   height: auto;
+  aspect-ratio: 1 / 1;
   overflow: visible;
 }
 
@@ -35,7 +40,7 @@
 
 .gridOuter {
   stroke: var(--radar-reference);
-  stroke-width: 1.25;
+  stroke-width: 1;
 }
 
 .axis {
@@ -52,20 +57,63 @@
 
 .valueShape {
   fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
-  stroke: var(--lab-brand, #eeeeee);
-  stroke-width: 2;
+  stroke: var(--lab-text-primary, #f1f1f1);
+  stroke-width: 1.75;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
 .valuePoint {
-  fill: var(--lab-brand, #eeeeee);
+  fill: var(--lab-text-primary, #f1f1f1);
   stroke: var(--lab-canvas, #050505);
-  stroke-width: 1;
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
+.valuePointActive {
+  fill: var(--radar-signal);
+  stroke: var(--lab-canvas, #050505);
+  stroke-width: 2;
+}
+
 .axisLabel {
+  pointer-events: none;
+}
+
+.axisLabelInner {
+  pointer-events: none;
+}
+
+.axisButton {
+  cursor: pointer;
+  outline: none;
+}
+
+.axisButton[data-selected="true"] .axisName {
+  fill: var(--lab-text-primary, #f1f1f1);
+  font-weight: 500;
+}
+
+.axisButton:focus,
+.axisButton:focus-visible {
+  outline: none;
+}
+
+.axisButton:focus-visible .focusRing {
+  opacity: 1;
+}
+
+.labelHit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.focusRing {
+  fill: none;
+  stroke: var(--lab-text-primary, #f1f1f1);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -80,10 +128,20 @@
 .axisValue {
   fill: var(--lab-text-primary, #f1f1f1);
   font-family: var(--font-soma-mono, ui-monospace), ui-monospace, monospace;
-  font-size: 16px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
   line-height: 1;
+}
+
+.unavailable {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 .srOnly {
@@ -101,7 +159,7 @@
 @keyframes recoveryRadarReveal {
   from {
     opacity: 0;
-    transform: scale(.96);
+    transform: scale(.98);
   }
 
   to {
@@ -110,13 +168,21 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
+  .root {
+    width: min(100%, 320px);
+  }
+
+  .chart {
+    max-width: 320px;
+  }
+
   .axisName {
     font-size: 12px;
   }
 
   .axisValue {
-    font-size: 15px;
+    font-size: 12px;
   }
 }
 

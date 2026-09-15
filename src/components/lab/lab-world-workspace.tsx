@@ -19,6 +19,20 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
+function dateFromUrl() {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("date");
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function writeDateToUrl(date: string) {
+  if (typeof window === "undefined" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("date") === date) return;
+  url.searchParams.set("date", date);
+  window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+}
+
 export function LabWorldWorkspace({
   date: initialDateString,
   effects,
@@ -47,10 +61,24 @@ export function LabWorldWorkspace({
     return Array.from({ length: 7 }, (_, index) => addDays(todayDate, index - 6));
   }, [todayDate]);
 
-  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? todayDate ?? "");
+  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? dateFromUrl() ?? todayDate ?? "");
   const activeDate = (availableDates.length > 0 && availableDates.includes(selectedDate))
     ? selectedDate
     : (todayDate ?? selectedDate);
+
+  useEffect(() => {
+    if (!activeDate || !/^\d{4}-\d{2}-\d{2}$/.test(activeDate)) return;
+    writeDateToUrl(activeDate);
+  }, [activeDate]);
+
+  useEffect(() => {
+    function onPopState() {
+      const urlDate = dateFromUrl();
+      if (urlDate && availableDates.includes(urlDate)) setSelectedDate(urlDate);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [availableDates]);
 
   const formattedDate = useMemo(() => {
     if (!activeDate) return initialDateString ?? "";
@@ -109,8 +137,9 @@ export function LabWorldWorkspace({
       if (!entry.isIntersecting) return;
       const element = entry.target as HTMLElement;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { observer.unobserve(element); return; }
-      element.animate([{ opacity: .35, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "cubic-bezier(.2,.7,.2,1)" });
-      element.querySelectorAll(".metric-trace-line").forEach(line => line.animate([{ strokeDasharray: "500", strokeDashoffset: "500" }, { strokeDasharray: "500", strokeDashoffset: "0" }], { duration: 1000, easing: "ease-out" }));
+      // Révélation calme : 220 ms max, déplacement 4 px, sans rotation.
+      element.animate([{ opacity: .7, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" });
+      element.querySelectorAll(".metric-trace-line").forEach(line => line.animate([{ strokeDasharray: "500", strokeDashoffset: "40" }, { strokeDasharray: "500", strokeDashoffset: "0" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }));
       observer.unobserve(element);
     }), { threshold: .08 });
     elements.forEach(element => observer.observe(element));

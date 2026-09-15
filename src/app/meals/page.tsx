@@ -67,6 +67,10 @@ function goalMode(value: unknown): "build_muscle" | "maintain" {
 
 type MealsPageProps = { searchParams: Promise<{ date?: string | string[] }> };
 
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${value}T12:00:00`)).replace(".", "");
+}
+
 async function MealsPageContent({ searchParams, user }: MealsPageProps & { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
   const params = await searchParams;
   let timeZone = "Europe/Paris";
@@ -105,6 +109,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
+  const missingSlots = MEAL_SLOTS.filter((slot) => !records.some((meal) => meal.slot === slot));
   const initialData: MealJournalData | null = mealResult.ok
     ? {
       date: requestedDate,
@@ -128,22 +133,30 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
           trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, status: point.balanceStatus, coverage: point.balanceCoverage, confidence: point.balanceConfidence }))}
+          date={requestedDate}
+          today={today}
+          missingSlots={missingSlots}
           className="meals-page-score"
         />
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
             <h2 id="meals-journal-title">Journal des repas</h2>
-            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals hideAddMealButton />
+            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok
           ? <>
-            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
+            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
           </>
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
+        <footer className={styles.provenance} aria-label="Alimentation provenance des données">
+          <h2>Provenance</h2>
+          <p>Repas confirmés saisis dans Soma · Score et totaux calculés par Soma sur les repas confirmés uniquement</p>
+          <p>Période du {formatShortDate(historyFrom)} au {formatShortDate(requestedDate)} · Les jours non renseignés restent vides, jamais zéro</p>
+        </footer>
       </div>
     </main>
   );

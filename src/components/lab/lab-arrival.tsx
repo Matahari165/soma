@@ -62,6 +62,7 @@ export function LabArrival({
               disabled={!canGoPrevious}
               onClick={() => canGoPrevious && onDateChange(availableDates[currentIndex - 1])}
               aria-label="Jour précédent"
+              style={{ minHeight: 44, minWidth: 44 }}
             >
               ‹
             </button>
@@ -74,6 +75,7 @@ export function LabArrival({
               disabled={!canGoNext}
               onClick={() => canGoNext && onDateChange(availableDates[currentIndex + 1])}
               aria-label="Jour suivant"
+              style={{ minHeight: 44, minWidth: 44 }}
             >
               ›
             </button>

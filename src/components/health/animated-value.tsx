@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type AnimatedValueFormat = "number" | "decimal" | "duration";
 
-const ANIMATION_DURATION_MS = 420;
+const ANIMATION_DURATION_MS = 200;
 
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -17,11 +17,20 @@ export function useAnimatedNumber(value: number | null, enabled = true) {
   useClientLayoutEffect(() => {
     const previous = previousTarget.current;
     const firstMount = !mounted.current;
-    const from = firstMount ? (target === null ? null : 0) : previous;
-    const changed = firstMount || previous !== target;
+    // Jamais d’animation depuis zéro si le départ est inconnu (—) :
+    // la première apparition affiche la valeur finale, seules les
+    // transitions connue → connue sont interpolées en 200 ms.
     mounted.current = true;
     previousTarget.current = target;
 
+    // Départ inconnu (premier rendu) : rendu instantané, jamais 0 → valeur.
+    if (firstMount) {
+      setDisplayed(target);
+      return;
+    }
+
+    const from = previous;
+    const changed = previous !== target;
     if (!enabled || !changed) {
       setDisplayed(target);
       return;
@@ -36,24 +45,16 @@ export function useAnimatedNumber(value: number | null, enabled = true) {
     setDisplayed(from);
     const startedAt = performance.now();
     let frame = 0;
-    let animationComplete = false;
     const tick = (now: number) => {
       const progress = Math.min(1, (now - startedAt) / ANIMATION_DURATION_MS);
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayed(from + (target - from) * eased);
       if (progress < 1) frame = window.requestAnimationFrame(tick);
-      else animationComplete = true;
     };
     frame = window.requestAnimationFrame(tick);
 
     return () => {
       window.cancelAnimationFrame(frame);
-      // React Strict Mode probes effects twice in development. Replay the
-      // first entrance when that probe interrupts it.
-      if (firstMount && !animationComplete) {
-        mounted.current = false;
-        previousTarget.current = target;
-      }
     };
   }, [enabled, target]);
 
@@ -99,11 +100,20 @@ export function AnimatedValueText({
   useClientLayoutEffect(() => {
     const previous = previousTarget.current;
     const firstMount = !mounted.current;
-    const from = firstMount ? (target === null ? null : 0) : previous;
-    const changed = firstMount || previous !== target;
+    // Première apparition : affichage immédiat, jamais 0 → valeur.
     mounted.current = true;
     previousTarget.current = target;
 
+    // Départ inconnu (premier rendu) : texte final immédiat, sans compteur.
+    if (firstMount) {
+      if (spanRef.current) {
+        spanRef.current.textContent = `${prefix}${formatAnimatedValue(target, format, decimals)}${suffix}`;
+      }
+      return;
+    }
+
+    const from = previous;
+    const changed = previous !== target;
     if (!animate || !changed || from === null || target === null || from === target) {
       if (spanRef.current) {
         spanRef.current.textContent = `${prefix}${formatAnimatedValue(target, format, decimals)}${suffix}`;

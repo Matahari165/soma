@@ -30,7 +30,7 @@ it("garde les points partiels sans relier une mesure absente", () => {
   expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
   expect(html).toContain(">Charge hebdomadaire<");
   expect(html).toContain(">—<");
-  expect(html).not.toContain('cx="300" cy="222"');
+  expect(html).not.toContain('cx="210" cy="210"');
 });
 
 it("ne relie pas deux axes en traversant une mesure absente", () => {
@@ -50,6 +50,6 @@ it("keeps an explicit zero at the center as a measured point", () => {
     ...dimensions.slice(1),
   ]} />);
 
-  expect(html).toContain('cx="300" cy="222"');
+  expect(html).toContain('cx="210" cy="210"');
   expect(html).toContain("0 min");
 });

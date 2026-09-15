@@ -4,7 +4,7 @@
   --radar-axis: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 12%, transparent);
   --radar-text: var(--lab-text-primary, #f1f1f1);
   --radar-muted: var(--lab-text-secondary, #aaaaaa);
-  --radar-data: var(--lab-brand, #eeeeee);
+  --radar-data: var(--lab-text-primary, #f1f1f1);
   --radar-data-surface: color-mix(in srgb, var(--radar-data) 10%, transparent);
   --radar-signal: var(--lab-signal, #d5e5da);
   --radar-error: var(--lab-error, #e2b2aa);
@@ -18,14 +18,14 @@
 .grid, .axis { fill: none; stroke: var(--radar-grid); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .axis { stroke: var(--radar-axis); }
 .gridOuter { stroke: var(--radar-grid-strong); }
-.dataLayer { animation: radarReveal 240ms cubic-bezier(.16, 1, .3, 1) both; }
-.valueArea { fill: var(--radar-data-surface); stroke: var(--radar-data); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.dataLayer { animation: radarReveal 220ms cubic-bezier(.16, 1, .3, 1) both; }
+.valueArea { fill: var(--radar-data-surface); stroke: var(--radar-data); stroke-width: 1.75; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .point { fill: var(--radar-data); stroke: var(--lab-canvas, #050505); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 
 .labelGroup { pointer-events: none; }
-.label, .valueLabel { fill: var(--radar-text); font-family: var(--font-soma-ui, system-ui, sans-serif); font-size: 15px; font-weight: 500; }
-.valueLabel { fill: var(--radar-muted); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 400; }
-.comparison { font-family: var(--font-soma-ui, system-ui, sans-serif); font-size: 14px; font-weight: 500; }
+.label, .valueLabel { fill: var(--radar-text); font-family: var(--font-soma-ui, system-ui, sans-serif); font-size: 13px; font-weight: 400; }
+.valueLabel { fill: var(--radar-muted); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 400; }
+.comparison { font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: 12px; font-weight: 400; }
 .comparisonPositive { fill: var(--radar-signal); }
 .comparisonNegative { fill: var(--radar-error); }
 .comparisonEqual { fill: var(--radar-muted); }
@@ -44,7 +44,7 @@
 
 @media (max-width: 640px) {
   .label, .valueLabel { font-size: 13px; }
-  .valueLabel { font-size: 11px; }
+  .valueLabel { font-size: 12px; }
   .comparison { font-size: 12px; }
 }
 

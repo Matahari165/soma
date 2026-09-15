@@ -34,6 +34,15 @@ type MealRecipeLibraryProps = {
 
 type RecipeResponse = { recipe: MealRecipeView };
 
+export const RECIPE_TO_DAY_NOTE_EVENT = "soma:recipe-to-day-note";
+
+function recipeToDayNote(recipe: MealRecipeView) {
+  const items = recipe.ingredients
+    .map((ingredient) => `${ingredient.name}${ingredient.usualAmount ? ` (${ingredient.usualAmount})` : ""}`.trim())
+    .filter(Boolean);
+  return `${recipe.name}${items.length > 0 ? ` : ${items.join(", ")}` : ""}`;
+}
+
 const emptyIngredient = (id = "ingredient-0"): DraftIngredient => ({
   id,
   name: "",
@@ -198,6 +207,15 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
     }
   }
 
+  function copyRecipeToJournal(recipe: MealRecipeView) {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent(RECIPE_TO_DAY_NOTE_EVENT, {
+      detail: { text: recipeToDayNote(recipe), recipeId: recipe.id, recipeName: recipe.name },
+    }));
+    setError("");
+    setStatus(`« ${recipe.name} » copié dans le journal. La photo et ta note du jour priment.`);
+  }
+
   async function deleteRecipe(recipe: MealRecipeView) {
     setPendingDelete(recipe.id);
     setError("");
@@ -297,6 +315,7 @@ export function MealRecipeLibrary({ initialRecipes, initialError, embedded = fal
                       {embedded ? <p className={styles.recipeReference}>Repère personnel</p> : recipe.commonVariations.length > 0 && <p className={styles.recipeMeta}>Variations : {recipe.commonVariations.slice(0, 3).join(" · ")}</p>}
                     </div>
                     <div className={styles.recipeActions}>
+                      {embedded && <button className={styles.recipeTextAction} type="button" onClick={() => copyRecipeToJournal(recipe)} aria-label={`Utiliser ${recipe.name} dans le journal`}><BookOpen size={16} aria-hidden="true" /><span>Utiliser</span></button>}
                       <button className={embedded ? styles.recipeTextAction : "icon-button"} type="button" onClick={() => openEdit(recipe)} aria-label={`Modifier ${recipe.name}`}><Pencil size={16} aria-hidden="true" />{embedded && <span>Modifier</span>}</button>
                       {pendingDelete === recipe.id ? <div className={styles.deleteConfirmation} role="group" aria-label={`Confirmer la suppression de ${recipe.name}`}><span>Supprimer ?</span><button className={styles.confirmDelete} type="button" onClick={() => void deleteRecipe(recipe)} disabled={busy}>Oui</button><button className={styles.cancelDelete} type="button" onClick={() => setPendingDelete(null)}>Non</button></div> : <button className={embedded ? styles.recipeTextAction : "icon-button"} type="button" onClick={() => setPendingDelete(recipe.id)} aria-label={`Supprimer ${recipe.name}`}><Trash2 size={16} aria-hidden="true" />{embedded && <span>Supprimer</span>}</button>}
                     </div>

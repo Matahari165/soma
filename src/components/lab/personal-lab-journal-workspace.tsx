@@ -1,12 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PersonalLabJournal } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
 import MealJournal from "../meal-journal";
 import MealSupplements from "../meal-supplements";
+
+function dateFromUrl() {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("date");
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -53,9 +59,31 @@ export function PersonalLabJournalWorkspace({
 }) {
   const defaultDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(data.todayDate, index - 6)), [data.todayDate]);
   const dates = controlledDates ?? defaultDates;
-  const [internalSelectedDate, setInternalSelectedDate] = useState(data.todayDate);
+  const [internalSelectedDate, setInternalSelectedDate] = useState(() => {
+    const urlDate = controlledSelectedDate === undefined ? dateFromUrl() : null;
+    if (urlDate && (controlledDates ?? defaultDates).includes(urlDate)) return urlDate;
+    return data.todayDate;
+  });
   const selectedDate = controlledSelectedDate ?? internalSelectedDate;
   const onDateChange = controlledOnDateChange ?? setInternalSelectedDate;
+  // Lien profond / refresh : sans contrôle parent, la date lue en URL fait foi
+  // à l’initialisation et chaque changement est répercuté en ?date= pour le retour arrière.
+  useEffect(() => {
+    if (controlledSelectedDate !== undefined || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("date") === selectedDate) return;
+    url.searchParams.set("date", selectedDate);
+    window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+  }, [selectedDate, controlledSelectedDate]);
+  useEffect(() => {
+    if (controlledSelectedDate !== undefined) return;
+    function onPopState() {
+      const urlDate = dateFromUrl();
+      if (urlDate && dates.includes(urlDate)) setInternalSelectedDate(urlDate);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [controlledSelectedDate, dates]);
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
   const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);

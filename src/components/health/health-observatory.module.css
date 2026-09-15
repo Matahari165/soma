@@ -7,18 +7,18 @@
  * CSS-module hashes from being mistaken for global class names.
  */
 :global(html[data-lab-theme="observatory"]) .observatory {
-  --health-canvas: #050505;
+  --health-canvas: var(--lab-canvas);
   --health-surface: transparent;
-  --health-subtle: #0b0b0b;
-  --health-track: #151515;
-  --health-rule: #292929;
-  --health-rule-strong: #3a3a3a;
-  --health-text: #f1f1f1;
-  --health-muted: #a7a7a7;
-  --health-faint: #747474;
-  --health-accent: #eeeeee;
-  --health-positive: #d5e5da;
-  --health-negative: #e2b2aa;
+  --health-subtle: var(--lab-control-track);
+  --health-track: var(--lab-surface-subtle);
+  --health-rule: var(--lab-border);
+  --health-rule-strong: var(--lab-border-strong);
+  --health-text: var(--lab-text-primary);
+  --health-muted: var(--lab-text-secondary);
+  --health-faint: var(--lab-text-secondary);
+  --health-accent: var(--lab-brand);
+  --health-positive: var(--lab-signal);
+  --health-negative: var(--lab-error);
   width: 100%;
   min-width: 0;
   min-height: 100vh;
@@ -75,7 +75,7 @@
   font-size: 40px;
   font-weight: 400;
   letter-spacing: -.025em;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-hero-metrics) {
@@ -290,13 +290,24 @@
 
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-section-heading) h2,
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-panel-header) h2,
-:global(html[data-lab-theme="observatory"]) .observatory :global(.health-panel) :is(h2, h3),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-panel) :is(h2, h3) {
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-panel) :is(h2),
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-panel) :is(h2) {
   margin: 0;
   color: var(--health-text);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 400;
+  letter-spacing: 0;
+  line-height: 28px;
+}
+
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-panel) :is(h3),
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-panel) :is(h3) {
+  margin: 0;
+  color: var(--health-text);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
   letter-spacing: 0;
   line-height: 24px;
 }
@@ -469,9 +480,9 @@
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-recommendation) h2 {
   color: var(--health-text);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 400;
-  line-height: 24px;
+  line-height: 28px;
 }
 
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-recommendation) strong {
@@ -519,7 +530,7 @@
 }
 
 :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) :global(.chart-frame) {
-  height: 108px;
+  height: 116px;
   margin-top: 14px;
 }
 
@@ -549,7 +560,7 @@
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-line-chart-wrap) { padding-right: 26px; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-grid) { stroke: var(--health-rule); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-average),
-:global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-target) { stroke: var(--health-rule-strong); }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-target) { stroke: var(--health-rule-strong); stroke-dasharray: 4 5; stroke-width: 1; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-area) { fill: transparent; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-line) { stroke: var(--health-accent); stroke-width: 1.5; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-chart-point) { display: block; fill: var(--health-accent); opacity: .42; stroke: transparent; stroke-width: 1; }
@@ -696,6 +707,16 @@
   text-transform: none;
 }
 
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-signal-meta--footer) h2 {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--health-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
 /* Keep the visual density compact without shrinking the interactive target. */
 :global(html[data-lab-theme="observatory"]) .observatory :global(button),
 :global(html[data-lab-theme="observatory"]) .observatory :global(input),
@@ -712,9 +733,9 @@
   font-weight: 400;
 }
 :global(html[data-lab-theme="observatory"]) .observatory :global(button:hover:not(:disabled)),
-:global(html[data-lab-theme="observatory"]) .observatory :global(button:active:not(:disabled)) { background: #151515; color: #fff; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(button:active:not(:disabled)) { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 :global(html[data-lab-theme="observatory"]) .observatory :global(button:disabled) { color: var(--health-faint); opacity: .7; }
-:global(html[data-lab-theme="observatory"]) .observatory :global(:focus-visible) { outline: 2px solid #ddd; outline-offset: 3px; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(:focus-visible) { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
 
 /* Empty, loading and error states keep the same canvas and reading hierarchy. */
 :global(html[data-lab-theme="observatory"]) .observatory :global(.health-empty),
@@ -729,7 +750,7 @@
   color: var(--health-muted);
   font-size: 14px;
 }
-:global(html[data-lab-theme="observatory"]) .observatory :global(.health-empty) h2 { color: var(--health-text); font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
+:global(html[data-lab-theme="observatory"]) .observatory :global(.health-empty) h2 { color: var(--health-text); font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 400; line-height: 28px; }
 :global(html[data-lab-theme="observatory"]) .observatory:global(.health-detail-page--loading) :global(.health-loading-card) {
   min-height: 72px;
   border: 0;
@@ -795,6 +816,7 @@
   :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-grid) { grid-template-columns: 1fr; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) + :global(.metric-trend-card) { padding-left: 0; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) { min-height: 196px; }
+  :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) :global(.chart-frame) { height: 112px; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-key-readings) :global(dl) { grid-template-columns: 1fr; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-row) { grid-template-columns: minmax(0, 1fr) auto; }
   :global(html[data-lab-theme="observatory"]) .observatory :global(.health-observatory-row) > div:last-child { grid-column: 2; }

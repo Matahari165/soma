@@ -109,6 +109,7 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
       <div><dt>Moy. 30 j</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
       <div><dt>Sens de lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div className={styles.sleepDimensionRole}><dt>Rôle</dt><dd>{dimension.scoreRole || "Métrique de contexte · non incluse dans le score Sommeil"}</dd></div>
+      <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {(dimension.scoreFormula || dimension.scoreNormalization || dimension.scoreWeight !== undefined) && <dl className={styles.sleepScoreAxisMetrics}>
       <div><dt>Formule</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
@@ -174,6 +175,32 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
   }
 
   return <div className={styles.sleepScoreOverview}>
+    <div className={styles.sleepRadarStage} data-detail-open={detailOpen}>
+      <SleepRadar
+        dimensions={dimensions}
+        detailId={DETAIL_ID}
+        interactive
+        onSelect={selectDimension}
+        registerButton={(id, node) => { radarButtonRefs.current[id] = node; }}
+        selectedId={selectedDetail === "score" ? null : selectedDetail}
+        title="Radar du sommeil"
+      />
+      <aside
+        aria-hidden={!detailOpen}
+        aria-labelledby={DETAIL_TITLE_ID}
+        className={styles.sleepDetailPanel}
+        data-open={detailOpen}
+        id={DETAIL_ID}
+        inert={!detailOpen}
+      >
+        <div className={styles.sleepDetailHeader}>
+          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "Détail du sommeil"}</h3>
+          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "sommeil"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
+        </div>
+        {selectedDetail === "score" ? <ScoreBreakdownDetail breakdown={breakdown} /> : selectedDetail ? <DimensionDetail dimension={selectedDimension} /> : null}
+      </aside>
+    </div>
+
     <div className={styles.scoreColumn}>
       <button
         aria-controls={DETAIL_ID}
@@ -196,31 +223,6 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         </dl>
         {scoreSupplement.note && <p className={styles.unavailableNote}>{scoreSupplement.note}</p>}
       </div>}
-    </div>
-
-    <div className={styles.sleepRadarStage} data-detail-open={detailOpen}>
-      <SleepRadar
-        dimensions={dimensions}
-        detailId={DETAIL_ID}
-        interactive
-        onSelect={selectDimension}
-        registerButton={(id, node) => { radarButtonRefs.current[id] = node; }}
-        selectedId={selectedDetail === "score" ? null : selectedDetail}
-        title="Radar du sommeil"
-      />
-      <aside
-        aria-hidden={!detailOpen}
-        aria-labelledby={DETAIL_TITLE_ID}
-        className={styles.sleepDetailPanel}
-        data-open={detailOpen}
-        id={DETAIL_ID}
-      >
-        <div className={styles.sleepDetailHeader}>
-          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "Détail du sommeil"}</h3>
-          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "sommeil"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
-        </div>
-        {selectedDetail === "score" ? <ScoreBreakdownDetail breakdown={breakdown} /> : selectedDetail ? <DimensionDetail dimension={selectedDimension} /> : null}
-      </aside>
     </div>
   </div>;
 }

@@ -36,7 +36,7 @@
 .figure { margin: 24px 0 0; }
 .chart { display: grid; min-width: 0; height: 184px; grid-template-columns: 38px minmax(0, 1fr); gap: 16px; border-bottom: 1px solid var(--category-rule); }
 .scale { display: flex; flex-direction: column; justify-content: space-between; padding: 3px 0 8px; color: var(--category-muted); font: 500 var(--lab-type-label)/1 var(--font-soma-mono, ui-monospace, monospace); text-align: right; }
-.columns { display: grid; min-width: 0; grid-template-columns: repeat(var(--point-count, 1), minmax(0, 1fr)); align-items: end; gap: clamp(3px, .5vw, 8px); padding: 4px 2px 0; background: linear-gradient(to bottom, transparent 32%, var(--category-rule) 32%, transparent 33%, transparent 65%, var(--category-rule) 65%, transparent 66%); }
+.columns { display: grid; min-width: 0; grid-template-columns: repeat(var(--point-count, 1), minmax(0, 1fr)); align-items: end; gap: clamp(3px, .5vw, 8px); padding: 4px 2px 0; background: none; }
 .column { display: flex; min-width: 0; height: 170px; align-items: end; justify-content: center; }
 .stack { display: flex; width: min(100%, 12px); height: 100%; flex-direction: column-reverse; justify-content: flex-start; }
 .segment { display: block; width: 100%; min-height: 3px; background: var(--category-color); }

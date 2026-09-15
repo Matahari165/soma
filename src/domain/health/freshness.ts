@@ -29,11 +29,11 @@ export function formatFreshnessMoment(value: string | null, timeZone: string) {
   if (!value) return "unknown";
   const date = validDate(value);
   if (!date) return "unknown";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("fr-FR", {
     timeZone,
-    month: "short",
     day: "numeric",
+    month: "short",
     hour: "numeric",
     minute: "2-digit",
-  }).format(date);
+  }).format(date).replace(/\s+/g, " ");
 }

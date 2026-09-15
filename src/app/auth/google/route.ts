@@ -5,7 +5,9 @@ import { createPkcePair } from "@/lib/crypto";
 import { requireServerEnv } from "@/lib/env";
 
 function safeNextPath(value: string | null) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+  if (!value || value.length > 200 || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (value.includes("\\") || /\s/.test(value) || value.includes("@") || value.includes(":")) return "/";
+  return value;
 }
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
