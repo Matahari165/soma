@@ -13,11 +13,16 @@
 - Distingue les données provenant d’une source de santé des métriques calculées par Soma. Une absence de donnée n’est jamais zéro ; respecte la réalité des repas.
 - Ne mets jamais de données de santé, identifiants, clés, jetons, sessions ou autres données personnelles dans le code, Git, les journaux ou les réponses.
 
-## Git et sauvegardes
+## Git et sauvegardes — IMPORTANT, À CHAQUE TÂCHE
 
-- Avant toute modification, inspecte la branche, l’état Git et les changements existants. L’agent gère les branches, worktrees, sauvegardes récupérables et commits locaux ; préserve le travail hors périmètre.
-- N’utilise jamais de reset, d’écrasement ou de suppression destructive. Utilise des branches ou worktrees séparés pour les lots parallèles et relis toujours le diff final.
-- Le push, notamment vers `main`, la publication, le déploiement et toute modification externe exigent un ordre explicite.
+- Règle obligatoire pour chaque agent : toute nouvelle feature, correction ou refactor significatif commence sur une branche dédiée créée depuis `main` à jour. Ne travaille jamais directement sur `main`.
+- Avant de modifier, vérifie la branche, l’état Git, les worktrees et les changements existants. Préserve toujours les modifications non liées ; ne change pas de branche et ne supprime rien si un travail non enregistré peut être concerné.
+- Un lot cohérent = une branche. Pour le travail parallèle, sépare les worktrees et les fichiers afin d’éviter les conflits. N’utilise jamais `reset`, force push, écrasement d’historique ou rebase destructif sans ordre explicite.
+- Avant de sauvegarder, inspecte le diff, les fichiers sensibles et les chemins ajoutés. Crée un commit clair et ciblé, puis vérifie les contrôles pertinents.
+- Le workflow normal est : branche → modifications → commit → push de la branche → Pull Request vers `main` → CI verte (`lint`, `typecheck`, tests, build) → merge. Un push n’est pas un merge.
+- Ne pousse jamais directement sur `main`. Le push, la PR, le merge, la suppression distante, la publication et le déploiement exigent un ordre explicite.
+- Après un merge confirmé, supprime la branche locale et distante seulement si elle ne contient plus de travail unique, n’a pas de worktree actif et n’est pas douteuse. Ne supprime jamais une branche non fusionnée ou en cours ; les commits déjà dans `main` restent conservés.
+- Après chaque opération GitHub, vérifie séparément la branche distante, le commit de `main`, la CI et l’état final du dépôt. Si une vérification manque, dis-le clairement.
 - N’exécute pas `pnpm install`, `pnpm verify` ou un build Next pendant qu’un serveur `next dev` utilise le même checkout. Pour la vérification complète, utilise `CI=true pnpm verify`.
 
 ## Interface et QA visuelle
