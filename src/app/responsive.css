@@ -23,11 +23,7 @@
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
-  .lab-insight-panel > header { padding: 15px 14px; }
-  .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
-  .lab-insight-panel > p { padding-inline: 14px; }
-  .lab-insight-panel > ol li { grid-template-columns: 40px 1fr; }
-  .lab-insight-history article { grid-template-columns: 1fr; gap: 3px; }
+  .matrix-header { align-items: stretch; flex-direction: column; }
   .journal-card > header { align-items: center; flex-direction: row; padding: 14px; }
   .journal-date-strip { overflow-x: auto; grid-template-columns: repeat(5, minmax(78px, 1fr)); }
   .journal-sections { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
@@ -363,7 +359,7 @@
 
 @media (max-width: 700px) {
   .personal-lab-page .lab-header h1 { font-size: 2.7rem; }
-  .lab-insight-panel > header, .matrix-header { align-items: stretch; flex-direction: column; }
+  .matrix-header { align-items: stretch; flex-direction: column; }
   .journal-card > header { align-items: center; }
   .journal-field { grid-template-columns: minmax(0, 1fr) minmax(116px, 148px); gap: 8px; }
   .matrix-scroll { display: none; }

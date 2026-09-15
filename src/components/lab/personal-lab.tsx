@@ -1,9 +1,8 @@
 import type { PersonalLabJournal, PersonalLabOverview, PersonalLabSnapshot } from "@/services/personal-lab";
 
-import { MatrixDisclosure, TimeScaleSummary } from "./correlation-matrix";
+import { MatrixDisclosure } from "./correlation-matrix";
 import { MetricRegistry } from "./metric-registry";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
-import { NarrativeRefresh } from "./narrative-refresh";
 import { PersonalLabMetrics } from "./today-signals";
 import { isLocalPreviewMode } from "@/lib/env";
 
@@ -30,10 +29,8 @@ export function PersonalLabJournalSection({ data }: { data: PersonalLabJournal }
   );
 }
 
-export function PersonalLabAnalysisSection({ data, refreshNarrative = true }: { data: PersonalLabSnapshot; refreshNarrative?: boolean }) {
+export function PersonalLabAnalysisSection({ data }: { data: PersonalLabSnapshot }) {
   return <>
-    <NarrativeRefresh enabled={refreshNarrative && data.needsNarrativeRefresh} />
-    <div className="lab-entry__section lab-entry__insight"><TimeScaleSummary matrix={data.matrix} narrative={data.aiNarrative} /></div>
     <div className="lab-entry__section lab-entry__relations"><MatrixDisclosure matrix={data.matrix} /></div>
     <div className="lab-entry__section lab-entry__registry"><MetricRegistry metrics={data.metricRegistry} /></div>
   </>;

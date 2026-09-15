@@ -62,7 +62,7 @@ describe("relationship matrix motion helpers", () => {
     expect(matrixTimingLabel(2)).toBe("J+2");
   });
 
-  it("opens only currently published relations from a summary finding", () => {
+  it("keeps only currently published relations in a relation pair", () => {
     const dates = Array.from({ length: 80 }, (_, index) => {
       const value = new Date("2026-01-01T12:00:00Z");
       value.setUTCDate(value.getUTCDate() + index);
