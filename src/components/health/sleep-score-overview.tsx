@@ -174,30 +174,6 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
   }
 
   return <div className={styles.sleepScoreOverview}>
-    <div className={styles.scoreColumn}>
-      <button
-        aria-controls={DETAIL_ID}
-        aria-expanded={selectedDetail === "score"}
-        aria-label={`${scoreDescription(score)}. Afficher la décomposition du score.`}
-        className={styles.scorePanel}
-        data-detail-selected={selectedDetail === "score"}
-        onClick={selectScore}
-        ref={scoreButtonRef}
-        type="button"
-      >
-        <span>Score Sommeil</span>
-        <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
-        <p className={styles.scoreAverage}>Moy. 30 j · <strong>{formatScore(average)}</strong><span> /100</span></p>
-      </button>
-      {scoreSupplement && <div className={styles.nextNight}>
-        <h2>{scoreSupplement.title}</h2>
-        <dl className={styles.nextNightGrid}>
-          {scoreSupplement.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
-        </dl>
-        {scoreSupplement.note && <p className={styles.unavailableNote}>{scoreSupplement.note}</p>}
-      </div>}
-    </div>
-
     <div className={styles.sleepRadarStage} data-detail-open={detailOpen}>
       <SleepRadar
         dimensions={dimensions}
@@ -221,6 +197,30 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         </div>
         {selectedDetail === "score" ? <ScoreBreakdownDetail breakdown={breakdown} /> : selectedDetail ? <DimensionDetail dimension={selectedDimension} /> : null}
       </aside>
+    </div>
+
+    <div className={styles.scoreColumn}>
+      <button
+        aria-controls={DETAIL_ID}
+        aria-expanded={selectedDetail === "score"}
+        aria-label={`${scoreDescription(score)}. Afficher la décomposition du score.`}
+        className={styles.scorePanel}
+        data-detail-selected={selectedDetail === "score"}
+        onClick={selectScore}
+        ref={scoreButtonRef}
+        type="button"
+      >
+        <span>Score Sommeil</span>
+        <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
+        <p className={styles.scoreAverage}>Moy. 30 j · <strong>{formatScore(average)}</strong><span> /100</span></p>
+      </button>
+      {scoreSupplement && <div className={styles.nextNight}>
+        <h2>{scoreSupplement.title}</h2>
+        <dl className={styles.nextNightGrid}>
+          {scoreSupplement.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
+        </dl>
+        {scoreSupplement.note && <p className={styles.unavailableNote}>{scoreSupplement.note}</p>}
+      </div>}
     </div>
   </div>;
 }

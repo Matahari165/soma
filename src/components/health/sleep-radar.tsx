@@ -1,12 +1,12 @@
-import { useId, type KeyboardEvent } from "react";
+import { useId, useRef, type KeyboardEvent } from "react";
 
 import styles from "./sleep-radar.module.css";
 
 const VIEWBOX_WIDTH = 420;
-const VIEWBOX_HEIGHT = 340;
+const VIEWBOX_HEIGHT = 420;
 const CENTER_X = VIEWBOX_WIDTH / 2;
-const CENTER_Y = 170;
-const RADIUS = 108;
+const CENTER_Y = VIEWBOX_HEIGHT / 2;
+const RADIUS = 150;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 
 /**
@@ -76,7 +76,7 @@ function labelPosition(index: number, count: number) {
   const angle = angleFor(index, count);
   const cosine = Math.cos(angle);
   const sine = Math.sin(angle);
-  const labelRadius = RADIUS + 25;
+  const labelRadius = RADIUS + 38;
   const textAnchor: "start" | "middle" | "end" = cosine > 0.28 ? "start" : cosine < -0.28 ? "end" : "middle";
   const dy = sine > 0.35 ? "0" : sine < -0.35 ? "0" : "0.35em";
   const valueDy = sine > 0.35 ? "1.55em" : "1.4em";
@@ -141,10 +141,34 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
   const descriptionId = useId();
   const chartTitleId = useId();
   const chartDescriptionId = useId();
+  const axisNodes = useRef<Array<SVGGElement | null>>([]);
   const measured = dimensions.filter(hasNormalizedValue);
   const unavailable = dimensions.filter((dimension) => !hasNormalizedValue(dimension));
   const description = chartDescription(measured, unavailable);
   const rootClassName = className ? `${styles.root} ${className}` : styles.root;
+
+  function focusAxis(index: number) {
+    axisNodes.current[index]?.focus();
+  }
+
+  function handleAxisKeyDown(index: number, id: string, event: KeyboardEvent<SVGGElement>) {
+    if (!interactive || !onSelect) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelect(id);
+      return;
+    }
+    const count = dimensions.length;
+    let target: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") target = (index + 1) % count;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") target = (index - 1 + count) % count;
+    else if (event.key === "Home") target = 0;
+    else if (event.key === "End") target = count - 1;
+    if (target !== null && target !== index) {
+      event.preventDefault();
+      focusAxis(target);
+    }
+  }
   const unavailableSummary = unavailable.length
     ? `Indisponible : ${unavailable.map((dimension) => dimension.label).join(", ")}.`
     : "Aucune mesure disponible";
@@ -216,7 +240,7 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
           {count === 2 && allPointsMeasured && <line className={styles.valueLine} x1={completePoints[0][0]} y1={completePoints[0][1]} x2={completePoints[1][0]} y2={completePoints[1][1]} aria-hidden="true" />}
 
           {plottedPoints.map((point, index) => point && (
-            <circle key={`point-${dimensions[index].id}-${index}`} className={styles.point} cx={point[0]} cy={point[1]} r="3.5" aria-hidden="true">
+            <circle key={`point-${dimensions[index].id}-${index}`} className={selectedId === dimensions[index].id ? `${styles.point} ${styles.pointActive}` : styles.point} cx={point[0]} cy={point[1]} r={selectedId === dimensions[index].id ? 6 : 5} aria-hidden="true">
               <title>{readableDimension(dimensions[index])}</title>
             </circle>
           ))}
@@ -229,11 +253,6 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
           const displayValue = valueLabel || (!hasNormalizedValue(dimension) ? "—" : null);
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.id;
-          function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
-            if (!interactiveAxis || (event.key !== "Enter" && event.key !== " ")) return;
-            event.preventDefault();
-            onSelect?.(dimension.id);
-          }
           return (
             <g
               aria-controls={interactiveAxis ? detailId : undefined}
@@ -243,8 +262,8 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
               data-selected={selected}
               key={`label-${dimension.id}-${index}`}
               onClick={interactiveAxis ? () => onSelect?.(dimension.id) : undefined}
-              onKeyDown={interactiveAxis ? handleKeyDown : undefined}
-              ref={interactiveAxis ? (node) => registerButton?.(dimension.id, node) : undefined}
+              onKeyDown={interactiveAxis ? (event) => handleAxisKeyDown(index, dimension.id, event) : undefined}
+              ref={interactiveAxis ? (node) => { axisNodes.current[index] = node; registerButton?.(dimension.id, node); } : undefined}
               role={interactiveAxis ? "button" : undefined}
               tabIndex={interactiveAxis ? 0 : undefined}
             >

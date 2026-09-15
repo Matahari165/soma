@@ -298,11 +298,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           />
         </section>
 
-        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-labelledby="sleep-stages-heading">
-          <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Répartition des phases</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
-          <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Profond", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Léger", value: latest.sleep_light_percent, tone: "light" }, { label: "Éveillé", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
-        </section>
-
         <section className={`${styles.trendsSection} health-observatory-panel`} aria-labelledby="sleep-trends-heading">
           <header className="health-observatory-panel-header"><h2 id="sleep-trends-heading">Tendances</h2><span>30 jours</span></header>
           <div className={styles.trendGrid}>
@@ -315,6 +310,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
             <MetricTrendCard label="Sommeil profond + paradoxal" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
             <MetricTrendCard label="Heure du coucher" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
           </div>
+        </section>
+
+        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-labelledby="sleep-stages-heading">
+          <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Répartition des phases</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
+          <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Profond", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Léger", value: latest.sleep_light_percent, tone: "light" }, { label: "Éveillé", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>
       </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">Aucune donnée de sommeil</h2><p>Aucune nuit mesurée sur la période.</p></div></section>}
     </main>
