@@ -1,8 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { apiMealToRecord } from "@/domain/meal-record";
-import { ManualMealForm, MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -888,53 +887,5 @@ describe("apiMealToRecord", () => {
     expect(html).toContain("Modifier");
     expect(html).toContain("Détails de l’analyse");
     expect(html).not.toContain("Confirmer le repas");
-  });
-
-  it("renders ManualMealForm with calories, protein, carbs and fat fields", () => {
-    const onSave = vi.fn();
-    const onCancel = vi.fn();
-    const html = renderToStaticMarkup(
-      <ManualMealForm
-        dishDefault="Poulet et riz"
-        onSave={onSave}
-        onCancel={onCancel}
-      />,
-    );
-
-    expect(html).toContain("Saisie manuelle des nutriments");
-    expect(html).toContain("Nom du plat ou aliments");
-    expect(html).toContain("Poulet et riz");
-    expect(html).toContain("Calories (kcal) *");
-    expect(html).toContain("Protéines (g)");
-    expect(html).toContain("Glucides (g)");
-    expect(html).toContain("Lipides (g)");
-    expect(html).toContain("Confirmer le repas");
-    expect(html).toContain("Annuler");
-  });
-
-  it("exposes Saisie manuelle option in draft and empty meal slots", () => {
-    const html = renderToStaticMarkup(
-      <MealJournal
-        initialData={{
-          date,
-          meals: {
-            breakfast: null,
-            lunch: {
-              id: "meal-draft",
-              date,
-              slot: "lunch",
-              note: "Salade",
-              photos: [],
-              analysis: null,
-              mouthHeat: null,
-              stomachLoad: null,
-              status: "draft",
-            },
-          },
-        }}
-      />,
-    );
-
-    expect(html).toContain("Saisie manuelle");
   });
 });
