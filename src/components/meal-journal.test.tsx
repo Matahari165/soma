@@ -121,6 +121,14 @@ describe("MealJournal", () => {
     expect(html.match(/>Caméra<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
+    expect(html).not.toContain('aria-label="Modifier les cibles du jour"');
+  });
+
+  it("réserve l’édition des cibles au journal qui l’autorise", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" allowTargetEditing date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(html).toContain('aria-label="Modifier les cibles du jour"');
+    expect(html).toContain('aria-controls="meal-target-editor"');
   });
 
   it("keeps seven days in the lab date rail even when a route passes a shorter hint", () => {

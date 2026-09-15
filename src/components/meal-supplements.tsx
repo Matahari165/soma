@@ -113,8 +113,7 @@ export function MealSupplements({ date, initialDefinitions, initialEntries, init
         actual: { status, servings: status === "taken" ? 1 : null, takenAt: null, note: null }, note: null,
       } }) });
       setEntries((current) => [body.entry, ...current.filter((entry) => entry.id !== body.entry.id && !(entry.definitionId === body.entry.definitionId && entry.entryDate === body.entry.entryDate))]);
-      const dayLabel = formatSupplementDate(currentDate);
-      setMessage(status === "taken" ? `${definition.productName} : oui (${definition.serving.label}, ${dayLabel}).` : status === "skipped" ? `${definition.productName} : non (${definition.serving.label}, ${dayLabel}).` : `${definition.productName} remis à non renseigné (${dayLabel}).`);
+      setMessage(status === "taken" ? `${definition.productName} : oui.` : status === "skipped" ? `${definition.productName} : non.` : `${definition.productName} : non renseigné.`);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "La réponse n’a pas pu être enregistrée."); }
     finally { setBusy(null); }
   }
@@ -128,7 +127,7 @@ export function MealSupplements({ date, initialDefinitions, initialEntries, init
         usageInstruction: usageInstruction.trim() || null, notes: null,
       } }) });
       setDefinitions((current) => [body.definition, ...current]); setProductName(""); setDose("1 dose"); setUsageInstruction(""); setFormOpen(false);
-      setMessage(`${body.definition.productName} est maintenant actif dans le journal.`);
+      setMessage(`${body.definition.productName} ajouté.`);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Le complément n’a pas pu être enregistré."); }
     finally { setBusy(null); }
   }
@@ -153,7 +152,7 @@ export function MealSupplements({ date, initialDefinitions, initialEntries, init
     try {
       const body = await requestJson<{ definition: DefinitionView }>(`/api/supplements/${definition.id}`, { method: "PATCH", body: JSON.stringify({ definition: { archivedAt: new Date().toISOString() } }) });
       setDefinitions((current) => current.map((item) => item.id === body.definition.id ? body.definition : item));
-      setMessage(`${definition.productName} archivé. Son historique est conservé.`);
+      setMessage(`${definition.productName} archivé.`);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Le complément n’a pas pu être archivé."); }
     finally { setBusy(null); archiveTrigger.current?.focus(); }
   }
@@ -163,26 +162,26 @@ export function MealSupplements({ date, initialDefinitions, initialEntries, init
   }
 
   return <section className={[styles.root, compact ? styles.compact : "", className].filter(Boolean).join(" ")} aria-labelledby="supplements-title">
-    <header className={styles.header}><div><h2 id="supplements-title">Compléments</h2><p>Une réponse par produit, à la dose habituelle. <span>Jour suivi : {formatSupplementDate(currentDate)}.</span></p></div><button className={styles.addButton} type="button" onClick={() => setFormOpen((open) => !open)} aria-expanded={formOpen} aria-controls="supplement-form">{formOpen ? "Fermer" : "Nouvelle boîte"}</button></header>
+    <header className={styles.header}><div><h2 id="supplements-title">Compléments</h2><p>{formatSupplementDate(currentDate)}</p></div><button className={styles.addButton} type="button" onClick={() => setFormOpen((open) => !open)} aria-expanded={formOpen} aria-controls="supplement-form">{formOpen ? "Fermer" : "Ajouter"}</button></header>
     {error && <p className={styles.error} role="alert">{error}</p>}{message && <p className={styles.message} role="status" aria-live="polite">{message}</p>}
-    {entriesLoading && <p className={styles.loading} role="status" aria-live="polite">Chargement des prises du jour…</p>}
+    {entriesLoading && <p className={styles.loading} role="status" aria-live="polite">Mise à jour…</p>}
     {formOpen && <form id="supplement-form" className={styles.form} onSubmit={createDefinition}>
       <label><span>Produit</span><input required maxLength={160} value={productName} onChange={(event) => setProductName(event.target.value)} placeholder="Ex. Oméga-3" /></label>
       <label><span>Dose habituelle</span><input required maxLength={120} value={dose} onChange={(event) => setDose(event.target.value)} placeholder="Ex. 2 capsules" /></label>
-      <label><span>Indication <em>(facultative)</em></span><input maxLength={240} value={usageInstruction} onChange={(event) => setUsageInstruction(event.target.value)} placeholder="Ex. Avec un repas contenant du gras" /></label>
-      <button className={styles.primaryButton} type="submit" disabled={busy === "create"}>{busy === "create" ? "Enregistrement…" : "Activer dans le journal"}</button>
+      <label><span>Consigne</span><input maxLength={240} value={usageInstruction} onChange={(event) => setUsageInstruction(event.target.value)} placeholder="Ex. Avec un repas" /></label>
+      <button className={styles.primaryButton} type="submit" disabled={busy === "create"}>{busy === "create" ? "Enregistrement…" : "Ajouter"}</button>
     </form>}
     <div className={styles.body}>
       {activeDefinitions.length ? <ul className={styles.definitionList}>{activeDefinitions.map((definition) => {
         const status = entryByDefinition.get(definition.id)?.actual.status ?? "not_recorded"; const entrySaving = busy === `entry-${definition.id}`; const archiveSaving = busy === `archive-${definition.id}`;
-        return <li key={definition.id} className={styles.definitionRow}><div className={styles.definitionInfo}><strong>{definitionName(definition)}</strong><span>{definition.serving.label}{definition.usageInstruction ? ` · ${definition.usageInstruction}` : ""}</span><small data-status={status}>{status === "taken" ? "Oui" : status === "skipped" ? "Non" : "Non renseigné"}</small></div><div className={styles.actions} role="group" aria-label={`${definitionName(definition)}, pris à la dose habituelle`}><button type="button" aria-pressed={status === "taken"} onClick={() => void setIntake(definition, "taken")} disabled={entrySaving}>{entrySaving ? "…" : "Oui"}</button><button type="button" aria-pressed={status === "skipped"} onClick={() => void setIntake(definition, "skipped")} disabled={entrySaving}>Non</button>{status !== "not_recorded" && <button className={styles.resetButton} type="button" onClick={() => void setIntake(definition, "not_recorded")} disabled={entrySaving}>Effacer</button>}</div><button className={styles.archiveButton} type="button" onClick={() => archiveDefinition(definition)} disabled={archiveSaving}>{archiveSaving ? "Archivage…" : "Boîte terminée"}</button></li>;
-      })}</ul> : <p className={styles.empty}>{initialError ? "Impossible de charger les compléments." : "Aucun complément actif. Ajoute une boîte si tu en commences une."}</p>}
+        return <li key={definition.id} className={styles.definitionRow}><div className={styles.definitionInfo}><strong>{definitionName(definition)}</strong><span>{definition.serving.label}{definition.usageInstruction ? ` · ${definition.usageInstruction}` : ""}</span><small data-status={status}>{status === "taken" ? "Oui" : status === "skipped" ? "Non" : "Non renseigné"}</small></div><div className={styles.actions} role="group" aria-label={`${definitionName(definition)}, prise quotidienne`}><button type="button" aria-pressed={status === "taken"} onClick={() => void setIntake(definition, "taken")} disabled={entrySaving}>{entrySaving ? "…" : "Oui"}</button><button type="button" aria-pressed={status === "skipped"} onClick={() => void setIntake(definition, "skipped")} disabled={entrySaving}>Non</button>{status !== "not_recorded" && <button className={styles.resetButton} type="button" onClick={() => void setIntake(definition, "not_recorded")} disabled={entrySaving}>Effacer</button>}</div><button className={styles.archiveButton} type="button" onClick={() => archiveDefinition(definition)} disabled={archiveSaving}>{archiveSaving ? "Archivage…" : "Boîte terminée"}</button></li>;
+      })}</ul> : <p className={styles.empty}>{initialError ? "Impossible de charger les compléments." : "Aucun complément."}</p>}
       {archivedDefinitions.length > 0 && <details className={styles.history}><summary>Anciennes boîtes ({archivedDefinitions.length})</summary><ul>{archivedDefinitions.map((definition) => <li key={definition.id}><span>{definitionName(definition)}</span><span>{definition.serving.label}</span></li>)}</ul></details>}
     </div>
     {pendingArchive && <div className={styles.dialogBackdrop} onClick={(event) => { if (event.target === event.currentTarget) cancelArchive(); }}>
       <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="supplement-archive-title" aria-describedby="supplement-archive-description">
-        <h3 id="supplement-archive-title">Boîte terminée ?</h3>
-        <p id="supplement-archive-description">{definitionName(pendingArchive)} sera archivé. Son historique est conservé.</p>
+        <h3 id="supplement-archive-title">Archiver ce complément ?</h3>
+        <p id="supplement-archive-description">{definitionName(pendingArchive)}. Historique conservé.</p>
         <div className={styles.dialogActions}>
           <button ref={archiveCancelRef} type="button" onClick={cancelArchive}>Annuler</button>
           <button type="button" onClick={() => void confirmArchive()}>Archiver</button>

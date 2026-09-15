@@ -152,7 +152,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
             <h2 id="meals-journal-title">Journal des repas</h2>
-            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals />
+            <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals allowTargetEditing />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
         {nutritionResult.ok

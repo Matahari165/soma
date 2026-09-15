@@ -27,7 +27,7 @@ describe("MealSupplements", () => {
     expect(html).toContain("Compléments");
     expect(html).toContain("Produit");
     expect(html).toContain("Dose habituelle");
-    expect(html).toContain("Aucun complément actif");
+    expect(html).toContain("Aucun complément.");
   });
 
   it("shows a daily yes/no check-in with a distinct unrecorded state", () => {

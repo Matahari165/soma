@@ -2843,12 +2843,11 @@
 }
 
 :global(html[data-lab-theme]) .labRoot > .labHeader {
-  position: absolute;
-  top: -56px;
-  right: 0;
-  z-index: 1;
+  position: static;
   min-height: 44px;
+  height: auto;
   padding: 0;
+  margin-bottom: 8px;
   border: 0;
   background: transparent;
 }
@@ -3232,8 +3231,9 @@
 
 :global(.meals-page) .labRoot > .labHeader {
   position: static;
-  min-height: 0;
-  height: 0;
+  min-height: 44px;
+  height: auto;
+  margin-bottom: 8px;
   padding: 0;
   overflow: visible;
 }

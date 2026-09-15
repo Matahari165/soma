@@ -122,6 +122,7 @@ type Props = {
   initialEffectiveTargets?: NutritionTargets;
   initialEffortTargetContext?: EffortTargetContext;
   hideAddMealButton?: boolean;
+  allowTargetEditing?: boolean;
   designVariant?: MealDesignVariant;
 };
 
@@ -1077,7 +1078,7 @@ function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false, onTo
   </header>;
 }
 
-export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, designVariant = "v1" }: Props) {
+export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, allowTargetEditing, designVariant = "v1" }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -1098,6 +1099,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const [targetsExpanded, setTargetsExpanded] = useState(false);
   const [entryRequest, setEntryRequest] = useState<{ slot: MealSlot; sequence: number } | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
+  const targetEditingEnabled = allowTargetEditing ?? variant !== "lab";
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [analyzingSlots, setAnalyzingSlots] = useState<readonly MealSlot[]>([]);
   const [pendingDelete, setPendingDelete] = useState<{ slot: MealSlot; photoId: string } | null>(null);
@@ -1804,7 +1806,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} onToggleTargets={() => setTargetsExpanded((expanded) => !expanded)} targetsExpanded={targetsExpanded} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined} targetsExpanded={targetsExpanded} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Chargement des repas…</span></div></section>;
@@ -1819,7 +1821,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     {variant !== "lab" && variant !== "meals" && <div className={styles.targetControls}>
       <button className={styles.targetEditButton} type="button" aria-label="Modifier les cibles du jour" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={() => setTargetsExpanded((expanded) => !expanded)}><Pencil size={16} aria-hidden="true" /></button>
     </div>}
-    {targetsExpanded && <div id="meal-target-editor" className={styles.targetEditor}>
+    {targetsExpanded && targetEditingEnabled && <div id="meal-target-editor" className={styles.targetEditor}>
       <label><span>Calories (kcal)</span><input type="number" min="0" inputMode="numeric" aria-label="Cible calories, valeur estimée" value={targets.caloriesKcal.likely} onChange={(event) => updateTargetLikely("caloriesKcal", event.target.value)} /></label>
       <label><span>Protéines (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible protéines, valeur estimée" value={targets.proteinG.likely} onChange={(event) => updateTargetLikely("proteinG", event.target.value)} /></label>
       <label><span>Lipides (g)</span><input type="number" min="0" inputMode="decimal" aria-label="Cible lipides, valeur estimée" value={targets.fatG.likely} onChange={(event) => updateTargetLikely("fatG", event.target.value)} /></label>
