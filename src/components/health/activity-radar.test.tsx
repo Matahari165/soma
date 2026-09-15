@@ -27,6 +27,7 @@ it("garde les points partiels sans relier une mesure absente", () => {
   ]} />);
 
   expect(html).not.toContain("valueArea");
+  expect((html.match(/valueSegment/g) ?? []).length).toBeGreaterThan(0);
   expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
   expect(html).toContain(">Charge hebdomadaire<");
   expect(html).toContain(">—<");

@@ -702,10 +702,18 @@ export function buildCloudflareUpdatePlan(table: string, existing: Row, changed:
       ? "user_id"
       : safeJsonPath(condition.field) ? `json_extract(json_data, '$.${condition.field}')` : null;
     if (!expression) continue;
+    const operator = ({
+      eq: "=",
+      neq: "!=",
+      gte: ">=",
+      gt: ">",
+      lte: "<=",
+      lt: "<",
+    } as Partial<Record<Filter["operator"], string>>)[condition.operator];
     if (condition.operator === "is" && condition.value === null) {
       where.push(`${expression} IS NULL`);
-    } else if (condition.operator === "eq") {
-      where.push(`${expression} = ?`);
+    } else if (operator) {
+      where.push(`${expression} ${operator} ?`);
       conditionBindings.push(d1Value(condition.value));
     }
   }

@@ -78,6 +78,28 @@ export const GOOGLE_HEALTH_DASHBOARD_DATA_TYPES = [
   "active-zone-minutes",
 ] as const satisfies readonly GoogleHealthDataType[];
 
+// The recurring reconciliation only needs the bounded daily rollups and the
+// session types used by sleep, recovery, and effort. Large raw streams and
+// secondary profile measurements remain available to the initial/manual import
+// but must not be allowed to block today's scores for several cron cycles.
+export const GOOGLE_HEALTH_AUTOMATIC_DATA_TYPES = [
+  "sleep",
+  "daily-heart-rate-variability",
+  "daily-resting-heart-rate",
+  "daily-respiratory-rate",
+  "daily-oxygen-saturation",
+  "daily-sleep-temperature-derivations",
+  "steps",
+  "active-zone-minutes",
+  "active-energy-burned",
+  "time-in-heart-rate-zone",
+  "exercise",
+  "active-minutes",
+  "daily-vo2-max",
+  "distance",
+  "total-calories",
+] as const satisfies readonly GoogleHealthDataType[];
+
 // High-volume raw streams arrive through Google Health webhooks and the initial
 // history import. Keeping them out of the regular reconciliation prevents a raw
 // heart-rate backlog from delaying sleep, recovery, and effort metrics.

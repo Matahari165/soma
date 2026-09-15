@@ -86,6 +86,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   const hasCompleteValueShape = validPoints.length === axes.length;
+  const valueSegments = points.flatMap((point, index) => {
+    const next = points[(index + 1) % points.length];
+    return point && next ? [{ from: point, to: next }] : [];
+  });
   const generatedDetailId = useId();
   const detailId = detailIdProp ?? `observatory-radar-detail-${generatedDetailId.replace(/[^a-zA-Z0-9]/g, "")}`;
   const detailTitleId = `${detailId}-title`;
@@ -130,6 +134,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
       </Fragment>)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
+      {!hasCompleteValueShape&&valueSegments.map(({ from, to }, index)=><line className="radar-value-segment" key={`radar-value-segment-${index}`} x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
       {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
       {validPoints.map((point,i)=><circle className="radar-point" key={i} cx={point[0]} cy={point[1]} r={Math.round(8*unit*10)/10}/>)}
       {axes.map((axis,i)=>{

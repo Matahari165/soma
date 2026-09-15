@@ -30,6 +30,7 @@ it("does not bridge across an absent interior axis", () => {
 
   expect(html).not.toContain('<polygon className="radar-value"');
   expect((html.match(/class="radar-point"/g) ?? []).length).toBe(3);
+  expect((html.match(/class="radar-value-segment"/g) ?? []).length).toBe(2);
   expect(html).toContain("Récupération : —");
 });
 

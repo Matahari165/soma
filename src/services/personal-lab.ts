@@ -749,13 +749,13 @@ function buildCorrelationMatrix(input: {
   };
 }
 
-function joinObservations(health: HealthDay[], scores: ScoreDay[], calendars: CalendarDay[], checkins: DailyCheckin[]) {
+export function joinObservations(health: HealthDay[], scores: ScoreDay[], calendars: CalendarDay[], checkins: DailyCheckin[]) {
   const healthByDate = new Map(health.map((row) => [row.metric_date, row]));
   const calendarByDate = new Map(calendars.map((row) => [row.metric_date, row]));
   const checkinByDate = new Map(checkins.map((row) => [row.checkin_date, row]));
   const scoresByDate = new Map<string, Partial<Record<ScoreDay["kind"], number | null>>>();
   for (const score of scores) scoresByDate.set(score.score_date, { ...(scoresByDate.get(score.score_date) ?? {}), [score.kind]: toNumber(score.score) });
-  const dates = [...new Set([...healthByDate.keys(), ...calendarByDate.keys(), ...checkinByDate.keys()])].sort();
+  const dates = [...new Set([...healthByDate.keys(), ...scoresByDate.keys(), ...calendarByDate.keys(), ...checkinByDate.keys()])].sort();
   return dates.map((date): LabObservation => {
     const day = healthByDate.get(date);
     const calendar = calendarByDate.get(date);

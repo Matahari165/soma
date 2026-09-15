@@ -257,8 +257,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Google Health sync could not be scheduled." }, { status: 500 });
   }
   const admin = createCloudflareAdminClient();
-  const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  const { error: staleJobError } = await admin.from("sync_jobs").update({ status: "queued", started_at: null })
+  // Vercel terminates this route after 50 s. A running job older than two
+  // minutes therefore cannot still be owned by a live request, while a
+  // ten-minute threshold leaves fresh health data unnecessarily blocked.
+  const staleBefore = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { error: staleJobError } = await admin.from("sync_jobs").update({
+    status: "queued",
+    started_at: null,
+    retry_after: null,
+    error_code: null,
+    error_message: null,
+  })
     .eq("status", "running").lt("started_at", staleBefore);
   if (staleJobError) return NextResponse.json({ error: "Stale sync jobs could not be recovered." }, { status: 500 });
 

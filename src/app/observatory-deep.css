@@ -26,6 +26,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
 .radar-grid,.radar-axis { fill:none; stroke:#2a343a; stroke-width:1; }
 .radar-grid:last-of-type { stroke:#6e868f; }
 .radar-value { fill:#bddde318; stroke:#bddde3; stroke-width:2; stroke-linejoin:round; animation:radar-enter 850ms cubic-bezier(.2,.8,.2,1) both; transform-origin:330px 280px; }
+.radar-value-segment { fill:none; stroke:#bddde3; stroke-width:2; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 .radar-point { fill:#d3ebef; }
 .radar-label { fill:#a9bdc5; font:12px var(--font-soma-sans),sans-serif; }
 .radar-number { fill:#edf4f5; font:16px var(--font-soma-mono),monospace; }
@@ -97,6 +98,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-headi
 .radar-grid,.radar-axis { stroke:#303030; }
 .radar-grid:last-of-type { stroke:#777; }
 .radar-value { stroke:#eee; fill:#ffffff12; transform-origin:330px 280px; }
+.radar-value-segment { stroke:#eee; }
 .radar-point { fill:#fff; }
 .radar-label { fill:#bdbdbd; font-size:15px; }
 .radar-number { fill:#fff; font-size:22px; }

@@ -17,7 +17,11 @@ import {
   usesCivilDateWindow,
 } from "./client";
 import { normalizeGoogleHealthDailyRollup, normalizeGoogleHealthPoint } from "./normalize";
-import { GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION } from "./schedule";
+import {
+  automaticGoogleHealthDataTypes,
+  GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION,
+  googleHealthHistorySeededFromTakeout,
+} from "./schedule";
 
 export const GOOGLE_HEALTH_ANALYTICS_RECENT_LOOKBACK_DAYS = DEFAULT_ANALYSIS_WINDOW_DAYS;
 
@@ -50,6 +54,7 @@ type ProviderConnection = {
   access_token_ciphertext: string;
   refresh_token_ciphertext: string | null;
   token_expires_at: string | null;
+  scopes?: string[] | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -223,6 +228,21 @@ function completedAnalyticsMetadata(connection: ProviderConnection, request: Ret
   return { ...(connection.metadata ?? {}), analytics_backfill_version: request.backfillVersion };
 }
 
+function sameDataTypes(first: readonly string[], second: readonly string[]) {
+  return first.length === second.length && first.every((dataType, index) => dataType === second[index]);
+}
+
+function dataTypesForJob(
+  job: Pick<SyncJob, "data_types" | "sync_trigger" | "import_range">,
+  connection: Pick<ProviderConnection, "scopes" | "metadata">,
+) {
+  const recurring = automaticGoogleHealthDataTypes(connection.scopes ?? []);
+  const shouldUseBoundedSet = job.sync_trigger === "automatic"
+    || (job.sync_trigger === "initial" && job.import_range === "90_days" && googleHealthHistorySeededFromTakeout(connection.metadata));
+  if (shouldUseBoundedSet && recurring.length) return recurring;
+  return job.data_types.length ? job.data_types : GOOGLE_HEALTH_DATA_TYPES;
+}
+
 export function googleHealthSyncRuntimeState(input: Pick<SyncJob, "cursor" | "attempts">) {
   return {
     cursor: input.cursor ?? {},
@@ -277,12 +297,31 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
   try {
     const { data: rawConnection, error: connectionError } = await admin
       .from("provider_connections")
-      .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at,metadata")
+      .select("id,access_token_ciphertext,refresh_token_ciphertext,token_expires_at,scopes,metadata")
       .eq("id", claimedJob.connection_id)
       .single();
     if (connectionError || !rawConnection) throw new Error("Google Health connection was not found.");
 
-    const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
+    const connection = rawConnection as ProviderConnection;
+    const dataTypes = dataTypesForJob(claimedJob, connection) as GoogleHealthDataType[];
+    const boundedDataTypesJob = claimedJob.sync_trigger === "automatic"
+      || (claimedJob.sync_trigger === "initial" && claimedJob.import_range === "90_days" && googleHealthHistorySeededFromTakeout(connection.metadata));
+    const dataTypesChanged = boundedDataTypesJob && !sameDataTypes(claimedJob.data_types, dataTypes);
+    if (dataTypesChanged) {
+      const migrationResult = await admin.from("sync_jobs").update({
+        data_types: dataTypes,
+        cursor: { typeIndex: 0, windowStart: claimedJob.range_start },
+        progress: 0,
+        attempts: 0,
+        retry_after: null,
+        status: "queued",
+        started_at: null,
+      }).eq("id", claimedJob.id).eq("status", "running").eq("attempts", claimedState.attempts).select("id").maybeSingle();
+      if (migrationResult.error || !migrationResult.data) throw new Error("Google Health sync could not be moved to the bounded data set.");
+      console.info("[google-health-sync] migrated job to bounded data set", { jobId: claimedJob.id, dataTypeCount: dataTypes.length });
+      return { completed: false, progress: 0, skipped: true, migrated: true, analyticsRefreshed: false, analytics: null };
+    }
+
     const typeIndex = cursor.typeIndex ?? 0;
     const dataType = dataTypes[typeIndex];
     if (!dataType) {
@@ -399,7 +438,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
   } catch (error) {
     const classification = classifyGoogleHealthSyncError(error);
     if (classification.code === "GOOGLE_HEALTH_PERMISSION_DENIED") {
-      const dataTypes = (claimedJob.data_types.length ? claimedJob.data_types : GOOGLE_HEALTH_DATA_TYPES) as GoogleHealthDataType[];
+      const dataTypes = dataTypesForJob(claimedJob, { scopes: [], metadata: null }) as GoogleHealthDataType[];
       const typeIndex = cursor.typeIndex ?? 0;
       const dataType = dataTypes[typeIndex];
       if (dataType) {
@@ -462,9 +501,30 @@ export async function drainGoogleHealthSyncJob(
   const deadline = Date.now() + (options.maxDurationMs ?? 45_000);
   let latest: Awaited<ReturnType<typeof processGoogleHealthSyncJob>> | null = null;
 
-  for (let batch = 0; batch < maxBatches && Date.now() < deadline; batch += 1) {
-    latest = await processGoogleHealthSyncJob(jobId, { refreshAnalytics: options.refreshAnalytics });
-    if (latest.completed || latest.skipped || "materializing" in latest) break;
+  // Initial imports and the recurring window are intentionally allowed to be
+  // queued together, but only one worker may process a connection at a time.
+  // Without this lock, a stale request can overwrite the cursor of a newer one.
+  const admin = createCloudflareAdminClient();
+  const { data: rawJob, error: jobError } = await admin.from("sync_jobs").select("connection_id,user_id").eq("id", jobId).single();
+  if (jobError || !rawJob) throw new Error("Sync job was not found.");
+  const connectionLockKey = `google-health-sync-connection:${rawJob.connection_id}`;
+  const lockOwner = String(rawJob.user_id);
+  const lockTtl = Math.max((options.maxDurationMs ?? 45_000) + 10_000, 60_000);
+  if (!await claimCloudflareLock(connectionLockKey, lockOwner, lockTtl)) {
+    return { completed: false, progress: 0, skipped: true, analyticsRefreshed: false, analytics: null };
+  }
+
+  try {
+    for (let batch = 0; batch < maxBatches && Date.now() < deadline; batch += 1) {
+      latest = await processGoogleHealthSyncJob(jobId, { refreshAnalytics: options.refreshAnalytics });
+      if (latest.completed || latest.skipped || "materializing" in latest) break;
+    }
+  } finally {
+    try {
+      await releaseCloudflareLock(connectionLockKey, lockOwner);
+    } catch {
+      console.error("[google-health-sync] connection lock could not be released", { jobId, connectionId: rawJob.connection_id });
+    }
   }
 
   return latest;

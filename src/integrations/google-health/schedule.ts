@@ -1,6 +1,7 @@
 import {
-  GOOGLE_HEALTH_HOURLY_DATA_TYPES,
+  GOOGLE_HEALTH_AUTOMATIC_DATA_TYPES,
   getGrantedGoogleHealthDataTypes,
+  type GoogleHealthDataType,
 } from "./client";
 
 // The Supabase worker runs every five minutes, while the regular health poll
@@ -107,6 +108,6 @@ export function manualGoogleHealthRange(now: Date) {
 }
 
 export function automaticGoogleHealthDataTypes(scopes: readonly string[]) {
-  const hourly = new Set(GOOGLE_HEALTH_HOURLY_DATA_TYPES);
-  return getGrantedGoogleHealthDataTypes(scopes).filter((dataType) => hourly.has(dataType));
+  const automatic = new Set<GoogleHealthDataType>(GOOGLE_HEALTH_AUTOMATIC_DATA_TYPES);
+  return getGrantedGoogleHealthDataTypes(scopes).filter((dataType) => automatic.has(dataType));
 }

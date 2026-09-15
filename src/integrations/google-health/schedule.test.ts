@@ -75,19 +75,23 @@ describe("Google Health automatic schedule", () => {
     expect(shouldQueueGoogleHealthAnalyticsBackfill({ ...base, metadata: { analytics_backfill_version: 1 } })).toBe(false);
   });
 
-  it("prioritizes all hourly health metrics without blocking on raw streams", () => {
+  it("keeps the recurring window bounded to score inputs", () => {
     const dataTypes = automaticGoogleHealthDataTypes(GOOGLE_HEALTH_SCOPES);
 
     expect(dataTypes).toEqual(expect.arrayContaining([
       "sleep",
       "daily-heart-rate-variability",
       "daily-resting-heart-rate",
-      "daily-heart-rate-zones",
+      "daily-respiratory-rate",
       "steps",
       "active-zone-minutes",
       "time-in-heart-rate-zone",
       "exercise",
+      "active-energy-burned",
     ]));
+    expect(dataTypes).not.toContain("oxygen-saturation");
+    expect(dataTypes).not.toContain("blood-glucose");
+    expect(dataTypes).not.toContain("weight");
     expect(dataTypes).not.toContain("heart-rate");
     expect(dataTypes).not.toContain("heart-rate-variability");
     expect(dataTypes).not.toContain("activity-level");

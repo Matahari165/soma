@@ -47,6 +47,18 @@ describe("Cloudflare D1 row identity", () => {
     expect(plan.bindings[0]).toBe(stableIdentity("meals", changed));
     expect(plan.bindings.at(-1)).toBe(stableIdentity("meals", existing));
   });
+
+  it("keeps comparison filters when updating a row in the D1 compatibility path", () => {
+    const plan = buildCloudflareUpdatePlan(
+      "sync_jobs",
+      { id: "job-1", started_at: "2026-09-15T10:00:00.000Z" },
+      { id: "job-1", status: "queued" },
+      [{ field: "started_at", operator: "lt", value: "2026-09-15T10:02:00.000Z" }],
+    );
+
+    expect(plan.sql).toContain("json_extract(json_data, '$.started_at') < ?");
+    expect(plan.bindings).toContain("2026-09-15T10:02:00.000Z");
+  });
 });
 
 describe("Cloudflare D1 read planning", () => {

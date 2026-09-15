@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { analysisWindowForPeriods, createPersonalLabStream, hasReliableActivityCoverage, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, labMatrixCacheKey, latestLabDate, overnightFingerprint, readWindowForStream, recentAverages, runningDaySeries, timingForAutomaticMetric } from "./personal-lab";
+import { analysisWindowForPeriods, createPersonalLabStream, hasReliableActivityCoverage, hasReliableOvernightData, isImpossibleSameDayTiming, isMechanicalRelation, joinObservations, labMatrixCacheKey, latestLabDate, overnightFingerprint, readWindowForStream, recentAverages, runningDaySeries, timingForAutomaticMetric } from "./personal-lab";
 import type { LabObservation } from "@/domain/lab/observation";
 
 describe("Personal Lab analysis window", () => {
@@ -32,6 +32,14 @@ describe("Personal Lab analysis window", () => {
     expect(latestLabDate(["2026-08-25", "2026-08-24", "2026-07-25"], [], "2026-01-01")).toBe("2026-08-25");
     expect(latestLabDate(["2026-07-25", "2026-08-24", "2026-08-25"], [], "2026-01-01")).toBe("2026-08-25");
     expect(latestLabDate([], ["2026-08-23", "2026-08-25"], "2026-01-01")).toBe("2026-08-25");
+  });
+});
+
+describe("Personal Lab score observations", () => {
+  it("keeps a date that exists only in calculated scores", () => {
+    expect(joinObservations([], [{ score_date: "2026-08-25", kind: "effort", score: 72 }], [], [])).toEqual([
+      expect.objectContaining({ date: "2026-08-25", effortScore: 72 }),
+    ]);
   });
 });
 

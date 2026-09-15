@@ -6,6 +6,7 @@ const testState = vi.hoisted(() => ({
   adminFrom: vi.fn(),
   claimCloudflareLock: vi.fn(),
   inserts: [] as Array<{ table: string; values: unknown; options?: unknown }>,
+  updates: [] as Array<{ table: string; values: unknown }>,
   openJobs: [] as Array<Record<string, unknown>>,
   connectionMetadata: { takeout_imported_through: "2026-08-19" } as Record<string, unknown>,
 }));
@@ -39,7 +40,12 @@ function configureAdmin() {
       operation: "read",
       values: null as unknown,
       select(selector = "*") { query.selector = selector; return query; },
-      update(values: unknown) { query.operation = "update"; query.values = values; return query; },
+      update(values: unknown) {
+        query.operation = "update";
+        query.values = values;
+        testState.updates.push({ table, values });
+        return query;
+      },
       insert(values: unknown) {
         query.operation = "insert";
         query.values = values;
@@ -86,6 +92,7 @@ describe("Google Health cron historical repair", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-20T09:05:00.000Z"));
     testState.inserts.length = 0;
+    testState.updates.length = 0;
     testState.openJobs = [];
     testState.connectionMetadata = { takeout_imported_through: "2026-08-19" };
     testState.claimCloudflareLock.mockReset();
@@ -114,7 +121,8 @@ describe("Google Health cron historical repair", () => {
       range_start: "2026-05-22T09:05:00.000Z",
       range_end: "2026-08-20T09:05:00.000Z",
     });
-    expect(jobs[0]?.data_types).toEqual(expect.arrayContaining(["exercise", "distance", "sedentary-period", "run-vo2-max"]));
+    expect(jobs[0]?.data_types).toEqual(expect.arrayContaining(["exercise", "distance", "active-energy-burned", "daily-respiratory-rate"]));
+    expect(jobs[0]?.data_types).not.toContain("oxygen-saturation");
     expect(jobs[0]?.data_types).not.toEqual(expect.arrayContaining(["heart-rate", "heart-rate-variability", "activity-level"]));
   });
 
@@ -144,6 +152,15 @@ describe("Google Health cron historical repair", () => {
       scheduled_civil_date: "2026-08-20",
       scheduled_sync_slot: "2026-08-20T09:00:00.000Z",
     });
+  });
+
+  it("recovers stale workers without resetting their retry budget", async () => {
+    const response = await GET(new Request("https://soma.example/api/cron/sync", { headers: { authorization: "Bearer cron-secret" } }));
+
+    expect(response.status).toBe(200);
+    const staleRecovery = testState.updates.find((update) => update.table === "sync_jobs");
+    expect(staleRecovery?.values).toMatchObject({ status: "queued", started_at: null, retry_after: null });
+    expect(staleRecovery?.values).not.toHaveProperty("attempts");
   });
 
   it("queues the current window while the initial recent import is still open", async () => {
