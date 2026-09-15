@@ -166,8 +166,8 @@ async function queueAutomaticJobs(now = new Date()) {
     if (!schedule.due) continue;
     const openJobs = openJobsByConnection.get(connection.id) ?? [];
     windowOpen = true;
-    const hourlyDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
-    if (!hourlyDataTypes.length) continue;
+    const automaticDataTypes = automaticGoogleHealthDataTypes(connection.scopes ?? []);
+    if (!automaticDataTypes.length) continue;
     if (openJobs.some((job) => job.sync_trigger === "automatic" || job.sync_trigger === "manual")) continue;
     const analyticsBackfillOpen = openJobs.some((job) => job.sync_trigger === "initial" && job.import_range === "90_days");
     if (shouldQueueGoogleHealthAnalyticsBackfill({
@@ -222,7 +222,7 @@ async function queueAutomaticJobs(now = new Date()) {
       user_id: connection.user_id,
       connection_id: connection.id,
       import_range: "90_days",
-      data_types: [...hourlyDataTypes],
+      data_types: [...automaticDataTypes],
       range_start: range.start,
       range_end: range.end,
       status: "queued",

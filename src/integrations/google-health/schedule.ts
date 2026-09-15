@@ -3,7 +3,10 @@ import {
   getGrantedGoogleHealthDataTypes,
 } from "./client";
 
-export const GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES = 60;
+// The Supabase worker runs every five minutes, while the regular health poll
+// stays at fifteen minutes to keep recent sleep, recovery, and effort data
+// fresh without turning every worker tick into a full API import.
+export const GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES = 15;
 export const GOOGLE_HEALTH_AUTOMATIC_SYNC_LOOKBACK_DAYS = 3;
 export const GOOGLE_HEALTH_MANUAL_SYNC_LOOKBACK_DAYS = 90;
 export const GOOGLE_HEALTH_ANALYTICS_BACKFILL_VERSION = 1;
@@ -84,7 +87,7 @@ export function zonedClock(date: Date, timezone: string): ZonedClock {
 export function isAutomaticGoogleHealthSyncDue({ now, timezone, lastLabSyncedAt }: AutomaticSyncInput) {
   const current = zonedClock(now, timezone);
   const slot = new Date(now);
-  slot.setUTCMinutes(0, 0, 0);
+  slot.setUTCMinutes(Math.floor(slot.getUTCMinutes() / GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES) * GOOGLE_HEALTH_AUTOMATIC_SYNC_INTERVAL_MINUTES, 0, 0);
   if (!lastLabSyncedAt) return { due: true, civilDate: current.civilDate, slot: slot.toISOString() };
   return { due: new Date(lastLabSyncedAt) < slot, civilDate: current.civilDate, slot: slot.toISOString() };
 }

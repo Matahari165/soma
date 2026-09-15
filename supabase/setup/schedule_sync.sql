@@ -12,9 +12,9 @@ declare
 begin
   select id into app_url_id from vault.secrets where name = 'soma_app_url';
   if app_url_id is null then
-    perform vault.create_secret('https://YOUR-SOMA-DOMAIN.example', 'soma_app_url');
+    perform vault.create_secret('https://soma-neon-phi.vercel.app', 'soma_app_url');
   else
-    perform vault.update_secret(app_url_id, 'https://YOUR-SOMA-DOMAIN.example');
+    perform vault.update_secret(app_url_id, 'https://soma-neon-phi.vercel.app');
   end if;
 
   select id into cron_secret_id from vault.secrets where name = 'soma_cron_secret';
@@ -27,7 +27,7 @@ end;
 $$;
 
 -- The worker polls for manual/retry work and creates at most one automatic
--- Google Health import for each hourly slot.
+-- Google Health import for each fifteen-minute slot.
 select cron.unschedule(jobid)
 from cron.job
 where jobname in ('soma-sync-every-five-minutes', 'soma-sync-every-minute', 'soma-sync-worker');

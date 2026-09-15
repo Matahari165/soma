@@ -7,6 +7,8 @@ import { classifyGoogleHealthSyncError, deduplicateGoogleHealthRecords, googleHe
 describe("Google Health sync failures", () => {
   it("requires reconnection for an expired token but isolates a denied data type", () => {
     expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(401, "expired"))).toMatchObject({ retryable: false, connectionStatus: "expired" });
+    expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(400, "invalid_grant", "token"))).toMatchObject({ code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" });
+    expect(classifyGoogleHealthSyncError(new Error("Unsupported state or unable to authenticate data"))).toMatchObject({ code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" });
     expect(classifyGoogleHealthSyncError(new GoogleHealthRequestError(403, "partial consent"))).toMatchObject({ retryable: false, connectionStatus: "connected", code: "GOOGLE_HEALTH_PERMISSION_DENIED" });
   });
 
@@ -73,6 +75,14 @@ describe("Google Health sync failures", () => {
   it("keeps recurring refreshes ahead of the older full-history backfill", () => {
     const jobs = [
       { id: "history", sync_trigger: "initial", import_range: "all_history", created_at: "2026-08-25T06:00:00.000Z" },
+      { id: "automatic", sync_trigger: "automatic", import_range: "90_days", created_at: "2026-08-25T07:00:00.000Z" },
+    ];
+    expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("automatic");
+  });
+
+  it("keeps current automatic work ahead of older raw webhook jobs", () => {
+    const jobs = [
+      { id: "webhook", sync_trigger: "webhook", import_range: "90_days", created_at: "2026-08-25T06:00:00.000Z" },
       { id: "automatic", sync_trigger: "automatic", import_range: "90_days", created_at: "2026-08-25T07:00:00.000Z" },
     ];
     expect(selectNextGoogleHealthSyncJob(jobs)?.id).toBe("automatic");

@@ -62,7 +62,8 @@ export type GoogleHealthSyncQueueCandidate = {
 
 function googleHealthSyncJobPriority(job: GoogleHealthSyncQueueCandidate) {
   if (job.sync_trigger === "initial" && job.import_range === "90_days") return 0;
-  if (job.sync_trigger !== "initial") return 1;
+  if (job.sync_trigger === "automatic" || job.sync_trigger === "manual") return 1;
+  if (job.sync_trigger === "webhook") return 2;
   return 2;
 }
 
@@ -181,9 +182,17 @@ function calculateProgress(typeIndex: number, typeCount: number, windowStart: Da
 export function classifyGoogleHealthSyncError(error: unknown) {
   if (error instanceof GoogleHealthRequestError) {
     if (error.status === 401) return { code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" as const };
+    if (error.source === "token" && error.status === 400) return { code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" as const };
     if (error.status === 403) return { code: "GOOGLE_HEALTH_PERMISSION_DENIED", retryable: false, connectionStatus: "connected" as const };
     if (error.status === 429) return { code: "GOOGLE_HEALTH_RATE_LIMITED", retryable: true, connectionStatus: "connected" as const };
     if (error.status >= 500) return { code: "GOOGLE_HEALTH_UNAVAILABLE", retryable: true, connectionStatus: "connected" as const };
+  }
+  if (error instanceof Error && [
+    "Google Health refresh token is missing.",
+    "Encrypted secret has an invalid format.",
+    "Unsupported state or unable to authenticate data",
+  ].some((message) => error.message.includes(message))) {
+    return { code: "GOOGLE_HEALTH_AUTH_EXPIRED", retryable: false, connectionStatus: "expired" as const };
   }
   return { code: "GOOGLE_HEALTH_SYNC_FAILED", retryable: true, connectionStatus: "connected" as const };
 }

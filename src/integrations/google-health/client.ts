@@ -79,7 +79,7 @@ export const GOOGLE_HEALTH_DASHBOARD_DATA_TYPES = [
 ] as const satisfies readonly GoogleHealthDataType[];
 
 // High-volume raw streams arrive through Google Health webhooks and the initial
-// history import. Keeping them out of the hourly reconciliation prevents a raw
+// history import. Keeping them out of the regular reconciliation prevents a raw
 // heart-rate backlog from delaying sleep, recovery, and effort metrics.
 const GOOGLE_HEALTH_WEBHOOK_STREAM_TYPES = new Set<GoogleHealthDataType>([
   "heart-rate",
@@ -120,7 +120,7 @@ type IdentityResponse = {
 };
 
 export class GoogleHealthRequestError extends Error {
-  constructor(public readonly status: number, detail: string) {
+  constructor(public readonly status: number, detail: string, public readonly source: "api" | "token" = "api") {
     super(`Google Health request failed (${status}): ${detail.slice(0, 1000)}`);
     this.name = "GoogleHealthRequestError";
   }
@@ -177,7 +177,7 @@ async function tokenRequest(body: URLSearchParams) {
   });
 
   if (!response.ok) {
-    throw new GoogleHealthRequestError(response.status, "OAuth token exchange failed.");
+    throw new GoogleHealthRequestError(response.status, "OAuth token exchange failed.", "token");
   }
 
   return (await response.json()) as TokenResponse;

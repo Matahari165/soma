@@ -15,7 +15,7 @@ import {
 } from "./schedule";
 import { GOOGLE_HEALTH_SCOPES } from "./client";
 
-describe("Google Health hourly schedule", () => {
+describe("Google Health automatic schedule", () => {
   it("uses a verified Takeout boundary for subsequent API updates", () => {
     const metadata = { takeout_imported_through: "2026-08-22", api_sync_start: "2026-08-23" };
     expect(googleHealthHistorySeededFromTakeout(metadata)).toBe(true);
@@ -33,11 +33,12 @@ describe("Google Health hourly schedule", () => {
     expect(clampGoogleHealthRangeToConnection({ start: "2026-08-20T00:00:00.000Z", end: "2026-08-25T00:00:00.000Z" }, { api_sync_start: "invalid" }).start).toBe("2026-08-20T00:00:00.000Z");
   });
 
-  it("runs once per completed UTC hour", () => {
+  it("runs once per completed fifteen-minute slot", () => {
     const now = new Date("2026-08-20T09:05:00.000Z");
     expect(isAutomaticGoogleHealthSyncDue({ now, timezone: "Europe/Paris", lastLabSyncedAt: null })).toEqual({ due: true, civilDate: "2026-08-20", slot: "2026-08-20T09:00:00.000Z" });
     expect(isAutomaticGoogleHealthSyncDue({ now, timezone: "Europe/Paris", lastLabSyncedAt: "2026-08-20T09:01:00.000Z" }).due).toBe(false);
     expect(isAutomaticGoogleHealthSyncDue({ now, timezone: "Europe/Paris", lastLabSyncedAt: "2026-08-20T08:59:00.000Z" }).due).toBe(true);
+    expect(isAutomaticGoogleHealthSyncDue({ now: new Date("2026-08-20T09:15:00.000Z"), timezone: "Europe/Paris", lastLabSyncedAt: "2026-08-20T09:01:00.000Z" }).due).toBe(true);
   });
 
   it("keeps local-hour labels correct through daylight-saving changes", () => {
