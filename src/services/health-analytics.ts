@@ -272,6 +272,7 @@ const FIRST_SCREEN_DAYS = 30;
 const FIRST_SCREEN_SCORE_ROWS = FIRST_SCREEN_DAYS * 3;
 const CRITICAL_QUERY_TIMEOUT_MS = 4_000;
 const SECONDARY_QUERY_TIMEOUT_MS = 2_500;
+const SECONDARY_GRACE_MS = 350;
 
 const metricColumns: Record<HealthAnalyticsScope, string> = {
   all: "*",
@@ -439,17 +440,20 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
       null,
     )
     : Promise.resolve({ data: null, error: null });
+  const optionalBasePromise = Promise.all([connectionPromise, sleepPreferencesPromise, effortTargetPromise]);
 
-  const [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult, effortTargetState] = await Promise.all([
+  const [profileResult, metricsResult, scoresResult] = await Promise.all([
     profilePromise,
     metricsPromise,
     scoresPromise,
-    connectionPromise,
-    sleepPreferencesPromise,
-    effortTargetPromise,
   ]);
   const failed = [profileResult, metricsResult, scoresResult].find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
+  const [connectionResult, sleepPreferencesResult, effortTargetState] = await optionalValue(
+    optionalBasePromise,
+    [{ data: null, error: null }, { data: null, error: null }, null] as const,
+    SECONDARY_GRACE_MS,
+  );
   const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult];
   const timezone = profile?.timezone ?? "Europe/Paris";
   // A missing nutrition_targets row is not a zero target. The score engine's
@@ -463,16 +467,17 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
     return typeof value === "number" && Number.isFinite(value);
   }))?.metric_date;
   const heartRateWindow = latestRecoveryDate ? heartRateWindowForCivilDate(latestRecoveryDate, timezone) : null;
-  const [sleepResult, heartRateResult, exerciseResult] = await Promise.all([
-    sleepPromise,
-    (scope === "recovery" || scope === "all") && heartRateWindow
-      ? optionalQuery(
-        applyQueryTimeout(supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", heartRateWindow.start).lt("measured_at", heartRateWindow.end).order("measured_at", { ascending: false }).limit(2000), SECONDARY_QUERY_TIMEOUT_MS),
-        [],
-      )
-      : Promise.resolve({ data: [], error: null }),
-    exercisePromise,
-  ]);
+  const heartRatePromise = (scope === "recovery" || scope === "all") && heartRateWindow
+    ? optionalQuery(
+      applyQueryTimeout(supabase.from("health_records").select("measured_at,payload").eq("user_id", user.id).eq("data_type", "heart-rate").gte("measured_at", heartRateWindow.start).lt("measured_at", heartRateWindow.end).order("measured_at", { ascending: false }).limit(2000), SECONDARY_QUERY_TIMEOUT_MS),
+      [],
+    )
+    : Promise.resolve({ data: [], error: null });
+  const [sleepResult, heartRateResult, exerciseResult] = await optionalValue(
+    Promise.all([sleepPromise, heartRatePromise, exercisePromise]),
+    [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }] as const,
+    SECONDARY_GRACE_MS,
+  );
   const sleeps = sleepResult.data;
   const heartRates = heartRateResult.data;
   const exercises = exerciseResult.data;
