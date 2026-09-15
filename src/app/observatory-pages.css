@@ -1,8 +1,7 @@
 /* Shared detail-page language, inherited from the Personal Lab. */
 html[data-lab-theme="observatory"] {
- --canvas:#050505; --paper:#050505; --ink:#eee; --ink-soft:#bbb; --muted:#aaa;
- --line:transparent; --line-strong:transparent; --focus-color:#eee;
- --lab-surface:#050505; --lab-surface-subtle:#050505; --lab-surface-hover:#151515;
+  --canvas:#050505; --paper:#050505; --ink:#eee; --ink-soft:#bbb; --muted:#aaa;
+  --line:var(--lab-border); --line-strong:var(--lab-border-strong); --focus-color:#eee;
 }
 
 /* Production Observatoire keeps the same single navigation rail as the local

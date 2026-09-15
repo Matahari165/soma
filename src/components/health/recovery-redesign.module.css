@@ -613,8 +613,8 @@
 .page .trendGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(32px, 5vw, 72px);
-  row-gap: clamp(56px, 7vw, 96px);
+  column-gap: 32px;
+  row-gap: 48px;
 }
 
 .trendGrid :global(.metric-trend-card) {
@@ -661,18 +661,18 @@
 }
 
 .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 148px;
+  height: 120px;
   margin-top: 12px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-  height: 140px;
+  height: 120px;
   padding-right: 24px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
   width: 100%;
-  height: 132px;
+  height: 112px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.chart-axis) {
@@ -978,15 +978,15 @@
   }
 
   .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-    height: 132px;
+    height: 112px;
   }
 
   .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-    height: 124px;
+    height: 112px;
   }
 
   .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
-    height: 116px;
+    height: 112px;
   }
 
   .zoneLegend {

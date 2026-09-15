@@ -455,7 +455,7 @@
 .secondaryTrendGrid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 32px;
 }
 
@@ -503,7 +503,7 @@
 
 .trendGrid :global(.metric-trend-card) :global(.chart-frame),
 .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 152px;
+  height: 120px;
   margin-top: 20px;
 }
 
@@ -583,7 +583,7 @@
   .trendGrid :global(.metric-trend-card),
   .secondaryTrendGrid :global(.metric-trend-card) { min-height: 208px; }
   .trendGrid :global(.metric-trend-card) :global(.chart-frame),
-  .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 140px; }
+  .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 112px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

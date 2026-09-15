@@ -17,8 +17,8 @@ it("draws a calm 100% reference triangle behind the measured 68/83/75 shape", ()
   expect((html.match(/data-testid="recovery-radar-grid"/g) ?? []).length).toBe(4);
   expect((html.match(/data-testid="recovery-radar-axis"/g) ?? []).length).toBe(3);
   expect(html).toContain('data-radar-reference="100" data-grid-ratio="1"');
-  expect(html).toContain('points="320.00,96.00 453.37,327.00 186.63,327.00"');
-  expect(html).toContain('data-testid="recovery-radar-value" points="320.00,145.28 430.70,313.91 219.97,307.75"');
+  expect(html).toContain('points="210.00,60.00 339.90,285.00 80.10,285.00"');
+  expect(html).toContain('data-testid="recovery-radar-value" points="210.00,108.00 317.82,272.25 112.57,266.25"');
   expect((html.match(/data-testid="recovery-radar-label"/g) ?? []).length).toBe(3);
   expect(html).toContain(">Sommeil<");
   expect(html).toContain(">75<");
@@ -35,9 +35,9 @@ it("keeps a missing score unavailable instead of plotting it at zero", () => {
   );
 
   expect(html).not.toContain('data-testid="recovery-radar-value"');
+  expect((html.match(/data-testid="recovery-radar-point"/g) ?? []).length).toBe(2);
   expect(html).toMatch(/data-dimension-value="restingHeartRate"[^>]*>—<\/text>/);
   expect(html).toContain("FC au repos : indisponible");
-  expect(html).not.toContain('cx="320" cy="404"');
 });
 
 it("exposes a complete textual description and keyboard focus", () => {
