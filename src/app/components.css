@@ -344,18 +344,78 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
   padding: clamp(28px, 5vw, 72px);
   border-right: 0;
   background-color: var(--lab-canvas);
-  background-image: linear-gradient(90deg, rgb(5 5 5 / 48%) 0%, rgb(5 5 5 / 54%) 50%, rgb(8 8 8 / 84%) 82%, var(--lab-surface) 100%), linear-gradient(180deg, rgb(5 5 5 / 54%), rgb(5 5 5 / 88%)), url("/images/backdrops/login-mountain.jpg");
+  background-image:
+    linear-gradient(90deg, rgb(5 5 5 / 8%) 0%, rgb(5 5 5 / 22%) 45%, rgb(8 8 8 / 74%) 80%, var(--lab-surface) 100%),
+    linear-gradient(180deg, rgb(5 5 5 / 8%) 0%, rgb(5 5 5 / 28%) 50%, rgb(5 5 5 / 78%) 95%, var(--lab-surface) 100%),
+    url("/images/backdrops/login-mountain.jpg");
   background-position: center;
   background-size: cover;
+  animation: authFadeIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.brand--auth { position: relative; z-index: 1; }
-.auth-intro__copy { max-width: 46rem; padding-bottom: 3vh; }
-.auth-intro__copy h1 { max-width: 12ch; font-family: Georgia, "Times New Roman", serif; font-size: clamp(3.5rem, 7.2vw, 6.8rem); font-weight: 400; line-height: .98; letter-spacing: -.035em; }
-.auth-intro__copy em { display: block; color: var(--lab-text-secondary); font-style: italic; font-weight: 400; }
-.auth-card-wrap { display: grid; align-items: center; padding: clamp(28px, 6vw, 88px); background: var(--lab-surface); }
-.auth-card { width: min(100%, 430px); padding-top: 24px; border-top: 1px solid var(--lab-border-strong); }
-.auth-card h2 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.35rem, 3.5vw, 3.25rem); font-weight: 400; line-height: 1.05; letter-spacing: -.025em; }
-.auth-card > p { margin: 12px 0 28px; color: var(--ink-soft); font-size: 1rem; }
+.brand--auth {
+  position: relative;
+  z-index: 1;
+  animation: authSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+.auth-intro__copy {
+  max-width: 48rem;
+  padding-bottom: 3vh;
+  animation: authSlideUp 0.68s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
+}
+.auth-intro__copy h1 {
+  max-width: 13ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.2rem, 6.6vw, 6.2rem);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+.auth-intro__copy em {
+  display: block;
+  color: var(--lab-text-secondary);
+  font-style: italic;
+  font-weight: 400;
+  margin-top: 0.02em;
+}
+.auth-intro__copy p {
+  margin: 0;
+  margin-top: clamp(24px, 3.5vh, 36px);
+  max-width: 44ch;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-ui, system-ui, sans-serif);
+  font-size: clamp(1rem, 1.3vw, 1.125rem);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+.auth-card-wrap {
+  display: grid;
+  align-items: center;
+  padding: clamp(28px, 6vw, 88px);
+  background: var(--lab-surface);
+}
+.auth-card {
+  width: min(100%, 430px);
+  padding-top: 24px;
+  border-top: 1px solid var(--lab-border-strong);
+  animation: authSlideUp 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+.auth-card h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.35rem, 3.5vw, 3.25rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -.025em;
+  margin: 0;
+}
+.auth-card .auth-card__subtitle,
+.auth-card > p {
+  margin: 10px 0 26px;
+  color: var(--ink-soft);
+  font-size: 0.975rem;
+  line-height: 1.45;
+}
 .auth-card .google-button { width: 100%; }
 .configuration-note { margin: 0 !important; padding: 12px; border: 1px solid var(--lab-warning); background: var(--lab-warning-soft); color: var(--lab-text-primary) !important; font-size: .875rem !important; }
 .auth-card > .configuration-note { margin-top: 24px !important; }
@@ -375,6 +435,37 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .auth-loading-spinner { display: inline-flex; align-items: center; gap: 8px; }
 .auth-separator { display: flex; align-items: center; gap: 16px; margin: 24px 0 20px; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .auth-separator::before, .auth-separator::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+@keyframes authFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes authSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-intro,
+  .brand--auth,
+  .auth-intro__copy,
+  .auth-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 
 
 .onboarding-shell { display: grid; min-height: 100svh; grid-template-columns: minmax(260px, .5fr) minmax(0, 1.5fr); background: var(--lab-canvas); }
@@ -1631,3 +1722,58 @@ button.matrix-mobile-result:hover { background: var(--canvas); }
   .strongest-effects__influence.is-single-result > .strongest-effects__influence-header { pointer-events: auto; }
 }
 
+/* Daily journal state treatment. The icon shape carries the state; the
+   accessible row label remains the source of truth for assistive technology. */
+.journal-field__label-row { display: inline-flex; min-width: 0; align-items: center; gap: 6px; }
+.journal-field__state-mark { display: inline-grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; color: var(--lab-warning); transition: color 180ms cubic-bezier(.2, .8, .2, 1), transform 180ms cubic-bezier(.2, .8, .2, 1); }
+.journal-field__state-mark svg { display: block; width: 15px; height: 15px; }
+.journal-field[data-state="recorded"] .journal-field__state-mark { color: var(--lab-signal); }
+.journal-field[data-state="skipped"] .journal-field__state-mark { color: var(--lab-text-secondary); }
+.journal-field[data-state="pending"] .journal-field__label-text { text-decoration: underline dotted; text-decoration-color: var(--lab-warning); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.journal-field__feedback { position: absolute; right: 0; bottom: -1px; left: 0; display: block; height: 2px; pointer-events: none; background: var(--lab-signal); transform-origin: left center; animation: journal-field-feedback 520ms cubic-bezier(.16, 1, .3, 1) both; }
+.journal-field--changed .journal-field__state-mark { animation: journal-field-state-pop 520ms cubic-bezier(.16, 1, .3, 1) both; }
+
+@keyframes journal-field-feedback {
+  0% { opacity: 0; transform: scaleX(.04); }
+  24% { opacity: .9; transform: scaleX(.38); }
+  68% { opacity: .7; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes journal-field-state-pop {
+  0% { opacity: .6; transform: scale(.78); }
+  48% { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.journal-card--status-v1 .journal-field,
+.journal-card--status-v2 .journal-field,
+.journal-card--status-v3 .journal-field { position: relative; transition: background-color 180ms cubic-bezier(.2, .8, .2, 1), border-color 180ms cubic-bezier(.2, .8, .2, 1); }
+
+/* V1 — repère : teinte légère et libellé à confirmer souligné. */
+.journal-card--status-v1 .journal-field[data-state="recorded"] { background: color-mix(in srgb, var(--lab-signal) 8%, transparent); }
+.journal-card--status-v1 .journal-field[data-state="pending"] { background: color-mix(in srgb, var(--lab-warning) 4%, transparent); }
+
+/* V2 — ligne : la ponctuation de la règle distingue les états sans surface. */
+.journal-card--status-v2 .journal-field[data-state="recorded"] { border-bottom-color: color-mix(in srgb, var(--lab-signal) 58%, var(--lab-border)); }
+.journal-card--status-v2 .journal-field[data-state="pending"] { border-bottom-color: var(--lab-warning); border-bottom-style: dashed; }
+.journal-card--status-v2 .journal-field[data-state="skipped"] { border-bottom-color: var(--lab-border-strong); border-bottom-style: dotted; }
+
+/* V3 — contrôle : la ligne d’état se pose au bord du contrôle lui-même. */
+.journal-card--status-v3 .journal-field[data-state="recorded"] :is(.journal-choice, .journal-number, .journal-clock),
+.journal-card--status-v3 .journal-field[data-state="recorded"] > input,
+.journal-card--status-v3 .journal-field[data-state="recorded"] > select { box-shadow: inset 0 -2px var(--lab-signal); }
+.journal-card--status-v3 .journal-field[data-state="pending"] :is(.journal-choice, .journal-number, .journal-clock),
+.journal-card--status-v3 .journal-field[data-state="pending"] > input,
+.journal-card--status-v3 .journal-field[data-state="pending"] > select { box-shadow: inset 0 -2px var(--lab-warning); }
+.journal-card--status-v3 .journal-field[data-state="recorded"] .journal-field__label { color: var(--lab-text-secondary); }
+.journal-card--status-v3 .journal-field[data-state="pending"] .journal-field__label { color: var(--lab-text-primary); font-weight: 540; }
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-field__state-mark,
+  .journal-card--status-v1 .journal-field,
+  .journal-card--status-v2 .journal-field,
+  .journal-card--status-v3 .journal-field { transition: none; }
+  .journal-field__feedback,
+  .journal-field--changed .journal-field__state-mark { animation: none; }
+}

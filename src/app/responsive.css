@@ -175,8 +175,9 @@
 
   .auth-page { grid-template-columns: 1fr; }
   .auth-intro { min-height: auto; padding: 24px 20px 36px; border-right: 0; border-bottom: 1px solid var(--lab-border); }
-  .auth-intro__copy { padding: 64px 0 0; }
-  .auth-intro__copy h1 { font-size: clamp(3rem, 17vw, 5rem); line-height: .98; }
+  .auth-intro__copy { padding: 48px 0 0; }
+  .auth-intro__copy h1 { font-size: clamp(2.4rem, 11vw, 3.8rem); line-height: 1.04; }
+  .auth-intro__copy p { margin-top: 18px; font-size: 0.95rem; }
   .auth-card-wrap { min-height: auto; align-items: start; padding: 32px 20px 48px; }
   .builder-layout { grid-template-columns: 1fr; overflow-y: auto; }
   .workout-modal { inset: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
