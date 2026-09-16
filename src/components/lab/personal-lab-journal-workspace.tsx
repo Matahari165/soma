@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PersonalLabJournal } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
@@ -9,6 +9,12 @@ import MealJournal from "../meal-journal";
 import type { MealDesignVariant } from "./meal-card-variants";
 import MealSupplements from "../meal-supplements";
 import styles from "./personal-lab-journal-workspace.module.css";
+
+const designVariants: ReadonlyArray<{ id: MealDesignVariant; label: string }> = [
+  { id: "v1", label: "Ligne" },
+  { id: "v2", label: "Grille" },
+  { id: "v3", label: "Split" },
+];
 
 function dateFromUrl() {
   if (typeof window === "undefined") return null;
@@ -101,9 +107,11 @@ export function PersonalLabJournalWorkspace({
     return { count: recordedIds.size, total: activeVariables.length };
   }, [activeDate, activeVariables, data.journal.days, data.journal.entries]);
   const [designVariant, setDesignVariant] = useState<MealDesignVariant>("v1");
-  const [journalProgress, setJournalProgress] = useState(progressForDate);
-
-  useEffect(() => setJournalProgress(progressForDate), [progressForDate]);
+  const [journalProgressOverride, setJournalProgressOverride] = useState<{ date: string; count: number; total: number } | null>(null);
+  const journalProgress = journalProgressOverride?.date === activeDate ? journalProgressOverride : progressForDate;
+  const handleCompletionChange = useCallback((count: number, total: number) => {
+    setJournalProgressOverride({ date: activeDate, count, total });
+  }, [activeDate]);
 
   const progressRatio = journalProgress.total > 0 ? Math.min(1, journalProgress.count / journalProgress.total) : 0;
   const progressLabel = `${journalProgress.count} / ${journalProgress.total}`;
@@ -147,7 +155,7 @@ export function PersonalLabJournalWorkspace({
       {showVariantSwitcher ? <fieldset className={styles.variantSwitcher}>
         <legend>Comparaison locale</legend>
         <div className={styles.variantButtons} role="group" aria-label="Variantes visuelles">
-          {(["v1", "v2", "v3"] as const).map((variant) => <button key={variant} type="button" aria-pressed={designVariant === variant} onClick={() => setDesignVariant(variant)}>{variant.toUpperCase()}</button>)}
+          {designVariants.map((variant) => <button key={variant.id} type="button" title={`Présentation ${variant.label}`} aria-pressed={designVariant === variant.id} onClick={() => setDesignVariant(variant.id)}>{variant.label}</button>)}
         </div>
       </fieldset> : null}
     </div>
@@ -156,7 +164,7 @@ export function PersonalLabJournalWorkspace({
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant={designVariant} />
       </div>
       <div className="personal-lab-journal-column" id="daily-journal">
-        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={(count, total) => setJournalProgress({ count, total })} />
+        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
     </div>

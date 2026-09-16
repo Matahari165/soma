@@ -333,15 +333,16 @@
 
 .metricBarFill {
   display: block;
-  width: 0;
+  width: 100%;
   height: 100%;
   background: var(--lab-text-primary, #f1f1f1);
   transform-origin: left center;
-  transition: width 240ms cubic-bezier(.2, .8, .2, 1);
+  transform: scaleX(0);
+  transition: transform 240ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .metricBar[data-present="true"] .metricBarFill {
-  width: 100%;
+  transform: scaleX(1);
 }
 
 /* ==========================================================================
@@ -890,4 +891,97 @@
 .v1CancelBtn:hover {
   color: var(--lab-text-primary, #f1f1f1);
   border-color: var(--lab-text-secondary, #aaaaaa);
+}
+
+.analysisDetails {
+  display: grid;
+  gap: 8px;
+}
+
+.v1DetailsToggle,
+.v2DetailsToggle,
+.v3DetailsToggle {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.v1DetailsToggle:hover,
+.v2DetailsToggle:hover,
+.v3DetailsToggle:hover {
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.v1DetailsToggle:focus-visible,
+.v2DetailsToggle:focus-visible,
+.v3DetailsToggle:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 3px;
+}
+
+.analysisDetailsPanel {
+  display: grid;
+  gap: 8px;
+  margin-top: 0;
+  padding: 12px;
+  border-left: 2px solid var(--lab-border-strong, #3a3a3a);
+  background: var(--lab-surface-subtle, #0c0c0c);
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.analysisDetailsPanel ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.analysisDetailsPanel p {
+  margin: 0;
+}
+
+.analysisDetailsNote {
+  display: grid;
+  gap: 3px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.analysisDetailsNote strong {
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+@keyframes mealMetricReveal {
+  from { opacity: .4; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The local comparison keeps every action comfortably tappable on touch
+   screens while preserving the compact reading rhythm of the card. */
+.cardRoot :is(.analyzeButton, .mediaButton, .skipButton, .editButton, .v3CompactAnalyze) { min-height: 44px; }
+.cardRoot .mediaIconButton { width: 44px; height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cardRoot,
+  .metricBarFill,
+  .v1MetricItem,
+  .v2MetricCell,
+  .v3Pill { transition: none; animation: none; }
 }

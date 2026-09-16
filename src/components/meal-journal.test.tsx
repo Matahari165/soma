@@ -102,8 +102,9 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Croissant");
-    expect(html).not.toContain("Croissant &amp; Café");
+    expect(html).toContain("Croissant &amp; Café");
+    expect(html).toContain('data-metric="addedSugar"');
+    expect(html).toContain('data-present="true"');
     expect(html).toContain("Calories : 650 kcal");
     expect(html).toContain("Protéines : 10 g");
     expect(html).toContain("Glucides : 120 g");
@@ -849,7 +850,7 @@ describe("apiMealToRecord", () => {
     expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 
-  it("renders lab meal card in V1 with a concise preview and no confirm button", () => {
+  it("renders lab meal card in V1 with a concise preview, nutrition bars, and no confirm button", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
       date,
       meals: {
@@ -879,7 +880,7 @@ describe("apiMealToRecord", () => {
     }} />);
 
     expect(html).toContain("Œufs · Fines herbes");
-    expect(html).not.toContain(">Omelette aux fines herbes</p>");
+    expect(html).toContain(">Omelette aux fines herbes</p>");
     expect(html).not.toContain("Note du jour");
     expect(html).not.toContain("mon petit déjeuner");
     expect(html).toContain("250");
