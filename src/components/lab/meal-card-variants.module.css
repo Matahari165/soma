@@ -883,6 +883,14 @@
     line-height: 24px;
   }
 
+  /* Two readable columns keep the nutrition labels intact on phones. */
+  .v1NutritionLine,
+  .v2NutritionGrid,
+  .v3PillsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+
   .v1CancelBtn {
     min-height: 44px;
     height: auto;
