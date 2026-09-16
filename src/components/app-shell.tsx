@@ -3,6 +3,7 @@
 import {
   Activity,
   BedDouble,
+  ChartNoAxesCombined,
   HeartPulse,
   LayoutDashboard,
   PanelLeftClose,
@@ -19,6 +20,7 @@ import type { SomaUser } from "@/lib/auth";
 
 const navigation = [
   { label: "Laboratoire", href: "/", icon: LayoutDashboard },
+  { label: "Analyse", href: "/analysis", icon: ChartNoAxesCombined },
   { label: "Alimentation", href: "/meals", icon: Utensils },
   { label: "Sommeil", href: "/sleep", icon: BedDouble },
   { label: "Récupération", href: "/recovery", icon: HeartPulse },
@@ -34,12 +36,12 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const displayName = user?.displayName ?? "Utilisateur Soma";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const isPersonalLab = pathname === "/";
-  const isStitchWorkspace = ["/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
+  const isStitchWorkspace = ["/analysis", "/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
   const activeNavigation = navigation;
   const activeMobileNavigation = navigation.filter(({ href }) => href !== "/");
 
   if (
-    ((pathname === "/" || pathname.startsWith("/meals")) && !user) ||
+    ((pathname === "/" || pathname.startsWith("/analysis") || pathname.startsWith("/meals")) && !user) ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/onboarding") ||

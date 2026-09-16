@@ -1,16 +1,16 @@
 import { Suspense } from "react";
 
 import type { PersonalLabStream } from "@/services/personal-lab";
-import { StrongestEffectsPanel } from "./correlation-matrix";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { PersonalLabJournalLoading } from "./personal-lab";
 import { ObservatoryRadar } from "./observatory-radar";
 import { LabWorldWorkspace } from "./lab-world-workspace";
 import { arrivalMessageFor } from "@/domain/lab/arrival-message";
+import { isLocalPreviewMode } from "@/lib/env";
 
 export async function LabWorldJournalPreview({ stream }: { stream: Pick<PersonalLabStream, "journal"> }) {
   const journal = await stream.journal;
-  return <PersonalLabJournalWorkspace data={journal} recentDatesFirst />;
+  return <PersonalLabJournalWorkspace data={journal} recentDatesFirst showVariantSwitcher={isLocalPreviewMode()} />;
 }
 
 export async function LabWorldPreview({ stream }: { stream: Pick<PersonalLabStream, "overview" | "journal"> }) {
@@ -23,7 +23,6 @@ export async function LabWorldPreview({ stream }: { stream: Pick<PersonalLabStre
     initialMessage: arrivalMessageFor({ name: overview.greetingName, timeZone: overview.timeZone, activity: overview.today.activity }),
   } as const;
   return <LabWorldWorkspace date={date} radar={<ObservatoryRadar data={overview.today} />}
-    effects={<StrongestEffectsPanel />}
     capture={<Suspense fallback={<PersonalLabJournalLoading />}><LabWorldJournalPreview stream={stream} /></Suspense>}
     personalization={personalization}
   />;

@@ -6,7 +6,9 @@ import type { PersonalLabJournal } from "@/services/personal-lab";
 import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
 import MealJournal from "../meal-journal";
+import type { MealDesignVariant } from "./meal-card-variants";
 import MealSupplements from "../meal-supplements";
+import styles from "./personal-lab-journal-workspace.module.css";
 
 function dateFromUrl() {
   if (typeof window === "undefined") return null;
@@ -50,12 +52,14 @@ export function PersonalLabJournalWorkspace({
   selectedDate: controlledSelectedDate,
   onDateChange: controlledOnDateChange,
   availableDates: controlledDates,
+  showVariantSwitcher = false,
 }: {
   data: PersonalLabJournal;
   recentDatesFirst?: boolean;
   selectedDate?: string;
   onDateChange?: (date: string) => void;
   availableDates?: readonly string[];
+  showVariantSwitcher?: boolean;
 }) {
   const defaultDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(data.todayDate, index - 6)), [data.todayDate]);
   const dates = controlledDates ?? defaultDates;
@@ -87,6 +91,22 @@ export function PersonalLabJournalWorkspace({
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
   const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);
+  const activeVariables = useMemo(() => data.journal.variables.filter((variable) => variable.isActive), [data.journal.variables]);
+  const progressForDate = useMemo(() => {
+    const activeIds = new Set(activeVariables.map((variable) => variable.id));
+    const omittedIds = new Set(data.journal.days.find((day) => day.entryDate === activeDate)?.omittedVariableIds ?? []);
+    const recordedIds = new Set(data.journal.entries
+      .filter((entry) => entry.entryDate === activeDate && activeIds.has(entry.variableId) && !omittedIds.has(entry.variableId))
+      .map((entry) => entry.variableId));
+    return { count: recordedIds.size, total: activeVariables.length };
+  }, [activeDate, activeVariables, data.journal.days, data.journal.entries]);
+  const [designVariant, setDesignVariant] = useState<MealDesignVariant>("v1");
+  const [journalProgress, setJournalProgress] = useState(progressForDate);
+
+  useEffect(() => setJournalProgress(progressForDate), [progressForDate]);
+
+  const progressRatio = journalProgress.total > 0 ? Math.min(1, journalProgress.count / journalProgress.total) : 0;
+  const progressLabel = `${journalProgress.count} / ${journalProgress.total}`;
 
   const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
@@ -112,14 +132,31 @@ export function PersonalLabJournalWorkspace({
     return map;
   }, [data]);
 
-  return <div className="personal-lab-workspace">
+  return <div className="personal-lab-workspace" data-design-variant={designVariant}>
     {sharedDateNavigation}
+    <div className={styles.controlRow}>
+      <div className={styles.progress} aria-label={`Progression du journal : ${journalProgress.count} habitudes confirmées sur ${journalProgress.total}`}>
+        <div className={styles.progressHeader}>
+          <span>Habitudes confirmées</span>
+          <span className={styles.progressValue}>{progressLabel}</span>
+        </div>
+        <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={journalProgress.total} aria-valuenow={journalProgress.count} aria-label={`Progression du journal : ${progressLabel}`}>
+          <span className={styles.progressFill} style={{ transform: `scaleX(${progressRatio})` }} />
+        </div>
+      </div>
+      {showVariantSwitcher ? <fieldset className={styles.variantSwitcher}>
+        <legend>Comparaison locale</legend>
+        <div className={styles.variantButtons} role="group" aria-label="Variantes visuelles">
+          {(["v1", "v2", "v3"] as const).map((variant) => <button key={variant} type="button" aria-pressed={designVariant === variant} onClick={() => setDesignVariant(variant)}>{variant.toUpperCase()}</button>)}
+        </div>
+      </fieldset> : null}
+    </div>
     <div className="personal-lab-workbench">
       <div className="personal-lab-meal-column">
-        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant="v1" />
+        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant={designVariant} />
       </div>
       <div className="personal-lab-journal-column" id="daily-journal">
-        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} />
+        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={(count, total) => setJournalProgress({ count, total })} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
     </div>

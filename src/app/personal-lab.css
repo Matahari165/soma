@@ -1430,3 +1430,73 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
     padding: 10px 12px;
   }
 }
+
+/* Journal state treatment: keep the Personal Lab surface dark and borderless
+   while retaining a visible, non-colour-only row signature. */
+.personal-lab-journal-column .journal-card--personal-lab .journal-field {
+  position: relative;
+  border-bottom-color: var(--lab-border);
+  transition: background-color 180ms cubic-bezier(.2, .8, .2, 1), border-color 180ms cubic-bezier(.2, .8, .2, 1);
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__label-row {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__label-text {
+  min-width: 0;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__state-mark {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+  color: var(--lab-warning);
+  transition: color 180ms cubic-bezier(.2, .8, .2, 1), transform 180ms cubic-bezier(.2, .8, .2, 1);
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__state-mark svg { display: block; width: 15px; height: 15px; }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field[data-state="recorded"] .journal-field__state-mark { color: var(--lab-signal); }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field[data-state="skipped"] .journal-field__state-mark { color: var(--lab-text-secondary); }
+.personal-lab-journal-column .journal-card--personal-lab .journal-field[data-state="pending"] .journal-field__label-text {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--lab-warning);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__feedback {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  display: block;
+  height: 2px;
+  pointer-events: none;
+  background: var(--lab-signal);
+  transform-origin: left center;
+  animation: journal-field-feedback 520ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.personal-lab-journal-column .journal-card--personal-lab .journal-field--changed .journal-field__state-mark { animation: journal-field-state-pop 520ms cubic-bezier(.16, 1, .3, 1) both; }
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field[data-state="recorded"] { background: color-mix(in srgb, var(--lab-signal) 8%, transparent); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field[data-state="pending"] { background: color-mix(in srgb, var(--lab-warning) 4%, transparent); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="recorded"] { border-bottom-color: color-mix(in srgb, var(--lab-signal) 58%, var(--lab-border)); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="pending"] { border-bottom-color: var(--lab-warning); border-bottom-style: dashed; }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="skipped"] { border-bottom-color: var(--lab-border-strong); border-bottom-style: dotted; }
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] :is(.journal-choice, .journal-number, .journal-clock),
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] > input,
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] > select { box-shadow: inset 0 -2px var(--lab-signal); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] :is(.journal-choice, .journal-number, .journal-clock),
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] > input,
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] > select { box-shadow: inset 0 -2px var(--lab-warning); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] .journal-field__label { color: var(--lab-text-secondary); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] .journal-field__label { color: var(--lab-text-primary); font-weight: 540; }
+
+@media (prefers-reduced-motion: reduce) {
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field__state-mark { transition: none; }
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field__feedback,
+  .personal-lab-journal-column .journal-card--personal-lab .journal-field--changed .journal-field__state-mark { animation: none; }
+}

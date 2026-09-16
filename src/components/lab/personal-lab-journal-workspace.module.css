@@ -1,0 +1,102 @@
+.controlRow {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 18px 0 20px;
+}
+
+.progress {
+  display: grid;
+  gap: 9px;
+  width: min(360px, 100%);
+}
+
+.progressHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--lab-text-secondary);
+  font-size: 12px;
+}
+
+.progressValue {
+  color: var(--lab-text-primary);
+  font: 500 13px/1 var(--font-soma-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--lab-text-secondary) 24%, var(--lab-surface));
+}
+
+.progressFill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--lab-brand);
+  transform-origin: left center;
+  transition: transform 180ms ease-out;
+}
+
+.variantSwitcher {
+  display: grid;
+  gap: 7px;
+  min-width: 178px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--lab-text-secondary);
+}
+
+.variantSwitcher legend {
+  padding: 0;
+  color: var(--lab-text-secondary);
+  font-size: 11px;
+}
+
+.variantButtons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  gap: 4px;
+}
+
+.variantButtons button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-sm);
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font: 500 11px/1 var(--font-soma-mono), monospace;
+  transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.variantButtons button:hover,
+.variantButtons button[aria-pressed="true"] {
+  border-color: var(--lab-border-strong);
+  background: var(--lab-surface-selected);
+  color: var(--lab-text-primary);
+}
+
+@media (max-width: 700px) {
+  .controlRow {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .progress,
+  .variantSwitcher {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressFill,
+  .variantButtons button { transition: none; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, LoaderCircle, PencilLine, ScanLine } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleMinus, ImagePlus, LoaderCircle, PencilLine, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
@@ -77,6 +77,7 @@ const editableJournalDayPeriods = journalDayPeriods.filter((period) => period.id
 const numericTypes = new Set<JournalVariableType>(["count", "duration", "number", "scale"]);
 const textNumericTypes = new Set<JournalVariableType>(["count", "duration", "number"]);
 type JournalSaveStatus = "draft" | "saving" | "saved" | "error";
+export type JournalStatusTreatment = "v1" | "v2" | "v3";
 
 export function journalStatusText({ validated, validating, saveStatus }: { validated: boolean; validating: boolean; saveStatus: JournalSaveStatus }) {
   if (validating) return "Validation…";
@@ -426,6 +427,7 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
 
 function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayValidated, automatic = false, achievement, activeHorizons, onChange, onCommit, feedbackToken, disabled, presentation = "default", editMode = false, editOpen = false, onEdit }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; dayValidated: boolean; automatic?: boolean; achievement?: JournalAchievement; activeHorizons?: readonly number[]; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab"; editMode?: boolean; editOpen?: boolean; onEdit?: () => void }) {
   const stateLabel = confirmed ? "Enregistrée" : skipped ? "Non renseignée" : "À confirmer";
+  const state = confirmed ? "recorded" : skipped ? "skipped" : "pending";
   const isAutomatic = automatic || variable.captureMode === "automatic";
   const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", dayValidated ? "journal-field--day-validated" : "", isAutomatic ? "journal-field--automatic" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
@@ -433,6 +435,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   const label = journalVariableLabel(variable);
   const automaticDetectionLabel = isAutomatic ? "Détection automatique" : null;
   const dayValidationLabel = dayValidated ? "Journée validée" : null;
+  const stateIcon = confirmed ? <CircleCheck size={15} strokeWidth={1.8} aria-hidden="true" /> : skipped ? <CircleMinus size={15} strokeWidth={1.8} aria-hidden="true" /> : <CircleDashed size={15} strokeWidth={1.8} aria-hidden="true" />;
   const accessibleState = [stateLabel, dayValidationLabel, automaticDetectionLabel?.toLocaleLowerCase("fr-FR")].filter(Boolean).join(", ");
   const accessibleLabel = `${label}: ${accessibleState}`;
   const editorId = `journal-variable-edit-${variable.id}`;
@@ -447,7 +450,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       ))}
     </span>
   ) : null;
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}{isEarlyMaturity && (
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-row"><span className="journal-field__state-mark" data-state={state} aria-hidden="true">{stateIcon}</span><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span></span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}{isEarlyMaturity && (
     <span className="journal-maturity-indicator" title={`${observedCount}/10 observations recorded to unlock statistical analysis`}>
       <span className="journal-maturity-bar">
         <span className="journal-maturity-fill" style={{ width: `${Math.min(100, (observedCount / 10) * 100)}%` }} />
@@ -488,9 +491,11 @@ export type DailyJournalProps = {
   onTodayMorningValidation?: (completed: boolean) => void;
   presentation?: "default" | "personal-lab";
   activeEffectsByVariable?: ReadonlyMap<string, readonly number[]> | Record<string, readonly number[]>;
+  statusTreatment?: JournalStatusTreatment;
+  onCompletionChange?: (count: number, total: number) => void;
 };
 
-export function DailyJournal({ variables, entries, days, achievements, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation, presentation = "default", activeEffectsByVariable }: DailyJournalProps) {
+export function DailyJournal({ variables, entries, days, achievements, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation, presentation = "default", activeEffectsByVariable, statusTreatment = "v1", onCompletionChange }: DailyJournalProps) {
   const router = useRouter();
   const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
   const achievementsByVariable = useMemo(() => new Map((achievements ?? []).map((achievement) => [achievement.variableId, achievement])), [achievements]);
@@ -525,6 +530,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const managerTriggerRef = useRef<HTMLButtonElement>(null);
   const managerRef = useRef<HTMLElement>(null);
   const [feedback, setFeedback] = useState<{ fieldId: string; token: number } | null>(null);
+  const [completionRevision, setCompletionRevision] = useState(0);
   const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
   const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
   const [manualOverrideKeys, setManualOverrideKeys] = useState<Set<string>>(() => new Set());
@@ -546,6 +552,11 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const automaticIds = useMemo(() => new Set([...automaticIdsByDate[entryDate] ?? []].filter((id) => !manualOverrideKeys.has(`${entryDate}:${id}`))), [automaticIdsByDate, entryDate, manualOverrideKeys]);
   const recorded = useMemo(() => new Set([...(recordedByDate[entryDate] ?? []), ...automaticIds]), [automaticIds, recordedByDate, entryDate]);
   const skipped = useMemo(() => new Set([...(skippedByDate[entryDate] ?? [])].filter((id) => !automaticIds.has(id))), [automaticIds, skippedByDate, entryDate]);
+  const completionCount = useMemo(() => activeVariables.reduce((count, variable) => count + (recorded.has(variable.id) ? 1 : 0), 0), [activeVariables, recorded]);
+
+  useEffect(() => {
+    onCompletionChange?.(completionCount, activeVariables.length);
+  }, [activeVariables.length, completionCount, completionRevision, entryDate, onCompletionChange]);
 
   useEffect(() => () => {
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
@@ -693,6 +704,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     }
     if (variable && textNumericTypes.has(variable.variableType)) pendingNumericFeedback.current.add(variableId);
     else if (variable) triggerFeedback(variableId);
+    setCompletionRevision((current) => current + 1);
     queueDraft(date, variableId, next[date]);
   }
 
@@ -744,7 +756,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
           setManagerOpen(true);
         }
       }}>{managerOpen ? "Terminé" : <><PencilLine size={14} aria-hidden="true" />Modifier</>}</button>;
-      return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""}`} data-managing={managerOpen ? "true" : undefined} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Actions du journal"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
+      return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""} journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Actions du journal"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
         {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
         <span>{statusText}</span>
       </span>

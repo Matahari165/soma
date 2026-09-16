@@ -4079,3 +4079,83 @@
 .mealsJournalPanel .deleteDialog { border-color: var(--lab-border); border-radius: var(--lab-radius-sm); background: var(--lab-surface); color: var(--lab-text-primary); }
 .labRoot .deleteDialog p,
 .mealsJournalPanel .deleteDialog p { color: var(--lab-text-secondary); }
+
+/* Current local meal window: a textual cue carries the meaning, while the
+   quiet surface shift keeps the four-slot order and every action intact. */
+.mealPriority {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-control);
+  color: var(--ink-soft);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mealPriority::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+}
+
+.mealCardPriority {
+  background: color-mix(in srgb, var(--line) 14%, transparent);
+}
+
+.mealCardPriority .mealTitle { flex-wrap: wrap; }
+.mealCardPriority .mealHeader { background: color-mix(in srgb, var(--line) 18%, transparent); }
+
+.prioritySlot > .mealPriorityNotice {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin: 0 0 4px;
+  color: var(--ink-soft);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.prioritySlot > .mealPriorityNotice::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+}
+
+.prioritySlot > article {
+  background: color-mix(in srgb, var(--line) 14%, transparent);
+}
+
+.labRoot .mealPriority,
+.labRoot .prioritySlot > .mealPriorityNotice {
+  color: var(--lab-text-primary);
+}
+
+.labRoot .prioritySlot > article {
+  padding-inline: 8px;
+  background: color-mix(in srgb, var(--lab-surface-selected) 34%, transparent);
+}
+
+@media (max-width: 680px) {
+  .mealPriority { padding-inline: 6px; }
+  .mealCardPriority .mealTitle { row-gap: 4px; }
+}

@@ -142,6 +142,34 @@ const SLOT_ARTICLES: Record<MealSlot, "le" | "la"> = {
   snack: "la",
 };
 
+export function mealSlotForLocalTime(value: Date = new Date()): MealSlot | null {
+  const hour = value.getHours();
+  if (hour >= 6 && hour < 11) return "breakfast";
+  if (hour >= 11 && hour < 16) return "lunch";
+  if (hour === 16) return "snack";
+  if (hour >= 17 && hour < 24) return "dinner";
+  return null;
+}
+
+function localDateFor(value: Date) {
+  const offset = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function nextMealPriorityBoundary(value: Date) {
+  const next = new Date(value);
+  const hour = value.getHours();
+  if (hour < 6) next.setHours(6, 0, 0, 0);
+  else if (hour < 11) next.setHours(11, 0, 0, 0);
+  else if (hour < 16) next.setHours(16, 0, 0, 0);
+  else if (hour < 17) next.setHours(17, 0, 0, 0);
+  else {
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+  }
+  return next;
+}
+
 function mealLabelWithArticle(slot: MealSlot) {
   return `${SLOT_ARTICLES[slot]} ${SLOT_LABELS[slot].toLowerCase()}`;
 }
@@ -868,7 +896,7 @@ function MealSourceEvidence({ meal }: { meal: MealRecord }) {
   </details>;
 }
 
-function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onCancelAnalysis, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, priority = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onCancelAnalysis, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
   saving: boolean;
@@ -878,6 +906,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   compactEmpty?: boolean;
   labCompact?: boolean;
   mealsCompact?: boolean;
+  priority?: boolean;
   openRequest?: number;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
@@ -950,9 +979,10 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     return true;
   };
 
-  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
+  const priorityHintId = `meal-${slot}-priority`;
+  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-describedby={priority ? priorityHintId : undefined} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
-      <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
+      <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3>{priority && <span id={priorityHintId} className={styles.mealPriority}>Maintenant</span>}</div>
       {labCompact ? <div className={styles.labHeaderActions}>
         {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.status}>{visibleStatus}</span> : null}
         {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
@@ -1079,6 +1109,28 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const initialDate = requestedDate > today ? today : requestedDate;
   const [internalSelectedDate, setInternalSelectedDate] = useState(initialDate);
   const selectedDate = selectedDateProp ?? internalSelectedDate;
+  const prioritizesCurrentMeal = variant === "home" || variant === "lab";
+  const [localNow, setLocalNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!prioritizesCurrentMeal) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      const current = new Date();
+      const nextBoundary = nextMealPriorityBoundary(current);
+      const delay = Math.max(1_000, nextBoundary.getTime() - current.getTime() + 50);
+      timer = setTimeout(() => {
+        setLocalNow(new Date());
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [prioritizesCurrentMeal]);
+  const currentMealSlot = prioritizesCurrentMeal && selectedDate === localDateFor(localNow)
+    ? mealSlotForLocalTime(localNow)
+    : null;
   const [data, setData] = useState<MealJournalData | null>(() => initialData ? normalizeData(initialData, initialDate) : null);
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -1833,33 +1885,38 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         </header>
         <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-          return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
+          const priority = currentMealSlot === slot && !disabledSlots.includes(slot) && meal?.entryState !== "skipped";
+          return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} priority={priority} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
         })}</div>
       </section>
       <div className={styles.mealsSecondary}>{children}</div>
     </div> : <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
         const meal = readyData.meals[slot] ?? null;
-        return <div id={`meal-${slot}`} key={`${selectedDate}-${slot}`}>{
+        const priority = currentMealSlot === slot && !disabledSlots.includes(slot) && meal?.entryState !== "skipped";
+        return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}>{
           variant === "lab" ? (
-            <LabMealCard
-              meal={meal}
-              slot={slot}
-              designVariant={designVariant}
-              disabled={disabledSlots.includes(slot)}
-              saving={savingSlot === slot}
-              processingFiles={processingFiles}
-              mutationBusy={slotBusy(slot)}
-              confirmError={confirmError[slot]}
-              onFiles={(files) => addFiles(slot, files)}
-              onRemovePhoto={(photoId) => removePhoto(slot, photoId)}
-              onAnalyze={() => void analyzeMeal(slot)}
-              onCancelAnalysis={() => cancelAnalysis(slot)}
-              onNote={(note) => setNote(slot, note)}
-              onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
-              onMarkSkipped={() => void changeEntryState(slot, "skipped")}
-            />
+            <>
+              {priority && <p id={`meal-${slot}-priority`} className={styles.mealPriorityNotice}>Maintenant</p>}
+              <LabMealCard
+                meal={meal}
+                slot={slot}
+                designVariant={designVariant}
+                disabled={disabledSlots.includes(slot)}
+                saving={savingSlot === slot}
+                processingFiles={processingFiles}
+                mutationBusy={slotBusy(slot)}
+                confirmError={confirmError[slot]}
+                onFiles={(files) => addFiles(slot, files)}
+                onRemovePhoto={(photoId) => removePhoto(slot, photoId)}
+                onAnalyze={() => void analyzeMeal(slot)}
+                onCancelAnalysis={() => cancelAnalysis(slot)}
+                onNote={(note) => setNote(slot, note)}
+                onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
+                onMarkSkipped={() => void changeEntryState(slot, "skipped")}
+              />
+            </>
           ) : (
-            <MealCard meal={meal} slot={slot} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
+            <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
           )
         }</div>;
       })}</div>}
