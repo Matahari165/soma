@@ -15,16 +15,16 @@ describe("Today signals", () => {
     expect(html).toContain('href="/activity"');
     expect(html).toContain('href="/meals"');
     expect(html).not.toContain('href="/effort"');
-    expect(html).toContain("Moy. 30 j · 8h 00");
+    expect(html).toContain("30d avg · 8h 00");
     expect(html).not.toContain("Regularity");
     expect(html).toContain("lab-signal__value--above");
     expect(html).toContain("lab-signal__value--below");
-    expect(html).toContain('aria-label="Sommeil : 8h 30"');
-    expect(html).toContain('aria-label="Récupération : 72"');
-    expect(html).toContain('aria-label="Effort : 63"');
-    expect(html).toContain('aria-label="Calories : 72%"');
+    expect(html).toContain('aria-label="Sleep: 8h 30"');
+    expect(html).toContain('aria-label="Recovery: 72"');
+    expect(html).toContain('aria-label="Activity: 63"');
+    expect(html).toContain('aria-label="Calories: 72%"');
     expect(html).toContain('lab-signal__value lab-signal__value--below');
-    expect(html).not.toContain("Cible · 3000 kcal");
+    expect(html).not.toContain("Target · 3,000 kcal");
     expect(html).not.toContain('aria-live="polite" aria-busy');
   });
 
@@ -45,7 +45,7 @@ describe("Today signals", () => {
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--above" data-trend="above"');
     expect(html.match(/data-trend="neutral"/g)).toHaveLength(2);
     expect(html).toContain('class="personal-lab-metric personal-lab-metric--below" data-trend="below"');
-    expect(html).toContain("Cible 3 050");
+    expect(html).toContain("Target 3,050");
   });
 
   it("keeps the five-day metric history localized for assistive technology", () => {
@@ -64,7 +64,7 @@ describe("Today signals", () => {
       ],
     } }));
 
-    expect(html).toContain("Historique des cinq derniers jours : 11 sept. 2026 : 8h 30, 10 sept. 2026 : —");
+    expect(html).toContain("Last 5 days history: Sep 11, 2026: 8h 30, Sep 10, 2026: —");
     expect(html).not.toContain("2026-09-11");
   });
 

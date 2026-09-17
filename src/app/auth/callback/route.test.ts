@@ -29,7 +29,16 @@ beforeEach(() => {
     delete: deleteCookie,
   } as never);
   vi.mocked(upsertGoogleUser).mockResolvedValue({ id: "user-1", email: "user@example.com", displayName: "User" });
-  vi.mocked(createSession).mockResolvedValue(undefined);
+  vi.mocked(createSession).mockResolvedValue({
+    token: "tok-test",
+    cookieOptions: {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(Date.now() + 86400000),
+    },
+  });
   vi.stubGlobal("fetch", vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "token" }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ sub: "google-subject", email: "user@example.com", name: "User" }), { status: 200 })));

@@ -179,8 +179,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 @media(max-width:700px) {
  html[data-lab-theme="observatory"] .radar-label { font-size:28px!important; }
  html[data-lab-theme="observatory"] .radar-number { font-size:24px!important; }
- html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-72px); }
- html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(72px); }
+ html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-88px); }
+ html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(88px); }
 }
 
 /* Le maillage reste discret, avec un appui lisible sur la moitié gauche. */

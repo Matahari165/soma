@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { createCredentialsUser, validateEmail, validatePassword } from "@/lib/auth-credentials";
-import { createSession } from "@/lib/cloudflare/session";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -35,8 +34,6 @@ export async function POST(request: Request) {
       displayName: typeof displayName === "string" ? displayName : undefined,
     });
 
-    await createSession(user.id);
-
     return NextResponse.json(
       {
         ok: true,
@@ -45,7 +42,6 @@ export async function POST(request: Request) {
           email: user.email,
           displayName: user.displayName,
         },
-        hasCompletedOnboarding: false,
       },
       { status: 201 },
     );

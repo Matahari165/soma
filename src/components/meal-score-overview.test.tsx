@@ -16,11 +16,11 @@ function completeComponent(key: MealBalanceComponentKey, score: number): MealBal
   return {
     key,
     label: {
-      nutritionAdequacy: "Adéquation nutritionnelle",
-      foodQuality: "Qualité alimentaire",
-      sugarLoad: "Sucre et concentration",
-      nova: "Transformation NOVA",
-      positiveVariety: "Variété positive",
+      nutritionAdequacy: "Nutritional adequacy",
+      foodQuality: "Food quality",
+      sugarLoad: "Sugar & concentration",
+      nova: "NOVA processing",
+      positiveVariety: "Positive variety",
     }[key],
     score,
     rawScore: score,
@@ -32,13 +32,13 @@ function completeComponent(key: MealBalanceComponentKey, score: number): MealBal
     observationCoverage: 1,
     confidence: 1,
     status: "ready",
-    observedValue: "observé",
-    target: "Cible personnelle",
-    summary: "Résumé de la dimension.",
+    observedValue: "observed",
+    target: "Personal target",
+    summary: "Dimension summary.",
     period: { from: "2026-08-19", to: "2026-09-15" },
     subcomponents: [{
       key: `${key}-detail`,
-      label: "Sous-indicateur",
+      label: "Sub-metric",
       score,
       rawScore: score,
       adjustedScore: score,
@@ -47,7 +47,7 @@ function completeComponent(key: MealBalanceComponentKey, score: number): MealBal
       target: "100",
       confidence: 1,
       status: "ready",
-      summary: "Détail.",
+      summary: "Detail.",
     }],
   };
 }
@@ -68,13 +68,13 @@ describe("MealScoreOverviewPanel", () => {
   it("présente un état vide sans transformer l'absence en zéro ni afficher de couverture", () => {
     const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={null} rolling={[]} trend={[]} />);
 
-    expect(html).toContain('aria-label="Équilibre alimentaire"');
-    expect(html).toContain("Score indisponible");
-    expect(html).toContain("Confiance");
-    expect(html).not.toContain("Couverture");
-    expect(html).toContain("Aucun historique de score disponible.");
-    expect(html).toContain("Aucune moyenne disponible.");
-    expect(html).not.toContain(">0 %</dd>");
+    expect(html).toContain('aria-label="Dietary balance"');
+    expect(html).toContain("Score unavailable");
+    expect(html).toContain("Confidence");
+    expect(html).not.toContain("Coverage");
+    expect(html).toContain("No score history available.");
+    expect(html).toContain("No averages available.");
+    expect(html).not.toContain(">0%</dd>");
   });
 
   it("rend les cinq axes, leurs détails et les historiques sans ancienne dimension", () => {
@@ -93,18 +93,18 @@ describe("MealScoreOverviewPanel", () => {
       />,
     );
 
-    for (const label of ["Adéquation nutritionnelle", "Qualité alimentaire", "Sucre et concentration", "Transformation NOVA", "Variété positive"]) {
-      expect(html).toContain(label);
+    for (const label of ["Nutritional adequacy", "Food quality", "Sugar & concentration", "NOVA processing", "Positive variety"]) {
+      expect(html.includes(label) || html.includes(label.replace("&", "&amp;"))).toBe(true);
     }
     expect(html).toContain("Contribution");
-    expect(html).toContain("Détails de la dimension");
-    expect(html).toContain("Évolution sur 28 jours");
-    expect(html).toContain("14 jours (8 observés)");
-    expect(html).toContain("28 jours (12 observés)");
+    expect(html).toContain("Dimension details");
+    expect(html).toContain("28-day trend");
+    expect(html).toContain("14-day (8 observed)");
+    expect(html).toContain("28-day (12 observed)");
     expect(html.match(/role="button"/g)).toHaveLength(5);
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
     expect(html).toContain('data-key="nutritionAdequacy"');
-    expect(html).toContain("Profil des cinq dimensions de l’alimentation");
+    expect(html).toContain("Dietary dimensions profile");
     expect(html).not.toContain("Couverture nutritionnelle");
     expect(html).not.toContain("Exposition liquide / concentrée");
     expect(html).not.toContain("Ultra-transformation");

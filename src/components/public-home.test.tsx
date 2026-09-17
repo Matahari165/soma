@@ -13,8 +13,8 @@ describe("PublicHome", () => {
     const html = renderToStaticMarkup(<PublicHome />);
 
     expect(html).toContain("Soma");
-    expect(html).toContain("Lisez votre");
-    expect(html).toContain("propre rythme.");
+    expect(html).toContain("Read your");
+    expect(html).toContain("own rhythm.");
     expect(html).toContain("Welcome");
     expect(html).toContain("Sign in");
     expect(html).toContain("Create account");

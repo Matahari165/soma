@@ -24,10 +24,10 @@ export function PublicHome({
         </Link>
         <div className="auth-intro__copy">
           <h1 id="auth-intro-title">
-            Lisez votre<br />
-            <em>propre rythme.</em>
+            Read your<br />
+            <em>own rhythm.</em>
           </h1>
-          <p>Sommeil, récupération, mouvement et entraînement — mesurés par rapport à vous.</p>
+          <p>Sleep, recovery, movement, and training — measured against you.</p>
         </div>
       </section>
       <section className="auth-card-wrap" aria-labelledby="auth-title">

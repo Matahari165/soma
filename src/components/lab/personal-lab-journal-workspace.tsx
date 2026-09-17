@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PersonalLabJournal } from "@/services/personal-lab";
 
 import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
 import MealJournal from "../meal-journal";
+import type { MealDesignVariant } from "./meal-card-variants";
 import MealSupplements from "../meal-supplements";
+import styles from "./personal-lab-journal-workspace.module.css";
+
+const designVariants: ReadonlyArray<{ id: MealDesignVariant; label: string }> = [
+  { id: "v1", label: "Row" },
+  { id: "v2", label: "Grid" },
+  { id: "v3", label: "Split" },
+];
+
+export const JOURNAL_PROGRESS_EVENT = "soma:journal-progress";
 
 function dateFromUrl() {
   if (typeof window === "undefined") return null;
@@ -22,22 +32,22 @@ function addDays(date: string, days: number) {
 
 function sharedDateLabel(date: string, todayDate: string) {
   const offset = Math.round((new Date(`${todayDate}T12:00:00Z`).getTime() - new Date(`${date}T12:00:00Z`).getTime()) / 86_400_000);
-  if (offset === 0) return "Aujourd’hui";
-  if (offset === 1) return "Hier";
-  if (offset === 2) return "Avant-hier";
-  return new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "");
+  if (offset === 0) return "Today";
+  if (offset === 1) return "Yesterday";
+  if (offset === 2) return "2 days ago";
+  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`));
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
 export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completedDates = new Set<string>(), disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; completedDates?: ReadonlySet<string>; disabled?: boolean; onDateChange: (date: string) => void }) {
-  return <nav className="personal-lab-day-strip" aria-label="Jour partagé entre les repas et le journal">
-    <div className="personal-lab-day-strip__days" role="group" aria-label="Jours disponibles">
+  return <nav className="personal-lab-day-strip" aria-label="Shared day between meals and journal">
+    <div className="personal-lab-day-strip__days" role="group" aria-label="Available days">
       {dates.map((date) => <button key={date} type="button" disabled={disabled} aria-current={date === selectedDate ? "date" : undefined} onClick={() => onDateChange(date)}>
         <span>{sharedDateLabel(date, todayDate)}</span>
-        <small>{new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
+        <small>{new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`))}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
         <span className="sr-only">{formatDate(date)}</span>
       </button>)}
     </div>
@@ -50,12 +60,14 @@ export function PersonalLabJournalWorkspace({
   selectedDate: controlledSelectedDate,
   onDateChange: controlledOnDateChange,
   availableDates: controlledDates,
+  showVariantSwitcher = false,
 }: {
   data: PersonalLabJournal;
   recentDatesFirst?: boolean;
   selectedDate?: string;
   onDateChange?: (date: string) => void;
   availableDates?: readonly string[];
+  showVariantSwitcher?: boolean;
 }) {
   const defaultDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(data.todayDate, index - 6)), [data.todayDate]);
   const dates = controlledDates ?? defaultDates;
@@ -87,6 +99,27 @@ export function PersonalLabJournalWorkspace({
   const [breakfastDisabled, setBreakfastDisabled] = useState(() => breakfastIsExplicitlySkipped({ todayDate: data.todayDate, variables: data.journal.variables, entries: data.journal.entries, days: data.journal.days }));
   const activeDate = dates.includes(selectedDate) ? selectedDate : data.todayDate;
   const completedDates = useMemo(() => new Set(data.journal.days.filter((day) => day.status === "validated").map((day) => day.entryDate)), [data.journal.days]);
+  const activeVariables = useMemo(() => data.journal.variables.filter((variable) => variable.isActive), [data.journal.variables]);
+  const progressForDate = useMemo(() => {
+    const activeIds = new Set(activeVariables.map((variable) => variable.id));
+    const omittedIds = new Set(data.journal.days.find((day) => day.entryDate === activeDate)?.omittedVariableIds ?? []);
+    const recordedIds = new Set(data.journal.entries
+      .filter((entry) => entry.entryDate === activeDate && activeIds.has(entry.variableId) && !omittedIds.has(entry.variableId))
+      .map((entry) => entry.variableId));
+    return { count: recordedIds.size, total: activeVariables.length };
+  }, [activeDate, activeVariables, data.journal.days, data.journal.entries]);
+  const [designVariant, setDesignVariant] = useState<MealDesignVariant>("v1");
+  const [journalProgressOverride, setJournalProgressOverride] = useState<{ date: string; count: number; total: number } | null>(null);
+  const journalProgress = journalProgressOverride?.date === activeDate ? journalProgressOverride : progressForDate;
+  const handleCompletionChange = useCallback((count: number, total: number) => {
+    setJournalProgressOverride({ date: activeDate, count, total });
+  }, [activeDate]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(JOURNAL_PROGRESS_EVENT, {
+      detail: { date: activeDate, count: journalProgress.count, total: journalProgress.total },
+    }));
+  }, [activeDate, journalProgress.count, journalProgress.total]);
 
   const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
@@ -112,14 +145,22 @@ export function PersonalLabJournalWorkspace({
     return map;
   }, [data]);
 
-  return <div className="personal-lab-workspace">
+  return <div className="personal-lab-workspace" data-design-variant={designVariant}>
     {sharedDateNavigation}
+    {showVariantSwitcher ? <div className={styles.controlRow}>
+      <fieldset className={styles.variantSwitcher}>
+        <legend>Local comparison</legend>
+        <div className={styles.variantButtons} role="group" aria-label="Visual variants">
+          {designVariants.map((variant) => <button key={variant.id} type="button" title={`Layout ${variant.label}`} aria-pressed={designVariant === variant.id} onClick={() => setDesignVariant(variant.id)}>{variant.label}</button>)}
+        </div>
+      </fieldset>
+    </div> : null}
     <div className="personal-lab-workbench">
       <div className="personal-lab-meal-column">
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant="v1" />
       </div>
       <div className="personal-lab-journal-column" id="daily-journal">
-        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} />
+        <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
     </div>

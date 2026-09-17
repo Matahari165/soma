@@ -29,20 +29,20 @@ describe("MealJournal", () => {
     const snackStart = html.indexOf('id="meal-snack-title"');
     const lunch = html.slice(lunchStart, snackStart);
 
-    expect(lunch).toContain("Photo et note du jour");
-    expect(lunch).toContain("Note du jour");
+    expect(lunch).toContain("Photo and note of the day");
+    expect(lunch).toContain("Daily note");
     expect(lunch).toContain("Déjeuner pris au calme.");
-    expect(lunch).toContain("Photo analysée puis supprimée.");
+    expect(lunch).toContain("Photo analyzed then purged.");
     expect(lunch).not.toContain('alt="Photo originale 1 du repas"');
     expect(lunch).not.toContain("/api/meals/meal-confirmed-source/photos/photo-source");
-    expect(lunch).toContain("Confirmé");
+    expect(lunch).toContain("Confirmed");
     expect(lunch).toContain("<textarea");
-    expect(lunch).not.toContain("Origine de la photo");
+    expect(lunch).not.toContain("Photo origin");
   });
 
   it("explique clairement les photos refusées au-delà de la limite", () => {
-    expect(mealPhotoLimitMessage(5, 2, 6)).toBe("6 photos maximum par repas. 1 photo n’a pas été ajoutée.");
-    expect(mealPhotoLimitMessage(6, 1, 6)).toBe("Maximum de 6 photos par repas atteint. Retire une photo avant d’en ajouter une autre.");
+    expect(mealPhotoLimitMessage(5, 2, 6)).toBe("Maximum 6 photos per meal. 1 photo was not added.");
+    expect(mealPhotoLimitMessage(6, 1, 6)).toBe("Maximum limit of 6 photos per meal reached. Remove a photo before adding another.");
     expect(mealPhotoLimitMessage(4, 2, 6)).toBeNull();
   });
 
@@ -67,12 +67,12 @@ describe("MealJournal", () => {
   it("uses a compact home variant without moving the full calorie banner", () => {
     const html = renderToStaticMarkup(<MealJournal variant="home" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
 
-    expect(html).toContain("Journal quotidien");
+    expect(html).toContain("Daily journal");
     expect(html).not.toContain("Page dédiée");
     expect(html).not.toContain("score-ring--large");
     expect(html.match(/<textarea/g) ?? []).toHaveLength(0);
-    expect(html.match(/>Écrire<\/button>/g)).toHaveLength(4);
-    expect(html.match(/>Caméra<\/button>/g)).toHaveLength(4);
+    expect(html.match(/>Write note<\/button>/g)).toHaveLength(4);
+    expect(html.match(/>Camera<\/button>/g)).toHaveLength(4);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(4);
   });
 
@@ -102,31 +102,30 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Croissant");
-    expect(html).not.toContain("Croissant &amp; Café");
-    expect(html).toContain("Calories : 650 kcal");
-    expect(html).toContain("Protéines : 10 g");
-    expect(html).toContain("Glucides : 120 g");
-    expect(html).toContain("Lipides : 16 g");
-    expect(html).toContain("Sucres ajoutés : 5 g");
-    expect(html).toContain(">Modifier<\/button>");
-    expect(html).toContain(">Collation<\/h3>");
-    expect(html).toContain('aria-label="Analyser le déjeuner"');
-    expect(html).toContain('aria-label="Prendre une photo pour le déjeuner"');
-    expect(html).toContain('aria-label="Choisir des photos pour le déjeuner"');
-    expect(html).toContain('aria-label="Choisir des photos pour la collation"');
-    expect(html).toContain('aria-label="Choisir des photos pour le dîner"');
+    expect(html).toContain("Croissant &amp; Café");
+    expect(html).toContain("Calories: 650 kcal");
+    expect(html).toContain("Protein: 10 g");
+    expect(html).toContain("Carbohydrates: 120 g");
+    expect(html).toContain("Fat: 16 g");
+    expect(html).toContain("Added sugar: 5 g");
+    expect(html).toContain(">Edit<\/button>");
+    expect(html).toContain(">Snack<\/h3>");
+    expect(html).toContain('aria-label="Analyze Lunch"');
+    expect(html).toContain('aria-label="Take photo for Lunch"');
+    expect(html).toContain('aria-label="Choose photos for Lunch"');
+    expect(html).toContain('aria-label="Choose photos for Snack"');
+    expect(html).toContain('aria-label="Choose photos for Dinner"');
     expect(html).not.toContain("Ajouter une photo pour");
-    expect(html.match(/>Caméra<\/button>/g)).toHaveLength(3);
+    expect(html.match(/>Camera<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
-    expect(html.match(/>Analyser le repas<\/span>/g)).toHaveLength(3);
-    expect(html).not.toContain('aria-label="Modifier les cibles du jour"');
+    expect(html.match(/>Analyze meal<\/span>/g)).toHaveLength(3);
+    expect(html).not.toContain('aria-label="Edit daily targets"');
   });
 
   it("réserve l’édition des cibles au journal qui l’autorise", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" allowTargetEditing date={date} today={date} initialData={{ date, meals: {} }} />);
 
-    expect(html).toContain('aria-label="Modifier les cibles du jour"');
+    expect(html).toContain('aria-label="Edit daily targets"');
     expect(html).toContain('aria-controls="meal-target-editor"');
   });
 
@@ -139,31 +138,31 @@ describe("MealJournal", () => {
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 
-    expect(html).toContain("Petit déjeuner");
-    expect(html).toContain("Déjeuner");
-    expect(html).toContain("Dîner");
-    expect(html).toContain("Collation");
-    expect(html.indexOf("Collation")).toBeLessThan(html.indexOf("Dîner"));
-    expect(html).toContain("Collation");
-    expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(4);
+    expect(html).toContain("Breakfast");
+    expect(html).toContain("Lunch");
+    expect(html).toContain("Dinner");
+    expect(html).toContain("Snack");
+    expect(html.indexOf("Snack")).toBeLessThan(html.indexOf("Dinner"));
+    expect(html).toContain("Snack");
+    expect(html.match(/>Take a photo<\/button>/g)).toHaveLength(4);
     expect(html.match(/<textarea/g)).toHaveLength(4);
     expect(html).not.toContain(">Décrire le repas<");
     expect(html).toContain('for="meal-breakfast-note"');
-    expect(html).toContain("Ex. 2 bananes et un café.");
+    expect(html).toContain("e.g. 2 bananas and a black coffee.");
     expect(html).not.toContain("À commencer");
     expect(html).not.toContain("À remplir");
     expect(html).not.toContain("Avancement des repas");
     expect(html).not.toContain("confirmés");
     expect(html).not.toContain("Confirmé");
     expect(html).not.toMatch(/MATIN|MIDI|SOIR/);
-    expect(html).toContain("Calories : indisponibles sur 3000 kilocalories");
+    expect(html).toContain("Calories: unavailable of 3000 kcal");
     expect(html).toContain('capture="environment"');
-    expect(html).toContain('aria-label="Historique des repas"');
-    expect(html).not.toContain('aria-label="Jour précédent"');
-    expect(html).not.toContain('aria-label="Jour suivant"');
+    expect(html).toContain('aria-label="Meal history"');
+    expect(html).not.toContain('aria-label="Previous day"');
+    expect(html).not.toContain('aria-label="Next day"');
     expect(html).not.toContain('type="date"');
     expect(html).toContain('score-ring--large');
-    expect(html).toContain('aria-label="Modifier les cibles du jour"');
+    expect(html).toContain('aria-label="Edit daily targets"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain(">Cibles du jour<");
   });
@@ -187,9 +186,9 @@ describe("MealJournal", () => {
     const dinnerStart = html.indexOf('id="meal-dinner-title"');
     const snack = html.slice(snackStart, dinnerStart);
 
-    expect(snack).toContain("Pas pris");
-    expect(snack).toContain("Renseigner ce repas");
-    expect(snack).toContain("exclu du score");
+    expect(snack).toContain("Skipped");
+    expect(snack).toContain("Log this meal");
+    expect(snack).toContain("excluded from the score");
     expect(snack).not.toContain("<textarea");
     expect(snack).not.toContain("Analyser");
   });
@@ -197,7 +196,7 @@ describe("MealJournal", () => {
   it("expose la synthèse KPI mobile comme un rail parcourable au clavier", () => {
     const html = renderToStaticMarkup(<MealJournal variant="meals" date={date} today={date} initialData={{ date, meals: {} }} />);
 
-    expect(html).toContain('role="group" tabindex="0" aria-label="Synthèse nutritionnelle de la journée"');
+    expect(html).toContain('role="group" tabindex="0" aria-label="Daily nutrition summary"');
     expect(html).toContain('>—<small>kcal');
   });
 
@@ -221,9 +220,9 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
 
     expect(html).toContain("<textarea");
-    expect(html).not.toContain("Ajoute une photo pour lancer l’analyse");
-    expect(html).toContain("Analyser");
-    expect(html).toContain("Texte à analyser");
+    expect(html).not.toContain("Ajoute une photo pour lancer l'analyse");
+    expect(html).toContain("Analyze");
+    expect(html).toContain("Note to analyze");
   });
 
   it("disables analysis when neither photo nor text is provided", () => {
@@ -245,7 +244,7 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={draft} />);
 
-    expect(html).toContain("Ajoute une photo ou décris ton repas pour lancer l’analyse.");
+    expect(html).toContain("Add a photo or describe your meal to start analysis.");
   });
 
   it("keeps analysis results available behind a compact disclosure", () => {
@@ -266,23 +265,23 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Résultats de l’analyse");
-    expect(html).toContain("Résumé nutritionnel");
-    expect(html).toContain("Ressentis");
+    expect(html).toContain("Analysis results");
+    expect(html).toContain("Nutritional summary");
+    expect(html).toContain("Sensations");
     expect(html).toContain("<details");
     expect(html).toContain("open=\"\"");
-    expect(html.match(/Résultats de l’analyse/g)).toHaveLength(1);
+    expect(html.match(/Analysis results/g)).toHaveLength(1);
   });
 
   it("shows the snack slot before dinner", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
-    expect(html.indexOf("Collation")).toBeLessThan(html.indexOf("Dîner"));
+    expect(html.indexOf("Snack")).toBeLessThan(html.indexOf("Dinner"));
   });
 
   it("keeps an explicitly skipped breakfast visible but compact", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} disabledSlots={["breakfast"]} initialData={{ date, meals: {} }} />);
-    expect(html).toContain("Créneau ignoré dans le journal.");
-    expect(html.match(/>Prendre une photo<\/button>/g)).toHaveLength(3);
+    expect(html).toContain("Slot skipped in journal.");
+    expect(html.match(/>Take a photo<\/button>/g)).toHaveLength(3);
   });
 
   it("creates and analyzes a new text-only meal without requiring photos", async () => {
@@ -380,7 +379,7 @@ describe("MealJournal", () => {
       slot: "breakfast",
       files: [],
       meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", date, slot: "breakfast", note: "   ", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
-    })).rejects.toThrow("Ajoute une photo ou une description");
+    })).rejects.toThrow("Add a photo or a description");
 
     expect(requests).toEqual([]);
   });
@@ -496,11 +495,11 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealCorrectionPanel meal={meal} onCorrection={() => undefined} onCancel={() => undefined} />);
 
-    expect(html).toContain('aria-label="Correction de l’analyse"');
-    expect(html).toContain("Correction en langage naturel");
+    expect(html).toContain('aria-label="Analysis correction"');
+    expect(html).toContain("Natural language correction");
     expect(html).toContain('id="meal-correction-meal-review"');
-    expect(html).toContain("Réanalyser");
-    expect(html).toContain("Annuler");
+    expect(html).toContain("Re-analyze");
+    expect(html).toContain("Cancel");
     expect(html).not.toContain("Retirer Riz");
     expect(html).not.toContain("Aliment manquant");
     expect(html).not.toContain("Incertitudes");
@@ -508,11 +507,11 @@ describe("MealJournal", () => {
   it("rend la navigation lointaine accessible en variant lab avec flèches et choix direct", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {} }} />);
 
-    expect(html).toContain('aria-label="Jour précédent"');
-    expect(html).toContain('aria-label="Jour suivant"');
+    expect(html).toContain('aria-label="Previous day"');
+    expect(html).toContain('aria-label="Next day"');
     expect(html).toContain('type="date"');
     expect(html).toContain('id="meal-date-picker"');
-    expect(html).toContain("Choisir un jour");
+    expect(html).toContain("Select date");
     expect(html).toContain(`max="${date}"`);
   });
   it("affiche les badges Confirmé et Brouillon ainsi que le compteur de note", () => {
@@ -544,8 +543,8 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Brouillon");
-    expect(html).toContain("Confirmé");
+    expect(html).toContain("Draft");
+    expect(html).toContain("Confirmed");
     expect(html).toContain("0/500");
     expect(html).toContain('aria-describedby="meal-lunch-analyze-hint"');
   });
@@ -567,8 +566,8 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Analyse en cours");
-    expect(html).toContain(">Annuler</button>");
+    expect(html).toContain("Analyzing…");
+    expect(html).toContain(">Cancel</button>");
   });
   it("shows seven navigable dates without offering a future day", () => {
     expect(mealHistoryDates("2026-08-31", "2026-08-31")).toEqual([
@@ -594,8 +593,8 @@ describe("MealJournal", () => {
       dinner: { id: "meal-composed", date, slot: "dinner", note: "Pâtes, carotte à côté, pêches en dessert", photos: [], analysis: { ingredients, calories: { low: 700, likely: 900, high: 1100 }, proteinGrams: { low: 25, likely: 35, high: 45 } }, mouthHeat: null, stomachLoad: null, status: "confirmed" },
     } }} />);
 
-    expect(html).toContain(">Plat<");
-    expect(html).toContain(">Accompagnement<");
+    expect(html).toContain(">Main course<");
+    expect(html).toContain(">Side<");
     expect(html).toContain(">Dessert<");
     expect(html).toContain('data-parent-id="dish"');
     expect(html.indexOf("Pâtes aux légumes")).toBeLessThan(html.indexOf("Spaghettis"));
@@ -635,18 +634,18 @@ describe("MealJournal", () => {
     };
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html).toContain("Photo analysée puis supprimée.");
-    expect(html).not.toContain("Origine de la photo");
-    expect(html).not.toContain("L’origine aide l’analyse");
-    expect(html).toContain("Bouche chaude");
-    expect(html).toContain("Repas qui m&#x27;a cassé");
+    expect(html).toContain("Photo analyzed then purged.");
+    expect(html).not.toContain("Photo origin");
+    expect(html).not.toContain("Origin helps analysis");
+    expect(html).toContain("Mouth heat");
+    expect(html).toContain("Stomach heaviness");
     expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain("Calories : 650 sur 3000 kilocalories");
+    expect(html).toContain("Calories: 650 of 3000 kcal");
     for (const metric of ["calories", "protein", "fat", "carbs", "fiber", "sugar"]) {
       expect(html).toContain(`data-metric="${metric}"`);
     }
     expect(html).not.toContain("Confiance");
-    expect(html).toContain("Résumé nutritionnel");
+    expect(html).toContain("Nutritional summary");
     expect(html).not.toContain("Texte à compléter");
   });
 
@@ -733,7 +732,7 @@ describe("MealJournal", () => {
 
     const html = renderToStaticMarkup(<MealJournal initialData={data} />);
 
-    expect(html).toContain("Sucres ajoutés");
+    expect(html).toContain("Added sugar");
     expect(html).toContain('data-metric="sugar"');
   });
 });
@@ -849,7 +848,7 @@ describe("apiMealToRecord", () => {
     expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 
-  it("renders lab meal card in V1 with a concise preview and no confirm button", () => {
+  it("renders lab meal card in V1 with a concise preview, nutrition bars, and no confirm button", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
       date,
       meals: {
@@ -879,13 +878,13 @@ describe("apiMealToRecord", () => {
     }} />);
 
     expect(html).toContain("Œufs · Fines herbes");
-    expect(html).not.toContain(">Omelette aux fines herbes</p>");
-    expect(html).not.toContain("Note du jour");
+    expect(html).toContain(">Omelette aux fines herbes</p>");
+    expect(html).not.toContain("Daily note");
     expect(html).not.toContain("mon petit déjeuner");
     expect(html).toContain("250");
     expect(html).toContain("18");
-    expect(html).toContain("Modifier");
-    expect(html).toContain("Détails de l’analyse");
-    expect(html).not.toContain("Confirmer le repas");
+    expect(html).toContain("Edit");
+    expect(html).toContain("Analysis details");
+    expect(html).not.toContain("Confirm meal");
   });
 });

@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 import Loading from "./loading";
 
 describe("meals loading state", () => {
-  it("uses a compact French loading treatment", () => {
+  it("uses a compact English loading treatment", () => {
     const html = renderToStaticMarkup(createElement(Loading));
 
-    expect(html).toContain('lang="fr"');
-    expect(html).toContain('aria-label="Chargement de l’alimentation"');
+    expect(html).toContain('lang="en"');
+    expect(html).toContain('aria-label="Loading meals data"');
     expect(html).toContain('aria-busy="true"');
-    expect(html).toContain("Chargement de l’alimentation");
+    expect(html).toContain("Loading meals");
     expect(html).not.toContain("style=");
     expect(html).not.toContain("system-loading__metrics");
     expect(html).toContain("system-loading__canvas");

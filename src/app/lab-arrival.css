@@ -21,6 +21,46 @@ html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-co
 .arrival-footer a:hover { color:var(--lab-text-primary); }
 .lab-arrival .arrival-heading,.lab-arrival .arrival-actions { animation:arrival-enter 650ms cubic-bezier(.2,.7,.2,1) both; }
 .lab-arrival .arrival-actions { animation-delay:100ms; }
+
+.arrival-journal-progress {
+  display: grid;
+  width: min(100%, 300px);
+  gap: 7px;
+  margin-top: 16px;
+  color: var(--arrival-ink, var(--lab-text-primary));
+}
+
+.arrival-journal-progress__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font: 11px/1.2 var(--font-soma-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.arrival-journal-progress__header span:first-child {
+  color: var(--arrival-muted, var(--lab-text-secondary));
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.arrival-journal-progress__track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.arrival-journal-progress__track > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: currentColor;
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1);
+}
 @keyframes arrival-enter { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 /* Focus: a quiet central instrument with three compact access points. */
 .lab-arrival[data-arrival-theme="focus"] { background:#101715; }

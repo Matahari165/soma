@@ -24,6 +24,22 @@ export type EffortTargetAdjustment = {
 
 export const DEFAULT_ADDED_SUGAR_TARGET: NutritionTargetRange = { low: 0, likely: 0, high: 5 };
 
+export type MealTargetSlot = "breakfast" | "lunch" | "snack" | "dinner";
+export type MealTargetDistribution = Record<MealTargetSlot, number>;
+
+export const MEAL_TARGET_SLOTS: readonly MealTargetSlot[] = ["breakfast", "lunch", "snack", "dinner"];
+
+/**
+ * Main meals receive the default daily split. A snack is optional and starts
+ * outside the split until the user assigns it a share explicitly.
+ */
+export const DEFAULT_MEAL_TARGET_DISTRIBUTION: MealTargetDistribution = {
+  breakfast: 25,
+  lunch: 40,
+  snack: 0,
+  dinner: 35,
+};
+
 export type NutritionTargets = {
   caloriesKcal: NutritionTargetRange;
   proteinG: NutritionTargetRange;
@@ -33,6 +49,8 @@ export type NutritionTargets = {
   /** Personal guardrail: ideal 0 g, with a 5 g/day tolerance. */
   addedSugarG: NutritionTargetRange;
   surplusKcal: number;
+  /** Optional for backwards compatibility with targets saved before meal splits. */
+  mealDistribution?: MealTargetDistribution;
 };
 
 function finiteScore(value: number | null): number | null {
@@ -76,6 +94,18 @@ export function nutritionTargetsForEffort(baseTargets: NutritionTargets, context
       high: baseTargets.caloriesKcal.high + supplementKcal,
     },
   };
+}
+
+export function mealTargetDistributionOf(targets: NutritionTargets): MealTargetDistribution {
+  return targets.mealDistribution ?? DEFAULT_MEAL_TARGET_DISTRIBUTION;
+}
+
+export function mealTargetForRange(range: NutritionTargetRange, slot: MealTargetSlot, targets: NutritionTargets): number | null {
+  const share = mealTargetDistributionOf(targets)[slot];
+  if (!Number.isFinite(share) || share <= 0) return null;
+  const reference = range.likely > 0 ? range.likely : range.high;
+  if (!Number.isFinite(reference) || reference <= 0) return null;
+  return reference * (share / 100);
 }
 
 /**
@@ -123,8 +153,20 @@ export function parseNutritionTargets(value: unknown): NutritionTargets | null {
   // apply the user's explicit 0 g ideal / 5 g tolerance by default.
   const addedSugarG = range(input.addedSugarG) ?? DEFAULT_ADDED_SUGAR_TARGET;
   const surplusKcal = typeof input.surplusKcal === "number" && Number.isFinite(input.surplusKcal) ? input.surplusKcal : null;
+  const rawDistribution = input.mealDistribution;
+  let mealDistribution = DEFAULT_MEAL_TARGET_DISTRIBUTION;
+  if (rawDistribution !== undefined) {
+    if (!rawDistribution || typeof rawDistribution !== "object" || Array.isArray(rawDistribution)) return null;
+    const candidate = rawDistribution as Record<string, unknown>;
+    const values = MEAL_TARGET_SLOTS.map((slot) => candidate[slot]);
+    if (!values.every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0 && item <= 100)) return null;
+    const numericValues = values as number[];
+    const total = numericValues.reduce((sum, item) => sum + item, 0);
+    if (Math.abs(total - 100) > 0.001) return null;
+    mealDistribution = Object.fromEntries(MEAL_TARGET_SLOTS.map((slot) => [slot, Number(candidate[slot])])) as MealTargetDistribution;
+  }
   if (!caloriesKcal || !proteinG || !fatG || !carbsG || !fiberG || surplusKcal === null) return null;
-  return { caloriesKcal, proteinG, fatG, carbsG, fiberG, addedSugarG, surplusKcal };
+  return { caloriesKcal, proteinG, fatG, carbsG, fiberG, addedSugarG, surplusKcal, mealDistribution };
 }
 
 export const NUTRITION_TARGETS_STORAGE_KEY = "soma.nutrition-targets.v1";
@@ -137,6 +179,7 @@ export const DEFAULT_NUTRITION_TARGETS: NutritionTargets = {
   fiberG: { low: 25, likely: 30, high: 35 },
   addedSugarG: DEFAULT_ADDED_SUGAR_TARGET,
   surplusKcal: 300,
+  mealDistribution: DEFAULT_MEAL_TARGET_DISTRIBUTION,
 };
 
 export function loadNutritionTargets(): NutritionTargets {

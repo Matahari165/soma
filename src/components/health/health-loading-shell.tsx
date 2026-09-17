@@ -18,11 +18,11 @@ export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label={`Chargement de la page ${title}`}
+      aria-label={`Loading ${title}`}
     >
       <header className={styles.header}>
         <h1>{title}</h1>
-        <p className={styles.status}>Chargement des données…</p>
+        <p className={styles.status}>Loading data…</p>
       </header>
 
       <section className={styles.overview} aria-hidden="true">
@@ -37,7 +37,7 @@ export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
 
       <section className={styles.section} aria-labelledby="health-loading-recent-heading">
         <header className={styles.sectionHeader}>
-          <h2 id="health-loading-recent-heading">Indicateurs récents</h2>
+          <h2 id="health-loading-recent-heading">Recent indicators</h2>
           <span className={styles.sectionMeta} aria-hidden="true" />
         </header>
         <div className={styles.signalGrid} aria-hidden="true">
@@ -47,8 +47,8 @@ export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
 
       <section className={styles.section} aria-labelledby="health-loading-trends-heading">
         <header className={styles.sectionHeader}>
-          <h2 id="health-loading-trends-heading">Tendances</h2>
-          <span className={styles.sectionMeta}>30 jours</span>
+          <h2 id="health-loading-trends-heading">Trends</h2>
+          <span className={styles.sectionMeta}>30 days</span>
         </header>
         <div className={styles.trendGrid} aria-hidden="true">
           {trendSlots.map((slot) => (
@@ -66,7 +66,7 @@ export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
 
       <section className={styles.section} aria-labelledby="health-loading-evidence-heading">
         <header className={styles.sectionHeader}>
-          <h2 id="health-loading-evidence-heading">Données complémentaires</h2>
+          <h2 id="health-loading-evidence-heading">Supporting data</h2>
         </header>
         <div className={styles.evidence} aria-hidden="true">
           <span className={`${styles.skeletonLine} ${styles.skeletonLineMedium}`} />
@@ -75,7 +75,7 @@ export function HealthLoadingShell({ kind, title }: HealthLoadingShellProps) {
       </section>
 
       <section className={`${styles.section} ${styles.provenance}`} aria-labelledby="health-loading-quality-heading">
-        <h2 id="health-loading-quality-heading">Qualité des données</h2>
+        <h2 id="health-loading-quality-heading">Data quality</h2>
         <span className={styles.provenanceLine} aria-hidden="true" />
       </section>
     </div>

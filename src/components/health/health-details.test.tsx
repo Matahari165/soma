@@ -134,17 +134,17 @@ describe("health route states", () => {
     const readable = markup.replaceAll("\u202f", " ");
 
     expect(readable).toContain("Radar de l’effort avec 5 composantes");
-    expect(readable).toContain("Charge hebdomadaire");
-    expect(readable).toContain("Contexte · hors score");
-    expect(readable).toContain("Activité récente");
-    expect(readable).toContain("Course");
-    expect(readable).toContain("Aujourd’hui");
-    expect(readable).toContain("Allure / vitesse");
-    expect(readable).toContain("Temps actif");
+    expect(readable).toContain("Weekly load");
+    expect(readable).toContain("Context · excluded from score");
+    expect(readable).toContain("Recent activity");
+    expect(readable).toContain("Running");
+    expect(readable).toContain("Today");
+    expect(readable).toContain("Pace / speed");
+    expect(readable).toContain("Active time");
 
     const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
-    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10\u202f000 pas" });
-    expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1\u202f000 kcal" });
+    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10,000 steps" });
+    expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1,000 kcal" });
   });
 
   it("normalizes weekly load from finite values without inventing missing data", () => {
@@ -165,7 +165,7 @@ describe("health route states", () => {
       values: [79, 81, 84],
     }));
 
-    expect(markup).toContain("Moy. 30 j · 81 %");
+    expect(markup).toContain("30-day avg · 81 %");
   });
 
   it("prioritizes the sleep score radar while keeping secondary trends accessible", () => {
@@ -180,22 +180,22 @@ describe("health route states", () => {
     }));
 
     expect(markup).not.toContain("Profil du sommeil");
-    expect(markup).toContain("Radar du sommeil");
-    expect(markup).toContain("Durée");
-    expect(markup).toContain("Latence");
-    expect(markup).toContain("Score Sommeil");
+    expect(markup).toContain("Sleep radar");
+    expect(markup).toContain("Duration");
+    expect(markup).toContain("Latency");
+    expect(markup).toContain("Sleep score");
     expect(markup).toContain("/100");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toMatch(/<g[^>]*aria-pressed=/);
-    expect(markup).toContain("Répartition des phases");
+    expect(markup).toContain("Stage distribution");
     expect(markup).not.toContain("Autres mesures");
     expect(markup).not.toContain("<details");
     expect(markup).not.toContain("<summary");
-    expect(markup.indexOf("Score Sommeil")).toBeLessThan(markup.indexOf("Prochaine nuit"));
+    expect(markup.indexOf("Sleep score")).toBeLessThan(markup.indexOf("Next night"));
     expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
-    expect(markup).toContain("Sommeil profond + paradoxal");
+    expect(markup).toContain("Deep + REM sleep");
     expect(markup).toContain("0 h 0 min");
     expect(markup).not.toContain("health-hero-score-card");
     expect(markup).not.toContain("Objectif en périphérie");
@@ -211,8 +211,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Repère indisponible");
-    expect(markup).toContain("Indisponible : Durée, Régularité, Latence, Dette.");
+    expect(markup).toContain("Benchmark unavailable");
+    expect(markup).toContain("Duration, Regularity, Latency, Debt");
     expect(markup).toContain("90");
     expect(markup).not.toContain("health-hero-score-card");
   });
@@ -220,7 +220,7 @@ describe("health route states", () => {
   it("renders a dedicated empty state without trend cards", () => {
     const markup = renderToStaticMarkup(createElement(SleepDetails, { data: analytics() }));
 
-    expect(markup).toContain("Aucune donnée de sommeil");
+    expect(markup).toContain("No sleep data");
     expect(markup).not.toContain("metric-trend-card");
   });
 
@@ -233,7 +233,7 @@ describe("health route states", () => {
     }));
 
     expect(markup).not.toContain("Calcul Soma · VFC");
-    expect(markup).toContain("33 %");
+    expect(markup).toMatch(/33\s*%/);
   });
 
   it("keeps the recovery rail limited to score and resting heart rate", () => {
@@ -244,14 +244,14 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Score de récupération");
-    expect(markup).toContain("FC au repos");
+    expect(markup).toContain("Recovery score");
+    expect(markup).toContain("Resting heart rate");
     expect(markup).not.toContain("Durée de sommeil");
     expect(markup).not.toContain("Charge du jour");
     expect(markup).not.toContain("Énergie métabolique");
-    expect(markup).toContain("Variabilité cardiaque");
-    expect(markup).toContain("VFC nocturne");
-    expect(markup).toContain("Fréquence respiratoire");
+    expect(markup).toContain("Heart rate variability");
+    expect(markup).toContain("Nightly HRV");
+    expect(markup).toContain("Respiratory rate");
   });
 
   it("does not render a sample-based heart-rate trend on recovery", () => {
@@ -318,8 +318,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain('Moy. 30 j · <strong>85</strong><span> /100</span>');
-    expect(markup).not.toContain('Moy. 30 j · <strong>73</strong><span> /100</span>');
+    expect(markup).toContain('30-day avg · <strong>85</strong><span> /100</span>');
+    expect(markup).not.toContain('30-day avg · <strong>73</strong><span> /100</span>');
   });
 
   it("keeps a recovery day when sleep and heart-rate values are absent", () => {
@@ -330,7 +330,7 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Fréquence respiratoire");
+    expect(markup).toContain("Respiratory rate");
     expect(markup).toContain("14.2");
   });
 
@@ -342,16 +342,16 @@ describe("health route states", () => {
 
     expect(summary.startDate).toBe("2026-09-07");
     expect(summary.endDate).toBe("2026-09-13");
-    expect(summary.zones.find((zone) => zone.label === "Légère")).toMatchObject({ minutes: 30, measuredDays: 2 });
-    expect(summary.zones.find((zone) => zone.label === "Vigoureuse")).toMatchObject({ minutes: 0, measuredDays: 1 });
-    expect(summary.zones.find((zone) => zone.label === "Pic")).toMatchObject({ minutes: null, measuredDays: 0 });
+    expect(summary.zones.find((zone) => zone.label === "Light")).toMatchObject({ minutes: 30, measuredDays: 2 });
+    expect(summary.zones.find((zone) => zone.label === "Vigorous")).toMatchObject({ minutes: 0, measuredDays: 1 });
+    expect(summary.zones.find((zone) => zone.label === "Peak")).toMatchObject({ minutes: null, measuredDays: 0 });
   });
 
   it("keeps recovery empty without orphaned trend cards", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, { data: analytics() }));
 
-    expect(markup).toContain("Aucune donnée de récupération");
-    expect(markup).not.toContain("Tendances de récupération");
+    expect(markup).toContain("No recovery data");
+    expect(markup).not.toContain("Trends");
   });
 
   it("does not infer full effort coverage from a non-null score", () => {
@@ -366,7 +366,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toMatch(/25\s*% de couverture du score/);
-    expect(markup).toContain("Musculation");
+    expect(markup).toMatch(/25\s*%\s*score coverage/i);
+    expect(markup).toContain("Strength training");
   });
 });
+

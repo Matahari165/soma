@@ -9,8 +9,8 @@ describe("recovery loading state", () => {
     const html = renderToStaticMarkup(createElement(Loading));
 
     expect(html).toContain('data-health-kind="recovery"');
-    expect(html).toContain("Récupération");
-    expect(html).not.toContain("Score de récupération");
+    expect(html).toContain("Recovery");
+    expect(html).not.toContain("Recovery score");
     expect(html).not.toContain("health-hero-metrics");
   });
 });

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 export function CredentialsForm({ next }: { next?: string | null }) {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -10,12 +9,13 @@ export function CredentialsForm({ next }: { next?: string | null }) {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
@@ -38,15 +38,18 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         return;
       }
 
-      // Successful auth
-      if (next) {
-        router.push(next);
-      } else if (data.hasCompletedOnboarding === false || mode === "register") {
-        router.push("/onboarding");
-      } else {
-        router.push("/");
+      if (mode === "register") {
+        // SaaS transition: show clear feedback, switch to login tab, prefill email
+        setMode("login");
+        setPassword("");
+        setSuccessMessage("Account created successfully. Please enter your password to sign in.");
+        setLoading(false);
+        return;
       }
-      router.refresh();
+
+      // Successful login: perform top-level navigation so the session cookie attaches synchronously
+      const destination = next || (data.hasCompletedOnboarding ? "/" : "/onboarding");
+      window.location.assign(destination);
     } catch {
       setError("A network error occurred. Please check your connection.");
       setLoading(false);
@@ -61,7 +64,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
           role="tab"
           aria-selected={mode === "login"}
           className={`auth-tab ${mode === "login" ? "is-active" : ""}`}
-          onClick={() => { setMode("login"); setError(null); }}
+          onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
         >
           Sign in
         </button>
@@ -70,13 +73,19 @@ export function CredentialsForm({ next }: { next?: string | null }) {
           role="tab"
           aria-selected={mode === "register"}
           className={`auth-tab ${mode === "register" ? "is-active" : ""}`}
-          onClick={() => { setMode("register"); setError(null); }}
+          onClick={() => { setMode("register"); setError(null); setSuccessMessage(null); }}
         >
           Create account
         </button>
       </div>
 
       <form className="auth-credentials-form" onSubmit={handleSubmit}>
+        {successMessage && (
+          <div className="auth-success-banner" role="status">
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <span>{successMessage}</span>
+          </div>
+        )}
         {mode === "register" && (
           <div className="field">
             <label htmlFor="auth-name">Your name or pseudonym</label>

@@ -14,5 +14,5 @@ async function TodayPageContent() {
 }
 
 export default function TodayPage() {
-  return <Suspense fallback={<div id="main-page-content" className="lab-world-loading" role="status" aria-live="polite" aria-label="Chargement du laboratoire">Chargement du laboratoire…</div>}><TodayPageContent /></Suspense>;
+  return <Suspense fallback={<div id="main-page-content" className="lab-world-loading" role="status" aria-live="polite" aria-label="Loading laboratory">Loading laboratory…</div>}><TodayPageContent /></Suspense>;
 }

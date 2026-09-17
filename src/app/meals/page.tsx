@@ -80,7 +80,7 @@ function goalMode(value: unknown): "build_muscle" | "maintain" {
 type MealsPageProps = { searchParams: Promise<{ date?: string | string[] }> };
 
 function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${value}T12:00:00`)).replace(".", "");
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
 }
 
 async function MealsPageContent({ searchParams, user }: MealsPageProps & { user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>> }) {
@@ -104,7 +104,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         recipes: [] as MealRecipe[],
         error: error instanceof MealRecipeServiceError
           ? error.message
-          : "Les recettes personnelles sont momentanément indisponibles.",
+          : "Personal recipes are temporarily unavailable.",
       })),
     isLocalPreviewMode()
       ? loadSafely(() => loadPreviewConfirmedMealRecords(user.id).filter((record) => record.mealDate >= historyFrom && record.mealDate <= requestedDate))
@@ -135,11 +135,11 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
     : null;
   const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
   const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];
-  const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Les compléments sont momentanément indisponibles." : null;
+  const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Supplements are temporarily unavailable." : null;
 
   return (
-    <main id="main-page-content" className={`${styles.page} meals-page`} lang="fr">
-      <header className={styles.header}><h1>Alimentation</h1></header>
+    <main id="main-page-content" className={`${styles.page} meals-page`} lang="en">
+      <header className={styles.header}><h1>Nutrition</h1></header>
       <div className={styles.flow}>
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
@@ -151,7 +151,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         />
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
-            <h2 id="meals-journal-title">Journal des repas</h2>
+            <h2 id="meals-journal-title">Meal journal</h2>
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals allowTargetEditing />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
@@ -163,10 +163,10 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           : <MealsInitialLoadError kind="nutrition" />}
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
-        <footer className={styles.provenance} aria-label="Alimentation provenance des données">
+        <footer className={styles.provenance} aria-label="Nutrition data provenance">
           <h2>Provenance</h2>
-          <p>Repas confirmés saisis dans Soma · Score et totaux calculés par Soma sur les repas confirmés uniquement</p>
-          <p>Période du {formatShortDate(historyFrom)} au {formatShortDate(requestedDate)} · Les jours non renseignés restent vides, jamais zéro</p>
+          <p>Confirmed meals logged in Soma · Score and totals calculated by Soma from confirmed meals only</p>
+          <p>Period from {formatShortDate(historyFrom)} to {formatShortDate(requestedDate)} · Unlogged days remain empty, never zero</p>
         </footer>
       </div>
     </main>
@@ -177,5 +177,5 @@ export default async function MealsPage({ searchParams }: MealsPageProps) {
   const user = await getCurrentUser();
   if (!user) return <PublicHome />;
 
-  return <Suspense fallback={<LoadingSurface eyebrow="Alimentation" title="Chargement de l’alimentation" label="Chargement de l’alimentation" variant="meals" />}><MealsPageContent searchParams={searchParams} user={user} /></Suspense>;
+  return <Suspense fallback={<LoadingSurface eyebrow="Nutrition" title="Loading nutrition" label="Loading nutrition" variant="meals" />}><MealsPageContent searchParams={searchParams} user={user} /></Suspense>;
 }

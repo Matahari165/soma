@@ -96,7 +96,7 @@ function comparison(value: number | null, average: number | null) {
 }
 
 function accessibleValue(key: "sleepMinutes" | "recoveryScore" | "effortScore" | "calorieProgress", value: number | null) {
-  if (value === null) return "indisponible";
+  if (value === null) return "unavailable";
   if (key === "sleepMinutes") return duration(value);
   if (key === "calorieProgress") return `${Math.round(value)}%`;
   return String(Math.round(value));
@@ -134,7 +134,7 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
       announcedInitial.current = true;
       return;
     }
-    setAnnouncement("Valeurs du jour actualisées.");
+    setAnnouncement("Today's values updated.");
     const timeout = window.setTimeout(() => setAnnouncement(""), 1200);
     return () => window.clearTimeout(timeout);
   }, [values.calorieProgress, values.effortScore, values.recoveryScore, values.sleepMinutes]);
@@ -179,12 +179,12 @@ export function TodaySignals({ initial }: { initial: TodaySignalValues }) {
   }, [refresh]);
 
   const signals = [
-    { key: "sleepMinutes" as const, label: "Sommeil", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), supporting: `Moy. 30 j · ${values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes))}`, trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
-    { key: "recoveryScore" as const, label: "Récupération", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), supporting: `Moy. 30 j · ${values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : Math.round(values.averageRecoveryScore)}`, trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
-    { key: "effortScore" as const, label: "Effort", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), supporting: `Moy. 30 j · ${values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : Math.round(values.averageEffortScore)}`, trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
+    { key: "sleepMinutes" as const, label: "Sleep", node: <AnimatedSignalNumber value={values.sleepMinutes} format="duration" />, finalValue: accessibleValue("sleepMinutes", values.sleepMinutes), supporting: `30d avg · ${values.averageSleepMinutes === null || values.averageSleepMinutes === undefined ? "—" : duration(Math.round(values.averageSleepMinutes))}`, trend: comparison(values.sleepMinutes, values.averageSleepMinutes ?? null), href: "/sleep" },
+    { key: "recoveryScore" as const, label: "Recovery", node: <AnimatedSignalNumber value={values.recoveryScore} format="number" />, finalValue: accessibleValue("recoveryScore", values.recoveryScore), supporting: `30d avg · ${values.averageRecoveryScore === null || values.averageRecoveryScore === undefined ? "—" : Math.round(values.averageRecoveryScore)}`, trend: comparison(values.recoveryScore, values.averageRecoveryScore ?? null), href: "/recovery" },
+    { key: "effortScore" as const, label: "Activity", node: <AnimatedSignalNumber value={values.effortScore} format="number" />, finalValue: accessibleValue("effortScore", values.effortScore), supporting: `30d avg · ${values.averageEffortScore === null || values.averageEffortScore === undefined ? "—" : Math.round(values.averageEffortScore)}`, trend: comparison(values.effortScore, values.averageEffortScore ?? null), href: "/activity" },
     { key: "calorieProgress" as const, label: "Calories", node: <AnimatedSignalNumber value={values.calorieProgress ?? null} format="percentage" />, finalValue: accessibleValue("calorieProgress", values.calorieProgress ?? null), supporting: null, trend: values.calorieProgress !== null && values.calorieProgress !== undefined && values.calorieProgress < 100 ? "below" : "neutral", href: "/meals" },
   ];
-  return <section className="lab-signals" aria-label="Aujourd’hui" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, supporting, trend, href }) => <Link href={href} key={label} aria-label={`${label} : ${finalValue}`}>
+  return <section className="lab-signals" aria-label="Today" aria-busy={refreshing}>{signals.map(({ label, node, finalValue, supporting, trend, href }) => <Link href={href} key={label} aria-label={`${label}: ${finalValue}`}>
     <span><span className="lab-signal__label">{label}</span>{supporting && <small className="lab-signal__average">{supporting}</small>}</span>
     <strong className={`lab-signal__value lab-signal__value--${trend}`} aria-hidden="true">{node}</strong>
   </Link>)}<span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></section>;
@@ -244,7 +244,7 @@ function metricNumber(value: number | null) {
 }
 
 function metricCalories(value: number | null) {
-  return value === null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
+  return value === null ? "—" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
 function metricStrain(value: number | null) {
@@ -260,7 +260,7 @@ function metricValue(key: PersonalLabMetricKey, value: number | null) {
 }
 
 function accessibleHistoryDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${date}T12:00:00`));
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(`${date}T12:00:00`));
 }
 
 function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
@@ -271,13 +271,13 @@ function visibleMetricValue(key: PersonalLabMetricKey, value: number | null) {
 }
 
 function signedDelta(key: PersonalLabMetricKey, value: number | null, averageValue: number | null, calorieTarget?: number | null) {
-  const targetLabel = key === "energy" && calorieTarget !== null && calorieTarget !== undefined ? `Cible ${metricCalories(calorieTarget)} · ` : "";
-  if (value === null || averageValue === null) return `${targetLabel}Moy. 30 j —`;
+  const targetLabel = key === "energy" && calorieTarget !== null && calorieTarget !== undefined ? `Target ${metricCalories(calorieTarget)} · ` : "";
+  if (value === null || averageValue === null) return `${targetLabel}30d avg —`;
   const delta = value - averageValue;
-  if (key === "sleep") return `Moy. 30 j ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
-  if (key === "strain") return `Moy. 30 j ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
-  if (key === "energy") return `${targetLabel}Moy. 30 j ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
-  return `Moy. 30 j ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
+  if (key === "sleep") return `30d avg ${metricDuration(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricDuration(Math.abs(delta))}`;
+  if (key === "strain") return `30d avg ${metricStrain(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta * 0.21).toFixed(1)}`;
+  if (key === "energy") return `${targetLabel}30d avg ${metricCalories(averageValue)} · ${delta >= 0 ? "+" : "−"}${metricCalories(Math.abs(delta))}`;
+  return `30d avg ${metricNumber(averageValue)} · ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta))}`;
 }
 
 function valueForHistory(key: PersonalLabMetricKey, point: PersonalLabHistoryPoint) {
@@ -307,31 +307,31 @@ function PersonalLabMetricCard({ label, keyName, value, averageValue, calorieTar
   const visibleHistory = history.slice(-5);
   const max = historyMax(keyName, visibleHistory);
   const trend = comparison(value, averageValue);
-  const accessibleHistory = visibleHistory.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
+  const accessibleHistory = visibleHistory.map((point) => `${accessibleHistoryDate(point.date)}: ${metricValue(keyName, valueForHistory(keyName, point))}`).join(", ");
   const historyDetails = visibleHistory.map((point) => ({
     date: point.date,
-    label: `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`,
+    label: `${accessibleHistoryDate(point.date)}: ${metricValue(keyName, valueForHistory(keyName, point))}`,
     empty: valueForHistory(keyName, point) === null,
   }));
-  return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label} : ${metricValue(keyName, value)}. Historique des cinq derniers jours : ${accessibleHistory}`}>
+  return <Link className={`personal-lab-metric personal-lab-metric--${trend}`} data-trend={trend} href={href} aria-label={`${label}: ${metricValue(keyName, value)}. Last 5 days history: ${accessibleHistory}`}>
     <span className="personal-lab-metric__copy">
       <span className="personal-lab-metric__label">{label}</span>
       <strong className="personal-lab-metric__value">{visibleMetricValue(keyName, value)}</strong>
       <small className="personal-lab-metric__average">{signedDelta(keyName, value, averageValue, calorieTarget)}</small>
     </span>
-    <span className="personal-lab-metric__bars" role="group" aria-label={`Détail des cinq derniers jours · ${label}`}>
+    <span className="personal-lab-metric__bars" role="group" aria-label={`Last 5 days breakdown · ${label}`}>
       {visibleHistory.map((point, barIndex) => {
         const pointValue = valueForHistory(keyName, point);
         const detail = historyDetails[barIndex];
         // Absence = trou explicite, jamais une mini-barre fantôme.
         if (pointValue === null) {
-          return <span className="personal-lab-metric__bar is-empty" data-empty="true" style={{ height: "2%" }} key={point.date} role="img" aria-label={`${detail.label} · absence de mesure`} title={`${detail.label} · absence de mesure`} tabIndex={0} />;
+          return <span className="personal-lab-metric__bar is-empty" data-empty="true" style={{ height: "2%" }} key={point.date} role="img" aria-label={`${detail.label} · no measurement recorded`} title={`${detail.label} · no measurement recorded`} tabIndex={0} />;
         }
         const height = Math.max(12, Math.round(pointValue / max * 100));
         return <span className="personal-lab-metric__bar" style={{ height: `${height}%` }} key={point.date} role="img" aria-label={detail.label} title={detail.label} tabIndex={0} />;
       })}
     </span>
-    {showTrace && <MetricHistoryTrace values={visibleHistory.map(point => valueForHistory(keyName, point))} maximum={max} labels={visibleHistory.map((point) => `${accessibleHistoryDate(point.date)} : ${metricValue(keyName, valueForHistory(keyName, point))}`)} />}
+    {showTrace && <MetricHistoryTrace values={visibleHistory.map(point => valueForHistory(keyName, point))} maximum={max} labels={visibleHistory.map((point) => `${accessibleHistoryDate(point.date)}: ${metricValue(keyName, valueForHistory(keyName, point))}`)} />}
   </Link>;
 }
 
@@ -383,10 +383,10 @@ export function PersonalLabMetrics({ data, presentation = "default" }: { data: P
   }, []);
 
   const metrics = [
-    { label: "Sommeil", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
-    { label: "Récupération", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
-    { label: "Effort", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
-    { label: "Énergie", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, calorieTarget: values.calorieTarget, href: "/meals" },
+    { label: "Sleep", keyName: "sleep" as const, value: values.sleepMinutes, averageValue: values.averageSleepMinutes, href: "/sleep" },
+    { label: "Recovery", keyName: "recovery" as const, value: values.recoveryScore, averageValue: values.averageRecoveryScore, href: "/recovery" },
+    { label: "Activity", keyName: "strain" as const, value: values.effortScore, averageValue: values.averageEffortScore, href: "/activity" },
+    { label: "Energy", keyName: "energy" as const, value: values.caloriesKcal, averageValue: values.averageCaloriesKcal, calorieTarget: values.calorieTarget, href: "/meals" },
   ];
-  return <section className="personal-lab-metrics" aria-label="Métriques du jour">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} showTrace={presentation === "worlds"} key={metric.keyName} />)}</section>;
+  return <section className="personal-lab-metrics" aria-label="Today’s metrics">{metrics.map((metric) => <PersonalLabMetricCard {...metric} history={values.history} showTrace={presentation === "worlds"} key={metric.keyName} />)}</section>;
 }
