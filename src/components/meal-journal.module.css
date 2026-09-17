@@ -618,7 +618,7 @@
 .targetEditor label {
   display: grid;
   gap: 4px;
-  font-size: .68rem;
+  font-size: .75rem;
 }
 
 .targetEditor input {
@@ -631,7 +631,11 @@
   font-size: .78rem;
 }
 
-.targetEditor input:focus { border-color: var(--moss-dark); }
+.targetEditor input:focus-visible {
+  border-color: var(--moss-dark);
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
 
 .targetGroup {
   min-width: 0;
@@ -666,7 +670,7 @@
   max-width: 62ch;
   margin: -2px 0 10px;
   color: var(--muted);
-  font-size: .7rem;
+  font-size: .75rem;
   line-height: 1.4;
 }
 
@@ -687,7 +691,7 @@
   margin: 9px 0 0;
   color: var(--ink-soft);
   font-family: var(--font-soma-mono), monospace;
-  font-size: .68rem;
+  font-size: .72rem;
   font-variant-numeric: tabular-nums;
 }
 

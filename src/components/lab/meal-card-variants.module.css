@@ -1039,6 +1039,14 @@
   content: "";
 }
 
+.metricPlot[data-target-state="unavailable"]::before {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  border-top: 1px dashed var(--lab-border-strong, #3a3a3a);
+  content: "";
+}
+
 .metricPlotTarget {
   position: absolute;
   top: 0;
@@ -1095,13 +1103,13 @@
 
 .metricTarget {
   color: var(--lab-text-secondary, #aaaaaa);
-  font: 400 10px/1.2 var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font: 400 11px/1.2 var(--lab-data-font, var(--font-soma-mono)), monospace;
   font-variant-numeric: tabular-nums;
 }
 
 .metricLabel {
   color: var(--lab-text-secondary, #aaaaaa);
-  font: 500 10px/1.2 var(--lab-data-font, var(--font-soma-mono)), monospace;
+  font: 500 12px/1.2 var(--lab-data-font, var(--font-soma-mono)), monospace;
   letter-spacing: .035em;
   text-transform: uppercase;
 }
@@ -1117,7 +1125,7 @@
     padding-inline: 2px;
   }
 
-  .metricPlotTrack { width: 20px; }
+.metricPlotTrack { width: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

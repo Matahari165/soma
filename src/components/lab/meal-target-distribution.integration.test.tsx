@@ -79,7 +79,7 @@ describe("meal target distribution integration", () => {
     expect(html).toContain('aria-label="Protein: 64 g, target 64 g"');
     expect(html).toContain('aria-label="Carbohydrates: 154 g, target 154 g"');
     expect(html).toContain('aria-label="Fat: 32 g, target 32 g"');
-    expect(html).toContain('aria-label="Added sugar: 2 g, target 2 g"');
+    expect(html).toContain('aria-label="Added sugar: 2 g, limit 2 g"');
   });
 
   it("keeps an optional snack target and unavailable values as em dashes", () => {
@@ -105,7 +105,8 @@ describe("meal target distribution integration", () => {
     expect(html).toContain('aria-label="Carbohydrates: —"');
     expect(html).toContain('aria-label="Fat: —"');
     expect(html).toContain('aria-label="Added sugar: —"');
-    expect(html.match(/Target —/g)).toHaveLength(5);
+    expect(html.match(/Target —/g)).toHaveLength(4);
+    expect(html).toContain("Limit —");
     expect(html).not.toContain("Target 0");
   });
 });
