@@ -21,7 +21,7 @@ describe("runMealAnalysisCron", () => {
     const request = requests[0];
     expect(request?.url).toBe("https://soma-neon-phi.vercel.app/api/cron/meal-analysis");
     expect(request?.headers.get("authorization")).toBe("Bearer test-secret");
-    expect(request?.redirect).toBe("error");
+    expect(request?.redirect).toBe("manual");
   });
 
   it("fails closed when the target or secret is missing", async () => {
@@ -35,6 +35,15 @@ describe("runMealAnalysisCron", () => {
         async () => new Response(null, { status: 401 }),
       ),
     ).rejects.toThrow("HTTP 401");
+  });
+
+  it("refuses redirects without following them", async () => {
+    await expect(
+      runMealAnalysisCron(
+        { SOMA_CRON_TARGET_URL: "https://soma-neon-phi.vercel.app", CRON_SECRET: "test-secret" },
+        async () => new Response(null, { status: 307 }),
+      ),
+    ).rejects.toThrow("refused redirect");
   });
 
   it("rejects a non-HTTPS target before sending the secret", async () => {
