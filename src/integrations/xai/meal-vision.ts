@@ -105,10 +105,10 @@ export function isXaiVisionMimeType(mimeType: string) {
 }
 
 const MAX_PROVIDER_ATTEMPTS = 2;
-const DEFAULT_PROVIDER_TIMEOUT_MS = 15_000;
-const MAX_PROVIDER_TIMEOUT_MS = 15_000;
-const TEXT_PROVIDER_TIMEOUT_MS = 10_000;
-const VALIDATOR_TIMEOUT_MS = 8_000;
+const DEFAULT_PROVIDER_TIMEOUT_MS = 45_000;
+const MAX_PROVIDER_TIMEOUT_MS = 45_000;
+const TEXT_PROVIDER_TIMEOUT_MS = 45_000;
+const VALIDATOR_TIMEOUT_MS = 60_000;
 
 function providerTimeoutMs(fallback: number, requested?: number) {
   const configured = requested ?? Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || fallback);
@@ -118,7 +118,7 @@ function providerTimeoutMs(fallback: number, requested?: number) {
 }
 
 /** Bump these identifiers whenever the provider contract changes. */
-export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v2";
+export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v3";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
 
 type VisionImageDetail = "low" | "high";
@@ -138,6 +138,7 @@ const MEAL_QUALITY_CONTRACT_PROMPT = [
 const MEAL_SUGAR_CONTRACT_PROMPT = "Pour chaque aliment et dans totals, transmets toujours sugarGrams pour les sucres totaux et addedSugarGrams pour les sucres ajoutés : utilise une fourchette quand elle est estimable et null quand elle ne l'est pas. Ne confonds jamais glucides et sucres. Une valeur explicitement nulle ou une fourchette dont les bornes valent zéro sont différentes : null signifie indisponible, zéro signifie une observation ou une estimation nulle soutenue. Respecte addedSugarGrams <= sugarGrams <= carbohydrateGrams quand les intervalles sont connus. Les anciennes réponses peuvent omettre ces champs ; elles sont normalisées à null uniquement à la lecture."
 
 const MEAL_NOVA_CONTRACT_PROMPT = "Pour novaGroup, utilise uniquement 1, 2, 3 ou 4 lorsque le niveau de transformation est raisonnablement identifiable ; utilise null sinon et n'infère jamais NOVA depuis le seul caractère sain ou malsain.";
+const MEAL_OBSERVATION_CONTRACT_PROMPT = "Les statuts observation et leurs valeurs doivent toujours correspondre : si portion, estimatedGrams, quantity.value ou quantity.grams contient une valeur, observation.portion doit être observed ; si observation.portion est unknown, portion, estimatedGrams, quantity.value et quantity.grams doivent tous être null. Si novaGroup est non-null, observation.novaGroup doit être observed ; s'il est unknown, novaGroup doit être null. Si sugarExposure est unknown, sugarExposure doit être null. Si qualityProperties est unknown, qualityProperties doit être null.";
 
 export const MEAL_PHOTO_PROVIDER_INSTRUCTIONS = `You are a careful food-photo analyst. Return stable food ids, per-axis observation statuses and per-axis confidence. Treat each supplied photo as independent evidence: several photos usually show different parts or elements of the same meal, so keep distinct foods distinct. Merge only when it is clear that two photos show the same food or portion from another angle; then keep one food item and list every supporting photo id in evidencePhotoIds. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Every evidencePhotoIds value must be one of the supplied photo ids, and a photo-supported food must reference at least one of them. Use ranges with low <= likely <= high, explicit nulls when not estimable, and structured uncertainty signals for important unknowns. Missing nutrition is never zero. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Labels in French. Return only the requested JSON object.`;
 
@@ -471,15 +472,38 @@ function normalizeStructuredAnalysis(value: unknown) {
             ? "observed"
             : "none_observed";
       }
+      if (status.qualityProperties === "observed" && Array.isArray(item.qualityProperties) && item.qualityProperties.length === 0) {
+        status.qualityProperties = "unknown";
+      }
     }
     const normalizedItem = { ...item };
+    let normalizedQuantity = quantity;
+    let normalizedEstimatedGrams = normalizeNumericFields(item.estimatedGrams);
+    if (observation && typeof observation === "object" && !Array.isArray(observation)) {
+      const status = observation as Record<string, unknown>;
+      // Strict JSON Schema cannot express these cross-field refinements. Repair
+      // contradictions conservatively by dropping unsupported values, never by
+      // inventing evidence or upgrading an unknown observation.
+      if (status.portion === "unknown") {
+        normalizedItem.portion = null;
+        normalizedEstimatedGrams = null;
+        if (normalizedQuantity && typeof normalizedQuantity === "object" && !Array.isArray(normalizedQuantity)) {
+          normalizedQuantity = { ...normalizedQuantity, value: null, grams: null };
+        }
+      }
+      if (status.novaGroup === "unknown") normalizedItem.novaGroup = null;
+      if (status.sugarExposure === "unknown") normalizedItem.sugarExposure = null;
+      if (status.sugarExposure === "none_observed") normalizedItem.sugarExposure = { concentrated: false, liquid: false };
+      if (status.qualityProperties === "unknown") delete normalizedItem.qualityProperties;
+      if (status.qualityProperties === "none_observed") normalizedItem.qualityProperties = [];
+    }
     // Strict OpenAI schemas require every property to be present. `null` is
     // the wire representation of an unknown descriptive axis; the canonical
     // Zod model represents that same state by omitting qualityProperties.
     if (normalizedItem.qualityProperties === null) delete normalizedItem.qualityProperties;
     return {
       ...normalizedItem,
-      estimatedGrams: normalizeNumericFields(item.estimatedGrams),
+      estimatedGrams: normalizedEstimatedGrams,
       calories: normalizeRange(item.calories),
       proteinGrams: normalizeRange(item.proteinGrams),
       carbohydrateGrams: normalizeRange(item.carbohydrateGrams),
@@ -489,7 +513,7 @@ function normalizeStructuredAnalysis(value: unknown) {
       // Missing is therefore normalized to null, never to zero or an estimate.
       sugarGrams: item.sugarGrams === undefined ? null : normalizeRange(item.sugarGrams),
       addedSugarGrams: item.addedSugarGrams === undefined ? null : normalizeRange(item.addedSugarGrams),
-      quantity,
+      quantity: normalizedQuantity,
       observation,
     };
   };
@@ -503,9 +527,26 @@ function normalizeStructuredAnalysis(value: unknown) {
     if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "sugarGrams")) normalizedTotals.sugarGrams = null;
     if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "addedSugarGrams")) normalizedTotals.addedSugarGrams = null;
   }
+  const foods = Array.isArray(source.foods) ? source.foods.map(normalizeFood) : source.foods;
+  if (Array.isArray(foods)) {
+    const countedDishIds = new Set(foods.flatMap((food) => food && typeof food === "object" && !Array.isArray(food)
+      && (food as Record<string, unknown>).kind === "dish"
+      && (food as Record<string, unknown>).countedInTotals === true
+      && typeof (food as Record<string, unknown>).id === "string"
+      ? [(food as Record<string, unknown>).id as string]
+      : []));
+    for (let index = 0; index < foods.length; index += 1) {
+      const food = foods[index];
+      if (!food || typeof food !== "object" || Array.isArray(food)) continue;
+      const item = food as Record<string, unknown>;
+      if (typeof item.parentId === "string" && countedDishIds.has(item.parentId) && item.countedInTotals !== false) {
+        foods[index] = { ...item, countedInTotals: false };
+      }
+    }
+  }
   return {
     ...source,
-    foods: Array.isArray(source.foods) ? source.foods.map(normalizeFood) : source.foods,
+    foods,
     totals,
   };
 }
@@ -571,6 +612,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable ; null sinon. N'infère jamais NOVA depuis le seul caractère sain ou malsain d'un aliment. Renseigne sugarExposure avec concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; les deux peuvent être vrais. Si l'axe sucre a été examiné et qu'aucune exposition n'est observée, utilise {concentrated:false, liquid:false}; si la forme ou la recette est inconnue, utilise null.",
     MEAL_QUALITY_CONTRACT_PROMPT + " Si l'axe a été examiné et aucun rôle actif n'est observé, utilise []; si l'information est insuffisante, transmets qualityProperties=null dans le JSON. Ne déduis jamais une qualité globale.",
     "Renseigne observation avec le statut de chaque axe : observed si une valeur est soutenue, none_observed si l'axe a été examiné sans propriété observée, unknown si la preuve manque. Pour portion et novaGroup, utilise uniquement observed ou unknown. Ajoute confidence avec low, medium ou high pour chacun des quatre axes, séparément de la confiance globale.",
+    MEAL_OBSERVATION_CONTRACT_PROMPT,
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme éléments inferred/unknown structurés quand elles sont pertinentes, sans en inventer la quantité. Utilise kind, parentId, evidence, evidenceSource et quantity seulement quand ils sont justifiés.",
     "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
     MEAL_SUGAR_CONTRACT_PROMPT,
@@ -600,6 +642,7 @@ export function makePrompt(input: MealVisionInput) {
     "Pour chaque aliment, renseigne novaGroup avec 1, 2, 3 ou 4 seulement lorsque le niveau de transformation est raisonnablement identifiable depuis la photo ou la note ; null sinon. N'infère jamais NOVA depuis le seul caractère sain ou malsain. Pour sugarExposure, indique concentrated=true pour un sucre concentré (sirop, confiture, fruit séché ou jus) et liquid=true pour une forme liquide ; si l'axe est examiné sans exposition, utilise {concentrated:false, liquid:false}; si la forme ou la recette est inconnue, utilise null.",
     MEAL_QUALITY_CONTRACT_PROMPT + " Utilise [] si l'axe a été examiné et aucun rôle actif n'est observé ; transmets qualityProperties=null si l'information est inconnue. Ne déduis jamais une qualité globale.",
     "Renseigne observation avec observed, none_observed ou unknown pour portion, novaGroup, sugarExposure et qualityProperties. Pour portion et novaGroup, none_observed n'est pas valide : utilise unknown si la preuve manque. Ajoute confidence avec low, medium ou high pour chacun des quatre axes, séparément de la confiance globale.",
+    MEAL_OBSERVATION_CONTRACT_PROMPT,
     "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte son identifiant dans evidencePhotoIds. Ne les invente pas et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
     MEAL_SUGAR_CONTRACT_PROMPT,
@@ -626,6 +669,7 @@ function makeVerificationPrompt(input: MealVisionVerificationInput) {
     MEAL_SUGAR_CONTRACT_PROMPT,
     "Un parent kind=dish ne doit pas être compté avec ses composants comptés ; alcoholic=true impose countedInTotals=false et aucune valeur nutritionnelle de contribution. Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds.",
     "Ne transforme pas unknown en none_observed : unknown signifie que l'axe n'est pas déterminable, tandis que none_observed signifie qu'il a été examiné et qu'aucune propriété n'a été observée. Pour qualityProperties, transmets null si unknown et [] seulement pour none_observed. Pour sugarExposure, utilise null si unknown et {concentrated:false, liquid:false} si none_observed.",
+    MEAL_OBSERVATION_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence, uncertainties et uncertaintySignals restent internes à l'analyse.",
     "Une correction utilisateur éventuelle est une indication en langage naturel, à appliquer seulement si elle est compatible avec les preuves.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
@@ -679,7 +723,8 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const payload = {
       model: request.model,
       store: false,
-      reasoning: { effort: request.reasoningEffort || "low" },
+      prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}`,
+      reasoning: { effort: request.reasoningEffort || (request.provider === "xai" && request.model.startsWith("grok-4.3") ? "none" : "low") },
       max_output_tokens: maxOutputTokens,
       instructions: request.instructions,
       input: [{
@@ -870,7 +915,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
               code: "response_schema_error",
               reason: error instanceof Error ? error.name : "unknown",
             });
-            throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+            throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: true });
           }
         }
       }
@@ -975,7 +1020,7 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
 }
 
 export function createXaiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
-  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
+  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.3";
   const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
   const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const validator: MealVisionProvider["verify"] = process.env.OPENAI_API_KEY

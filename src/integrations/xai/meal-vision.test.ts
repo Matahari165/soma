@@ -163,6 +163,75 @@ describe("xAI meal vision contract", () => {
     expect(result.totals).toMatchObject({ sugarGrams: null, addedSugarGrams: null });
   });
 
+  it("conservatively removes values that contradict an unknown observation", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const contradictory = structuredAnalysis();
+    const foods = contradictory.foods as unknown as Array<Record<string, unknown>>;
+    const firstFood = foods[0] ?? {};
+    foods[0] = {
+      ...firstFood,
+      portion: "une poignée",
+      estimatedGrams: 40,
+      quantity: { value: 1, unit: "poignée", basis: null, grams: 40 },
+      novaGroup: 2,
+      sugarExposure: { concentrated: null, liquid: false },
+      qualityProperties: ["fiber_source"],
+      observation: {
+        ...(firstFood.observation as Record<string, unknown>),
+        portion: "unknown",
+        novaGroup: "unknown",
+        sugarExposure: "unknown",
+        qualityProperties: "unknown",
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(contradictory) }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "Une poignée" });
+
+    expect(result.foods[0]).toMatchObject({
+      portion: null,
+      estimatedGrams: null,
+      quantity: { value: null, grams: null },
+      novaGroup: null,
+      sugarExposure: null,
+    });
+    expect(result.foods[0]).not.toHaveProperty("qualityProperties");
+  });
+
+  it("drops an observed quality status without a concrete property", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const contradictory = structuredAnalysis();
+    const foods = contradictory.foods as unknown as Array<Record<string, unknown>>;
+    const firstFood = foods[0] ?? {};
+    foods[0] = {
+      ...firstFood,
+      qualityProperties: [],
+      observation: { ...(firstFood.observation as Record<string, unknown>), qualityProperties: "observed" },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(contradictory) }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "Une collation" });
+
+    expect(result.foods[0]?.observation?.qualityProperties).toBe("unknown");
+    expect(result.foods[0]).not.toHaveProperty("qualityProperties");
+  });
+
+  it("prevents a counted parent dish from double-counting its components", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const contradictory = structuredAnalysis();
+    const parentId = contradictory.foods[0]?.id ?? "food-1";
+    const parent = { ...contradictory.foods[0], id: parentId, kind: "dish", parentId: null, countedInTotals: true };
+    const child = { ...contradictory.foods[0], id: "component-1", kind: "component", parentId } as Record<string, unknown>;
+    delete child.countedInTotals;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify({ ...contradictory, foods: [parent, child] }) }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Un plat composé" });
+
+    expect(result.foods.find((food) => food.id === parentId)?.countedInTotals).toBe(true);
+    expect(result.foods.find((food) => food.id === "component-1")?.countedInTotals).toBe(false);
+    expect(result.totals).toEqual(contradictory.totals);
+  });
+
   it("rejects an invalid provider response instead of persisting guesses", async () => {
     process.env.XAI_API_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ summary: "bad", foods: [], totals: {}, confidence: "medium", uncertainties: [] }) }] }] }), { status: 200 }));

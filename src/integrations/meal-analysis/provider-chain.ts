@@ -32,7 +32,7 @@ function providerConfiguration(provider: "xai" | "openai", model: string) {
 export function getMealAnalysisPipelineConfiguration(): MealAnalysisPipelineConfiguration {
   const primaryProvider = configuredProviderName();
   const primaryModel = primaryProvider === "xai"
-    ? process.env.XAI_MEAL_VISION_MODEL || "grok-4.6"
+    ? process.env.XAI_MEAL_VISION_MODEL || "grok-4.3"
     : process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const primary = providerConfiguration(primaryProvider, primaryModel);
   const validator = primaryProvider !== "xai" ? null : process.env.OPENAI_API_KEY
@@ -44,22 +44,25 @@ export function getMealAnalysisPipelineConfiguration(): MealAnalysisPipelineConf
   const fallback = !fallbackEnabled ? null : primaryProvider === "xai" && process.env.OPENAI_API_KEY
     ? providerConfiguration("openai", process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol")
     : primaryProvider === "openai" && process.env.XAI_API_KEY
-      ? providerConfiguration("xai", process.env.XAI_MEAL_VISION_MODEL || "grok-4.6")
+      ? providerConfiguration("xai", process.env.XAI_MEAL_VISION_MODEL || "grok-4.3")
       : null;
   return { primary, validator, fallback };
 }
 
 export function getConfiguredMealAnalysisProvider(): MealVisionProvider {
-  return configuredProviderName() === "openai" ? createOpenAiMealVisionProvider() : createXaiMealVisionProvider();
+  // Durable jobs own retries. Keeping one HTTP attempt per invocation avoids
+  // spending the whole serverless window retrying the same provider in memory.
+  return configuredProviderName() === "openai"
+    ? createOpenAiMealVisionProvider({ maxAttempts: 1 })
+    : createXaiMealVisionProvider({ maxAttempts: 1 });
 }
 
 function fallbackProvider(primary: MealVisionProvider) {
   if (process.env.MEAL_ANALYSIS_ENABLE_FALLBACK === "false") return null;
-  // The primary adapter already used its two-attempt retry budget. A single
-  // fallback attempt still allows recovery from a transient primary outage
-  // without changing the two-model validation contract.
-  if (primary.name === "xai" && process.env.OPENAI_API_KEY) return createOpenAiMealVisionProvider({ maxAttempts: 1, timeoutMs: 8_000 });
-  if (primary.name === "openai" && process.env.XAI_API_KEY) return createXaiMealVisionProvider({ maxAttempts: 1, timeoutMs: 8_000 });
+  // A single fallback attempt recovers from a transient primary outage while
+  // the persisted job remains responsible for any later retry.
+  if (primary.name === "xai" && process.env.OPENAI_API_KEY) return createOpenAiMealVisionProvider({ maxAttempts: 1, timeoutMs: 60_000 });
+  if (primary.name === "openai" && process.env.XAI_API_KEY) return createXaiMealVisionProvider({ maxAttempts: 1, timeoutMs: 60_000 });
   return null;
 }
 
@@ -84,10 +87,10 @@ function pipelineProvenance(input: {
  */
 export async function analyzeMealInputWithFallback(
   input: MealVisionInput,
-  options: { provider?: MealVisionProvider; requestId?: string; verify?: boolean } = {},
+  options: { provider?: MealVisionProvider; requestId?: string; verify?: boolean; allowFallback?: boolean } = {},
 ) {
   const primary = options.provider ?? getConfiguredMealAnalysisProvider();
-  const secondary = options.provider ? null : fallbackProvider(primary);
+  const secondary = options.provider || options.allowFallback === false ? null : fallbackProvider(primary);
   const primaryConfiguration = { provider: primary.name, model: primary.model };
   try {
     const analysed = await analyzeMealInput(input, primary, { verify: options.verify, requestId: options.requestId });

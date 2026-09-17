@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { JournalVariable } from "@/domain/lab/journal";
-import { breakfastIsExplicitlySkipped, createMealAndAnalyze, mealQuickSlotIsFilled, MealQuickCapture, morningJournalIsConfirmed } from "./meal-quick-capture";
+import { breakfastIsExplicitlySkipped, createMealAndAnalyze, mealQuickErrorAction, mealQuickSlotIsFilled, MealQuickCapture, morningJournalIsConfirmed, retryMealAnalysis } from "./meal-quick-capture";
 
 const breakfast = { id: "breakfast-id", name: "Breakfast", variableType: "boolean", unit: null, options: [], position: 10, isActive: true, emoji: "🍳", defaultValue: false, dayPeriod: "morning" } satisfies JournalVariable;
 const todayDate = "2026-08-31";
@@ -71,6 +71,34 @@ describe("MealQuickCapture", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ note: "2 bananes" });
     expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/meals/meal-text/analyze");
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/photos"))).toBe(false);
+    fetchMock.mockRestore();
+  });
+
+  it("retries an existing failed meal with a fresh idempotency key", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ analysis: { status: "queued" } }), { status: 202 }));
+
+    await expect(retryMealAnalysis("meal-text")).resolves.toBe("queued");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/meals/meal-text/analyze");
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toMatchObject({ force: true });
+    expect((init?.headers as Record<string, string>)["X-Analysis-Request-Id"]).toMatch(/^analysis-/);
+    fetchMock.mockRestore();
+  });
+
+  it("retries text after an initial failure instead of opening the photo picker", () => {
+    expect(mealQuickErrorAction({ note: "2 bananes", origin: null })).toBe("resubmit-text");
+    expect(mealQuickErrorAction({ mealId: "meal-text", note: "2 bananes", origin: null })).toBe("retry");
+  });
+
+  it("preserves the created meal id when starting analysis fails", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ meal: { id: "meal-text", note: "2 bananes" } }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "Analyse indisponible" }), { status: 503 }));
+
+    await expect(createMealAndAnalyze(todayDate, "snack", { note: "2 bananes" })).rejects.toMatchObject({ mealId: "meal-text" });
     fetchMock.mockRestore();
   });
 });

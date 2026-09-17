@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { mealAnalysisPhotoMimeTypes, mealOriginSchema, mealTypeSchema } from "@/domain/meals";
@@ -7,7 +7,7 @@ import { isLocalPreviewMode } from "@/lib/env";
 import { mealToLegacyApi } from "@/services/meal-api";
 import { MealMultipartError, parseMealMultipart } from "@/services/meal-multipart";
 import { addPreviewMealPhotos, analyzePreviewMeal, createPreviewMeal, findPreviewMeal, updatePreviewMeal } from "@/services/meal-preview";
-import { addMealPhotos, enqueueMealAnalysis, createMeal, findMeal, MealServiceError, updateMealPhotoOrigins, updateMealRecord } from "@/services/meals";
+import { addMealPhotos, enqueueMealAnalysis, createMeal, findMeal, MealServiceError, processNextMealAnalysis, updateMealPhotoOrigins, updateMealRecord } from "@/services/meals";
 
 function formFiles(form: FormData) {
   return form.getAll("photos").filter((value): value is File => typeof File !== "undefined" && value instanceof File);
@@ -114,6 +114,19 @@ export async function POST(request: Request) {
     }).filter((item) => refreshed.photos.some((photo) => photo.id === item.photoId));
     if (retainedPhotoOrigins.length) await updateMealPhotoOrigins(user.id, refreshed.id, retainedPhotoOrigins);
     const result = await enqueueMealAnalysis(user.id, refreshed.id, { force: false, analysisRequestId });
+    if (result.queued) {
+      after(async () => {
+        try {
+          await processNextMealAnalysis();
+        } catch (error) {
+          console.error("[meal-analysis] legacy immediate background worker failed", {
+            requestId: analysisRequestId,
+            stage: "legacy_immediate_worker",
+            reason: error instanceof Error ? error.name : "unknown",
+          });
+        }
+      });
+    }
     const analysedMeal = await findMeal(user.id, refreshed.id);
     return NextResponse.json({ meal: mealToLegacyApi(analysedMeal ?? refreshed), analysis: result.analysis, queued: result.queued, requestId: analysisRequestId }, { status: result.queued ? 202 : 200, headers: { "X-Analysis-Request-Id": analysisRequestId } });
   } catch (error) {

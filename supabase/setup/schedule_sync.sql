@@ -45,3 +45,24 @@ select cron.schedule(
   );
   $$
 );
+
+-- Durable meal jobs must keep advancing after the request that queued them has
+-- ended. This one-minute recovery loop is the production safety net for
+-- interrupted after() work, retries, and deferred photo purges.
+select cron.unschedule(jobid)
+from cron.job
+where jobname in ('soma-meal-analysis-worker', 'soma-meal-analysis-every-minute');
+
+select cron.schedule(
+  'soma-meal-analysis-worker',
+  '* * * * *',
+  $$
+  select net.http_get(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'soma_app_url') || '/api/cron/meal-analysis',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'soma_cron_secret')
+    ),
+    timeout_milliseconds := 59000
+  );
+  $$
+);

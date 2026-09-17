@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import { requireServerEnv } from "@/lib/env";
 import { processNextMealAnalysis, purgeExpiredFailedAnalysisPhotos, reconcileMealPhotoPurges, requeueRetryableMealAnalyses } from "@/services/meals";
 
-/** Keep enough headroom below Vercel's non-fluid Hobby maximum of 60 seconds. */
-export const maxDuration = 50;
+/** Stay within the Vercel Hobby function ceiling; provider work is bounded below it. */
+export const maxDuration = 60;
 
 function isAuthorized(request: Request) {
   const secret = requireServerEnv("CRON_SECRET");
