@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     if (result.queued) {
       after(async () => {
         try {
-          await processNextMealAnalysis();
+          await processNextMealAnalysis({ userId: user.id, analysisId: result.analysis.id });
         } catch (error) {
           console.error("[meal-analysis] legacy immediate background worker failed", {
             requestId: analysisRequestId,

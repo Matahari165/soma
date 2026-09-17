@@ -419,6 +419,18 @@ export async function listQueuedMealAnalyses(limit = 1) {
   return (result.data ?? []) as AnalysisRow[];
 }
 
+export async function findQueuedMealAnalysis(userId: string, analysisId: string) {
+  const result = await createCloudflareAdminClient()
+    .from("meal_analyses")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", analysisId)
+    .eq("status", "queued")
+    .maybeSingle();
+  if (result.error) throw new Error("Queued meal analysis could not be loaded.");
+  return result.data ? result.data as AnalysisRow : null;
+}
+
 /** Rows used by the scheduled photo-purge and failed-analysis reconcilers. */
 export async function listMealPhotoRowsForReconciliation(limit = 100) {
   const safeLimit = Math.max(1, Math.floor(limit));

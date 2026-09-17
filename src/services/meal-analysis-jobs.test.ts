@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   findLatestMealAnalysis: vi.fn(),
   findMealAnalysisByRequestId: vi.fn(),
   findActiveMealAnalysis: vi.fn(),
+  findQueuedMealAnalysis: vi.fn(),
   insertMealAnalysis: vi.fn(),
   listQueuedMealAnalyses: vi.fn(),
   updateMealAnalysis: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@/repositories/meals", async (importOriginal) => ({
   findLatestMealAnalysis: state.findLatestMealAnalysis,
   findMealAnalysisByRequestId: state.findMealAnalysisByRequestId,
   findActiveMealAnalysis: state.findActiveMealAnalysis,
+  findQueuedMealAnalysis: state.findQueuedMealAnalysis,
   insertMealAnalysis: state.insertMealAnalysis,
   listQueuedMealAnalyses: state.listQueuedMealAnalyses,
   updateMealAnalysis: state.updateMealAnalysis,
@@ -109,6 +111,7 @@ describe("durable meal analysis jobs", () => {
     state.findLatestMealAnalysis.mockResolvedValue(null);
     state.findMealAnalysisByRequestId.mockResolvedValue(null);
     state.findActiveMealAnalysis.mockResolvedValue(null);
+    state.findQueuedMealAnalysis.mockResolvedValue(null);
     state.findRelevantMealRecipeReferences.mockResolvedValue([]);
     state.insertMealAnalysis.mockResolvedValue(queuedAnalysis);
     state.claimCloudflareLock.mockResolvedValue(true);
@@ -165,6 +168,44 @@ describe("durable meal analysis jobs", () => {
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
     expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", verify: false, allowFallback: false });
+  });
+
+  it("processes the freshly enqueued job instead of an older FIFO job", async () => {
+    const targeted = {
+      id: "analysis-new",
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "queued",
+      provider: "xai",
+      model: "grok-4.3",
+      source_photo_ids: [],
+      source_note: "Riz et légumes",
+      source_meal_date: meal.mealDate,
+      source_meal_type: meal.mealType,
+      source_correction: null,
+      attempts: 0,
+      analysis_request_id: "analysis-request-targeted",
+      created_at: "2026-09-17T10:00:00.000Z",
+    };
+    state.findQueuedMealAnalysis.mockResolvedValue(targeted);
+    state.listQueuedMealAnalyses.mockResolvedValue([{ ...targeted, id: "analysis-old", created_at: "2026-09-17T09:00:00.000Z" }]);
+    state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.3", result: canonicalResult });
+
+    const result = await processNextMealAnalysis({ userId: "user-1", analysisId: targeted.id });
+
+    expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
+    expect(state.findQueuedMealAnalysis).toHaveBeenCalledWith("user-1", targeted.id);
+    expect(state.listQueuedMealAnalyses).not.toHaveBeenCalled();
+    expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", targeted.id, expect.objectContaining({ status: "running" }), "queued");
+  });
+
+  it("does not fall back to another queued job when the targeted job is unavailable", async () => {
+    state.findQueuedMealAnalysis.mockResolvedValue(null);
+
+    await expect(processNextMealAnalysis({ userId: "user-1", analysisId: "analysis-finished" })).resolves.toEqual({ processed: false, analysis: null });
+
+    expect(state.listQueuedMealAnalyses).not.toHaveBeenCalled();
+    expect(state.analyzeMealInputWithFallback).not.toHaveBeenCalled();
   });
 
   it("persists a provider failure as a terminal failed state", async () => {

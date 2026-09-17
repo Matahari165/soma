@@ -74,6 +74,10 @@ describe("meal analysis durable HTTP contract", () => {
     expect(await response.json()).toMatchObject({ queued: true, analysis: { status: "queued" }, meal: { analysis: { status: "queued" } } });
     expect(state.enqueueMealAnalysis).toHaveBeenCalledWith("user-1", meal.id, expect.objectContaining({ analysisRequestId: "analysis-request-5" }));
     expect(state.after).toHaveBeenCalledTimes(1);
+    const callback = state.after.mock.calls[0]?.[0] as (() => Promise<void>) | undefined;
+    expect(callback).toBeTypeOf("function");
+    await callback?.();
+    expect(state.processNextMealAnalysis).toHaveBeenCalledWith({ userId: "user-1", analysisId: "analysis-1" });
   });
 
   it("exposes the durable status for a returning client", async () => {
