@@ -135,7 +135,9 @@
 }
 
 .recoveryDetailPanel {
+  width: min(100%, 32rem);
   max-width: 0;
+  max-height: 0;
   min-width: 0;
   align-self: center;
   overflow: hidden;
@@ -149,6 +151,7 @@
 
 .recoveryDetailPanel[data-open="true"] {
   max-width: 32rem;
+  max-height: 40rem;
   padding-left: 20px;
   border-left-width: 1px;
   opacity: 1;
@@ -228,6 +231,14 @@
   color: var(--recovery-muted);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
   font-size: 12px;
+}
+
+.recoveryDetailPanel > p {
+  max-width: 62ch;
+  margin: 16px 0 0;
+  color: var(--recovery-muted);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .scoreSummary {
@@ -791,6 +802,16 @@
   color: var(--recovery-muted);
   font-size: 14px;
   line-height: 20px;
+}
+
+.emptyAction {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--recovery-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 /* Recovery keeps the score context in its summary; the shell footer would

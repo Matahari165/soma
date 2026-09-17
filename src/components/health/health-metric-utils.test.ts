@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { averageLast30Measured, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, averageLast30MeasuredWithCount, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 
 describe("health metric comparisons", () => {
   it("averages measured values across the inclusive 30-day window", () => {
@@ -12,6 +12,7 @@ describe("health metric comparisons", () => {
     ];
 
     expect(averageLast30Measured(days, "value", "2026-08-27")).toBe(250);
+    expect(averageLast30MeasuredWithCount(days, "value", "2026-08-27")).toEqual({ value: 250, measuredDays: 2 });
   });
 
   it("uses the favorable direction to assign a comparison tone", () => {
