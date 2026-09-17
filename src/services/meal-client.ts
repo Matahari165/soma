@@ -1,6 +1,9 @@
 export type MealRequestOperation = "load" | "create" | "update" | "upload" | "analyze";
 export type MealClientErrorCode = "network" | "timeout" | "unknown";
 
+export const MEAL_ANALYSIS_REQUEST_TIMEOUT_MS = 15_000;
+export const MEAL_ANALYSIS_STATUS_TIMEOUT_MS = 10_000;
+
 const operationMessages: Record<MealRequestOperation, { timeout: string; network: string }> = {
   load: {
     timeout: "Loading meals took too long. Please try again.",
@@ -68,8 +71,14 @@ async function requestMeal(
 ) {
   const controller = timeoutMs === undefined ? null : new AbortController();
   const timer = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : null;
+  let responseReturned = false;
   try {
-    return await fetch(input, controller ? { ...init, signal: controller.signal } : init);
+    const response = await fetch(input, controller ? { ...init, signal: controller.signal } : init);
+    // Keep the signal alive until the caller consumes the response body. This
+    // prevents a response that sends headers but never finishes JSON from
+    // bypassing the request deadline.
+    responseReturned = true;
+    return response;
   } catch (error) {
     const classified = classifyMealClientError(error, options.operation, options.requestId);
     console.warn("[meal-analysis] client request failed", {
@@ -80,15 +89,11 @@ async function requestMeal(
     });
     throw classified;
   } finally {
-    if (timer !== null) globalThis.clearTimeout(timer);
+    if (timer !== null && !responseReturned) globalThis.clearTimeout(timer);
   }
 }
 
-/**
- * Runs a meal request without imposing a client-side deadline. Analysis may
- * legitimately take longer than a fixed browser timeout, especially when the
- * primary model is followed by the validator.
- */
+/** Runs a meal request without a deadline for callers that own their lifecycle. */
 export async function fetchMeal(
   input: RequestInfo | URL,
   init: RequestInit,

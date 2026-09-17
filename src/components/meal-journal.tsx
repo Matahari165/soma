@@ -50,7 +50,7 @@ import {
   type MealTargetSlot,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
-import { fetchMeal, fetchMealWithTimeout } from "@/services/meal-client";
+import { fetchMealWithTimeout, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, MEAL_ANALYSIS_STATUS_TIMEOUT_MS } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import { LabMealCard, type MealDesignVariant } from "@/components/lab/meal-card-variants";
 import styles from "./meal-journal.module.css";
@@ -83,6 +83,7 @@ const COURSE_LABELS: Record<MealFoodCourse, string> = {
 export const MEAL_DATE_EVENT = "soma:meal-date";
 export const RECIPE_TO_DAY_NOTE_EVENT = "soma:recipe-to-day-note";
 const DRAFT_NOTE_STORAGE_PREFIX = "soma.meal-note.";
+const MEAL_ANALYSIS_POLL_MAX_MS = 5 * 60_000;
 
 function draftNoteStorageKey(date: string, slot: MealSlot) {
   return `${DRAFT_NOTE_STORAGE_PREFIX}${date}.${slot}`;
@@ -417,7 +418,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("The server did not confirm all photos for the meal.");
     options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetchMeal(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction || meal.analysis), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, { operation: "analyze", requestId: analysisRequestId });
+  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction || meal.analysis), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId });
   const body = await readJson(response);
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("The server did not return the analyzed meal.");
   return apiMealToRecord(body.meal);
@@ -1160,6 +1161,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   // ni les autres créneaux ni la navigation entre les jours.
   const inFlightSlots = useRef(new Set<MealSlot>());
   const cancelledAnalysisIds = useRef(new Set<string>());
+  const analysisStartedAt = useRef(new Map<string, number>());
   // Brouillons locaux conservés en mémoire par jour : changer de jour ne doit
   // jamais jeter une note ou une photo non analysée.
   const draftCache = useRef(new Map<string, MealJournalData["meals"]>());
@@ -1259,7 +1261,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   // Keep the dependency stable while a job stays in the same state; otherwise
   // every refresh would recreate the effect and reset its backoff to 2 seconds.
   const activeAnalysisKey = Object.entries(data?.meals ?? {})
-    .flatMap(([slot, meal]) => meal && (meal.status === "accepted" || meal.status === "analyzing") ? [`${slot}:${meal.id}:${meal.status}`] : [])
+    .flatMap(([slot, meal]) => meal && (meal.status === "accepted" || meal.status === "analyzing") ? [`${slot}:${meal.id}`] : [])
     .join("|");
   useEffect(() => {
     if (api || !activeAnalysisKey) return;
@@ -1268,11 +1270,35 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     );
     if (!activeMeals.length) return;
     let cancelled = false;
+    const activeIds = new Set(activeMeals.map(({ meal }) => meal.id));
+    for (const id of analysisStartedAt.current.keys()) {
+      if (!activeIds.has(id)) analysisStartedAt.current.delete(id);
+    }
+    const now = Date.now();
+    activeMeals.forEach(({ meal }) => {
+      if (!analysisStartedAt.current.has(meal.id)) analysisStartedAt.current.set(meal.id, now);
+    });
+    const hasExpired = (mealId: string) => Date.now() - (analysisStartedAt.current.get(mealId) ?? now) >= MEAL_ANALYSIS_POLL_MAX_MS;
+    const markExpired = () => {
+      setData((current) => {
+        if (!current) return current;
+        let changed = false;
+        const meals = { ...current.meals };
+        for (const { slot, meal } of activeMeals) {
+          const currentMeal = meals[slot];
+          if (!currentMeal || currentMeal.id !== meal.id || !hasExpired(meal.id) || (currentMeal.status !== "accepted" && currentMeal.status !== "analyzing")) continue;
+          meals[slot] = { ...currentMeal, status: "error", error: "Analysis timed out after 5 minutes. Open the meal to retry." };
+          changed = true;
+        }
+        return changed ? { ...current, meals } : current;
+      });
+    };
     const refresh = async () => {
       await Promise.all(activeMeals.map(async ({ slot, meal }) => {
         if (cancelledAnalysisIds.current.has(meal.id)) return;
+        if (hasExpired(meal.id)) return;
         try {
-          const response = await fetchMeal(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, { cache: "no-store" }, { operation: "load" });
+          const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, { cache: "no-store" }, MEAL_ANALYSIS_STATUS_TIMEOUT_MS, { operation: "load" });
           const body = await readJson(response) as { meal?: unknown };
           if (cancelled || !body.meal) return;
           const next = normalizeMeal(apiMealToRecord(body.meal), selectedDate, slot);
@@ -1288,8 +1314,13 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     const delays = [2_000, 5_000, 10_000, 20_000, 30_000];
     const schedule = () => {
       if (cancelled) return;
+      if (activeMeals.every(({ meal }) => hasExpired(meal.id))) {
+        markExpired();
+        return;
+      }
       timer = window.setTimeout(async () => {
         await refresh();
+        if (!cancelled) markExpired();
         delayIndex = Math.min(delayIndex + 1, delays.length - 1);
         schedule();
       }, delays[delayIndex]);
@@ -1297,6 +1328,10 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     void refresh().finally(schedule);
     const onVisibility = () => {
       if (document.visibilityState !== "visible") return;
+      if (activeMeals.every(({ meal }) => hasExpired(meal.id))) {
+        markExpired();
+        return;
+      }
       if (timer !== null) window.clearTimeout(timer);
       delayIndex = 0;
       void refresh().finally(schedule);
@@ -1778,6 +1813,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     inFlightSlots.current.add(slot);
     setAnalyzingSlots((previous) => previous.includes(slot) ? previous : [...previous, slot]);
     cancelledAnalysisIds.current.delete(meal.id);
+    analysisStartedAt.current.delete(meal.id);
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
     try {
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
@@ -1829,6 +1865,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     const meal = dataRef.current?.meals[slot];
     if (!meal) return;
     cancelledAnalysisIds.current.add(meal.id);
+    analysisStartedAt.current.delete(meal.id);
     inFlightSlots.current.delete(slot);
     setAnalyzingSlots((previous) => previous.filter((entry) => entry !== slot));
     updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: null }));

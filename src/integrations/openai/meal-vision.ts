@@ -17,7 +17,7 @@ import {
  * adapter. Keeping it independent makes a real provider fallback possible and
  * prevents the rest of Soma from knowing provider-specific HTTP details.
  */
-export function createOpenAiMealVisionProvider(options: { maxAttempts?: number } = {}): MealVisionProvider {
+export function createOpenAiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
   const model = process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const endpoint = process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses";
   const reasoningEffort = process.env.OPENAI_MEAL_ANALYSIS_REASONING_EFFORT || process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low";
@@ -38,6 +38,7 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number }
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        timeoutMs: options.timeoutMs,
       });
     },
     async analyzeText(input: MealVisionTextInput) {
@@ -54,6 +55,7 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number }
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        timeoutMs: options.timeoutMs,
       });
     },
   };

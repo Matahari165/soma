@@ -20,6 +20,7 @@ function structuredAnalysis(evidenceSource: "photo" | "note" = "note") {
 describe("xAI meal vision contract", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
     delete process.env.XAI_API_KEY;
     delete process.env.XAI_MEAL_VISION_MODEL;
     delete process.env.XAI_MEAL_VALIDATOR_MODEL;
@@ -198,6 +199,23 @@ describe("xAI meal vision contract", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[1]).toHaveProperty("signal");
+  });
+
+  it("stops a provider that never completes", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        const error = new Error("The operation was aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true });
+    }));
+
+    const pending = expect(createXaiMealVisionProvider({ maxAttempts: 1, timeoutMs: 1_000 }).analyzeText!({ mealType: "snack", mealDate: "2026-08-31", note: "Une banane" })).rejects.toMatchObject({ code: "provider_timeout" });
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+    vi.useRealTimers();
   });
 
   it("uses personal recipes only as variable context", async () => {
