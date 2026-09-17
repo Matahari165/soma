@@ -23,11 +23,10 @@ describe("meal analysis provider fallback", () => {
     delete process.env.OPENAI_MEAL_ANALYSIS_MODEL;
   });
 
-  it("retries Grok once, then uses ChatGPT 5.6 Sol for a retryable failure", async () => {
+  it("uses the fallback after one failed primary call and leaves further retries to the durable job", async () => {
     process.env.XAI_API_KEY = "xai-test";
     process.env.OPENAI_API_KEY = "openai-test";
     const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response("temporary", { status: 503 }))
       .mockResolvedValueOnce(new Response("temporary", { status: 503 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
 
@@ -38,9 +37,9 @@ describe("meal analysis provider fallback", () => {
       images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
     }, { requestId: "analysis-test-1" });
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.x.ai/v1/responses");
-    expect(fetchMock.mock.calls[2]?.[0]).toBe("https://api.openai.com/v1/responses");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
     expect(result).toMatchObject({ provider: "openai", model: "gpt-5.6-sol", result: { summary: "Repas test" } });
     expect(result.provenance).toMatchObject({ fallback: { configured: true, attempted: true, used: true }, validation: { requested: false, attempted: false, succeeded: false } });
   });
@@ -78,7 +77,7 @@ describe("meal analysis provider fallback", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
     expect(result).toMatchObject({ provider: "openai", model: "gpt-5.6-sol", result: { summary: "GPT" } });
     expect(result.provenance).toMatchObject({
-      primary: { provider: "xai", model: "grok-4.6" },
+      primary: { provider: "xai", model: "grok-4.3" },
       final: { provider: "openai", model: "gpt-5.6-sol" },
       validation: { attempted: true, succeeded: true, provider: "openai", model: "gpt-5.6-sol" },
       fallback: { configured: true, attempted: false, used: false },
@@ -102,7 +101,7 @@ describe("meal analysis provider fallback", () => {
     }, { requestId: "analysis-test-3" });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result).toMatchObject({ provider: "xai", model: "grok-4.6", result: { summary: "Grok" } });
+    expect(result).toMatchObject({ provider: "xai", model: "grok-4.3", result: { summary: "Grok" } });
     expect(result.provenance.validation).toMatchObject({ attempted: true, succeeded: false, provider: "openai", model: "gpt-5.6-sol" });
   });
 });

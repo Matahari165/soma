@@ -86,6 +86,28 @@ async function timedMealStage<T>(stage: string, context: { mealId?: string; requ
   }
 }
 
+export async function loadMealPhotoForAnalysis(objectPath: string, timeoutMs = 6_000) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      (async () => {
+        const object = await getR2MealPhotoObject(objectPath, controller.signal);
+        if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
+        return object.arrayBuffer();
+      })(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new MealServiceError("unavailable", "Le téléchargement de la photo a expiré. Réessaie.", "storage_error"));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 type ConfirmedMealFoodWithSugar = NonNullable<ConfirmedMealRecord["foods"]>[number] & {
   sugarG?: NutritionEstimate | null;
   addedSugarG?: NutritionEstimate | null;
@@ -755,9 +777,8 @@ export async function processNextMealAnalysis() {
     const note = typeof candidate.source_note === "string" ? candidate.source_note : "";
     const [images, recipeReferences] = await Promise.all([
       Promise.all(availablePhotos.map(async (photo) => {
-        const object = await timedMealStage("photo_download", { mealId: candidate.meal_id, requestId }, () => getR2MealPhotoObject(photo.objectPath));
-        if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
-        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() };
+        const data = await timedMealStage("photo_download", { mealId: candidate.meal_id, requestId }, () => loadMealPhotoForAnalysis(photo.objectPath));
+        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data };
       })),
       findRelevantMealRecipeReferences(candidate.user_id, { note, correction: candidate.source_correction ?? undefined }).catch((error) => {
         console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId, stage: "worker_recipe_context", reason: error instanceof Error ? error.name : "unknown" });
@@ -772,7 +793,7 @@ export async function processNextMealAnalysis() {
       ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
       ...(candidate.source_previous_analysis ? { previousAnalysis: candidate.source_previous_analysis } : {}),
       ...(recipeReferences.length ? { recipeReferences } : {}),
-    }, { requestId }));
+    }, { requestId, verify: false, allowFallback: false }));
     let canonicalResult;
     try {
       canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
@@ -797,7 +818,7 @@ export async function processNextMealAnalysis() {
   } catch (error) {
     const failure = workerFailure(error);
     const failedAt = candidate.failure_started_at ?? new Date().toISOString();
-    const attempts = Number(candidate.attempts ?? 0);
+    const attempts = Number(candidate.attempts ?? 0) + 1;
     const retryable = isRetryableAnalysisCode(failure.code) && attempts < MAX_AUTOMATIC_ANALYSIS_RETRIES;
     const retryAfter = retryable
       ? new Date(Date.now() + (RETRY_BACKOFF_MS[Math.min(Math.max(attempts - 1, 0), RETRY_BACKOFF_MS.length - 1)] ?? RETRY_BACKOFF_MS[0])).toISOString()

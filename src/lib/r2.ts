@@ -40,9 +40,9 @@ async function getS3Client() {
   return s3ClientPromise;
 }
 
-async function getS3Object(key: string): Promise<R2ObjectLike | null> {
+async function getS3Object(key: string, signal?: AbortSignal): Promise<R2ObjectLike | null> {
   const { GetObjectCommand } = await import("@aws-sdk/client-s3");
-  const response = await (await getS3Client()).send(new GetObjectCommand({ Bucket: r2BucketName(), Key: key }));
+  const response = await (await getS3Client()).send(new GetObjectCommand({ Bucket: r2BucketName(), Key: key }), signal ? { abortSignal: signal } : undefined);
   if (!response.Body) return null;
   const bytes = await response.Body.transformToByteArray();
   const buffer = Buffer.from(bytes);
@@ -50,8 +50,8 @@ async function getS3Object(key: string): Promise<R2ObjectLike | null> {
   return { body: new Response(buffer).body, arrayBuffer: async () => arrayBuffer };
 }
 
-async function getStorageObject(key: string) {
-  if (hasS3Config()) return getS3Object(key);
+async function getStorageObject(key: string, signal?: AbortSignal) {
+  if (hasS3Config()) return getS3Object(key, signal);
   return cloudflareArchives().get(key) as Promise<R2ObjectLike | null>;
 }
 
@@ -117,8 +117,8 @@ export async function putR2MealPhotoObject(key: string, body: ArrayBuffer, mimeT
   });
 }
 
-export async function getR2MealPhotoObject(key: string) {
-  return getStorageObject(key);
+export async function getR2MealPhotoObject(key: string, signal?: AbortSignal) {
+  return getStorageObject(key, signal);
 }
 
 export async function deleteR2MealPhotoObject(key: string) {

@@ -30,6 +30,13 @@ export function mealQuickSlotIsFilled(meal: QuickMealRecord | null | undefined) 
   return Boolean(meal && (meal.status === "confirmed" || (Array.isArray(meal.photos) && meal.photos.length > 0) || (typeof meal.note === "string" && meal.note.trim().length > 0)));
 }
 
+export function mealQuickErrorAction(item: Pick<SlotState, "mealId" | "origin" | "note">) {
+  if (item.mealId) return "retry" as const;
+  if (item.origin) return "resubmit-photo" as const;
+  if (item.note.trim()) return "resubmit-text" as const;
+  return "choose-photo" as const;
+}
+
 export function morningJournalIsConfirmed(input: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[] }) {
   const day = input.days.find((candidate) => candidate.entryDate === input.todayDate);
   if (day?.status !== "validated") return false;
@@ -66,26 +73,43 @@ export async function createMealAndAnalyze(date: string, slot: MealType, input: 
   }, 15_000, { operation: "create", requestId: analysisRequestId }));
   const meal = created.meal as { id?: unknown; note?: unknown } | undefined;
   if (typeof meal?.id !== "string") throw new Error("Le repas n’a pas pu être créé.");
-  if (note && meal.note !== note) {
-    await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note, entryState: "recorded" }),
-    }, 15_000, { operation: "update", requestId: analysisRequestId }));
+  try {
+    if (note && meal.note !== note) {
+      await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note, entryState: "recorded" }),
+      }, 15_000, { operation: "update", requestId: analysisRequestId }));
+    }
+    if (input.file) {
+      const form = new FormData();
+      form.append("photos", input.file, input.file.name);
+      form.set("origin", input.origin ?? "unknown");
+      const uploadKey = `quick-${date}-${slot}-${input.file.name}-${input.file.size}-${input.file.lastModified}`;
+      await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId }));
+    }
+    const analysis = await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
+      body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
+    }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId }));
+    return { mealId: meal.id, status: analysis.analysis && typeof analysis.analysis === "object" && typeof (analysis.analysis as { status?: unknown }).status === "string" ? (analysis.analysis as { status: string }).status : "queued" };
+  } catch (error) {
+    if (error && typeof error === "object") Object.assign(error, { mealId: meal.id });
+    throw error;
   }
-  if (input.file) {
-    const form = new FormData();
-    form.append("photos", input.file, input.file.name);
-    form.set("origin", input.origin ?? "unknown");
-    const uploadKey = `quick-${date}-${slot}-${input.file.name}-${input.file.size}-${input.file.lastModified}`;
-    await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId }));
-  }
-  const analysis = await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, {
+}
+
+export async function retryMealAnalysis(mealId: string) {
+  const analysisRequestId = `analysis-${crypto.randomUUID()}`;
+  const body = await responseJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId },
-    body: JSON.stringify({ force: false, idempotencyKey: analysisRequestId }),
+    body: JSON.stringify({ force: true, idempotencyKey: analysisRequestId }),
   }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId }));
-  return { mealId: meal.id, status: analysis.analysis && typeof analysis.analysis === "object" && typeof (analysis.analysis as { status?: unknown }).status === "string" ? (analysis.analysis as { status: string }).status : "queued" };
+  return body.analysis && typeof body.analysis === "object" && typeof (body.analysis as { status?: unknown }).status === "string"
+    ? (body.analysis as { status: string }).status
+    : "queued";
 }
 
 export function MealQuickCapture({ todayDate, variables, entries, days, breakfastDisabledOverride, morningJournalCompletedOverride }: { todayDate: string; variables: JournalVariable[]; entries: JournalEntry[]; days: JournalDay[]; breakfastDisabledOverride?: boolean; morningJournalCompletedOverride?: boolean }) {
@@ -257,6 +281,23 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
       analysisStartedAt.current.delete(accepted.mealId);
       setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: accepted.status === "running" ? "analyzing" : "accepted", mealId: accepted.mealId, file: null, origin: null, message: accepted.status === "running" ? "Analyse en cours" : "Analyse acceptée", filled: true } }));
     } catch (error) {
+      const mealId = error && typeof error === "object" && "mealId" in error && typeof error.mealId === "string" ? error.mealId : undefined;
+      setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "error", ...(mealId ? { mealId } : {}), message: error instanceof Error ? error.message : "Échec de l’analyse." } }));
+    } finally {
+      submittingSlots.current.delete(slot);
+    }
+  }
+
+  async function retry(slot: MealType) {
+    const item = slotStates[slot];
+    if (!item.mealId || submittingSlots.current.has(slot)) return;
+    submittingSlots.current.add(slot);
+    setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "uploading", message: null } }));
+    try {
+      const status = await retryMealAnalysis(item.mealId);
+      analysisStartedAt.current.delete(item.mealId);
+      setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: status === "running" ? "analyzing" : "accepted", message: status === "running" ? "Analyse en cours" : "Analyse acceptée" } }));
+    } catch (error) {
       setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: "error", message: error instanceof Error ? error.message : "Échec de l’analyse." } }));
     } finally {
       submittingSlots.current.delete(slot);
@@ -284,7 +325,13 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
           {item.state === "choosing-origin" ? <div className="meal-quick__origins" role="group" aria-label={`Origine du repas — ${label}`}>
             {origins.map((origin, index) => <button ref={index === 0 ? (node) => { firstOriginButtons.current[id] = node; } : undefined} type="button" key={origin.id} disabled={disabled || busy} onClick={() => void submit(id, origin.id)}>{origin.label}</button>)}
             <button type="button" className="meal-quick__cancel" onClick={() => { setSlotStates((current) => ({ ...current, [id]: { ...current[id], state: "idle", file: null, origin: null } })); requestAnimationFrame(() => photoButtons.current[id]?.focus()); }}>Annuler</button>
-          </div> : <button ref={(node) => { photoButtons.current[id] = node; }} type="button" className="meal-quick__photo" disabled={disabled || busy || atLimit || locked} aria-label={locked ? `Repas déjà renseigné pour ${label} — voir l’historique` : undefined} onClick={() => item.state === "error" && item.origin ? void submit(id, item.origin) : inputs.current[id]?.click()}>
+          </div> : <button ref={(node) => { photoButtons.current[id] = node; }} type="button" className="meal-quick__photo" disabled={disabled || busy || atLimit || locked} aria-label={locked ? `Repas déjà renseigné pour ${label} — voir l’historique` : undefined} onClick={() => {
+            const action = item.state === "error" ? mealQuickErrorAction(item) : "choose-photo";
+            if (action === "retry") void retry(id);
+            else if (action === "resubmit-photo") void submit(id, item.origin!);
+            else if (action === "resubmit-text") void submitText(id);
+            else inputs.current[id]?.click();
+          }}>
             {busy ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : item.state === "error" ? <RefreshCw size={18} aria-hidden="true" /> : locked ? <Check size={18} aria-hidden="true" /> : <Camera size={18} aria-hidden="true" />}
             {buttonLabel}
           </button>}

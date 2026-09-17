@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { MealVisionError } from "@/integrations/xai/meal-vision";
 
 const state = vi.hoisted(() => ({
   findMeal: vi.fn(),
@@ -48,7 +50,7 @@ vi.mock("@/integrations/meal-analysis/provider-chain", () => ({
   getConfiguredMealAnalysisProvider: vi.fn(() => ({ name: "xai", model: "grok-4.6" })),
 }));
 
-import { enqueueMealAnalysis, processNextMealAnalysis } from "./meals";
+import { enqueueMealAnalysis, loadMealPhotoForAnalysis, processNextMealAnalysis } from "./meals";
 
 const mealId = "12345678-1234-1234-1234-123456789012";
 const meal = {
@@ -99,6 +101,8 @@ function rowToAnalysis(values: Record<string, unknown>) {
 }
 
 describe("durable meal analysis jobs", () => {
+  afterEach(() => vi.useRealTimers());
+
   beforeEach(() => {
     vi.clearAllMocks();
     state.findMeal.mockResolvedValue(meal);
@@ -160,7 +164,7 @@ describe("durable meal analysis jobs", () => {
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
-    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3" });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", verify: false, allowFallback: false });
   });
 
   it("persists a provider failure as a terminal failed state", async () => {
@@ -186,5 +190,49 @@ describe("durable meal analysis jobs", () => {
 
     expect(result).toMatchObject({ processed: true, analysis: { status: "failed", error: "L’analyse du repas a échoué. Réessaie." } });
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "failed", error_code: "unknown_analysis_error", lease_token: null }), "running", "lease-token");
+  });
+
+  it("does not advertise another automatic retry after the final durable attempt", async () => {
+    state.listQueuedMealAnalyses.mockResolvedValue([{
+      id: queuedAnalysis.id,
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "queued",
+      provider: "xai",
+      model: "grok-4.6",
+      source_photo_ids: [],
+      source_note: "Riz et légumes",
+      source_meal_date: meal.mealDate,
+      source_meal_type: meal.mealType,
+      source_correction: null,
+      attempts: 2,
+      analysis_request_id: "analysis-request-final-attempt",
+      created_at: "2026-09-14T10:01:00.000Z",
+    }]);
+    state.analyzeMealInputWithFallback.mockRejectedValue(new MealVisionError("provider_timeout", "timeout", { retryable: true }));
+
+    await processNextMealAnalysis();
+
+    expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({
+      status: "failed",
+      error_code: "provider_timeout",
+      retry_after_at: null,
+    }), "running", "lease-token");
+  });
+
+  it("aborts a photo download that never returns", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    state.getR2MealPhotoObject.mockImplementation((_path: string, candidateSignal?: AbortSignal) => {
+      signal = candidateSignal;
+      return new Promise(() => undefined);
+    });
+
+    const loading = loadMealPhotoForAnalysis("meals/photo.jpg", 25);
+    const rejected = expect(loading).rejects.toMatchObject({ code: "unavailable", diagnosticCode: "storage_error" });
+    await vi.advanceTimersByTimeAsync(25);
+
+    await rejected;
+    expect(signal?.aborted).toBe(true);
   });
 });

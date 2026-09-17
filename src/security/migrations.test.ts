@@ -53,6 +53,9 @@ describe("database security contract", () => {
     expect(schedule).toContain("cron.unschedule");
     expect(schedule).toContain("soma-sync-worker");
     expect(schedule).toContain("'*/5 * * * *'");
+    expect(schedule).toContain("soma-meal-analysis-worker");
+    expect(schedule).toContain("'/api/cron/meal-analysis'");
+    expect(schedule).toContain("'* * * * *'");
     expect(schedule).toContain("vault.decrypted_secrets");
     expect(dailyGoogleHealthSync).toContain("sync_jobs_one_automatic_per_day_idx");
     expect(dailyGoogleHealthSync).toMatch(/where sync_trigger = 'automatic'/i);
