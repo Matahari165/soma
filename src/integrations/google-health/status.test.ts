@@ -13,7 +13,7 @@ describe("Google Health connection notices", () => {
   });
 
   it("explains that onboarding data is preserved during an outage", () => {
-    expect(getGoogleHealthNotice("unavailable")?.message).toContain("Votre profil Soma est enregistré");
+    expect(getGoogleHealthNotice("unavailable")?.message).toContain("Your Soma profile is saved");
   });
 
   it("ignores unknown query values", () => {
@@ -36,6 +36,6 @@ describe("Google Health sync status", () => {
   it("keeps a completed import partial when one permitted type was isolated", () => {
     const status = toSyncStatus({ id: "1", status: "completed", progress: 100, cursor: { typeErrors: { steps: "GOOGLE_HEALTH_PERMISSION_DENIED" } } }, {});
     expect(status).toMatchObject({ phase: "partial", retryable: false });
-    expect(status.lastError).toContain("n’ont pas pu être importés");
+    expect(status.lastError).toContain("could not be imported");
   });
 });

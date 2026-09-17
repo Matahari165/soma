@@ -8,15 +8,15 @@ describe("MealsInitialLoadError", () => {
     const html = renderToStaticMarkup(<MealsInitialLoadError kind="meals" />);
 
     expect(html).toContain('role="alert"');
-    expect(html).toContain("Impossible de charger les repas");
-    expect(html).toContain("ne sont pas disponibles");
-    expect(html).toContain(">Réessayer</button>");
+    expect(html).toContain("Unable to load meals");
+    expect(html).toContain("currently unavailable");
+    expect(html).toContain(">Try again</button>");
   });
 
   it("keeps a nutrition failure separate from the meal journal", () => {
     const html = renderToStaticMarkup(<MealsInitialLoadError kind="nutrition" />);
 
-    expect(html).toContain("Historique nutritionnel indisponible");
-    expect(html).toContain("Les repas restent disponibles");
+    expect(html).toContain("Nutritional history unavailable");
+    expect(html).toContain("Meals remain available");
   });
 });

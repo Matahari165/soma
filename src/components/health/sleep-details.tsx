@@ -68,13 +68,13 @@ function hasSleepMeasurement(day: HealthMetricDay) {
 }
 
 function clock(value: string | null, timeZone: string) {
-  return value ? new Intl.DateTimeFormat("fr-FR", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value)) : "—";
+  return value ? new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(value)) : "—";
 }
 
 /** The previous night is kept adjacent to the following metric date. */
 function clockMinutes(value: string | null, timeZone: string) {
   if (!value) return null;
-  const parts = new Intl.DateTimeFormat("fr-FR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
   const minutes = Number(parts.find((part) => part.type === "hour")?.value ?? 0) * 60 + Number(parts.find((part) => part.type === "minute")?.value ?? 0);
   return minutes < 12 * 60 ? minutes + 1440 : minutes;
 }
@@ -99,7 +99,7 @@ function averageScoreLast30(scores: HealthAnalytics["scores"], endDate: string |
 }
 
 function formatPercent(value: number | null) {
-  return value === null || !Number.isFinite(value) ? "—" : `${Math.round(value)} %`;
+  return value === null || !Number.isFinite(value) ? "—" : `${Math.round(value)}%`;
 }
 
 function formatMinutesOnly(value: number | null) {
@@ -132,7 +132,7 @@ function comparison(value: number | null | undefined, average: number | null | u
 }
 
 function comparisonLabel(value: number | null, format: (value: number | null) => string) {
-  return measured(value) ? `Moy. 30 j · ${format(value)}` : undefined;
+  return measured(value) ? `30-day avg · ${format(value)}` : undefined;
 }
 
 function averageValueLabel(value: number | null, format: (value: number | null) => string) {
@@ -170,9 +170,9 @@ function sleepScoreBreakdown(latest: HealthMetricDay | undefined, scoreEntry: He
   if (exactEngine.score !== Math.round(scoreEntry.score)) return null;
 
   const components: SleepScoreComponent[] = [
-    { id: "duration" as const, label: "Durée", weight: 70, sourceValueLabel: `${formatDurationMinutes(latest.sleep_minutes)} · besoin ${formatDurationMinutes(latest.sleep_need_minutes)}`, formula: "durée ÷ besoin estimé", normalization: "clamp(0, 1, durée ÷ besoin)", normalizedValue: exactEngine.durationComponent },
-    { id: "efficiency" as const, label: "Efficacité", weight: 10, sourceValueLabel: formatPercent(latest.sleep_efficiency), formula: "efficacité source ÷ 100", normalization: "clamp(0, 1, valeur ÷ 100)", normalizedValue: exactEngine.efficiencyComponent },
-    { id: "regularity" as const, label: "Régularité", weight: 20, sourceValueLabel: formatPercent(latest.sleep_regularity), formula: "régularité source ÷ 100", normalization: "clamp(0, 1, valeur ÷ 100)", normalizedValue: exactEngine.regularityComponent },
+    { id: "duration" as const, label: "Duration", weight: 70, sourceValueLabel: `${formatDurationMinutes(latest.sleep_minutes)} · need ${formatDurationMinutes(latest.sleep_need_minutes)}`, formula: "duration ÷ estimated need", normalization: "clamp(0, 1, duration ÷ need)", normalizedValue: exactEngine.durationComponent },
+    { id: "efficiency" as const, label: "Efficiency", weight: 10, sourceValueLabel: formatPercent(latest.sleep_efficiency), formula: "source efficiency ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.efficiencyComponent },
+    { id: "regularity" as const, label: "Regularity", weight: 20, sourceValueLabel: formatPercent(latest.sleep_regularity), formula: "source regularity ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.regularityComponent },
   ].map((component) => ({ ...component, contribution: component.normalizedValue * component.weight }));
 
   return { score: Math.round(scoreEntry.score), algorithmVersion: scoreEntry.algorithm_version, components };
@@ -199,16 +199,16 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const radarDimensions: SleepRadarDisplayDimension[] = latest ? [
     {
       id: "duration",
-      label: "Durée",
+      label: "Duration",
       normalizedValue: normalizedRatio(latest.sleep_minutes, latest.sleep_need_minutes),
       valueLabel: formatDurationMinutes(latest.sleep_minutes),
       averageLabel: averageValueLabel(averageSleep, formatDurationMinutes),
-      definition: "Temps de sommeil mesuré comparé au besoin estimé pour cette nuit.",
-      readingDirection: "Plus proche du besoin estimé = meilleur",
-      scoreRole: "Composante du score Sommeil · 70 %",
+      definition: "Measured sleep duration compared to estimated need for this night.",
+      readingDirection: "Closer to estimated need = better",
+      scoreRole: "Sleep score component · 70%",
       scoreWeight: 70,
-      scoreFormula: "durée ÷ besoin estimé",
-      scoreNormalization: "clamp(0, 1, durée ÷ besoin)",
+      scoreFormula: "duration ÷ estimated need",
+      scoreNormalization: "clamp(0, 1, duration ÷ need)",
       scoreContribution: scoreComponent("duration")?.contribution ?? null,
       comparison: comparison(latest.sleep_minutes, averageSleep),
       comparisonLabel: comparisonLabel(averageSleep, formatDurationMinutes),
@@ -217,16 +217,16 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     },
     {
       id: "efficiency",
-      label: "Efficacité",
+      label: "Efficiency",
       normalizedValue: normalizedPercent(latest.sleep_efficiency),
       valueLabel: formatPercent(latest.sleep_efficiency),
       averageLabel: averageValueLabel(averageEfficiency, formatPercent),
-      definition: "Part du temps au lit passée à dormir, fournie par la source de santé.",
-      readingDirection: "Plus élevé = meilleur",
-      scoreRole: "Composante du score Sommeil · 10 %",
+      definition: "Proportion of time in bed spent asleep, provided by health source.",
+      readingDirection: "Higher = better",
+      scoreRole: "Sleep score component · 10%",
       scoreWeight: 10,
-      scoreFormula: "efficacité source ÷ 100",
-      scoreNormalization: "clamp(0, 1, valeur ÷ 100)",
+      scoreFormula: "source efficiency ÷ 100",
+      scoreNormalization: "clamp(0, 1, value ÷ 100)",
       scoreContribution: scoreComponent("efficiency")?.contribution ?? null,
       comparison: comparison(latest.sleep_efficiency, averageEfficiency),
       comparisonLabel: comparisonLabel(averageEfficiency, formatPercent),
@@ -235,16 +235,16 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     },
     {
       id: "regularity",
-      label: "Régularité",
+      label: "Regularity",
       normalizedValue: normalizedPercent(latest.sleep_regularity),
       valueLabel: formatPercent(latest.sleep_regularity),
       averageLabel: averageValueLabel(averageRegularity, formatPercent),
-      definition: "Proximité des horaires de sommeil avec votre rythme observé.",
-      readingDirection: "Plus élevé = meilleur",
-      scoreRole: "Composante du score Sommeil · 20 %",
+      definition: "Consistency of sleep schedule relative to observed rhythm.",
+      readingDirection: "Higher = better",
+      scoreRole: "Sleep score component · 20%",
       scoreWeight: 20,
-      scoreFormula: "régularité source ÷ 100",
-      scoreNormalization: "clamp(0, 1, valeur ÷ 100)",
+      scoreFormula: "source regularity ÷ 100",
+      scoreNormalization: "clamp(0, 1, value ÷ 100)",
       scoreContribution: scoreComponent("regularity")?.contribution ?? null,
       comparison: comparison(latest.sleep_regularity, averageRegularity),
       comparisonLabel: comparisonLabel(averageRegularity, formatPercent),
@@ -253,13 +253,13 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     },
     {
       id: "latency",
-      label: "Latence",
+      label: "Latency",
       normalizedValue: invertedObservedRatio(latest.sleep_latency_minutes, recentDays.map((day) => day.sleep_latency_minutes)),
       valueLabel: formatMinutesOnly(latest.sleep_latency_minutes),
       averageLabel: averageValueLabel(averageLatency, formatMinutesOnly),
-      definition: "Temps observé entre la mise au lit et l’endormissement.",
-      readingDirection: "Plus court = meilleur",
-      scoreRole: "Métrique de contexte · non incluse dans le score Sommeil",
+      definition: "Observed time between going to bed and falling asleep.",
+      readingDirection: "Shorter = better",
+      scoreRole: "Context metric · excluded from Sleep score",
       comparison: comparison(latest.sleep_latency_minutes, averageLatency),
       comparisonLabel: comparisonLabel(averageLatency, formatMinutesOnly),
       comparisonTone: metricTone(latest.sleep_latency_minutes, averageLatency, "lower_is_better"),
@@ -267,13 +267,13 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     },
     {
       id: "debt",
-      label: "Dette",
+      label: "Debt",
       normalizedValue: invertedObservedRatio(latest.cumulative_sleep_debt_minutes, recentDays.map((day) => day.cumulative_sleep_debt_minutes)),
       valueLabel: formatDurationMinutes(latest.cumulative_sleep_debt_minutes),
       averageLabel: averageValueLabel(averageDebt, formatDurationMinutes),
-      definition: "Sommeil manquant cumulé par rapport aux besoins estimés.",
-      readingDirection: "Plus faible = meilleur",
-      scoreRole: "Métrique de contexte · non incluse dans le score Sommeil",
+      definition: "Cumulative missed sleep relative to estimated needs.",
+      readingDirection: "Lower = better",
+      scoreRole: "Context metric · excluded from Sleep score",
       comparison: comparison(latest.cumulative_sleep_debt_minutes, averageDebt),
       comparisonLabel: comparisonLabel(averageDebt, formatDurationMinutes),
       comparisonTone: metricTone(latest.cumulative_sleep_debt_minutes, averageDebt, "lower_is_better"),
@@ -281,46 +281,46 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     },
   ] : [];
 
-  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sommeil" description="Durée, efficacité et régularité de votre sommeil." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={true}>
-    <section className={`${styles.redesign} health-observatory-content`} aria-label="Contenu sommeil">
+  return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sleep" description="Duration, efficiency, and regularity of your sleep." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={true}>
+    <section className={`${styles.redesign} health-observatory-content`} aria-label="Sleep content">
       {latest ? <>
-        <section className={`${styles.overviewSection} health-observatory-panel`} aria-label="Synthèse du sommeil">
+        <section className={`${styles.overviewSection} health-observatory-panel`} aria-label="Sleep summary">
           <SleepScoreOverview
             dimensions={radarDimensions}
             score={score}
             average={averageScore}
             breakdown={scoreBreakdown}
             scoreSupplement={{
-              title: "Prochaine nuit",
+              title: "Next night",
               rows: [
-                { label: "Au lit vers", value: formatClockMinutes(bedtimeRecommendation?.bedtimeMinutes ?? null) },
-                { label: "Réveil", value: formatClockMinutes(bedtimeRecommendation?.wakeTimeMinutes ?? null) },
-                { label: "Sommeil visé", value: formatDurationMinutes(bedtimeRecommendation?.sleepNeedMinutes ?? latest.sleep_need_minutes) },
-                { label: "Temps éveillé · 30 j", value: formatMinutesOnly(averageAwake) },
+                { label: "Target bedtime", value: formatClockMinutes(bedtimeRecommendation?.bedtimeMinutes ?? null) },
+                { label: "Wake-up", value: formatClockMinutes(bedtimeRecommendation?.wakeTimeMinutes ?? null) },
+                { label: "Target sleep", value: formatDurationMinutes(bedtimeRecommendation?.sleepNeedMinutes ?? latest.sleep_need_minutes) },
+                { label: "Awake time · 30d", value: formatMinutesOnly(averageAwake) },
               ],
-              note: !bedtimeRecommendation ? "Repère indisponible" : undefined,
+              note: !bedtimeRecommendation ? "Benchmark unavailable" : undefined,
             }}
           />
         </section>
 
         <section className={`${styles.trendsSection} health-observatory-panel`} aria-labelledby="sleep-trends-heading">
-          <header className="health-observatory-panel-header"><h2 id="sleep-trends-heading">Tendances</h2><span>30 jours</span></header>
+          <header className="health-observatory-panel-header"><h2 id="sleep-trends-heading">Trends</h2><span>30 days</span></header>
           <div className={styles.trendGrid}>
-            <MetricTrendCard label="Durée" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
-            <MetricTrendCard label="Efficacité" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" compact animateCurrent animationFormat="decimal" />
-            <MetricTrendCard label="Régularité" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" compact animateCurrent animationFormat="decimal" />
+            <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
+            <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" compact animateCurrent animationFormat="decimal" />
+            <MetricTrendCard label="Regularity" points={points(data.days, "sleep_regularity")} unit="%" direction="higher_is_better" compact animateCurrent animationFormat="decimal" />
           </div>
           <div className={styles.secondaryTrendGrid}>
             <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" compact animateCurrent animationFormat="decimal" />
-            <MetricTrendCard label="Sommeil profond + paradoxal" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
-            <MetricTrendCard label="Heure du coucher" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
+            <MetricTrendCard label="Deep + REM sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
+            <MetricTrendCard label="Bedtime" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
           </div>
         </section>
         <section className={`${styles.lastNightSection} health-observatory-panel`} aria-labelledby="sleep-stages-heading">
-          <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Répartition des phases</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
-          <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Profond", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Léger", value: latest.sleep_light_percent, tone: "light" }, { label: "Éveillé", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
+          <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Stage distribution</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
+          <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>
-      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">Aucune donnée de sommeil</h2><p>0 nuit mesurée sur les 30 derniers jours. Importez vos nuits depuis Google Health, puis revenez ici.</p><p><a href="/settings">Vérifier la connexion Google Health</a></p></div></section>}
+      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from Google Health, then return here.</p><p><a href="/settings">Check Google Health connection</a></p></div></section>}
     </section>
   </HealthPageShell></div>;
 }

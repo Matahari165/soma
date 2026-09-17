@@ -41,46 +41,46 @@ export type MealScoreOverviewPanelProps = {
 
 const DIMENSION_KEYS = MEAL_BALANCE_COMPONENT_ORDER;
 const DIMENSION_LABELS: Record<MealBalanceComponentKey, string> = {
-  nutritionAdequacy: "Adéquation nutritionnelle",
-  foodQuality: "Qualité alimentaire",
-  sugarLoad: "Sucre et concentration",
-  nova: "Transformation NOVA",
-  positiveVariety: "Variété positive",
+  nutritionAdequacy: "Nutritional adequacy",
+  foodQuality: "Food quality",
+  sugarLoad: "Sugar & concentration",
+  nova: "NOVA processing",
+  positiveVariety: "Positive variety",
 };
 const RADAR_LABEL_LINES: Record<MealBalanceComponentKey, readonly string[]> = {
-  nutritionAdequacy: ["Adéquation", "nutritionnelle"],
-  foodQuality: ["Qualité", "alimentaire"],
-  sugarLoad: ["Sucre et", "concentration"],
-  nova: ["Transformation", "NOVA"],
-  positiveVariety: ["Variété", "positive"],
+  nutritionAdequacy: ["Nutritional", "adequacy"],
+  foodQuality: ["Food", "quality"],
+  sugarLoad: ["Sugar &", "concentration"],
+  nova: ["NOVA", "processing"],
+  positiveVariety: ["Positive", "variety"],
 };
 const RADAR_DETAIL_ID = "meal-score-dimension-detail";
 
 function formatScore(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(value));
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  return `${Math.round(value * 100)} %`;
+  return `${Math.round(value * 100)}%`;
 }
 
 function formatContribution(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1, signDisplay: "always" }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, signDisplay: "always" }).format(value);
 }
 
 function formatDate(date: string, long = false) {
   const parsed = new Date(`${date}T12:00:00`);
   if (!Number.isFinite(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat("fr-FR", long
-    ? { weekday: "long", day: "numeric", month: "long" }
-    : { day: "numeric", month: "short" }).format(parsed).replace(".", "");
+  return new Intl.DateTimeFormat("en-US", long
+    ? { weekday: "long", month: "long", day: "numeric" }
+    : { month: "short", day: "numeric" }).format(parsed);
 }
 
 function scoreDescription(score: number | null) {
-  return score === null ? "Score indisponible" : `Score ${formatScore(score)} sur 100`;
+  return score === null ? "Score unavailable" : `Score ${formatScore(score)} out of 100`;
 }
 
 function componentFor(daily: MealBalanceScore | null, key: MealBalanceComponentKey) {
@@ -96,10 +96,10 @@ function scoreBarStyle(score: number | null): CSSProperties | undefined {
 function RollingWindow({ item, days }: { item: MealScoreRolling | undefined; days: 14 | 28 }) {
   const score = item?.score ?? null;
   const observedLabel = item
-    ? `${item.observedDays} observé${item.observedDays > 1 || item.observedDays === 0 ? "s" : ""}`
-    : "indisponible";
+    ? `${item.observedDays} observed`
+    : "unavailable";
   return <li className={styles.rollingItem} data-window={`${days}`}>
-    <span className={styles.rollingLabel}>{days} jours ({observedLabel})</span>
+    <span className={styles.rollingLabel}>{days}-day ({observedLabel})</span>
     <strong className={styles.rollingScore} aria-label={scoreDescription(score)}>{formatScore(score)}<span>/100</span></strong>
   </li>;
 }
@@ -159,8 +159,8 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
 
   return <figure className={styles.balanceRadar}>
     <svg viewBox="0 0 420 420" role="group" aria-labelledby="meal-balance-radar-title meal-balance-radar-description">
-      <title id="meal-balance-radar-title">Profil des cinq dimensions de l’alimentation</title>
-      <desc id="meal-balance-radar-description">{description}. Une valeur absente reste indisponible et n’est pas représentée comme zéro. Sélectionnez une étiquette pour afficher ses détails.</desc>
+      <title id="meal-balance-radar-title">Dietary dimensions profile</title>
+      <desc id="meal-balance-radar-description">{description}. Missing values remain unavailable and are not represented as zero. Select a label to view its details.</desc>
       {[37.5, 75, 112.5, 150].map((radius) => <polygon className={styles.radarGrid} key={radius} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />)}
       {axes.map((axis, index) => {
         const edge = radarPoint(index, 150);
@@ -170,7 +170,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         const firstDy = lines.length > 1 ? -7 : 0;
         const point = axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100);
         const selected = selectedKey === axis.keyName;
-        const actionLabel = selected ? "Masquer les détails de cette dimension" : "Afficher les détails de cette dimension";
+        const actionLabel = selected ? "Hide dimension details" : "Show dimension details";
         return <g
           aria-controls={RADAR_DETAIL_ID}
           aria-expanded={selected}
@@ -199,13 +199,13 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
       })}
       {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
     </svg>
-    <figcaption className={styles.srOnly}>Graphique interactif. Les cinq axes sont des boutons accessibles au clavier.</figcaption>
+    <figcaption className={styles.srOnly}>Interactive chart. The five axes are keyboard-accessible buttons.</figcaption>
   </figure>;
 }
 
 function subcomponentValue(item: MealBalanceSubcomponent) {
   if (item.value === null) return "—";
-  return typeof item.value === "number" ? new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(item.value) : item.value;
+  return typeof item.value === "number" ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(item.value) : item.value;
 }
 
 type DimensionDetailProps = {
@@ -221,8 +221,8 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
   const score = component?.score ?? null;
   const adjustedScore = component?.adjustedScore ?? null;
   const weight = component?.weight ?? (dimension ? MEAL_BALANCE_COMPONENT_WEIGHTS[dimension.keyName] / 1.1 : null);
-  const summary = component?.summary ?? "Aucune observation exploitable pour cette dimension.";
-  const label = dimension?.label ?? "Détails de la dimension";
+  const summary = component?.summary ?? "No usable observation for this dimension.";
+  const label = dimension?.label ?? "Dimension details";
   const history = dimension
     ? trend.map((point) => ({ date: point.date, score: point.dimensionAdjustedScores?.[dimension.keyName] ?? point.dimensionScores?.[dimension.keyName] ?? null }))
     : [];
@@ -230,17 +230,17 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
   return <aside aria-hidden={!open} aria-labelledby="meal-score-dimension-detail-title" className={styles.dimensionDetail} data-open={open} id={RADAR_DETAIL_ID}>
     <div className={styles.dimensionDetailHeader}>
       <h3 id="meal-score-dimension-detail-title" ref={headingRef} tabIndex={-1}>{label}</h3>
-      {open && <button type="button" className={styles.detailClose} onClick={onClose} aria-label="Fermer le panneau de détail">Fermer</button>}
+      {open && <button type="button" className={styles.detailClose} onClick={onClose} aria-label="Close detail panel">Close</button>}
     </div>
     <dl className={styles.dimensionDetailMetrics}>
-      <div><dt>Score brut</dt><dd>{formatScore(score)}<span>/100</span></dd></div>
-      <div><dt>Après confiance</dt><dd>{formatScore(adjustedScore)}<span>/100</span></dd></div>
-      <div><dt>Poids global</dt><dd>{weight === null ? "—" : `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(weight)} %`}</dd></div>
+      <div><dt>Raw score</dt><dd>{formatScore(score)}<span>/100</span></dd></div>
+      <div><dt>Confidence-adjusted</dt><dd>{formatScore(adjustedScore)}<span>/100</span></dd></div>
+      <div><dt>Global weight</dt><dd>{weight === null ? "—" : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(weight)}%`}</dd></div>
       <div><dt>Contribution</dt><dd>{component ? formatContribution(component.contribution) : "—"}</dd></div>
-      <div className={styles.dimensionDetailObservation}><dt>Confiance de l’analyse</dt><dd>{formatPercent(component?.confidence)}</dd></div>
+      <div className={styles.dimensionDetailObservation}><dt>Analysis confidence</dt><dd>{formatPercent(component?.confidence)}</dd></div>
     </dl>
     {component?.subcomponents.length ? <section className={styles.subscoreSection} aria-labelledby="meal-score-subscore-title">
-      <h4 id="meal-score-subscore-title">Sous-indicateurs</h4>
+      <h4 id="meal-score-subscore-title">Sub-metrics</h4>
       <ul className={styles.subscoreList}>{component.subcomponents.map((item) => <li className={styles.subscoreItem} key={item.key}>
         <div><strong>{item.label}</strong><span>{formatScore(item.adjustedScore)}<small>/100</small></span></div>
         <div className={styles.subscoreMeta}><span>{subcomponentValue(item)}{item.target ? ` · ${item.target}` : ""}</span><span>{formatPercent(item.confidence)}</span></div>
@@ -248,12 +248,12 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
       </li>)}</ul>
     </section> : null}
     <section className={styles.dimensionHistory} aria-labelledby="meal-score-dimension-history-title">
-      <h4 id="meal-score-dimension-history-title">Évolution sur 28 jours</h4>
-      {observedHistory.length ? <div className={styles.dimensionHistoryBars} role="img" aria-label={`Évolution de ${label} sur 28 jours`}>
-        {history.map((point) => <span key={point.date} title={`${formatDate(point.date)} : ${formatScore(point.score)}`} style={scoreBarStyle(point.score)} />)}
-      </div> : <p>Aucune donnée historique.</p>}
+      <h4 id="meal-score-dimension-history-title">28-day trend</h4>
+      {observedHistory.length ? <div className={styles.dimensionHistoryBars} role="img" aria-label={`28-day trend for ${label}`}>
+        {history.map((point) => <span key={point.date} title={`${formatDate(point.date)}: ${formatScore(point.score)}`} style={scoreBarStyle(point.score)} />)}
+      </div> : <p>No historical data.</p>}
     </section>
-    <p className={styles.dimensionDetailSummary}>{summary}{component?.target ? ` Cible : ${component.target}.` : ""}{component?.period ? ` Période : du ${formatDate(component.period.from)} au ${formatDate(component.period.to)}.` : ""}</p>
+    <p className={styles.dimensionDetailSummary}>{summary}{component?.target ? ` Target: ${component.target}.` : ""}{component?.period ? ` Period: ${formatDate(component.period.from)} to ${formatDate(component.period.to)}.` : ""}</p>
   </aside>;
 }
 
@@ -265,9 +265,9 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
   const rolling28 = rolling.find((item) => item.days === 28);
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
-      ? `${formatDate(point.date, true)} : aucun score, jour absent du tracé`
-      : `${formatDate(point.date, true)} : score ${formatScore(point.score)} sur 100${point.status === "limited" ? `, confiance ${formatPercent(point.confidence)}` : ""}`).join(". ")
-    : "Aucun jour disponible pour cette évolution.";
+      ? `${formatDate(point.date, true)}: no score, day omitted from chart`
+      : `${formatDate(point.date, true)}: score ${formatScore(point.score)} out of 100${point.status === "limited" ? `, confidence ${formatPercent(point.confidence)}` : ""}`).join(". ")
+    : "No days available for this trend.";
   const [selectedKey, setSelectedKey] = useState<MealBalanceComponentKey | null>(null);
   const radarButtonRefs = useRef<Partial<Record<MealBalanceComponentKey, SVGGElement | null>>>({});
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -306,7 +306,7 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
     else setSelectedKey(key);
   }
 
-  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-label="Équilibre alimentaire">
+  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-label="Dietary balance">
     <div className={styles.scoreTop} data-score-part="top">
       <div className={styles.scoreEssentials}>
         <div className={styles.radarStage} data-detail-open={selectedDimension ? "true" : "false"}>
@@ -316,34 +316,34 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
           </div>
         </div>
         <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
-          <div className={styles.panelHeading}><h3 id="meal-score-daily-title">{isToday ? "Aujourd’hui" : formatDate(date ?? "", true)}</h3></div>
+          <div className={styles.panelHeading}><h3 id="meal-score-daily-title">{isToday ? "Today" : formatDate(date ?? "", true)}</h3></div>
           <strong className={styles.dailyScore} aria-label={scoreDescription(dailyScore)}>{formatScore(dailyScore)}<span>/100</span></strong>
           <div className={styles.scoreRail} aria-hidden="true">{dailyScore === null ? null : <span style={{ width: `${Math.min(Math.max(dailyScore, 0), 100)}%` }} />}</div>
           <dl className={styles.scoreMetaList}>
-            <div><dt>Statut</dt><dd>{daily ? daily.status === "ready" ? "Complet" : daily.status === "limited" ? "Partiel" : "Insuffisant" : "—"}</dd></div>
-            <div><dt>Confiance</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
+            <div><dt>Status</dt><dd>{daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "—"}</dd></div>
+            <div><dt>Confidence</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
           </dl>
-          <p className={styles.scoreNote}>Score calculé sur les repas enregistrés. « Pas pris » reste une déclaration, pas un repas à zéro.</p>
+          <p className={styles.scoreNote}>Score calculated from logged meals. “Skipped” is an explicit log, not a zero meal.</p>
         </article>
       </div>
 
       <section className={styles.historySection} aria-labelledby="meal-score-history-title">
-        <h2 className={styles.sectionTitle} id="meal-score-history-title">Historique du score</h2>
+        <h2 className={styles.sectionTitle} id="meal-score-history-title">Score history</h2>
         <div className={styles.historyContent}>
           <section className={styles.rollingPanel} aria-labelledby="meal-score-rolling-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-rolling-title">Moyennes mobiles</h3></div>
-            {rolling.length ? <ul className={styles.rollingList}><RollingWindow days={14} item={rolling14} /><RollingWindow days={28} item={rolling28} /></ul> : <p className={styles.emptyInline}>Aucune moyenne disponible.</p>}
+            <div className={styles.panelHeading}><h3 id="meal-score-rolling-title">Rolling averages</h3></div>
+            {rolling.length ? <ul className={styles.rollingList}><RollingWindow days={14} item={rolling14} /><RollingWindow days={28} item={rolling28} /></ul> : <p className={styles.emptyInline}>No averages available.</p>}
           </section>
           <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-trend-title">Évolution du score global</h3></div>
+            <div className={styles.panelHeading}><h3 id="meal-score-trend-title">Overall score trend</h3></div>
             {observedTrend.length ? <figure className={styles.chartFigure}>
               <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
                 <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
                 <div className={styles.barChart} style={{ "--point-count": trend.length } as CSSProperties}>{trend.map((point) => <div className={styles.barColumn} key={point.date}>{point.score === null ? null : <span className={styles.bar} style={scoreBarStyle(point.score)} aria-hidden="true" />}</div>)}</div>
               </div>
               <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
-              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Les jours absents restent sans barre et ne sont pas comptés comme un score nul.</p>
-            </figure> : <p className={styles.emptyInline}>Aucun historique de score disponible.</p>}
+              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a bar and are not counted as a zero score.</p>
+            </figure> : <p className={styles.emptyInline}>No score history available.</p>}
           </section>
         </div>
       </section>

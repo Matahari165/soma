@@ -8,37 +8,29 @@ import type {
   MealSlot,
   NutritionRange,
 } from "@/domain/meal-record";
+import { mealTargetForRange, type NutritionTargets } from "@/domain/nutrition-targets";
 import styles from "./meal-card-variants.module.css";
 
 export type MealDesignVariant = "v1" | "v2" | "v3";
 
 const SLOT_LABELS: Record<MealSlot, string> = {
-  breakfast: "Petit déjeuner",
-  lunch: "Déjeuner",
-  snack: "Collation",
-  dinner: "Dîner",
-};
-
-const SLOT_ARTICLES: Record<MealSlot, string> = {
-  breakfast: "le",
-  lunch: "le",
-  dinner: "le",
-  snack: "la",
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  snack: "Snack",
+  dinner: "Dinner",
 };
 
 export function mealLabelWithArticle(slot: MealSlot): string {
-  return `${SLOT_ARTICLES[slot]} ${SLOT_LABELS[slot].toLowerCase()}`;
+  return SLOT_LABELS[slot].toLowerCase();
 }
 
-function formatNutritionValue(range: NutritionRange | undefined | null): string {
-  if (!range) return "—";
-  if (typeof range.likely === "number") return String(Math.round(range.likely));
-  if (typeof range.low === "number" && typeof range.high === "number") {
-    return String(Math.round((range.low + range.high) / 2));
-  }
-  if (typeof range.low === "number") return String(Math.round(range.low));
-  if (typeof range.high === "number") return String(Math.round(range.high));
-  return "—";
+function nutritionValue(range: NutritionRange | undefined | null): number | null {
+  if (!range) return null;
+  if (typeof range.likely === "number" && Number.isFinite(range.likely)) return range.likely;
+  if (typeof range.low === "number" && typeof range.high === "number") return (range.low + range.high) / 2;
+  if (typeof range.low === "number" && Number.isFinite(range.low)) return range.low;
+  if (typeof range.high === "number" && Number.isFinite(range.high)) return range.high;
+  return null;
 }
 
 function getSummaryText(meal: MealRecord | null): string {
@@ -51,7 +43,122 @@ function getSummaryText(meal: MealRecord | null): string {
       .map((i) => i.name)
       .join(", ");
   }
-  return "Repas enregistré";
+  return "Logged meal";
+}
+
+type MealMetricKey = "calories" | "protein" | "carbohydrates" | "fat" | "addedSugar";
+
+type MealMetric = {
+  key: MealMetricKey;
+  label: string;
+  value: number | null;
+  unit: string;
+};
+
+function mealMetricAccessibleLabel(metric: MealMetric, target: number | null): string {
+  if (metric.value === null) return `${metric.label}: —`;
+  const targetLabel = target === null ? "no target assigned" : `target ${formatMetricNumber(target)} ${metric.unit}`;
+  return `${metric.label}: ${formatMetricNumber(metric.value)} ${metric.unit}, ${targetLabel}`;
+}
+
+function formatMetricNumber(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
+}
+
+function MealMetrics({ metrics, slot, targets }: { metrics: MealMetric[]; slot: MealSlot; targets?: NutritionTargets }) {
+  return (
+    <ul className={styles.metricChart} aria-label="Nutritional values and progress per meal">
+      {metrics.map((metric) => (
+        <li
+          key={metric.key}
+          className={styles.metricColumn}
+          data-metric={metric.key}
+          aria-label={mealMetricAccessibleLabel(metric, targets ? mealTargetForMetric(metric.key, slot, targets) : null)}
+        >
+          {(() => {
+            const target = targets ? mealTargetForMetric(metric.key, slot, targets) : null;
+            const ratio = metric.value !== null && target !== null && target > 0 ? metric.value / target : 0;
+            const progress = Math.min(1, Math.max(0, ratio));
+            return <>
+              <div className={styles.metricPlot} aria-hidden="true">
+                <span className={styles.metricPlotTarget} />
+                <span className={styles.metricPlotTrack}><span className={styles.metricPlotFill} data-over-target={ratio > 1 ? "true" : undefined} style={{ transform: `scaleY(${progress})` }} /></span>
+              </div>
+              <span className={styles.metricValue}>{formatMetricNumber(metric.value)}<small>{metric.value === null ? "" : ` ${metric.unit}`}</small></span>
+              <span className={styles.metricTarget}>{target === null ? "Target —" : `Target ${formatMetricNumber(target)} ${metric.unit}`}</span>
+              <span className={styles.metricLabel}>{metric.label}</span>
+            </>;
+          })()}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function mealTargetForMetric(key: MealMetricKey, slot: MealSlot, targets: NutritionTargets): number | null {
+  const targetKey = {
+    calories: "caloriesKcal",
+    protein: "proteinG",
+    carbohydrates: "carbsG",
+    fat: "fatG",
+    addedSugar: "addedSugarG",
+  }[key] as keyof Pick<NutritionTargets, "caloriesKcal" | "proteinG" | "fatG" | "carbsG" | "addedSugarG">;
+  return mealTargetForRange(targets[targetKey], slot, targets);
+}
+
+function AnalysisDetails({
+  meal,
+  open,
+  detailsId,
+  variant,
+  onToggle,
+}: {
+  meal: MealRecord;
+  open: boolean;
+  detailsId: string;
+  variant: MealDesignVariant;
+  onToggle: () => void;
+}) {
+  const toggleClass = variant === "v1"
+    ? styles.v1DetailsToggle
+    : variant === "v2"
+      ? styles.v2DetailsToggle
+      : styles.v3DetailsToggle;
+
+  return (
+    <div className={styles.analysisDetails}>
+      <button
+        type="button"
+        className={toggleClass}
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={detailsId}
+      >
+        {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+        <span>Analysis details</span>
+      </button>
+
+      {open && (
+        <div id={detailsId} className={styles.analysisDetailsPanel}>
+          {meal.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
+            <ul>
+              {meal.analysis.ingredients.map((ing, idx) => (
+                <li key={ing.id || idx}>
+                  {ing.portion ? `${ing.portion} ` : ""}{ing.name}
+                </li>
+              ))}
+            </ul>
+          )}
+          {meal.note && <p className={styles.analysisDetailsNote}><strong>Day note</strong>{meal.note}</p>}
+          {((meal.status === "confirmed" && meal.photos.length > 0) || meal.photos.some((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url)) && (
+            <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>
+          )}
+          {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export interface LabMealCardProps {
@@ -62,6 +169,7 @@ export interface LabMealCardProps {
   mutationBusy: boolean;
   disabled?: boolean;
   designVariant?: MealDesignVariant;
+  targets?: NutritionTargets;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onAnalyze: () => void;
@@ -76,20 +184,20 @@ export interface LabMealCardProps {
 export function LabMealCard({
   meal,
   slot,
-  saving: _saving,
+  saving,
   processingFiles,
   mutationBusy,
   disabled = false,
   designVariant = "v1",
+  targets,
   onFiles,
   onRemovePhoto,
   onAnalyze,
   onCancelAnalysis,
   onNote,
-  onConfirm: _onConfirm,
   onEdit,
-  onMarkSkipped: _onMarkSkipped,
-  confirmError: _confirmError,
+  onMarkSkipped,
+  confirmError,
 }: LabMealCardProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -100,6 +208,7 @@ export function LabMealCard({
   const slotLabel = SLOT_LABELS[slot];
   const headingId = `meal-${slot}-title`;
   const inputId = `meal-${slot}-note`;
+  const detailsId = `meal-${slot}-analysis-details`;
 
   const status = meal?.status ?? "draft";
   const isSkipped = meal?.entryState === "skipped";
@@ -110,9 +219,6 @@ export function LabMealCard({
   const photos = meal?.status === "confirmed"
     ? []
     : meal?.photos.filter((p) => (p.storageStatus ?? "available") === "available" && Boolean(p.url)) ?? [];
-  const purgedPhotoCount = meal?.status === "confirmed"
-    ? meal.photos.length
-    : meal?.photos.filter((p) => p.storageStatus === "purged" || p.storageStatus === "purge_pending" || !p.url).length ?? 0;
   const hasPhotos = photos.length > 0;
   const noteText = meal?.note ?? "";
   const hasText = noteText.trim().length > 0;
@@ -145,13 +251,18 @@ export function LabMealCard({
   };
 
   const analysis = meal?.analysis;
-  const calValue = formatNutritionValue(analysis?.calories);
-  const protValue = formatNutritionValue(analysis?.proteinGrams);
-  const carbsValue = formatNutritionValue(analysis?.carbohydratesGrams);
-  const fatValue = formatNutritionValue(analysis?.fatGrams);
-  const sugarValue = formatNutritionValue(analysis?.addedSugarGrams ?? analysis?.sugarGrams);
-
-  const slotArticle = mealLabelWithArticle(slot);
+  const calValue = nutritionValue(analysis?.calories);
+  const protValue = nutritionValue(analysis?.proteinGrams);
+  const carbsValue = nutritionValue(analysis?.carbohydratesGrams);
+  const fatValue = nutritionValue(analysis?.fatGrams);
+  const sugarValue = nutritionValue(analysis?.addedSugarGrams);
+  const metrics: MealMetric[] = [
+    { key: "calories", label: "Calories", value: calValue, unit: "kcal" },
+    { key: "protein", label: "Protein", value: protValue, unit: "g" },
+    { key: "carbohydrates", label: "Carbohydrates", value: carbsValue, unit: "g" },
+    { key: "fat", label: "Fat", value: fatValue, unit: "g" },
+    { key: "addedSugar", label: "Added sugar", value: sugarValue, unit: "g" },
+  ];
 
   // Hidden file inputs
   const fileInputs = (
@@ -162,7 +273,7 @@ export function LabMealCard({
         accept="image/*"
         capture="environment"
         className={styles.visuallyHidden}
-        aria-label={`Prendre une photo pour ${slotArticle}`}
+        aria-label={`Take photo for ${slotLabel}`}
         disabled={disabled || processingFiles || mutationBusy}
         onChange={handleFiles}
       />
@@ -172,7 +283,7 @@ export function LabMealCard({
         accept="image/*"
         multiple
         className={styles.visuallyHidden}
-        aria-label={`Choisir des photos pour ${slotArticle}`}
+        aria-label={`Choose photos for ${slotLabel}`}
         disabled={disabled || processingFiles || mutationBusy}
         onChange={handleFiles}
       />
@@ -190,7 +301,7 @@ export function LabMealCard({
             type="button"
             className={styles.photoRemoveBtn}
             onClick={() => onRemovePhoto(photo.id)}
-            aria-label="Supprimer la photo"
+            aria-label="Delete photo"
           >
             <X size={12} />
           </button>
@@ -202,7 +313,7 @@ export function LabMealCard({
   // Analyzing indicator
   if (isAnalyzing) {
     return (
-      <article className={styles.cardRoot} aria-labelledby={headingId}>
+      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
             <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
@@ -211,27 +322,69 @@ export function LabMealCard({
         <div className={styles.analyzingState} role="status">
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span className={styles.progressTrace} aria-hidden="true" />
-            <span>Analyse en cours…</span>
+            <span>Analyzing…</span>
           </div>
           <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
-            Annuler
+            Cancel
           </button>
         </div>
       </article>
     );
   }
 
-  // =========================================================================
-  // VERSION 1 : HORIZON SILENCIEUX (Ligne épurée borderless)
-  // =========================================================================
-  if (designVariant === "v1") {
+  if (status === "error") {
     return (
-      <article className={styles.cardRoot} aria-labelledby={headingId}>
+      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         {fileInputs}
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
             <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
-            {isSkipped && <span className={styles.statusPill}>Pas pris</span>}
+            <span className={styles.statusPill}>Error</span>
+          </div>
+        </div>
+        {photoStrip}
+        <div className={styles.errorState} role="alert">
+          <div className={styles.errorCopy}>
+            <strong>Analysis interrupted</strong>
+            <span>{meal?.error?.trim() || "Results could not be saved."}</span>
+          </div>
+          <div className={styles.errorActions}>
+            <button
+              type="button"
+              className={styles.analyzeButton}
+              disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
+              onClick={handleAnalyzeClick}
+            >
+              Retry
+            </button>
+            {!isSkipped && onMarkSkipped && (
+              <button
+                type="button"
+                className={styles.skipButton}
+                disabled={disabled || mutationBusy}
+                onClick={onMarkSkipped}
+              >
+                Skipped
+              </button>
+            )}
+          </div>
+        </div>
+        {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+      </article>
+    );
+  }
+
+  // =========================================================================
+  // VERSION 1 : SILENT HORIZON (Clean borderless line)
+  // =========================================================================
+  if (designVariant === "v1") {
+    return (
+      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
+        {fileInputs}
+        <div className={styles.headerRow}>
+          <div className={styles.titleArea}>
+            <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
+            {isSkipped && <span className={styles.statusPill}>Skipped</span>}
           </div>
           {isFilled && (
             <div className={styles.headerActions}>
@@ -239,9 +392,9 @@ export function LabMealCard({
                 type="button"
                 className={styles.editButton}
                 onClick={handleStartEdit}
-                aria-label={`Modifier ${slotLabel}`}
+                aria-label={`Edit ${slotLabel}`}
               >
-                <Pencil size={12} aria-hidden="true" />Modifier
+                <Pencil size={12} aria-hidden="true" />Edit
               </button>
             </div>
           )}
@@ -251,87 +404,35 @@ export function LabMealCard({
 
         {isFilled ? (
           <div className={styles.v1FilledSummary}>
+            <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
             {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
               <p className={styles.v1DishSubTitle}>
                 {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
               </p>
             )}
-            
-            <div className={styles.v1NutritionLine} aria-label="Valeurs nutritionnelles">
-              <span className={styles.v1MetricItem} aria-label={`Calories : ${calValue} kcal`}>
-                <span className={styles.v1MetricLabel}>Calories : </span>
-                <span className={styles.v1MetricValue}>{calValue}</span>
-                <span className={styles.v1MetricUnit}> kcal</span>
-              </span>
-              <span className={styles.v1Divider} aria-hidden="true">·</span>
-              <span className={styles.v1MetricItem} aria-label={`Protéines : ${protValue} g`}>
-                <span className={styles.v1MetricLabel}>Protéines : </span>
-                <span className={styles.v1MetricValue}>{protValue}</span>
-                <span className={styles.v1MetricUnit}> g</span>
-              </span>
-              <span className={styles.v1Divider} aria-hidden="true">·</span>
-              <span className={styles.v1MetricItem} aria-label={`Glucides : ${carbsValue} g`}>
-                <span className={styles.v1MetricLabel}>Glucides : </span>
-                <span className={styles.v1MetricValue}>{carbsValue}</span>
-                <span className={styles.v1MetricUnit}> g</span>
-              </span>
-              <span className={styles.v1Divider} aria-hidden="true">·</span>
-              <span className={styles.v1MetricItem} aria-label={`Lipides : ${fatValue} g`}>
-                <span className={styles.v1MetricLabel}>Lipides : </span>
-                <span className={styles.v1MetricValue}>{fatValue}</span>
-                <span className={styles.v1MetricUnit}> g</span>
-              </span>
-              <span className={styles.v1Divider} aria-hidden="true">·</span>
-              <span className={styles.v1MetricItem} aria-label={`Sucres ajoutés : ${sugarValue} g`}>
-                <span className={styles.v1MetricLabel}>Sucres ajoutés : </span>
-                <span className={styles.v1MetricValue}>{sugarValue}</span>
-                <span className={styles.v1MetricUnit}> g</span>
-              </span>
-            </div>
-
+            <MealMetrics metrics={metrics} slot={slot} targets={targets} />
             {meal?.analysis && (
-              <div>
-                <button 
-                  type="button"
-                  className={styles.v1DetailsToggle}
-                  onClick={() => setShowDetails(!showDetails)}
-                  aria-expanded={showDetails}
-                >
-                  {showDetails ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-                  <span>Détails de l’analyse</span>
-                </button>
-                
-                {showDetails && (
-                  <div className={styles.v1DetailsPanel}>
-                    {meal.analysis.ingredients && meal.analysis.ingredients.length > 0 && (
-                      <ul>
-                        {meal.analysis.ingredients.map((ing, idx) => (
-                          <li key={idx}>
-                            {ing.portion ? `${ing.portion} ` : ""}{ing.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {meal.note && <p className={styles.v1DetailsNote}><strong>Note du jour</strong>{meal.note}</p>}
-                    {purgedPhotoCount > 0 && <p className={styles.v1DetailsNote}><strong>Preuve photo</strong>Photo analysée puis supprimée.</p>}
-                    {meal.analysis.calorieAnalysis && (
-                      <p>{meal.analysis.calorieAnalysis}</p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <AnalysisDetails
+                meal={meal}
+                open={showDetails}
+                detailsId={detailsId}
+                variant="v1"
+                onToggle={() => setShowDetails((open) => !open)}
+              />
             )}
+            {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
           </div>
         ) : (
           <div className={styles.v1InputRow}>
             <label htmlFor={inputId} className={styles.visuallyHidden}>
-              Décrire {slotLabel}
+              Describe {slotLabel}
             </label>
             <textarea
               id={inputId}
               className={`${styles.v1TextInput} ${isExpanded ? styles.v1TextInputExpanded : ""}`}
               rows={isExpanded ? 3 : 1}
-              placeholder="Décrire le repas…"
+              placeholder="Describe meal…"
               value={noteText}
               disabled={disabled || processingFiles || mutationBusy}
               onFocus={() => setIsFocused(true)}
@@ -347,16 +448,16 @@ export function LabMealCard({
             <button
               type="button"
               className={styles.mediaButton}
-              aria-label={`Prendre une photo pour ${slotArticle}`}
+              aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
             >
-              <Camera size={14} aria-hidden="true" />Caméra
+              <Camera size={14} aria-hidden="true" />Camera
             </button>
             <button
               type="button"
               className={styles.mediaButton}
-              aria-label={`Choisir des photos pour ${slotArticle}`}
+              aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
             >
@@ -368,9 +469,9 @@ export function LabMealCard({
                 className={styles.v1CancelBtn}
                 disabled={disabled || processingFiles || mutationBusy}
                 onClick={handleCancelEdit}
-                aria-label="Annuler la modification"
+                aria-label="Cancel edit"
               >
-                Annuler
+                Cancel
               </button>
             )}
             <button
@@ -378,10 +479,20 @@ export function LabMealCard({
               className={styles.analyzeButton}
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
-              aria-label={`Analyser ${slotArticle}`}
+              aria-label={`Analyze ${slotLabel}`}
             >
-              <span>Analyser le repas</span>
+              <span>Analyze meal</span>
             </button>
+            {!isSkipped && onMarkSkipped && (
+              <button
+                type="button"
+                className={styles.skipButton}
+                disabled={disabled || mutationBusy}
+                onClick={onMarkSkipped}
+              >
+                Skipped
+              </button>
+            )}
           </div>
         )}
       </article>
@@ -389,11 +500,11 @@ export function LabMealCard({
   }
 
   // =========================================================================
-  // VERSION 2 : INSTRUMENT FÉDÉRÉ (Bloc unifié instrumental & 5 colonnes)
+  // VERSION 2 : INSTRUMENT (Unified instrumental block & columns)
   // =========================================================================
   if (designVariant === "v2") {
     return (
-      <article className={styles.cardRoot} aria-labelledby={headingId}>
+      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         {fileInputs}
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
@@ -406,9 +517,9 @@ export function LabMealCard({
                 type="button"
                 className={styles.editButton}
                 onClick={handleStartEdit}
-                aria-label={`Modifier ${slotLabel}`}
+                aria-label={`Edit ${slotLabel}`}
               >
-                <Pencil size={12} aria-hidden="true" />Modifier
+                <Pencil size={12} aria-hidden="true" />Edit
               </button>
             </div>
           )}
@@ -419,54 +530,29 @@ export function LabMealCard({
         {isFilled ? (
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
-            <div className={styles.v2NutritionGrid} aria-label="Indicateurs nutritionnels">
-              <div className={styles.v2MetricCell} aria-label={`Calories : ${calValue} kcal`}>
-                <span className={styles.v2MetricLabel}>Calories : </span>
-                <span className={styles.v2MetricValue}>
-                  {calValue}
-                  <small> kcal</small>
-                </span>
-              </div>
-              <div className={styles.v2MetricCell} aria-label={`Protéines : ${protValue} g`}>
-                <span className={styles.v2MetricLabel}>Protéines : </span>
-                <span className={styles.v2MetricValue}>
-                  {protValue}
-                  <small> g</small>
-                </span>
-              </div>
-              <div className={styles.v2MetricCell} aria-label={`Glucides : ${carbsValue} g`}>
-                <span className={styles.v2MetricLabel}>Glucides : </span>
-                <span className={styles.v2MetricValue}>
-                  {carbsValue}
-                  <small> g</small>
-                </span>
-              </div>
-              <div className={styles.v2MetricCell} aria-label={`Lipides : ${fatValue} g`}>
-                <span className={styles.v2MetricLabel}>Lipides : </span>
-                <span className={styles.v2MetricValue}>
-                  {fatValue}
-                  <small> g</small>
-                </span>
-              </div>
-              <div className={styles.v2MetricCell} aria-label={`Sucres ajoutés : ${sugarValue} g`}>
-                <span className={styles.v2MetricLabel}>Sucres ajoutés : </span>
-                <span className={styles.v2MetricValue}>
-                  {sugarValue}
-                  <small> g</small>
-                </span>
-              </div>
-            </div>
+            <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+            {meal?.analysis && (
+              <AnalysisDetails
+                meal={meal}
+                open={showDetails}
+                detailsId={detailsId}
+                variant="v2"
+                onToggle={() => setShowDetails((open) => !open)}
+              />
+            )}
+            {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
           </div>
         ) : (
           <div className={styles.v2EmptyContainer}>
             <label htmlFor={inputId} className={styles.visuallyHidden}>
-              Décrire {slotLabel}
+              Describe {slotLabel}
             </label>
             <input
               id={inputId}
               type="text"
               className={styles.v2TextInput}
-              placeholder="Décrire le repas…"
+              placeholder="Describe meal…"
               value={noteText}
               disabled={disabled || processingFiles || mutationBusy}
               onChange={(e) => onNote(e.target.value)}
@@ -484,17 +570,17 @@ export function LabMealCard({
                   className={styles.mediaPillButton}
                   onClick={() => cameraRef.current?.click()}
                   disabled={disabled || processingFiles || mutationBusy}
-                  aria-label={`Prendre une photo pour ${slotArticle}`}
+                  aria-label={`Take photo for ${slotLabel}`}
                 >
                   <Camera size={14} aria-hidden="true" />
-                  Caméra
+                  Camera
                 </button>
                 <button
                   type="button"
                   className={styles.mediaPillButton}
                   onClick={() => galleryRef.current?.click()}
                   disabled={disabled || processingFiles || mutationBusy}
-                  aria-label={`Choisir des photos pour ${slotArticle}`}
+                  aria-label={`Choose photos for ${slotLabel}`}
                 >
                   <ImagePlus size={14} aria-hidden="true" />
                   Photos
@@ -505,11 +591,21 @@ export function LabMealCard({
                 className={styles.analyzeButton}
                 disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
                 onClick={handleAnalyzeClick}
-                aria-label={`Analyser ${slotArticle}`}
+                aria-label={`Analyze ${slotLabel}`}
               >
-                <span>Analyser le repas</span>
+                <span>Analyze meal</span>
                 <ArrowRight size={14} aria-hidden="true" />
               </button>
+              {!isSkipped && onMarkSkipped && (
+                <button
+                  type="button"
+                  className={styles.skipButton}
+                  disabled={disabled || mutationBusy}
+                  onClick={onMarkSkipped}
+                >
+                  Skipped
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -518,10 +614,10 @@ export function LabMealCard({
   }
 
   // =========================================================================
-  // VERSION 3 : MATRICE SPLIT (Asymétrique & focus direct)
+  // VERSION 3 : SPLIT MATRIX (Asymmetric & direct focus)
   // =========================================================================
   return (
-    <article className={styles.cardRoot} aria-labelledby={headingId}>
+    <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
       {fileInputs}
       <div className={styles.v3Row}>
         <div className={styles.v3SlotSide}>
@@ -529,12 +625,11 @@ export function LabMealCard({
           {isFilled && (
             <button
               type="button"
-              className={styles.editButton}
-              style={{ width: "fit-content", marginTop: "4px" }}
+              className={`${styles.editButton} ${styles.v3SlotEditButton}`}
               onClick={handleStartEdit}
-              aria-label={`Modifier ${slotLabel}`}
+              aria-label={`Edit ${slotLabel}`}
             >
-              <Pencil size={11} aria-hidden="true" />Modifier
+              <Pencil size={11} aria-hidden="true" />Edit
             </button>
           )}
         </div>
@@ -545,44 +640,29 @@ export function LabMealCard({
           {isFilled ? (
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
-              <div className={styles.v3PillsRow} aria-label="Métriques clés">
-                <span className={styles.v3Pill} aria-label={`Calories : ${calValue} kcal`}>
-                  <span className={styles.v3PillLabel}>Calories : </span>
-                  <strong>{calValue}</strong>
-                  <small style={{ color: "var(--lab-text-secondary)" }}> kcal</small>
-                </span>
-                <span className={styles.v3Pill} aria-label={`Protéines : ${protValue} g`}>
-                  <span className={styles.v3PillLabel}>Protéines : </span>
-                  <strong>{protValue}</strong>
-                  <small style={{ color: "var(--lab-text-secondary)" }}> g</small>
-                </span>
-                <span className={styles.v3Pill} aria-label={`Glucides : ${carbsValue} g`}>
-                  <span className={styles.v3PillLabel}>Glucides : </span>
-                  <strong>{carbsValue}</strong>
-                  <small style={{ color: "var(--lab-text-secondary)" }}> g</small>
-                </span>
-                <span className={styles.v3Pill} aria-label={`Lipides : ${fatValue} g`}>
-                  <span className={styles.v3PillLabel}>Lipides : </span>
-                  <strong>{fatValue}</strong>
-                  <small style={{ color: "var(--lab-text-secondary)" }}> g</small>
-                </span>
-                <span className={styles.v3Pill} aria-label={`Sucres ajoutés : ${sugarValue} g`}>
-                  <span className={styles.v3PillLabel}>Sucres ajoutés : </span>
-                  <strong>{sugarValue}</strong>
-                  <small style={{ color: "var(--lab-text-secondary)" }}> g</small>
-                </span>
-              </div>
+              <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+              {meal?.analysis && (
+                <AnalysisDetails
+                  meal={meal}
+                  open={showDetails}
+                  detailsId={detailsId}
+                  variant="v3"
+                  onToggle={() => setShowDetails((open) => !open)}
+                />
+              )}
+              {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+              {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
             </>
           ) : (
             <div className={styles.v3InputGroup}>
               <label htmlFor={inputId} className={styles.visuallyHidden}>
-                Décrire {slotLabel}
+                Describe {slotLabel}
               </label>
               <input
                 id={inputId}
                 type="text"
                 className={styles.v3TextInput}
-                placeholder="Décrire le repas…"
+                placeholder="Describe meal…"
                 value={noteText}
                 disabled={disabled || processingFiles || mutationBusy}
                 onChange={(e) => onNote(e.target.value)}
@@ -596,16 +676,16 @@ export function LabMealCard({
               <button
                 type="button"
                 className={styles.mediaButton}
-                aria-label={`Prendre une photo pour ${slotArticle}`}
+                aria-label={`Take photo for ${slotLabel}`}
                 disabled={disabled || processingFiles || mutationBusy}
                 onClick={() => cameraRef.current?.click()}
               >
-                <Camera size={14} aria-hidden="true" />Caméra
+                <Camera size={14} aria-hidden="true" />Camera
               </button>
               <button
                 type="button"
                 className={styles.mediaButton}
-                aria-label={`Choisir des photos pour ${slotArticle}`}
+                aria-label={`Choose photos for ${slotLabel}`}
                 disabled={disabled || processingFiles || mutationBusy}
                 onClick={() => galleryRef.current?.click()}
               >
@@ -616,11 +696,21 @@ export function LabMealCard({
                 className={styles.v3CompactAnalyze}
                 disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
                 onClick={handleAnalyzeClick}
-                aria-label={`Analyser ${slotArticle}`}
+                aria-label={`Analyze ${slotLabel}`}
               >
-                <span>Analyser le repas</span>
+                <span>Analyze meal</span>
                 <ArrowRight size={13} aria-hidden="true" />
               </button>
+              {!isSkipped && onMarkSkipped && (
+                <button
+                  type="button"
+                  className={styles.skipButton}
+                  disabled={disabled || mutationBusy}
+                  onClick={onMarkSkipped}
+                >
+                  Skipped
+                </button>
+              )}
             </div>
           )}
         </div>

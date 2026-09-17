@@ -114,11 +114,11 @@ type SubcomponentInput = Omit<MealBalanceSubcomponent, "score" | "rawScore" | "a
 };
 
 const componentLabels: Record<MealBalanceComponentKey, string> = {
-  nutritionAdequacy: "Adéquation nutritionnelle",
-  foodQuality: "Qualité alimentaire",
-  sugarLoad: "Sucre et concentration",
-  nova: "Transformation NOVA",
-  positiveVariety: "Variété positive",
+  nutritionAdequacy: "Nutritional adequacy",
+  foodQuality: "Food quality",
+  sugarLoad: "Sugar & concentration",
+  nova: "NOVA processing",
+  positiveVariety: "Positive variety",
 };
 
 export const MEAL_BALANCE_COMPONENT_ORDER: readonly MealBalanceComponentKey[] = [
@@ -252,7 +252,7 @@ function emptyComponent(key: MealBalanceComponentKey, period: MealBalancePeriod 
     confidence: 0,
     observedValue: null,
     target: null,
-    summary: "Aucune observation exploitable pour cette dimension.",
+    summary: "No usable observation for this dimension.",
     observationCoverage: 0,
     period,
   });
@@ -267,7 +267,7 @@ function emptyResult(): MealBalanceScore {
     confidence: 0,
     components: MEAL_BALANCE_COMPONENT_ORDER.map((key) => emptyComponent(key)),
     strongestEffects: [],
-    reasons: ["Aucun repas confirmé exploitable pour cette journée."],
+    reasons: ["No usable confirmed meal for this day."],
     observedDimensions: 0,
   };
 }
@@ -365,10 +365,10 @@ function qualityComponent(
   const observed = foods.filter(qualityObservation);
   if (!observed.length) return emptyComponent("foodQuality", period);
   const roleWeights = [
-    { key: "plant", label: "Sources végétales", weight: 0.4 },
-    { key: "protein", label: "Sources de protéines", weight: 0.3 },
-    { key: "fiber", label: "Sources de fibres", weight: 0.2 },
-    { key: "unsaturatedFat", label: "Graisses insaturées", weight: 0.1 },
+    { key: "plant", label: "Plant sources", weight: 0.4 },
+    { key: "protein", label: "Protein sources", weight: 0.3 },
+    { key: "fiber", label: "Fiber sources", weight: 0.2 },
+    { key: "unsaturatedFat", label: "Unsaturated fats", weight: 0.1 },
   ] as const;
   const roles = observed.map(qualityRoles);
   const shares = roleWeights.map((role) => weightedShare(observed, (_, index) => roles[index]?.[role.key] === true) ?? 0);
@@ -380,18 +380,18 @@ function qualityComponent(
     rawScore: shares[index] * 100,
     weight: role.weight * 100,
     value: unit(shares[index] * 100),
-    target: "Présence dans les aliments observés",
+    target: "Presence in observed foods",
     confidence: axisConfidence,
-    summary: "Part pondérée des aliments observés qui remplissent ce rôle.",
+    summary: "Weighted share of observed foods fulfilling this role.",
   }));
   return createComponent({
     key: "foodQuality",
     label: componentLabels.foodQuality,
     rawScore,
     confidence: axisConfidence,
-    observedValue: `${Math.round(observed.length / Math.max(1, foods.length) * 100)} % des aliments décrits`,
-    target: "Présence de rôles favorables, sans juger la transformation",
-    summary: "La qualité décrit les rôles favorables présents : végétaux, protéines, fibres et graisses insaturées. NOVA et le sucre sont évalués séparément.",
+    observedValue: `${Math.round(observed.length / Math.max(1, foods.length) * 100)}% of described foods`,
+    target: "Presence of beneficial roles, without judging processing",
+    summary: "Quality describes beneficial roles present: plants, protein, fiber, and unsaturated fats. NOVA and sugar are scored separately.",
     observationCoverage: observed.length / Math.max(1, foods.length),
     period,
     subcomponents,
@@ -429,18 +429,18 @@ function nutritionAdequacyComponent(
       rawScore: null,
       confidence: 0,
       observedValue: null,
-      target: "Les trois repas principaux doivent être déclarés",
-      summary: "Un repas principal n’est pas renseigné. L’adéquation reste indisponible et aucune autre dimension n’est pénalisée.",
+      target: "All three main meals must be logged",
+      summary: "A main meal is not logged. Adequacy remains unavailable and no other dimension is penalized.",
       observationCoverage: 0,
       period,
     });
   }
   const specs = [
     { key: "calories", label: "Calories", value: finiteNonNegative(day.caloriesKcal), target: targets.caloriesKcal, unit: "kcal", weight: 0.2 },
-    { key: "protein", label: "Protéines", value: finiteNonNegative(day.proteinG), target: targets.proteinG, unit: "g", weight: 0.2 },
-    { key: "carbs", label: "Glucides", value: finiteNonNegative(day.carbsG), target: targets.carbsG, unit: "g", weight: 0.2 },
-    { key: "fat", label: "Lipides", value: finiteNonNegative(day.fatG), target: targets.fatG, unit: "g", weight: 0.2 },
-    { key: "fiber", label: "Fibres", value: finiteNonNegative(day.fiberG), target: targets.fiberG, unit: "g", weight: 0.2 },
+    { key: "protein", label: "Protein", value: finiteNonNegative(day.proteinG), target: targets.proteinG, unit: "g", weight: 0.2 },
+    { key: "carbs", label: "Carbohydrates", value: finiteNonNegative(day.carbsG), target: targets.carbsG, unit: "g", weight: 0.2 },
+    { key: "fat", label: "Fat", value: finiteNonNegative(day.fatG), target: targets.fatG, unit: "g", weight: 0.2 },
+    { key: "fiber", label: "Fiber", value: finiteNonNegative(day.fiberG), target: targets.fiberG, unit: "g", weight: 0.2 },
   ] as const;
   const confidence = recordConfidence(records, day.analysisConfidence === null ? 0.5 : clamp01(day.analysisConfidence / 100));
   const subcomponents = specs.map((item) => {
@@ -456,7 +456,7 @@ function nutritionAdequacyComponent(
       value: item.value,
       target: `${item.target.low}–${high} ${item.unit}`,
       confidence,
-      summary: rawScore === null ? "Donnée manquante : elle n’est pas remplacée par zéro." : "Comparaison progressive avec la plage personnelle.",
+      summary: rawScore === null ? "Missing data: not replaced with zero." : "Progressive comparison with personal target range.",
     });
   });
   const known = subcomponents.filter((item) => item.rawScore !== null);
@@ -467,8 +467,8 @@ function nutritionAdequacyComponent(
       rawScore: null,
       confidence,
       observedValue: null,
-      target: "Plages personnelles de calories et nutriments",
-      summary: "Aucune estimation nutritionnelle exploitable pour cette journée.",
+      target: "Personal calorie and nutrient ranges",
+      summary: "No usable nutritional estimate for this day.",
       observationCoverage: 0,
       period,
       subcomponents,
@@ -480,9 +480,9 @@ function nutritionAdequacyComponent(
     label: componentLabels.nutritionAdequacy,
     rawScore,
     confidence,
-    observedValue: `${known.length}/5 indicateurs disponibles`,
-    target: "Plages personnelles de calories, protéines, glucides, lipides et fibres",
-    summary: "Chaque objectif connu est comparé à sa plage personnelle. Les indicateurs absents sont ignorés, jamais comptés comme zéro.",
+    observedValue: `${known.length}/5 metrics available`,
+    target: "Personal ranges for calories, protein, carbohydrates, fat, and fiber",
+    summary: "Each known target is compared to its personal range. Missing metrics are ignored, never counted as zero.",
     observationCoverage: known.length / specs.length,
     period,
     subcomponents,
@@ -578,23 +578,23 @@ function sugarComponent(
   const subcomponents = [
     values.addedSugarG === null ? null : createSubcomponent({
       key: "addedSugar",
-      label: "Sucre ajouté ordinaire",
+      label: "Standard added sugar",
       rawScore: sugarScoreForLoad(values.addedSugarG),
       weight: 50,
       value: values.addedSugarG,
-      target: "0–20 g/jour",
+      target: "0–20 g/day",
       confidence: axisConfidence,
-      summary: "Sucre ajouté des aliments ordinaires.",
+      summary: "Added sugar from regular foods.",
     }),
     values.concentratedSugarG === null ? null : createSubcomponent({
       key: "concentratedSugar",
-      label: "Sucre total concentré",
+      label: "Total concentrated sugar",
       rawScore: sugarScoreForLoad(values.concentratedSugarG),
       weight: 50,
       value: values.concentratedSugarG,
-      target: "Limiter les apports concentrés, notamment les jus",
+      target: "Limit concentrated intakes, especially juices",
       confidence: axisConfidence,
-      summary: "Le sucre total d’un aliment concentré est utilisé une seule fois, même si son sucre ajouté vaut zéro.",
+      summary: "Total sugar from concentrated foods is counted once, even if added sugar is zero.",
     }),
   ].filter((item): item is MealBalanceSubcomponent => item !== null);
   return createComponent({
@@ -602,11 +602,11 @@ function sugarComponent(
     label: componentLabels.sugarLoad,
     rawScore: sugarScoreForLoad(values.totalG),
     confidence: axisConfidence,
-    observedValue: `${unit(values.totalG)} g de charge sucrée`,
-    target: "0 g idéal · 20 g seuil fort · 40 g zone très sévère",
+    observedValue: `${unit(values.totalG)} g sugar load`,
+    target: "0 g ideal · 20 g strong threshold · 40 g severe zone",
     summary: values.totalG > MEAL_BALANCE_SUGAR_THRESHOLD_G
-      ? `Charge sucrée élevée : ${unit(severePenalty)} point${severePenalty > 1 ? "s" : ""} supplémentaire${severePenalty > 1 ? "s" : ""} retiré${severePenalty > 1 ? "s" : ""} au global après 20 g.`
-      : "La charge combine le sucre ajouté ordinaire et le sucre total des aliments concentrés ; la forme liquide seule ne pénalise pas.",
+      ? `High sugar load: ${unit(severePenalty)} additional point${severePenalty > 1 ? "s" : ""} deducted globally after 20 g.`
+      : "Sugar load combines standard added sugar and total sugar from concentrated foods; liquid form alone does not penalize.",
     observationCoverage: values.observationCoverage,
     period,
     subcomponents,
@@ -633,7 +633,7 @@ function novaComponent(foods: readonly ConfirmedMealFood[], confidence: number, 
     value: observed.filter((food) => food.novaGroup === group).length,
     target: null,
     confidence: axisConfidence,
-    summary: "Répartition des aliments observés dans le classement NOVA.",
+    summary: "Distribution of observed foods across the NOVA classification.",
   }));
   const group4Count = observed.filter((food) => food.novaGroup === 4).length;
   return createComponent({
@@ -643,7 +643,7 @@ function novaComponent(foods: readonly ConfirmedMealFood[], confidence: number, 
     confidence: axisConfidence,
     observedValue: unit(weightedAverage(observed, (food) => food.novaGroup ?? null, foodWeight) ?? 0),
     target: "NOVA 1 = 100 · NOVA 2 = 70 · NOVA 3 = 35 · NOVA 4 = 5",
-    summary: `${group4Count} aliment${group4Count > 1 ? "s" : ""} NOVA 4 observé${group4Count > 1 ? "s" : ""} ; les aliments sans classement restent inconnus.`,
+    summary: `${group4Count} NOVA 4 food${group4Count > 1 ? "s" : ""} observed; unclassified foods remain unknown.`,
     observationCoverage: observed.length / Math.max(1, foods.length),
     period,
     subcomponents,
@@ -654,11 +654,11 @@ function positiveFamily(food: ConfirmedMealFood) {
   if (!isPositiveMealVarietyFood(food)) return null;
   const groups = (food.foodGroups ?? []).filter((group) => positiveFoodGroups.has(group));
   if (groups.includes("fruit")) return "fruits";
-  if (groups.includes("vegetable")) return "légumes";
-  if (groups.includes("legume")) return "légumineuses";
-  if (groups.some((group) => ["whole_grain", "refined_grain", "potato"].includes(group))) return "féculents";
-  if (groups.some((group) => ["animal_protein", "plant_protein", "egg", "dairy"].includes(group))) return "protéines";
-  if (groups.some((group) => ["nuts_seeds", "added_fat"].includes(group))) return "graisses favorables";
+  if (groups.includes("vegetable")) return "vegetables";
+  if (groups.includes("legume")) return "legumes";
+  if (groups.some((group) => ["whole_grain", "refined_grain", "potato"].includes(group))) return "starches";
+  if (groups.some((group) => ["animal_protein", "plant_protein", "egg", "dairy"].includes(group))) return "protein";
+  if (groups.some((group) => ["nuts_seeds", "added_fat"].includes(group))) return "beneficial fats";
   return null;
 }
 
@@ -684,7 +684,7 @@ function positiveVarietyComponent(day: MealDailyAggregate, records: readonly Con
   const observationCoverage = windowRecords.length ? observedLists / windowRecords.length : 0;
   if (!occurrences.length) {
     const empty = emptyComponent("positiveVariety", period);
-    return { ...empty, summary: "Aucun aliment positif classé dans les sept derniers jours ; bonbons, desserts sucrés, boissons, sauces et aliments non classés ne créent pas de bonus." };
+    return { ...empty, summary: "No positive foods classified in the last 7 days; candy, desserts, beverages, sauces, and unclassified foods do not grant bonuses." };
   }
   const distinctFoods = new Set(occurrences.map((item) => item.key));
   const families = new Set(occurrences.map((item) => item.family));
@@ -695,9 +695,9 @@ function positiveVarietyComponent(day: MealDailyAggregate, records: readonly Con
   const maximumHhi = families.size > 1 ? 1 / families.size : 1;
   const balance = families.size <= 1 ? 0 : clamp((1 - hhi) / (1 - maximumHhi), 0, 1);
   const signals = [
-    { key: "distinctFoods", label: "Aliments positifs distincts", score: clamp(distinctFoods.size / 14 * 100), weight: 0.5, value: distinctFoods.size },
-    { key: "families", label: "Familles positives distinctes", score: clamp(families.size / 6 * 100), weight: 0.3, value: families.size },
-    { key: "categoryBalance", label: "Équilibre des familles", score: balance * 100, weight: 0.2, value: unit(balance * 100) },
+    { key: "distinctFoods", label: "Distinct positive foods", score: clamp(distinctFoods.size / 14 * 100), weight: 0.5, value: distinctFoods.size },
+    { key: "families", label: "Distinct positive families", score: clamp(families.size / 6 * 100), weight: 0.3, value: families.size },
+    { key: "categoryBalance", label: "Family balance", score: balance * 100, weight: 0.2, value: unit(balance * 100) },
   ] as const;
   const rawScore = signals.reduce((sum, signal) => sum + signal.score * signal.weight, 0);
   const confidence = recordConfidence(windowRecords, fallbackConfidence);
@@ -707,24 +707,28 @@ function positiveVarietyComponent(day: MealDailyAggregate, records: readonly Con
     rawScore: signal.score,
     weight: signal.weight * 100,
     value: signal.value,
-    target: signal.key === "distinctFoods" ? "Environ 14 aliments positifs différents sur 7 jours" : signal.key === "families" ? "Diversifier les grandes familles positives" : "Répartir les aliments entre plusieurs familles",
+    target: signal.key === "distinctFoods"
+      ? "About 14 distinct positive foods over 7 days"
+      : signal.key === "families"
+        ? "Diversify broad positive food families"
+        : "Distribute foods across multiple families",
     confidence,
-    summary: "Ce sous-indicateur ne compte que des aliments positifs classés.",
+    summary: "This sub-metric only counts classified positive foods.",
   }));
   const datesByFood = new Map<string, Set<string>>();
   for (const occurrence of occurrences) datesByFood.set(occurrence.key, new Set([...(datesByFood.get(occurrence.key) ?? []), occurrence.date]));
   const repeated = [...datesByFood.entries()].sort(([, first], [, second]) => second.size - first.size)[0];
   const repetitionAlert = repeated && repeated[1].size >= 5
-    ? ` Répétition informative : « ${repeated[0]} » apparaît ${repeated[1].size} jours sur 7 ; cela ne retire pas de points directement.`
+    ? ` Informative repetition: "${repeated[0]}" appears on ${repeated[1].size} out of 7 days; this does not deduct points.`
     : "";
   return createComponent({
     key: "positiveVariety",
     label: componentLabels.positiveVariety,
     rawScore,
     confidence,
-    observedValue: `${distinctFoods.size} aliments · ${families.size} familles · fenêtre de 7 jours`,
-    target: "Diversifier les aliments positifs et leurs familles",
-    summary: `La variété positive exclut les aliments sucrés, les boissons, les sauces et les éléments non classés.${repetitionAlert}`,
+    observedValue: `${distinctFoods.size} foods · ${families.size} families · 7-day window`,
+    target: "Diversify positive foods and food families",
+    summary: `Positive variety excludes sweets, beverages, sauces, and unclassified items.${repetitionAlert}`,
     observationCoverage,
     period,
     subcomponents,
@@ -780,7 +784,7 @@ export function calculateMealBalanceScore(input: {
     return {
       ...emptyResult(),
       components,
-      reasons: ["Aucune dimension ne dispose encore d’une observation exploitable."],
+      reasons: ["No dimension has usable observations yet."],
     };
   }
   const rawAdjustment = observed.reduce((sum, component) => sum + component.rawContribution, 0);
@@ -808,7 +812,7 @@ export function calculateMealBalanceScore(input: {
     confidence,
     components,
     strongestEffects,
-    reasons: strongestEffects.map((effect) => `${effect.label} : ${effect.summary}`),
+    reasons: strongestEffects.map((effect) => `${effect.label}: ${effect.summary}`),
     observedDimensions: observed.length,
   };
 }

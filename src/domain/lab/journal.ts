@@ -28,11 +28,11 @@ export type JournalAutomaticSource = {
 };
 
 export const journalAutomaticSources: readonly JournalAutomaticSource[] = [
-  { id: "run_day", label: "Running détecté", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "day", defaultTrackingCadence: "weekly" },
-  { id: "bedtime_before_23", label: "Coucher avant 23 h", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
-  { id: "bedtime", label: "Début du sommeil détecté", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
-  { id: ADDED_SUGAR_AUTOMATIC_METRIC_ID, label: "Sucres ajoutés des repas", source: "Soma meals", variableType: "number", unit: "g", dayPeriod: "day", defaultTrackingCadence: "daily" },
-  { id: LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, label: "Petit-déjeuner léger", source: "Soma meals", variableType: "boolean", unit: null, dayPeriod: "morning", defaultTrackingCadence: "daily" },
+  { id: "run_day", label: "Running detected", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "day", defaultTrackingCadence: "weekly" },
+  { id: "bedtime_before_23", label: "Bedtime before 11 PM", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
+  { id: "bedtime", label: "Detected sleep start", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
+  { id: ADDED_SUGAR_AUTOMATIC_METRIC_ID, label: "Meal added sugars", source: "Soma meals", variableType: "number", unit: "g", dayPeriod: "day", defaultTrackingCadence: "daily" },
+  { id: LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, label: "Light breakfast", source: "Soma meals", variableType: "boolean", unit: null, dayPeriod: "morning", defaultTrackingCadence: "daily" },
 ] as const;
 
 export function journalAutomaticSource(id: unknown) {
@@ -88,6 +88,10 @@ export function journalAutomaticDefaultMatches(variable: Pick<JournalVariable, "
   if (!automaticMetricId) return false;
   if (journalAutomaticMetricId(variable) === automaticMetricId) return true;
   if (automaticMetricId === ADDED_SUGAR_AUTOMATIC_METRIC_ID && isAddedSugarVariable(variable)) return true;
+  if (automaticMetricId === "bedtime_before_23") {
+    const varName = normalizedJournalVariableName(variable.name);
+    if (varName === "coucher avant 23 h" || varName === "bedtime before 11 pm" || varName === "bedtime before 23") return true;
+  }
   const sourceLabel = journalAutomaticSource(automaticMetricId)?.label;
   const variableName = normalizedJournalVariableName(variable.name);
   return [definition.name, sourceLabel].filter((name): name is string => Boolean(name)).some((name) => normalizedJournalVariableName(name) === variableName);
@@ -132,10 +136,10 @@ const rawEntryValue = z.union([z.boolean(), z.number().finite(), z.string().max(
 
 export function journalVariableSourceError({ captureMode, automaticMetricId, variableType }: { captureMode: JournalCaptureMode; automaticMetricId: string | null | undefined; variableType: JournalVariableType }) {
   const source = journalAutomaticSource(automaticMetricId);
-  if (captureMode === "manual" && automaticMetricId) return "Une métrique manuelle ne peut pas avoir de source automatique.";
-  if (captureMode === "automatic" && !automaticMetricId) return "Choisis une source automatique.";
-  if (captureMode === "automatic" && !source) return "Cette source automatique n'est pas disponible.";
-  if (source && source.variableType !== variableType) return `Cette source automatique attend le type ${source.variableType}.`;
+  if (captureMode === "manual" && automaticMetricId) return "A manual metric cannot have an automatic source.";
+  if (captureMode === "automatic" && !automaticMetricId) return "Choose an automatic source.";
+  if (captureMode === "automatic" && !source) return "This automatic source is unavailable.";
+  if (source && source.variableType !== variableType) return `This automatic source expects type ${source.variableType}.`;
   return null;
 }
 
@@ -307,25 +311,25 @@ export type HealthyHabitCatalogItem = {
 };
 
 export const healthyHabitCatalog: readonly HealthyHabitCatalogItem[] = [
-  // Sommeil
-  { id: "coucher_23", name: "Coucher avant 23 h", category: "sleep", emoji: "🌙", description: "Régularité du rythme circadien", defaultSelected: true, journalVariableName: "Coucher avant 23 h" },
-  { id: "dark_room", name: "Chambre noire et fraîche", category: "sleep", emoji: "🌑", description: "Environnement propice au sommeil profond", defaultSelected: true, journalVariableName: "Dark room" },
-  { id: "reading", name: "Lecture 20 minutes", category: "sleep", emoji: "📖", description: "Sas de déconnexion avant le coucher", defaultSelected: true, journalVariableName: "Reading for 20 minutes" },
-  { id: "breathing", name: "Exercice de respiration", category: "sleep", emoji: "🌬️", description: "Apaisement du système nerveux autonome", defaultSelected: false, journalVariableName: "Breathing exercise" },
-  { id: "dinner_time", name: "Dîner terminé tôt", category: "sleep", emoji: "🍽️", description: "Digestion achevée avant de dormir", defaultSelected: true, journalVariableName: "Dinner end time" },
+  // Sleep
+  { id: "coucher_23", name: "Bedtime before 11 PM", category: "sleep", emoji: "🌙", description: "Circadian rhythm consistency", defaultSelected: true, journalVariableName: "Bedtime before 11 PM" },
+  { id: "dark_room", name: "Dark, cool bedroom", category: "sleep", emoji: "🌑", description: "Optimal environment for deep sleep", defaultSelected: true, journalVariableName: "Dark room" },
+  { id: "reading", name: "Reading for 20 minutes", category: "sleep", emoji: "📖", description: "Wind-down routine before sleep", defaultSelected: true, journalVariableName: "Reading for 20 minutes" },
+  { id: "breathing", name: "Breathing exercise", category: "sleep", emoji: "🌬️", description: "Calming the autonomic nervous system", defaultSelected: false, journalVariableName: "Breathing exercise" },
+  { id: "dinner_time", name: "Early dinner cutoff", category: "sleep", emoji: "🍽️", description: "Complete digestion before sleeping", defaultSelected: true, journalVariableName: "Dinner end time" },
 
   // Nutrition
-  { id: "sugar", name: "Limiter les sucres ajoutés", category: "nutrition", emoji: "🍬", description: "Stabilité glycémique et vigilance", defaultSelected: true, journalVariableName: "Added sugar" },
-  { id: "breakfast", name: "Petit-déjeuner équilibré", category: "nutrition", emoji: "🍳", description: "Premier repère métabolique du jour", defaultSelected: true, journalVariableName: "Breakfast" },
-  { id: "caffeine", name: "Suivi de la caféine", category: "nutrition", emoji: "☕", description: "Modération et arrêt après 14 h", defaultSelected: true, journalVariableName: "Caffeine" },
-  { id: "alcohol", name: "Suivi de l'alcool", category: "nutrition", emoji: "🍷", description: "Observer l'effet sur le sommeil et la VFC", defaultSelected: true, journalVariableName: "Alcohol" },
-  { id: "magnesium", name: "Magnésium", category: "nutrition", emoji: "💊", description: "Soutien musculaire et récupération nerveuse", defaultSelected: false, journalVariableName: "Magnesium" },
+  { id: "sugar", name: "Limit added sugars", category: "nutrition", emoji: "🍬", description: "Blood glucose stability and alertness", defaultSelected: true, journalVariableName: "Added sugar" },
+  { id: "breakfast", name: "Balanced breakfast", category: "nutrition", emoji: "🍳", description: "First metabolic anchor of the day", defaultSelected: true, journalVariableName: "Breakfast" },
+  { id: "caffeine", name: "Caffeine tracking", category: "nutrition", emoji: "☕", description: "Moderation and cutoff after 2 PM", defaultSelected: true, journalVariableName: "Caffeine" },
+  { id: "alcohol", name: "Alcohol tracking", category: "nutrition", emoji: "🍷", description: "Observe impact on sleep and HRV", defaultSelected: true, journalVariableName: "Alcohol" },
+  { id: "magnesium", name: "Magnesium", category: "nutrition", emoji: "💊", description: "Muscle support and nervous recovery", defaultSelected: false, journalVariableName: "Magnesium" },
 
-  // Activité
-  { id: "running", name: "Course à pied / Running", category: "activity", emoji: "🏃", description: "Capacité aérobie et endurance", defaultSelected: true, journalVariableName: "Running" },
-  { id: "strength", name: "Renforcement musculaire", category: "activity", emoji: "🏋️", description: "Masse musculaire et densité osseuse", defaultSelected: true, journalVariableName: "Strength training" },
-  { id: "walking", name: "Marche quotidienne (8 000 pas)", category: "activity", emoji: "🚶", description: "Volume de mouvement sans fatigue excessive", defaultSelected: false, journalVariableName: "Walking" },
-  { id: "mobility", name: "Étirements ou mobilité", category: "activity", emoji: "🧘", description: "Amplitude articulaire et relâchement", defaultSelected: false, journalVariableName: "Mobility" },
+  // Activity
+  { id: "running", name: "Running", category: "activity", emoji: "🏃", description: "Aerobic capacity and endurance", defaultSelected: true, journalVariableName: "Running" },
+  { id: "strength", name: "Strength training", category: "activity", emoji: "🏋️", description: "Muscle mass and bone density", defaultSelected: true, journalVariableName: "Strength training" },
+  { id: "walking", name: "Daily walk (8,000 steps)", category: "activity", emoji: "🚶", description: "Movement volume without excess fatigue", defaultSelected: false, journalVariableName: "Walking" },
+  { id: "mobility", name: "Mobility or stretching", category: "activity", emoji: "🧘", description: "Joint range of motion and release", defaultSelected: false, journalVariableName: "Mobility" },
 ];
 
 export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
@@ -339,7 +343,7 @@ export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
   { name: "Alcohol", emoji: "🍷", variableType: "count", unit: "drinks", options: [], position: 60, dayPeriod: "evening", defaultValue: 0 },
   { name: "Strength training", emoji: "🏋️", variableType: "boolean", unit: null, options: [], position: 65, dayPeriod: "day", defaultValue: false },
   { name: "Dinner end time", emoji: "🍽️", variableType: "time", unit: null, options: [], position: 70, dayPeriod: "evening", defaultValue: null },
-  { name: "Coucher avant 23 h", emoji: "🌙", variableType: "boolean", unit: null, options: [], position: 75, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime_before_23", trackingCadence: "daily" },
+  { name: "Bedtime before 11 PM", emoji: "🌙", variableType: "boolean", unit: null, options: [], position: 75, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime_before_23", trackingCadence: "daily" },
   { name: "Bedtime", emoji: "🌘", variableType: "time", unit: null, options: [], position: 78, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime", trackingCadence: "daily" },
   { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "morning", defaultValue: 0 },
   { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },

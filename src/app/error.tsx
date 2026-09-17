@@ -16,11 +16,11 @@ export default function AppError({ error, reset, retry }: { error: Error & { dig
   return (
     <section className="system-state system-state--error" id="main-page-content" role="alert" aria-labelledby="app-error-title">
       <AlertCircle size={24} aria-hidden="true" />
-      <span className="eyebrow">Données indisponibles</span>
-      <h1 id="app-error-title" ref={titleRef} tabIndex={-1}>Cette vue n’a pas pu être chargée</h1>
-      <p>Vos données enregistrées n’ont pas été modifiées.</p>
+      <span className="eyebrow">Data unavailable</span>
+      <h1 id="app-error-title" ref={titleRef} tabIndex={-1}>This view could not be loaded</h1>
+      <p>Your saved data has not been modified.</p>
       <button className="secondary-button" type="button" onClick={() => recover()}>
-        <RotateCcw size={16} aria-hidden="true" />Recommencer
+        <RotateCcw size={16} aria-hidden="true" />Try again
       </button>
     </section>
   );

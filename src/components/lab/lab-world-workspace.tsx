@@ -44,7 +44,7 @@ export function LabWorldWorkspace({
 }: {
   date?: string;
   radar?: ReactNode;
-  effects: ReactNode;
+  effects?: ReactNode;
   capture?: ReactNode;
   overview?: PersonalLabOverview;
   journal?: PersonalLabJournal;
@@ -156,7 +156,7 @@ export function LabWorldWorkspace({
     </div>
     <div className="lab-world" lang="fr">
       <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{activeCapture}</section>
-      <section className="lab-world__effects" aria-label="Associations personnelles">{effects}</section>
+      {effects ? <section className="lab-world__effects" aria-label="Associations personnelles">{effects}</section> : null}
     </div>
   </div>;
 }

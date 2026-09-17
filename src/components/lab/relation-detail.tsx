@@ -35,56 +35,56 @@ function overnightOutcome(relation: MatrixRelation) {
 }
 
 const predictorDefinitions: Record<string, string> = {
-  steps: "Total des pas enregistrés pendant la journée.",
-  active_minutes: "Minutes classées comme actives par ton appareil.",
-  sedentary_minutes: "Minutes classées comme sédentaires par Google Health.",
-  active_day: "Indique si la journée a atteint le seuil d’activité de Soma.",
-  effort: "Estimation par Soma de ta charge d’activité quotidienne.",
-  zone_minutes: "Minutes passées dans les zones cardiaques de ton appareil.",
-  intense_minutes: "Minutes passées dans les zones cardiaques vigoureuse et maximale.",
-  exercise_minutes: "Durée totale de l’exercice enregistré.",
-  running_distance: "Distance parcourue pendant les séances de course enregistrées.",
-  running_pace: "Allure moyenne des séances de course enregistrées.",
-  running_average_heart_rate: "Fréquence cardiaque moyenne pendant les séances de course enregistrées.",
-  vo2_max: "Estimation par l’appareil de l’utilisation maximale d’oxygène pendant l’exercice.",
-  sleep_minutes: "Durée de l’épisode de sommeil précédent.",
-  sleep_regularity: "Degré de respect du rythme de sommeil récent.",
+  steps: "Total step count recorded throughout the day.",
+  active_minutes: "Minutes classified as active by your device.",
+  sedentary_minutes: "Minutes classified as sedentary by Google Health.",
+  active_day: "Indicates whether the day reached Soma’s activity threshold.",
+  effort: "Soma’s daily activity strain estimate.",
+  zone_minutes: "Minutes spent in your device heart rate zones.",
+  intense_minutes: "Minutes spent in vigorous and peak heart rate zones.",
+  exercise_minutes: "Total recorded workout duration.",
+  running_distance: "Distance covered across recorded running sessions.",
+  running_pace: "Average pace during recorded running sessions.",
+  running_average_heart_rate: "Average heart rate during recorded running sessions.",
+  vo2_max: "Device estimate of maximal oxygen uptake during exercise.",
+  sleep_minutes: "Duration of the preceding sleep session.",
+  sleep_regularity: "Recent sleep timing consistency score.",
 };
 
 export function outcomeExplanation(outcomeId: string, label: string) {
   const explanations: Record<string, string> = {
-    sleep_minutes: "Temps total passé à dormir pendant l’épisode de sommeil.",
-    sleep_efficiency: "Pourcentage du temps au lit passé à dormir.",
-    sleep_latency: "Temps nécessaire pour s’endormir.",
-    sleep_awake: "Temps éveillé pendant l’épisode de sommeil.",
-    sleep_fragmentation: "Degré d’interruption de l’épisode de sommeil.",
-    deep_sleep: "Temps passé en sommeil profond.",
-    rem_sleep: "Temps passé en sommeil paradoxal.",
-    light_sleep: "Temps passé en sommeil léger.",
-    hrv: "Variabilité de la fréquence cardiaque, mesurée en millisecondes.",
-    rhr: "Fréquence cardiaque moyenne au repos.",
-    recovery: "Estimation de la récupération par Soma à partir de plusieurs données de santé.",
-    vo2_max: "Estimation par l’appareil de l’utilisation maximale d’oxygène pendant l’exercice.",
-    running_average_heart_rate: "Fréquence cardiaque moyenne pendant les séances de course enregistrées.",
-    running_pace: "Allure moyenne des séances de course enregistrées.",
+    sleep_minutes: "Total time asleep during the sleep session.",
+    sleep_efficiency: "Percentage of time in bed spent asleep.",
+    sleep_latency: "Time required to fall asleep.",
+    sleep_awake: "Time awake during the sleep session.",
+    sleep_fragmentation: "Degree of sleep session disruption.",
+    deep_sleep: "Time spent in deep sleep.",
+    rem_sleep: "Time spent in REM sleep.",
+    light_sleep: "Time spent in light sleep.",
+    hrv: "Heart rate variability, measured in milliseconds.",
+    rhr: "Average resting heart rate.",
+    recovery: "Soma recovery estimate derived from multiple health signals.",
+    vo2_max: "Device estimate of maximal oxygen uptake during exercise.",
+    running_average_heart_rate: "Average heart rate during recorded running sessions.",
+    running_pace: "Average pace during recorded running sessions.",
   };
-  return explanations[outcomeId] ?? `${label}, mesuré par Soma à partir de tes données de santé connectées.`;
+  return explanations[outcomeId] ?? `${label}, measured by Soma from your connected health data.`;
 }
 
 export function predictorExplanation(relation: Pick<MatrixRelation, "predictorId" | "predictorLabel">) {
-  if (relation.predictorId.startsWith("journal:")) return `${relation.predictorLabel} est une mesure personnelle enregistrée par toi dans le journal.`;
-  return predictorDefinitions[relation.predictorId] ?? `${relation.predictorLabel} est une mesure quotidienne issue de tes données de santé connectées.`;
+  if (relation.predictorId.startsWith("journal:")) return `${relation.predictorLabel} is a personal variable logged by you in your journal.`;
+  return predictorDefinitions[relation.predictorId] ?? `${relation.predictorLabel} is a daily measurement from your connected health data.`;
 }
 
 export function timingText(relation: MatrixRelation) {
-  if (relation.lagDays === 0) return overnightOutcome(relation) ? "Cet épisode de sommeil" : "Même jour";
-  if (relation.lagDays === 1) return overnightOutcome(relation) ? "Nuit suivante / matin suivant" : "Lendemain";
-  return "Deux jours plus tard";
+  if (relation.lagDays === 0) return overnightOutcome(relation) ? "This sleep session" : "Same day";
+  if (relation.lagDays === 1) return overnightOutcome(relation) ? "Next night / following morning" : "Next day";
+  return "Two days later";
 }
 
 export function shortTimingText(relation: MatrixRelation) {
-  if (relation.lagDays === 0) return overnightOutcome(relation) ? "Sommeil" : "J";
-  return `J+${relation.lagDays}`;
+  if (relation.lagDays === 0) return overnightOutcome(relation) ? "Sleep" : "D";
+  return `D+${relation.lagDays}`;
 }
 
 export function relationTone(relation: MatrixRelation, direction: "higher" | "lower" | "target") {
@@ -98,8 +98,8 @@ export function relationTone(relation: MatrixRelation, direction: "higher" | "lo
 }
 
 function sentenceComparisonText(relation: MatrixRelation) {
-  if (relation.comparisonLabel === "yes vs no") return "oui plutôt que non";
-  if (relation.comparisonLabel === "30 min later") return "30 minutes plus tard";
+  if (relation.comparisonLabel === "yes vs no") return "yes vs no";
+  if (relation.comparisonLabel === "30 min later") return "30 minutes later";
   const readable = relation.comparisonLabel.replace(/([+−-]?\d+(?:\.\d+)?)\s*min\b/g, (match, raw: string) => {
     const value = Number(raw.replace("−", "-"));
     if (Math.abs(value) <= 120) return match;
@@ -109,28 +109,23 @@ function sentenceComparisonText(relation: MatrixRelation) {
     return `${raw.startsWith("+") ? "+" : raw.startsWith("-") || raw.startsWith("−") ? "−" : ""}${hours} h${minutes ? ` ${minutes} min` : ""}`;
   });
   const amountComparison = readable.match(/^(.+?) avg vs 0$/);
-  if (amountComparison) return `${amountComparison[1]} en moyenne plutôt que zéro`;
+  if (amountComparison) return `${amountComparison[1]} average vs 0`;
   const higherSteps = readable.match(/^\+?(\d+(?:\.\d+)?) steps$/);
-  if (higherSteps) return `${higherSteps[1]} pas de plus`;
+  if (higherSteps) return `${higherSteps[1]} more steps`;
   const threshold = readable.match(/^threshold above (.+)$/);
-  if (threshold) return `au-dessus de ${threshold[1]}`;
+  if (threshold) return `above ${threshold[1]}`;
   const plateau = readable.match(/^plateau after (.+)$/);
-  if (plateau) return `après ${plateau[1]}`;
+  if (plateau) return `after ${plateau[1]}`;
   const zone = readable.match(/^(?:optimal|adverse|middle) zone (.+)$/);
-  if (zone) return `dans la zone ${zone[1]}`;
-  if (readable.startsWith("+")) return `${readable.slice(1)} plus élevé`;
+  if (zone) return `in zone ${zone[1]}`;
+  if (readable.startsWith("+")) return `${readable.slice(1)} higher`;
   return readable;
 }
 
-function associationVerb(label: string) {
-  if (label === "Les pas") return "sont associés";
-  return /\b(?:minutes|zones|journées)$/i.test(label.trim()) ? "sont associées" : "est associée";
-}
-
 function sentenceTimingText(relation: MatrixRelation) {
-  if (relation.lagDays === 0) return overnightOutcome(relation) ? "pendant le même épisode de sommeil" : "le même jour";
-  if (relation.lagDays === 1) return overnightOutcome(relation) ? "pendant la nuit suivante" : "le lendemain";
-  return "deux jours plus tard";
+  if (relation.lagDays === 0) return overnightOutcome(relation) ? "during the same sleep session" : "on the same day";
+  if (relation.lagDays === 1) return overnightOutcome(relation) ? "during the next night" : "on the following day";
+  return "two days later";
 }
 
 function effectMagnitudeText(relation: MatrixRelation) {
@@ -138,14 +133,14 @@ function effectMagnitudeText(relation: MatrixRelation) {
   const unit = effectUnit(relation.outcomeUnit);
   const digits = unit === "pts" && Math.abs(relation.effect) >= 1 ? 0 : effectDigits(relation.effect, relation.outcomeUnit);
   const numericValue = Math.abs(Number(relation.effect.toFixed(digits)));
-  const value = numericValue.toLocaleString("fr-CH", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  if (unit === "pp") return `${value} point${numericValue < 2 ? "" : "s"} de pourcentage`;
-  if (unit === "count") return `${value} ${localizedMetricLabel(relation.outcomeId, relation.outcomeLabel).toLocaleLowerCase("fr")}`;
-  if (unit === "/h") return `${value} par heure`;
-  if (unit === "/min") return `${value} par minute`;
+  const value = numericValue.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (unit === "pp") return `${value} percentage point${numericValue === 1 ? "" : "s"}`;
+  if (unit === "count") return `${value} ${localizedMetricLabel(relation.outcomeId, relation.outcomeLabel).toLocaleLowerCase("en")}`;
+  if (unit === "/h") return `${value} per hour`;
+  if (unit === "/min") return `${value} per minute`;
   if (unit === "pts") return `${value} point${numericValue === 1 ? "" : "s"}`;
   if (unit === "min") return `${value} minute${numericValue === 1 ? "" : "s"}`;
-  if (unit === "ms") return `${value} milliseconde${numericValue === 1 ? "" : "s"}`;
+  if (unit === "ms") return `${value} millisecond${numericValue === 1 ? "" : "s"}`;
   return `${value}${unit ? ` ${unit}` : ""}`;
 }
 
@@ -155,13 +150,13 @@ export function findingSentence(relation: MatrixRelation) {
   const effect = relation.effect;
   const magnitude = effectMagnitudeText(relation);
   if (magnitude === null || effect === null || effect === 0) {
-    return `${predictorLabel} (${sentenceComparisonText(relation)}) ${associationVerb(predictorLabel)} à une variation mesurable de ${outcomeLabel} ${sentenceTimingText(relation)}.`;
+    return `${predictorLabel} (${sentenceComparisonText(relation)}) is associated with a measurable change in ${outcomeLabel} ${sentenceTimingText(relation)}.`;
   }
-  const direction = effect > 0 ? "hausse" : "baisse";
+  const direction = effect > 0 ? "increase" : "decrease";
   const relative = relation.percentEffect === null
     ? ""
-    : ` (${Math.abs(relation.percentEffect).toLocaleString("fr-CH", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} % de ${direction} par rapport à la référence)`;
-  return `${predictorLabel} (${sentenceComparisonText(relation)}) ${associationVerb(predictorLabel)} à une ${direction} de ${magnitude} pour ${outcomeLabel} ${sentenceTimingText(relation)}${relative}.`;
+    : ` (${Math.abs(relation.percentEffect).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% ${direction} relative to baseline)`;
+  return `${predictorLabel} (${sentenceComparisonText(relation)}) is associated with a ${magnitude} ${direction} in ${outcomeLabel} ${sentenceTimingText(relation)}${relative}.`;
 }
 
 export function RelationDetail({ relations, direction, onClose, detailRef }: { relations: MatrixRelation[]; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
@@ -173,13 +168,13 @@ export function RelationDetail({ relations, direction, onClose, detailRef }: { r
   return <aside ref={detailRef} className="relation-detail relation-detail--popover" tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
     <header>
       <div><span className="relation-detail__eyebrow">Relation</span><h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
-      <button type="button" className="icon-button" aria-label="Fermer le détail de la relation" onClick={onClose}><X size={17} /></button>
+      <button type="button" className="icon-button" aria-label="Close relation details" onClick={onClose}><X size={17} /></button>
     </header>
     <div className="relation-detail__popover-body">
       {relations.map((relation) => <p className="relation-detail__finding" key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>{findingSentence(relation)}</p>)}
       <dl className="relation-detail__definitions">
-        <div><dt>Influence</dt><dd>{predictorExplanation({ ...first, predictorLabel })}</dd></div>
-        <div><dt>Résultat</dt><dd>{outcomeExplanation(first.outcomeId, outcomeLabel)}</dd></div>
+        <div><dt>Predictor</dt><dd>{predictorExplanation({ ...first, predictorLabel })}</dd></div>
+        <div><dt>Outcome</dt><dd>{outcomeExplanation(first.outcomeId, outcomeLabel)}</dd></div>
       </dl>
     </div>
   </aside>;

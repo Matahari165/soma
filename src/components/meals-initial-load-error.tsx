@@ -9,12 +9,12 @@ export type MealsInitialLoadErrorKind = "meals" | "nutrition";
 
 const copy: Record<MealsInitialLoadErrorKind, { title: string; description: string }> = {
   meals: {
-    title: "Impossible de charger les repas",
-    description: "Les repas de cette journée ne sont pas disponibles pour le moment.",
+    title: "Unable to load meals",
+    description: "Meals for this day are currently unavailable.",
   },
   nutrition: {
-    title: "Historique nutritionnel indisponible",
-    description: "Les repas restent disponibles, mais l’historique nutritionnel n’a pas pu être chargé.",
+    title: "Nutritional history unavailable",
+    description: "Meals remain available, but nutritional history could not be loaded.",
   },
 };
 
@@ -36,7 +36,7 @@ export function MealsInitialLoadError({ kind }: { kind: MealsInitialLoadErrorKin
     </div>
     <button className={styles.retryButton} type="button" onClick={retry} disabled={retrying}>
       <RefreshCw size={15} aria-hidden="true" />
-      {retrying ? "Rechargement…" : "Réessayer"}
+      {retrying ? "Reloading…" : "Try again"}
     </button>
   </div>;
 }

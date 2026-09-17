@@ -34,7 +34,7 @@ const CATEGORY_COLORS: Record<MealFoodGroup, string> = {
 function formatDate(date: string) {
   const parsed = new Date(`${date}T12:00:00`);
   if (!Number.isFinite(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(parsed).replace(".", "");
+  return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(parsed).replace(".", "");
 }
 
 function totalsFor(points: readonly MealFoodGroupTrendPoint[]) {
@@ -50,16 +50,16 @@ function totalsFor(points: readonly MealFoodGroupTrendPoint[]) {
 }
 
 function chartDescription(points: readonly MealFoodGroupTrendPoint[], groups: readonly MealFoodGroup[]) {
-  if (!points.length) return "Aucune période disponible pour cette répartition.";
+  if (!points.length) return "No data available for this distribution.";
   const descriptions = points.map((point) => {
-    if (!point.counts) return `${formatDate(point.date)} : aucune classification exploitable`;
+    if (!point.counts) return `${formatDate(point.date)}: no classified data`;
     const entries = groups.flatMap((group) => {
       const value = point.counts?.[group];
       return value ? [`${MEAL_FOOD_GROUP_LABELS[group]} ${value}`] : [];
     });
-    return `${formatDate(point.date)} : ${entries.length ? entries.join(", ") : "aucune famille classée"}`;
+    return `${formatDate(point.date)}: ${entries.length ? entries.join(", ") : "no food groups classified"}`;
   });
-  return `${descriptions.join(". ")}. Les familles peuvent se croiser : il s’agit d’occurrences classées, pas d’une part calorique.`;
+  return `${descriptions.join(". ")}. Food groups may overlap: these are classified occurrences, not caloric share.`;
 }
 
 function withIllustrativePreview(points: readonly MealFoodGroupTrendPoint[]) {
@@ -95,9 +95,9 @@ export function MealFoodCategoryTrends({ points, className, illustrative = false
     <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-category-trends-title">
       <header className={styles.header}>
         <div>
-          <h2 id="meal-category-trends-title">Répartition des familles</h2>
+          <h2 id="meal-category-trends-title">Food group distribution</h2>
         </div>
-        <span className={styles.period}>28 JOURS</span>
+        <span className={styles.period}>28 DAYS</span>
       </header>
       {points.length > 0 && hasClassifiedData ? (
         <figure className={styles.figure}>
@@ -125,11 +125,11 @@ export function MealFoodCategoryTrends({ points, className, illustrative = false
           <figcaption className={styles.caption}><span>{points[0] ? formatDate(points[0].date) : "—"}</span><span>{points.at(-1) ? formatDate(points.at(-1)!.date) : "—"}</span></figcaption>
           <p id="meal-category-trends-description" className={styles.srOnly}>{chartDescription(chartPoints, visibleGroups)}</p>
         </figure>
-      ) : <p className={styles.empty}>{points.length ? "Aucune famille alimentaire classée sur cette période." : "Aucune période disponible pour cette répartition."}</p>}
-      {hasClassifiedData && <ul className={styles.legend} aria-label="Légende des familles alimentaires">
+      ) : <p className={styles.empty}>{points.length ? "No food groups classified over this period." : "No data available for this distribution."}</p>}
+      {hasClassifiedData && <ul className={styles.legend} aria-label="Food group legend">
         {visibleGroups.map((group) => <li key={group}><span className={styles.swatch} style={{ background: CATEGORY_COLORS[group] }} aria-hidden="true" /><span>{MEAL_FOOD_GROUP_LABELS[group]}</span></li>)}
       </ul>}
-      {illustrative && <p className={styles.previewNote}>APERÇU LOCAL · DONNÉES ILLUSTRATIVES</p>}
+      {illustrative && <p className={styles.previewNote}>LOCAL PREVIEW · ILLUSTRATIVE DATA</p>}
     </section>
   );
 }

@@ -10,14 +10,14 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
   const parsed = onboardingSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Vérifiez les informations saisies.", fields: parsed.error.flatten().fieldErrors },
+      { error: "Please review the entered information.", fields: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
   }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     p_secondary_goal: input.secondaryGoal,
   });
 
-  if (error) return NextResponse.json({ error: "Votre profil n’a pas pu être enregistré." }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Your profile could not be saved." }, { status: 500 });
 
   try {
     await ensureJournalVariables(user.id, {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       customHabits: input.customHabits,
     });
   } catch {
-    return NextResponse.json({ error: "Votre profil a été enregistré, mais le journal n’a pas pu être initialisé." }, { status: 500 });
+    return NextResponse.json({ error: "Your profile was saved, but the journal could not be initialized." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

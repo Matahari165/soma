@@ -1,0 +1,41 @@
+.page {
+  min-height: calc(100dvh - 72px);
+  padding: 32px 5vw 64px;
+  color: var(--lab-text-primary);
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+}
+
+.header {
+  display: grid;
+  align-content: end;
+  min-height: 96px;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--lab-text-primary);
+  font: 400 clamp(30px, 3vw, 40px)/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.025em;
+}
+
+.page :global(.strongest-effects-panel) {
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (max-width: 700px) {
+  .page {
+    min-height: calc(100dvh - 56px);
+    padding: 24px 16px 48px;
+  }
+
+  .header {
+    min-height: 64px;
+    margin-bottom: 24px;
+  }
+}

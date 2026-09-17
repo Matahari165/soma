@@ -27,10 +27,10 @@ export async function POST(request: Request) {
 
   try {
     const user = await verifyCredentialsLogin({ email, password });
-    await createSession(user.id);
+    const { token, cookieOptions } = await createSession(user.id);
     const onboarded = await hasCompletedOnboarding(user.id);
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         ok: true,
         user: {
@@ -42,6 +42,8 @@ export async function POST(request: Request) {
       },
       { status: 200 },
     );
+    response.cookies.set("soma_session", token, cookieOptions);
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Authentication failed.";
     return NextResponse.json({ error: message }, { status: 401 });

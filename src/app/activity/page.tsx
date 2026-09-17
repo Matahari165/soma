@@ -5,12 +5,12 @@ import { HealthLoadingShell } from "@/components/health/health-loading-shell";
 import { ActivityDetails } from "@/components/health/activity-details";
 import { getActivityAnalytics } from "@/services/health-analytics";
 
-export const metadata: Metadata = { title: { absolute: "Effort — Soma" } };
+export const metadata: Metadata = { title: { absolute: "Activity — Soma" } };
 
 async function ActivityPageContent() {
   return <ActivityDetails data={await getActivityAnalytics()} />;
 }
 
 export default function ActivityPage() {
-  return <Suspense fallback={<HealthLoadingShell kind="activity" title="Effort" />}><ActivityPageContent /></Suspense>;
+  return <Suspense fallback={<HealthLoadingShell kind="activity" title="Activity" />}><ActivityPageContent /></Suspense>;
 }

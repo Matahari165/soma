@@ -39,7 +39,7 @@ describe("relation detail formatting", () => {
 
   it("uses a natural sentence for an overnight decrease", () => {
     expect(findingSentence(makeRelation())).toBe(
-      "L’heure de réveil (30 minutes plus tard) est associée à une baisse de 16 minutes pour le temps éveillé pendant le même épisode de sommeil (51,7 % de baisse par rapport à la référence).",
+      "Wake time (30 minutes later) is associated with a 16 minutes decrease in awake time during the same sleep session (51.7% decrease relative to baseline).",
     );
   });
 
@@ -59,7 +59,7 @@ describe("relation detail formatting", () => {
       percentEffect: null,
       lagDays: 1,
     }))).toBe(
-      "La caféine (20 mg en moyenne plutôt que zéro) est associée à une hausse de 1,3 point de pourcentage pour l’efficacité du sommeil pendant la nuit suivante.",
+      "Caffeine (20 mg average vs 0) is associated with a 1.3 percentage points increase in sleep efficiency during the next night.",
     );
   });
 
@@ -79,7 +79,7 @@ describe("relation detail formatting", () => {
       percentEffect: null,
       lagDays: 1,
     }))).toBe(
-      "Les pas (100 pas de plus) sont associés à une hausse de 4 points pour la récupération pendant la nuit suivante.",
+      "Steps (100 more steps) is associated with a 4 points increase in recovery during the next night.",
     );
   });
 
@@ -95,9 +95,9 @@ describe("relation detail formatting", () => {
     expect(html).not.toContain("Compared days");
     expect(html).not.toContain("q &lt; 0.05");
     expect(html).toContain("Relation");
-    expect(html).toContain("Influence");
-    expect(html).toContain("Résultat");
-    expect(html).toContain("pendant le même épisode de sommeil");
+    expect(html).toContain("Predictor");
+    expect(html).toContain("Outcome");
+    expect(html).toContain("during the same sleep session");
     expect(html).not.toContain("95% interval · tests");
   });
 });

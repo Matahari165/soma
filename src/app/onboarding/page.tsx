@@ -6,7 +6,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { hasCompletedOnboarding } from "@/lib/cloudflare/session";
 import { isLocalPreviewMode } from "@/lib/env";
 
-export const metadata: Metadata = { title: { absolute: "Bienvenue — Soma" } };
+export const metadata: Metadata = { title: { absolute: "Welcome — Soma" } };
 
 export default async function OnboardingPage() {
   const user = await requireCurrentUser();

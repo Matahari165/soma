@@ -44,9 +44,9 @@ describe("arrival message personalization", () => {
     const run = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T20:00:00+02:00"), activity: { kind: "run", distanceKm: 7.2, durationMinutes: 44 } });
     const intense = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T15:00:00+02:00"), activity: { kind: "intense", intensityMinutes: 24 } });
 
-    expect(run.activityNote).toBe("Course enregistrée · 7,2 km · 44 min");
-    expect(intense.activityNote).toBe("Effort intense enregistré · 24 min en zones élevées");
-    expect(run.lines.join(" ")).toMatch(/course/i);
-    expect(intense.lines.join(" ")).toMatch(/effort|intensité/i);
+    expect(run.activityNote).toBe("Run recorded · 7.2 km · 44 min");
+    expect(intense.activityNote).toBe("Intense effort recorded · 24 min in high zones");
+    expect(run.lines.join(" ")).toMatch(/run/i);
+    expect(intense.lines.join(" ")).toMatch(/effort|strain|intensity/i);
   });
 });

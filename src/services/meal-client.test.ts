@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { classifyMealClientError, fetchMeal } from "./meal-client";
 
 describe("meal client transport errors", () => {
-  it("turns browser Failed to fetch errors into a stable French message", () => {
+  it("turns browser Failed to fetch errors into a stable English message", () => {
     const error = classifyMealClientError(new TypeError("Failed to fetch"), "analyze", "analysis-test-1");
 
     expect(error).toMatchObject({
@@ -11,7 +11,7 @@ describe("meal client transport errors", () => {
       code: "network",
       operation: "analyze",
       requestId: "analysis-test-1",
-      message: "La connexion à Soma a été interrompue pendant l’analyse. Réessaie.",
+      message: "Connection to Soma was interrupted during analysis. Please try again.",
     });
   });
 
@@ -19,7 +19,7 @@ describe("meal client transport errors", () => {
     const error = new Error("The operation was aborted");
     error.name = "AbortError";
 
-    expect(classifyMealClientError(error, "upload").message).toBe("L’envoi des photos a pris trop de temps. Vérifie ta connexion puis réessaie.");
+    expect(classifyMealClientError(error, "upload").message).toBe("Uploading photos took too long. Check your connection and try again.");
   });
 
   it("does not add a deadline to meal analysis requests", async () => {

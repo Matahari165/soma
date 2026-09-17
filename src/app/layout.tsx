@@ -51,7 +51,7 @@ const azeretMono = Azeret_Mono({
 export const metadata: Metadata = {
   title: "Soma",
   applicationName: "Soma",
-  description: "Un laboratoire personnel pour comprendre les relations entre santé, concentration, énergie, récupération et travail profond.",
+  description: "A personal health laboratory to understand the relationships between sleep, recovery, movement, and performance.",
   icons: {
     icon: [{ url: "/icon.png?v=discobolus-5", type: "image/png" }],
     shortcut: [{ url: "/favicon.ico?v=discobolus-5" }],
@@ -84,10 +84,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const observatoryMode = darkInterface && Boolean(user);
 
   return (
-    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="fr" data-lab-theme={darkInterface ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="en" data-lab-theme={darkInterface ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={[localPreview && "local-preview", observatoryMode && "observatory-mode"].filter(Boolean).join(" ") || undefined}>
         <SkipLink />
-        {localPreview && <div className="preview-banner" role="status"><strong>APERÇU LOCAL</strong><span>Données de démonstration · Rien n’est envoyé ni enregistré</span></div>}
+        {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo data · Nothing is transmitted or saved</span></div>}
         {observatoryMode && <><LabGlobalNavigation /><ObservatoryPageMotion /></>}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>

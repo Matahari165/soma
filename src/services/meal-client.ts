@@ -3,24 +3,24 @@ export type MealClientErrorCode = "network" | "timeout" | "unknown";
 
 const operationMessages: Record<MealRequestOperation, { timeout: string; network: string }> = {
   load: {
-    timeout: "Le chargement des repas a pris trop de temps. Réessaie.",
-    network: "La connexion à Soma a été interrompue pendant le chargement des repas.",
+    timeout: "Loading meals took too long. Please try again.",
+    network: "Connection to Soma was interrupted while loading meals.",
   },
   create: {
-    timeout: "La création du repas a pris trop de temps. Réessaie.",
-    network: "La connexion à Soma a été interrompue pendant la création du repas.",
+    timeout: "Creating the meal took too long. Please try again.",
+    network: "Connection to Soma was interrupted while creating the meal.",
   },
   update: {
-    timeout: "La mise à jour du repas a pris trop de temps. Réessaie.",
-    network: "La connexion à Soma a été interrompue pendant la mise à jour du repas.",
+    timeout: "Updating the meal took too long. Please try again.",
+    network: "Connection to Soma was interrupted while updating the meal.",
   },
   upload: {
-    timeout: "L’envoi des photos a pris trop de temps. Vérifie ta connexion puis réessaie.",
-    network: "La connexion à Soma a été interrompue pendant l’envoi des photos.",
+    timeout: "Uploading photos took too long. Check your connection and try again.",
+    network: "Connection to Soma was interrupted while uploading photos.",
   },
   analyze: {
-    timeout: "L’analyse prend plus de temps que prévu. Réessaie dans quelques instants.",
-    network: "La connexion à Soma a été interrompue pendant l’analyse. Réessaie.",
+    timeout: "Analysis is taking longer than expected. Please try again in a few moments.",
+    network: "Connection to Soma was interrupted during analysis. Please try again.",
   },
 };
 
@@ -56,7 +56,7 @@ export function classifyMealClientError(error: unknown, operation: MealRequestOp
     ? operationMessages[operation].timeout
     : code === "network"
       ? operationMessages[operation].network
-      : message || "La requête Soma n’a pas abouti. Réessaie.";
+      : message || "The Soma request did not succeed. Please try again.";
   return new MealClientError(safeMessage, code, operation, requestId, { cause: error });
 }
 

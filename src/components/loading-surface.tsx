@@ -10,7 +10,7 @@ export function LoadingSurface({ label, title, eyebrow, variant = "page" }: Load
     <section
       className={`system-loading system-loading--${variant}`}
       id="main-page-content"
-      lang="fr"
+      lang="en"
       role="status"
       aria-live="polite"
       aria-busy="true"
@@ -25,7 +25,7 @@ export function LoadingSurface({ label, title, eyebrow, variant = "page" }: Load
         <span className="system-loading__panel" />
         <span className="system-loading__panel" />
       </div>
-      <span className="sr-only">Chargement…</span>
+      <span className="sr-only">Loading…</span>
     </section>
   );
 }

@@ -62,11 +62,11 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain("samedi 12 septembre");
+    expect(html).toContain("Saturday, September 12");
     expect(html).toContain("8h 00");
     expect(html).toMatch(/2[\s\u202f]200 kcal/);
     expect(html).toContain('class="radar-value"');
-    expect(html).toContain('aria-label="Jour précédent"');
+    expect(html).toContain('aria-label="Previous day"');
   });
 
   it("publishes meals before the journal in the shared capture source order", () => {
@@ -85,7 +85,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain("vendredi 11 septembre");
+    expect(html).toContain("Friday, September 11");
     expect(html).toContain("8h 40");
     expect(html).toContain("88");
     expect(html).toMatch(/2[\s\u202f]400 kcal/);
@@ -101,9 +101,9 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain('aria-label="Navigation des jours"');
-    expect(html).toContain('aria-label="Jour précédent"');
-    expect(html).toContain('aria-label="Jour suivant"');
+    expect(html).toContain('aria-label="Day navigation"');
+    expect(html).toContain('aria-label="Previous day"');
+    expect(html).toContain('aria-label="Next day"');
   });
 
   it("renders the personalized arrival message and marked activity note", () => {
@@ -123,6 +123,6 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     );
 
     expect(html).toMatch(/Jérémy/);
-    expect(html).toContain("Course enregistrée · 7,2 km · 44 min");
+    expect(html).toContain("Run recorded · 7.2 km · 44 min");
   });
 });

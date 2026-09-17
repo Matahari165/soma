@@ -128,8 +128,8 @@ describe("ensureJournalVariables invariant", () => {
     state.from.mockImplementation(() => query([]));
 
     await ensureJournalVariables("new-user-id", {
-      selectedHabitNames: ["Coucher avant 23 h", "Added sugar"],
-      customHabits: [{ name: "Méditation 10 min", category: "sleep", emoji: "🧘" }],
+      selectedHabitNames: ["Bedtime before 11 PM", "Added sugar"],
+      customHabits: [{ name: "Meditation 10 min", category: "sleep", emoji: "🧘" }],
     });
 
     expect(state.insert).toHaveBeenCalledTimes(1);
@@ -138,10 +138,10 @@ describe("ensureJournalVariables invariant", () => {
     expect(inserted.some((v: { name: string }) => v.name === "Vacation")).toBe(true);
     expect(inserted.some((v: { name: string }) => v.name === "Illness")).toBe(true);
     // Must include selected habits
-    expect(inserted.some((v: { name: string }) => v.name === "Coucher avant 23 h")).toBe(true);
+    expect(inserted.some((v: { name: string }) => v.name === "Bedtime before 11 PM")).toBe(true);
     expect(inserted.some((v: { name: string }) => v.name === "Added sugar")).toBe(true);
     // Must include custom habit
-    expect(inserted.some((v: { name: string }) => v.name === "Méditation 10 min")).toBe(true);
+    expect(inserted.some((v: { name: string }) => v.name === "Meditation 10 min")).toBe(true);
     // Must NOT include WHM or Masturbation
     expect(inserted.some((v: { name: string }) => v.name === "WHM")).toBe(false);
     expect(inserted.some((v: { name: string }) => v.name === "Masturbation")).toBe(false);

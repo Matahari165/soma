@@ -134,7 +134,7 @@ describe("journal values", () => {
       "Alcohol",
       "Strength training",
       "Dinner end time",
-      "Coucher avant 23 h",
+      "Bedtime before 11 PM",
       "Bedtime",
       "Magnesium",
       "Breathing exercise",
@@ -155,15 +155,15 @@ describe("journal values", () => {
     expect(sleepHabits.length).toBeGreaterThanOrEqual(4);
     expect(nutritionHabits.length).toBeGreaterThanOrEqual(4);
     expect(activityHabits.length).toBeGreaterThanOrEqual(3);
-    expect(healthyHabitCatalog.some((h) => h.name.includes("Coucher"))).toBe(true);
-    expect(healthyHabitCatalog.some((h) => h.name.includes("sucres ajoutés"))).toBe(true);
+    expect(healthyHabitCatalog.some((h) => h.name.includes("Bedtime"))).toBe(true);
+    expect(healthyHabitCatalog.some((h) => h.name.includes("added sugar"))).toBe(true);
     expect(healthyHabitCatalog.some((h) => h.name.includes("Running"))).toBe(true);
   });
 
   it("configures every automatic journal source as a starter field", () => {
     expect(defaultJournalVariables.flatMap((item) => item.automaticMetricId ? [item.automaticMetricId] : []).sort()).toEqual([...journalAutomaticMetricIds].sort());
     expect(journalAutomaticDefaultMatches(
-      { name: "Début du sommeil détecté", automaticMetricId: null },
+      { name: "Detected sleep start", automaticMetricId: null },
       { name: "Bedtime", automaticMetricId: "bedtime" },
     )).toBe(true);
   });
