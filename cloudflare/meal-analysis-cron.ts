@@ -17,10 +17,13 @@ export async function runMealAnalysisCron(env: MealAnalysisCronEnv, fetcher: Fet
   const response = await fetcher(
     new Request(url, {
       headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-      redirect: "error",
+      redirect: "manual",
     }),
   );
 
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(`Scheduled Soma meal analysis refused redirect with HTTP ${response.status}.`);
+  }
   if (!response.ok) {
     throw new Error(`Scheduled Soma meal analysis failed with HTTP ${response.status}.`);
   }
