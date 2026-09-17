@@ -4,24 +4,6 @@
   "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-08-24",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "d1_databases": [
-    {
-      "binding": "SOMA_DB",
-      "database_name": "soma-core",
-      "database_id": "4a53e74b-d533-44cd-a786-b022a73d627b",
-      "migrations_dir": "cloudflare/migrations"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "SOMA_ARCHIVES",
-      "bucket_name": "soma-health-record-archives"
-    }
-  ],
   "observability": {
     "enabled": true
   },
@@ -29,10 +11,7 @@
     "cpu_ms": 30000
   },
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://soma.hthv4f94vw.workers.dev",
-    "SUPABASE_URL": "https://udqcmptudauxdfkjauad.supabase.co",
-    "SOMA_LOCAL_PREVIEW": "false",
-    "SOMA_OBSERVATORY_MODE": "true"
+    "SOMA_CRON_TARGET_URL": "https://soma-neon-phi.vercel.app"
   },
   "triggers": {
     "crons": ["* * * * *"]
