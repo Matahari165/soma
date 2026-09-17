@@ -60,15 +60,27 @@ export function LabWorldWorkspace({
     return Array.from({ length: 7 }, (_, index) => addDays(todayDate, index - 6));
   }, [todayDate]);
 
-  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? dateFromUrl() ?? todayDate ?? "");
+  // Keep the server and first client render identical. The optional URL date
+  // is applied by the effect below once the browser is mounted.
+  const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? todayDate ?? "");
   const activeDate = (availableDates.length > 0 && availableDates.includes(selectedDate))
     ? selectedDate
     : (todayDate ?? selectedDate);
 
   useEffect(() => {
+    if (initialSelectedDate || availableDates.length === 0) return;
+    const urlDate = dateFromUrl();
+    if (!urlDate || !availableDates.includes(urlDate)) return;
+    const apply = window.setTimeout(() => setSelectedDate((current) => current === urlDate ? current : urlDate), 0);
+    return () => window.clearTimeout(apply);
+  }, [availableDates, initialSelectedDate]);
+
+  useEffect(() => {
     if (!activeDate || !/^\d{4}-\d{2}-\d{2}$/.test(activeDate)) return;
+    const urlDate = dateFromUrl();
+    if (!initialSelectedDate && urlDate && availableDates.includes(urlDate) && urlDate !== activeDate) return;
     writeDateToUrl(activeDate);
-  }, [activeDate]);
+  }, [activeDate, availableDates, initialSelectedDate]);
 
   useEffect(() => {
     function onPopState() {

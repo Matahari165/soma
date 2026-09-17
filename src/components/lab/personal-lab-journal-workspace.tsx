@@ -72,21 +72,28 @@ export function PersonalLabJournalWorkspace({
   const defaultDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(data.todayDate, index - 6)), [data.todayDate]);
   const dates = controlledDates ?? defaultDates;
   const [internalSelectedDate, setInternalSelectedDate] = useState(() => {
-    const urlDate = controlledSelectedDate === undefined ? dateFromUrl() : null;
-    if (urlDate && (controlledDates ?? defaultDates).includes(urlDate)) return urlDate;
     return data.todayDate;
   });
   const selectedDate = controlledSelectedDate ?? internalSelectedDate;
   const onDateChange = controlledOnDateChange ?? setInternalSelectedDate;
+  useEffect(() => {
+    if (controlledSelectedDate !== undefined) return;
+    const urlDate = dateFromUrl();
+    if (!urlDate || !dates.includes(urlDate)) return;
+    const apply = window.setTimeout(() => setInternalSelectedDate((current) => current === urlDate ? current : urlDate), 0);
+    return () => window.clearTimeout(apply);
+  }, [controlledSelectedDate, dates]);
   // Lien profond / refresh : sans contrôle parent, la date lue en URL fait foi
   // à l’initialisation et chaque changement est répercuté en ?date= pour le retour arrière.
   useEffect(() => {
     if (controlledSelectedDate !== undefined || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return;
+    const urlDate = dateFromUrl();
+    if (urlDate && dates.includes(urlDate) && urlDate !== selectedDate) return;
     const url = new URL(window.location.href);
     if (url.searchParams.get("date") === selectedDate) return;
     url.searchParams.set("date", selectedDate);
     window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
-  }, [selectedDate, controlledSelectedDate]);
+  }, [dates, selectedDate, controlledSelectedDate]);
   useEffect(() => {
     if (controlledSelectedDate !== undefined) return;
     function onPopState() {
@@ -116,9 +123,14 @@ export function PersonalLabJournalWorkspace({
   }, [activeDate]);
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent(JOURNAL_PROGRESS_EVENT, {
-      detail: { date: activeDate, count: journalProgress.count, total: journalProgress.total },
-    }));
+    const detail = { date: activeDate, count: journalProgress.count, total: journalProgress.total };
+    const emit = () => window.dispatchEvent(new CustomEvent(JOURNAL_PROGRESS_EVENT, { detail }));
+    // The hero mounts before this workspace, so the first synchronous event
+    // can race the hero's listener. The deferred retry makes the initial
+    // progress visible even when the journal resolves through Suspense.
+    emit();
+    const retry = window.setTimeout(emit, 0);
+    return () => window.clearTimeout(retry);
   }, [activeDate, journalProgress.count, journalProgress.total]);
 
   const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;

@@ -56,8 +56,9 @@ type MealMetric = {
 };
 
 function mealMetricAccessibleLabel(metric: MealMetric, target: number | null): string {
-  if (metric.value === null) return `${metric.label}: —`;
-  const targetLabel = target === null ? "no target assigned" : `target ${formatMetricNumber(target)} ${metric.unit}`;
+  const targetWord = metric.key === "addedSugar" ? "limit" : "target";
+  if (metric.value === null) return target === null ? `${metric.label}: —` : `${metric.label}: —, ${targetWord} ${formatMetricNumber(target)} ${metric.unit}`;
+  const targetLabel = target === null ? "no target assigned" : `${targetWord} ${formatMetricNumber(target)} ${metric.unit}`;
   return `${metric.label}: ${formatMetricNumber(metric.value)} ${metric.unit}, ${targetLabel}`;
 }
 
@@ -80,13 +81,14 @@ function MealMetrics({ metrics, slot, targets }: { metrics: MealMetric[]; slot: 
             const target = targets ? mealTargetForMetric(metric.key, slot, targets) : null;
             const ratio = metric.value !== null && target !== null && target > 0 ? metric.value / target : 0;
             const progress = Math.min(1, Math.max(0, ratio));
+            const targetWord = metric.key === "addedSugar" ? "Limit" : "Target";
             return <>
-              <div className={styles.metricPlot} aria-hidden="true">
-                <span className={styles.metricPlotTarget} />
-                <span className={styles.metricPlotTrack}><span className={styles.metricPlotFill} data-over-target={ratio > 1 ? "true" : undefined} style={{ transform: `scaleY(${progress})` }} /></span>
+              <div className={styles.metricPlot} data-target-state={target === null ? "unavailable" : "assigned"} aria-hidden="true">
+                {target !== null && <span className={styles.metricPlotTarget} />}
+                {target !== null && <span className={styles.metricPlotTrack}><span className={styles.metricPlotFill} data-over-target={ratio > 1 ? "true" : undefined} style={{ transform: `scaleY(${progress})` }} /></span>}
               </div>
               <span className={styles.metricValue}>{formatMetricNumber(metric.value)}<small>{metric.value === null ? "" : ` ${metric.unit}`}</small></span>
-              <span className={styles.metricTarget}>{target === null ? "Target —" : `Target ${formatMetricNumber(target)} ${metric.unit}`}</span>
+              <span className={styles.metricTarget}>{target === null ? `${targetWord} —` : `${targetWord} ${formatMetricNumber(target)} ${metric.unit}`}</span>
               <span className={styles.metricLabel}>{metric.label}</span>
             </>;
           })()}
