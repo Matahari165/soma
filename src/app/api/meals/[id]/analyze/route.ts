@@ -18,10 +18,10 @@ function jsonWithRequestId(body: unknown, init: ResponseInit, requestId: string)
   return NextResponse.json(body, { ...init, headers });
 }
 
-function startQueuedMealAnalysis(requestId: string) {
+function startQueuedMealAnalysis(userId: string, analysisId: string, requestId: string) {
   after(async () => {
     try {
-      await processNextMealAnalysis();
+      await processNextMealAnalysis({ userId, analysisId });
     } catch (error) {
       console.error("[meal-analysis] immediate background worker failed", {
         requestId,
@@ -60,7 +60,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   try {
     const result = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
-    if (result.queued) startQueuedMealAnalysis(requestId);
+    if (result.queued) startQueuedMealAnalysis(user.id, result.analysis.id, requestId);
     const meal = await findMeal(user.id, id);
     if (!meal) return jsonWithRequestId({ error: "The meal could not be reloaded.", code: "STORAGE_ERROR", requestId }, { status: 503 }, requestId);
     return jsonWithRequestId({ analysis: result.analysis, fresh: result.fresh, queued: result.queued, meal: mealToApi(meal), requestId }, { status: result.queued ? 202 : 200 }, requestId);

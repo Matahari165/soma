@@ -27,6 +27,7 @@ import {
   findLatestMealAnalysis,
   findMealAnalysisByRequestId,
   findActiveMealAnalysis,
+  findQueuedMealAnalysis,
   findMeal,
   findMealByIdempotencyKey,
   findMealForSlot,
@@ -723,12 +724,13 @@ function workerFailure(error: unknown) {
  * Claims one durable job, executes it outside the UI request, and commits the
  * result only while its persisted lease token still owns the row.
  */
-export async function processNextMealAnalysis() {
+export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }) {
   await requeueRetryableMealAnalyses().catch((error) => {
     console.warn("[meal-analysis] automatic retry scan failed", { stage: "retry_scan", reason: error instanceof Error ? error.name : "unknown" });
   });
-  const candidates = await listQueuedMealAnalyses(1);
-  const candidate = candidates[0];
+  const candidate = target
+    ? await findQueuedMealAnalysis(target.userId, target.analysisId)
+    : (await listQueuedMealAnalyses(1))[0];
   if (!candidate) return { processed: false as const, analysis: null };
   const lockKey = `meal-analysis-job:${candidate.id}`;
   const lease = await claimMealLease(lockKey, candidate.user_id, ANALYSIS_LEASE_TTL_MS);
