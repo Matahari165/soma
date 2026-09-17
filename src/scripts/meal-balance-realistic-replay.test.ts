@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { MealBalanceScore } from "@/domain/scores/meal-balance";
-import { CANONICAL_RESULTS_DIRECTORY, DEFAULT_FIXTURE_DIRECTORY, runRealisticMealBalance } from "../../scripts/meal-balance-realistic-test";
+import { CANONICAL_RESULTS_DIRECTORY, DEFAULT_FIXTURE_DIRECTORY, migrateRealisticMealBalanceCache, runRealisticMealBalance } from "../../scripts/meal-balance-realistic-test";
 
 type CanonicalRunArtifact = {
   scores: Array<{ date: string; score: Pick<MealBalanceScore, "algorithmVersion" | "score" | "rawScore"> }>;
@@ -15,6 +15,11 @@ function scoreValues(scores: CanonicalRunArtifact["scores"]) {
 }
 
 describe("realistic meal-balance replay corpus", () => {
+  beforeAll(async () => {
+    await migrateRealisticMealBalanceCache({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, resultsDirectory: CANONICAL_RESULTS_DIRECTORY });
+    await runRealisticMealBalance({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, resultsDirectory: CANONICAL_RESULTS_DIRECTORY, replay: true, writeResults: true });
+  });
+
   it("revalidates all stored analyses and reproduces every daily score", async () => {
     const artifactPath = join(CANONICAL_RESULTS_DIRECTORY, "run-result.json");
     const artifactBefore = await readFile(artifactPath, "utf8");

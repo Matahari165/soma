@@ -24,13 +24,12 @@ describe("Auth Credentials API routes", () => {
   });
 
   describe("POST /api/auth/register", () => {
-    it("registers a new user with email and password and creates a session", async () => {
+    it("registers a new user with email and password without auto session", async () => {
       vi.mocked(createCredentialsUser).mockResolvedValue({
         id: "user-new",
         email: "alex@soma.fit",
         displayName: "Alex",
       });
-      vi.mocked(createSession).mockResolvedValue(undefined);
 
       const request = new Request("https://soma.fit/api/auth/register", {
         method: "POST",
@@ -47,7 +46,7 @@ describe("Auth Credentials API routes", () => {
       const json = await response.json();
       expect(json.ok).toBe(true);
       expect(json.user.id).toBe("user-new");
-      expect(createSession).toHaveBeenCalledWith("user-new");
+      expect(createSession).not.toHaveBeenCalled();
     });
 
     it("rejects invalid emails", async () => {
@@ -90,7 +89,16 @@ describe("Auth Credentials API routes", () => {
         email: "alex@soma.fit",
         displayName: "Alex",
       });
-      vi.mocked(createSession).mockResolvedValue(undefined);
+      vi.mocked(createSession).mockResolvedValue({
+        token: "tok-123",
+        cookieOptions: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+          expires: new Date(),
+        },
+      });
       vi.mocked(hasCompletedOnboarding).mockResolvedValue(true);
 
       const request = new Request("https://soma.fit/api/auth/login", {

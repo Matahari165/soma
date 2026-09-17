@@ -43,31 +43,31 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-function invalidInput(message = "Le complément n’est pas valide.") {
+function invalidInput(message = "The supplement is invalid.") {
   return new SupplementServiceError("invalid", message);
 }
 
 function parseDefinition(input: unknown): SupplementDefinitionInput {
   const parsed = supplementDefinitionInputSchema.safeParse(input);
-  if (!parsed.success) throw invalidInput("La définition du complément est invalide.");
+  if (!parsed.success) throw invalidInput("Invalid supplement definition.");
   return { ...parsed.data, usageInstruction: parsed.data.usageInstruction ?? null };
 }
 
 function parseDefinitionUpdate(input: unknown): SupplementDefinitionUpdate {
   const parsed = supplementDefinitionUpdateSchema.safeParse(input);
-  if (!parsed.success) throw invalidInput("La modification du complément est invalide.");
+  if (!parsed.success) throw invalidInput("Invalid supplement update.");
   return parsed.data;
 }
 
 function parseEntry(input: unknown): SupplementEntryInput {
   const parsed = supplementEntryInputSchema.safeParse(input);
-  if (!parsed.success) throw invalidInput("La prise du complément est invalide.");
+  if (!parsed.success) throw invalidInput("Invalid supplement entry.");
   return parsed.data;
 }
 
 function parseEntryUpdate(input: unknown): SupplementEntryUpdate {
   const parsed = supplementEntryUpdateSchema.safeParse(input);
-  if (!parsed.success) throw invalidInput("La modification de la prise est invalide.");
+  if (!parsed.success) throw invalidInput("Invalid supplement entry update.");
   return parsed.data;
 }
 
@@ -252,7 +252,7 @@ export async function findSupplementDefinition(userId: string, definitionId: str
     const row = await readRow(DEFINITION_TABLE, userId, definitionId);
     return row ? definitionFromRow(row) : null;
   } catch {
-    throw unavailable("La définition du complément est momentanément indisponible.");
+    throw unavailable("Supplement definition is temporarily unavailable.");
   }
 }
 
@@ -268,38 +268,38 @@ export async function createSupplementDefinition(userId: string, input: unknown)
     await insertRow(DEFINITION_TABLE, userId, definition);
     return definition;
   } catch {
-    throw unavailable("La définition du complément n’a pas pu être enregistrée.");
+    throw unavailable("Supplement definition could not be saved.");
   }
 }
 
 export async function updateSupplementDefinition(userId: string, definitionId: string, input: unknown) {
   const parsed = parseDefinitionUpdate(input);
   const existing = await findSupplementDefinition(userId, definitionId);
-  if (!existing) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+  if (!existing) throw new SupplementServiceError("not_found", "Supplement definition not found.");
   const updated = supplementDefinitionRecordSchema.parse({ ...existing, ...parsed, updatedAt: new Date().toISOString() });
   if (isLocalPreviewMode()) {
     userStore(definitionPreviewStore, userId).set(definitionId, updated);
     return clone(updated);
   }
   try {
-    if (!await updateRow(DEFINITION_TABLE, userId, definitionId, updated)) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+    if (!await updateRow(DEFINITION_TABLE, userId, definitionId, updated)) throw new SupplementServiceError("not_found", "Supplement definition not found.");
     return updated;
   } catch (error) {
     if (error instanceof SupplementServiceError) throw error;
-    throw unavailable("La définition du complément n’a pas pu être modifiée.");
+    throw unavailable("Supplement definition could not be updated.");
   }
 }
 
 export async function archiveSupplementDefinition(userId: string, definitionId: string, archivedAt = new Date().toISOString()) {
   const existing = await findSupplementDefinition(userId, definitionId);
-  if (!existing) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+  if (!existing) throw new SupplementServiceError("not_found", "Supplement definition not found.");
   const updated = supplementDefinitionRecordSchema.parse({ ...existing, archivedAt, updatedAt: new Date().toISOString() });
   if (isLocalPreviewMode()) {
     userStore(definitionPreviewStore, userId).set(definitionId, updated);
     return clone(updated);
   }
   try {
-    if (!await updateRow(DEFINITION_TABLE, userId, definitionId, updated)) throw new SupplementServiceError("not_found", "Définition de complément introuvable.");
+    if (!await updateRow(DEFINITION_TABLE, userId, definitionId, updated)) throw new SupplementServiceError("not_found", "Supplement definition not found.");
     return updated;
   } catch (error) {
     if (error instanceof SupplementServiceError) throw error;
@@ -336,14 +336,14 @@ export async function findSupplementEntry(userId: string, entryId: string) {
     const row = await readRow(ENTRY_TABLE, userId, entryId);
     return row ? entryFromRow(row) : null;
   } catch {
-    throw unavailable("La prise de complément est momentanément indisponible.");
+    throw unavailable("Supplement entry is temporarily unavailable.");
   }
 }
 
 async function ensureDefinition(userId: string, definitionId: string, options: { allowArchived?: boolean } = {}) {
   const definition = await findSupplementDefinition(userId, definitionId);
-  if (!definition) throw new SupplementServiceError("invalid", "La définition du complément est introuvable.");
-  if (definition.archivedAt && !options.allowArchived) throw new SupplementServiceError("invalid", "Ce complément est archivé.");
+  if (!definition) throw new SupplementServiceError("invalid", "Supplement definition not found.");
+  if (definition.archivedAt && !options.allowArchived) throw new SupplementServiceError("invalid", "This supplement is archived.");
   return definition;
 }
 
@@ -388,11 +388,11 @@ async function upsertSupplementEntryResult(userId: string, input: unknown): Prom
       return { entry: clone(updated), created: false };
     }
     try {
-      if (!await updateRow(ENTRY_TABLE, userId, existing.id, updated)) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+      if (!await updateRow(ENTRY_TABLE, userId, existing.id, updated)) throw new SupplementServiceError("not_found", "Supplement entry not found.");
       return { entry: updated, created: false };
     } catch (error) {
       if (error instanceof SupplementServiceError) throw error;
-      throw unavailable("La prise de complément n’a pas pu être actualisée.");
+      throw unavailable("Supplement entry could not be updated.");
     }
   }
 
@@ -410,10 +410,10 @@ async function upsertSupplementEntryResult(userId: string, input: unknown): Prom
     const concurrent = await findEntryForDate(userId, normalized.definitionId, normalized.entryDate);
     if (concurrent) {
       const updated = supplementEntryRecordSchema.parse({ ...concurrent, ...normalized, id: concurrent.id, userId, createdAt: concurrent.createdAt, updatedAt: new Date().toISOString() });
-      if (!await updateRow(ENTRY_TABLE, userId, concurrent.id, updated)) throw unavailable("La prise de complément n’a pas pu être actualisée.");
+      if (!await updateRow(ENTRY_TABLE, userId, concurrent.id, updated)) throw unavailable("Supplement entry could not be updated.");
       return { entry: updated, created: false };
     }
-    throw unavailable("La prise de complément n’a pas pu être enregistrée.");
+    throw unavailable("Supplement entry could not be saved.");
   }
 }
 
@@ -429,12 +429,12 @@ export async function createSupplementEntry(userId: string, input: unknown) {
 export async function updateSupplementEntry(userId: string, entryId: string, input: unknown) {
   const parsed = parseEntryUpdate(input);
   const existing = await findSupplementEntry(userId, entryId);
-  if (!existing) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+  if (!existing) throw new SupplementServiceError("not_found", "Supplement entry not found.");
   const definitionId = parsed.definitionId ?? existing.definitionId;
   const entryDate = parsed.entryDate ?? existing.entryDate;
   const definition = await ensureDefinition(userId, definitionId, { allowArchived: true });
   const conflicting = await findEntryForDate(userId, definitionId, entryDate);
-  if (conflicting && conflicting.id !== entryId) throw invalidInput("Une seule prise par complément et par jour est autorisée.");
+  if (conflicting && conflicting.id !== entryId) throw invalidInput("Only one entry per supplement per day is allowed.");
   const mergedInput = {
     definitionId,
     entryDate,
@@ -449,27 +449,27 @@ export async function updateSupplementEntry(userId: string, entryId: string, inp
     return clone(updated);
   }
   try {
-    if (!await updateRow(ENTRY_TABLE, userId, entryId, updated)) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+    if (!await updateRow(ENTRY_TABLE, userId, entryId, updated)) throw new SupplementServiceError("not_found", "Supplement entry not found.");
     return updated;
   } catch (error) {
     if (error instanceof SupplementServiceError) throw error;
-    throw unavailable("La prise de complément n’a pas pu être modifiée.");
+    throw unavailable("Supplement entry could not be updated.");
   }
 }
 
 export async function deleteSupplementEntry(userId: string, entryId: string) {
   const existing = await findSupplementEntry(userId, entryId);
-  if (!existing) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+  if (!existing) throw new SupplementServiceError("not_found", "Supplement entry not found.");
   if (isLocalPreviewMode()) {
     userStore(entryPreviewStore, userId).delete(entryId);
     return true;
   }
   try {
-    if (!await deleteRow(ENTRY_TABLE, userId, entryId)) throw new SupplementServiceError("not_found", "Prise de complément introuvable.");
+    if (!await deleteRow(ENTRY_TABLE, userId, entryId)) throw new SupplementServiceError("not_found", "Supplement entry not found.");
     return true;
   } catch (error) {
     if (error instanceof SupplementServiceError) throw error;
-    throw unavailable("La prise de complément n’a pas pu être supprimée.");
+    throw unavailable("Supplement entry could not be deleted.");
   }
 }
 

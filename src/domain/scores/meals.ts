@@ -13,10 +13,10 @@ type TotalKey = keyof MealNutritionTotals;
 
 const targetComponents: ReadonlyArray<{ totalKey: TotalKey; targetKey: TargetKey; label: string; weight: number }> = [
   { totalKey: "caloriesKcal", targetKey: "caloriesKcal", label: "calories", weight: 35 },
-  { totalKey: "proteinG", targetKey: "proteinG", label: "protéines", weight: 25 },
-  { totalKey: "fiberG", targetKey: "fiberG", label: "fibres", weight: 15 },
-  { totalKey: "carbsG", targetKey: "carbsG", label: "glucides", weight: 15 },
-  { totalKey: "fatG", targetKey: "fatG", label: "lipides", weight: 10 },
+  { totalKey: "proteinG", targetKey: "proteinG", label: "protein", weight: 25 },
+  { totalKey: "fiberG", targetKey: "fiberG", label: "fiber", weight: 15 },
+  { totalKey: "carbsG", targetKey: "carbsG", label: "carbohydrates", weight: 15 },
+  { totalKey: "fatG", targetKey: "fatG", label: "fat", weight: 10 },
 ];
 
 export type MealScoreStatus = "ready" | "limited";

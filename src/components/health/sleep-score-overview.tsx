@@ -51,7 +51,7 @@ function formatScore(value: number | null | undefined) {
 
 function formatContribution(value: number | null | undefined) {
   if (!measured(value)) return "—";
-  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(value);
 }
 
 function formatNormalized(value: number | null | undefined) {
@@ -59,41 +59,41 @@ function formatNormalized(value: number | null | undefined) {
 }
 
 function scoreDescription(score: number | null) {
-  return score === null ? "Score Sommeil indisponible" : `Score Sommeil ${formatScore(score)} sur 100`;
+  return score === null ? "Sleep score unavailable" : `Sleep score ${formatScore(score)} out of 100`;
 }
 
 function DetailCloseButton({ label, onClose, closeButtonRef, tabIndex }: { label: string; onClose: () => void; closeButtonRef: RefObject<HTMLButtonElement | null>; tabIndex: number }) {
   return <button
-    aria-label={`Fermer les détails de ${label}`}
+    aria-label={`Close ${label} details`}
     className={styles.sleepDetailClose}
     onClick={onClose}
     ref={closeButtonRef}
     tabIndex={tabIndex}
     type="button"
-  >Fermer</button>;
+  >Close</button>;
 }
 
 function ScoreBreakdownDetail({ breakdown }: { breakdown: SleepScoreBreakdown | null }) {
   if (!breakdown) {
     return <div className={styles.sleepDetailUnavailable}>
-      <strong>Détail indisponible</strong>
-      <p>Les entrées du moteur et le score affiché ne permettent pas de confirmer les trois composantes.</p>
+      <strong>Details unavailable</strong>
+      <p>Engine inputs and displayed score are insufficient to verify the three components.</p>
     </div>;
   }
 
   return <>
-    <p className={styles.sleepDetailNote}>Calcul Soma · {breakdown.algorithmVersion}</p>
+    <p className={styles.sleepDetailNote}>Soma calculation · {breakdown.algorithmVersion}</p>
     <dl className={styles.sleepBreakdownList}>
       {breakdown.components.map((component) => <div className={styles.sleepBreakdownRow} key={component.id}>
-        <dt><span>{component.label}</span><small>{component.weight} %</small></dt>
+        <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
         <dd>
           <span><small>Source</small><strong>{component.sourceValueLabel}</strong></span>
-          <span><small>Normalisée</small><strong>{formatNormalized(component.normalizedValue)}<em>/100</em></strong></span>
+          <span><small>Normalized</small><strong>{formatNormalized(component.normalizedValue)}<em>/100</em></strong></span>
           <span><small>Contribution</small><strong>{formatContribution(component.contribution)}<em> pts</em></strong></span>
         </dd>
         <dd className={styles.sleepBreakdownFormula}>
-          <span><small>Formule</small><strong>{component.formula}</strong></span>
-          <span><small>Normalisation</small><strong>{component.normalization}</strong></span>
+          <span><small>Formula</small><strong>{component.formula}</strong></span>
+          <span><small>Normalization</small><strong>{component.normalization}</strong></span>
         </dd>
       </div>)}
     </dl>
@@ -105,16 +105,16 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
 
   return <>
     <dl className={styles.sleepDimensionMetrics}>
-      <div><dt>Valeur actuelle</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
-      <div><dt>Moy. 30 j</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
-      <div><dt>Sens de lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
-      <div className={styles.sleepDimensionRole}><dt>Rôle</dt><dd>{dimension.scoreRole || "Métrique de contexte · non incluse dans le score Sommeil"}</dd></div>
+      <div><dt>Current value</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
+      <div><dt>30-day avg</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
+      <div><dt>Reading</dt><dd>{dimension.readingDirection || "—"}</dd></div>
+      <div className={styles.sleepDimensionRole}><dt>Role</dt><dd>{dimension.scoreRole || "Context metric · excluded from Sleep score"}</dd></div>
       <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {(dimension.scoreFormula || dimension.scoreNormalization || dimension.scoreWeight !== undefined) && <dl className={styles.sleepScoreAxisMetrics}>
-      <div><dt>Formule</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
-      <div><dt>Normalisation</dt><dd>{dimension.scoreNormalization || "—"}</dd></div>
-      <div><dt>Contribution{dimension.scoreWeight !== undefined ? ` · ${dimension.scoreWeight} %` : ""}</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} pts` : "Indisponible"}</dd></div>
+      <div><dt>Formula</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
+      <div><dt>Normalization</dt><dd>{dimension.scoreNormalization || "—"}</dd></div>
+      <div><dt>Contribution{dimension.scoreWeight !== undefined ? ` · ${dimension.scoreWeight}%` : ""}</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} pts` : "Unavailable"}</dd></div>
     </dl>}
     {dimension.definition && <p className={styles.sleepDetailSummary}>{dimension.definition}</p>}
   </>;
@@ -183,7 +183,7 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         onSelect={selectDimension}
         registerButton={(id, node) => { radarButtonRefs.current[id] = node; }}
         selectedId={selectedDetail === "score" ? null : selectedDetail}
-        title="Radar du sommeil"
+        title="Sleep radar"
       />
       <aside
         aria-hidden={!detailOpen}
@@ -194,8 +194,8 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         inert={!detailOpen}
       >
         <div className={styles.sleepDetailHeader}>
-          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "Détail du sommeil"}</h3>
-          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDetail === "score" ? "Score Sommeil" : selectedDimension?.label ?? "sommeil"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
+          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Sleep score" : selectedDimension?.label ?? "Sleep details"}</h3>
+          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDetail === "score" ? "Sleep score" : selectedDimension?.label ?? "sleep"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
         </div>
         {selectedDetail === "score" ? <ScoreBreakdownDetail breakdown={breakdown} /> : selectedDetail ? <DimensionDetail dimension={selectedDimension} /> : null}
       </aside>
@@ -205,16 +205,16 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
       <button
         aria-controls={DETAIL_ID}
         aria-expanded={selectedDetail === "score"}
-        aria-label={`${scoreDescription(score)}. Afficher la décomposition du score.`}
+        aria-label={`${scoreDescription(score)}. View score breakdown.`}
         className={styles.scorePanel}
         data-detail-selected={selectedDetail === "score"}
         onClick={selectScore}
         ref={scoreButtonRef}
         type="button"
       >
-        <span>Score Sommeil</span>
+        <span>Sleep score</span>
         <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
-        <p className={styles.scoreAverage}>Moy. 30 j · <strong>{formatScore(average)}</strong><span> /100</span></p>
+        <p className={styles.scoreAverage}>30-day avg · <strong>{formatScore(average)}</strong><span> /100</span></p>
       </button>
       {scoreSupplement && <div className={styles.nextNight}>
         <h2>{scoreSupplement.title}</h2>

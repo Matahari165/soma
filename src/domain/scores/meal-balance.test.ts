@@ -233,7 +233,7 @@ describe("meal-balance-v3", () => {
     const repeatedResult = calculateMealBalanceScore({ day: dayFrom(oneDay), records: oneDay, historyRecords: repeated, targets });
     const oneDayResult = calculateMealBalanceScore({ day: dayFrom(oneDay), records: oneDay, historyRecords: oneDay, targets });
 
-    expect(component(repeatedResult, "positiveVariety").summary).toContain("Répétition informative");
+    expect(component(repeatedResult, "positiveVariety").summary).toContain("Informative repetition");
     expect(component(repeatedResult, "positiveVariety").rawScore).toBe(component(oneDayResult, "positiveVariety").rawScore);
   });
 

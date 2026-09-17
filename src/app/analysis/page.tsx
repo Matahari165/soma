@@ -14,9 +14,9 @@ export default async function AnalysisPage() {
   const user = await getCurrentUser();
   if (!user) return <PublicHome />;
 
-  return <Suspense fallback={<LoadingSurface eyebrow="Analyse" title="Chargement de l’analyse" label="Chargement de l’analyse" />}>
-    <main id="main-page-content" className={styles.page} lang="fr">
-      <header className={styles.header}><h1>Analyse</h1></header>
+  return <Suspense fallback={<LoadingSurface eyebrow="Analysis" title="Loading analysis" label="Loading analysis" />}>
+    <main id="main-page-content" className={styles.page} lang="en">
+      <header className={styles.header}><h1>Analysis</h1></header>
       <StrongestEffectsPanel />
     </main>
   </Suspense>;

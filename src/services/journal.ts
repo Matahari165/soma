@@ -96,6 +96,7 @@ export async function ensureJournalVariables(
       }
       // Conserver l'heure de coucher si le coucher avant 23h est coché
       if (def.name === "Bedtime" && (
+        selectedNormalized.has(normalizedJournalVariableName("Bedtime before 11 PM")) ||
         selectedNormalized.has(normalizedJournalVariableName("Coucher avant 23 h")) ||
         selectedNormalized.has("coucher_23")
       )) {

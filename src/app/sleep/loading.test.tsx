@@ -9,8 +9,8 @@ describe("sleep loading state", () => {
     const html = renderToStaticMarkup(createElement(Loading));
 
     expect(html).toContain('data-health-kind="sleep"');
-    expect(html).toContain("Sommeil");
-    expect(html).not.toContain("Score de sommeil");
+    expect(html).toContain("Sleep");
+    expect(html).not.toContain("Sleep score");
     expect(html).not.toContain("health-hero-metrics");
   });
 });

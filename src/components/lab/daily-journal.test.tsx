@@ -13,13 +13,13 @@ const variables: JournalVariable[] = defaultJournalVariables.map((variable, inde
 
 describe("journal motion states", () => {
   it("keeps save and validation language distinct", () => {
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Brouillon local non envoyé");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saving" })).toBe("Enregistrement…");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saved" })).toBe("Brouillon sauvegardé");
-    expect(journalStatusText({ validated: true, validating: false, saveStatus: "saved" })).toBe("Journée validée");
-    expect(journalStatusText({ validated: false, validating: true, saveStatus: "saving" })).toBe("Validation…");
-    expect(journalStatusText({ validated: false, validating: false, saveStatus: "error" })).toBe("Échec de l’enregistrement");
-    expect(journalStatusText({ validated: true, validating: false, saveStatus: "error" })).toBe("Échec de l’enregistrement");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "draft" })).toBe("Local draft");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saving" })).toBe("Saving…");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "saved" })).toBe("Draft saved");
+    expect(journalStatusText({ validated: true, validating: false, saveStatus: "saved" })).toBe("Day validated");
+    expect(journalStatusText({ validated: false, validating: true, saveStatus: "saving" })).toBe("Validating…");
+    expect(journalStatusText({ validated: false, validating: false, saveStatus: "error" })).toBe("Save failed");
+    expect(journalStatusText({ validated: true, validating: false, saveStatus: "error" })).toBe("Save failed");
   });
 
   it("renders a stable draft status with an accessible live region", () => {
@@ -28,31 +28,27 @@ describe("journal motion states", () => {
     expect(html).toContain('class="checkin-state journal-save-status"');
     expect(html).toContain('class="journal-card__header"');
     expect(html).toContain('class="journal-card__heading"');
-    expect(html.indexOf("Brouillon local non envoyé")).toBeLessThan(html.indexOf("Valider la journée"));
-    expect(html.indexOf("Valider la journée")).toBeLessThan(html.indexOf("Modifier les habitudes"));
-    expect(html).toContain('aria-label="Modifier les habitudes"');
+    expect(html.indexOf("Local draft")).toBeLessThan(html.indexOf("Validate day"));
+    expect(html.indexOf("Validate day")).toBeLessThan(html.indexOf("Edit habits"));
+    expect(html).toContain('aria-label="Edit habits"');
     expect(html).not.toContain('id="journal-manager"');
     expect(html).toContain('aria-live="polite"');
-    expect(html).toContain(">Brouillon local non envoyé</span>");
-    expect(html).toContain("Valider la journée");
+    expect(html).toContain(">Local draft</span>");
+    expect(html).toContain("Validate day");
     expect(html).not.toContain('button type="button">—</button>');
-    expect(html).not.toContain(">À confirmer<");
+    expect(html).not.toContain(">To confirm<");
     expect(html).not.toContain("0/2 recorded");
     expect(html).toContain('data-complete="false"');
-    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Alcool"');
-    expect(html).toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
-    expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Matin"');
-    expect(html).toContain('aria-label="Confirmer toutes les valeurs affichées pour Contexte de la journée"');
-    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Détection automatique"');
-    expect(html).not.toContain(">Détectée automatiquement<");
-    expect(html).not.toContain(">Détecté automatiquement<");
-    expect(html).toContain('>Petit déjeuner<');
-    expect(html).toContain('>Sucres ajoutés<');
-    expect(html).not.toContain('>Breakfast<');
-    expect(html).not.toContain('>Added sugar<');
+    expect(html).toContain('aria-label="Confirm displayed value for Alcohol"');
+    expect(html).toContain('aria-label="Confirm displayed value for Vacation"');
+    expect(html).toContain('aria-label="Confirm all displayed values for Morning"');
+    expect(html).toContain('aria-label="Confirm all displayed values for Day context"');
+    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Automatic detection"');
+    expect(html).toContain('>Breakfast<');
+    expect(html).toContain('>Added sugar<');
     expect(html).not.toContain('data-period="sleep"');
-    expect(html.indexOf("Magnésium")).toBeLessThan(html.indexOf('data-period="day"'));
-    expect(html).not.toContain(">Magnesium<");
+    expect(html.indexOf("Magnesium")).toBeLessThan(html.indexOf('data-period="day"'));
+    expect(html).toContain(">Magnesium<");
   });
 
   it("does not present a saved draft as a validated day", () => {
@@ -63,10 +59,10 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain(">Journée validée</span>");
+    expect(html).toContain(">Day validated</span>");
     expect(html).not.toContain("journal-save-status__icon--success");
-    expect(html).not.toContain(">Brouillon sauvegardé</span>");
-    expect(html).not.toContain("Valider la journée");
+    expect(html).not.toContain(">Draft saved</span>");
+    expect(html).not.toContain("Validate day");
   });
 
   it("can hide its local date strip when the workspace provides a shared one", () => {
@@ -86,8 +82,8 @@ describe("journal motion states", () => {
 
     expect(html).toContain('data-state="recorded"');
     expect(html).not.toContain("1/2 recorded");
-    expect(html).toContain('aria-label="Vacances: Enregistrée"');
-    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Vacances"');
+    expect(html).toContain('aria-label="Vacation: Recorded"');
+    expect(html).not.toContain('aria-label="Confirm displayed value for Vacation"');
   });
 
   it("marks an automatic value as recorded and identifies its origin", () => {
@@ -99,10 +95,9 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Détection automatique"');
-    expect(html).toContain('aria-label="Heure du coucher: Enregistrée, détection automatique"');
-    expect(html).not.toContain("Détectée automatiquement");
-    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Heure du coucher"');
+    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Automatic detection"');
+    expect(html).toContain('aria-label="Bedtime: Recorded, automatic detection"');
+    expect(html).not.toContain('aria-label="Confirm displayed value for Bedtime"');
   });
 
   it("shows the achievement percentage without changing the field state", () => {
@@ -115,7 +110,7 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain("Progression 75%");
+    expect(html).toContain("Progress 75%");
     expect(html).toContain('data-state="pending"');
   });
 
@@ -135,7 +130,7 @@ describe("journal motion states", () => {
     }));
 
     expect(withBreakfast).toContain('href="/meals#meal-breakfast"');
-    expect(withBreakfast).toContain('aria-label="Ajouter une photo du petit déjeuner"');
+    expect(withBreakfast).toContain('aria-label="Add breakfast photo"');
     expect(withoutBreakfast).not.toContain('href="/meals#meal-breakfast"');
   });
 
@@ -148,8 +143,8 @@ describe("journal motion states", () => {
       todayDate,
     }));
 
-    expect(html).toContain('aria-label="Alcool: Enregistrée"');
-    expect(html).not.toContain('aria-label="Confirmer la valeur affichée pour Alcool"');
+    expect(html).toContain('aria-label="Alcohol: Recorded"');
+    expect(html).not.toContain('aria-label="Confirm displayed value for Alcohol"');
   });
 
   it("marks a fully recorded period without displaying a counter", () => {
@@ -163,7 +158,7 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain('class="journal-period journal-period--complete"');
-    expect(html).toContain('aria-label="Journée, complète"');
+    expect(html).toContain('aria-label="Daytime, complete"');
     expect(html).not.toContain("3/3 recorded");
   });
 
@@ -173,9 +168,9 @@ describe("journal motion states", () => {
     const actionsStart = html.indexOf('class="journal-card__actions"');
     const actionsEnd = html.indexOf("</header>", actionsStart);
 
-    expect(html.slice(actionsStart, actionsEnd)).not.toContain("Valider la journée");
+    expect(html.slice(actionsStart, actionsEnd)).not.toContain("Validate day");
     expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning"');
-    expect(html.indexOf("journal-period__header-row--morning")).toBeLessThan(html.indexOf("Valider la journée"));
-    expect(html).toContain('aria-label="Sucres ajoutés: Enregistrée, détection automatique"');
+    expect(html.indexOf("journal-period__header-row--morning")).toBeLessThan(html.indexOf("Validate day"));
+    expect(html).toContain('aria-label="Added sugar: Recorded, automatic detection"');
   });
 });

@@ -41,7 +41,7 @@ function measured(value: number | null | undefined): value is number {
 }
 
 function formatScore(value: number | null | undefined) {
-  return measured(value) ? Math.round(value).toLocaleString("fr-FR") : "—";
+  return measured(value) ? Math.round(value).toLocaleString("en-US") : "—";
 }
 
 function formatNormalized(value: number | null) {
@@ -53,29 +53,29 @@ function formatContribution(value: number | null) {
 }
 
 function scoreLabel(score: number | null) {
-  return score === null ? "Score d’effort indisponible" : `Score d’effort : ${formatScore(score)} sur 100`;
+  return score === null ? "Activity score unavailable" : `Activity score: ${formatScore(score)} out of 100`;
 }
 
 function DetailCloseButton({ label, onClose, closeButtonRef, tabIndex }: { label: string; onClose: () => void; closeButtonRef: RefObject<HTMLButtonElement | null>; tabIndex: number }) {
-  return <button ref={closeButtonRef} className={styles.detailClose} type="button" tabIndex={tabIndex} onClick={onClose} aria-label={`Fermer les détails de ${label}`}>Fermer</button>;
+  return <button ref={closeButtonRef} className={styles.detailClose} type="button" tabIndex={tabIndex} onClick={onClose} aria-label={`Close ${label} details`}>Close</button>;
 }
 
 function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivityScoreBreakdown | null; persistedScore?: number | null }) {
-  if (!breakdown) return <div className={styles.detailUnavailable}><strong>Détail indisponible</strong><p>Les données disponibles ne permettent pas de confirmer le calcul.</p></div>;
+  if (!breakdown) return <div className={styles.detailUnavailable}><strong>Details unavailable</strong><p>Available data is insufficient to verify the calculation.</p></div>;
   const missing = breakdown.components.filter((component) => component.normalizedValue === null).map((component) => component.label);
   const scoreMismatch = measured(persistedScore) && measured(breakdown.score) && persistedScore !== breakdown.score;
   return <>
-    <p className={styles.detailNote}>Calcul Soma · {breakdown.algorithmVersion}</p>
-    {scoreMismatch && <p className={styles.detailFootnote}>Score enregistré : {formatScore(persistedScore)} /100 · recalcul v3 à partir des mesures : {formatScore(breakdown.score)} /100.</p>}
+    <p className={styles.detailNote}>Soma calculation · {breakdown.algorithmVersion}</p>
+    {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · v3 recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
-        <dt><span>{component.label}</span><small>{component.weight} %</small></dt>
-        <dd><span><small>Mesuré</small><strong>{component.sourceValueLabel}</strong></span><span><small>Cible</small><strong>{component.targetLabel}</strong></span><span><small>Repère visuel</small><strong>{formatNormalized(component.normalizedValue)}</strong></span><span><small>Sous-score</small><strong>{formatNormalized(component.scoreNormalizedValue ?? component.normalizedValue)}</strong></span><span><small>Contribution</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
+        <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
+        <dd><span><small>Measured</small><strong>{component.sourceValueLabel}</strong></span><span><small>Target</small><strong>{component.targetLabel}</strong></span><span><small>Visual gauge</small><strong>{formatNormalized(component.normalizedValue)}</strong></span><span><small>Sub-score</small><strong>{formatNormalized(component.scoreNormalizedValue ?? component.normalizedValue)}</strong></span><span><small>Contribution</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
         <dd className={styles.breakdownFormula}><span>{component.formula}</span><span>{component.normalization}</span></dd>
       </div>)}
     </dl>
-    {missing.length > 0 && <p className={styles.detailFootnote}>Indisponible : {missing.join(", ")}. Les pondérations observées sont renormalisées.</p>}
-    {breakdown.coverage < 1 && missing.length === 0 && <p className={styles.detailFootnote}>Couverture du score : {Math.round(breakdown.coverage * 100)} %. Les pondérations observées sont renormalisées.</p>}
+    {missing.length > 0 && <p className={styles.detailFootnote}>Unavailable: {missing.join(", ")}. Observed weights are renormalized.</p>}
+    {breakdown.coverage < 1 && missing.length === 0 && <p className={styles.detailFootnote}>Score coverage: {Math.round(breakdown.coverage * 100)}%. Observed weights are renormalized.</p>}
   </>;
 }
 
@@ -83,15 +83,15 @@ function DimensionDetail({ dimension }: { dimension: ActivityRadarDimension | nu
   if (!dimension) return null;
   return <>
     <dl className={styles.dimensionMetrics}>
-      <div><dt>Valeur actuelle</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
-      <div><dt>Moy. 30 j</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
-      <div><dt>Lecture</dt><dd>{dimension.readingDirection || "—"}</dd></div>
-      <div><dt>Rôle</dt><dd>{dimension.scoreRole || "Composante du score d’effort"}</dd></div>
+      <div><dt>Current value</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
+      <div><dt>30-day avg</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
+      <div><dt>Reading</dt><dd>{dimension.readingDirection || "—"}</dd></div>
+      <div><dt>Role</dt><dd>{dimension.scoreRole || "Activity score component"}</dd></div>
       <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {dimension.scoreFormula && (dimension.scoreWeight !== undefined || dimension.scoreContribution !== undefined)
-      ? <dl className={styles.dimensionFormula}><div><dt>Formule</dt><dd>{dimension.scoreFormula}</dd></div><div><dt>Contribution</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} · ${dimension.scoreWeight ?? 0} %` : "Indisponible"}</dd></div></dl>
-      : dimension.scoreFormula ? <dl className={styles.dimensionFormula}><div><dt>Normalisation</dt><dd>{dimension.scoreFormula}</dd></div></dl> : null}
+      ? <dl className={styles.dimensionFormula}><div><dt>Formula</dt><dd>{dimension.scoreFormula}</dd></div><div><dt>Contribution</dt><dd>{measured(dimension.scoreContribution) ? `${formatContribution(dimension.scoreContribution)} · ${dimension.scoreWeight ?? 0}%` : "Unavailable"}</dd></div></dl>
+      : dimension.scoreFormula ? <dl className={styles.dimensionFormula}><div><dt>Normalization</dt><dd>{dimension.scoreFormula}</dd></div></dl> : null}
     {dimension.definition && <p className={styles.detailSummary}>{dimension.definition}</p>}
   </>;
 }
@@ -144,20 +144,20 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
   const detailOpen = selectedDetail !== null;
   return <div className={styles.scoreOverview} data-detail-open={detailOpen}>
     <div className={styles.radarStage} data-detail-open={detailOpen}>
-      <ActivityRadar dimensions={dimensions} title="Radar de l’effort" detailId="activity-detail-panel" interactive selectedId={selectedDetail === "score" ? null : selectedDetail} onSelect={(id) => selectDetail(id)} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
+      <ActivityRadar dimensions={dimensions} title="Activity radar" detailId="activity-detail-panel" interactive selectedId={selectedDetail === "score" ? null : selectedDetail} onSelect={(id) => selectDetail(id)} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
       <aside className={styles.detailPanel} data-open={detailOpen} id="activity-detail-panel" aria-hidden={!detailOpen} aria-labelledby="activity-detail-heading" inert={!detailOpen}>
-        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDetail === "score" ? "Score d’effort" : selectedDimension?.label ?? "Détail de l’effort"}</h3><DetailCloseButton label={selectedDetail === "score" ? "score d’effort" : selectedDimension?.label ?? "l’effort"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
+        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDetail === "score" ? "Activity score" : selectedDimension?.label ?? "Activity details"}</h3><DetailCloseButton label={selectedDetail === "score" ? "activity score" : selectedDimension?.label ?? "activity"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
         {selectedDetail === "score" ? <BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /> : <DimensionDetail dimension={selectedDimension} />}
       </aside>
     </div>
 
     <aside className={styles.scoreSummary} aria-labelledby="activity-score-summary-title">
-      <span className={styles.summaryKicker}>Aujourd’hui</span>
-      <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-detail-panel" aria-expanded={selectedDetail === "score"} aria-label={`${scoreLabel(score)}. Afficher la décomposition du score.`} onClick={() => selectDetail("score")}>
-        <span id="activity-score-summary-title" className={styles.scoreLabel}>Score d’effort</span><strong>{formatScore(score)}<small>/100</small></strong><p>Moy. 30 j · {formatScore(average)} /100</p>
+      <span className={styles.summaryKicker}>Today</span>
+      <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-detail-panel" aria-expanded={selectedDetail === "score"} aria-label={`${scoreLabel(score)}. View score breakdown.`} onClick={() => selectDetail("score")}>
+        <span id="activity-score-summary-title" className={styles.scoreLabel}>Activity score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
       </button>
       <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>
-      <dl className={styles.summaryFacts}><div><dt>Couverture</dt><dd>{coverage === null ? "—" : `${Math.round(coverage * 100)} %`}</dd></div><div><dt>Composantes</dt><dd>{breakdown ? `${breakdown.components.filter((component) => component.normalizedValue !== null).length}/4` : "—"}</dd></div></dl>
+      <dl className={styles.summaryFacts}><div><dt>Coverage</dt><dd>{coverage === null ? "—" : `${Math.round(coverage * 100)}%`}</dd></div><div><dt>Components</dt><dd>{breakdown ? `${breakdown.components.filter((component) => component.normalizedValue !== null).length}/4` : "—"}</dd></div></dl>
     </aside>
   </div>;
 }

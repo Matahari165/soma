@@ -36,22 +36,22 @@ type DraftValue = JournalEntryValue | null;
 type NewVariable = { name: string; variableType: JournalVariableType; unit: string; options: string; emoji: string; dayPeriod: JournalDayPeriod; defaultValue: string; captureMode: JournalCaptureMode; automaticMetricId: string | null; trackingCadence: JournalTrackingCadence };
 
 const typeLabels: Record<JournalVariableType, string> = {
-  boolean: "Oui / non",
-  count: "Compteur",
-  duration: "Durée",
-  number: "Nombre",
-  scale: "Échelle 1–5",
-  category: "Catégorie",
-  time: "Heure",
+  boolean: "Yes / No",
+  count: "Counter",
+  duration: "Duration",
+  number: "Number",
+  scale: "Scale 1–5",
+  category: "Category",
+  time: "Time",
 };
 
 const dayPeriodLabels: Record<JournalDayPeriod, string> = {
-  context: "Contexte de la journée",
-  morning: "Matin",
-  day: "Journée",
-  evening: "Soirée",
-  sleep: "Avant le sommeil",
-  other: "Autre",
+  context: "Day context",
+  morning: "Morning",
+  day: "Daytime",
+  evening: "Evening",
+  sleep: "Before sleep",
+  other: "Other",
 };
 
 function journalVariableKey(name: string) {
@@ -80,12 +80,12 @@ type JournalSaveStatus = "draft" | "saving" | "saved" | "error";
 export type JournalStatusTreatment = "v1" | "v2" | "v3";
 
 export function journalStatusText({ validated, validating, saveStatus }: { validated: boolean; validating: boolean; saveStatus: JournalSaveStatus }) {
-  if (validating) return "Validation…";
-  if (saveStatus === "saving") return "Enregistrement…";
-  if (saveStatus === "error") return "Échec de l’enregistrement";
-  if (validated) return "Journée validée";
-  if (saveStatus === "saved") return "Brouillon sauvegardé";
-  return "Brouillon local non envoyé";
+  if (validating) return "Validating…";
+  if (saveStatus === "saving") return "Saving…";
+  if (saveStatus === "error") return "Save failed";
+  if (validated) return "Day validated";
+  if (saveStatus === "saved") return "Draft saved";
+  return "Local draft";
 }
 
 function splitOptions(value: string) {
@@ -143,18 +143,18 @@ function DinnerTimeInput({ inputId, value, disabled, onChange }: { inputId: stri
     return value.replace(/\D/g, "").slice(0, maximumLength);
   }
 
-  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Heure de fin du dîner" aria-describedby={invalid ? errorId : undefined} onBlur={(event) => {
+  return <div className={`journal-clock${invalid ? " journal-clock--invalid" : ""}`} id={inputId} role="group" aria-label="Dinner end time" aria-describedby={invalid ? errorId : undefined} onBlur={(event) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
   }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }}>
-    <input disabled={disabled} aria-label="Heure de fin du dîner" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
+    <input disabled={disabled} aria-label="Dinner end time" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="HH" type="text" value={hour} onChange={(event) => {
       const next = digits(event.target.value, 2);
       setHour(next);
       setInvalid(false);
       if (next.length === 2) minuteRef.current?.focus();
     }} />
     <span aria-hidden="true">:</span>
-    <input ref={minuteRef} disabled={disabled} aria-label="Minutes de fin du dîner" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
-    {invalid && <p id={errorId} className="journal-clock__error" role="alert">Heure invalide · utilisez HH:MM entre 00:00 et 23:59.</p>}
+    <input ref={minuteRef} disabled={disabled} aria-label="Dinner end minutes" aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} inputMode="numeric" autoComplete="off" placeholder="MM" type="text" value={minute} onChange={(event) => { setMinute(digits(event.target.value, 2)); setInvalid(false); }} />
+    {invalid && <p id={errorId} className="journal-clock__error" role="alert">Invalid time · use HH:MM between 00:00 and 23:59.</p>}
   </div>;
 }
 
@@ -162,21 +162,21 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   const inputId = `journal-${variable.id}`;
 
   if (variable.variableType === "boolean") {
-    const options = [{ label: "Non", value: false }, { label: "Oui", value: true }];
+    const options = [{ label: "No", value: false }, { label: "Yes", value: true }];
     return <div className={`journal-choice${presentation === "personal-lab" ? " journal-choice--binary" : ""}`} role="group" aria-label={journalVariableLabel(variable)}>
       {options.map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
   }
 
   if (variable.variableType === "scale") {
-    return <div className="journal-choice journal-choice--scale" role="group" aria-label={`${journalVariableLabel(variable)}, de 1 à 5`}>
+    return <div className="journal-choice journal-choice--scale" role="group" aria-label={`${journalVariableLabel(variable)}, 1 to 5`}>
       {[1, 2, 3, 4, 5].map((option) => <button type="button" disabled={disabled} className={value === option ? "is-selected" : ""} aria-pressed={value === option} onClick={() => onChange(value === option ? null : option)} key={option}>{option}</button>)}
     </div>;
   }
 
   if (variable.variableType === "category") {
     return <select disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || null)}>
-      <option value="">Non renseigné</option>
+      <option value="">Not recorded</option>
       {variable.options.map((option) => <option value={option} key={option}>{option}</option>)}
     </select>;
   }
@@ -198,9 +198,9 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   }
 
   return <div className="journal-number journal-number--stepper">
-    <button type="button" disabled={disabled} aria-label={`Diminuer ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(-1)}>−</button>
+    <button type="button" disabled={disabled} aria-label={`Decrease ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(-1)}>−</button>
     <span className="journal-number__value">{input}<span>{journalVariableUnit(variable)}</span></span>
-    <button type="button" disabled={disabled} aria-label={`Augmenter ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(1)}>+</button>
+    <button type="button" disabled={disabled} aria-label={`Increase ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(1)}>+</button>
   </div>;
 }
 
@@ -232,27 +232,27 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
 }) {
   return <div className="journal-variable-edit">
     <label>
-      <span>Nom</span>
-      <input autoFocus={autoFocus} aria-label="Nom de la mesure" value={name} onChange={(event) => onNameChange(event.target.value)} />
+      <span>Name</span>
+      <input autoFocus={autoFocus} aria-label="Metric name" value={name} onChange={(event) => onNameChange(event.target.value)} />
     </label>
-    <label><span>Émoji</span><input aria-label="Émoji de la mesure" maxLength={8} value={emoji} onChange={(event) => onEmojiChange(event.target.value)} /></label>
-    <label><span>Type</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Type de mesure" value={variableType} onChange={(event) => onTypeChange(event.target.value as JournalVariableType)}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale", variableType].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-    <label><span>Capture</span><select aria-label="Source de la mesure" value={captureMode} onChange={(event) => onCaptureModeChange(event.target.value as JournalCaptureMode)}><option value="manual">Manuelle</option><option value="automatic">Automatique</option></select></label>
-    {captureMode === "automatic" && <label><span>Signal de santé</span><select aria-label="Signal de santé automatique" value={automaticMetricId ?? ""} onChange={(event) => onAutomaticMetricChange(event.target.value || null)}><option value="">Choisir un signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
-    <label><span>Cadence cible</span><select aria-label="Cadence de la mesure" value={trackingCadence} onChange={(event) => onTrackingCadenceChange(event.target.value as JournalTrackingCadence)}><option value="daily">Chaque jour</option><option value="weekly">Une fois par semaine</option></select></label>
-    <label><span>Moment</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Moment de la mesure" value={dayPeriod === "sleep" ? "evening" : dayPeriod} onChange={(event) => onDayPeriodChange(event.target.value as JournalDayPeriod)}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{dayPeriodLabel(period.id)}</option>)}</select></label>
+    <label><span>Emoji</span><input aria-label="Metric emoji" maxLength={8} value={emoji} onChange={(event) => onEmojiChange(event.target.value)} /></label>
+    <label><span>Type</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Metric type" value={variableType} onChange={(event) => onTypeChange(event.target.value as JournalVariableType)}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale", variableType].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+    <label><span>Capture</span><select aria-label="Metric source" value={captureMode} onChange={(event) => onCaptureModeChange(event.target.value as JournalCaptureMode)}><option value="manual">Manual</option><option value="automatic">Automatic</option></select></label>
+    {captureMode === "automatic" && <label><span>Health signal</span><select aria-label="Automatic health signal" value={automaticMetricId ?? ""} onChange={(event) => onAutomaticMetricChange(event.target.value || null)}><option value="">Choose a signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
+    <label><span>Target cadence</span><select aria-label="Tracking cadence" value={trackingCadence} onChange={(event) => onTrackingCadenceChange(event.target.value as JournalTrackingCadence)}><option value="daily">Daily</option><option value="weekly">Once a week</option></select></label>
+    <label><span>Timing</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Metric timing" value={dayPeriod === "sleep" ? "evening" : dayPeriod} onChange={(event) => onDayPeriodChange(event.target.value as JournalDayPeriod)}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{dayPeriodLabel(period.id)}</option>)}</select></label>
     {numericTypes.has(variableType) && <label>
-      <span>Unité <em>(facultative)</em></span>
-      <input aria-label="Unité facultative" placeholder="Facultatif" value={unit} onChange={(event) => onUnitChange(event.target.value)} />
+      <span>Unit <em>(optional)</em></span>
+      <input aria-label="Optional unit" placeholder="Optional" value={unit} onChange={(event) => onUnitChange(event.target.value)} />
     </label>}
     {variableType === "category" && <label>
-      <span>Choix</span>
-      <input aria-label="Choix séparés par des virgules" placeholder="ex. Maison, Bureau" value={options} onChange={(event) => onOptionsChange(event.target.value)} />
+      <span>Choices</span>
+      <input aria-label="Comma-separated choices" placeholder="e.g. Home, Office" value={options} onChange={(event) => onOptionsChange(event.target.value)} />
     </label>}
-    {variableType === "boolean" ? <label><span>Valeur par défaut</span><select aria-label="Valeur par défaut de la mesure" value={defaultValue} onChange={(event) => onDefaultValueChange(event.target.value)}><option value="">Non renseigné</option><option value="false">Non</option><option value="true">Oui</option></select></label> : variableType !== "category" && <label><span>Valeur par défaut</span><input aria-label="Valeur par défaut de la mesure" type={variableType === "time" ? "time" : "number"} value={defaultValue} onChange={(event) => onDefaultValueChange(event.target.value)} /></label>}
+    {variableType === "boolean" ? <label><span>Default value</span><select aria-label="Default metric value" value={defaultValue} onChange={(event) => onDefaultValueChange(event.target.value)}><option value="">Not recorded</option><option value="false">No</option><option value="true">Yes</option></select></label> : variableType !== "category" && <label><span>Default value</span><input aria-label="Default metric value" type={variableType === "time" ? "time" : "number"} value={defaultValue} onChange={(event) => onDefaultValueChange(event.target.value)} /></label>}
     <div className="journal-variable-edit__actions">
-      <button type="button" onClick={onSave} disabled={busy || !name.trim()}>{busy ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Enregistrer</button>
-      <button type="button" onClick={onCancel}>Annuler</button>
+      <button type="button" onClick={onSave} disabled={busy || !name.trim()}>{busy ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Save</button>
+      <button type="button" onClick={onCancel}>Cancel</button>
     </div>
   </div>;
 }
@@ -295,12 +295,12 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
     try {
       const response = await fetch("/api/lab/variables", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Cette mesure n’a pas pu être enregistrée.");
+      if (!response.ok) throw new Error(result.error ?? "This habit could not be saved.");
       lastFailedRequest.current = null;
       router.refresh();
       return true;
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Cette mesure n’a pas pu être enregistrée.");
+      setError(requestError instanceof Error ? requestError.message : "This habit could not be saved.");
       return false;
     } finally {
       setBusyId(null);
@@ -363,15 +363,15 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
   function editorFor(variable: JournalVariable) {
     if (!open || editingId !== variable.id) return null;
     const editorId = `journal-variable-edit-${variable.id}`;
-    return <div className="journal-variable-inline" id={editorId} aria-label={`Paramètres de ${journalVariableLabel(variable)}`}>
+    return <div className="journal-variable-inline" id={editorId} aria-label={`Settings for ${journalVariableLabel(variable)}`}>
       <VariableEditor variableType={editVariableType} name={editName} unit={editUnit} options={editOptions} emoji={editEmoji} dayPeriod={editDayPeriod} defaultValue={editDefaultValue} captureMode={editCaptureMode} automaticMetricId={editAutomaticMetricId} trackingCadence={editTrackingCadence} busy={busyId === variable.id} autoFocus onNameChange={setEditName} onTypeChange={(value) => { setEditVariableType(value); setEditDefaultValue(value === "boolean" ? "false" : value === "time" || value === "scale" ? "" : "0"); }} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onEmojiChange={setEditEmoji} onDayPeriodChange={setEditDayPeriod} onDefaultValueChange={setEditDefaultValue} onCaptureModeChange={(value) => { setEditCaptureMode(value); if (value === "manual") setEditAutomaticMetricId(null); }} onAutomaticMetricChange={(value) => { setEditAutomaticMetricId(value); const source = journalAutomaticSource(value); if (source) { setEditVariableType(source.variableType); setEditDayPeriod(source.dayPeriod); setEditTrackingCadence(source.defaultTrackingCadence); setEditDefaultValue(""); } }} onTrackingCadenceChange={setEditTrackingCadence} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} />
-      <div className="journal-variable-inline__actions" aria-label={`Actions de ${journalVariableLabel(variable)}`}>
-        <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tôt`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
-        <button type="button" aria-label={`Déplacer ${journalVariableLabel(variable)} plus tard`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
-        {pendingRemoveId === variable.id ? <span role="group" aria-label={`Confirmer le retrait de ${journalVariableLabel(variable)}`}>
-          <button type="button" disabled={busyId === variable.id} onClick={() => void confirmRemove(variable)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Confirmer le retrait</button>
-          <button type="button" onClick={() => setPendingRemoveId(null)}>Annuler</button>
-        </span> : <button type="button" disabled={busyId === variable.id} onClick={() => { setLastRemoved(null); setPendingRemoveId(variable.id); }}>Retirer</button>}
+      <div className="journal-variable-inline__actions" aria-label={`Actions for ${journalVariableLabel(variable)}`}>
+        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} earlier`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
+        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} later`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
+        {pendingRemoveId === variable.id ? <span role="group" aria-label={`Confirm removal of ${journalVariableLabel(variable)}`}>
+          <button type="button" disabled={busyId === variable.id} onClick={() => void confirmRemove(variable)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Confirm removal</button>
+          <button type="button" onClick={() => setPendingRemoveId(null)}>Cancel</button>
+        </span> : <button type="button" disabled={busyId === variable.id} onClick={() => { setLastRemoved(null); setPendingRemoveId(variable.id); }}>Remove</button>}
       </div>
     </div>;
   }
@@ -381,11 +381,11 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
     && (draft.variableType !== "category" || categoryOptions.length >= 2)
     && (draft.captureMode !== "automatic" || draft.automaticMetricId !== null);
 
-  const tools = !open ? null : <section ref={managerRef} id="journal-manager" className="journal-manager" aria-label="Modification des habitudes">
+  const tools = !open ? null : <section ref={managerRef} id="journal-manager" className="journal-manager" aria-label="Habit settings">
     <div className="journal-manager__header-actions">
-      {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Ajouter une habitude</button>}
+      {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Add a habit</button>}
     </div>
-    {!creating && suggestions.length > 0 && <div className="journal-suggestions" aria-label="Habitudes suggérées">
+    {!creating && suggestions.length > 0 && <div className="journal-suggestions" aria-label="Suggested habits">
       {suggestions.map((suggestion) => <button type="button" key={suggestion.name} onClick={() => {
         setDraft(suggestionDraft(suggestion));
         setCreating(true);
@@ -393,55 +393,56 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
       }}><strong>{journalVariableLabel(suggestion)}</strong><span>{suggestion.unit ?? typeLabels[suggestion.variableType]}</span></button>)}
     </div>}
     {creating && <div className="journal-new-variable">
-        <div className="journal-new-variable__heading"><h4>Ajouter une mesure suivie</h4><p>Laisse-la vide les jours où tu ne veux rien noter : l’absence restera une absence.</p></div>
-        <label><span>Nom</span><input placeholder="ex. Alcool, Vacances, Travail concentré" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-        <label><span>Émoji</span><input aria-label="Émoji" maxLength={8} value={draft.emoji} onChange={(event) => setDraft((current) => ({ ...current, emoji: event.target.value }))} /></label>
-        <label><span>Capture</span><select aria-label="Source de la mesure" value={draft.captureMode} onChange={(event) => {
+        <div className="journal-new-variable__heading"><h4>Add a tracked variable</h4><p>Leave it blank on days you don&apos;t want to log: absence remains absence.</p></div>
+        <label><span>Name</span><input placeholder="e.g. Alcohol, Vacation, Deep work" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
+        <label><span>Emoji</span><input aria-label="Emoji" maxLength={8} value={draft.emoji} onChange={(event) => setDraft((current) => ({ ...current, emoji: event.target.value }))} /></label>
+        <label><span>Capture</span><select aria-label="Metric source" value={draft.captureMode} onChange={(event) => {
           const captureMode = event.target.value as JournalCaptureMode;
           setDraft((current) => ({ ...current, captureMode, automaticMetricId: captureMode === "manual" ? null : current.automaticMetricId, defaultValue: captureMode === "automatic" ? "" : current.defaultValue }));
-        }}><option value="manual">Manuelle</option><option value="automatic">Automatique</option></select></label>
-        {draft.captureMode === "automatic" && <label><span>Signal de santé</span><select aria-label="Signal de santé automatique" value={draft.automaticMetricId ?? ""} onChange={(event) => {
+        }}><option value="manual">Manual</option><option value="automatic">Automatic</option></select></label>
+        {draft.captureMode === "automatic" && <label><span>Health signal</span><select aria-label="Automatic health signal" value={draft.automaticMetricId ?? ""} onChange={(event) => {
           const automaticMetricId = event.target.value || null;
           const source = journalAutomaticSource(automaticMetricId);
           setDraft((current) => ({ ...current, automaticMetricId, variableType: source?.variableType ?? current.variableType, dayPeriod: source?.dayPeriod ?? current.dayPeriod, trackingCadence: source?.defaultTrackingCadence ?? current.trackingCadence, defaultValue: source ? "" : current.defaultValue }));
-        }}><option value="">Choisir un signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
-        <label><span>Cadence cible</span><select aria-label="Cadence de la mesure" value={draft.trackingCadence} onChange={(event) => setDraft((current) => ({ ...current, trackingCadence: event.target.value as JournalTrackingCadence }))}><option value="daily">Chaque jour</option><option value="weekly">Une fois par semaine</option></select></label>
-        <label><span>Type de mesure</span><select disabled={draft.captureMode === "automatic" && draft.automaticMetricId !== null} aria-label="Type de mesure" value={draft.variableType} onChange={(event) => {
+        }}><option value="">Choose a signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
+        <label><span>Target cadence</span><select aria-label="Tracking cadence" value={draft.trackingCadence} onChange={(event) => setDraft((current) => ({ ...current, trackingCadence: event.target.value as JournalTrackingCadence }))}><option value="daily">Daily</option><option value="weekly">Once a week</option></select></label>
+        <label><span>Metric type</span><select disabled={draft.captureMode === "automatic" && draft.automaticMetricId !== null} aria-label="Metric type" value={draft.variableType} onChange={(event) => {
           const variableType = event.target.value as JournalVariableType;
           setDraft((current) => ({ ...current, variableType, defaultValue: variableType === "boolean" ? "false" : variableType === "time" || variableType === "scale" ? "" : "0" }));
         }}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale"].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-        <label><span>Moment</span><select disabled={draft.captureMode === "automatic" && draft.automaticMetricId !== null} aria-label="Moment de la mesure" value={draft.dayPeriod} onChange={(event) => setDraft((current) => ({ ...current, dayPeriod: event.target.value as JournalDayPeriod }))}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{dayPeriodLabel(period.id)}</option>)}</select></label>
-        {draft.captureMode === "automatic" ? <p className="journal-manager__hint">{journalAutomaticSource(draft.automaticMetricId)?.source ?? "La source"} préremplit cette métrique quand la donnée est disponible. Tu peux encore la corriger dans le journal.</p> : draft.variableType === "boolean" ? <label><span>Valeur par défaut</span><select aria-label="Valeur par défaut" value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))}><option value="">Non renseigné</option><option value="false">Non</option><option value="true">Oui</option></select></label> : <label><span>Valeur par défaut</span><input aria-label="Valeur par défaut" type={draft.variableType === "time" ? "time" : "number"} value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))} /></label>}
-        {numericTypes.has(draft.variableType) && <label><span>Unité <em>(facultative)</em></span><input placeholder="ex. mg, min, verres" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} /></label>}
-        {draft.variableType === "category" && <label><span>Choix <em>(au moins deux)</em></span><input placeholder="ex. Maison, Bureau, Vacances" value={draft.options} onChange={(event) => setDraft((current) => ({ ...current, options: event.target.value }))} /></label>}
-        {draft.variableType === "category" && categoryOptions.length < 2 && <p className="journal-manager__hint">Ajoute au moins deux choix séparés par des virgules.</p>}
-        <div className="journal-new-variable__actions"><button className="primary-button" type="button" disabled={!canCreate || busyId === "new"} onClick={() => void create()}>{busyId === "new" ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Ajouter la mesure</button><button className="text-link" type="button" onClick={() => setCreating(false)}>Annuler</button></div>
+        <label><span>Timing</span><select disabled={draft.captureMode === "automatic" && draft.automaticMetricId !== null} aria-label="Metric timing" value={draft.dayPeriod} onChange={(event) => setDraft((current) => ({ ...current, dayPeriod: event.target.value as JournalDayPeriod }))}>{editableJournalDayPeriods.map((period) => <option value={period.id} key={period.id}>{dayPeriodLabel(period.id)}</option>)}</select></label>
+        {draft.captureMode === "automatic" ? <p className="journal-manager__hint">{journalAutomaticSource(draft.automaticMetricId)?.source ?? "The source"} autofills this metric when data is available. You can still adjust it in your journal.</p> : draft.variableType === "boolean" ? <label><span>Default value</span><select aria-label="Default value" value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))}><option value="">Not recorded</option><option value="false">No</option><option value="true">Yes</option></select></label> : <label><span>Default value</span><input aria-label="Default value" type={draft.variableType === "time" ? "time" : "number"} value={draft.defaultValue} onChange={(event) => setDraft((current) => ({ ...current, defaultValue: event.target.value }))} /></label>}
+        {numericTypes.has(draft.variableType) && <label><span>Unit <em>(optional)</em></span><input placeholder="e.g. mg, min, drinks" value={draft.unit} onChange={(event) => setDraft((current) => ({ ...current, unit: event.target.value }))} /></label>}
+        {draft.variableType === "category" && <label><span>Choices <em>(at least two)</em></span><input placeholder="e.g. Home, Office, Vacation" value={draft.options} onChange={(event) => setDraft((current) => ({ ...current, options: event.target.value }))} /></label>}
+        {draft.variableType === "category" && categoryOptions.length < 2 && <p className="journal-manager__hint">Add at least two choices separated by commas.</p>}
+        <div className="journal-new-variable__actions"><button className="primary-button" type="button" disabled={!canCreate || busyId === "new"} onClick={() => void create()}>{busyId === "new" ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Add variable</button><button className="text-link" type="button" onClick={() => setCreating(false)}>Cancel</button></div>
       </div>}
 
-    {lastRemoved && <p className="journal-manager__hint" role="status">« {lastRemoved.label} » retirée. <button type="button" onClick={() => void undoRemove()}>Annuler</button></p>}
-    {error && <p className="form-error" role="alert">{error} <button type="button" onClick={() => void retryLastRequest()}>Réessayer</button></p>}
+    {lastRemoved && <p className="journal-manager__hint" role="status">“{lastRemoved.label}” removed. <button type="button" onClick={() => void undoRemove()}>Undo</button></p>}
+    {error && <p className="form-error" role="alert">{error} <button type="button" onClick={() => void retryLastRequest()}>Retry</button></p>}
   </section>;
 
   return <>{children({ editorFor, isEditing: (variable) => open && editingId === variable.id, openEditor: startEdit, tools })}</>;
 }
 
 function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayValidated, automatic = false, achievement, activeHorizons, onChange, onCommit, feedbackToken, disabled, presentation = "default", editMode = false, editOpen = false, onEdit }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; dayValidated: boolean; automatic?: boolean; achievement?: JournalAchievement; activeHorizons?: readonly number[]; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab"; editMode?: boolean; editOpen?: boolean; onEdit?: () => void }) {
-  const stateLabel = confirmed ? "Enregistrée" : skipped ? "Non renseignée" : "À confirmer";
+  const stateLabel = confirmed ? "Recorded" : skipped ? "Skipped" : "To confirm";
   const state = confirmed ? "recorded" : skipped ? "skipped" : "pending";
   const isAutomatic = automatic || variable.captureMode === "automatic";
   const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", dayValidated ? "journal-field--day-validated" : "", isAutomatic ? "journal-field--automatic" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
-  const achievementLabel = achievement?.percentage === null ? "Progression —" : achievement ? `Progression ${achievement.percentage}%` : null;
+  const achievementLabel = achievement?.percentage === null ? "Progress —" : achievement ? `Progress ${achievement.percentage}%` : null;
   const label = journalVariableLabel(variable);
-  const automaticDetectionLabel = isAutomatic ? "Détection automatique" : null;
-  const dayValidationLabel = dayValidated ? "Journée validée" : null;
+  const automaticDetectionLabel = isAutomatic ? "Automatic detection" : null;
+  const dayValidationLabel = dayValidated ? "Day validated" : null;
   const stateIcon = confirmed ? <CircleCheck size={15} strokeWidth={1.8} aria-hidden="true" /> : skipped ? <CircleMinus size={15} strokeWidth={1.8} aria-hidden="true" /> : <CircleDashed size={15} strokeWidth={1.8} aria-hidden="true" />;
-  const accessibleState = [stateLabel, dayValidationLabel, automaticDetectionLabel?.toLocaleLowerCase("fr-FR")].filter(Boolean).join(", ");
+  const accessibleState = [stateLabel, dayValidationLabel, automaticDetectionLabel?.toLocaleLowerCase("en-US")].filter(Boolean).join(", ");
   const accessibleLabel = `${label}: ${accessibleState}`;
   const editorId = `journal-variable-edit-${variable.id}`;
   const observedCount = achievement?.observedPeriods ?? 0;
   const isEarlyMaturity = achievement ? observedCount < 10 : false;
-  const activeBadges = activeHorizons && activeHorizons.length > 0 ? (
+  const showSupportingMeta = presentation !== "personal-lab";
+  const activeBadges = showSupportingMeta && activeHorizons && activeHorizons.length > 0 ? (
     <span className="journal-effect-badges" aria-label={`Strongest effect in ${activeHorizons.map(h => `${h}d`).join(", ")}`}>
       {activeHorizons.map((h) => (
         <span key={h} className="journal-effect-badge" title={`Active correlation across ${h}-day analysis window`}>
@@ -450,7 +451,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       ))}
     </span>
   ) : null;
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-row"><span className="journal-field__state-mark" data-state={state} aria-hidden="true">{stateIcon}</span><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span></span>{achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}{isEarlyMaturity && (
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-row"><span className="journal-field__state-mark" data-state={state} aria-hidden="true">{stateIcon}</span><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span></span>{showSupportingMeta && achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}{showSupportingMeta && isEarlyMaturity && (
     <span className="journal-maturity-indicator" title={`${observedCount}/10 observations recorded to unlock statistical analysis`}>
       <span className="journal-maturity-bar">
         <span className="journal-maturity-fill" style={{ width: `${Math.min(100, (observedCount / 10) * 100)}%` }} />
@@ -460,13 +461,13 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   )}</span></>;
   return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} data-day-status={dayValidated ? "validated" : "draft"} aria-label={accessibleLabel}>
     {editMode && onEdit
-      ? <button className="journal-field__heading journal-field__edit-trigger" type="button" aria-label={`Modifier ${label}`} aria-expanded={editOpen} aria-controls={editorId} onClick={onEdit}>{headingContent}</button>
+      ? <button className="journal-field__heading journal-field__edit-trigger" type="button" aria-label={`Edit ${label}`} aria-expanded={editOpen} aria-controls={editorId} onClick={onEdit}>{headingContent}</button>
       : canConfirmDisplayedValue
-      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirmer la valeur affichée pour ${label}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("fr-FR")}` : ""}`} onClick={() => onChange(value)}>{headingContent}</button>
+      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirm displayed value for ${label}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("en-US")}` : ""}`} onClick={() => onChange(value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
     {journalVariableKey(variable.name) === "breakfast" && value === true
-      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} /><Link href="/meals#meal-breakfast" aria-label="Ajouter une photo du petit déjeuner"><ImagePlus size={15} aria-hidden="true" />Ajouter une photo</Link></div>
+      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} /><Link href="/meals#meal-breakfast" aria-label="Add breakfast photo"><ImagePlus size={15} aria-hidden="true" />Add photo</Link></div>
       : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />}
   </div>;
 }
@@ -721,10 +722,10 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const personalLabIndexes: Record<string, string> = { morning: "01", day: "02", evening: "03", context: "04" };
   const placeValidationInMorning = isPersonalLab && sections.some((section) => section.id === "morning");
   const emptyCount = activeVariables.filter((variable) => (values[variable.id] ?? null) === null).length;
-  const validationSummary = validated ? null : emptyCount === 0 ? "Prête" : `${emptyCount} à renseigner`;
-  // Non bloquant : seule la date en cours de validation désactive son bouton.
-  const validationDescription = emptyCount === 0 ? "Toutes les mesures sont renseignées." : `${emptyCount} mesure${emptyCount > 1 ? "s" : ""} sans valeur resteront vides.`;
-  const validationAction = !validated ? <span className="journal-validation-action"><button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validating} aria-label={`Valider la journée. ${validationDescription}`}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validation…</> : "Valider la journée"}</button>{validationSummary && <small aria-live="polite">{validationSummary}</small>}</span> : null;
+  const validationSummary = validated ? null : emptyCount === 0 ? "Ready" : `${emptyCount} to log`;
+  // Non-blocking: only the date being validated disables its button.
+  const validationDescription = emptyCount === 0 ? "All variables are logged." : `${emptyCount} empty variable${emptyCount > 1 ? "s" : ""} will remain blank.`;
+  const validationAction = !validated ? <span className="journal-validation-action"><button className={`primary-button${isPersonalLab ? " primary-button--validate" : ""}`} type="button" onClick={() => void validate()} disabled={validating} aria-label={`Validate day. ${validationDescription}`}>{validating ? <><LoaderCircle className="spin" size={16} aria-hidden="true" />Validating…</> : "Validate day"}</button>{validationSummary && <small aria-live="polite">{validationSummary}</small>}</span> : null;
   function retryJournalSave() {
     const date = selectedDateRef.current;
     const draftValues = drafts.current[date] ?? journalValuesForDate(activeVariables, entries, days, date);
@@ -742,21 +743,21 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       .catch((saveError) => {
         if (date === selectedDateRef.current) {
           setSaveStatus("error");
-          setError(saveError instanceof Error ? saveError.message : "Le journal n’a pas pu être enregistré.");
+          setError(saveError instanceof Error ? saveError.message : "The journal could not be saved.");
         }
       });
   }
   return <VariableManager key={managerOpen ? "open" : "closed"} variables={variables} open={managerOpen} managerRef={managerRef}>
     {({ editorFor, isEditing, openEditor, tools }) => {
-      const managerTrigger = <button ref={managerTriggerRef} className="journal-manager-trigger" type="button" aria-label={managerOpen ? "Terminer la modification des habitudes" : "Modifier les habitudes"} aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
+      const managerTrigger = <button ref={managerTriggerRef} className="journal-manager-trigger" type="button" aria-label={managerOpen ? "Done editing habits" : "Edit habits"} aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
         if (managerOpen) {
           setManagerOpen(false);
           managerTriggerRef.current?.focus();
         } else {
           setManagerOpen(true);
         }
-      }}>{managerOpen ? "Terminé" : <><PencilLine size={14} aria-hidden="true" />Modifier</>}</button>;
-      return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""} journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Actions du journal"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
+      }}>{managerOpen ? "Done" : <><PencilLine size={14} aria-hidden="true" />Edit habits</>}</button>;
+      return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""} journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title"><header className="journal-card__header"><div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div><div className="journal-card__actions" role="group" aria-label="Journal actions"><span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
         {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin" size={14} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error" aria-hidden="true">!</span> : null}
         <span>{statusText}</span>
       </span>
@@ -764,23 +765,23 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       {!placeValidationInMorning && managerTrigger}
     </div></header>
       {tools}
-      {showDateNavigation && <nav className="journal-date-strip" aria-label="Date du journal">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Aujourd’hui" : new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
+      {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
       {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => {
         const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
         const complete = completedCount === section.variables.length;
         const canConfirmDefaults = section.variables.some((variable) => !recorded.has(variable.id) && !skipped.has(variable.id) && (values[variable.id] ?? null) !== null);
         const sectionLabel = dayPeriodLabel(section.id);
         const sectionIndex = isPersonalLab ? personalLabIndexes[section.id] : undefined;
-        return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complète" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
-        <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><div className={`journal-period__header-row${placeValidationInMorning && section.id === "morning" ? " journal-period__header-row--morning" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirmer toutes les valeurs affichées pour ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3>{placeValidationInMorning && section.id === "morning" ? <div className="journal-period__header-actions">{validationAction}{managerTrigger}</div> : null}</div></header>
+        return <section className={`journal-period${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complete" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
+        <header className={`journal-period__header${canConfirmDefaults ? " journal-period__header--actionable" : ""}`}><div className={`journal-period__header-row${placeValidationInMorning && section.id === "morning" ? " journal-period__header-row--morning" : ""}`}><h3 id={`journal-${section.id}-title`}>{canConfirmDefaults ? <button type="button" aria-label={`Confirm all displayed values for ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></button> : <>{sectionIndex && <span className="journal-period__index" aria-hidden="true">{sectionIndex}</span>}<span>{sectionLabel}</span></>}</h3>{placeValidationInMorning && section.id === "morning" ? <div className="journal-period__header-actions">{validationAction}{managerTrigger}</div> : null}</div></header>
         <div className="journal-grid">{section.variables.map((variable) => <div className="journal-field-stack" key={variable.id}>
           <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} dayValidated={validated} automatic={automaticIds.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} activeHorizons={activeEffectsByVariable instanceof Map ? activeEffectsByVariable.get(variable.id) : (activeEffectsByVariable as Record<string, number[]> | undefined)?.[variable.id]} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} editMode={managerOpen} editOpen={isEditing(variable)} onEdit={() => openEditor(variable)} onChange={(value) => changeValue(variable.id, value)} />
           {editorFor(variable)}
         </div>)}</div>
       </section>;
-      })}</div> : <p className="journal-empty">Ajoute ta première mesure suivie ci-dessous.</p>}
-      {error && <p className="form-error" role="alert">{error} <button type="button" onClick={retryJournalSave}>Réessayer</button></p>}
-      {validated && <p className="journal-save-note" role="status">Les modifications sont enregistrées automatiquement et restent incluses dans tes relations.</p>}
+      })}</div> : <p className="journal-empty">Add your first tracked variable below.</p>}
+      {error && <p className="form-error" role="alert">{error} <button type="button" onClick={retryJournalSave}>Retry</button></p>}
+      {validated && <p className="journal-save-note" role="status">Changes are saved automatically and remain included in your relations.</p>}
     </section>;
     }}
   </VariableManager>;

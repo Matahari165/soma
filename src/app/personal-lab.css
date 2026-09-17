@@ -1500,3 +1500,103 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-journal-column .journal-card--personal-lab .journal-field__feedback,
   .personal-lab-journal-column .journal-card--personal-lab .journal-field--changed .journal-field__state-mark { animation: none; }
 }
+
+/* Local journal comparison: three deliberately different signatures, kept
+   neutral so confirmation is not confused with a health outcome. */
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__state-mark {
+  color: var(--lab-text-secondary);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-field[data-state="recorded"] .journal-field__state-mark {
+  color: var(--lab-text-primary);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-field__feedback {
+  background: var(--lab-text-primary);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field {
+  background: transparent;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field__state-mark {
+  display: inline-grid;
+  width: 9px;
+  height: 9px;
+  flex-basis: 9px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field__state-mark svg { display: none; }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field[data-state="recorded"] .journal-field__state-mark { background: currentColor; }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field[data-state="pending"] .journal-field__state-mark { border-style: dashed; }
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field__feedback {
+  height: 1px;
+  animation-name: journal-feedback-line;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field {
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="recorded"] { border-left-color: var(--lab-text-primary); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="pending"] { border-left: 2px dashed var(--lab-border-strong); }
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field[data-state="skipped"] { border-left: 2px dotted var(--lab-border); }
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field__feedback {
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  transform-origin: center bottom;
+  animation-name: journal-feedback-rise;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] :is(.journal-choice, .journal-number, .journal-clock),
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] > input,
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="recorded"] > select {
+  box-shadow: inset 0 -2px var(--lab-text-primary);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] :is(.journal-choice, .journal-number, .journal-clock),
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] > input,
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field[data-state="pending"] > select {
+  box-shadow: inset 0 -2px var(--lab-border-strong);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field__feedback {
+  right: 4px;
+  bottom: 50%;
+  left: auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  transform-origin: center;
+  animation-name: journal-feedback-dot;
+}
+
+@keyframes journal-feedback-line {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes journal-feedback-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes journal-feedback-dot {
+  from { opacity: 0; transform: scale(.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v1 .journal-field__feedback,
+  .personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field__feedback,
+  .personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field__feedback { animation: none; }
+}

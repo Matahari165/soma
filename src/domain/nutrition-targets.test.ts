@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_NUTRITION_TARGETS,
+  DEFAULT_MEAL_TARGET_DISTRIBUTION,
   effortTargetAdjustment,
+  mealTargetDistributionOf,
+  mealTargetForRange,
   mergeDailyNutritionTargets,
   nutritionTargetsForEffort,
   parseNutritionTargets,
@@ -28,6 +31,25 @@ describe("nutrition target contract", () => {
     expect(parseNutritionTargets({ ...DEFAULT_NUTRITION_TARGETS, proteinG: { low: 190, likely: 150, high: 120 } })).toBeNull();
     expect(parseNutritionTargets({ ...DEFAULT_NUTRITION_TARGETS, fiberG: { low: -1, likely: 2, high: 3 } })).toBeNull();
     expect(parseNutritionTargets({ ...DEFAULT_NUTRITION_TARGETS, caloriesKcal: undefined })).toBeNull();
+  });
+
+  it("keeps a valid meal split alongside daily targets", () => {
+    expect(mealTargetDistributionOf({ ...DEFAULT_NUTRITION_TARGETS, mealDistribution: undefined })).toEqual(DEFAULT_MEAL_TARGET_DISTRIBUTION);
+    expect(parseNutritionTargets({
+      ...DEFAULT_NUTRITION_TARGETS,
+      mealDistribution: { breakfast: 20, lunch: 45, snack: 10, dinner: 25 },
+    })?.mealDistribution).toEqual({ breakfast: 20, lunch: 45, snack: 10, dinner: 25 });
+    expect(parseNutritionTargets({
+      ...DEFAULT_NUTRITION_TARGETS,
+      mealDistribution: { breakfast: 20, lunch: 45, snack: 10, dinner: 20 },
+    })).toBeNull();
+  });
+
+  it("turns a meal share into an independent target", () => {
+    const targets = { ...DEFAULT_NUTRITION_TARGETS, mealDistribution: { breakfast: 25, lunch: 40, snack: 0, dinner: 35 } };
+    expect(mealTargetForRange({ low: 150, likely: 160, high: 170 }, "lunch", targets)).toBe(64);
+    expect(mealTargetForRange({ low: 0, likely: 0, high: 5 }, "lunch", targets)).toBe(2);
+    expect(mealTargetForRange({ low: 150, likely: 160, high: 170 }, "snack", targets)).toBeNull();
   });
 
   it("keeps the base target below or exactly at the effort threshold", () => {

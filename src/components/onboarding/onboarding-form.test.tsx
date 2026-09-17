@@ -11,126 +11,126 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("OnboardingForm - Architecture et étapes", () => {
-  it("présente les 5 étapes dans l’ordre canonique", () => {
+describe("OnboardingForm - Architecture and steps", () => {
+  it("presents 5 steps in canonical order", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 0 }));
 
-    expect(html).toContain("Vous");
-    expect(html).toContain("Objectif");
-    expect(html).toContain("Habitudes");
-    expect(html).toContain("Sommeil");
-    expect(html).toContain("Données de santé");
+    expect(html).toContain("Profile");
+    expect(html).toContain("Goal");
+    expect(html).toContain("Habits");
+    expect(html).toContain("Sleep");
+    expect(html).toContain("Health Data");
   });
 
-  it("affiche les champs d’identité à l’étape 0", () => {
+  it("renders profile fields on step 0", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 0 }));
 
-    expect(html).toContain("À propos de vous");
-    expect(html).toContain("Nom");
-    expect(html).toContain("Date de naissance");
-    expect(html).toContain("Taille (cm)");
-    expect(html).toContain("Poids (kg)");
+    expect(html).toContain("About you");
+    expect(html).toContain("Name");
+    expect(html).toContain("Date of birth");
+    expect(html).toContain("Height (cm)");
+    expect(html).toContain("Weight (kg)");
   });
 
-  it("affiche le choix de l’objectif à l’étape 1", () => {
+  it("renders goal choices on step 1", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 1 }));
 
-    expect(html).toContain("Quel est votre objectif principal");
-    expect(html).toContain("Développer sa masse musculaire");
-    expect(html).toContain("Améliorer son endurance");
-    expect(html).toContain("Objectif secondaire (facultatif)");
+    expect(html).toContain("What is your primary goal?");
+    expect(html).toContain("Build muscle");
+    expect(html).toContain("Improve endurance");
+    expect(html).toContain("Secondary goal (optional)");
   });
 });
 
-describe("OnboardingForm - Catalogue d’habitudes saines (Étape 2)", () => {
-  it("affiche les 3 thématiques d'habitudes avec leurs titres clairs", () => {
+describe("OnboardingForm - Healthy habits catalogue (Step 2)", () => {
+  it("renders 3 habit categories with clear titles", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 2 }));
 
-    expect(html).toContain("Vos habitudes de santé");
-    expect(html).toContain("Sommeil &amp; Récupération");
-    expect(html).toContain("Nutrition &amp; Énergie");
-    expect(html).toContain("Activité &amp; Mouvement");
+    expect(html).toContain("Your health habits");
+    expect(html).toContain("Sleep &amp; Recovery");
+    expect(html).toContain("Nutrition &amp; Fuel");
+    expect(html).toContain("Movement &amp; Training");
   });
 
-  it("propose les habitudes de santé clés issues du catalogue sans variables intimes", () => {
+  it("offers key health habits without intimate variables", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 2 }));
 
-    // Habitudes Sommeil
-    expect(html).toContain("Coucher avant 23 h");
-    expect(html).toContain("Chambre noire et fraîche");
-    expect(html).toContain("Lecture 20 minutes");
+    // Sleep habits
+    expect(html).toContain("Bedtime before 11 PM");
+    expect(html).toContain("Dark, cool bedroom");
+    expect(html).toContain("Reading for 20 minutes");
 
-    // Habitudes Nutrition
-    expect(html).toContain("Limiter les sucres ajoutés");
-    expect(html).toContain("Petit-déjeuner équilibré");
-    expect(html).toContain("Suivi de la caféine");
+    // Nutrition habits
+    expect(html).toContain("Limit added sugars");
+    expect(html).toContain("Balanced breakfast");
+    expect(html).toContain("Caffeine tracking");
 
-    // Habitudes Activité
-    expect(html).toContain("Course à pied / Running");
-    expect(html).toContain("Renforcement musculaire");
+    // Activity habits
+    expect(html).toContain("Running");
+    expect(html).toContain("Strength training");
 
-    // Invariant: AUCUNE variable intime ou spécifique à Jérémy
+    // Invariant: NO intimate or Jeremy-specific variables
     expect(html).not.toContain("Masturbation");
     expect(html).not.toContain("WHM");
   });
 
-  it("fournit l'interface pour créer une habitude sur-mesure", () => {
+  it("provides interface to create a custom habit", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 2 }));
 
-    expect(html).toContain("Ajouter une habitude sur-mesure");
-    expect(html).toContain('placeholder="Ex. Méditation 10 min, Pas d&#x27;écran après 22 h…"');
-    expect(html).toContain("Ajouter");
+    expect(html).toContain("Add a custom habit");
+    expect(html).toContain("e.g. Meditation 10 min, No screens after 10 PM…");
+    expect(html).toContain("Add");
   });
 });
 
-describe("OnboardingForm - Slider de sommeil animé et accessible (Étape 3)", () => {
-  it("remplace le texte fixe par un composant slider interactif aux pas de 15 minutes", () => {
+describe("OnboardingForm - Sleep slider (Step 3)", () => {
+  it("renders interactive slider with 15-minute steps", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 3 }));
 
-    expect(html).toContain("Poser votre base de sommeil");
+    expect(html).toContain("Set your sleep baseline");
     expect(html).toContain('type="range"');
     expect(html).toContain('min="300"');
     expect(html).toContain('max="660"');
     expect(html).toContain('step="15"');
-    expect(html).toContain('aria-label="Objectif de sommeil"');
+    expect(html).toContain('aria-label="Sleep target"');
     expect(html).toContain('class="sleep-slider-value"');
-    expect(html).toContain("8 h 30");
+    expect(html).toContain("8h 30m");
   });
 
-  it("affiche dynamiquement la fourchette de tolérance", () => {
+  it("dynamically displays tolerance window", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 3 }));
 
-    expect(html).toContain("Fourchette acceptée");
-    expect(html).toContain("8 h 20 à 8 h 40");
+    expect(html).toContain("Accepted range");
+    expect(html).toContain("8h 20m to 8h 40m");
   });
 
-  it("expose des repères visuels discrets sur la jauge horaire", () => {
+  it("displays discrete visual ticks on the gauge", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 3 }));
 
-    expect(html).toContain("5 h");
-    expect(html).toContain("7 h");
-    expect(html).toContain("8 h");
-    expect(html).toContain("9 h");
-    expect(html).toContain("11 h");
+    expect(html).toContain("5h");
+    expect(html).toContain("7h");
+    expect(html).toContain("8h");
+    expect(html).toContain("9h");
+    expect(html).toContain("11h");
   });
 
-  it("formate fidèlement les durées de sommeil", () => {
-    expect(formatSleepDuration(300)).toBe("5 h 00");
-    expect(formatSleepDuration(450)).toBe("7 h 30");
-    expect(formatSleepDuration(465)).toBe("7 h 45");
-    expect(formatSleepDuration(510)).toBe("8 h 30");
-    expect(formatSleepDuration(660)).toBe("11 h 00");
+  it("formats sleep durations accurately", () => {
+    expect(formatSleepDuration(300)).toBe("5h 00m");
+    expect(formatSleepDuration(450)).toBe("7h 30m");
+    expect(formatSleepDuration(465)).toBe("7h 45m");
+    expect(formatSleepDuration(510)).toBe("8h 30m");
+    expect(formatSleepDuration(660)).toBe("11h 00m");
   });
 });
 
-describe("OnboardingForm - Sortie sans montre connectée (Étape 4)", () => {
-  it("met en valeur la sortie accueillante sans montre connectée avec le texte requis", () => {
+describe("OnboardingForm - No connected watch option (Step 4)", () => {
+  it("highlights welcoming option without smartwatch", () => {
     const html = renderToStaticMarkup(createElement(OnboardingForm, { initialDisplayName: "Alexandre", initialStep: 4 }));
 
-    expect(html).toContain("Connecter vos données de santé");
-    expect(html).toContain("Pas de montre connectée ? Vous pouvez utiliser le journal quotidien et le suivi des repas dès aujourd&#x27;hui.");
+    expect(html).toContain("Connect your health data");
+    expect(html).toContain("No connected watch? You can start using your daily journal and meal tracking today.");
     expect(html).toContain("class=\"no-watch-button\"");
-    expect(html).toContain("Terminer sans connecter");
-    expect(html).toContain("Enregistrer puis connecter Google Health");
+    expect(html).toContain("Continue without connecting");
+    expect(html).toContain("Save and connect Google Health");
   });
 });

@@ -9,8 +9,9 @@ describe("PublicHome", () => {
     const html = renderToStaticMarkup(<PublicHome />);
 
     expect(html).toContain("Soma");
-    expect(html).toContain("Google Health");
-    expect(html).toContain("Se connecter à Soma");
+    expect(html).toContain("Read your");
+    expect(html).toContain("own rhythm.");
+    expect(html).toContain("Sign in");
     expect(html).toContain('href="/privacy"');
     expect(html).toContain('href="/terms"');
     expect(html).not.toMatch(/demo|sample score|84\/100/i);

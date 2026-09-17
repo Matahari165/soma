@@ -37,7 +37,7 @@ const CARDS: CardDef[] = [
   { key: "fiberG", label: "Fibres", unit: "g", tone: "fiber" },
 ];
 
-type TargetRangeKey = Exclude<keyof NutritionTargets, "surplusKcal">;
+type TargetRangeKey = keyof Pick<NutritionTargets, "caloriesKcal" | "proteinG" | "fatG" | "carbsG" | "fiberG">;
 
 const TARGET_KEYS: Record<keyof MealDayTotals, TargetRangeKey> = {
   caloriesKcal: "caloriesKcal",

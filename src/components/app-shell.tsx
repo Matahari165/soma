@@ -19,21 +19,21 @@ import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
 import type { SomaUser } from "@/lib/auth";
 
 const navigation = [
-  { label: "Laboratoire", href: "/", icon: LayoutDashboard },
-  { label: "Analyse", href: "/analysis", icon: ChartNoAxesCombined },
-  { label: "Alimentation", href: "/meals", icon: Utensils },
-  { label: "Sommeil", href: "/sleep", icon: BedDouble },
-  { label: "Récupération", href: "/recovery", icon: HeartPulse },
-  { label: "Effort", href: "/activity", icon: Activity },
+  { label: "Personal Lab", href: "/", icon: LayoutDashboard },
+  { label: "Analysis", href: "/analysis", icon: ChartNoAxesCombined },
+  { label: "Meals", href: "/meals", icon: Utensils },
+  { label: "Sleep", href: "/sleep", icon: BedDouble },
+  { label: "Recovery", href: "/recovery", icon: HeartPulse },
+  { label: "Activity", href: "/activity", icon: Activity },
 ];
 
-// Une seule source de navigation : le mobile reprend les mêmes destinations,
-// sans le Laboratoire déjà accessible via la marque.
+// Single navigation source: mobile uses the same destinations,
+// without Personal Lab which is already accessible via the logo.
 
 export function AppShell({ children, user, localPreview = false }: { children: React.ReactNode; user: SomaUser | null; localPreview?: boolean }) {
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const displayName = user?.displayName ?? "Utilisateur Soma";
+  const displayName = user?.displayName ?? "Soma User";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const isPersonalLab = pathname === "/";
   const isStitchWorkspace = ["/analysis", "/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
@@ -56,9 +56,9 @@ export function AppShell({ children, user, localPreview = false }: { children: R
 
   return (
     <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed", isStitchWorkspace && "app-shell--personal-lab"].filter(Boolean).join(" ")}>
-      <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Navigation principale">
+      <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
         <div className="sidebar__header">
-          <Link className="brand" href="/" aria-label="Accueil Soma">
+          <Link className="brand" href="/" aria-label="Soma Home">
             <SomaLogo compact={sidebarCollapsed} />
           </Link>
         </div>
@@ -84,18 +84,18 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             className="icon-button sidebar-toggle"
             type="button"
             onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={sidebarCollapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-controls="primary-sidebar"
             aria-pressed={sidebarCollapsed}
-            title={sidebarCollapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
           </button>
-          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Ouvrir les réglages de ${displayName}`} title={sidebarCollapsed ? `Ouvrir les réglages de ${displayName}` : undefined}>
+          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
             <span className="avatar">{initials}</span>
             <span>
               <strong>{displayName}</strong>
-              <small>Réglages</small>
+              <small>Settings</small>
             </span>
             <Settings size={17} aria-hidden="true" />
           </Link>
@@ -103,10 +103,10 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       </aside>
 
       <header className="mobile-header">
-        <Link className="brand" href="/" aria-label="Accueil Soma">
+        <Link className="brand" href="/" aria-label="Soma Home">
           <SomaLogo />
         </Link>
-        <nav className="mobile-header-nav" aria-label="Navigation principale mobile">
+        <nav className="mobile-header-nav" aria-label="Primary mobile navigation">
           {activeMobileNavigation.map(({ label, href, icon: Icon }) => (
             <Link
               href={href}

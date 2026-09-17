@@ -8,22 +8,22 @@ export const metadata: Metadata = { title: { absolute: "Soma" } };
 export default function PrivacyPage() {
   return (
     <main className="legal-page" id="main-page-content">
-      <Link className="brand brand--auth" href="/" aria-label="Accueil Soma"><SomaLogo /></Link>
+      <Link className="brand brand--auth" href="/" aria-label="Soma Home"><SomaLogo /></Link>
       <article>
-        <span className="eyebrow">Confidentialité · Version 1.1</span>
-        <h1>Vos données de santé restent les vôtres.</h1>
-        <p>Dernière mise à jour : 31 août 2026.</p>
-        <h2>Ce que Soma enregistre</h2>
-        <p>Votre identifiant de compte Google, les informations de profil saisies manuellement, les données Google Health autorisées, les scores et analyses calculés, les entraînements, les repas, les photos de repas, les estimations nutritionnelles et les deux ressentis de repas que vous choisissez d’enregistrer.</p>
-        <h2>Pourquoi Soma les utilise</h2>
-        <p>Pour afficher votre tableau de bord, conserver votre historique de repas, calculer vos tendances et relations de bien-être personnelles, et exécuter les fonctions que vous demandez explicitement.</p>
-        <h2>Traitement par l’IA</h2>
-        <p>Soma envoie un résumé limité des métriques pertinentes à xAI lorsque vous demandez une synthèse d’analyse. Lorsque vous analysez explicitement un repas, Soma envoie les photos sélectionnées, leurs libellés d’origine et votre note facultative au fournisseur d’analyse configuré (Grok par défaut, avec ChatGPT 5.6 Sol comme solution de secours ou fournisseur principal configuré). Les jetons OAuth ne sont jamais inclus. Les requêtes utilisent <code>store: false</code>.</p>
-        <h2>Conservation et contrôle</h2>
-        <p>Soma conserve votre historique et vos photos de repas privées jusqu’à ce que vous les supprimiez ou supprimiez votre compte. Vous pouvez exporter vos données, supprimer des repas individuellement, déconnecter Google Health ou tout supprimer définitivement depuis les réglages.</p>
-        <h2>Limite importante</h2>
-        <p>Soma est une application générale de bien-être, pas un dispositif médical. Elle n’établit aucun diagnostic et ne remplace pas un professionnel de santé.</p>
-        <Link href="/settings">Retour aux réglages</Link>
+        <span className="eyebrow">Privacy · Version 1.1</span>
+        <h1>Your health data remains strictly yours.</h1>
+        <p>Last updated: August 31, 2026.</p>
+        <h2>What Soma records</h2>
+        <p>Your Google account identifier or email credentials, manually entered profile details, authorized Google Health data, computed scores and analytics, workouts, meals, nutritional estimates, and logged meal feelings.</p>
+        <h2>Why Soma uses it</h2>
+        <p>To display your personal lab, maintain your meal history, calculate your personal wellness trends and correlations, and perform features you explicitly trigger.</p>
+        <h2>AI processing</h2>
+        <p>Soma transmits a bounded summary of relevant metrics to xAI when you request an analysis summary. When you analyze a meal, photos are processed ephemerally for nutritional estimation and are never retained permanently in storage. OAuth tokens and secrets are never transmitted. API requests use <code>store: false</code>.</p>
+        <h2>Retention and control</h2>
+        <p>Soma retains your journal and meal records until you choose to delete them or remove your account. You can export your data, delete individual meals, disconnect Google Health, or permanently erase your account anytime in Settings.</p>
+        <h2>Important notice</h2>
+        <p>Soma is a personal health tracking tool, not a medical device. It provides no medical diagnosis and does not replace qualified healthcare advice.</p>
+        <Link href="/settings">Back to settings</Link>
       </article>
     </main>
   );

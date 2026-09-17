@@ -11,10 +11,12 @@ import MealSupplements from "../meal-supplements";
 import styles from "./personal-lab-journal-workspace.module.css";
 
 const designVariants: ReadonlyArray<{ id: MealDesignVariant; label: string }> = [
-  { id: "v1", label: "Ligne" },
-  { id: "v2", label: "Grille" },
+  { id: "v1", label: "Row" },
+  { id: "v2", label: "Grid" },
   { id: "v3", label: "Split" },
 ];
+
+export const JOURNAL_PROGRESS_EVENT = "soma:journal-progress";
 
 function dateFromUrl() {
   if (typeof window === "undefined") return null;
@@ -30,22 +32,22 @@ function addDays(date: string, days: number) {
 
 function sharedDateLabel(date: string, todayDate: string) {
   const offset = Math.round((new Date(`${todayDate}T12:00:00Z`).getTime() - new Date(`${date}T12:00:00Z`).getTime()) / 86_400_000);
-  if (offset === 0) return "Aujourd’hui";
-  if (offset === 1) return "Hier";
-  if (offset === 2) return "Avant-hier";
-  return new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "");
+  if (offset === 0) return "Today";
+  if (offset === 1) return "Yesterday";
+  if (offset === 2) return "2 days ago";
+  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`));
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
 export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completedDates = new Set<string>(), disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; completedDates?: ReadonlySet<string>; disabled?: boolean; onDateChange: (date: string) => void }) {
-  return <nav className="personal-lab-day-strip" aria-label="Jour partagé entre les repas et le journal">
-    <div className="personal-lab-day-strip__days" role="group" aria-label="Jours disponibles">
+  return <nav className="personal-lab-day-strip" aria-label="Shared day between meals and journal">
+    <div className="personal-lab-day-strip__days" role="group" aria-label="Available days">
       {dates.map((date) => <button key={date} type="button" disabled={disabled} aria-current={date === selectedDate ? "date" : undefined} onClick={() => onDateChange(date)}>
         <span>{sharedDateLabel(date, todayDate)}</span>
-        <small>{new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
+        <small>{new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`))}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
         <span className="sr-only">{formatDate(date)}</span>
       </button>)}
     </div>
@@ -113,8 +115,11 @@ export function PersonalLabJournalWorkspace({
     setJournalProgressOverride({ date: activeDate, count, total });
   }, [activeDate]);
 
-  const progressRatio = journalProgress.total > 0 ? Math.min(1, journalProgress.count / journalProgress.total) : 0;
-  const progressLabel = `${journalProgress.count} / ${journalProgress.total}`;
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(JOURNAL_PROGRESS_EVENT, {
+      detail: { date: activeDate, count: journalProgress.count, total: journalProgress.total },
+    }));
+  }, [activeDate, journalProgress.count, journalProgress.total]);
 
   const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
@@ -142,26 +147,17 @@ export function PersonalLabJournalWorkspace({
 
   return <div className="personal-lab-workspace" data-design-variant={designVariant}>
     {sharedDateNavigation}
-    <div className={styles.controlRow}>
-      <div className={styles.progress} aria-label={`Progression du journal : ${journalProgress.count} habitudes confirmées sur ${journalProgress.total}`}>
-        <div className={styles.progressHeader}>
-          <span>Habitudes confirmées</span>
-          <span className={styles.progressValue}>{progressLabel}</span>
+    {showVariantSwitcher ? <div className={styles.controlRow}>
+      <fieldset className={styles.variantSwitcher}>
+        <legend>Local comparison</legend>
+        <div className={styles.variantButtons} role="group" aria-label="Visual variants">
+          {designVariants.map((variant) => <button key={variant.id} type="button" title={`Layout ${variant.label}`} aria-pressed={designVariant === variant.id} onClick={() => setDesignVariant(variant.id)}>{variant.label}</button>)}
         </div>
-        <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={journalProgress.total} aria-valuenow={journalProgress.count} aria-label={`Progression du journal : ${progressLabel}`}>
-          <span className={styles.progressFill} style={{ transform: `scaleX(${progressRatio})` }} />
-        </div>
-      </div>
-      {showVariantSwitcher ? <fieldset className={styles.variantSwitcher}>
-        <legend>Comparaison locale</legend>
-        <div className={styles.variantButtons} role="group" aria-label="Variantes visuelles">
-          {designVariants.map((variant) => <button key={variant.id} type="button" title={`Présentation ${variant.label}`} aria-pressed={designVariant === variant.id} onClick={() => setDesignVariant(variant.id)}>{variant.label}</button>)}
-        </div>
-      </fieldset> : null}
-    </div>
+      </fieldset>
+    </div> : null}
     <div className="personal-lab-workbench">
       <div className="personal-lab-meal-column">
-        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant={designVariant} />
+        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} designVariant="v1" />
       </div>
       <div className="personal-lab-journal-column" id="daily-journal">
         <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />

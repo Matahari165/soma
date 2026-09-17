@@ -98,62 +98,62 @@ export const MEAL_VARIETY_POSITIVE_TAXONOMY: readonly MealTaxonomyFamily[] = [
   {
     id: "fruit",
     label: "Fruits",
-    subgroups: ["fruits entiers", "agrumes", "fruits rouges", "fruits exotiques", "fruits séchés"],
+    subgroups: ["whole fruit", "citrus", "berries", "tropical fruit", "dried fruit"],
   },
   {
     id: "vegetable",
-    label: "Légumes",
-    subgroups: ["légumes verts", "légumes racines", "légumes fruits", "crucifères", "champignons"],
+    label: "Vegetables",
+    subgroups: ["leafy greens", "root vegetables", "fruit vegetables", "cruciferous", "mushrooms"],
   },
   {
     id: "potato",
-    label: "Pommes de terre et féculents",
-    subgroups: ["pommes de terre", "patate douce", "autres tubercules"],
+    label: "Potatoes and starches",
+    subgroups: ["potatoes", "sweet potatoes", "other tubers"],
   },
   {
     id: "legume",
-    label: "Légumineuses",
-    subgroups: ["lentilles", "pois chiches", "haricots", "pois et soja"],
+    label: "Legumes",
+    subgroups: ["lentils", "chickpeas", "beans", "peas and soy"],
   },
   {
     id: "whole_grain",
-    label: "Céréales complètes",
-    subgroups: ["avoine", "riz complet", "blé complet", "seigle et autres céréales"],
+    label: "Whole grains",
+    subgroups: ["oats", "brown rice", "whole wheat", "rye and other grains"],
   },
   {
     id: "refined_grain",
-    label: "Céréales raffinées",
-    subgroups: ["riz blanc", "pâtes blanches", "pain blanc", "farines et produits céréaliers"],
+    label: "Refined grains",
+    subgroups: ["white rice", "white pasta", "white bread", "flours and grain products"],
   },
   {
     id: "animal_protein",
-    label: "Protéines animales",
-    subgroups: ["poissons et fruits de mer", "volaille", "viande rouge", "viande transformée"],
+    label: "Animal protein",
+    subgroups: ["fish and seafood", "poultry", "red meat", "processed meat"],
   },
   {
     id: "plant_protein",
-    label: "Protéines végétales",
-    subgroups: ["tofu et tempeh", "protéines végétales préparées", "autres substituts"],
+    label: "Plant protein",
+    subgroups: ["tofu and tempeh", "prepared plant proteins", "other meat substitutes"],
   },
   {
     id: "egg",
-    label: "Œufs",
-    subgroups: ["œuf entier", "préparations à base d'œuf"],
+    label: "Eggs",
+    subgroups: ["whole egg", "egg-based dishes"],
   },
   {
     id: "dairy",
-    label: "Produits laitiers",
-    subgroups: ["lait", "yaourts", "fromages", "alternatives enrichies"],
+    label: "Dairy",
+    subgroups: ["milk", "yogurt", "cheese", "fortified alternatives"],
   },
   {
     id: "nuts_seeds",
-    label: "Fruits à coque et graines",
-    subgroups: ["amandes et noix", "graines", "purées d'oléagineux"],
+    label: "Nuts and seeds",
+    subgroups: ["almonds and walnuts", "seeds", "nut butters"],
   },
   {
     id: "added_fat",
-    label: "Matières grasses ajoutées",
-    subgroups: ["huiles", "beurre et ghee", "margarines"],
+    label: "Added fats",
+    subgroups: ["oils", "butter and ghee", "margarines"],
   },
 ];
 
@@ -161,23 +161,23 @@ export const MEAL_VARIETY_POSITIVE_TAXONOMY: readonly MealTaxonomyFamily[] = [
 export const MEAL_VARIETY_EXCLUDED_TAXONOMY: readonly MealTaxonomyFamily[] = [
   {
     id: "sweet",
-    label: "Produits sucrés exclus",
-    subgroups: ["bonbons", "desserts sucrés", "pâtisseries", "chocolat"],
+    label: "Excluded sweets",
+    subgroups: ["candy", "sweet desserts", "pastries", "chocolate"],
   },
   {
     id: "beverage",
-    label: "Boissons exclues",
-    subgroups: ["sodas", "jus", "boissons sucrées"],
+    label: "Excluded beverages",
+    subgroups: ["sodas", "juices", "sweetened drinks"],
   },
   {
     id: "sauce",
-    label: "Sauces exclues",
-    subgroups: ["sauces maison", "sauces du commerce", "condiments"],
+    label: "Excluded sauces",
+    subgroups: ["homemade sauces", "commercial sauces", "condiments"],
   },
   {
     id: "other",
-    label: "Non classés exclus",
-    subgroups: ["produits composés non classés", "aliments non classés"],
+    label: "Excluded unclassified",
+    subgroups: ["composite foods", "unclassified foods"],
   },
 ];
 
@@ -190,7 +190,7 @@ export type MealVarietyFoodLike = {
 };
 
 const EXCLUDED_VARIETY_NAME_PATTERN =
-  /\b(?:bonbons?|confiseries?|desserts?|p[âa]tisseries?|chocolats?|sodas?|jus|nectars?|sauces?|boissons?\s+(?:sucr[ée]es?|gazeuses?))\b/iu;
+  /\b(?:bonbons?|confiseries?|desserts?|p[âa]tisseries?|chocolats?|sodas?|jus|nectars?|sauces?|boissons?\s+(?:sucr[ée]es?|gazeuses?)|cand(?:y|ies)|sweets?|pastr(?:y|ies)|chocolates?|juices?|smoothies?)\b/iu;
 const positiveVarietyGroups = new Set<MealFoodGroup>(MEAL_VARIETY_POSITIVE_FOOD_GROUPS);
 const excludedVarietyGroups = new Set<MealFoodGroup>(MEAL_VARIETY_EXCLUDED_FOOD_GROUPS);
 const activeQualityProperties = new Set<MealQualityProperty>(MEAL_ACTIVE_QUALITY_PROPERTIES);
@@ -219,7 +219,7 @@ export function isPositiveMealVarietyFood(food: MealVarietyFoodLike): boolean {
 export function mealPositiveVarietyKey(food: MealVarietyFoodLike): string | null {
   if (!isPositiveMealVarietyFood(food)) return null;
   const key = (food.varietyKey ?? food.name ?? "").trim();
-  return key.length > 0 ? key.toLocaleLowerCase("fr-FR") : null;
+  return key.length > 0 ? key.toLowerCase() : null;
 }
 
 /**
@@ -234,22 +234,22 @@ export function activeMealQualityProperties(
 }
 
 export const MEAL_FOOD_TAXONOMY: readonly MealTaxonomyFamily[] = [
-  { id: "fruit", label: "Fruits", subgroups: ["fruits entiers", "agrumes", "fruits rouges", "fruits exotiques", "fruits séchés", "jus et compotes"] },
-  { id: "vegetable", label: "Légumes", subgroups: ["légumes verts", "légumes racines", "légumes fruits", "crucifères", "champignons"] },
-  { id: "potato", label: "Pommes de terre et féculents", subgroups: ["pommes de terre", "patate douce", "autres tubercules"] },
-  { id: "legume", label: "Légumineuses", subgroups: ["lentilles", "pois chiches", "haricots", "pois et soja"] },
-  { id: "whole_grain", label: "Céréales complètes", subgroups: ["avoine", "riz complet", "blé complet", "seigle et autres céréales"] },
-  { id: "refined_grain", label: "Céréales raffinées", subgroups: ["riz blanc", "pâtes blanches", "pain blanc", "farines et produits céréaliers"] },
-  { id: "animal_protein", label: "Protéines animales", subgroups: ["poissons et fruits de mer", "volaille", "viande rouge", "viande transformée"] },
-  { id: "plant_protein", label: "Protéines végétales", subgroups: ["tofu et tempeh", "protéines végétales préparées", "autres substituts"] },
-  { id: "egg", label: "Œufs", subgroups: ["œuf entier", "préparations à base d’œuf"] },
-  { id: "dairy", label: "Produits laitiers", subgroups: ["lait", "yaourts", "fromages", "alternatives enrichies"] },
-  { id: "nuts_seeds", label: "Fruits à coque et graines", subgroups: ["amandes et noix", "graines", "purées d’oléagineux"] },
-  { id: "added_fat", label: "Matières grasses ajoutées", subgroups: ["huiles", "beurre et ghee", "margarines"] },
-  { id: "sauce", label: "Sauces et condiments", subgroups: ["sauces maison", "sauces du commerce", "herbes et épices"] },
-  { id: "sweet", label: "Produits sucrés", subgroups: ["desserts", "confiseries", "pâtisseries", "chocolat"] },
-  { id: "beverage", label: "Boissons", subgroups: ["eau", "boissons chaudes", "boissons sucrées", "jus", "boissons sans sucre"] },
-  { id: "other", label: "Autres", subgroups: ["produits composés", "aliments non classés"] },
+  { id: "fruit", label: "Fruits", subgroups: ["whole fruit", "citrus", "berries", "tropical fruit", "dried fruit", "juices and compotes"] },
+  { id: "vegetable", label: "Vegetables", subgroups: ["leafy greens", "root vegetables", "fruit vegetables", "cruciferous", "mushrooms"] },
+  { id: "potato", label: "Potatoes and starches", subgroups: ["potatoes", "sweet potatoes", "other tubers"] },
+  { id: "legume", label: "Legumes", subgroups: ["lentils", "chickpeas", "beans", "peas and soy"] },
+  { id: "whole_grain", label: "Whole grains", subgroups: ["oats", "brown rice", "whole wheat", "rye and other grains"] },
+  { id: "refined_grain", label: "Refined grains", subgroups: ["white rice", "white pasta", "white bread", "flours and grain products"] },
+  { id: "animal_protein", label: "Animal protein", subgroups: ["fish and seafood", "poultry", "red meat", "processed meat"] },
+  { id: "plant_protein", label: "Plant protein", subgroups: ["tofu and tempeh", "prepared plant proteins", "other meat substitutes"] },
+  { id: "egg", label: "Eggs", subgroups: ["whole egg", "egg-based dishes"] },
+  { id: "dairy", label: "Dairy", subgroups: ["milk", "yogurt", "cheese", "fortified alternatives"] },
+  { id: "nuts_seeds", label: "Nuts and seeds", subgroups: ["almonds and walnuts", "seeds", "nut butters"] },
+  { id: "added_fat", label: "Added fats", subgroups: ["oils", "butter and ghee", "margarines"] },
+  { id: "sauce", label: "Sauces and condiments", subgroups: ["homemade sauces", "commercial sauces", "herbs and spices"] },
+  { id: "sweet", label: "Sweets", subgroups: ["desserts", "candy", "pastries", "chocolate"] },
+  { id: "beverage", label: "Beverages", subgroups: ["water", "hot drinks", "sweetened drinks", "juices", "sugar-free drinks"] },
+  { id: "other", label: "Other", subgroups: ["composite foods", "unclassified foods"] },
 ];
 
 export const MEAL_FOOD_GROUP_LABELS: Readonly<Record<MealFoodGroup, string>> = Object.fromEntries(

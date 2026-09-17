@@ -10,9 +10,9 @@ import styles from "./health-error-state.module.css";
 type HealthRoute = "sleep" | "recovery" | "activity";
 
 const copy: Record<HealthRoute, { title: string; description: string }> = {
-  sleep: { title: "Le sommeil est temporairement indisponible", description: "Soma n’a pas pu charger les données de sommeil. Les sections déjà affichées sont conservées. Réessayez pour la partie manquante." },
-  recovery: { title: "La récupération est temporairement indisponible", description: "Soma n’a pas pu charger les signaux de récupération. Les sections déjà affichées sont conservées. Réessayez pour la partie manquante." },
-  activity: { title: "L’activité est temporairement indisponible", description: "Soma n’a pas pu charger les données d’activité. Les sections déjà affichées sont conservées. Réessayez pour la partie manquante." },
+  sleep: { title: "Sleep is temporarily unavailable", description: "Soma could not load sleep data. Previously displayed sections are retained. Please retry for missing sections." },
+  recovery: { title: "Recovery is temporarily unavailable", description: "Soma could not load recovery signals. Previously displayed sections are retained. Please retry for missing sections." },
+  activity: { title: "Activity is temporarily unavailable", description: "Soma could not load activity data. Previously displayed sections are retained. Please retry for missing sections." },
 };
 
 export function HealthErrorState({ route, reset }: { route: HealthRoute; reset: () => void }) {
@@ -21,5 +21,5 @@ export function HealthErrorState({ route, reset }: { route: HealthRoute; reset: 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
   }, []);
-  return <section className={`${styles.root} ${observatoryStyles.observatory} health-observatory-route health-observatory-error`} aria-labelledby="health-error-title"><div className={`${styles.panel} health-observatory-error-panel`} role="alert"><AlertTriangle size={24} aria-hidden="true" /><div><h1 id="health-error-title" ref={headingRef} tabIndex={-1}>{routeCopy.title}</h1><p>{routeCopy.description}</p><button type="button" onClick={reset}>Réessayer</button></div></div></section>;
+  return <section className={`${styles.root} ${observatoryStyles.observatory} health-observatory-route health-observatory-error`} aria-labelledby="health-error-title"><div className={`${styles.panel} health-observatory-error-panel`} role="alert"><AlertTriangle size={24} aria-hidden="true" /><div><h1 id="health-error-title" ref={headingRef} tabIndex={-1}>{routeCopy.title}</h1><p>{routeCopy.description}</p><button type="button" onClick={reset}>Retry</button></div></div></section>;
 }
