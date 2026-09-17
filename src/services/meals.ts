@@ -22,7 +22,7 @@ import * as cloudflareDb from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
 import {
-  deleteMeal,
+  deleteMeal as deleteMealRecord,
   deletePhoto,
   findLatestMealAnalysis,
   findMealAnalysisByRequestId,
@@ -57,6 +57,13 @@ export class MealServiceError extends Error {
     super(message);
     this.name = "MealServiceError";
   }
+}
+
+export async function deleteMeal(userId: string, mealId: string) {
+  if (await findActiveMealAnalysis(userId, mealId)) {
+    throw new MealServiceError("conflict", "Wait for the current analysis to finish before deleting this meal.");
+  }
+  return deleteMealRecord(userId, mealId);
 }
 
 const PHOTO_PURGE_ERROR = "Les photos du repas n’ont pas pu être purgées. Réessaie pour terminer la confirmation.";
@@ -1079,4 +1086,4 @@ export async function loadConfirmedMealRecords(userId: string, options: { from?:
   });
 }
 
-export { deleteMeal, findMeal, findMealPhoto, listMealPhotos, listMeals };
+export { findMeal, findMealPhoto, listMealPhotos, listMeals };

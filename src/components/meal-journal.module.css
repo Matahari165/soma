@@ -364,6 +364,24 @@
 .retryButton { border-color: var(--ink); background: transparent; color: var(--ink); }
 .retryButton:hover { border-color: var(--danger); background: var(--danger-soft); color: var(--ink); }
 
+.mealDeleteRow { display: flex; justify-content: flex-end; padding-top: 4px; }
+.labMealDeleteRow { display: flex; justify-content: flex-end; margin-top: -8px; padding: 0 12px 8px; }
+.deleteMealButton {
+  min-height: 44px;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.deleteMealButton:hover:not(:disabled) { color: var(--danger); text-decoration-color: currentColor; }
+.deleteMealButton:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+.deleteMealButton:disabled { cursor: wait; opacity: .5; }
+
 .photoGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

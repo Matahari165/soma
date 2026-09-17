@@ -1037,6 +1037,35 @@ function storageRow(table: string, row: Row, explicitConflict?: string): Supabas
   };
 }
 
+async function bumpSupabaseLabMatrixRevisions(userIds: readonly string[]) {
+  const uniqueUserIds = [...new Set(userIds)];
+  for (const userId of uniqueUserIds) {
+    const current = await readSupabaseStorageRows(
+      LAB_MATRIX_REVISION_TABLE,
+      [{ field: "user_id", operator: "eq", value: userId }],
+      [],
+      [],
+      0,
+      undefined,
+      1,
+      false,
+      undefined,
+    );
+    const revision = Number(current[0]?.revision);
+    const nextRevision = Number.isSafeInteger(revision) && revision >= 0 ? revision + 1 : 1;
+    const stored = storageRow(LAB_MATRIX_REVISION_TABLE, {
+      user_id: userId,
+      revision: nextRevision,
+      updated_at: new Date().toISOString(),
+    }, "user_id");
+    await supabaseRequest<unknown[]>("soma_rows?on_conflict=table_name%2Crow_key", {
+      method: "POST",
+      headers: new Headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify([stored]),
+    });
+  }
+}
+
 function logicalRow(item: SupabaseStoredRow) {
   const row = cleanRow(item.json_data ?? {});
   if (row.user_id === undefined && item.user_id !== null) row.user_id = item.user_id;
@@ -1270,6 +1299,9 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     }
 
     if (mutation.kind === "delete") {
+      if (existing.length && affectsLabMatrixRevision(this.table)) {
+        await bumpSupabaseLabMatrixRevisions(existing.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []));
+      }
       for (const row of existing) await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${stableIdentity(this.table, row)}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
       return this.shape(existing);
     }

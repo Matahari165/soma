@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 const date = "2026-08-31";
 
@@ -13,11 +13,11 @@ describe("MealJournal", () => {
       date,
       meals: {
         lunch: {
-          id: "meal-confirmed-source",
+          id: "persisted-confirmed-source",
           date,
           slot: "lunch",
           note: "Déjeuner pris au calme.",
-          photos: [{ id: "photo-source", url: "/api/meals/meal-confirmed-source/photos/photo-source", filename: "lunch.jpg", origin: "homemade" }],
+          photos: [{ id: "photo-source", url: "/api/meals/persisted-confirmed-source/photos/photo-source", filename: "lunch.jpg", origin: "homemade" }],
           analysis: { ingredients: [], calories: { low: 400, likely: 500, high: 600 }, proteinGrams: { low: 20, likely: 25, high: 30 } },
           mouthHeat: null,
           stomachLoad: null,
@@ -34,10 +34,78 @@ describe("MealJournal", () => {
     expect(lunch).toContain("Déjeuner pris au calme.");
     expect(lunch).toContain("Photo analyzed then purged.");
     expect(lunch).not.toContain('alt="Photo originale 1 du repas"');
-    expect(lunch).not.toContain("/api/meals/meal-confirmed-source/photos/photo-source");
+    expect(lunch).not.toContain("/api/meals/persisted-confirmed-source/photos/photo-source");
     expect(lunch).toContain("Confirmed");
     expect(lunch).toContain("<textarea");
     expect(lunch).not.toContain("Photo origin");
+    expect(lunch).toContain(">Delete meal</button>");
+  });
+
+  it("ne propose pas de supprimer un brouillon qui n’est pas encore enregistré", () => {
+    const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {
+      lunch: {
+        id: "meal-local-draft",
+        date,
+        slot: "lunch",
+        note: "Brouillon local",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "draft",
+      },
+    } }} />);
+
+    expect(html).not.toContain(">Delete meal</button>");
+  });
+
+  it("supprime un repas enregistré avec la route dédiée", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await defaultRemoveMeal("meal/with spaces");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/meals/meal%2Fwith%20spaces", { method: "DELETE" });
+  });
+
+  it.each(["accepted", "analyzing"] as const)("masque la suppression pendant une analyse %s", (status) => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {
+      lunch: {
+        id: "persisted-active-meal",
+        date,
+        slot: "lunch",
+        note: "Repas en cours",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status,
+      },
+    } }} />);
+
+    expect(html).not.toContain(">Delete meal</button>");
+  });
+
+  it.each([
+    { disabledSlots: ["lunch"] as const, entryState: "recorded" as const },
+    { disabledSlots: [] as const, entryState: "skipped" as const },
+  ])("masque la suppression d’un créneau désactivé ou ignoré", ({ disabledSlots, entryState }) => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" disabledSlots={[...disabledSlots]} date={date} today={date} initialData={{ date, meals: {
+      lunch: {
+        id: "persisted-disabled-meal",
+        date,
+        slot: "lunch",
+        note: "Repas conservé",
+        photos: [],
+        analysis: { ingredients: [], calories: { low: 300, likely: 350, high: 400 }, proteinGrams: { low: 10, likely: 12, high: 14 } },
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "confirmed",
+        entryState,
+      },
+    } }} />);
+
+    expect(html).not.toContain(">Delete meal</button>");
   });
 
   it("explique clairement les photos refusées au-delà de la limite", () => {
