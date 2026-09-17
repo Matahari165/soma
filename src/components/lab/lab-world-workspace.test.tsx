@@ -11,7 +11,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
   const mockOverview: PersonalLabOverview = {
     todayDate: "2026-09-12",
     overnightFingerprint: null,
-    greetingName: "Jérémy",
+    greetingName: "Alex",
     timeZone: "Europe/Paris",
     today: {
       sleepMinutes: 480,
@@ -114,15 +114,15 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
         journal={mockJournal}
         effects={<div id="effects-test" />}
         personalization={{
-          name: "Jérémy Delloume",
+          name: "Alex Vance",
           timeZone: "Europe/Paris",
           activity,
-          initialMessage: arrivalMessageFor({ name: "Jérémy Delloume", timeZone: "Europe/Paris", now: new Date("2026-09-12T20:00:00+02:00"), activity }),
+          initialMessage: arrivalMessageFor({ name: "Alex Vance", timeZone: "Europe/Paris", now: new Date("2026-09-12T20:00:00+02:00"), activity }),
         }}
       />
     );
 
-    expect(html).toMatch(/Jérémy/);
+    expect(html).toMatch(/Alex/);
     expect(html).toContain("Run recorded · 7.2 km · 44 min");
   });
 });

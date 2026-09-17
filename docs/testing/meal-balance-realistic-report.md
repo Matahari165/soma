@@ -466,8 +466,8 @@ Dimensions du score : toutes indisponibles, car aucun repas conforme n’a attei
 ## Reproduction
 
 ```bash
-CI=true /Users/jeremydelloume/Downloads/Soma/node_modules/.bin/vitest run src/scripts/meal-balance-realistic-test.test.ts src/scripts/meal-balance-realistic-live.test.ts
-MEAL_BALANCE_REALISTIC_LIVE=1 CI=true /Users/jeremydelloume/Downloads/Soma/node_modules/.bin/vitest run src/scripts/meal-balance-realistic-live.test.ts
+CI=true pnpm vitest run src/scripts/meal-balance-realistic-test.test.ts src/scripts/meal-balance-realistic-live.test.ts
+MEAL_BALANCE_REALISTIC_LIVE=1 CI=true pnpm vitest run src/scripts/meal-balance-realistic-live.test.ts
 node scripts/render-meal-balance-realistic-report.mjs
 ```
 
