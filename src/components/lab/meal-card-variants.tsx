@@ -180,6 +180,7 @@ export interface LabMealCardProps {
   onConfirm?: () => void;
   onEdit?: () => void;
   onMarkSkipped?: () => void;
+  onMarkRecorded?: () => void;
   confirmError?: string | null;
 }
 
@@ -199,6 +200,7 @@ export function LabMealCard({
   onNote,
   onEdit,
   onMarkSkipped,
+  onMarkRecorded,
   confirmError,
 }: LabMealCardProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -292,6 +294,27 @@ export function LabMealCard({
     </>
   );
 
+  if (isSkipped) {
+    return (
+      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || mutationBusy}>
+        <div className={styles.headerRow}>
+          <div className={styles.titleArea}>
+            <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
+            <span className={styles.statusPill}>Skipped</span>
+          </div>
+        </div>
+        <div className={styles.skippedState} role="status" aria-live="polite">
+          <div className={styles.skippedCopy}>
+            <strong>Skipped</strong>
+            <span>This slot is excluded from meal totals.</span>
+          </div>
+          {onMarkRecorded && <button type="button" className={styles.restoreButton} disabled={disabled || mutationBusy} onClick={onMarkRecorded}>Log this meal</button>}
+        </div>
+        {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+      </article>
+    );
+  }
+
   // Photos previews during draft
   const photoStrip = hasPhotos && !isFilled && (
     <div className={styles.photoThumbnails}>
@@ -366,7 +389,7 @@ export function LabMealCard({
                 disabled={disabled || mutationBusy}
                 onClick={onMarkSkipped}
               >
-                Skipped
+                Skip
               </button>
             )}
           </div>
@@ -492,7 +515,7 @@ export function LabMealCard({
                 disabled={disabled || mutationBusy}
                 onClick={onMarkSkipped}
               >
-                Skipped
+                Skip
               </button>
             )}
           </div>
@@ -605,7 +628,7 @@ export function LabMealCard({
                   disabled={disabled || mutationBusy}
                   onClick={onMarkSkipped}
                 >
-                  Skipped
+                  Skip
                 </button>
               )}
             </div>
@@ -710,7 +733,7 @@ export function LabMealCard({
                   disabled={disabled || mutationBusy}
                   onClick={onMarkSkipped}
                 >
-                  Skipped
+                  Skip
                 </button>
               )}
             </div>

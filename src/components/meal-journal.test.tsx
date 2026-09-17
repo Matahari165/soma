@@ -187,7 +187,62 @@ describe("MealJournal", () => {
     expect(html.match(/>Camera<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Analyze meal<\/span>/g)).toHaveLength(3);
+    expect(html.match(/>Skip<\/button>/g)).toHaveLength(3);
     expect(html).not.toContain('aria-label="Edit daily targets"');
+  });
+
+  it("renders Skip for every empty lab slot and a reversible state after skipping", () => {
+    const emptyHtml = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {} }} />);
+    expect(emptyHtml.match(/>Skip<\/button>/g)).toHaveLength(4);
+
+    const skippedHtml = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {
+      breakfast: {
+        id: "meal-skipped-breakfast",
+        date,
+        slot: "breakfast",
+        note: "",
+        photos: [],
+        analysis: null,
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "confirmed",
+        entryState: "skipped",
+      },
+    } }} />);
+    const breakfastStart = skippedHtml.indexOf('id="meal-breakfast-title"');
+    const lunchStart = skippedHtml.indexOf('id="meal-lunch-title"');
+    const breakfast = skippedHtml.slice(breakfastStart, lunchStart);
+
+    expect(breakfast).toContain("Skipped");
+    expect(breakfast).toContain("Log this meal");
+    expect(breakfast).not.toContain("<textarea");
+    expect(breakfast).not.toContain("Camera");
+    expect(breakfast).not.toContain("Photos");
+  });
+
+  it("keeps skipped confirmed meals out of the client nutrition totals", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="meals" showDateNavigation={false} date={date} today={date} initialData={{ date, meals: {
+      lunch: {
+        id: "meal-skipped-lunch-with-old-analysis",
+        date,
+        slot: "lunch",
+        note: "",
+        photos: [],
+        analysis: {
+          ingredients: [],
+          calories: { low: 700, likely: 800, high: 900 },
+          proteinGrams: { low: 20, likely: 25, high: 30 },
+        },
+        mouthHeat: null,
+        stomachLoad: null,
+        status: "confirmed",
+        entryState: "skipped",
+      },
+    } }} />);
+
+    expect(html).toContain("Calories");
+    expect(html).toContain("—<small>kcal / 3,000 kcal</small>");
+    expect(html).not.toContain("800 kcal");
   });
 
   it("réserve l’édition des cibles au journal qui l’autorise", () => {

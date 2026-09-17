@@ -568,7 +568,7 @@ function likelyLabel(range: NutritionRange | undefined) {
 type DayTotal = { calories: number | null; protein: number | null; fat: number | null; carbs: number | null; fiber: number | null; addedSugar: number | null };
 
 function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
-  const confirmed = MEAL_SLOTS.map((slot) => meals[slot]).filter((meal): meal is MealRecord => meal !== null && meal !== undefined && meal.status === "confirmed");
+  const confirmed = MEAL_SLOTS.map((slot) => meals[slot]).filter((meal): meal is MealRecord => meal !== null && meal !== undefined && meal.status === "confirmed" && meal.entryState !== "skipped");
   if (confirmed.length === 0) return null;
   let calories: number | null = 0;
   let protein: number | null = 0;
@@ -988,7 +988,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.status}>{visibleStatus}</span> : null}
         {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
-        {meal?.analysis && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
+        {meal?.analysis && !skipped && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
         {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.status ?? "empty"}>{meal?.status === "confirmed" && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
       </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.status ?? "empty"}>{meal?.status === "confirmed" && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
@@ -2033,6 +2033,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onNote={(note) => setNote(slot, note)}
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}
+                onMarkRecorded={() => void changeEntryState(slot, "recorded")}
               />
               {meal && !disabledSlots.includes(slot) && meal.entryState !== "skipped" && meal.status !== "accepted" && meal.status !== "analyzing" && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.labMealDeleteRow}>
                 <button className={styles.deleteMealButton} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>

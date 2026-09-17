@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { Suspense, use, useEffect, useMemo, useRef, useState, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival, type LabArrivalPersonalization } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
+import { PersonalLabJournalLoading } from "./personal-lab";
 
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -32,10 +33,33 @@ function writeDateToUrl(date: string) {
   window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
 }
 
+function StreamedJournalCapture({
+  journalPromise,
+  selectedDate,
+  onDateChange,
+  availableDates,
+}: {
+  journalPromise: Promise<PersonalLabJournal>;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+  availableDates: readonly string[];
+}) {
+  const journal = use(journalPromise);
+  return <PersonalLabJournalWorkspace
+    data={journal}
+    recentDatesFirst
+    selectedDate={selectedDate}
+    onDateChange={onDateChange}
+    availableDates={availableDates}
+    hideAddMealButton
+  />;
+}
+
 export function LabWorldWorkspace({
   date: initialDateString,
   effects,
   capture,
+  journalPromise,
   radar,
   overview,
   journal,
@@ -46,6 +70,7 @@ export function LabWorldWorkspace({
   radar?: ReactNode;
   effects?: ReactNode;
   capture?: ReactNode;
+  journalPromise?: Promise<PersonalLabJournal>;
   overview?: PersonalLabOverview;
   journal?: PersonalLabJournal;
   initialSelectedDate?: string;
@@ -63,6 +88,7 @@ export function LabWorldWorkspace({
   // Keep the server and first client render identical. The optional URL date
   // is applied by the effect below once the browser is mounted.
   const [selectedDate, setSelectedDate] = useState(() => initialSelectedDate ?? todayDate ?? "");
+  const [urlDateApplied, setUrlDateApplied] = useState(() => Boolean(initialSelectedDate));
   const activeDate = (availableDates.length > 0 && availableDates.includes(selectedDate))
     ? selectedDate
     : (todayDate ?? selectedDate);
@@ -70,26 +96,32 @@ export function LabWorldWorkspace({
   useEffect(() => {
     if (initialSelectedDate || availableDates.length === 0) return;
     const urlDate = dateFromUrl();
-    if (!urlDate || !availableDates.includes(urlDate)) return;
-    const apply = window.setTimeout(() => setSelectedDate((current) => current === urlDate ? current : urlDate), 0);
+    const apply = window.setTimeout(() => {
+      if (urlDate && availableDates.includes(urlDate)) {
+        setSelectedDate((current) => current === urlDate ? current : urlDate);
+      }
+      setUrlDateApplied(true);
+    }, 0);
     return () => window.clearTimeout(apply);
   }, [availableDates, initialSelectedDate]);
 
   useEffect(() => {
-    if (!activeDate || !/^\d{4}-\d{2}-\d{2}$/.test(activeDate)) return;
-    const urlDate = dateFromUrl();
-    if (!initialSelectedDate && urlDate && availableDates.includes(urlDate) && urlDate !== activeDate) return;
+    if (!urlDateApplied || !activeDate || !/^\d{4}-\d{2}-\d{2}$/.test(activeDate)) return;
     writeDateToUrl(activeDate);
-  }, [activeDate, availableDates, initialSelectedDate]);
+  }, [activeDate, urlDateApplied]);
 
   useEffect(() => {
     function onPopState() {
       const urlDate = dateFromUrl();
-      if (urlDate && availableDates.includes(urlDate)) setSelectedDate(urlDate);
+      if (urlDate && availableDates.includes(urlDate)) {
+        setSelectedDate(urlDate);
+      } else if (!urlDate && todayDate) {
+        setSelectedDate(todayDate);
+      }
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [availableDates]);
+  }, [availableDates, todayDate]);
 
   const formattedDate = useMemo(() => {
     if (!activeDate) return initialDateString ?? "";
@@ -130,6 +162,15 @@ export function LabWorldWorkspace({
       onDateChange={setSelectedDate}
       availableDates={availableDates}
     />
+  ) : journalPromise ? (
+    <Suspense fallback={<PersonalLabJournalLoading />}>
+      <StreamedJournalCapture
+        journalPromise={journalPromise}
+        selectedDate={activeDate}
+        onDateChange={setSelectedDate}
+        availableDates={availableDates}
+      />
+    </Suspense>
   ) : capture;
 
   useEffect(() => {
