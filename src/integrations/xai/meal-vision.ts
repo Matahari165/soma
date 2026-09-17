@@ -105,6 +105,17 @@ export function isXaiVisionMimeType(mimeType: string) {
 }
 
 const MAX_PROVIDER_ATTEMPTS = 2;
+const DEFAULT_PROVIDER_TIMEOUT_MS = 15_000;
+const MAX_PROVIDER_TIMEOUT_MS = 15_000;
+const TEXT_PROVIDER_TIMEOUT_MS = 10_000;
+const VALIDATOR_TIMEOUT_MS = 8_000;
+
+function providerTimeoutMs(fallback: number, requested?: number) {
+  const configured = requested ?? Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || fallback);
+  return Number.isFinite(configured)
+    ? Math.min(MAX_PROVIDER_TIMEOUT_MS, Math.max(1_000, configured))
+    : fallback;
+}
 
 /** Bump these identifiers whenever the provider contract changes. */
 export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v2";
@@ -687,9 +698,9 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const payloadBytes = JSON.stringify(payload).length;
     const startedAt = Date.now();
     let response: Response;
-    const timeoutMs = request.timeoutMs ?? Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || 45_000);
+    const timeoutMs = providerTimeoutMs(imageCount === 0 ? TEXT_PROVIDER_TIMEOUT_MS : DEFAULT_PROVIDER_TIMEOUT_MS, request.timeoutMs);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? Math.max(1_000, timeoutMs) : 45_000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
       response = await fetch(request.endpoint, {
         method: "POST",
@@ -713,17 +724,17 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         code,
         reason: error instanceof Error ? error.name : "unknown",
       });
+      clearTimeout(timeoutId);
       lastError = classified;
       if (attempt < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
         continue;
       }
       throw classified;
-    } finally {
-      clearTimeout(timeoutId);
     }
     const durationMs = Date.now() - startedAt;
     if (!response.ok) {
+      clearTimeout(timeoutId);
       const retryable = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
       const code: MealVisionErrorCode = response.status === 401 || response.status === 403
         ? "provider_auth"
@@ -765,6 +776,9 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     try {
       body = await response.json();
     } catch (error) {
+      clearTimeout(timeoutId);
+      const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      const code = timeout ? "provider_timeout" : "response_parse_error";
       console.error("[meal-analysis] provider response could not be decoded", {
         requestId: request.requestId,
         provider: request.provider,
@@ -774,11 +788,18 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         imageCount,
         payloadBytes,
         durationMs,
-        code: "response_parse_error",
+        code,
         reason: error instanceof Error ? error.name : "unknown",
       });
-      throw new MealVisionError("response_parse_error", "La réponse du provider est illisible.", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
+      const classified = new MealVisionError(code, providerMessage(request.provider, code), { cause: error, provider: request.provider, requestId: request.requestId, retryable: timeout });
+      if (timeout && attempt < maxAttempts) {
+        lastError = classified;
+        await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
+        continue;
+      }
+      throw classified;
     }
+    clearTimeout(timeoutId);
     const responseStatus = body && typeof body === "object" && typeof (body as { status?: unknown }).status === "string"
       ? (body as { status: string }).status
       : undefined;
@@ -905,7 +926,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   throw lastError instanceof Error ? lastError : new MealVisionError("provider_unavailable", providerMessage(request.provider, "provider_unavailable"), { provider: request.provider, requestId: request.requestId });
 }
 
-async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, sourcePhotoIds, requestId, maxAttempts }: {
+async function requestGrokAnalysis({ model, instructions, promptText, imageContents, maxOutputTokens, sourcePhotoIds, requestId, maxAttempts, timeoutMs }: {
   model: string;
   instructions: string;
   promptText: string;
@@ -914,6 +935,7 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
   sourcePhotoIds?: readonly string[];
   requestId?: string;
   maxAttempts?: number;
+  timeoutMs?: number;
 }) {
   return requestStructuredMealAnalysis({
     provider: "xai",
@@ -927,10 +949,11 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
     sourcePhotoIds,
     requestId,
     maxAttempts,
+    timeoutMs,
   });
 }
 
-async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string) {
+async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string, timeoutMs?: number) {
   return requestStructuredMealAnalysis({
     provider: "openai",
     endpoint: process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses",
@@ -947,15 +970,16 @@ async function requestOpenAiMealValidation(input: MealVisionVerificationInput, m
     reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low",
     requestId: input.requestId,
     maxAttempts: 1,
+    timeoutMs,
   });
 }
 
-export function createXaiMealVisionProvider(options: { maxAttempts?: number } = {}): MealVisionProvider {
+export function createXaiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
   const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const validator: MealVisionProvider["verify"] = process.env.OPENAI_API_KEY
-    ? (input) => requestOpenAiMealValidation(input, openAiValidatorModel)
+    ? (input) => requestOpenAiMealValidation(input, openAiValidatorModel, VALIDATOR_TIMEOUT_MS)
     : process.env.XAI_MEAL_VALIDATOR_MODEL
       ? (input) => requestGrokAnalysis({
         model: xaiValidatorModel,
@@ -966,6 +990,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         sourcePhotoIds: input.images.map((image) => image.id),
         requestId: input.requestId,
         maxAttempts: 1,
+        timeoutMs: VALIDATOR_TIMEOUT_MS,
       })
       : undefined;
   return {
@@ -986,6 +1011,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         sourcePhotoIds: input.images.map((image) => image.id),
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(DEFAULT_PROVIDER_TIMEOUT_MS),
       });
     },
     async analyzeText(input) {
@@ -998,6 +1024,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number } = 
         sourcePhotoIds: [],
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(TEXT_PROVIDER_TIMEOUT_MS),
       });
     },
     ...(validator ? { verify: validator } : {}),

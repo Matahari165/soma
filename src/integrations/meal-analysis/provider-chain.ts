@@ -58,8 +58,8 @@ function fallbackProvider(primary: MealVisionProvider) {
   // The primary adapter already used its two-attempt retry budget. A single
   // fallback attempt still allows recovery from a transient primary outage
   // without changing the two-model validation contract.
-  if (primary.name === "xai" && process.env.OPENAI_API_KEY) return createOpenAiMealVisionProvider({ maxAttempts: 1 });
-  if (primary.name === "openai" && process.env.XAI_API_KEY) return createXaiMealVisionProvider({ maxAttempts: 1 });
+  if (primary.name === "xai" && process.env.OPENAI_API_KEY) return createOpenAiMealVisionProvider({ maxAttempts: 1, timeoutMs: 8_000 });
+  if (primary.name === "openai" && process.env.XAI_API_KEY) return createXaiMealVisionProvider({ maxAttempts: 1, timeoutMs: 8_000 });
   return null;
 }
 

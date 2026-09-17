@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { JournalVariable } from "@/domain/lab/journal";
-import { breakfastIsExplicitlySkipped, mealQuickSlotIsFilled, MealQuickCapture, morningJournalIsConfirmed } from "./meal-quick-capture";
+import { breakfastIsExplicitlySkipped, createMealAndAnalyze, mealQuickSlotIsFilled, MealQuickCapture, morningJournalIsConfirmed } from "./meal-quick-capture";
 
 const breakfast = { id: "breakfast-id", name: "Breakfast", variableType: "boolean", unit: null, options: [], position: 10, isActive: true, emoji: "🍳", defaultValue: false, dayPeriod: "morning" } satisfies JournalVariable;
 const todayDate = "2026-08-31";
@@ -21,6 +21,8 @@ describe("MealQuickCapture", () => {
     expect(html).not.toContain("Midi");
     expect(html).not.toContain("Soir");
     expect(html.match(/>Photo</g)).toHaveLength(4);
+    expect(html.match(/>Analyser le texte</g)).toHaveLength(4);
+    expect(html.match(/<textarea/g)).toHaveLength(4);
   });
 
   it("only disables breakfast for an explicit no on a validated day", () => {
@@ -54,5 +56,21 @@ describe("MealQuickCapture", () => {
     const html = renderToStaticMarkup(<MealQuickCapture todayDate={todayDate} variables={[breakfast]} entries={[]} days={[]} breakfastDisabledOverride />);
     expect(html).toContain(">Ignoré</button>");
     expect(html).toContain("disabled=\"\"");
+  });
+
+  it("sends a text-only meal without creating a photo upload", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ meal: { id: "meal-text", note: "" } }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ meal: { id: "meal-text", note: "2 bananes" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ analysis: { status: "queued" } }), { status: 202 }));
+
+    await createMealAndAnalyze(todayDate, "snack", { note: "2 bananes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/meals/meal-text");
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ note: "2 bananes" });
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/meals/meal-text/analyze");
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/photos"))).toBe(false);
+    fetchMock.mockRestore();
   });
 });
