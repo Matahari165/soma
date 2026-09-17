@@ -69,6 +69,10 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     const deleted = await deleteMeal(user.id, id);
     return deleted ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Meal not found." }, { status: 404 });
   } catch (error) {
-    return error instanceof MealServiceError ? NextResponse.json({ error: error.message }, { status: 503 }) : NextResponse.json({ error: "Meal could not be deleted." }, { status: 500 });
+    if (error instanceof MealServiceError) {
+      const status = error.code === "conflict" ? 409 : error.code === "not_found" ? 404 : 503;
+      return NextResponse.json({ error: error.message, code: error.code }, { status });
+    }
+    return NextResponse.json({ error: "Meal could not be deleted." }, { status: 500 });
   }
 }

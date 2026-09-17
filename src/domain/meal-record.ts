@@ -130,6 +130,7 @@ export type MealJournalApi = {
   analyze?: (input: AnalyzeMealInput) => Promise<MealRecord>;
   save?: (meal: MealRecord) => Promise<MealRecord>;
   setEntryState?: (meal: MealRecord, entryState: MealEntryState) => Promise<MealRecord>;
+  removeMeal?: (mealId: string) => Promise<void>;
   removePhoto?: (mealId: string, photoId: string) => Promise<void>;
   updatePhotoOrigin?: (mealId: string, photoId: string, origin: MealOrigin) => Promise<void>;
 };

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   findMeal: vi.fn(),
+  findActiveMealAnalysis: vi.fn(),
+  deleteMeal: vi.fn(),
   findMealAnalysisByRequestId: vi.fn(),
   findMealForSlot: vi.fn(),
   insertMeal: vi.fn(),
@@ -16,13 +18,13 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/meals", () => ({
-  deleteMeal: vi.fn(), deletePhoto: vi.fn(), findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, touchMealAnalysis: state.touchMealAnalysis, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
+  deleteMeal: state.deleteMeal, deletePhoto: vi.fn(), findActiveMealAnalysis: state.findActiveMealAnalysis, findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: vi.fn(), findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: vi.fn(), listMealPhotos: vi.fn(), listMeals: state.listMeals, touchMealAnalysis: state.touchMealAnalysis, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
 }));
 vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn(), claimCloudflareLockWithToken: vi.fn(), refreshCloudflareLockWithToken: vi.fn(), releaseCloudflareLockWithToken: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 
-import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
+import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, deleteMeal, loadConfirmedMealRecords, MealServiceError, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, touchMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, claimCloudflareLockWithToken, refreshCloudflareLockWithToken, releaseCloudflareLock } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject } from "@/lib/r2";
@@ -41,11 +43,25 @@ describe("meal analysis provenance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.findRelevantMealRecipeReferences.mockResolvedValue([]);
+    state.findActiveMealAnalysis.mockResolvedValue(null);
+    state.deleteMeal.mockResolvedValue(true);
     const meal = { id: "12345678-1234-1234-1234-123456789012", userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" }], analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: null, error: null, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" } };
     state.findMeal.mockResolvedValue(meal);
     state.findMealForSlot.mockResolvedValue(null);
     state.insertMealAnalysis.mockResolvedValue({ ...meal.analysis, id: "analysis-user", provider: "user", model: "confirmed-v1", result: canonicalCorrection });
     state.updatePhotoStorage.mockResolvedValue({ id: "photo-1" });
+  });
+
+  it.each(["queued", "running"])("refuse la suppression pendant une analyse %s", async (status) => {
+    state.findActiveMealAnalysis.mockResolvedValue({ id: "analysis-active", status });
+
+    await expect(deleteMeal("user-1", "12345678-1234-1234-1234-123456789012")).rejects.toMatchObject({ code: "conflict" });
+    expect(state.deleteMeal).not.toHaveBeenCalled();
+  });
+
+  it("supprime le repas lorsqu’aucune analyse n’est active", async () => {
+    await expect(deleteMeal("user-1", "12345678-1234-1234-1234-123456789012")).resolves.toBe(true);
+    expect(state.deleteMeal).toHaveBeenCalledWith("user-1", "12345678-1234-1234-1234-123456789012");
   });
 
   it("stores a user correction as a new analysis without replacing the Grok run", async () => {

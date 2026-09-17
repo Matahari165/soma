@@ -474,6 +474,10 @@ async function defaultRemovePhoto(mealId: string, photoId: string) {
   await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos/${encodeURIComponent(photoId)}`, { method: "DELETE" }));
 }
 
+export async function defaultRemoveMeal(mealId: string) {
+  await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "DELETE" }));
+}
+
 function filesByFilename(files: File[], filename?: string) {
   return filename ? files.find((file) => file.name === filename) : undefined;
 }
@@ -892,7 +896,7 @@ function MealSourceEvidence({ meal }: { meal: MealRecord }) {
   </details>;
 }
 
-function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, priority = false, openRequest, onFiles, onRemovePhoto, onOrigin, onAnalyze, onCancelAnalysis, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
+function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled = false, compactEmpty = false, labCompact = false, mealsCompact = false, priority = false, openRequest, onFiles, onRemovePhoto, onDeleteMeal, onOrigin, onAnalyze, onCancelAnalysis, onRating, onRetry, onNote, onCorrection, onMarkSkipped, onMarkRecorded, confirmError }: {
   meal: MealRecord | null;
   slot: MealSlot;
   saving: boolean;
@@ -906,6 +910,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   openRequest?: number;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
+  onDeleteMeal: () => void;
   onOrigin: (photoId: string, origin: MealOrigin) => void;
   onAnalyze: () => void;
   onCancelAnalysis: () => void;
@@ -1041,6 +1046,9 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         {labCompact && confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
       </>}
       {(status === "review" || status === "confirmed") && meal?.error && <p className={styles.confirmError} role="alert">Re-analysis interrupted. The previous analysis is retained. {visibleAnalysisError(meal.error)}</p>}
+      {meal && !disabled && !skipped && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.mealDeleteRow}>
+        <button className={styles.deleteMealButton} type="button" disabled={mutationBusy} onClick={onDeleteMeal}>Delete meal</button>
+      </div>}
     </div>}
   </article>;
 }
@@ -1147,7 +1155,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   const targetEditingEnabled = allowTargetEditing ?? variant !== "lab";
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [analyzingSlots, setAnalyzingSlots] = useState<readonly MealSlot[]>([]);
-  const [pendingDelete, setPendingDelete] = useState<{ slot: MealSlot; photoId: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "photo"; slot: MealSlot; photoId: string } | { kind: "meal"; slot: MealSlot } | null>(null);
   const pendingDeleteTrigger = useRef<HTMLElement | null>(null);
   const pendingDeleteCancelRef = useRef<HTMLButtonElement>(null);
   const objectUrls = useRef(new Set<string>());
@@ -1405,7 +1413,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         return;
       }
       if (event.key !== "Tab") return;
-      const dialog = document.getElementById("meal-photo-delete-dialog");
+      const dialog = document.getElementById("meal-delete-dialog");
       if (!dialog) return;
       const focusable = Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled])"));
       if (focusable.length === 0) return;
@@ -1714,7 +1722,16 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     pendingDeleteTrigger.current = typeof document !== "undefined" && document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
-    setPendingDelete({ slot, photoId });
+    setPendingDelete({ kind: "photo", slot, photoId });
+  };
+
+  const removeMeal = (slot: MealSlot) => {
+    const meal = dataRef.current?.meals[slot];
+    if (!meal || (!meal.analysis && meal.id.startsWith("meal-")) || inFlightSlots.current.has(slot)) return;
+    pendingDeleteTrigger.current = typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    setPendingDelete({ kind: "meal", slot });
   };
 
   const cancelPendingDelete = () => {
@@ -1732,14 +1749,29 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
       return;
     }
     inFlightSlots.current.add(pending.slot);
+    setSavingSlot(pending.slot);
+    let mealDeleted = false;
     try {
-      await (api?.removePhoto ? api.removePhoto(meal.id, pending.photoId) : defaultRemovePhoto(meal.id, pending.photoId));
-      removePhotoFromState(pending.slot, pending.photoId);
+      if (pending.kind === "meal") {
+        await (api?.removeMeal ? api.removeMeal(meal.id) : defaultRemoveMeal(meal.id));
+        setData((current) => current ? { ...current, meals: { ...current.meals, [pending.slot]: null } } : current);
+        setStatusMessage(`${SLOT_LABELS[pending.slot]} deleted.`);
+        mealDeleted = true;
+      } else {
+        await (api?.removePhoto ? api.removePhoto(meal.id, pending.photoId) : defaultRemovePhoto(meal.id, pending.photoId));
+        removePhotoFromState(pending.slot, pending.photoId);
+      }
     } catch (error) {
-      setFileError(error instanceof Error ? error.message : "This photo could not be deleted.");
+      const fallback = pending.kind === "meal" ? "This meal could not be deleted." : "This photo could not be deleted.";
+      setFileError(error instanceof Error ? error.message : fallback);
     } finally {
       inFlightSlots.current.delete(pending.slot);
-      pendingDeleteTrigger.current?.focus();
+      setSavingSlot(null);
+      if (mealDeleted && typeof window !== "undefined") {
+        window.requestAnimationFrame(() => document.getElementById(`meal-${pending.slot}-title`)?.focus({ preventScroll: true }));
+      } else {
+        pendingDeleteTrigger.current?.focus();
+      }
     }
   };
 
@@ -1973,7 +2005,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
           const priority = currentMealSlot === slot && !disabledSlots.includes(slot) && meal?.entryState !== "skipped";
-          return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} priority={priority} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
+          return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} priority={priority} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
         })}</div>
       </section>
       <div className={styles.mealsSecondary}>{children}</div>
@@ -2002,16 +2034,19 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}
               />
+              {meal && !disabledSlots.includes(slot) && meal.entryState !== "skipped" && meal.status !== "accepted" && meal.status !== "analyzing" && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.labMealDeleteRow}>
+                <button className={styles.deleteMealButton} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>
+              </div>}
             </>
           ) : (
-            <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
+            <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
           )
         }</div>;
       })}</div>}
     {pendingDelete && <div className={styles.deleteBackdrop} onClick={(event) => { if (event.target === event.currentTarget) cancelPendingDelete(); }}>
-      <div id="meal-photo-delete-dialog" className={styles.deleteDialog} role="alertdialog" aria-modal="true" aria-labelledby="meal-photo-delete-title" aria-describedby="meal-photo-delete-description">
-        <h3 id="meal-photo-delete-title">Delete this photo?</h3>
-        <p id="meal-photo-delete-description">It will be removed from {SLOT_LABELS[pendingDelete.slot].toLowerCase()}. Already analyzed photos remain described in the note.</p>
+      <div id="meal-delete-dialog" className={styles.deleteDialog} role="alertdialog" aria-modal="true" aria-labelledby="meal-delete-title" aria-describedby="meal-delete-description">
+        <h3 id="meal-delete-title">Delete this {pendingDelete.kind}?</h3>
+        <p id="meal-delete-description">{pendingDelete.kind === "meal" ? `This permanently removes ${SLOT_LABELS[pendingDelete.slot].toLowerCase()} and its analysis from your nutrition totals.` : `It will be removed from ${SLOT_LABELS[pendingDelete.slot].toLowerCase()}. Already analyzed photos remain described in the note.`}</p>
         <div className={styles.deleteActions}>
           <button ref={pendingDeleteCancelRef} className={styles.secondaryButton} type="button" onClick={cancelPendingDelete}>Cancel</button>
           <button className={styles.confirmButton} type="button" onClick={() => void confirmPendingDelete()}>Delete</button>

@@ -130,6 +130,56 @@ describe("Cloudflare D1 read planning", () => {
 });
 
 describe("Supabase storage pagination", () => {
+  it("increments the Personal Lab revision after deleting an analytical row", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? "GET";
+      if (method === "DELETE") return new Response(null, { status: 204 });
+      if (method === "POST") return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+      const table = url.searchParams.get("table_name");
+      if (table === "eq.meal_analyses") {
+        return new Response(JSON.stringify([{
+          table_name: "meal_analyses",
+          row_key: "%5B%5B%22id%22%2C%22analysis-1%22%5D%5D",
+          user_id: "user-1",
+          json_data: { id: "analysis-1", user_id: "user-1", meal_id: "meal-1" },
+          created_at: null,
+          updated_at: null,
+        }]), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify([{
+        table_name: "lab_matrix_revisions",
+        row_key: "%5B%5B%22user_id%22%2C%22user-1%22%5D%5D",
+        user_id: "user-1",
+        json_data: { user_id: "user-1", revision: 7 },
+        created_at: null,
+        updated_at: null,
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("meal_analyses").delete().eq("user_id", "user-1").eq("id", "analysis-1");
+
+      expect(result.error).toBeNull();
+      const revisionWrite = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+      expect(revisionWrite).toBeDefined();
+      const body = JSON.parse(String(revisionWrite?.[1]?.body));
+      expect(body[0].json_data).toMatchObject({ user_id: "user-1", revision: 8 });
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
   it("pushes health filters, repeated time bounds, ordering, and limits to Supabase", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
