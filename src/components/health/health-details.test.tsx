@@ -252,6 +252,21 @@ describe("health route states", () => {
     expect(markup).toContain("Variabilité cardiaque");
     expect(markup).toContain("VFC nocturne");
     expect(markup).toContain("Fréquence respiratoire");
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).toContain('id="recovery-radar-detail"');
+    expect(markup).toContain('data-open="false"');
+  });
+
+  it("shows the measured sample count for partial recovery averages", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
+      data: analytics({
+        days: [day({ hrv_ms: 54, resting_heart_rate: null, respiratory_rate: null, sleep_minutes: 480 })],
+        scores: [{ score_date: "2026-09-10", kind: "recovery", score: 72, drivers: { hrv: 70, sleep: 76, coverage: 0.67 } }],
+      }),
+    }));
+
+    expect(markup).toContain("Moy. 30 j · 54 ms · n=1");
+    expect(markup).toContain("Moy. 30 j · — · n=0");
   });
 
   it("does not render a sample-based heart-rate trend on recovery", () => {

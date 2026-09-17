@@ -37,10 +37,14 @@ function dateWindowEnd<T extends { metric_date: string }>(days: T[], endDate?: s
 }
 
 export function averageLast30Measured<T extends { metric_date: string }, K extends keyof T>(days: T[], key: K, endDate?: string) {
+  return averageLast30MeasuredWithCount(days, key, endDate).value;
+}
+
+export function averageLast30MeasuredWithCount<T extends { metric_date: string }, K extends keyof T>(days: T[], key: K, endDate?: string) {
   const latestDate = dateWindowEnd(days, endDate);
-  if (!latestDate) return null;
+  if (!latestDate) return { value: null, measuredDays: 0 };
   const start = new Date(`${latestDate}T12:00:00.000Z`);
-  if (!Number.isFinite(start.getTime())) return null;
+  if (!Number.isFinite(start.getTime())) return { value: null, measuredDays: 0 };
   start.setUTCDate(start.getUTCDate() - 29);
   const startDate = start.toISOString().slice(0, 10);
   const values: number[] = [];
@@ -49,7 +53,10 @@ export function averageLast30Measured<T extends { metric_date: string }, K exten
     const value = day[key];
     if (typeof value === "number" && Number.isFinite(value)) values.push(value);
   }
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  return {
+    value: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+    measuredDays: values.length,
+  };
 }
 
 export function metricTone(value: number | null, average: number | null, direction: HealthMetricDirection): HealthMetricTone {
