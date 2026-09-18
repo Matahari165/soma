@@ -124,10 +124,7 @@ export function DiscobolusBackdrop({
 
   const photoSrc = PHOTO_MAP[variant] || PHOTO_MAP[normalized];
   const showPhoto = renderMode !== "vector" && Boolean(photoSrc);
-  const showVectorOverlays = renderMode !== "photo";
   const showVectorStatue = renderMode === "vector";
-
-  const isSuperposed = normalized === "superposed";
 
   return (
     <div

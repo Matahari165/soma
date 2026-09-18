@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "mode": "live",
-  "fixtureDirectory": "/Users/jeremydelloume/.codex/worktrees/1cec/Soma/tests/fixtures/meal-balance-realistic",
-  "resultsDirectory": "/Users/jeremydelloume/.codex/worktrees/1cec/Soma/docs/testing/meal-balance-realistic-results/raw",
+  "fixtureDirectory": "tests/fixtures/meal-balance-realistic",
+  "resultsDirectory": "docs/testing/meal-balance-realistic-results/raw",
   "fixtureVersion": 1,
   "targetSource": "default",
   "goalMode": "maintain",

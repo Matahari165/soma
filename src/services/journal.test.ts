@@ -111,14 +111,14 @@ describe("journal read path", () => {
 
 describe("ensureJournalVariables invariant", () => {
   it("never overwrites, inserts or modifies variables for an existing user who already has variables", async () => {
-    const existingJeremyVariables = [
+    const existingUserVariables = [
       { id: "1", name: "WHM", is_active: true, variable_type: "count", unit: "rounds", default_value: 0, day_period: "morning", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
       { id: "2", name: "Masturbation", is_active: true, variable_type: "boolean", unit: null, default_value: false, day_period: "day", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
       { id: "3", name: "Caffeine", is_active: true, variable_type: "number", unit: "mg", default_value: 0, day_period: "day", capture_mode: "manual", automatic_metric_id: null, tracking_cadence: "daily" },
     ];
-    state.from.mockImplementation(() => query(existingJeremyVariables));
+    state.from.mockImplementation(() => query(existingUserVariables));
 
-    await ensureJournalVariables("jeremy-user-id");
+    await ensureJournalVariables("test-user-id");
 
     expect(state.insert).not.toHaveBeenCalled();
     expect(state.update).not.toHaveBeenCalled();

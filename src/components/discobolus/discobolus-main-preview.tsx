@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { DiscobolusBackdrop } from "./discobolus-backdrop";
 import { DiscobolusTopBar } from "./discobolus-top-bar";
 import {
@@ -9,7 +10,16 @@ import {
 } from "./discobolus-types";
 import styles from "./discobolus-main-preview.module.css";
 
+function useSafeRouter() {
+  try {
+    return useRouter();
+  } catch {
+    return null;
+  }
+}
+
 export function DiscobolusMainPreview({ children }: { readonly children: ReactNode }) {
+  const router = useSafeRouter();
   const [variant, setVariant] = useState<DiscobolusVariant>(getInitialDiscobolusVariant);
 
   useEffect(() => {
@@ -25,9 +35,9 @@ export function DiscobolusMainPreview({ children }: { readonly children: ReactNo
 
   const handleViewModeChange = (mode: "main" | "landing") => {
     if (mode === "landing") {
-      window.location.href = "/?view=landing";
+      router?.push("/?view=landing");
     } else {
-      window.location.href = "/";
+      router?.push("/");
     }
   };
 
