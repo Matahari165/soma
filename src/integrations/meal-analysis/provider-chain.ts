@@ -35,11 +35,7 @@ export function getMealAnalysisPipelineConfiguration(): MealAnalysisPipelineConf
     ? process.env.XAI_MEAL_VISION_MODEL || "grok-4.3"
     : process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const primary = providerConfiguration(primaryProvider, primaryModel);
-  const validator = primaryProvider !== "xai" ? null : process.env.OPENAI_API_KEY
-    ? { ...providerConfiguration("openai", process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol"), reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low" }
-    : process.env.XAI_MEAL_VALIDATOR_MODEL
-      ? providerConfiguration("xai", process.env.XAI_MEAL_VALIDATOR_MODEL)
-      : null;
+  const validator = null;
   const fallbackEnabled = process.env.MEAL_ANALYSIS_ENABLE_FALLBACK !== "false";
   const fallback = !fallbackEnabled ? null : primaryProvider === "xai" && process.env.OPENAI_API_KEY
     ? providerConfiguration("openai", process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol")
@@ -93,7 +89,7 @@ export async function analyzeMealInputWithFallback(
   const secondary = options.provider || options.allowFallback === false ? null : fallbackProvider(primary);
   const primaryConfiguration = { provider: primary.name, model: primary.model };
   try {
-    const analysed = await analyzeMealInput(input, primary, { verify: options.verify, requestId: options.requestId });
+    const analysed = await analyzeMealInput(input, primary, { requestId: options.requestId });
     return {
       ...analysed,
       provenance: pipelineProvenance({
@@ -116,7 +112,7 @@ export async function analyzeMealInputWithFallback(
       status: error.status,
     });
     try {
-      const result = await analyzeMealInput(input, secondary, { verify: false, requestId: options.requestId });
+      const result = await analyzeMealInput(input, secondary, { requestId: options.requestId });
       console.info("[meal-analysis] fallback provider succeeded", {
         requestId: options.requestId,
         provider: secondary.name,

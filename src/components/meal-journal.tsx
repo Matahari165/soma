@@ -382,7 +382,8 @@ type DefaultAnalyzeOptions = {
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
   const hasPhotoEvidence = files.length > 0 || (meal.status !== "confirmed" && meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available"));
   const hasTextEvidence = Boolean(meal.note.trim());
-  if (!hasPhotoEvidence && !hasTextEvidence) throw new Error("Add a photo or a description of the meal before starting analysis.");
+  const hasCorrection = Boolean(correction?.trim());
+  if (!hasPhotoEvidence && !hasTextEvidence && !hasCorrection) throw new Error("Add a photo or a description of the meal before starting analysis.");
   const analysisRequestId = randomId("analysis");
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
@@ -2030,6 +2031,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onRemovePhoto={(photoId) => removePhoto(slot, photoId)}
                 onAnalyze={() => void analyzeMeal(slot)}
                 onCancelAnalysis={() => cancelAnalysis(slot)}
+                onCorrection={(correction) => void analyzeMeal(slot, correction)}
                 onNote={(note) => setNote(slot, note)}
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}

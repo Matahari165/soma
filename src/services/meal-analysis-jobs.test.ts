@@ -167,7 +167,7 @@ describe("durable meal analysis jobs", () => {
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
-    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", verify: false, allowFallback: false });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", allowFallback: false });
   });
 
   it("processes the freshly enqueued job instead of an older FIFO job", async () => {

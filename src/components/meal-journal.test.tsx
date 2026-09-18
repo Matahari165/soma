@@ -176,8 +176,8 @@ describe("MealJournal", () => {
     expect(html).toContain("Carbohydrates: 120 g");
     expect(html).toContain("Fat: 16 g");
     expect(html).toContain("Added sugar: 5 g");
-    expect(html).toContain(">Edit<\/button>");
-    expect(html).toContain(">Snack<\/h3>");
+    expect(html).toContain(">Modifier</button>");
+    expect(html).toContain(">Snack</h3>");
     expect(html).toContain('aria-label="Analyze Lunch"');
     expect(html).toContain('aria-label="Take photo for Lunch"');
     expect(html).toContain('aria-label="Choose photos for Lunch"');
@@ -1006,7 +1006,7 @@ describe("apiMealToRecord", () => {
     expect(html).not.toContain("mon petit déjeuner");
     expect(html).toContain("250");
     expect(html).toContain("18");
-    expect(html).toContain("Edit");
+    expect(html).toContain("Modifier");
     expect(html).toContain("Analysis details");
     expect(html).not.toContain("Confirm meal");
   });

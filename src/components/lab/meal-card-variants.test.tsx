@@ -90,4 +90,44 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).not.toContain("Photos");
     expect(html).not.toContain("Analyze meal");
   });
+
+  it("renders a Modifier button on an analyzed meal", () => {
+    const meal: MealRecord = {
+      id: "meal-dinner-analyzed",
+      date: "2026-08-31",
+      slot: "dinner",
+      note: "Poulet et légumes",
+      photos: [],
+      analysis: {
+        dishType: "Poulet et légumes rôtis",
+        ingredients: [],
+        calories: { low: 400, likely: 500, high: 600 },
+        proteinGrams: { low: 30, likely: 40, high: 50 },
+        carbohydratesGrams: { low: 20, likely: 30, high: 40 },
+        fatGrams: { low: 10, likely: 15, high: 20 },
+        addedSugarGrams: { low: 0, likely: 0, high: 2 },
+      },
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "confirmed",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="dinner"
+      targets={DEFAULT_NUTRITION_TARGETS}
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+      onCorrection={() => undefined}
+    />);
+
+    expect(html).toContain("Modifier");
+    expect(html).toContain('aria-label="Modifier Dinner"');
+  });
 });

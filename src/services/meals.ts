@@ -663,7 +663,8 @@ async function enqueueMealAnalysisLocked(userId: string, mealId: string, options
 
   const note = meal.note?.trim() ?? "";
   const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
-  if (!availablePhotos.length && !note) {
+  const hasCorrection = Boolean(options.correction?.trim());
+  if (!availablePhotos.length && !note && !hasCorrection) {
     const lastSuccessful = meal.lastSuccessfulAnalysis ?? (latest?.status === "completed" && latest.result ? latest : null);
     if (lastSuccessful) return { analysis: lastSuccessful, fresh: false, queued: false };
     throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
@@ -674,7 +675,7 @@ async function enqueueMealAnalysisLocked(userId: string, mealId: string, options
   }
   const sourceFingerprint = await computeMealSourceFingerprint({ note: meal.note, photos: meal.photos });
   const lastSuccessful = meal.lastSuccessfulAnalysis ?? (latest?.status === "completed" && latest.result ? latest : null);
-  if (!options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false, queued: false };
+  if (!hasCorrection && !options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false, queued: false };
 
   const configured = options.provider ?? getConfiguredMealAnalysisProvider();
   const row: AnalysisRow = {
@@ -802,7 +803,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
       ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
       ...(candidate.source_previous_analysis ? { previousAnalysis: candidate.source_previous_analysis } : {}),
       ...(recipeReferences.length ? { recipeReferences } : {}),
-    }, { requestId, verify: false, allowFallback: false }));
+    }, { requestId, allowFallback: false }));
     let canonicalResult;
     try {
       canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
@@ -885,15 +886,16 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       if (requestMatch.status === "failed") throw new MealServiceError("unavailable", requestMatch.error ?? "L’analyse du repas a échoué. Réessaie.", requestMatch.errorCode ?? "unknown_analysis_error");
       throw new MealServiceError("conflict", "Cette analyse est déjà en cours.");
     }
+    const hasCorrection = Boolean(options.correction?.trim());
     const lastSuccessful = currentMeal.lastSuccessfulAnalysis ?? (current?.status === "completed" && current.result ? current : null);
-    if (!hasPhotos && !note) {
+    if (!hasPhotos && !note && !hasCorrection) {
       if (lastSuccessful) return { analysis: lastSuccessful, fresh: false };
       throw new MealServiceError("invalid", "Ajoute une photo ou une courte description avant l'analyse.");
     }
     if (availablePhotos.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `Un repas ne peut pas contenir plus de ${MAX_MEAL_PHOTOS} photos pour l’analyse.`);
     if (hasPhotos && !availablePhotos.every((photo) => isXaiVisionMimeType(photo.mimeType))) throw new MealServiceError("invalid", "Les photos de ce repas doivent être en JPEG ou PNG avant l’analyse.");
-    if (!options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false };
-    if (!hasPhotos && !note && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
+    if (!hasCorrection && !options.force && lastSuccessful?.sourceFingerprint === sourceFingerprint) return { analysis: lastSuccessful, fresh: false };
+    if (!hasCorrection && !hasPhotos && !note && lastSuccessful) return { analysis: lastSuccessful, fresh: false };
     const sourcePhotoIds = availablePhotos.map((photo) => photo.id);
     const analysisId = crypto.randomUUID();
     const createdAt = new Date().toISOString();

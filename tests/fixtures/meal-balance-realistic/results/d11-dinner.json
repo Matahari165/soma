@@ -3,7 +3,7 @@
   "caseId": "d11-dinner",
   "mealDate": "2026-09-11",
   "mealType": "dinner",
-  "inputFingerprint": "sha256:2ba95865792516bf6125ce40eb4510a15a19348fe2159c3165f6e864faf1172a",
+  "inputFingerprint": "sha256:c6396ad116a76d8b5b11801d6047ccccab9c1ec5a2bfe5ce9c8ca2571e84754e",
   "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
   "provider": "xai",
   "model": "grok-4.6",
