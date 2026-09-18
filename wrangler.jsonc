@@ -1,4 +1,6 @@
 {
+  // NOTE: Soma is hosted and deployed on VERCEL (https://soma-neon-phi.vercel.app).
+  // This Cloudflare Worker is SOLELY a lightweight cron scheduler that triggers Vercel endpoints.
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "soma",
   "main": "cloudflare/worker.ts",

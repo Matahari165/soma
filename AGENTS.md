@@ -25,6 +25,16 @@
 - Après chaque opération GitHub, vérifie séparément la branche distante, le commit de `main`, la CI et l’état final du dépôt. Si une vérification manque, dis-le clairement.
 - N’exécute pas `pnpm install`, `pnpm verify` ou un build Next pendant qu’un serveur `next dev` utilise le même checkout. Pour la vérification complète, utilise `CI=true pnpm verify`.
 
+## Hébergement et Déploiement — VERCEL EXCLUSIF (JAMAIS CLOUDFLARE)
+
+- **Soma est hébergé et déployé à 100% sur Vercel** (`https://soma-neon-phi.vercel.app`).
+- **Le déploiement en production est ENTIÈREMENT AUTOMATISÉ par Vercel** à chaque merge d'une Pull Request sur la branche `main`.
+- **INTERDICTION FORMELLE DE DÉPLOYER L'APPLICATION SUR CLOUDFLARE.** Ne lance jamais de déploiement d'application, de pages ou de site vers Cloudflare.
+- **Rôle unique et délimité de Cloudflare** :
+  1. Stockage d'archives de santé sur Cloudflare R2 (`soma-health-record-archives`).
+  2. Un worker d'ordonnancement cron ultra-léger (`cloudflare/worker.ts`) servant uniquement d'horloge pour réveiller les routes Vercel (`/api/cron/*`).
+- Ne lance jamais `deploy:cloudflare` ou de build OpenNext pour déployer le site. Le seul et unique cycle de déploiement de l'application est : **branche → modifications → PR → CI verte → merge sur `main` → déploiement automatique Vercel**.
+
 ## Interface et QA visuelle
 
 - Avant toute création, refonte ou modification visuelle, lis `DESIGN.md` en entier et inspecte la page `/` réellement rendue. C’est la référence du thème, de la typographie, de la palette, des composants et du mouvement.
