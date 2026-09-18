@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { defaultJournalVariables, type JournalVariable } from "@/domain/lab/journal";
 
 import { DailyJournal, journalStatusText } from "./daily-journal";
+import { PersonalLabDateStrip } from "./personal-lab-journal-workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -202,5 +203,127 @@ describe("journal motion states", () => {
     expect(html).toContain("Daily Protocol");
     expect(html.slice(actionsStart, actionsEnd)).toContain("Validate day");
     expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
+  });
+
+  it("renders phase counters with 'X sur Y' format without Logged or Completed in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toMatch(/\d+ sur \d+/);
+    expect(html).not.toContain("Logged");
+    expect(html).not.toContain("Completed");
+    expect(html).toContain("text-xs font-mono uppercase tracking-wider text-content-secondary font-medium");
+  });
+
+  it("renders Yes then No buttons when boolean is unrecorded in Personal Lab", () => {
+    const unrecordedBoolean: JournalVariable = {
+      id: "00000000-0000-4000-8000-999999999999",
+      name: "Custom Habit",
+      emoji: "⚡",
+      variableType: "boolean",
+      unit: null,
+      options: [],
+      position: 0,
+      dayPeriod: "morning",
+      defaultValue: null,
+      isActive: true,
+    };
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: [unrecordedBoolean],
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    const yesIdx = html.indexOf(">Yes</button>");
+    const noIdx = html.indexOf(">No</button>");
+    expect(yesIdx).toBeGreaterThan(-1);
+    expect(noIdx).toBeGreaterThan(-1);
+    expect(yesIdx).toBeLessThan(noIdx);
+  });
+
+  it("renders single sage checkmark pill when boolean is true in Personal Lab", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: vacation ? [vacation] : [],
+      entries: vacation ? [{ variableId: vacation.id, entryDate: todayDate, value: true }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-sage");
+    expect(html).toContain("Yes");
+    expect(html).not.toContain(">No</button>");
+  });
+
+  it("renders single cross pill when boolean is false in Personal Lab", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: vacation ? [vacation] : [],
+      entries: vacation ? [{ variableId: vacation.id, entryDate: todayDate, value: false }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-content-secondary");
+    expect(html).toContain("No");
+    expect(html).not.toContain(">Yes</button>");
+  });
+
+  it("renders stepper with stitch-stepper class and without spin buttons in Personal Lab", () => {
+    const addedSugar = variables.find((variable) => variable.name === "Added sugar");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: addedSugar ? [addedSugar] : [],
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("stitch-stepper");
+    expect(html).not.toContain('class="journal-number"');
+    expect(html).toContain("[appearance:textfield]");
+    expect(html).toContain("Decrease Added sugar");
+    expect(html).toContain("Increase Added sugar");
+  });
+
+  it("applies enhanced typography and button styles in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-sm font-medium text-content-primary truncate");
+    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium");
+    expect(html).toContain("text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated");
+  });
+
+  it("renders date strip without pulsing green dot for selected date", () => {
+    const html = renderToStaticMarkup(createElement(PersonalLabDateStrip, {
+      dates: [todayDate],
+      selectedDate: todayDate,
+      todayDate,
+      onDateChange: () => {},
+    }));
+
+    expect(html).not.toContain("animate-pulse");
+    expect(html).toContain("bg-surface-elevated");
   });
 });

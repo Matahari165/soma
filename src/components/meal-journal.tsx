@@ -1211,13 +1211,37 @@ function MealLabHeader({
             {new Intl.NumberFormat("en-US").format(calVal)} / {new Intl.NumberFormat("en-US").format(targetVal)} kcal · {loggedCount} logged · {pendingCount} pending
           </p>
         </div>
-        <div className={styles.labHeaderButtons}>
-          {onToggleTargets && <button type="button" aria-label="Edit daily targets" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={onToggleTargets}><Pencil size={15} aria-hidden="true" /></button>}
-          {!hideAddMealButton && <button type="button" aria-label="Add a meal" title="Add a meal" disabled={addDisabled} onClick={onAddMeal}><Plus size={15} aria-hidden="true" /></button>}
+        <div className="flex items-center gap-2">
+          {onToggleTargets && (
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5"
+              aria-label="Edit daily targets"
+              aria-expanded={targetsExpanded}
+              aria-controls="meal-target-editor"
+              onClick={onToggleTargets}
+            >
+              <Pencil size={13} aria-hidden="true" />
+              <span>Targets</span>
+            </button>
+          )}
+          {!hideAddMealButton && (
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Add a meal"
+              title="Add a meal"
+              disabled={addDisabled}
+              onClick={onAddMeal}
+            >
+              <Plus size={13} aria-hidden="true" />
+              <span>Add meal</span>
+            </button>
+          )}
         </div>
       </div>
       <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
-        <div className="h-full bg-sage rounded-full transition-all duration-300" style={calPct > 0 ? { width: `${calPct}%` } : undefined} />
+        <div className="h-full bg-sage rounded-full transition-all duration-300" style={{ width: `${calPct}%` }} />
       </div>
     </header>
   );
@@ -2184,7 +2208,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onMarkRecorded={() => void changeEntryState(slot, "recorded")}
               />
               {meal && !disabledSlots.includes(slot) && meal.entryState !== "skipped" && meal.status !== "accepted" && meal.status !== "analyzing" && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.labMealDeleteRow}>
-                <button className={styles.deleteMealButton} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>
+                <button className={`${styles.deleteMealButton} text-xs font-sans text-content-secondary hover:text-signal-neg transition-colors`} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>
               </div>}
             </>
           ) : (

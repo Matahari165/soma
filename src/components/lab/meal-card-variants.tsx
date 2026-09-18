@@ -352,6 +352,34 @@ export function LabMealCard({
   );
 
   if (isSkipped) {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-surface-subtle text-content-secondary border border-hairline">Skipped</span>
+            </div>
+            {onMarkRecorded && (
+              <button
+                type="button"
+                className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+                disabled={disabled || mutationBusy}
+                onClick={onMarkRecorded}
+              >
+                Log this meal
+              </button>
+            )}
+          </div>
+          <div className="text-xs text-content-secondary font-sans" role="status" aria-live="polite">
+            <strong className="text-content-primary font-medium mr-1.5">Skipped</strong>
+            <span>This slot is excluded from meal totals.</span>
+          </div>
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || mutationBusy}>
         <div className={styles.headerRow}>
@@ -394,6 +422,41 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" />
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+            </div>
+            <span className="text-xs font-mono text-content-secondary">
+              {analysisProgress?.phase || "Analyse en cours…"}
+            </span>
+          </div>
+          {analysisProgress?.dishType && (
+            <div className="text-xs font-sans text-content-primary font-medium">{analysisProgress.dishType}</div>
+          )}
+          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {analysisProgress.foods.map((food, idx) => (
+                <span key={idx} className="px-2 py-0.5 rounded text-xs font-mono bg-surface-subtle text-content-secondary border border-hairline">{food}</span>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+              onClick={onCancelAnalysis}
+            >
+              Annuler
+            </button>
+          </div>
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         <div className={styles.headerRow}>
@@ -427,6 +490,52 @@ export function LabMealCard({
   }
 
   if (status === "error") {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
+          {fileInputs}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-surface-subtle text-signal-neg border border-hairline">Error</span>
+            </div>
+          </div>
+          {photoStrip}
+          <div className="space-y-1.5" role="alert">
+            <strong className="text-xs font-medium text-signal-neg font-sans block">Analysis interrupted</strong>
+            <p className="text-xs text-content-secondary font-sans">{meal?.error?.trim() || "Results could not be saved."}</p>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              {!isSkipped && onMarkSkipped && (
+                <button
+                  type="button"
+                  className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors"
+                  disabled={disabled || mutationBusy}
+                  onClick={onMarkSkipped}
+                >
+                  Skip
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className={
+                canAnalyze
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans"
+                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium"
+              }
+              disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
+              onClick={handleAnalyzeClick}
+            >
+              Retry
+            </button>
+          </div>
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         {fileInputs}
@@ -493,14 +602,19 @@ export function LabMealCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
-              <span className="font-mono text-[11px] text-content-tertiary">· {mealTimeText}</span>
+              <span className="font-mono text-xs text-content-tertiary">· {mealTimeText}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-[10px] font-mono text-sage">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 Confirmed
               </span>
-              <button type="button" className="text-xs text-content-tertiary hover:text-content-secondary transition-colors" onClick={handleToggleCorrection} aria-label={`Modifier ${slotLabel}`}>
+              <button
+                type="button"
+                className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+                onClick={handleToggleCorrection}
+                aria-label={`Modifier ${slotLabel}`}
+              >
                 Modifier
               </button>
             </div>
@@ -508,16 +622,16 @@ export function LabMealCard({
           {photoStrip}
           <p className="text-xs text-content-secondary leading-relaxed font-sans">{getSummaryText(meal)}</p>
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
-            <p className="text-[11px] text-content-tertiary font-mono">
+            <p className="text-xs text-content-tertiary font-mono">
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
             </p>
           )}
-          <div className="pt-2 border-t border-hairline flex items-center justify-between text-[11px] font-mono">
+          <div className="pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono">
             <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
             <div className="flex items-center gap-3 text-content-secondary">
               <span>{protValue !== null ? `${Math.round(protValue)}g P` : "—g P"}</span>
               <span>{carbsValue !== null ? `${Math.round(carbsValue)}g C` : "—g C"}</span>
-              <span className="text-content-tertiary">{sugarValue !== null ? `${Math.round(sugarValue)}g S` : "0g S"}</span>
+              <span className="text-content-secondary">{sugarValue !== null ? `${Math.round(sugarValue)}g S` : "0g S"}</span>
               <span>{fatValue !== null ? `${Math.round(fatValue)}g F` : "—g F"}</span>
             </div>
           </div>
@@ -548,7 +662,7 @@ export function LabMealCard({
             <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
             <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
           </div>
-          <span className="text-[11px] font-mono text-content-tertiary">Target: &lt; {targetTimeText}</span>
+          <span className="text-xs font-mono text-content-tertiary">Target: &lt; {targetTimeText}</span>
         </div>
         {photoStrip}
         <div className="relative">
@@ -566,7 +680,7 @@ export function LabMealCard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded bg-surface-card hover-border transition-colors flex items-center gap-1.5"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
@@ -576,7 +690,7 @@ export function LabMealCard({
             </button>
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded bg-surface-card hover-border transition-colors flex items-center gap-1.5"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
@@ -587,13 +701,21 @@ export function LabMealCard({
           </div>
           <div className="flex items-center gap-3">
             {!isSkipped && onMarkSkipped && (
-              <button type="button" className="text-xs text-content-tertiary hover:text-content-secondary transition-colors font-sans" onClick={onMarkSkipped}>
+              <button
+                type="button"
+                className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors"
+                onClick={onMarkSkipped}
+              >
                 Skip
               </button>
             )}
             <button
               type="button"
-              className="px-3.5 py-1.5 text-xs font-sans font-medium text-obsidian bg-content-primary rounded hover:bg-white transition-colors flex items-center gap-1.5"
+              className={
+                canAnalyze
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium flex items-center gap-1.5"
+              }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
               aria-label={`Analyze ${slotLabel}`}

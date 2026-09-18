@@ -129,5 +129,77 @@ describe("LabMealCard nutrition chart", () => {
 
     expect(html).toContain("Modifier");
     expect(html).toContain('aria-label="Modifier Dinner"');
+    expect(html).toContain("px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
+    expect(html).toContain("text-xs font-mono");
+    expect(html).toContain("text-xs text-content-secondary leading-relaxed font-sans");
+  });
+
+  it("applies high-contrast buttons and harmonized typography on a pending meal card with canAnalyze", () => {
+    const meal: MealRecord = {
+      id: "meal-lunch-draft",
+      date: "2026-08-31",
+      slot: "lunch",
+      note: "Avocado toast with eggs",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "draft",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="lunch"
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+      onMarkSkipped={() => undefined}
+    />);
+
+    // Analyze meal button when canAnalyze is true
+    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors");
+    // Camera and Photos buttons
+    expect(html).toContain("px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
+    // Skip button
+    expect(html).toContain("text-xs font-sans text-content-secondary hover:text-content-primary transition-colors");
+    // Slot title
+    expect(html).toContain("font-sans text-xs font-semibold uppercase tracking-wider text-content-primary");
+  });
+
+  it("applies explicit disabled styling on Analyze meal when cannot analyze", () => {
+    const meal: MealRecord = {
+      id: "meal-snack-empty",
+      date: "2026-08-31",
+      slot: "snack",
+      note: "",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "draft",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="snack"
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+      onMarkSkipped={() => undefined}
+    />);
+
+    // Analyze meal button when canAnalyze is false
+    expect(html).toContain("!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs");
+    expect(html).toContain("disabled=\"\"");
   });
 });

@@ -163,7 +163,6 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
 
   if (variable.variableType === "boolean") {
     if (presentation === "personal-lab") {
-      const options = [{ label: "No", value: false }, { label: "Yes", value: true }];
       if (value === true) {
         return (
           <div className="flex items-center gap-2 font-mono text-xs journal-choice journal-choice--binary" role="group" aria-label={journalVariableLabel(variable)}>
@@ -172,7 +171,8 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
               disabled={disabled}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated text-sage border border-sage/20 text-xs is-selected hover:bg-surface-elevated/80 transition-colors"
               aria-pressed={true}
-              onClick={() => onChange(false)}
+              onClick={() => onChange(null)}
+              aria-label={`Reset ${journalVariableLabel(variable)}`}
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -182,6 +182,26 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
           </div>
         );
       }
+      if (value === false) {
+        return (
+          <div className="flex items-center gap-2 font-mono text-xs journal-choice journal-choice--binary" role="group" aria-label={journalVariableLabel(variable)}>
+            <button
+              type="button"
+              disabled={disabled}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated text-content-secondary border border-hairline text-xs is-selected hover:bg-surface-elevated/80 transition-colors"
+              aria-pressed={true}
+              onClick={() => onChange(null)}
+              aria-label={`Reset ${journalVariableLabel(variable)}`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              No
+            </button>
+          </div>
+        );
+      }
+      const options = [{ label: "Yes", value: true }, { label: "No", value: false }];
       return (
         <div className="inline-flex p-0.5 rounded bg-surface-card border border-hairline font-mono text-xs journal-choice journal-choice--binary" role="group" aria-label={journalVariableLabel(variable)}>
           {options.map((option) => (
@@ -189,8 +209,8 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
               key={option.label}
               type="button"
               disabled={disabled}
-              className={`px-3 py-1 rounded transition-colors text-[11px] ${value === option.value ? "bg-surface-elevated text-content-primary border border-hairline-light font-medium is-selected" : "text-content-secondary hover:text-content-primary"}`}
-              aria-pressed={value === option.value}
+              className="px-3 py-1 rounded transition-colors text-[11px] text-content-secondary hover:text-content-primary"
+              aria-pressed={false}
               onClick={() => onChange(option.value)}
             >
               {option.label}
@@ -199,7 +219,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
         </div>
       );
     }
-    const options = [{ label: "No", value: false }, { label: "Yes", value: true }];
+    const options = [{ label: "Yes", value: true }, { label: "No", value: false }];
     return <div className="journal-choice" role="group" aria-label={journalVariableLabel(variable)}>
       {options.map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
@@ -224,8 +244,11 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
   }
 
   const nonNegative = variable.variableType === "count" || variable.variableType === "duration" || ["caffeine", "added sugar", "magnesium"].includes(journalVariableKey(variable.name));
-  const input = <input disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} placeholder="—" value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
-  if (presentation !== "personal-lab") return <div className="journal-number">{input}<span>{journalVariableUnit(variable)}</span></div>;
+
+  if (presentation !== "personal-lab") {
+    const input = <input disabled={disabled} id={inputId} aria-label={journalVariableLabel(variable)} type="number" min={nonNegative ? 0 : undefined} step={variable.variableType === "count" ? 1 : "any"} placeholder="—" value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)} onBlur={onCommit} />;
+    return <div className="journal-number">{input}<span>{journalVariableUnit(variable)}</span></div>;
+  }
 
   function adjustValue(direction: -1 | 1) {
     const numericValue = typeof value === "number" ? value : Number(value);
@@ -234,14 +257,52 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
     onChange(nonNegative ? Math.max(0, nextValue) : nextValue);
   }
 
-  return <div className="flex items-center gap-1 font-mono text-xs journal-number journal-number--stepper">
-    <button type="button" disabled={disabled} aria-label={`Decrease ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(-1)} className="w-7 h-7 rounded border border-hairline flex items-center justify-center text-content-secondary stepper-btn transition-colors">−</button>
-    <span className="w-16 text-center font-mono text-xs text-content-primary journal-number__value flex items-center justify-center gap-1">
-      {input}
-      <span className="text-[10px] text-content-secondary">{journalVariableUnit(variable)}</span>
-    </span>
-    <button type="button" disabled={disabled} aria-label={`Increase ${journalVariableLabel(variable)}`} aria-controls={inputId} onClick={() => adjustValue(1)} className="w-7 h-7 rounded border border-hairline flex items-center justify-center text-content-secondary stepper-btn transition-colors">+</button>
-  </div>;
+  const unit = journalVariableUnit(variable);
+
+  return (
+    <div className="flex items-center gap-1.5 font-mono text-xs stitch-stepper" role="group" aria-label={journalVariableLabel(variable)}>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={`Decrease ${journalVariableLabel(variable)}`}
+        aria-controls={inputId}
+        onClick={() => adjustValue(-1)}
+        className="w-7 h-7 rounded border border-hairline flex items-center justify-center text-content-secondary hover:text-content-primary hover:bg-surface-elevated stepper-btn transition-colors"
+      >
+        −
+      </button>
+      <div className="stitch-stepper__value">
+        <input
+          disabled={disabled}
+          id={inputId}
+          aria-label={journalVariableLabel(variable)}
+          type="number"
+          min={nonNegative ? 0 : undefined}
+          step={variable.variableType === "count" ? 1 : "any"}
+          placeholder="—"
+          value={typeof value === "number" || typeof value === "string" ? value : ""}
+          onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+          onBlur={onCommit}
+          className="bg-transparent text-center font-mono text-xs text-content-primary focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        {unit && (
+          <span className="stitch-stepper__unit select-none">
+            {unit}
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={`Increase ${journalVariableLabel(variable)}`}
+        aria-controls={inputId}
+        onClick={() => adjustValue(1)}
+        className="w-7 h-7 rounded border border-hairline flex items-center justify-center text-content-secondary hover:text-content-primary hover:bg-surface-elevated stepper-btn transition-colors"
+      >
+        +
+      </button>
+    </div>
+  );
 }
 
 function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, defaultValue, captureMode, automaticMetricId, trackingCadence, busy, autoFocus = false, onNameChange, onTypeChange, onUnitChange, onOptionsChange, onEmojiChange, onDayPeriodChange, onDefaultValueChange, onCaptureModeChange, onAutomaticMetricChange, onTrackingCadenceChange, onSave, onCancel }: {
@@ -474,16 +535,18 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       <div className="py-3.5 flex items-center justify-between gap-4 group">
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-content-primary truncate">{variable.name}</span>
+            <span className="text-sm font-medium text-content-primary truncate">{variable.name}</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className="text-[10px] font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
+            <span className="text-xs font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
             <div className="w-20 h-1 bg-hairline-light rounded-full overflow-hidden">
               <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'}`} style={{ width: `${adherencePct}%` }} />
             </div>
           </div>
         </div>
-        <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />
+        <div className="shrink-0">
+          <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />
+        </div>
       </div>
     );
   }
@@ -869,7 +932,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               <p className="text-xs text-content-secondary font-mono mt-1">{completionCount} of {activeVariables.length} logged · Adherence {adherenceRate}%</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded hover-border transition-colors" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
+              <button className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated rounded transition-colors" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
                 if (managerOpen) {
                   setManagerOpen(false);
                   managerTriggerRef.current?.focus();
@@ -879,7 +942,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               }} ref={managerTriggerRef}>
                 {managerOpen ? "Done editing" : "Edit protocol"}
               </button>
-              <button className="px-3 py-1 text-xs font-sans font-medium text-obsidian bg-content-primary rounded hover:bg-white transition-colors" type="button" onClick={() => void validate()} disabled={validating}>
+              <button className={`px-3 py-1 text-xs font-sans rounded transition-colors ${validating ? "border border-hairline bg-surface-elevated text-content-tertiary cursor-not-allowed" : "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium"}`} type="button" onClick={() => void validate()} disabled={validating}>
                 {validating ? 'Validating…' : 'Validate day'}
               </button>
             </div>
@@ -922,11 +985,11 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
           const sectionDisplayName = isPersonalLab ? (periodNames[section.id] ?? sectionLabel) : sectionLabel;
 
           if (isPersonalLab) {
-            const completedText = complete ? `${completedCount} / ${section.variables.length} Completed` : `${completedCount} / ${section.variables.length} Logged`;
+            const completedText = `${completedCount} sur ${section.variables.length}`;
             return (
               <section className="space-y-4" key={section.id} data-purpose={`${section.id}-habits`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs uppercase tracking-widest text-content-secondary">{sectionDisplayName}</span>
+                  <span className="text-xs font-mono uppercase tracking-wider text-content-secondary font-medium">{sectionDisplayName}</span>
                   <span className={`text-[11px] font-mono ${complete ? 'text-sage' : 'text-content-secondary'}`}>
                     {completedText}
                   </span>

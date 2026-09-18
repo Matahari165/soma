@@ -75,7 +75,6 @@ export function PersonalLabDateStrip({
                   className="flex flex-col items-center justify-center min-w-[130px] py-1.5 px-3 rounded bg-surface-elevated border border-hairline-light transition-colors relative text-left"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" aria-hidden="true" />
                     <span className="text-[11px] font-mono font-medium text-content-primary">
                       {isToday ? `Today, ${monthDay}` : weekday}
                     </span>
