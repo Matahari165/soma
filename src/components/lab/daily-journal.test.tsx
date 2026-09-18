@@ -205,15 +205,16 @@ describe("journal motion states", () => {
     expect(html).not.toContain("3/3 recorded");
   });
 
-  it("places Personal Lab validation in the morning header row", () => {
+  it("places Personal Lab validation in the Daily Protocol ribbon header", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
-    const actionsStart = html.indexOf('class="journal-card__actions"');
+    const actionsStart = html.indexOf('class="flex items-center gap-3 journal-card__actions"');
     const actionsEnd = html.indexOf("</header>", actionsStart);
 
-    expect(html.slice(actionsStart, actionsEnd)).not.toContain("Validate day");
-    expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning"');
-    expect(html.indexOf("journal-period__header-row--morning")).toBeLessThan(html.indexOf("Validate day"));
+    expect(html).toContain("Daily Protocol");
+    expect(html.slice(actionsStart, actionsEnd)).toContain("Validate day");
+    expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning');
+    expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
     expect(html).toContain('aria-label="Added sugar: Recorded, automatic detection"');
   });
 });

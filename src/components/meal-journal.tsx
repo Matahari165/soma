@@ -1177,14 +1177,56 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false, onToggleTargets, targetsExpanded = false }: { onAddMeal: () => void; addDisabled: boolean; hideAddMealButton?: boolean; onToggleTargets?: () => void; targetsExpanded?: boolean }) {
-  return <header className={styles.labHeader}>
-    <h2 id="meal-journal-title" className="sr-only">Meals</h2>
-    <div className={styles.labHeaderButtons}>
-      {onToggleTargets && <button type="button" aria-label="Edit daily targets" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={onToggleTargets}><Pencil size={17} aria-hidden="true" /></button>}
-      {!hideAddMealButton && <button type="button" aria-label="Add a meal" title="Add a meal" disabled={addDisabled} onClick={onAddMeal}><Plus size={17} aria-hidden="true" /></button>}
-    </div>
-  </header>;
+function MealLabHeader({
+  onAddMeal,
+  addDisabled,
+  hideAddMealButton = false,
+  onToggleTargets,
+  targetsExpanded = false,
+  calories = null,
+  targetCalories = 2400,
+  loggedCount = 0,
+  pendingCount = 0,
+}: {
+  onAddMeal: () => void;
+  addDisabled: boolean;
+  hideAddMealButton?: boolean;
+  onToggleTargets?: () => void;
+  targetsExpanded?: boolean;
+  calories?: number | null;
+  targetCalories?: number | null;
+  loggedCount?: number;
+  pendingCount?: number;
+}) {
+  const calVal = calories ?? 0;
+  const targetVal = targetCalories ?? 2400;
+  const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
+
+  return (
+    <header className="border-b border-hairline pb-4 flex items-end justify-between gap-4">
+      <div>
+        <h2 id="meal-journal-title" className="font-serif text-2xl font-light text-content-primary mb-1">Nutrition Log</h2>
+        <p className="font-mono text-xs text-content-secondary">
+          {new Intl.NumberFormat("en-US").format(calVal)} / {new Intl.NumberFormat("en-US").format(targetVal)} kcal · {loggedCount} logged · {pendingCount} pending
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="w-24">
+          <div className="flex justify-between font-mono text-[10px] text-content-secondary mb-1">
+            <span>Cal</span>
+            <span>{calPct}%</span>
+          </div>
+          <div className="w-full bg-hairline h-1 rounded-full overflow-hidden">
+            <div className="bg-sage h-full rounded-full transition-all duration-300" style={calPct > 0 ? { width: `${calPct}%` } : undefined} />
+          </div>
+        </div>
+        <div className={styles.labHeaderButtons}>
+          {onToggleTargets && <button type="button" aria-label="Edit daily targets" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={onToggleTargets}><Pencil size={15} aria-hidden="true" /></button>}
+          {!hideAddMealButton && <button type="button" aria-label="Add a meal" title="Add a meal" disabled={addDisabled} onClick={onAddMeal}><Plus size={15} aria-hidden="true" /></button>}
+        </div>
+      </div>
+    </header>
+  );
 }
 
 export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, allowTargetEditing, designVariant = "v1" }: Props) {
@@ -2042,13 +2084,39 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined} targetsExpanded={targetsExpanded} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+
+  const readyData = data ?? emptyData(selectedDate);
+  const labLoggedCount = MEAL_SLOTS.filter((s) => readyData.meals[s] && readyData.meals[s]?.entryState !== "skipped" && (readyData.meals[s]?.status === "confirmed" || readyData.meals[s]?.analysis)).length;
+  const labPendingCount = MEAL_SLOTS.filter((s) => !disabledSlots.includes(s) && (!readyData.meals[s] || (readyData.meals[s]?.entryState !== "skipped" && readyData.meals[s]?.status !== "confirmed" && !readyData.meals[s]?.analysis))).length;
+  const labCalories = currentDayTotal?.calories ?? 0;
+  const labTargetCalories = effectiveTargets?.caloriesKcal?.likely ?? targets?.caloriesKcal?.likely ?? 2400;
+
+  const pageHeader = variant === "home"
+    ? <MealHomeHeader />
+    : variant === "lab"
+    ? <MealLabHeader
+        onAddMeal={openAvailableMeal}
+        addDisabled={!availableMealSlot || navigationDisabled}
+        hideAddMealButton={hideAddMealButton}
+        onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined}
+        targetsExpanded={targetsExpanded}
+        calories={labCalories}
+        targetCalories={labTargetCalories}
+        loggedCount={labLoggedCount}
+        pendingCount={labPendingCount}
+      />
+    : <MealPageHeader
+        totals={currentDayTotal}
+        targets={variant === "meals" ? targets : effectiveTargets}
+        mealsVariant={variant === "meals"}
+        targetsExpanded={targetsExpanded}
+        onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined}
+      />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Loading meals…</span></div></section>;
   if (loadState === "error") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Unable to load meals</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Try again</button></div></section>;
 
-  const readyData = data ?? emptyData(selectedDate);
   const slotBusy = (slot: MealSlot) => savingSlot === slot || analyzingSlots.includes(slot);
   return <section className={rootClass} aria-labelledby="meal-journal-title">
     {pageHeader}

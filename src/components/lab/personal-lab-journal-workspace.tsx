@@ -30,28 +30,95 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-function sharedDateLabel(date: string, todayDate: string) {
-  const offset = Math.round((new Date(`${todayDate}T12:00:00Z`).getTime() - new Date(`${date}T12:00:00Z`).getTime()) / 86_400_000);
-  if (offset === 0) return "Today";
-  if (offset === 1) return "Yesterday";
-  if (offset === 2) return "2 days ago";
-  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`));
-}
-
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
-export function PersonalLabDateStrip({ dates, selectedDate, todayDate, completedDates = new Set<string>(), disabled = false, onDateChange }: { dates: readonly string[]; selectedDate: string; todayDate: string; completedDates?: ReadonlySet<string>; disabled?: boolean; onDateChange: (date: string) => void }) {
-  return <nav className="personal-lab-day-strip" aria-label="Shared day between meals and journal">
-    <div className="personal-lab-day-strip__days" role="group" aria-label="Available days">
-      {dates.map((date) => <button key={date} type="button" disabled={disabled} aria-current={date === selectedDate ? "date" : undefined} onClick={() => onDateChange(date)}>
-        <span>{sharedDateLabel(date, todayDate)}</span>
-        <small>{new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`))}{completedDates.has(date) ? <span className="personal-lab-day-strip__check" aria-hidden="true">✓</span> : null}</small>
-        <span className="sr-only">{formatDate(date)}</span>
-      </button>)}
-    </div>
-  </nav>;
+export function PersonalLabDateStrip({
+  dates,
+  selectedDate,
+  todayDate,
+  completedDates = new Set<string>(),
+  disabled = false,
+  progressByDate,
+  onDateChange,
+}: {
+  dates: readonly string[];
+  selectedDate: string;
+  todayDate: string;
+  completedDates?: ReadonlySet<string>;
+  disabled?: boolean;
+  progressByDate?: Record<string, { count: number; total: number }>;
+  onDateChange: (date: string) => void;
+}) {
+  return (
+    <section className="w-full border-b border-hairline bg-surface-card/40 personal-lab-day-strip" data-purpose="timeline-selector" aria-label="Shared day between meals and journal">
+      <div className="max-w-[1360px] mx-auto px-6 py-3">
+        <div className="flex items-center justify-between overflow-x-auto no-scrollbar gap-2 personal-lab-day-strip__days" role="group" aria-label="Available days">
+          {dates.map((date) => {
+            const isSelected = date === selectedDate;
+            const isToday = date === todayDate;
+            const isCompleted = completedDates.has(date);
+            const progress = progressByDate?.[date];
+            const progressLabel = progress ? `${progress.count}/${progress.total}` : null;
+            const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
+            const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
+
+            if (isSelected) {
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  disabled={disabled}
+                  aria-current="date"
+                  onClick={() => onDateChange(date)}
+                  className="flex flex-col items-center justify-center min-w-[130px] py-1.5 px-3 rounded bg-surface-elevated border border-hairline-light transition-colors relative text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" aria-hidden="true" />
+                    <span className="text-[11px] font-mono font-medium text-content-primary">
+                      {isToday ? `Today, ${monthDay}` : weekday}
+                    </span>
+                  </div>
+                  {progressLabel && (
+                    <span className="text-[10px] font-mono text-sage-muted mt-0.5">
+                      {progressLabel}
+                    </span>
+                  )}
+                  <span className="sr-only">{formatDate(date)}</span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={date}
+                type="button"
+                disabled={disabled}
+                onClick={() => onDateChange(date)}
+                className="flex flex-col items-center justify-center min-w-[110px] py-1.5 px-3 rounded hover:bg-surface-elevated/40 transition-colors text-left group"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] font-mono text-content-secondary">
+                  <span>{isToday ? `Today, ${monthDay}` : weekday}</span>
+                  {isCompleted ? (
+                    <span className="text-sage text-[10px]" aria-hidden="true">✓</span>
+                  ) : (
+                    <span className="text-content-tertiary text-[10px]" aria-hidden="true">•</span>
+                  )}
+                </div>
+                {progressLabel && (
+                  <span className="text-[10px] font-mono text-content-tertiary mt-0.5">
+                    {progressLabel}
+                  </span>
+                )}
+                <span className="sr-only">{formatDate(date)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function PersonalLabJournalWorkspace({
@@ -135,7 +202,41 @@ export function PersonalLabJournalWorkspace({
     return () => window.clearTimeout(retry);
   }, [activeDate, journalProgress.count, journalProgress.total]);
 
-  const sharedDateNavigation = <PersonalLabDateStrip dates={recentDatesFirst ? [...dates].reverse() : dates} selectedDate={activeDate} todayDate={data.todayDate} completedDates={completedDates} onDateChange={onDateChange} />;
+  const progressByDate = useMemo(() => {
+    const activeIds = new Set(activeVariables.map((variable) => variable.id));
+    const result: Record<string, { count: number; total: number }> = {};
+    for (const d of dates) {
+      const omittedIds = new Set(data.journal.days.find((day) => day.entryDate === d)?.omittedVariableIds ?? []);
+      const recordedIds = new Set(
+        data.journal.entries
+          .filter((entry) => entry.entryDate === d && activeIds.has(entry.variableId) && !omittedIds.has(entry.variableId))
+          .map((entry) => entry.variableId)
+      );
+      result[d] = { count: recordedIds.size, total: activeVariables.length };
+    }
+    return result;
+  }, [activeVariables, data.journal.days, data.journal.entries, dates]);
+
+  const effectiveProgressByDate = useMemo(() => {
+    if (!journalProgressOverride || journalProgressOverride.date !== activeDate) {
+      return progressByDate;
+    }
+    return {
+      ...progressByDate,
+      [activeDate]: { count: journalProgressOverride.count, total: journalProgressOverride.total },
+    };
+  }, [activeDate, journalProgressOverride, progressByDate]);
+
+  const sharedDateNavigation = (
+    <PersonalLabDateStrip
+      dates={recentDatesFirst ? [...dates].reverse() : dates}
+      selectedDate={activeDate}
+      todayDate={data.todayDate}
+      completedDates={completedDates}
+      progressByDate={effectiveProgressByDate}
+      onDateChange={onDateChange}
+    />
+  );
   const disabledSlots = activeDate === data.todayDate && breakfastDisabled ? ["breakfast"] as const : [];
 
   const activeEffectsByVariable = useMemo(() => {
@@ -169,11 +270,11 @@ export function PersonalLabJournalWorkspace({
         </div>
       </fieldset>
     </div> : null}
-    <div className="personal-lab-workbench">
-      <div className="personal-lab-meal-column">
+    <div className="personal-lab-workbench max-w-[1360px] mx-auto px-6 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      <div className="personal-lab-meal-column lg:col-span-5 lg:order-2 space-y-7" data-purpose="nutrition-journal">
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} designVariant="v1" />
       </div>
-      <div className="personal-lab-journal-column" id="daily-journal">
+      <div className="personal-lab-journal-column lg:col-span-7 lg:order-1 space-y-9" id="daily-journal" data-purpose="daily-protocol-journal">
         <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
