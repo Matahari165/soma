@@ -140,9 +140,9 @@ html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-workspace {
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-day-strip { margin: 0 0 16px; padding: 0; }
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-day-strip__days { border: 0; border-bottom: 1px solid var(--world-line); border-radius: 0; background: transparent; }
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-day-strip button { min-width: 74px; padding-inline: 5px; border: 0; color: var(--world-muted); }
-html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-day-strip button[aria-current="date"] { background: var(--lab-brand); color: var(--lab-canvas); }
-html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-workbench { grid-template-columns: 1fr; gap: 24px; }
-html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-journal-column .journal-period { padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--world-line-soft); border-radius: 0; background: transparent; }
+@media (max-width: 1023px) {
+  html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-workbench { grid-template-columns: 1fr; gap: 32px; }
+}
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-journal-column .journal-period__header { min-height: 38px; padding: 0; background: transparent; }
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-journal-column .journal-period__header h3 { font-size: .95rem; font-weight: 580; }
 html[data-lab-theme="observatory"] .lab-world__capture .personal-lab-journal-column .journal-grid { grid-template-columns: 1fr; gap: 0; margin-top: 4px; }

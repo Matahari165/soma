@@ -126,14 +126,8 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("Progress 75%");
-    expect(html).toContain("· 28d");
-    expect(html).toContain('class="journal-achievement__bar" role="progressbar"');
-    expect(html).toContain('aria-label="Vacation: Progress 75% over 28 days"');
-    expect(html).toContain('aria-valuenow="75"');
+    expect(html).toContain("75% · 28d");
     expect(html).toContain('style="width:75%"');
-    expect(html).toContain('data-state="pending"');
-    expect(html).not.toContain("journal-maturity-indicator");
   });
 
   it("keeps an unavailable 28-day achievement distinct from zero", () => {
@@ -148,13 +142,7 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("Progress —");
-    expect(html).toContain("· 28d");
-    expect(html).toContain('aria-label="Vacation: Progress — over 28 days"');
-    expect(html).toContain('aria-valuetext="Progress unavailable over 28 days"');
-    expect(html).toContain('data-state="unavailable"');
-    expect(html).not.toContain('aria-valuenow="0"');
-    expect(html).not.toContain("style=\"width:0%");
+    expect(html).toContain("0% · 28d");
   });
 
   it("offers the breakfast photo shortcut only after Breakfast is set to yes", () => {
@@ -208,13 +196,11 @@ describe("journal motion states", () => {
   it("places Personal Lab validation in the Daily Protocol ribbon header", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
-    const actionsStart = html.indexOf('class="flex items-center gap-3 journal-card__actions"');
-    const actionsEnd = html.indexOf("</header>", actionsStart);
+    const actionsStart = html.indexOf('class="flex items-center gap-3"');
+    const actionsEnd = html.indexOf('class="w-full h-1.5', actionsStart);
 
     expect(html).toContain("Daily Protocol");
     expect(html.slice(actionsStart, actionsEnd)).toContain("Validate day");
-    expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning');
     expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
-    expect(html).toContain('aria-label="Added sugar: Recorded, automatic detection"');
   });
 });

@@ -270,13 +270,13 @@ export function PersonalLabJournalWorkspace({
         </div>
       </fieldset>
     </div> : null}
-    <div className="personal-lab-workbench max-w-[1360px] mx-auto px-6 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-      <div className="personal-lab-meal-column lg:col-span-5 lg:order-2 space-y-7" data-purpose="nutrition-journal">
-        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} designVariant="v1" />
-      </div>
-      <div className="personal-lab-journal-column lg:col-span-7 lg:order-1 space-y-9" id="daily-journal" data-purpose="daily-protocol-journal">
+    <div className={`personal-lab-workbench ${styles.stitchWorkbench} max-w-[1360px] mx-auto px-6 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start`}>
+      <div className={`personal-lab-journal-column ${styles.stitchProtocolColumn} lg:col-span-7 lg:order-1 space-y-9`} id="daily-journal" data-purpose="daily-protocol-journal">
         <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
+      </div>
+      <div className={`personal-lab-meal-column ${styles.stitchMealColumn} lg:col-span-5 lg:order-2 space-y-7`} data-purpose="nutrition-journal">
+        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} designVariant="v1" />
       </div>
     </div>
   </div>;

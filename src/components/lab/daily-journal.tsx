@@ -467,12 +467,32 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
 
 function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayValidated, automatic = false, achievement, activeHorizons, onChange, onCommit, feedbackToken, disabled, presentation = "default", editMode = false, editOpen = false, onEdit }: { variable: JournalVariable; value: DraftValue; draftKey: string; confirmed: boolean; skipped: boolean; dayValidated: boolean; automatic?: boolean; achievement?: JournalAchievement; activeHorizons?: readonly number[]; onChange: (value: DraftValue) => void; onCommit?: () => void; feedbackToken?: number; disabled: boolean; presentation?: "default" | "personal-lab"; editMode?: boolean; editOpen?: boolean; onEdit?: () => void }) {
   const isPersonalLab = presentation === "personal-lab";
+  if (isPersonalLab) {
+    const adherencePct = achievement?.percentage ?? 0;
+    const windowDays = achievement ? achievementWindowDays(achievement) : 28;
+    return (
+      <div className="py-3.5 flex items-center justify-between gap-4 group">
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-content-primary truncate">{variable.name}</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-[10px] font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
+            <div className="w-20 h-1 bg-hairline-light rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'}`} style={{ width: `${adherencePct}%` }} />
+            </div>
+          </div>
+        </div>
+        <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />
+      </div>
+    );
+  }
+
   const stateLabel = confirmed ? "Recorded" : skipped ? "Skipped" : "To confirm";
   const state = confirmed ? "recorded" : skipped ? "skipped" : "pending";
   const isAutomatic = automatic || variable.captureMode === "automatic";
   const classes = [
     "journal-field",
-    isPersonalLab ? "py-3.5 flex items-center justify-between gap-4 group border-b border-hairline last:border-b-0" : "",
     confirmed ? "journal-field--confirmed" : "",
     dayValidated ? "journal-field--day-validated" : "",
     isAutomatic ? "journal-field--automatic" : "",
@@ -481,7 +501,6 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   ].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
   const achievementLabel = achievement?.percentage === null ? "Progress —" : achievement ? `Progress ${achievement.percentage}%` : null;
-  const achievementDays = achievement ? achievementWindowDays(achievement) : null;
   const label = journalVariableLabel(variable);
   const automaticDetectionLabel = isAutomatic ? "Automatic detection" : null;
   const dayValidationLabel = dayValidated ? "Day validated" : null;
@@ -492,31 +511,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   const observedCount = achievement?.observedPeriods ?? 0;
   const isEarlyMaturity = achievement ? observedCount < 10 : false;
   const showSupportingMeta = !isPersonalLab;
-  const achievementProgress = achievement && achievementLabel && achievementDays ? (
-    <span className="journal-achievement inline-flex items-center gap-2">
-      <span className="journal-achievement__label text-[10px] font-mono text-content-secondary">
-        {achievementLabel} <span className="journal-achievement__window" aria-hidden="true">· {achievementDays}d</span>
-      </span>
-      <span
-        className="journal-achievement__bar"
-        role="progressbar"
-        aria-label={`${label}: ${achievementLabel} over ${achievementDays} days`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={achievement.percentage ?? undefined}
-        aria-valuetext={achievement.percentage === null ? `Progress unavailable over ${achievementDays} days` : `${achievement.percentage}% over ${achievementDays} days`}
-        data-state={achievement.percentage === null ? "unavailable" : "measured"}
-      >
-        {achievement.percentage !== null && (
-          <span
-            className="journal-achievement__fill"
-            style={{ width: `${Math.min(100, Math.max(0, achievement.percentage))}%` }}
-          />
-        )}
-      </span>
-    </span>
-  ) : null;
-  const achievementMeta = isPersonalLab ? achievementProgress : showSupportingMeta && achievementLabel ? <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small> : null;
+  const achievementMeta = showSupportingMeta && achievementLabel ? <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small> : null;
   const activeBadges = showSupportingMeta && activeHorizons && activeHorizons.length > 0 ? (
     <span className="journal-effect-badges" aria-label={`Strongest effect in ${activeHorizons.map(h => `${h}d`).join(", ")}`}>
       {activeHorizons.map((h) => (
@@ -527,25 +522,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
     </span>
   ) : null;
 
-  const headingContent = isPersonalLab ? (
-    <div className="flex items-center gap-3 journal-field__label">
-      <span
-        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 journal-field__state-mark ${confirmed ? "bg-sage" : "bg-hairline-light"}`}
-        data-state={state}
-        aria-hidden="true"
-      />
-      <span className="journal-field__emoji text-xs" aria-hidden="true">{variable.emoji}</span>
-      <span className="text-xs font-medium text-content-primary journal-field__label-text flex items-center gap-2">
-        {label}
-        {automaticDetectionLabel && (
-          <span className="journal-field__automatic-indicator inline-flex items-center" role="img" aria-label={automaticDetectionLabel}>
-            <ScanLine size={12} aria-hidden="true" />
-          </span>
-        )}
-      </span>
-      {achievementMeta}
-    </div>
-  ) : (
+  const headingContent = (
     <>
       <span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span>
       <span className="journal-field__label">
@@ -875,62 +852,6 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         ? Math.round((completionCount / activeVariables.length) * 100)
         : 0;
 
-      const stitchManagerTrigger = (
-        <button
-          ref={managerTriggerRef}
-          className="px-3 py-1.5 rounded border border-hairline bg-surface-subtle hover:bg-surface-elevated text-content-primary font-mono text-xs transition-colors flex items-center gap-1.5 journal-manager-trigger"
-          type="button"
-          aria-label={managerOpen ? "Done editing habits" : "Edit habits"}
-          aria-expanded={managerOpen}
-          aria-controls="journal-manager"
-          onClick={() => {
-            if (managerOpen) {
-              setManagerOpen(false);
-              managerTriggerRef.current?.focus();
-            } else {
-              setManagerOpen(true);
-            }
-          }}
-        >
-          {managerOpen ? (
-            "Done"
-          ) : (
-            <>
-              <svg className="w-3.5 h-3.5 text-content-secondary" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path d="M12 4.5v15m7.5-7.5h-15" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Edit Protocol
-            </>
-          )}
-        </button>
-      );
-
-      const stitchValidationAction = !validated ? (
-        <span className="journal-validation-action">
-          <button
-            className="px-3 py-1.5 rounded border border-sage/30 bg-sage/10 hover:bg-sage/20 text-sage font-mono text-xs transition-colors flex items-center gap-1.5 primary-button primary-button--validate"
-            type="button"
-            onClick={() => void validate()}
-            disabled={validating}
-            aria-label={`Validate day. ${validationDescription}`}
-          >
-            {validating ? (
-              <>
-                <LoaderCircle className="spin w-3.5 h-3.5" aria-hidden="true" />
-                Validating…
-              </>
-            ) : (
-              <>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path d="M4.5 12.75l6 6 9-13.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Validate day
-              </>
-            )}
-          </button>
-        </span>
-      ) : null;
-
       const managerTrigger = <button ref={managerTriggerRef} className="journal-manager-trigger" type="button" aria-label={managerOpen ? "Done editing habits" : "Edit habits"} aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
         if (managerOpen) {
           setManagerOpen(false);
@@ -941,26 +862,32 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       }}>{managerOpen ? "Done" : <><PencilLine size={14} aria-hidden="true" />Edit habits</>}</button>;
 
       const headerElement = isPersonalLab ? (
-        <header className="journal-card__header border-b border-hairline pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1 journal-card__heading">
-              <h2 id="journal-title" className="font-serif text-2xl font-light text-content-primary">Daily Protocol</h2>
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${validated ? "bg-surface-elevated text-sage border border-sage/20" : "bg-surface-elevated text-content-secondary border border-hairline-light"}`}>
-                <span className={statusClass} data-draft={saveStatus === "draft" && !validating && !validated ? "true" : undefined} aria-live="polite" aria-atomic="true">
-                  {validating || saveStatus === "saving" ? <LoaderCircle className="journal-save-status__icon spin inline mr-1" size={12} aria-hidden="true" /> : saveStatus === "error" ? <span className="journal-save-status__icon journal-save-status__icon--error mr-1" aria-hidden="true">!</span> : null}
-                  <span>{validated ? "Phase Locked" : statusText}</span>
-                </span>
-              </span>
+        <div className="pb-4 border-b border-hairline space-y-2.5">
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="font-serif text-2xl tracking-normal text-content-primary font-normal" id="journal-title">Daily Protocol</h1>
+              <p className="text-xs text-content-secondary font-mono mt-1">{completionCount} of {activeVariables.length} logged · Adherence {adherenceRate}%</p>
             </div>
-            <p className="font-mono text-xs text-content-secondary">
-              {completionCount} of {activeVariables.length} completed · Adherence {adherenceRate}%
-            </p>
+            <div className="flex items-center gap-3">
+              <button className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded hover-border transition-colors" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
+                if (managerOpen) {
+                  setManagerOpen(false);
+                  managerTriggerRef.current?.focus();
+                } else {
+                  setManagerOpen(true);
+                }
+              }} ref={managerTriggerRef}>
+                {managerOpen ? "Done editing" : "Edit protocol"}
+              </button>
+              <button className="px-3 py-1 text-xs font-sans font-medium text-obsidian bg-content-primary rounded hover:bg-white transition-colors" type="button" onClick={() => void validate()} disabled={validating}>
+                {validating ? 'Validating…' : 'Validate day'}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 journal-card__actions" role="group" aria-label="Journal actions">
-            {stitchManagerTrigger}
-            {stitchValidationAction}
+          <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
+            <div className="h-full bg-sage rounded-full transition-all duration-300" style={{ width: `${adherenceRate}%` }} />
           </div>
-        </header>
+        </div>
       ) : (
         <header className="journal-card__header">
           <div className="journal-card__heading"><h2 id="journal-title">Journal</h2></div>
@@ -975,16 +902,6 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         </header>
       );
 
-      const adherenceTracker = isPersonalLab ? (
-        <div className="w-full bg-surface-subtle p-3 rounded border border-hairline flex items-center gap-4 mt-4 mb-6">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-content-secondary whitespace-nowrap">Adherence Rate</span>
-          <div className="w-full bg-hairline h-1.5 rounded-full overflow-hidden">
-            <div className="bg-sage h-full rounded-full transition-all duration-300" style={adherenceRate > 0 ? { width: `${adherenceRate}%` } : undefined} />
-          </div>
-          <span className="font-mono text-xs text-content-primary">{adherenceRate}%</span>
-        </div>
-      ) : null;
-
       const periodNames: Record<string, string> = {
         morning: "Morning Phase",
         day: "Daytime Phase",
@@ -992,12 +909,11 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         context: "Day Context & Modifiers",
       };
 
-      return <section className={`checkin-card journal-card${isPersonalLab ? " journal-card--personal-lab" : ""} journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
+      return <section className={isPersonalLab ? "space-y-9" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
         {headerElement}
-        {adherenceTracker}
         {tools}
         {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
-        {activeVariables.length > 0 ? <div className="journal-sections">{sections.map((section) => {
+        {activeVariables.length > 0 ? <div className={isPersonalLab ? "space-y-6" : "journal-sections"}>{sections.map((section) => {
           const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
           const complete = completedCount === section.variables.length;
           const canConfirmDefaults = section.variables.some((variable) => !recorded.has(variable.id) && !skipped.has(variable.id) && (values[variable.id] ?? null) !== null);
@@ -1006,24 +922,16 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
           const sectionDisplayName = isPersonalLab ? (periodNames[section.id] ?? sectionLabel) : sectionLabel;
 
           if (isPersonalLab) {
-            const completedText = `${completedCount} / ${section.variables.length} Completed`;
+            const completedText = complete ? `${completedCount} / ${section.variables.length} Completed` : `${completedCount} / ${section.variables.length} Logged`;
             return (
-              <section className={`journal-period space-y-4 mb-6${complete ? " journal-period--complete" : ""}`} aria-labelledby={`journal-${section.id}-title`} aria-label={`${sectionLabel}${complete ? ", complete" : ""}`} key={section.id} data-period={section.id} data-complete={complete ? "true" : "false"}>
-                <header className="journal-period__header flex items-center justify-between border-b border-hairline pb-2">
-                  <div className={`journal-period__header-row${section.id === "morning" ? " journal-period__header-row--morning" : ""} flex items-center justify-between w-full`}>
-                    <h3 id={`journal-${section.id}-title`} className="font-mono text-xs uppercase tracking-widest text-content-secondary">
-                      {canConfirmDefaults ? (
-                        <button type="button" className="hover:text-content-primary transition-colors text-left" aria-label={`Confirm all displayed values for ${sectionLabel}`} onClick={() => confirmPeriodDefaults(section.variables)}>
-                          <span>{sectionDisplayName}</span>
-                        </button>
-                      ) : (
-                        <span>{sectionDisplayName}</span>
-                      )}
-                    </h3>
-                    <span className="font-mono text-[10px] text-content-secondary">{completedText}</span>
-                  </div>
-                </header>
-                <div className="journal-grid divide-y divide-hairline border-t border-b border-hairline">
+              <section className="space-y-4" key={section.id} data-purpose={`${section.id}-habits`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs uppercase tracking-widest text-content-secondary">{sectionDisplayName}</span>
+                  <span className={`text-[11px] font-mono ${complete ? 'text-sage' : 'text-content-secondary'}`}>
+                    {completedText}
+                  </span>
+                </div>
+                <div className="divide-y divide-hairline border-t border-b border-hairline">
                   {section.variables.map((variable) => (
                     <div className="journal-field-stack" key={variable.id}>
                       <JournalFieldRow variable={variable} value={values[variable.id] ?? null} draftKey={entryDate} confirmed={recorded.has(variable.id)} skipped={skipped.has(variable.id)} dayValidated={validated} automatic={automaticIds.has(variable.id)} achievement={achievementsByVariable.get(variable.id)} activeHorizons={activeEffectsByVariable instanceof Map ? activeEffectsByVariable.get(variable.id) : (activeEffectsByVariable as Record<string, number[]> | undefined)?.[variable.id]} feedbackToken={feedback?.fieldId === variable.id ? feedback.token : undefined} onCommit={() => commitField(variable.id)} disabled={false} presentation={presentation} editMode={managerOpen} editOpen={isEditing(variable)} onEdit={() => openEditor(variable)} onChange={(value) => changeValue(variable.id, value)} />

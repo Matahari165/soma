@@ -306,10 +306,6 @@ export function LabMealCard({
     </div>
   );
 
-  const handleCancelEdit = () => {
-    setIsLocalEditing(false);
-  };
-
   const handleAnalyzeClick = () => {
     setIsLocalEditing(false);
     onAnalyze();
@@ -489,156 +485,123 @@ export function LabMealCard({
   // VERSION 1 : SILENT HORIZON / STITCH DASHBOARD
   // =========================================================================
   if (designVariant === "v1") {
-    return (
-      <article className={`${styles.cardRoot} p-4 rounded border ${isFilled ? "border-hairline bg-surface-card/60" : "border-hairline-light bg-surface-subtle"} space-y-3 relative transition-all`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
-        {fileInputs}
-        
-        {isFilled ? (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 id={headingId} className="font-mono text-xs uppercase tracking-wider text-content-secondary font-medium">
-                  {slotLabel}
-                </h3>
-                <span className="font-mono text-[10px] text-content-secondary">· {mealTimeText}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-surface-elevated text-sage border border-sage/20">
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  Confirmed
-                </span>
-                <button
-                  type="button"
-                  className={styles.editButton}
-                  onClick={handleToggleCorrection}
-                  aria-label={`Modifier ${slotLabel}`}
-                >
-                  <Pencil size={12} aria-hidden="true" />Modifier
-                </button>
-              </div>
+    const targetTimeText = defaultSlotTimes[slot];
+    if (isFilled) {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" data-purpose={`meal-${slot}`}>
+          {fileInputs}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="font-mono text-[11px] text-content-tertiary">· {mealTimeText}</span>
             </div>
-
-            {photoStrip}
-
-            <p className="text-xs text-content-primary leading-relaxed font-sans">{getSummaryText(meal)}</p>
-
-            <div className="pt-2 border-t border-hairline flex items-center justify-between text-[11px] font-mono">
-              <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
-              <div className="flex items-center gap-3 text-content-secondary text-[10px]">
-                <span>P: {protValue !== null ? `${Math.round(protValue)}g` : "—"}</span>
-                <span>C: {carbsValue !== null ? `${Math.round(carbsValue)}g` : "—"}</span>
-                <span>F: {fatValue !== null ? `${Math.round(fatValue)}g` : "—"}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-sage">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Confirmed
+              </span>
+              <button type="button" className="text-xs text-content-tertiary hover:text-content-secondary transition-colors" onClick={handleToggleCorrection} aria-label={`Modifier ${slotLabel}`}>
+                Modifier
+              </button>
             </div>
-
+          </div>
+          {photoStrip}
+          <p className="text-xs text-content-secondary leading-relaxed font-sans">{getSummaryText(meal)}</p>
+          {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
+            <p className="text-[11px] text-content-tertiary font-mono">
+              {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
+            </p>
+          )}
+          <div className="pt-2 border-t border-hairline flex items-center justify-between text-[11px] font-mono">
+            <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
+            <div className="flex items-center gap-3 text-content-secondary">
+              <span>{protValue !== null ? `${Math.round(protValue)}g P` : "—g P"}</span>
+              <span>{carbsValue !== null ? `${Math.round(carbsValue)}g C` : "—g C"}</span>
+              <span className="text-content-tertiary">{sugarValue !== null ? `${Math.round(sugarValue)}g S` : "0g S"}</span>
+              <span>{fatValue !== null ? `${Math.round(fatValue)}g F` : "—g F"}</span>
+            </div>
+          </div>
+          <div className="sr-only">
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
-            {isCorrectionOpen && correctionForm}
-            {meal?.analysis && (
-              <AnalysisDetails
-                meal={meal}
-                open={showDetails}
-                detailsId={detailsId}
-                variant="v1"
-                onToggle={() => setShowDetails((open) => !open)}
-              />
+          </div>
+          {isCorrectionOpen && correctionForm}
+          {meal?.analysis && (
+            <AnalysisDetails
+              meal={meal}
+              open={showDetails}
+              detailsId={detailsId}
+              variant="v1"
+              onToggle={() => setShowDetails((open) => !open)}
+            />
+          )}
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+          {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
+        </article>
+      );
+    }
+
+    return (
+      <article className="p-4 rounded border border-hairline-light bg-surface-subtle space-y-3 relative" data-purpose={`meal-${slot}-pending`}>
+        {fileInputs}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
+            <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+          </div>
+          <span className="text-[11px] font-mono text-content-tertiary">Target: &lt; {targetTimeText}</span>
+        </div>
+        {photoStrip}
+        <div className="relative">
+          <textarea
+            id={inputId}
+            className="w-full bg-obsidian border border-hairline rounded p-3 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-hairline-light resize-none font-sans"
+            rows={3}
+            placeholder="Describe meal or ingredients... (e.g. grass-fed ribeye 250g, roasted sweet potatoes, leafy greens with balsamic vinaigrette)"
+            value={noteText}
+            disabled={disabled || processingFiles || mutationBusy}
+            onChange={(e) => onNote(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded bg-surface-card hover-border transition-colors flex items-center gap-1.5"
+              aria-label={`Take photo for ${slotLabel}`}
+              disabled={disabled || processingFiles || mutationBusy}
+              onClick={() => cameraRef.current?.click()}
+            >
+              <Camera size={13} aria-hidden="true" />
+              Camera
+            </button>
+            <button
+              type="button"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline rounded bg-surface-card hover-border transition-colors flex items-center gap-1.5"
+              aria-label={`Choose photos for ${slotLabel}`}
+              disabled={disabled || processingFiles || mutationBusy}
+              onClick={() => galleryRef.current?.click()}
+            >
+              <ImagePlus size={13} aria-hidden="true" />
+              Photos
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isSkipped && onMarkSkipped && (
+              <button type="button" className="text-xs text-content-tertiary hover:text-content-secondary transition-colors font-sans" onClick={onMarkSkipped}>
+                Skip
+              </button>
             )}
-            {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
-          </>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
-                <h3 id={headingId} className="font-mono text-xs uppercase tracking-wider text-content-primary font-medium">
-                  {slotLabel}
-                </h3>
-                <span className="font-mono text-[10px] text-content-secondary">· Target {defaultSlotTimes[slot]}</span>
-              </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-signal-warn">Awaiting Log</span>
-            </div>
-
-            {photoStrip}
-
-            <div className="space-y-2">
-              <label htmlFor={inputId} className={styles.visuallyHidden}>
-                Describe {slotLabel}
-              </label>
-              <textarea
-                id={inputId}
-                className="w-full bg-obsidian border border-hairline rounded p-3 text-xs text-content-primary placeholder:text-content-secondary/40 focus:outline-none focus:border-sage/40 transition-colors resize-none font-mono"
-                rows={2}
-                placeholder={`Log ingredients or dish (e.g., Grass-fed ribeye, steamed asparagus...)`}
-                value={noteText}
-                disabled={disabled || processingFiles || mutationBusy}
-                onChange={(e) => onNote(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && canAnalyze) {
-                    e.preventDefault();
-                    handleAnalyzeClick();
-                  }
-                }}
-              />
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="text-[10px] font-mono text-content-secondary hover:text-content-primary transition-colors flex items-center gap-1"
-                    aria-label={`Take photo for ${slotLabel}`}
-                    disabled={disabled || processingFiles || mutationBusy}
-                    onClick={() => cameraRef.current?.click()}
-                  >
-                    <Camera size={13} aria-hidden="true" />
-                    Camera
-                  </button>
-                  <button
-                    type="button"
-                    className="text-[10px] font-mono text-content-secondary hover:text-content-primary transition-colors flex items-center gap-1"
-                    aria-label={`Choose photos for ${slotLabel}`}
-                    disabled={disabled || processingFiles || mutationBusy}
-                    onClick={() => galleryRef.current?.click()}
-                  >
-                    <ImagePlus size={13} aria-hidden="true" />
-                    Add Photo
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isLocalEditing && (
-                    <button
-                      type="button"
-                      className="px-2.5 py-1 rounded text-[10px] font-mono text-content-secondary hover:text-content-primary hover:bg-surface-elevated transition-colors"
-                      disabled={disabled || processingFiles || mutationBusy}
-                      onClick={handleCancelEdit}
-                      aria-label="Cancel edit"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  {!isSkipped && onMarkSkipped && (
-                    <button
-                      type="button"
-                      className="px-2.5 py-1 rounded text-[10px] font-mono text-content-secondary hover:text-content-primary hover:bg-surface-elevated transition-colors"
-                      disabled={disabled || mutationBusy}
-                      onClick={onMarkSkipped}
-                    >
-                      Skip
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="px-2.5 py-1 rounded bg-surface-elevated border border-hairline hover:border-hairline-light text-[10px] font-mono text-content-primary transition-colors disabled:opacity-50"
-                    disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
-                    onClick={handleAnalyzeClick}
-                    aria-label={`Analyze ${slotLabel}`}
-                  >
-                    Analyze meal
-                  </button>
-                </div>
-              </div>
-            </div>
-            {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-          </>
-        )}
+            <button
+              type="button"
+              className="px-3.5 py-1.5 text-xs font-sans font-medium text-obsidian bg-content-primary rounded hover:bg-white transition-colors flex items-center gap-1.5"
+              disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
+              onClick={handleAnalyzeClick}
+              aria-label={`Analyze ${slotLabel}`}
+            >
+              <span>Analyze meal</span>
+            </button>
+          </div>
+        </div>
       </article>
     );
   }

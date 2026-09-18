@@ -1203,27 +1203,21 @@ function MealLabHeader({
   const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
 
   return (
-    <header className="border-b border-hairline pb-4 flex items-end justify-between gap-4">
-      <div>
-        <h2 id="meal-journal-title" className="font-serif text-2xl font-light text-content-primary mb-1">Nutrition Log</h2>
-        <p className="font-mono text-xs text-content-secondary">
-          {new Intl.NumberFormat("en-US").format(calVal)} / {new Intl.NumberFormat("en-US").format(targetVal)} kcal · {loggedCount} logged · {pendingCount} pending
-        </p>
-      </div>
-      <div className="flex items-center gap-4">
-        <div className="w-24">
-          <div className="flex justify-between font-mono text-[10px] text-content-secondary mb-1">
-            <span>Cal</span>
-            <span>{calPct}%</span>
-          </div>
-          <div className="w-full bg-hairline h-1 rounded-full overflow-hidden">
-            <div className="bg-sage h-full rounded-full transition-all duration-300" style={calPct > 0 ? { width: `${calPct}%` } : undefined} />
-          </div>
+    <header className="pb-4 border-b border-hairline space-y-2.5">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 id="meal-journal-title" className="font-serif text-2xl tracking-normal text-content-primary font-normal">Nutrition Log</h2>
+          <p className="text-xs text-content-secondary font-mono mt-1">
+            {new Intl.NumberFormat("en-US").format(calVal)} / {new Intl.NumberFormat("en-US").format(targetVal)} kcal · {loggedCount} logged · {pendingCount} pending
+          </p>
         </div>
         <div className={styles.labHeaderButtons}>
           {onToggleTargets && <button type="button" aria-label="Edit daily targets" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={onToggleTargets}><Pencil size={15} aria-hidden="true" /></button>}
           {!hideAddMealButton && <button type="button" aria-label="Add a meal" title="Add a meal" disabled={addDisabled} onClick={onAddMeal}><Plus size={15} aria-hidden="true" /></button>}
         </div>
+      </div>
+      <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
+        <div className="h-full bg-sage rounded-full transition-all duration-300" style={calPct > 0 ? { width: `${calPct}%` } : undefined} />
       </div>
     </header>
   );

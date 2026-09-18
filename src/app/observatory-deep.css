@@ -188,16 +188,45 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 .radar-grid-left--outer { stroke:#777; }
 @media(prefers-reduced-motion:reduce) { .radar-grid-left { animation:none; } }
 
-/* Separate daily capture areas through proportion and negative space. */
-@media(min-width:901px) {
+/* Stitch 12-column layout: Daily Protocol (7 cols) on left, Meals (5 cols) on right. */
+@media (min-width: 1024px) {
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench {
-  grid-template-columns:minmax(320px,.8fr) minmax(0,1.2fr)!important;
-  column-gap:clamp(48px,6vw,88px);
-  align-items:start;
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  column-gap: 48px !important;
+  align-items: start !important;
+  max-width: 1360px !important;
+  margin: 0 auto !important;
+  padding: 32px 24px !important;
+ }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column {
+  grid-column: span 7 / span 7 !important;
+  order: 1 !important;
+  min-width: 0 !important;
+ }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column {
+  grid-column: span 5 / span 5 !important;
+  order: 2 !important;
+  min-width: 0 !important;
  }
 }
-@media(max-width:900px) {
- html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench { grid-template-columns:minmax(0,1fr)!important; row-gap:40px; }
+@media (max-width: 1023px) {
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  row-gap: 32px !important;
+  padding: 24px 16px !important;
+ }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column {
+  grid-column: 1 / -1 !important;
+  order: 1 !important;
+  min-width: 0 !important;
+ }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column {
+  grid-column: 1 / -1 !important;
+  order: 2 !important;
+  min-width: 0 !important;
+ }
 }
 
 /* Observatory refinement: let the navigation dissolve into the immersive hero. */

@@ -69,10 +69,10 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain('aria-label="Previous day"');
   });
 
-  it("publishes meals before the journal in the shared capture source order", () => {
+  it("publishes daily protocol before meals in the shared capture source order", () => {
     const html = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} recentDatesFirst />);
 
-    expect(html.indexOf('class="personal-lab-meal-column"')).toBeLessThan(html.indexOf('id="daily-journal"'));
+    expect(html.indexOf('id="daily-journal"')).toBeLessThan(html.indexOf('data-purpose="nutrition-journal"'));
   });
 
   it("can hide the homepage add-meal control without changing the shared journal default", () => {
