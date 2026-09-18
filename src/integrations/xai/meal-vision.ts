@@ -86,11 +86,19 @@ export class MealVisionError extends Error {
   readonly requestId?: string;
 }
 
+export type GrokStreamProgressEvent =
+  | { type: "reasoning"; delta: string; text?: string }
+  | { type: "text_delta"; delta: string }
+  | { type: "dish_detected"; dishType: string }
+  | { type: "food_detected"; food: string };
+
 export type MealVisionProvider = {
   name: string;
   model: string;
   analyze(input: MealVisionInput): Promise<MealAnalysis>;
   analyzeText?(input: MealVisionTextInput): Promise<MealAnalysis>;
+  analyzeStream?(input: MealVisionInput, onProgress?: (event: GrokStreamProgressEvent) => void): Promise<MealAnalysis>;
+  analyzeTextStream?(input: MealVisionTextInput, onProgress?: (event: GrokStreamProgressEvent) => void): Promise<MealAnalysis>;
 };
 
 export type MealVisionVerificationInput = MealVisionInput & {
@@ -118,7 +126,7 @@ function providerTimeoutMs(fallback: number, requested?: number) {
 export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v4";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
 
-type VisionImageDetail = "low" | "high";
+type VisionImageDetail = "low" | "high" | "auto";
 
 const MEAL_PHOTO_EVIDENCE_CONTRACT_PROMPT = "Traite chaque photo comme une preuve indépendante : plusieurs photos montrent généralement des éléments différents du même repas. Conserve ces aliments séparément. Ne fusionne que si tu reconnais clairement le même aliment ou la même portion sous des angles différents ; dans ce cas, garde un seul food et toutes les evidencePhotoIds correspondantes. Ne déduplique jamais seulement parce que deux noms se ressemblent. Chaque evidencePhotoIds doit appartenir exactement aux identifiants des photos fournies, et tout aliment attribué à une photo doit référencer au moins une de ces photos.";
 
@@ -1120,6 +1128,146 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
   });
 }
 
+async function requestGrokAnalysisStream(
+  request: {
+    model: string;
+    instructions: string;
+    promptText: string;
+    imageContents: Array<{ type: string; image_url: string; detail: VisionImageDetail }>;
+    maxOutputTokens: number;
+    sourcePhotoIds: string[];
+    requestId?: string;
+    timeoutMs?: number;
+    reasoningEffort?: string;
+  },
+  onProgress?: (event: GrokStreamProgressEvent) => void,
+): Promise<MealAnalysis> {
+  const apiKey = process.env.XAI_API_KEY || requireServerEnv("XAI_API_KEY");
+  const endpoint = process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses";
+  const imageCount = request.imageContents.length;
+  const payload = {
+    model: request.model,
+    stream: true,
+    store: false,
+    prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-xai-${request.model}-stream`,
+    reasoning: { effort: request.reasoningEffort || (request.model.startsWith("grok-4.3") ? "none" : "low") },
+    max_output_tokens: request.maxOutputTokens,
+    instructions: request.instructions,
+    input: [{
+      role: "user",
+      content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
+    }],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "soma_meal_analysis",
+        strict: true,
+        schema: mealAnalysisJsonSchema(),
+      },
+    },
+  };
+
+  const timeoutMs = providerTimeoutMs(imageCount === 0 ? TEXT_PROVIDER_TIMEOUT_MS : DEFAULT_PROVIDER_TIMEOUT_MS, request.timeoutMs);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    const code: MealVisionErrorCode = timeout ? "provider_timeout" : "provider_unavailable";
+    throw new MealVisionError(code, providerMessage("xai", code), { cause: error, provider: "xai", requestId: request.requestId, retryable: true });
+  }
+
+  if (!response.ok) {
+    clearTimeout(timeoutId);
+    const retryable = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
+    const code: MealVisionErrorCode = response.status === 401 || response.status === 403
+      ? "provider_auth"
+      : response.status === 429
+        ? "provider_rate_limited"
+        : response.status === 408 || response.status === 425
+          ? "provider_timeout"
+          : response.status >= 500
+            ? "provider_unavailable"
+            : "provider_request";
+    throw new MealVisionError(code, providerMessage("xai", code), { provider: "xai", status: response.status, requestId: request.requestId, retryable });
+  }
+
+  if (!response.body) {
+    clearTimeout(timeoutId);
+    throw new MealVisionError("provider_empty_response", "xAI stream returned empty body.", { provider: "xai", requestId: request.requestId });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullText = "";
+  let detectedDish: string | null = null;
+  const detectedFoods = new Set<string>();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(":") || trimmed === "data: [DONE]") continue;
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6));
+            if (parsed.type === "response.reasoning_summary_text.delta" && typeof parsed.delta === "string") {
+              onProgress?.({ type: "reasoning", delta: parsed.delta });
+            } else if (parsed.type === "response.output_text.delta" && typeof parsed.delta === "string") {
+              fullText += parsed.delta;
+              onProgress?.({ type: "text_delta", delta: parsed.delta });
+
+              if (!detectedDish) {
+                const dishMatch = fullText.match(/"dishType"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+                if (dishMatch && dishMatch[1]) {
+                  detectedDish = dishMatch[1];
+                  onProgress?.({ type: "dish_detected", dishType: detectedDish });
+                }
+              }
+
+              const foodNameMatches = fullText.matchAll(/"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+              for (const match of foodNameMatches) {
+                const name = match[1]?.trim();
+                if (name && !detectedFoods.has(name)) {
+                  detectedFoods.add(name);
+                  onProgress?.({ type: "food_detected", food: name });
+                }
+              }
+            }
+          } catch {
+            // Ignore partial SSE lines
+          }
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!fullText.trim()) {
+    throw new MealVisionError("provider_empty_response", "xAI stream completed without content.", { provider: "xai", requestId: request.requestId });
+  }
+
+  const parsedJson = structuredJson(fullText, request.sourcePhotoIds);
+  const normalized = normalizeStructuredAnalysis(parsedJson, request.sourcePhotoIds) as MealAnalysis;
+  return normalized;
+}
+
 export function createXaiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
   const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   return {
@@ -1130,7 +1278,7 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number; tim
         model,
         instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
         promptText: makePrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" as VisionImageDetail })),
         maxOutputTokens: 6_000,
         sourcePhotoIds: input.images.map((image) => image.id),
         requestId: input.requestId,
@@ -1150,6 +1298,30 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number; tim
         maxAttempts: options.maxAttempts,
         timeoutMs: options.timeoutMs ?? providerTimeoutMs(TEXT_PROVIDER_TIMEOUT_MS),
       });
+    },
+    async analyzeStream(input, onProgress) {
+      return requestGrokAnalysisStream({
+        model,
+        instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
+        promptText: makePrompt(input),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" as VisionImageDetail })),
+        maxOutputTokens: 6_000,
+        sourcePhotoIds: input.images.map((image) => image.id),
+        requestId: input.requestId,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(DEFAULT_PROVIDER_TIMEOUT_MS),
+      }, onProgress);
+    },
+    async analyzeTextStream(input, onProgress) {
+      return requestGrokAnalysisStream({
+        model,
+        instructions: MEAL_TEXT_PROVIDER_INSTRUCTIONS,
+        promptText: makeTextPrompt(input),
+        imageContents: [],
+        maxOutputTokens: 3_000,
+        sourcePhotoIds: [],
+        requestId: input.requestId,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(TEXT_PROVIDER_TIMEOUT_MS),
+      }, onProgress);
     },
   };
 }
@@ -1207,6 +1379,54 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
         ...recipeContext,
       });
     })();
+  const sourcePhotoIds = input.images.map((image) => image.id);
+  const result = validateProviderResult(primaryResponse, sourcePhotoIds, provider);
+  const validation = {
+    requested: false,
+    configured: false,
+    attempted: false,
+    succeeded: false,
+    provider: null,
+    model: null,
+  };
+  return { result, provider: provider.name, model: provider.model, validation };
+}
+
+export async function analyzeMealInputStream(
+  input: MealVisionInput,
+  provider: MealVisionProvider = getMealVisionProvider(),
+  options: { requestId?: string } = {},
+  onProgress?: (event: GrokStreamProgressEvent) => void,
+) {
+  const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
+  const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
+  let primaryResponse: MealAnalysis;
+  if (input.images.length > 0) {
+    if (provider.analyzeStream) {
+      primaryResponse = await provider.analyzeStream(providerInput, onProgress);
+    } else {
+      primaryResponse = await provider.analyze(providerInput);
+    }
+  } else {
+    const note = input.note?.trim() ?? "";
+    if (!note && !input.correction) throw new Error("A meal needs a note, a correction, or at least one image before analysis.");
+    const textInput = {
+      mealType: input.mealType,
+      mealDate: input.mealDate,
+      note: note || (input.correction ? "Mise à jour du repas précédent." : ""),
+      ...(input.correction ? { correction: input.correction } : {}),
+      ...(input.previousAnalysis ? { previousAnalysis: input.previousAnalysis } : {}),
+      ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
+      ...recipeContext,
+    };
+    if (provider.analyzeTextStream) {
+      primaryResponse = await provider.analyzeTextStream(textInput, onProgress);
+    } else if (provider.analyzeText) {
+      primaryResponse = await provider.analyzeText(textInput);
+    } else {
+      throw new Error("This meal analysis provider does not support text-only analysis.");
+    }
+  }
   const sourcePhotoIds = input.images.map((image) => image.id);
   const result = validateProviderResult(primaryResponse, sourcePhotoIds, provider);
   const validation = {

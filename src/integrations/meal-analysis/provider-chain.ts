@@ -2,7 +2,9 @@ import "server-only";
 
 import {
   analyzeMealInput,
+  analyzeMealInputStream,
   createXaiMealVisionProvider,
+  type GrokStreamProgressEvent,
   MEAL_ANALYSIS_PROMPT_VERSION,
   MEAL_ANALYSIS_SCHEMA_VERSION,
   MealVisionError,
@@ -139,5 +141,46 @@ export async function analyzeMealInputWithFallback(
       });
       throw fallbackError;
     }
+  }
+}
+
+export type { GrokStreamProgressEvent };
+
+export async function analyzeMealInputStreamWithFallback(
+  input: MealVisionInput,
+  options: { provider?: MealVisionProvider; requestId?: string; allowFallback?: boolean } = {},
+  onProgress?: (event: GrokStreamProgressEvent) => void,
+) {
+  const primary = options.provider ?? getConfiguredMealAnalysisProvider();
+  const secondary = options.provider || options.allowFallback === false ? null : fallbackProvider(primary);
+  const primaryConfiguration = { provider: primary.name, model: primary.model };
+  try {
+    const analysed = await analyzeMealInputStream(input, primary, { requestId: options.requestId }, onProgress);
+    return {
+      ...analysed,
+      provenance: pipelineProvenance({
+        primary: primaryConfiguration,
+        final: { provider: analysed.provider, model: analysed.model },
+        validation: analysed.validation,
+        fallback: { configured: Boolean(secondary), attempted: false, used: false, provider: secondary?.name ?? null, model: secondary?.model ?? null },
+      }),
+    };
+  } catch (error) {
+    if (!secondary || !(error instanceof MealVisionError) || !error.retryable) throw error;
+    console.warn("[meal-analysis] primary provider streaming failed; fallback started", {
+      requestId: options.requestId,
+      primaryProvider: primary.name,
+      fallbackProvider: secondary.name,
+    });
+    const result = await analyzeMealInput(input, secondary, { requestId: options.requestId });
+    return {
+      ...result,
+      provenance: pipelineProvenance({
+        primary: primaryConfiguration,
+        final: { provider: secondary.name, model: secondary.model },
+        validation: result.validation,
+        fallback: { configured: true, attempted: true, used: true, provider: secondary.name, model: secondary.model },
+      }),
+    };
   }
 }

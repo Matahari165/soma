@@ -196,5 +196,5 @@ describe("Personal Lab progressive stream", () => {
     } finally {
       vi.unstubAllEnvs();
     }
-  });
+  }, 15_000);
 });

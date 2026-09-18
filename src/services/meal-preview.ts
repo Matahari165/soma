@@ -364,3 +364,26 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
     return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, entryState: meal.entryState, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map(previewConfirmedMealFood), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
 }
+
+export async function streamPreviewMeal(
+  userId: string,
+  mealId: string,
+  options?: { correction?: MealAnalysisCorrection },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEvent?: (event: any) => void | Promise<void>,
+) {
+  if (onEvent) {
+    await onEvent({ type: "phase", phase: "starting" });
+    await onEvent({ type: "phase", phase: "reasoning" });
+    await new Promise(r => setTimeout(r, 100));
+    await onEvent({ type: "dish_detected", dishType: "Plat complet" });
+    await new Promise(r => setTimeout(r, 100));
+    await onEvent({ type: "food_detected", food: "Poulet grillé" });
+  }
+  const res = analyzePreviewMeal(userId, mealId, options);
+  if (!res) throw new Error("Meal not found");
+  if (onEvent) {
+    await onEvent({ type: "complete", meal: findPreviewMeal(userId, mealId), analysis: res.analysis });
+  }
+  return res;
+}

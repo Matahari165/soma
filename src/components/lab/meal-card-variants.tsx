@@ -172,6 +172,7 @@ export interface LabMealCardProps {
   disabled?: boolean;
   designVariant?: MealDesignVariant;
   targets?: NutritionTargets;
+  analysisProgress?: { phase?: string; dishType?: string; foods: string[] } | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onAnalyze: () => void;
@@ -194,6 +195,7 @@ export function LabMealCard({
   disabled = false,
   designVariant = "v1",
   targets,
+  analysisProgress,
   onFiles,
   onRemovePhoto,
   onAnalyze,
@@ -406,13 +408,25 @@ export function LabMealCard({
           </div>
         </div>
         <div className={styles.analyzingState} role="status">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className={styles.analyzingHeader}>
             <span className={styles.progressTrace} aria-hidden="true" />
-            <span>Analyzing…</span>
+            <span className={styles.progressPhase}>{analysisProgress?.phase || "Analyse en cours…"}</span>
           </div>
-          <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
-            Cancel
-          </button>
+          {analysisProgress?.dishType && (
+            <div className={styles.dishBadge}>{analysisProgress.dishType}</div>
+          )}
+          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
+            <div className={styles.foodChipsList}>
+              {analysisProgress.foods.map((food, idx) => (
+                <span key={idx} className={styles.foodChip}>{food}</span>
+              ))}
+            </div>
+          )}
+          <div className={styles.analyzingActions}>
+            <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
+              Annuler
+            </button>
+          </div>
         </div>
       </article>
     );
