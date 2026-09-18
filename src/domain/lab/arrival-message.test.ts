@@ -22,13 +22,13 @@ describe("arrival message personalization", () => {
   });
 
   it("uses the first name and a stable, date-based variation", () => {
-    const morning = arrivalMessageFor({ name: "Jérémy Delloume", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:00:00+02:00") });
-    const sameMorning = arrivalMessageFor({ name: "Jérémy Delloume", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:14:00+02:00") });
-    const nextDay = arrivalMessageFor({ name: "Jérémy Delloume", timeZone: "Europe/Paris", now: new Date("2026-09-13T07:00:00+02:00") });
+    const morning = arrivalMessageFor({ name: "Alex Vance", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:00:00+02:00") });
+    const sameMorning = arrivalMessageFor({ name: "Alex Vance", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:14:00+02:00") });
+    const nextDay = arrivalMessageFor({ name: "Alex Vance", timeZone: "Europe/Paris", now: new Date("2026-09-13T07:00:00+02:00") });
 
-    expect(morning.lines.join(" ")).toContain("Jérémy");
+    expect(morning.lines.join(" ")).toContain("Alex");
     expect(morning).toEqual(sameMorning);
-    expect(nextDay.lines.join(" ")).toContain("Jérémy");
+    expect(nextDay.lines.join(" ")).toContain("Alex");
     expect(ARRIVAL_PHRASE_COUNTS.base).toBeGreaterThanOrEqual(50);
     expect(ARRIVAL_PHRASE_COUNTS.run).toBeGreaterThanOrEqual(20);
     expect(ARRIVAL_PHRASE_COUNTS.intense).toBeGreaterThanOrEqual(20);
@@ -37,12 +37,12 @@ describe("arrival message personalization", () => {
   it("uses a neutral fallback when name is missing or empty", () => {
     const fallback = arrivalMessageFor({ name: "", timeZone: "Europe/Paris", now: new Date("2026-09-12T07:00:00+02:00") });
     expect(fallback.lines.join(" ")).toContain("Friend");
-    expect(fallback.lines.join(" ")).not.toContain("Jérémy");
+    expect(fallback.lines.join(" ")).not.toContain("Alex");
   });
 
   it("adds a concise factual note for the marked activity", () => {
-    const run = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T20:00:00+02:00"), activity: { kind: "run", distanceKm: 7.2, durationMinutes: 44 } });
-    const intense = arrivalMessageFor({ name: "Jérémy", now: new Date("2026-09-12T15:00:00+02:00"), activity: { kind: "intense", intensityMinutes: 24 } });
+    const run = arrivalMessageFor({ name: "Alex", now: new Date("2026-09-12T20:00:00+02:00"), activity: { kind: "run", distanceKm: 7.2, durationMinutes: 44 } });
+    const intense = arrivalMessageFor({ name: "Alex", now: new Date("2026-09-12T15:00:00+02:00"), activity: { kind: "intense", intensityMinutes: 24 } });
 
     expect(run.activityNote).toBe("Run recorded · 7.2 km · 44 min");
     expect(intense.activityNote).toBe("Intense effort recorded · 24 min in high zones");

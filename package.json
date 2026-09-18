@@ -2,6 +2,23 @@
   "name": "soma",
   "version": "0.1.0",
   "private": true,
+  "description": "Personal health intelligence platform & biometric lab correlating wearable physiological data with daily nutrition and habits to reveal the determinants of restorative sleep.",
+  "keywords": [
+    "health-tech",
+    "biometrics",
+    "sleep-tracking",
+    "nextjs",
+    "react19",
+    "typescript",
+    "supabase",
+    "cloudflare-r2",
+    "vision-ai"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Matahari165/Soma.git"
+  },
+  "author": "Soma Contributors",
   "type": "module",
   "scripts": {
     "dev": "next dev",

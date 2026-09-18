@@ -69,7 +69,7 @@ describe("OnboardingForm - Healthy habits catalogue (Step 2)", () => {
     expect(html).toContain("Running");
     expect(html).toContain("Strength training");
 
-    // Invariant: NO intimate or Jeremy-specific variables
+    // Invariant: NO intimate or user-specific variables
     expect(html).not.toContain("Masturbation");
     expect(html).not.toContain("WHM");
   });

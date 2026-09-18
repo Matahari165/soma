@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 const options = Object.fromEntries(process.argv.slice(2).map((argument, index, all) => argument.startsWith("--") ? [argument.slice(2), all[index + 1]] : null).filter(Boolean));
 const userId = options["user-id"];
 if (!userId) throw new Error("Usage: node scripts/build-cloudflare-import.mjs --user-id <id> [--data-dir <path>] [--output <path>] [--archive-object-path <R2 key> --archive-sha256 <hash> --archive-bytes <bytes>]");
-const dataDir = resolve(options["data-dir"] ?? "/Users/jeremydelloume/Downloads/Soma-wearable-data-2026-08-24");
+const dataDir = resolve(options["data-dir"] ?? "./data/wearable-sample");
 const output = resolve(options.output ?? "/tmp/soma-cloudflare-import.sql");
 const whoop = JSON.parse(await readFile(resolve(dataDir, "normalized/whoop_health_records.json"), "utf8"));
 const fitbit = parseCsv(await readFile(resolve(dataDir, "normalized/google-health-analysis/daily_merged.csv"), "utf8"));
@@ -234,7 +234,7 @@ function enrichMetricsAndScores(metrics) {
 }
 
 const rows = [];
-rows.push(statement("profiles", { user_id: userId, display_name: "Jeremy", timezone: "Europe/Paris", import_range: "all_history", onboarding_completed_at: now }, ["user_id"]));
+rows.push(statement("profiles", { user_id: userId, display_name: "Alex", timezone: "Europe/Paris", import_range: "all_history", onboarding_completed_at: now }, ["user_id"]));
 rows.push(statement("sleep_preferences", { user_id: userId, base_target_minutes: 510, usual_wake_time: "07:00", wind_down_minutes: 30 }, ["user_id"]));
 if (options["archive-object-path"]) {
   if (!options["archive-sha256"] || !options["archive-bytes"]) throw new Error("Archive SHA-256 and byte size are required with --archive-object-path.");
