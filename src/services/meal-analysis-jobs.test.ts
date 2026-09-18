@@ -177,7 +177,7 @@ describe("durable meal analysis jobs", () => {
       meal_id: mealId,
       status: "queued",
       provider: "xai",
-      model: "grok-4.3",
+      model: "grok-4.6",
       source_photo_ids: [],
       source_note: "Riz et légumes",
       source_meal_date: meal.mealDate,
@@ -189,7 +189,7 @@ describe("durable meal analysis jobs", () => {
     };
     state.findQueuedMealAnalysis.mockResolvedValue(targeted);
     state.listQueuedMealAnalyses.mockResolvedValue([{ ...targeted, id: "analysis-old", created_at: "2026-09-17T09:00:00.000Z" }]);
-    state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.3", result: canonicalResult });
+    state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.6", result: canonicalResult });
 
     const result = await processNextMealAnalysis({ userId: "user-1", analysisId: targeted.id });
 

@@ -32,7 +32,7 @@ function providerConfiguration(provider: "xai" | "openai", model: string) {
 export function getMealAnalysisPipelineConfiguration(): MealAnalysisPipelineConfiguration {
   const primaryProvider = configuredProviderName();
   const primaryModel = primaryProvider === "xai"
-    ? process.env.XAI_MEAL_VISION_MODEL || "grok-4.3"
+    ? process.env.XAI_MEAL_VISION_MODEL || "grok-4.6"
     : process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
   const primary = providerConfiguration(primaryProvider, primaryModel);
   const validator = null;
@@ -40,7 +40,7 @@ export function getMealAnalysisPipelineConfiguration(): MealAnalysisPipelineConf
   const fallback = !fallbackEnabled ? null : primaryProvider === "xai" && process.env.OPENAI_API_KEY
     ? providerConfiguration("openai", process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol")
     : primaryProvider === "openai" && process.env.XAI_API_KEY
-      ? providerConfiguration("xai", process.env.XAI_MEAL_VISION_MODEL || "grok-4.3")
+      ? providerConfiguration("xai", process.env.XAI_MEAL_VISION_MODEL || "grok-4.6")
       : null;
   return { primary, validator, fallback };
 }

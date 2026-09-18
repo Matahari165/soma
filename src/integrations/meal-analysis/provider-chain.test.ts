@@ -73,10 +73,10 @@ describe("meal analysis provider fallback", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.x.ai/v1/responses");
-    expect(result).toMatchObject({ provider: "xai", model: "grok-4.3", result: { summary: "Grok" } });
+    expect(result).toMatchObject({ provider: "xai", model: "grok-4.6", result: { summary: "Grok" } });
     expect(result.provenance).toMatchObject({
-      primary: { provider: "xai", model: "grok-4.3" },
-      final: { provider: "xai", model: "grok-4.3" },
+      primary: { provider: "xai", model: "grok-4.6" },
+      final: { provider: "xai", model: "grok-4.6" },
       validation: { requested: false, attempted: false, succeeded: false, provider: null, model: null },
       fallback: { configured: true, attempted: false, used: false },
     });

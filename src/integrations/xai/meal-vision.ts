@@ -1121,7 +1121,7 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
 }
 
 export function createXaiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
-  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.3";
+  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   return {
     name: "xai",
     model,

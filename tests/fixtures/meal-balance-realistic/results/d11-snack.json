@@ -3,7 +3,7 @@
   "caseId": "d11-snack",
   "mealDate": "2026-09-11",
   "mealType": "snack",
-  "inputFingerprint": "sha256:9566c9d0b87a1b18140e7425de130b2cdb069829a0da8db0ea8b7ffbb9d80061",
+  "inputFingerprint": "sha256:1e624ceae26b565f65bbf8ef4e8ea0121455589c53d5f8322149d9eae1d00a10",
   "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
   "provider": "xai",
   "model": "grok-4.6",
