@@ -1,4 +1,4 @@
-import { journalAutomaticSource, journalCaptureMode, journalValueMeetsGoal, type JournalDay, type JournalEntry, type JournalTrackingCadence, type JournalVariable } from "@/domain/lab/journal";
+import { journalAutomaticSource, journalValueMeetsGoal, type JournalDay, type JournalEntry, type JournalTrackingCadence, type JournalVariable } from "@/domain/lab/journal";
 
 export const JOURNAL_ACHIEVEMENT_WINDOW_DAYS = 28;
 
@@ -53,27 +53,12 @@ function achievementForVariable(variable: JournalVariable, input: AchievementInp
       .filter((entry) => entry.variableId === variable.id && inWindow(entry.entryDate, windowStart, windowEnd))
       .map((entry) => [entry.entryDate, entry.value]),
   );
-  const validatedDays = input.days.filter((day) => day.status === "validated" && inWindow(day.entryDate, windowStart, windowEnd));
-  const automatic = journalCaptureMode(variable) === "automatic";
-  const explicitOmissions = new Map(validatedDays.map((day) => [day.entryDate, new Set(day.omittedVariableIds)]));
-
   if (cadence === "daily") {
-    const candidateDates = new Set<string>();
-    if (automatic) {
-      for (const date of variableEntries.keys()) candidateDates.add(date);
-    } else {
-      for (const day of validatedDays) candidateDates.add(day.entryDate);
-      for (const date of variableEntries.keys()) candidateDates.add(date);
-    }
     let successPeriods = 0;
     let observedPeriods = 0;
-    for (const date of candidateDates) {
-      const value = variableEntries.get(date);
-      const omitted = explicitOmissions.get(date)?.has(variable.id) ?? false;
-      const observed = value !== undefined || (!automatic && (omitted || validatedDays.some((day) => day.entryDate === date)));
-      if (!observed) continue;
+    for (const value of variableEntries.values()) {
       observedPeriods += 1;
-      if (value !== undefined && journalValueMeetsGoal(variable, value)) successPeriods += 1;
+      if (journalValueMeetsGoal(variable, value)) successPeriods += 1;
     }
     return {
       variableId: variable.id,
@@ -101,14 +86,6 @@ function achievementForVariable(variable: JournalVariable, input: AchievementInp
     state.observed = true;
     state.success ||= journalValueMeetsGoal(variable, value);
   }
-  if (!automatic) {
-    for (const day of validatedDays) {
-      const week = mondayFor(day.entryDate);
-      const state = ensurePeriod(week);
-      if (!variableEntries.has(day.entryDate)) state.observed = true;
-    }
-  }
-
   let successPeriods = 0;
   let observedPeriods = 0;
   for (const [period, state] of periodStates) {

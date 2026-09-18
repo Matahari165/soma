@@ -53,4 +53,41 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain('data-over-target="true"');
     expect(html).not.toContain('class="_metricBar_');
   });
+
+  it("renders skipped meals as a calm reversible state without capture controls", () => {
+    const meal: MealRecord = {
+      id: "meal-breakfast-skipped",
+      date: "2026-08-31",
+      slot: "breakfast",
+      note: "",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "confirmed",
+      entryState: "skipped",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="breakfast"
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+      onMarkRecorded={() => undefined}
+    />);
+
+    expect(html).toContain("Skipped");
+    expect(html).toContain("This slot is excluded from meal totals.");
+    expect(html).toContain("Log this meal");
+    expect(html).not.toContain("<textarea");
+    expect(html).not.toContain("Camera");
+    expect(html).not.toContain("Photos");
+    expect(html).not.toContain("Analyze meal");
+  });
 });

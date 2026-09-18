@@ -79,8 +79,8 @@ html[data-lab-theme="observatory"] [data-backdrop="mont-nuages-user"] .arrival-b
 html[data-lab-theme="observatory"] .arrival-backdrop__tone { position:absolute; inset:0; background:linear-gradient(90deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.3) 42%,rgba(5,5,5,.82) 72%,#050505 100%); }
 html[data-lab-theme="observatory"] .arrival-backdrop__fade { position:absolute; inset:0; background:linear-gradient(to bottom,#050505 0%,transparent 12%,transparent 62%,rgba(5,5,5,.78) 84%,#050505 100%); }
 html[data-lab-theme="observatory"] .lab-intro > .lab-arrival { position:relative; z-index:1; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { min-height:700px!important; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:750px!important; min-height:750px!important; margin-top:16px; margin-bottom:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { min-height:500px!important; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(500px,42vw)!important; min-height:min(500px,42vw)!important; margin-top:0; margin-bottom:0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { font-size:clamp(44px,5vw,72px); line-height:1.06; margin:0 0 20px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading--personalized h1 { max-width:20ch; }
 .arrival-date-nav { position:relative; display:flex; align-items:center; gap:8px; width:max-content; }
@@ -91,9 +91,9 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-headi
 .arrival-date-nav__btn:focus-visible { outline:2px solid var(--lab-brand); outline-offset:1px; }
 .arrival-date { display:block; color:#aaa; font:12px var(--font-soma-mono),monospace; }
 .arrival-title-line { display:block; overflow:hidden; padding:.1em 0 .14em; margin:-.1em 0 -.14em; }
-.arrival-title-line > span { display:block; animation:observatory-title-unfold 850ms cubic-bezier(.16,1,.3,1) both; }
+.arrival-title-line > span { display:block; animation:observatory-title-unfold 220ms cubic-bezier(.2,.8,.2,1) both; }
 .arrival-title-line:nth-child(2) > span { animation-delay:110ms; }
-@keyframes observatory-title-unfold { from { transform:translateY(112%); filter:blur(10px); opacity:0; } to { transform:none; filter:blur(0); opacity:1; } }
+@keyframes observatory-title-unfold { from { transform:translateY(4px); filter:none; opacity:0; } to { transform:none; filter:none; opacity:1; } }
 .observatory-radar { grid-template-rows:minmax(0,1fr) auto; }
 .radar-grid,.radar-axis { stroke:#303030; }
 .radar-grid:last-of-type { stroke:#777; }
@@ -122,8 +122,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
  html[data-lab-theme="observatory"] :is(.arrival-backdrop__image--panorama,.arrival-backdrop__image--crepuscule) { object-position:38% 28%; }
  html[data-lab-theme="observatory"] .arrival-backdrop__tone { background:linear-gradient(90deg,rgba(5,5,5,.2),rgba(5,5,5,.76) 72%,#050505); }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { grid-template-columns:minmax(0,1fr)!important; min-height:0!important; }
-  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:520px!important; min-height:520px!important; margin-top:16px; margin-bottom:0; }
- html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { margin:20px 0 12px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(360px,calc(100vw - 16px))!important; min-height:min(360px,calc(100vw - 16px))!important; margin-top:0; margin-bottom:0; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { margin:0 0 16px; }
  .observatory-radar { transform:translateY(-24px)!important; }
  .observatory-radar svg { transform:scale(.92); transform-origin:center; }
 }

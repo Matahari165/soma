@@ -145,7 +145,7 @@ html[data-lab-theme="observatory"] .meals-page > section > header h1 {
   font-size: 40px;
   font-weight: 400;
   letter-spacing: -.025em;
-  line-height: 1;
+  line-height: 48px;
 }
 html[data-lab-theme="observatory"] .meals-page > section :is(h2,h3) {
   color: #eee;
@@ -185,5 +185,5 @@ html[data-lab-theme="observatory"] .health-detail-page .health-observatory-recom
 @media (max-width: 700px) {
   html[data-lab-theme="observatory"] .meals-page > section { padding: 24px 16px 48px; }
   html[data-lab-theme="observatory"] .meals-page > section > header { min-height: 0; grid-template-columns: 1fr; gap: 16px; }
-  html[data-lab-theme="observatory"] .meals-page > section > header h1 { font-size: 30px; }
+  html[data-lab-theme="observatory"] .meals-page > section > header h1 { font-size: 30px; line-height: 36px; }
 }

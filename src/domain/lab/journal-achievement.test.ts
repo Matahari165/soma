@@ -31,7 +31,7 @@ function entry(entryDate: string, value: JournalEntry["value"]): JournalEntry {
 }
 
 describe("journalAchievementsFor", () => {
-  it("scores a daily measure only across validated or recorded days", () => {
+  it("scores a daily measure only across recorded values", () => {
     const result = journalAchievementsFor({
       variables: [variable()],
       entries: [entry("2026-09-01", true), entry("2026-09-02", false)],
@@ -49,6 +49,28 @@ describe("journalAchievementsFor", () => {
       days: [day("2026-09-01")],
       todayDate: "2026-09-03",
       windowDays: 3,
+    });
+    expect(result[0]).toMatchObject({ percentage: null, successPeriods: 0, observedPeriods: 0 });
+  });
+
+  it("keeps validated but unanswered habits outside the denominator", () => {
+    const result = journalAchievementsFor({
+      variables: [variable()],
+      entries: [],
+      days: [day("2026-09-01", "validated", ["variable-1"])],
+      todayDate: "2026-09-02",
+      windowDays: 2,
+    });
+    expect(result[0]).toMatchObject({ percentage: null, successPeriods: 0, observedPeriods: 0 });
+  });
+
+  it("keeps a completed unanswered weekly period outside the denominator", () => {
+    const result = journalAchievementsFor({
+      variables: [variable({ trackingCadence: "weekly" })],
+      entries: [],
+      days: [day("2026-08-26", "validated", ["variable-1"])],
+      todayDate: "2026-09-06",
+      windowDays: 12,
     });
     expect(result[0]).toMatchObject({ percentage: null, successPeriods: 0, observedPeriods: 0 });
   });

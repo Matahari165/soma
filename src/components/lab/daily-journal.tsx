@@ -28,7 +28,7 @@ import {
   type JournalVariableType,
   type JournalTrackingCadence,
 } from "@/domain/lab/journal";
-import type { JournalAchievement } from "@/domain/lab/journal-achievement";
+import { JOURNAL_ACHIEVEMENT_WINDOW_DAYS, type JournalAchievement } from "@/domain/lab/journal-achievement";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
 
@@ -432,6 +432,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   const classes = ["journal-field", confirmed ? "journal-field--confirmed" : "", dayValidated ? "journal-field--day-validated" : "", isAutomatic ? "journal-field--automatic" : "", skipped ? "journal-field--skipped" : "", feedbackToken ? "journal-field--changed" : ""].filter(Boolean).join(" ");
   const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
   const achievementLabel = achievement?.percentage === null ? "Progress —" : achievement ? `Progress ${achievement.percentage}%` : null;
+  const achievementDays = achievement ? achievementWindowDays(achievement) : null;
   const label = journalVariableLabel(variable);
   const automaticDetectionLabel = isAutomatic ? "Automatic detection" : null;
   const dayValidationLabel = dayValidated ? "Day validated" : null;
@@ -442,6 +443,22 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   const observedCount = achievement?.observedPeriods ?? 0;
   const isEarlyMaturity = achievement ? observedCount < 10 : false;
   const showSupportingMeta = presentation !== "personal-lab";
+  const achievementProgress = achievement && achievementLabel && achievementDays ? <span className="journal-achievement">
+    <span className="journal-achievement__label">{achievementLabel} <span className="journal-achievement__window" aria-hidden="true">· {achievementDays}d</span></span>
+    <span
+      className="journal-achievement__bar"
+      role="progressbar"
+      aria-label={`${label}: ${achievementLabel} over ${achievementDays} days`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={achievement.percentage ?? undefined}
+      aria-valuetext={achievement.percentage === null ? `Progress unavailable over ${achievementDays} days` : `${achievement.percentage}% over ${achievementDays} days`}
+      data-state={achievement.percentage === null ? "unavailable" : "measured"}
+    >
+      {achievement.percentage !== null && <span className="journal-achievement__fill" style={{ width: `${Math.min(100, Math.max(0, achievement.percentage))}%` }} />}
+    </span>
+  </span> : null;
+  const achievementMeta = presentation === "personal-lab" ? achievementProgress : showSupportingMeta && achievementLabel ? <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small> : null;
   const activeBadges = showSupportingMeta && activeHorizons && activeHorizons.length > 0 ? (
     <span className="journal-effect-badges" aria-label={`Strongest effect in ${activeHorizons.map(h => `${h}d`).join(", ")}`}>
       {activeHorizons.map((h) => (
@@ -451,7 +468,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       ))}
     </span>
   ) : null;
-  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-row"><span className="journal-field__state-mark" data-state={state} aria-hidden="true">{stateIcon}</span><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span></span>{showSupportingMeta && achievementLabel && <small aria-label={`${label}: ${achievementLabel}`}>{achievementLabel}</small>}{showSupportingMeta && isEarlyMaturity && (
+  const headingContent = <><span className="journal-field__emoji" aria-hidden="true">{variable.emoji}</span><span className="journal-field__label"><span className="journal-field__label-row"><span className="journal-field__state-mark" data-state={state} aria-hidden="true">{stateIcon}</span><span className="journal-field__label-text">{label}{activeBadges}{automaticDetectionLabel && <span className="journal-field__automatic-indicator" role="img" aria-label={automaticDetectionLabel}><ScanLine size={12} aria-hidden="true" /></span>}</span></span>{achievementMeta}{showSupportingMeta && isEarlyMaturity && (
     <span className="journal-maturity-indicator" title={`${observedCount}/10 observations recorded to unlock statistical analysis`}>
       <span className="journal-maturity-bar">
         <span className="journal-maturity-fill" style={{ width: `${Math.min(100, (observedCount / 10) * 100)}%` }} />
@@ -476,6 +493,13 @@ function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
+}
+
+function achievementWindowDays(achievement: JournalAchievement) {
+  const start = Date.parse(`${achievement.windowStart}T12:00:00Z`);
+  const end = Date.parse(`${achievement.windowEnd}T12:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return JOURNAL_ACHIEVEMENT_WINDOW_DAYS;
+  return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
 }
 
 export type DailyJournalProps = {

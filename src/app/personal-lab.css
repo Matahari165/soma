@@ -1600,3 +1600,45 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v2 .journal-field__feedback,
   .personal-lab-journal-column .journal-card--personal-lab.journal-card--status-v3 .journal-field__feedback { animation: none; }
 }
+
+/* A measured 28-day outcome stays distinct from the /10 observation maturity. */
+.personal-lab-journal-column .journal-card--personal-lab .journal-achievement {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--lab-text-secondary);
+  font-family: var(--font-soma-mono), monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-achievement__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-achievement__bar {
+  display: block;
+  width: 56px;
+  height: 4px;
+  flex: 0 0 56px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--lab-surface-selected);
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-achievement__bar[data-state="unavailable"] {
+  border-bottom: 1px dotted var(--lab-text-secondary);
+  background: transparent;
+}
+
+.personal-lab-journal-column .journal-card--personal-lab .journal-achievement__fill {
+  display: block;
+  height: 100%;
+  background: var(--lab-signal);
+}

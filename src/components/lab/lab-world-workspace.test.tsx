@@ -75,6 +75,14 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html.indexOf('class="personal-lab-meal-column"')).toBeLessThan(html.indexOf('id="daily-journal"'));
   });
 
+  it("can hide the homepage add-meal control without changing the shared journal default", () => {
+    const homepageHtml = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} hideAddMealButton />);
+    const defaultHtml = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} />);
+
+    expect(homepageHtml).not.toContain('aria-label="Add a meal"');
+    expect(defaultHtml).toContain('aria-label="Add a meal"');
+  });
+
   it("renders previous day's date and star graph when a past day is selected", () => {
     const html = renderToStaticMarkup(
       <LabWorldWorkspace

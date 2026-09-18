@@ -1,4 +1,4 @@
-import { Suspense, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { PersonalLabJournal, PersonalLabOverview } from "@/services/personal-lab";
@@ -59,8 +59,10 @@ describe("LabWorldPreview progressive rendering", () => {
 
     expect(shell).toMatchObject({ type: LabWorldWorkspace });
     expect(journalSettled).toBe(false);
-    const capture = (shell as ReactElement<{ capture: ReactElement }>).props.capture;
-    expect(capture.type).toBe(Suspense);
+    const workspaceProps = (shell as ReactElement<{ journalPromise: Promise<PersonalLabJournal>; overview: PersonalLabOverview }>).props;
+    const streamedJournalPromise = workspaceProps.journalPromise;
+    expect(streamedJournalPromise).toBe(journalPromise);
+    expect(workspaceProps.overview).toEqual(overview());
     expect(resolveJournal).toBeTypeOf("function");
   });
 

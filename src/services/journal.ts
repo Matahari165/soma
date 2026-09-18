@@ -3,9 +3,9 @@ import "server-only";
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
 import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, healthyHabitCatalog, isAddedSugarVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, normalizedJournalVariableName, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
-import { explicitNoBreakfastByDate, mealRecordsByDate as mealRecordsByDateForJournal } from "@/domain/lab/journal-meal-automatic";
+import { explicitNoBreakfastByDate, mealRecordsByDate as mealRecordsByDateForJournal, skippedBreakfastDates } from "@/domain/lab/journal-meal-automatic";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { loadConfirmedMealRecords } from "@/services/meals";
+import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
 
 export type JournalVariableRow = {
@@ -151,7 +151,7 @@ export async function ensureJournalVariables(
   }
 }
 
-export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[]; dailyTargetKcal?: number | null } = {}) {
+export async function loadJournalData(userId: string, options: { from?: string; to?: string; timeZone?: string; includeAutomaticEntries?: boolean; ensureDefaults?: boolean; mealRecords?: readonly ConfirmedMealRecord[]; skippedBreakfastDates?: ReadonlySet<string>; dailyTargetKcal?: number | null } = {}) {
   // Loading the journal remains backwards-compatible for write boundaries, but
   // page reads opt out explicitly so they never provision or rewrite variables.
   if (options.ensureDefaults !== false) await ensureJournalVariables(userId);
@@ -197,14 +197,21 @@ export async function loadJournalData(userId: string, options: { from?: string; 
       const healthResult = await healthQuery;
       if (!healthResult.error) health = (healthResult.data ?? []) as AutomaticJournalHealthDay[];
     }
-    const mealRecords = needsMealData
-      ? options.mealRecords ?? await loadConfirmedMealRecords(userId, { from: options.from, to: options.to })
-      : [];
+    const [mealRecords, skippedBreakfast] = await Promise.all([
+      needsMealData
+        ? options.mealRecords ?? loadConfirmedMealRecords(userId, { from: options.from, to: options.to })
+        : [],
+      needsLightBreakfast
+        ? options.skippedBreakfastDates ?? listMeals(userId, { from: options.from, to: options.to }).then(skippedBreakfastDates)
+        : new Set<string>(),
+    ]);
     const mealAddedSugarByDate = needsMealSugar
       ? new Map(aggregateConfirmedMeals(mealRecords).map((day) => [day.date, day.addedSugarG]))
       : undefined;
     const mealRecordsByDate = needsLightBreakfast ? mealRecordsByDateForJournal(mealRecords) : undefined;
-    const explicitlyNoBreakfast = needsLightBreakfast ? explicitNoBreakfastByDate({ variables, entries, days }) : undefined;
+    const explicitlyNoBreakfast = needsLightBreakfast
+      ? new Set([...explicitNoBreakfastByDate({ variables, entries, days }), ...skippedBreakfast])
+      : undefined;
     let dailyTargetKcal = options.dailyTargetKcal;
     if (needsLightBreakfast && dailyTargetKcal === undefined) {
       try {

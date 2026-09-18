@@ -114,6 +114,49 @@ describe("journal motion states", () => {
     expect(html).toContain('data-state="pending"');
   });
 
+  it("shows the 28-day achievement bar in Personal Lab without replacing the habit state", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      achievements: vacation ? [{ variableId: vacation.id, percentage: 75, successPeriods: 21, observedPeriods: 28, cadence: "daily" as const, windowStart: "2026-07-30", windowEnd: todayDate }] : [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("Progress 75%");
+    expect(html).toContain("· 28d");
+    expect(html).toContain('class="journal-achievement__bar" role="progressbar"');
+    expect(html).toContain('aria-label="Vacation: Progress 75% over 28 days"');
+    expect(html).toContain('aria-valuenow="75"');
+    expect(html).toContain('style="width:75%"');
+    expect(html).toContain('data-state="pending"');
+    expect(html).not.toContain("journal-maturity-indicator");
+  });
+
+  it("keeps an unavailable 28-day achievement distinct from zero", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      achievements: vacation ? [{ variableId: vacation.id, percentage: null, successPeriods: 0, observedPeriods: 0, cadence: "daily" as const, windowStart: "2026-07-30", windowEnd: todayDate }] : [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("Progress —");
+    expect(html).toContain("· 28d");
+    expect(html).toContain('aria-label="Vacation: Progress — over 28 days"');
+    expect(html).toContain('aria-valuetext="Progress unavailable over 28 days"');
+    expect(html).toContain('data-state="unavailable"');
+    expect(html).not.toContain('aria-valuenow="0"');
+    expect(html).not.toContain("style=\"width:0%");
+  });
+
   it("offers the breakfast photo shortcut only after Breakfast is set to yes", () => {
     const breakfast = variables.find((variable) => variable.name === "Breakfast");
     const withBreakfast = renderToStaticMarkup(createElement(DailyJournal, {

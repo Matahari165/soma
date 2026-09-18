@@ -311,6 +311,66 @@
   cursor: not-allowed;
 }
 
+.skippedState {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 4px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.skippedCopy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.skippedCopy strong {
+  color: var(--lab-text-primary, #f1f1f1);
+  font-weight: 500;
+}
+
+.skippedCopy span {
+  overflow-wrap: anywhere;
+}
+
+.restoreButton {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  background: transparent;
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.restoreButton:hover:not(:disabled) {
+  border-color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface, #080808);
+}
+
+.restoreButton:focus-visible {
+  outline: 2px solid var(--lab-brand, #eeeeee);
+  outline-offset: 3px;
+}
+
+.restoreButton:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
 /* A bar is deliberately binary: it communicates data presence, never a target. */
 .metricMark {
   grid-area: mark;
@@ -371,7 +431,7 @@
   resize: none;
   overflow: auto;
   line-height: 1.4;
-  transition: height 220ms cubic-bezier(.2, .8, .2, 1), border-color 150ms ease, background 150ms ease;
+  transition: border-color 150ms ease, background 150ms ease;
 }
 
 .v1TextInputExpanded {
@@ -983,12 +1043,13 @@
 
 /* The local comparison keeps every action comfortably tappable on touch
    screens while preserving the compact reading rhythm of the card. */
-.cardRoot :is(.analyzeButton, .mediaButton, .skipButton, .editButton, .v3CompactAnalyze) { min-height: 44px; }
+.cardRoot :is(.analyzeButton, .mediaButton, .skipButton, .editButton, .v3CompactAnalyze, .restoreButton) { min-height: 44px; }
 .cardRoot .mediaIconButton { width: 44px; height: 44px; }
 
 @media (prefers-reduced-motion: reduce) {
   .cardRoot,
   .metricBarFill,
+  .restoreButton,
   .v1MetricItem,
   .v2MetricCell,
   .v3Pill { transition: none; animation: none; }
