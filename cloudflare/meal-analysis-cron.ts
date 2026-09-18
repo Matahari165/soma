@@ -1,30 +1,24 @@
-export type MealAnalysisCronEnv = {
-  SOMA_CRON_TARGET_URL?: string;
-  CRON_SECRET?: string;
-};
+import { dispatchCronEndpoint, type CronPipelineEnv, type Fetcher } from "./cron-pipeline";
 
-type Fetcher = (input: Request) => Promise<Response>;
+export type MealAnalysisCronEnv = CronPipelineEnv;
 
-export async function runMealAnalysisCron(env: MealAnalysisCronEnv, fetcher: Fetcher = fetch) {
-  if (!env.SOMA_CRON_TARGET_URL || !env.CRON_SECRET) {
-    throw new Error("SOMA_CRON_TARGET_URL and CRON_SECRET are required for scheduled meal analysis.");
+export async function runMealAnalysisCron(env: MealAnalysisCronEnv, fetcher: Fetcher = fetch): Promise<void> {
+  const result = await dispatchCronEndpoint("meal-analysis", env, fetcher);
+  if (!result.ok) {
+    throw new Error(result.error ?? "Scheduled Soma meal analysis failed.");
   }
+}
 
-  const url = new URL("/api/cron/meal-analysis", env.SOMA_CRON_TARGET_URL);
-  if (url.protocol !== "https:") {
-    throw new Error("SOMA_CRON_TARGET_URL must use HTTPS.");
+export async function runHealthSyncCron(env: CronPipelineEnv, fetcher: Fetcher = fetch): Promise<void> {
+  const result = await dispatchCronEndpoint("sync", env, fetcher);
+  if (!result.ok) {
+    throw new Error(result.error ?? "Scheduled Soma health sync failed.");
   }
-  const response = await fetcher(
-    new Request(url, {
-      headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-      redirect: "manual",
-    }),
-  );
+}
 
-  if (response.status >= 300 && response.status < 400) {
-    throw new Error(`Scheduled Soma meal analysis refused redirect with HTTP ${response.status}.`);
-  }
-  if (!response.ok) {
-    throw new Error(`Scheduled Soma meal analysis failed with HTTP ${response.status}.`);
+export async function runArchiveHealthCron(env: CronPipelineEnv, fetcher: Fetcher = fetch): Promise<void> {
+  const result = await dispatchCronEndpoint("archive-health", env, fetcher);
+  if (!result.ok) {
+    throw new Error(result.error ?? "Scheduled Soma health archival failed.");
   }
 }
