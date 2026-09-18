@@ -1350,3 +1350,36 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+:global(.animate-fade-in) {
+  animation: mealCardFadeIn 300ms ease-out forwards;
+}
+
+@keyframes mealCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editButton:active:not(:disabled),
+.analyzeButton:active:not(:disabled),
+.mediaButton:active:not(:disabled),
+.mediaPillButton:active:not(:disabled),
+.mediaIconButton:active:not(:disabled),
+.skipButton:active:not(:disabled),
+.restoreButton:active:not(:disabled),
+.v1DetailsToggle:active,
+.v2DetailsToggle:active,
+.v3DetailsToggle:active,
+.v3CompactAnalyze:active:not(:disabled),
+.correctionSubmitButton:active:not(:disabled),
+.correctionCancelButton:active:not(:disabled) {
+  transform: scale(0.98);
+  transition: transform 150ms ease;
+}
+

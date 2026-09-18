@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
 import type { MealRecord } from "@/domain/meal-record";
-import { LabMealCard } from "./meal-card-variants";
+import { AnalysisDetails, LabMealCard } from "./meal-card-variants";
 
 describe("LabMealCard nutrition chart", () => {
   it("renders independent vertical meal targets for every nutrition metric", () => {
@@ -202,4 +202,125 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain("!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs");
     expect(html).toContain("disabled=\"\"");
   });
+
+  it("removes Target text from pending meal card", () => {
+    const meal: MealRecord = {
+      id: "meal-dinner-pending",
+      date: "2026-08-31",
+      slot: "dinner",
+      note: "Salmon and broccoli",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "draft",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="dinner"
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+    />);
+
+    expect(html).not.toContain("Target: <");
+    expect(html).not.toContain("Target:");
+    expect(html).toContain("Dinner");
+  });
+
+  it("removes Confirmed badge from confirmed meal card while retaining meal time and Modifier button", () => {
+    const meal: MealRecord = {
+      id: "meal-breakfast-confirmed",
+      date: "2026-08-31",
+      slot: "breakfast",
+      confirmedAt: "2026-08-31T08:30:00.000Z",
+      note: "Avocado toast",
+      photos: [],
+      analysis: {
+        dishType: "Avocado toast",
+        ingredients: [{ id: "ing-1", name: "Avocado", portion: "1" }],
+        calories: { low: 300, likely: 350, high: 400 },
+        proteinGrams: { low: 8, likely: 10, high: 12 },
+        carbohydratesGrams: { low: 30, likely: 35, high: 40 },
+        fatGrams: { low: 18, likely: 20, high: 22 },
+        addedSugarGrams: { low: 0, likely: 0, high: 1 },
+      },
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "confirmed",
+    };
+
+    const html = renderToStaticMarkup(<LabMealCard
+      meal={meal}
+      slot="breakfast"
+      saving={false}
+      processingFiles={false}
+      mutationBusy={false}
+      onFiles={() => undefined}
+      onRemovePhoto={() => undefined}
+      onAnalyze={() => undefined}
+      onCancelAnalysis={() => undefined}
+      onNote={() => undefined}
+      onEdit={() => undefined}
+    />);
+
+    expect(html).not.toContain("Confirmed");
+    expect(html).toContain("Modifier");
+    expect(html).toContain("· ");
+    expect(html).toContain("animate-fade-in");
+    expect(html).toContain("active:scale-[0.98]");
+  });
+
+  it("renders Delete meal button in expanded AnalysisDetails when onDeleteMeal is provided", () => {
+    const meal: MealRecord = {
+      id: "meal-lunch-details",
+      date: "2026-08-31",
+      slot: "lunch",
+      note: "Salade César",
+      photos: [],
+      analysis: {
+        dishType: "Salade César",
+        ingredients: [{ id: "ing-1", name: "Poulet", portion: "150g" }],
+        calories: { low: 400, likely: 450, high: 500 },
+        proteinGrams: { low: 30, likely: 35, high: 40 },
+      },
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "confirmed",
+    };
+
+    const closedHtml = renderToStaticMarkup(
+      <AnalysisDetails
+        meal={meal}
+        open={false}
+        detailsId="test-details"
+        variant="v1"
+        onToggle={() => undefined}
+        onDeleteMeal={() => undefined}
+      />
+    );
+    expect(closedHtml).not.toContain("Delete meal");
+
+    const openHtml = renderToStaticMarkup(
+      <AnalysisDetails
+        meal={meal}
+        open={true}
+        detailsId="test-details"
+        variant="v1"
+        onToggle={() => undefined}
+        onDeleteMeal={() => undefined}
+      />
+    );
+    expect(openHtml).toContain("Delete meal");
+    expect(openHtml).toContain("text-signal-neg");
+    expect(openHtml).toContain("transition-all duration-300 ease-out");
+    expect(openHtml).toContain("active:scale-[0.98]");
+  });
 });
+

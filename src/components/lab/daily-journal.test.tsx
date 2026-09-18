@@ -248,9 +248,11 @@ describe("journal motion states", () => {
     expect(yesIdx).toBeGreaterThan(-1);
     expect(noIdx).toBeGreaterThan(-1);
     expect(yesIdx).toBeLessThan(noIdx);
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-1/2");
   });
 
-  it("renders single sage checkmark pill when boolean is true in Personal Lab", () => {
+  it("renders single sage pill without checkmark and full width when boolean is true in Personal Lab", () => {
     const vacation = variables.find((variable) => variable.name === "Vacation");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables: vacation ? [vacation] : [],
@@ -262,11 +264,18 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain("text-sage");
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-full");
     expect(html).toContain("Yes");
     expect(html).not.toContain(">No</button>");
+    // No checkmark or cross svg icon in Yes/No selector
+    const binaryGroupStart = html.indexOf('journal-choice--binary');
+    const binaryGroupEnd = html.indexOf('</div>', binaryGroupStart);
+    const binaryHtml = html.slice(binaryGroupStart, binaryGroupEnd);
+    expect(binaryHtml).not.toContain("<svg");
   });
 
-  it("renders single cross pill when boolean is false in Personal Lab", () => {
+  it("renders single crossless pill and full width when boolean is false in Personal Lab", () => {
     const vacation = variables.find((variable) => variable.name === "Vacation");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables: vacation ? [vacation] : [],
@@ -278,11 +287,18 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain("text-content-secondary");
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-full");
     expect(html).toContain("No");
     expect(html).not.toContain(">Yes</button>");
+    // No checkmark or cross svg icon in Yes/No selector
+    const binaryGroupStart = html.indexOf('journal-choice--binary');
+    const binaryGroupEnd = html.indexOf('</div>', binaryGroupStart);
+    const binaryHtml = html.slice(binaryGroupStart, binaryGroupEnd);
+    expect(binaryHtml).not.toContain("<svg");
   });
 
-  it("renders stepper with stitch-stepper class and without spin buttons in Personal Lab", () => {
+  it("renders stepper with stitch-stepper class, Minus and Plus icons, and ARIA spinbutton in Personal Lab", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables: addedSugar ? [addedSugar] : [],
@@ -296,8 +312,43 @@ describe("journal motion states", () => {
     expect(html).toContain("stitch-stepper");
     expect(html).not.toContain('class="journal-number"');
     expect(html).toContain("[appearance:textfield]");
+    expect(html).toContain("lucide-minus");
+    expect(html).toContain("lucide-plus");
+    expect(html).toContain('role="spinbutton"');
+    expect(html).toContain('aria-valuemin="0"');
     expect(html).toContain("Decrease Added sugar");
     expect(html).toContain("Increase Added sugar");
+    // Since unrecorded value is 0 (or null treated as 0), decrease button is disabled
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
+    expect(html).toContain("opacity-30 cursor-not-allowed");
+  });
+
+  it("enables minus button in stepper when non-negative value is greater than zero", () => {
+    const addedSugar = variables.find((variable) => variable.name === "Added sugar");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: addedSugar ? [addedSugar] : [],
+      entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain('aria-valuenow="5"');
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
+  });
+
+  it("uses space-y-12 spacing between phases in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("space-y-12");
   });
 
   it("applies enhanced typography and button styles in Personal Lab", () => {

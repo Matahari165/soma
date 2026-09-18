@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, X } from "lucide-react";
+import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import React, { useRef, useState, type ChangeEvent } from "react";
 
 import type {
@@ -109,18 +109,22 @@ function mealTargetForMetric(key: MealMetricKey, slot: MealSlot, targets: Nutrit
   return mealTargetForRange(targets[targetKey], slot, targets);
 }
 
-function AnalysisDetails({
+export function AnalysisDetails({
   meal,
   open,
   detailsId,
   variant,
   onToggle,
+  onDeleteMeal,
+  mutationBusy,
 }: {
   meal: MealRecord;
   open: boolean;
   detailsId: string;
   variant: MealDesignVariant;
   onToggle: () => void;
+  onDeleteMeal?: () => void;
+  mutationBusy?: boolean;
 }) {
   const toggleClass = variant === "v1"
     ? styles.v1DetailsToggle
@@ -129,10 +133,10 @@ function AnalysisDetails({
       : styles.v3DetailsToggle;
 
   return (
-    <div className={styles.analysisDetails}>
+    <div className={`${styles.analysisDetails} transition-all duration-300 ease-out`}>
       <button
         type="button"
-        className={toggleClass}
+        className={`${toggleClass} active:scale-[0.98] transition-transform duration-150`}
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={detailsId}
@@ -142,7 +146,7 @@ function AnalysisDetails({
       </button>
 
       {open && (
-        <div id={detailsId} className={styles.analysisDetailsPanel}>
+        <div id={detailsId} className={`${styles.analysisDetailsPanel} transition-all duration-300 ease-out animate-fade-in`}>
           {meal.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
             <ul>
               {meal.analysis.ingredients.map((ing, idx) => (
@@ -157,6 +161,19 @@ function AnalysisDetails({
             <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>
           )}
           {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+          {onDeleteMeal && (
+            <div className="pt-3 mt-3 border-t border-hairline flex justify-end">
+              <button
+                type="button"
+                className="text-xs font-sans text-signal-neg/80 hover:text-signal-neg transition-colors flex items-center gap-1.5 py-1 px-2 rounded hover:bg-signal-neg/10 active:scale-[0.98] transition-transform duration-150"
+                disabled={mutationBusy}
+                onClick={onDeleteMeal}
+              >
+                <Trash2 size={13} aria-hidden="true" />
+                <span>Delete meal</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -183,6 +200,7 @@ export interface LabMealCardProps {
   onEdit?: () => void;
   onMarkSkipped?: () => void;
   onMarkRecorded?: () => void;
+  onDeleteMeal?: () => void;
   confirmError?: string | null;
 }
 
@@ -205,6 +223,7 @@ export function LabMealCard({
   onEdit,
   onMarkSkipped,
   onMarkRecorded,
+  onDeleteMeal,
   confirmError,
 }: LabMealCardProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -363,7 +382,7 @@ export function LabMealCard({
             {onMarkRecorded && (
               <button
                 type="button"
-                className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+                className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
                 disabled={disabled || mutationBusy}
                 onClick={onMarkRecorded}
               >
@@ -447,7 +466,7 @@ export function LabMealCard({
           <div className="flex justify-end pt-1">
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
               onClick={onCancelAnalysis}
             >
               Annuler
@@ -510,7 +529,7 @@ export function LabMealCard({
               {!isSkipped && onMarkSkipped && (
                 <button
                   type="button"
-                  className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors"
+                  className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
                   disabled={disabled || mutationBusy}
                   onClick={onMarkSkipped}
                 >
@@ -522,7 +541,7 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans"
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans active:scale-[0.98] transition-transform duration-150"
                   : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium"
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
@@ -594,10 +613,9 @@ export function LabMealCard({
   // VERSION 1 : SILENT HORIZON / STITCH DASHBOARD
   // =========================================================================
   if (designVariant === "v1") {
-    const targetTimeText = defaultSlotTimes[slot];
     if (isFilled) {
       return (
-        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" data-purpose={`meal-${slot}`}>
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3 animate-fade-in transition-opacity duration-300" data-purpose={`meal-${slot}`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -605,13 +623,9 @@ export function LabMealCard({
               <span className="font-mono text-xs text-content-tertiary">· {mealTimeText}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-sage">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Confirmed
-              </span>
               <button
                 type="button"
-                className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors"
+                className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
                 onClick={handleToggleCorrection}
                 aria-label={`Modifier ${slotLabel}`}
               >
@@ -646,6 +660,8 @@ export function LabMealCard({
               detailsId={detailsId}
               variant="v1"
               onToggle={() => setShowDetails((open) => !open)}
+              onDeleteMeal={disabled ? undefined : onDeleteMeal}
+              mutationBusy={mutationBusy}
             />
           )}
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
@@ -662,7 +678,6 @@ export function LabMealCard({
             <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
             <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
           </div>
-          <span className="text-xs font-mono text-content-tertiary">Target: &lt; {targetTimeText}</span>
         </div>
         {photoStrip}
         <div className="relative">
@@ -674,13 +689,19 @@ export function LabMealCard({
             value={noteText}
             disabled={disabled || processingFiles || mutationBusy}
             onChange={(e) => onNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canAnalyze) {
+                e.preventDefault();
+                handleAnalyzeClick();
+              }
+            }}
           />
         </div>
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
               aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
@@ -690,7 +711,7 @@ export function LabMealCard({
             </button>
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
               aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
@@ -703,7 +724,7 @@ export function LabMealCard({
             {!isSkipped && onMarkSkipped && (
               <button
                 type="button"
-                className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors"
+                className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
                 onClick={onMarkSkipped}
               >
                 Skip
@@ -713,7 +734,7 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
                   : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium flex items-center gap-1.5"
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
@@ -768,6 +789,8 @@ export function LabMealCard({
                 detailsId={detailsId}
                 variant="v2"
                 onToggle={() => setShowDetails((open) => !open)}
+                onDeleteMeal={disabled ? undefined : onDeleteMeal}
+                mutationBusy={mutationBusy}
               />
             )}
             {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
@@ -879,6 +902,8 @@ export function LabMealCard({
                   detailsId={detailsId}
                   variant="v3"
                   onToggle={() => setShowDetails((open) => !open)}
+                  onDeleteMeal={disabled ? undefined : onDeleteMeal}
+                  mutationBusy={mutationBusy}
                 />
               )}
               {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}

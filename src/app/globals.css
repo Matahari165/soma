@@ -56,12 +56,21 @@
   justify-content: center !important;
   font-size: 14px !important;
   line-height: 1 !important;
-  transition: background-color 150ms ease, color 150ms ease !important;
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease !important;
 }
 
-.stitch-stepper button:hover {
+.stitch-stepper button:hover:not(:disabled) {
   background-color: var(--color-surface-elevated) !important;
   color: var(--color-content-primary) !important;
+}
+
+.stitch-stepper button:active:not(:disabled) {
+  transform: scale(0.9) !important;
+}
+
+.stitch-stepper button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
 }
 
 .stitch-stepper .stitch-stepper__value {

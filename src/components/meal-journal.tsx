@@ -1185,8 +1185,6 @@ function MealLabHeader({
   targetsExpanded = false,
   calories = null,
   targetCalories = 2400,
-  loggedCount = 0,
-  pendingCount = 0,
 }: {
   onAddMeal: () => void;
   addDisabled: boolean;
@@ -1195,27 +1193,25 @@ function MealLabHeader({
   targetsExpanded?: boolean;
   calories?: number | null;
   targetCalories?: number | null;
-  loggedCount?: number;
-  pendingCount?: number;
 }) {
   const calVal = calories ?? 0;
   const targetVal = targetCalories ?? 2400;
   const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
+  const formattedCalories = new Intl.NumberFormat("en-US").format(calVal);
+  const formattedTarget = new Intl.NumberFormat("en-US").format(targetVal);
 
   return (
     <header className="pb-4 border-b border-hairline space-y-2.5">
       <div className="flex items-end justify-between">
         <div>
           <h2 id="meal-journal-title" className="font-serif text-2xl tracking-normal text-content-primary font-normal">Nutrition Log</h2>
-          <p className="text-xs text-content-secondary font-mono mt-1">
-            {new Intl.NumberFormat("en-US").format(calVal)} / {new Intl.NumberFormat("en-US").format(targetVal)} kcal · {loggedCount} logged · {pendingCount} pending
-          </p>
+          <p className="text-xs text-content-secondary font-mono mt-1">{formattedCalories} / {formattedTarget} kcal</p>
         </div>
         <div className="flex items-center gap-2">
           {onToggleTargets && (
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 active:scale-[0.98] transition-transform duration-150"
               aria-label="Edit daily targets"
               aria-expanded={targetsExpanded}
               aria-controls="meal-target-editor"
@@ -1228,7 +1224,7 @@ function MealLabHeader({
           {!hideAddMealButton && (
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
               aria-label="Add a meal"
               title="Add a meal"
               disabled={addDisabled}
@@ -2104,8 +2100,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
   };
 
   const readyData = data ?? emptyData(selectedDate);
-  const labLoggedCount = MEAL_SLOTS.filter((s) => readyData.meals[s] && readyData.meals[s]?.entryState !== "skipped" && (readyData.meals[s]?.status === "confirmed" || readyData.meals[s]?.analysis)).length;
-  const labPendingCount = MEAL_SLOTS.filter((s) => !disabledSlots.includes(s) && (!readyData.meals[s] || (readyData.meals[s]?.entryState !== "skipped" && readyData.meals[s]?.status !== "confirmed" && !readyData.meals[s]?.analysis))).length;
   const labCalories = currentDayTotal?.calories ?? 0;
   const labTargetCalories = effectiveTargets?.caloriesKcal?.likely ?? targets?.caloriesKcal?.likely ?? 2400;
 
@@ -2120,8 +2114,6 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         targetsExpanded={targetsExpanded}
         calories={labCalories}
         targetCalories={labTargetCalories}
-        loggedCount={labLoggedCount}
-        pendingCount={labPendingCount}
       />
     : <MealPageHeader
         totals={currentDayTotal}
@@ -2206,10 +2198,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}
                 onMarkRecorded={() => void changeEntryState(slot, "recorded")}
+                onDeleteMeal={!disabledSlots.includes(slot) ? () => removeMeal(slot) : undefined}
               />
-              {meal && !disabledSlots.includes(slot) && meal.entryState !== "skipped" && meal.status !== "accepted" && meal.status !== "analyzing" && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.labMealDeleteRow}>
-                <button className={`${styles.deleteMealButton} text-xs font-sans text-content-secondary hover:text-signal-neg transition-colors`} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>
-              </div>}
             </>
           ) : (
             <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
