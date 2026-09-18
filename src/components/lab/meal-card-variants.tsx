@@ -172,11 +172,13 @@ export interface LabMealCardProps {
   disabled?: boolean;
   designVariant?: MealDesignVariant;
   targets?: NutritionTargets;
+  analysisProgress?: { phase?: string; dishType?: string; foods: string[] } | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onAnalyze: () => void;
   onCancelAnalysis: () => void;
   onNote: (note: string) => void;
+  onCorrection?: (correction: string) => void;
   onConfirm?: () => void;
   onEdit?: () => void;
   onMarkSkipped?: () => void;
@@ -193,11 +195,13 @@ export function LabMealCard({
   disabled = false,
   designVariant = "v1",
   targets,
+  analysisProgress,
   onFiles,
   onRemovePhoto,
   onAnalyze,
   onCancelAnalysis,
   onNote,
+  onCorrection,
   onEdit,
   onMarkSkipped,
   onMarkRecorded,
@@ -206,6 +210,8 @@ export function LabMealCard({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [isLocalEditing, setIsLocalEditing] = useState(false);
+  const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -237,13 +243,70 @@ export function LabMealCard({
     event.target.value = "";
   };
 
-  const handleStartEdit = () => {
-    setIsLocalEditing(true);
-    if (!meal?.note.trim() && meal?.analysis?.dishType) {
-      onNote(meal.analysis.dishType);
-    }
+  const handleToggleCorrection = () => {
+    setIsCorrectionOpen((open) => {
+      const next = !open;
+      if (!next) setCorrectionText("");
+      return next;
+    });
     onEdit?.();
   };
+
+  const handleCorrectionSubmit = () => {
+    const text = correctionText.trim();
+    if (!text) return;
+    setIsCorrectionOpen(false);
+    setCorrectionText("");
+    if (onCorrection) {
+      onCorrection(text);
+    } else {
+      onAnalyze();
+    }
+  };
+
+  const correctionForm = (
+    <div className={styles.correctionBox}>
+      <label htmlFor={`meal-${slot}-correction`} className={styles.correctionLabel}>
+        Modifier ou ajouter au repas
+      </label>
+      <textarea
+        id={`meal-${slot}-correction`}
+        className={styles.correctionTextarea}
+        rows={2}
+        placeholder="Ex. ajout d’un tiramisu en dessert, café sans sucre..."
+        value={correctionText}
+        disabled={disabled || mutationBusy || saving || isAnalyzing}
+        onChange={(e) => setCorrectionText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            handleCorrectionSubmit();
+          }
+        }}
+      />
+      <div className={styles.correctionActions}>
+        <button
+          type="button"
+          className={styles.correctionSubmitButton}
+          disabled={!correctionText.trim() || disabled || mutationBusy || saving || isAnalyzing}
+          onClick={handleCorrectionSubmit}
+        >
+          {isAnalyzing ? "Analyse en cours…" : "Mettre à jour"}
+        </button>
+        <button
+          type="button"
+          className={styles.correctionCancelButton}
+          disabled={disabled || mutationBusy || saving || isAnalyzing}
+          onClick={() => {
+            setIsCorrectionOpen(false);
+            setCorrectionText("");
+          }}
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
 
   const handleCancelEdit = () => {
     setIsLocalEditing(false);
@@ -345,13 +408,25 @@ export function LabMealCard({
           </div>
         </div>
         <div className={styles.analyzingState} role="status">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className={styles.analyzingHeader}>
             <span className={styles.progressTrace} aria-hidden="true" />
-            <span>Analyzing…</span>
+            <span className={styles.progressPhase}>{analysisProgress?.phase || "Analyse en cours…"}</span>
           </div>
-          <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
-            Cancel
-          </button>
+          {analysisProgress?.dishType && (
+            <div className={styles.dishBadge}>{analysisProgress.dishType}</div>
+          )}
+          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
+            <div className={styles.foodChipsList}>
+              {analysisProgress.foods.map((food, idx) => (
+                <span key={idx} className={styles.foodChip}>{food}</span>
+              ))}
+            </div>
+          )}
+          <div className={styles.analyzingActions}>
+            <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
+              Annuler
+            </button>
+          </div>
         </div>
       </article>
     );
@@ -416,10 +491,10 @@ export function LabMealCard({
               <button
                 type="button"
                 className={styles.editButton}
-                onClick={handleStartEdit}
-                aria-label={`Edit ${slotLabel}`}
+                onClick={handleToggleCorrection}
+                aria-label={`Modifier ${slotLabel}`}
               >
-                <Pencil size={12} aria-hidden="true" />Edit
+                <Pencil size={12} aria-hidden="true" />Modifier
               </button>
             </div>
           )}
@@ -436,6 +511,7 @@ export function LabMealCard({
               </p>
             )}
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+            {isCorrectionOpen && correctionForm}
             {meal?.analysis && (
               <AnalysisDetails
                 meal={meal}
@@ -541,10 +617,10 @@ export function LabMealCard({
               <button
                 type="button"
                 className={styles.editButton}
-                onClick={handleStartEdit}
-                aria-label={`Edit ${slotLabel}`}
+                onClick={handleToggleCorrection}
+                aria-label={`Modifier ${slotLabel}`}
               >
-                <Pencil size={12} aria-hidden="true" />Edit
+                <Pencil size={12} aria-hidden="true" />Modifier
               </button>
             </div>
           )}
@@ -556,6 +632,7 @@ export function LabMealCard({
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+            {isCorrectionOpen && correctionForm}
             {meal?.analysis && (
               <AnalysisDetails
                 meal={meal}
@@ -651,10 +728,10 @@ export function LabMealCard({
             <button
               type="button"
               className={`${styles.editButton} ${styles.v3SlotEditButton}`}
-              onClick={handleStartEdit}
-              aria-label={`Edit ${slotLabel}`}
+              onClick={handleToggleCorrection}
+              aria-label={`Modifier ${slotLabel}`}
             >
-              <Pencil size={11} aria-hidden="true" />Edit
+              <Pencil size={11} aria-hidden="true" />Modifier
             </button>
           )}
         </div>
@@ -666,6 +743,7 @@ export function LabMealCard({
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
               <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+              {isCorrectionOpen && correctionForm}
               {meal?.analysis && (
                 <AnalysisDetails
                   meal={meal}

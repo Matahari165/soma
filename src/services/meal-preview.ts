@@ -284,15 +284,16 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean }): Me
 }
 
 export function analyzePreviewMeal(userId: string, mealId: string, options?: { correction?: MealAnalysisCorrection }) {
-  void options;
   const meal = mutablePreviewMeal(userId, mealId);
   if (!meal) return null;
   if (meal.entryState === "skipped") throw new Error("Réactive ce créneau avant de lancer l’analyse.");
   const availablePhotos = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
   const note = meal.note?.trim() ?? "";
-  if (!availablePhotos.length && !note) throw new Error("Add a photo or a description before analysing a meal.");
+  const correction = options?.correction?.trim() ?? "";
+  if (!availablePhotos.length && !note && !correction) throw new Error("Add a photo or a description before analysing a meal.");
   const now = new Date().toISOString();
-  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note, hasPhotos: availablePhotos.length > 0 }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
+  const effectiveNote = correction ? (note ? `${note} (Ajout: ${correction})` : correction) : note;
+  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note: effectiveNote, hasPhotos: availablePhotos.length > 0 }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
   meal.analysis = analysis;
   // Preview follows production semantics: a successful analysis is complete
   // immediately and local photo bytes are discarded without a confirmation
@@ -362,4 +363,27 @@ export function loadPreviewConfirmedMealRecords(userId: string): ConfirmedMealRe
     const totals = result?.totals;
     return [{ id: meal.id, mealDate: meal.mealDate, mealType: meal.mealType, status: "confirmed" as const, entryState: meal.entryState, origin, caloriesKcal: previewNutrition(totals?.calories), proteinG: previewNutrition(totals?.proteinGrams), carbsG: previewNutrition(totals?.carbohydrateGrams), fatG: previewNutrition(totals?.fatGrams), fiberG: previewNutrition(totals?.fiberGrams), sugarG: previewNutrition(totals?.sugarGrams), addedSugarG: previewNutrition(totals?.addedSugarGrams), foods: result?.foods.map(previewConfirmedMealFood), analysisConfidence: result?.confidence, mouthHeat: meal.mouthWarmthIntensity, stomachOverfullness: meal.stomachOverfullIntensity, photoIds: meal.photos.map((photo) => photo.id) } satisfies ConfirmedMealRecord];
   });
+}
+
+export async function streamPreviewMeal(
+  userId: string,
+  mealId: string,
+  options?: { correction?: MealAnalysisCorrection },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEvent?: (event: any) => void | Promise<void>,
+) {
+  if (onEvent) {
+    await onEvent({ type: "phase", phase: "starting" });
+    await onEvent({ type: "phase", phase: "reasoning" });
+    await new Promise(r => setTimeout(r, 100));
+    await onEvent({ type: "dish_detected", dishType: "Plat complet" });
+    await new Promise(r => setTimeout(r, 100));
+    await onEvent({ type: "food_detected", food: "Poulet grillé" });
+  }
+  const res = analyzePreviewMeal(userId, mealId, options);
+  if (!res) throw new Error("Meal not found");
+  if (onEvent) {
+    await onEvent({ type: "complete", meal: findPreviewMeal(userId, mealId), analysis: res.analysis });
+  }
+  return res;
 }

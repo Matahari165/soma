@@ -4,8 +4,8 @@ import { mealAnalysisCorrectionSchema, mealAnalysisRequestSchema } from "@/domai
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { mealToApi } from "@/services/meal-api";
-import { analyzePreviewMeal, findPreviewMeal } from "@/services/meal-preview";
-import { enqueueMealAnalysis, findMeal, MealServiceError, processNextMealAnalysis } from "@/services/meals";
+import { analyzePreviewMeal, findPreviewMeal, streamPreviewMeal } from "@/services/meal-preview";
+import { enqueueMealAnalysis, findMeal, MealServiceError, processNextMealAnalysis, streamMealAnalysis } from "@/services/meals";
 
 function analysisRequestId(request: Request, fallback?: string) {
   const supplied = request.headers.get("x-analysis-request-id") ?? fallback;
@@ -48,6 +48,56 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (correction && !correction.success) return jsonWithRequestId({ error: "The analysis correction is invalid.", code: "INVALID_MEAL_INPUT", requestId }, { status: 400 }, requestId);
   const analysisOptions = correction?.success ? { ...parsed.data, correction: correction.data } : parsed.data;
   const { id } = await context.params;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wantsStream = request.headers.get("accept")?.includes("text/event-stream") || new URL(request.url).searchParams.get("stream") === "true" || (body && typeof body === "object" && Boolean((body as any).stream));
+
+  if (wantsStream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        function sendEvent(event: string, data: unknown) {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        }
+        try {
+          if (isLocalPreviewMode()) {
+            await streamPreviewMeal(user.id, id, correction?.success ? { correction: correction.data } : undefined, async (event) => {
+              if (event.type === "complete") {
+                sendEvent("complete", { meal: event.meal ? mealToApi(event.meal) : null, analysis: event.analysis });
+              } else if (event.type === "error") {
+                sendEvent("error", { error: event.error, code: event.code });
+              } else {
+                sendEvent(event.type, event);
+              }
+            });
+          } else {
+            await streamMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId }, async (event) => {
+              if (event.type === "complete") {
+                sendEvent("complete", { meal: event.meal ? mealToApi(event.meal) : null, analysis: event.analysis });
+              } else if (event.type === "error") {
+                sendEvent("error", { error: event.error, code: event.code });
+              } else {
+                sendEvent(event.type, event);
+              }
+            }, request.signal);
+          }
+        } catch (error) {
+          sendEvent("error", { error: error instanceof Error ? error.message : "Stream failed", code: "UNKNOWN_STREAM_ERROR" });
+        } finally {
+          controller.close();
+        }
+      }
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Analysis-Request-Id": requestId,
+      }
+    });
+  }
+
   if (isLocalPreviewMode()) {
     try {
       const result = analyzePreviewMeal(user.id, id, correction?.success ? { correction: correction.data } : undefined);

@@ -829,16 +829,56 @@
    ========================================================================== */
 .analyzingState {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 16px;
   background: var(--lab-surface, #080808);
   border: 1px solid var(--lab-border, #292929);
   border-radius: var(--lab-radius-sm, 4px);
   font-family: var(--font-soma-ui), sans-serif;
-  font-size: 13px;
   color: var(--lab-text-primary, #f1f1f1);
+}
+
+.analyzingHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressPhase {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lab-text-primary, #f1f1f1);
+}
+
+.dishBadge {
+  font-size: 13px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--lab-border, #292929);
+}
+
+.foodChipsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.foodChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--lab-surface-subtle, #0c0c0c);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  font-size: 12px;
+  color: var(--lab-text-secondary, #aaaaaa);
+  animation: fadeChip 300ms ease forwards;
+}
+
+@keyframes fadeChip {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .progressTrace {
@@ -855,19 +895,33 @@
   to { transform: rotate(360deg); }
 }
 
+.analyzingActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
 .cancelButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
   background: transparent;
   border: 1px solid var(--lab-border, #292929);
-  border-radius: var(--lab-radius-xs, 2px);
+  border-radius: var(--lab-radius-sm, 4px);
   color: var(--lab-text-secondary, #aaaaaa);
-  padding: 3px 8px;
-  font-size: 12px;
+  font-size: 13px;
+  font-family: var(--font-soma-ui), sans-serif;
   cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
 }
 
 .cancelButton:hover {
   color: var(--lab-text-primary, #f1f1f1);
   border-color: var(--lab-text-secondary, #aaaaaa);
+  background: var(--lab-surface-subtle, #0c0c0c);
 }
 
 .v1DishSubTitle {
@@ -1043,7 +1097,7 @@
 
 /* The local comparison keeps every action comfortably tappable on touch
    screens while preserving the compact reading rhythm of the card. */
-.cardRoot :is(.analyzeButton, .mediaButton, .skipButton, .editButton, .v3CompactAnalyze, .restoreButton) { min-height: 44px; }
+.cardRoot :is(.analyzeButton, .mediaButton, .skipButton, .editButton, .v3CompactAnalyze, .restoreButton, .correctionSubmitButton, .correctionCancelButton) { min-height: 44px; }
 .cardRoot .mediaIconButton { width: 44px; height: 44px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1192,4 +1246,107 @@
 @media (prefers-reduced-motion: reduce) {
   .metricColumn,
   .metricPlotFill { transition: none; animation: none; }
+}
+
+/* ==========================================================================
+   Panneau de modification / ajout en langage naturel
+   ========================================================================== */
+.correctionBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--lab-surface, #080808);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-sm, 4px);
+  margin-top: 4px;
+}
+
+.correctionLabel {
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lab-text-secondary, #aaaaaa);
+}
+
+.correctionTextarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  background: var(--lab-canvas, #050505);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  color: var(--lab-text-primary, #f1f1f1);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.correctionTextarea:focus {
+  outline: none;
+  border-color: var(--lab-border-strong, #3a3a3a);
+}
+
+.correctionTextarea::placeholder {
+  color: #555555;
+}
+
+.correctionActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.correctionSubmitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  min-height: 32px;
+  background: var(--lab-brand, #eeeeee);
+  color: #050505;
+  border: none;
+  border-radius: var(--lab-radius-xs, 2px);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.correctionSubmitButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.correctionSubmitButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.correctionCancelButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  min-height: 32px;
+  background: transparent;
+  color: var(--lab-text-secondary, #aaaaaa);
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: var(--lab-radius-xs, 2px);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.correctionCancelButton:hover:not(:disabled) {
+  color: var(--lab-text-primary, #f1f1f1);
+  border-color: var(--lab-border-strong, #3a3a3a);
+}
+
+.correctionCancelButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

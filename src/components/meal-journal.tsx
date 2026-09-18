@@ -57,6 +57,11 @@ import styles from "./meal-journal.module.css";
 
 export { apiMealToRecord, MEAL_SLOTS };
 export type { MealEntryState } from "@/domain/meals";
+export type MealAnalysisProgress = {
+  phase?: string;
+  dishType?: string;
+  foods: string[];
+};
 export type {
   AnalyzeMealInput,
   MealAnalysis,
@@ -377,12 +382,14 @@ type UploadedPhotoPair = { localPhotoId: string; photo: MealPhoto };
 
 type DefaultAnalyzeOptions = {
   onPhotosUploaded?: (photos: UploadedPhotoPair[]) => void;
+  onProgress?: (progress: MealAnalysisProgress) => void;
 };
 
 export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
   const hasPhotoEvidence = files.length > 0 || (meal.status !== "confirmed" && meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available"));
   const hasTextEvidence = Boolean(meal.note.trim());
-  if (!hasPhotoEvidence && !hasTextEvidence) throw new Error("Add a photo or a description of the meal before starting analysis.");
+  const hasCorrection = Boolean(correction?.trim());
+  if (!hasPhotoEvidence && !hasTextEvidence && !hasCorrection) throw new Error("Add a photo or a description of the meal before starting analysis.");
   const analysisRequestId = randomId("analysis");
   let mealId = meal.id;
   const isNewMeal = mealId.startsWith("meal-");
@@ -418,7 +425,80 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== uploadEntries.length) throw new Error("The server did not confirm all photos for the meal.");
     options.onPhotosUploaded?.(uploadEntries.map((entry, index) => ({ localPhotoId: entry.photo.id, photo: uploadedBody.photos?.[index] as MealPhoto })));
   }
-  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, { method: "POST", headers: { "Content-Type": "application/json", "X-Analysis-Request-Id": analysisRequestId, "Idempotency-Key": analysisRequestId }, body: JSON.stringify({ force: Boolean(correction || meal.analysis), idempotencyKey: analysisRequestId, ...(correction ? { correction } : {}) }) }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId });
+  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream",
+      "X-Analysis-Request-Id": analysisRequestId,
+      "Idempotency-Key": analysisRequestId
+    },
+    body: JSON.stringify({
+      stream: true,
+      force: Boolean(correction || meal.analysis),
+      idempotencyKey: analysisRequestId,
+      ...(correction ? { correction } : {})
+    })
+  }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId });
+
+  if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let currentProgress: MealAnalysisProgress = { phase: "Connexion…", foods: [] as string[], dishType: undefined };
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const dataStr = line.slice(6).trim();
+            if (!dataStr) continue;
+            try {
+              const data = JSON.parse(dataStr);
+              if (currentEvent === "phase") {
+                const phasesMap: Record<string, string> = {
+                  "starting": "Préparation des photos…",
+                  "downloading_photos": "Préparation des photos…",
+                  "reasoning": "Réflexion nutritionnelle…",
+                  "analyzing": "Analyse du repas…",
+                  "validating": "Validation des données…",
+                  "finalizing": "Enregistrement…"
+                };
+                currentProgress = { ...currentProgress, phase: phasesMap[data.phase] || "Analyse en cours…" };
+                options.onProgress?.(currentProgress);
+              } else if (currentEvent === "dish_detected") {
+                currentProgress = { ...currentProgress, dishType: data.dishType, phase: `Plat : ${data.dishType}` };
+                options.onProgress?.(currentProgress);
+              } else if (currentEvent === "food_detected") {
+                if (!currentProgress.foods.includes(data.food)) {
+                  currentProgress = { ...currentProgress, phase: "Identification des aliments…", foods: [...currentProgress.foods, data.food] };
+                  options.onProgress?.(currentProgress);
+                }
+              } else if (currentEvent === "complete") {
+                return apiMealToRecord(data.meal);
+              } else if (currentEvent === "error") {
+                throw new Error(data.error || "L’analyse a échoué.");
+              }
+            } catch (e) {
+              if (currentEvent === "error") throw e;
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   const body = await readJson(response);
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("The server did not return the analyzed meal.");
   return apiMealToRecord(body.meal);
@@ -1136,6 +1216,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     ? mealSlotForLocalTime(localNow)
     : null;
   const [data, setData] = useState<MealJournalData | null>(() => initialData ? normalizeData(initialData, initialDate) : null);
+  const [analysisProgress, setAnalysisProgress] = useState<Partial<Record<MealSlot, MealAnalysisProgress>>>({});
   const dataRef = useRef(data);
   dataRef.current = data;
   const [loadState, setLoadState] = useState<LoadState>(initialData ? "ready" : "loading");
@@ -1847,6 +1928,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     cancelledAnalysisIds.current.delete(meal.id);
     analysisStartedAt.current.delete(meal.id);
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
+    setAnalysisProgress((prev) => ({ ...prev, [slot]: { phase: "Connexion…", foods: [] } }));
     try {
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));
@@ -1872,7 +1954,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
         return file ? { photoId: photo.id, file } : null;
       }).filter((entry): entry is { photoId: string; file: File } => Boolean(entry));
       const files = photoFiles.map((entry) => entry.file);
-      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onPhotosUploaded: reconcileUploadedPhotos }));
+      const analyzed = await (api?.analyze ? api.analyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }) : defaultAnalyze({ date: selectedDate, slot, meal, files, photoFiles, ...(correction ? { correction } : {}) }, { onPhotosUploaded: reconcileUploadedPhotos, onProgress: (progress) => setAnalysisProgress((prev) => ({ ...prev, [slot]: progress })) }));
       if (cancelledAnalysisIds.current.has(meal.id)) {
         // Annulation demandée pendant l’envoi : le résultat tardif est ignoré
         // et le brouillon local est conservé tel quel.
@@ -1890,6 +1972,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     } finally {
       inFlightSlots.current.delete(slot);
       setAnalyzingSlots((previous) => previous.filter((entry) => entry !== slot));
+      setAnalysisProgress((prev) => { const next = {...prev}; delete next[slot]; return next; });
     }
   };
 
@@ -1900,6 +1983,7 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     analysisStartedAt.current.delete(meal.id);
     inFlightSlots.current.delete(slot);
     setAnalyzingSlots((previous) => previous.filter((entry) => entry !== slot));
+    setAnalysisProgress((prev) => { const next = {...prev}; delete next[slot]; return next; });
     updateMeal(slot, (current) => ({ ...current, status: current.analysis ? "review" : "draft", error: null }));
     setStatusMessage("Analysis cancelled. Draft is preserved.");
   };
@@ -2026,10 +2110,12 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 processingFiles={processingFiles}
                 mutationBusy={slotBusy(slot)}
                 confirmError={confirmError[slot]}
+                analysisProgress={analysisProgress[slot]}
                 onFiles={(files) => addFiles(slot, files)}
                 onRemovePhoto={(photoId) => removePhoto(slot, photoId)}
                 onAnalyze={() => void analyzeMeal(slot)}
                 onCancelAnalysis={() => cancelAnalysis(slot)}
+                onCorrection={(correction) => void analyzeMeal(slot, correction)}
                 onNote={(note) => setNote(slot, note)}
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}

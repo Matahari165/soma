@@ -32,7 +32,7 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number; 
         model,
         instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
         promptText: makePrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" })),
         maxOutputTokens: 6_000,
         sourcePhotoIds: input.images.map((image) => image.id),
         reasoningEffort,

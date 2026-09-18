@@ -167,7 +167,7 @@ describe("durable meal analysis jobs", () => {
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
-    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", verify: false, allowFallback: false });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", allowFallback: false });
   });
 
   it("processes the freshly enqueued job instead of an older FIFO job", async () => {
@@ -177,7 +177,7 @@ describe("durable meal analysis jobs", () => {
       meal_id: mealId,
       status: "queued",
       provider: "xai",
-      model: "grok-4.3",
+      model: "grok-4.6",
       source_photo_ids: [],
       source_note: "Riz et légumes",
       source_meal_date: meal.mealDate,
@@ -189,7 +189,7 @@ describe("durable meal analysis jobs", () => {
     };
     state.findQueuedMealAnalysis.mockResolvedValue(targeted);
     state.listQueuedMealAnalyses.mockResolvedValue([{ ...targeted, id: "analysis-old", created_at: "2026-09-17T09:00:00.000Z" }]);
-    state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.3", result: canonicalResult });
+    state.analyzeMealInputWithFallback.mockResolvedValue({ provider: "xai", model: "grok-4.6", result: canonicalResult });
 
     const result = await processNextMealAnalysis({ userId: "user-1", analysisId: targeted.id });
 

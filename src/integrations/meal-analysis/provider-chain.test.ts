@@ -58,12 +58,11 @@ describe("meal analysis provider fallback", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps Grok primary and lets a successful GPT validation become final", async () => {
+  it("uses single Grok model without calling a validator even when OpenAI key is present", async () => {
     process.env.XAI_API_KEY = "xai-test";
     process.env.OPENAI_API_KEY = "openai-test";
     const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis("Grok")) }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis("GPT")) }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis("Grok")) }), { status: 200 }));
 
     const result = await analyzeMealInputWithFallback({
       mealType: "lunch",
@@ -72,36 +71,16 @@ describe("meal analysis provider fallback", () => {
       images: [],
     }, { requestId: "analysis-test-2" });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.x.ai/v1/responses");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
-    expect(result).toMatchObject({ provider: "openai", model: "gpt-5.6-sol", result: { summary: "GPT" } });
+    expect(result).toMatchObject({ provider: "xai", model: "grok-4.6", result: { summary: "Grok" } });
     expect(result.provenance).toMatchObject({
-      primary: { provider: "xai", model: "grok-4.3" },
-      final: { provider: "openai", model: "gpt-5.6-sol" },
-      validation: { attempted: true, succeeded: true, provider: "openai", model: "gpt-5.6-sol" },
+      primary: { provider: "xai", model: "grok-4.6" },
+      final: { provider: "xai", model: "grok-4.6" },
+      validation: { requested: false, attempted: false, succeeded: false, provider: null, model: null },
       fallback: { configured: true, attempted: false, used: false },
     });
     expect(result.provenance.promptVersion).toMatch(/^meal-analysis-prompt-v/);
     expect(result.provenance.schemaVersion).toMatch(/^meal-analysis-schema-v/);
-  });
-
-  it("keeps Grok when the GPT validation request fails", async () => {
-    process.env.XAI_API_KEY = "xai-test";
-    process.env.OPENAI_API_KEY = "openai-test";
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis("Grok")) }), { status: 200 }))
-      .mockResolvedValueOnce(new Response("validator unavailable", { status: 503 }));
-
-    const result = await analyzeMealInputWithFallback({
-      mealType: "lunch",
-      mealDate: "2026-08-31",
-      note: "Riz",
-      images: [],
-    }, { requestId: "analysis-test-3" });
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result).toMatchObject({ provider: "xai", model: "grok-4.3", result: { summary: "Grok" } });
-    expect(result.provenance.validation).toMatchObject({ attempted: true, succeeded: false, provider: "openai", model: "gpt-5.6-sol" });
   });
 });

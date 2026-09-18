@@ -86,13 +86,19 @@ export class MealVisionError extends Error {
   readonly requestId?: string;
 }
 
+export type GrokStreamProgressEvent =
+  | { type: "reasoning"; delta: string; text?: string }
+  | { type: "text_delta"; delta: string }
+  | { type: "dish_detected"; dishType: string }
+  | { type: "food_detected"; food: string };
+
 export type MealVisionProvider = {
   name: string;
   model: string;
-  verification?: { provider: string; model: string };
   analyze(input: MealVisionInput): Promise<MealAnalysis>;
   analyzeText?(input: MealVisionTextInput): Promise<MealAnalysis>;
-  verify?(input: MealVisionVerificationInput): Promise<MealAnalysis>;
+  analyzeStream?(input: MealVisionInput, onProgress?: (event: GrokStreamProgressEvent) => void): Promise<MealAnalysis>;
+  analyzeTextStream?(input: MealVisionTextInput, onProgress?: (event: GrokStreamProgressEvent) => void): Promise<MealAnalysis>;
 };
 
 export type MealVisionVerificationInput = MealVisionInput & {
@@ -108,7 +114,6 @@ const MAX_PROVIDER_ATTEMPTS = 2;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 45_000;
 const MAX_PROVIDER_TIMEOUT_MS = 45_000;
 const TEXT_PROVIDER_TIMEOUT_MS = 45_000;
-const VALIDATOR_TIMEOUT_MS = 60_000;
 
 function providerTimeoutMs(fallback: number, requested?: number) {
   const configured = requested ?? Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || fallback);
@@ -118,10 +123,10 @@ function providerTimeoutMs(fallback: number, requested?: number) {
 }
 
 /** Bump these identifiers whenever the provider contract changes. */
-export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v3";
+export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v4";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
 
-type VisionImageDetail = "low" | "high";
+type VisionImageDetail = "low" | "high" | "auto";
 
 const MEAL_PHOTO_EVIDENCE_CONTRACT_PROMPT = "Traite chaque photo comme une preuve indépendante : plusieurs photos montrent généralement des éléments différents du même repas. Conserve ces aliments séparément. Ne fusionne que si tu reconnais clairement le même aliment ou la même portion sous des angles différents ; dans ce cas, garde un seul food et toutes les evidencePhotoIds correspondantes. Ne déduplique jamais seulement parce que deux noms se ressemblent. Chaque evidencePhotoIds doit appartenir exactement aux identifiants des photos fournies, et tout aliment attribué à une photo doit référencer au moins une de ces photos.";
 
@@ -143,8 +148,6 @@ const MEAL_OBSERVATION_CONTRACT_PROMPT = "Les statuts observation et leurs valeu
 export const MEAL_PHOTO_PROVIDER_INSTRUCTIONS = `You are a careful food-photo analyst. Return stable food ids, per-axis observation statuses and per-axis confidence. Treat each supplied photo as independent evidence: several photos usually show different parts or elements of the same meal, so keep distinct foods distinct. Merge only when it is clear that two photos show the same food or portion from another angle; then keep one food item and list every supporting photo id in evidencePhotoIds. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Every evidencePhotoIds value must be one of the supplied photo ids, and a photo-supported food must reference at least one of them. Use ranges with low <= likely <= high, explicit nulls when not estimable, and structured uncertainty signals for important unknowns. Missing nutrition is never zero. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Labels in French. Return only the requested JSON object.`;
 
 export const MEAL_TEXT_PROVIDER_INSTRUCTIONS = `You are a careful food-description analyst. List only foods named in the user description and return stable food ids with structured observation statuses. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and explicit nulls when not estimable. Missing nutrition is never zero. Default confidence to low unless the description is very precise. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties and machine-readable uncertaintySignals for important unknowns. A text-only food must use an empty evidencePhotoIds array and must not claim photo evidence. Labels in French. Return only the requested JSON object.`;
-
-export const MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS = `Tu es un validateur attentif d'analyses de repas. Relis l'analyse primaire à partir des preuves disponibles, vérifie ids, quantités, plats composés, doublons, parentId, alcoholic/countInTotals, statuts observation, sauces/préparations, NOVA et nutrition, puis corrige uniquement si les preuves le justifient. Pour plusieurs photos, traite chaque photo comme une preuve indépendante d'un élément potentiellement différent ; ne fusionne que les doublons évidents ou les angles différents du même aliment. Ne fabrique jamais de quantité ou de précision. Vérifie que chaque evidencePhotoIds appartient aux photos source et qu'un aliment attribué à une photo conserve au moins une preuve. Respecte les fourchettes low <= likely <= high, la compatibilité des intervalles sans exiger leur addition exacte, les relations addedSugarGrams <= sugarGrams <= carbohydrateGrams quand elles sont connues, et les nulls quand une donnée ne peut pas être estimée. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Ne transforme pas unknown en none_observed et conserve uncertaintySignals structurés. Les libellés sont en français. Retourne uniquement l'objet JSON demandé.`;
 
 export function imageDataUri(image: MealVisionImage) {
   return `data:${image.mimeType};base64,${Buffer.from(image.data).toString("base64")}`;
@@ -414,25 +417,98 @@ function normalizeNumericFields(value: unknown): unknown {
   return Number.isFinite(numeric) ? numeric : value;
 }
 
-function normalizeRange(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const range = value as Record<string, unknown>;
-  return {
-    ...range,
-    low: normalizeNumericFields(range.low),
-    likely: normalizeNumericFields(range.likely),
-    high: normalizeNumericFields(range.high),
-  };
+function clampRangeValues(range: unknown): { low: number; likely: number; high: number } | null {
+  if (!range || typeof range !== "object" || Array.isArray(range)) return null;
+  const r = range as Record<string, unknown>;
+  const rawLow = normalizeNumericFields(r.low);
+  const rawLikely = normalizeNumericFields(r.likely);
+  const rawHigh = normalizeNumericFields(r.high);
+  if (typeof rawLow !== "number" || typeof rawLikely !== "number" || typeof rawHigh !== "number") return null;
+  if (!Number.isFinite(rawLow) || !Number.isFinite(rawLikely) || !Number.isFinite(rawHigh)) return null;
+  const low = Math.max(0, rawLow);
+  const likely = Math.max(low, rawLikely);
+  const high = Math.max(likely, rawHigh);
+  return { low, likely, high };
 }
 
-function normalizeStructuredAnalysis(value: unknown) {
+function clampSugarInvariants(item: { carbohydrateGrams?: unknown; sugarGrams?: unknown; addedSugarGrams?: unknown }) {
+  const carbs = item.carbohydrateGrams as { low: number; likely: number; high: number } | null | undefined;
+  const sugar = item.sugarGrams as { low: number; likely: number; high: number } | null | undefined;
+  const added = item.addedSugarGrams as { low: number; likely: number; high: number } | null | undefined;
+  if (carbs && sugar) {
+    if (sugar.likely > carbs.likely) {
+      sugar.likely = carbs.likely;
+    }
+    if (sugar.low > carbs.low) {
+      sugar.low = Math.min(carbs.low, sugar.likely);
+    }
+    if (sugar.high > carbs.high) {
+      sugar.high = Math.max(sugar.likely, carbs.high);
+    }
+  }
+  if (sugar && added) {
+    if (added.likely > sugar.likely) {
+      added.likely = sugar.likely;
+    }
+    if (added.low > sugar.low) {
+      added.low = Math.min(sugar.low, added.likely);
+    }
+    if (added.high > sugar.high) {
+      added.high = Math.max(added.likely, sugar.high);
+    }
+  }
+}
+
+const STRUCTURED_NUTRITION_FIELDS = [
+  "calories",
+  "proteinGrams",
+  "carbohydrateGrams",
+  "fatGrams",
+  "fiberGrams",
+  "sugarGrams",
+  "addedSugarGrams",
+] as const;
+
+function harmonizeTotalsOverlap(
+  totals: Record<string, unknown>,
+  countedFoods: Array<Record<string, unknown>>,
+) {
+  if (!countedFoods.length) return;
+  STRUCTURED_NUTRITION_FIELDS.forEach((field) => {
+    const totalRange = totals[field] as { low: number; likely: number; high: number } | null | undefined;
+    if (!totalRange) return;
+    const foodRanges = countedFoods
+      .map((food) => food[field] as { low: number; likely: number; high: number } | null | undefined)
+      .filter((r): r is { low: number; likely: number; high: number } => Boolean(r));
+    if (foodRanges.length !== countedFoods.length) return;
+    const sumLow = foodRanges.reduce((sum, r) => sum + r.low, 0);
+    const sumHigh = foodRanges.reduce((sum, r) => sum + r.high, 0);
+    if (sumHigh < totalRange.low) {
+      totalRange.low = Math.min(totalRange.low, sumHigh);
+      if (totalRange.likely < totalRange.low) totalRange.likely = totalRange.low;
+    }
+    if (totalRange.high < sumLow) {
+      totalRange.high = Math.max(totalRange.high, sumLow);
+      if (totalRange.likely > totalRange.high) totalRange.likely = totalRange.high;
+    }
+  });
+}
+
+export function normalizeStructuredAnalysis(value: unknown, _sourcePhotoIds?: readonly string[]) {
+  void _sourcePhotoIds;
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const source = value as Record<string, unknown>;
-  const normalizeFood = (food: unknown) => {
+  const rawFoods = Array.isArray(source.foods) ? source.foods : [];
+
+  const normalizeFood = (food: unknown, foodIndex: number) => {
     if (!food || typeof food !== "object" || Array.isArray(food)) return food;
     const item = food as Record<string, unknown>;
     const quantity = item.quantity && typeof item.quantity === "object" && !Array.isArray(item.quantity)
-      ? { ...(item.quantity as Record<string, unknown>), value: normalizeNumericFields((item.quantity as Record<string, unknown>).value), grams: normalizeNumericFields((item.quantity as Record<string, unknown>).grams) }
+      ? {
+        ...(item.quantity as Record<string, unknown>),
+        value: normalizeNumericFields((item.quantity as Record<string, unknown>).value),
+        grams: normalizeNumericFields((item.quantity as Record<string, unknown>).grams),
+      }
       : item.quantity;
     const observation = item.observation && typeof item.observation === "object" && !Array.isArray(item.observation)
       ? { ...(item.observation as Record<string, unknown>) }
@@ -476,7 +552,7 @@ function normalizeStructuredAnalysis(value: unknown) {
         status.qualityProperties = "unknown";
       }
     }
-    const normalizedItem = { ...item };
+    const normalizedItem: Record<string, unknown> = { ...item };
     let normalizedQuantity = quantity;
     let normalizedEstimatedGrams = normalizeNumericFields(item.estimatedGrams);
     if (observation && typeof observation === "object" && !Array.isArray(observation)) {
@@ -501,64 +577,125 @@ function normalizeStructuredAnalysis(value: unknown) {
     // the wire representation of an unknown descriptive axis; the canonical
     // Zod model represents that same state by omitting qualityProperties.
     if (normalizedItem.qualityProperties === null) delete normalizedItem.qualityProperties;
-    return {
-      ...normalizedItem,
-      estimatedGrams: normalizedEstimatedGrams,
-      calories: normalizeRange(item.calories),
-      proteinGrams: normalizeRange(item.proteinGrams),
-      carbohydrateGrams: normalizeRange(item.carbohydrateGrams),
-      fatGrams: normalizeRange(item.fatGrams),
-      fiberGrams: normalizeRange(item.fiberGrams),
-      // Sugar fields were added after older analyses had already been stored.
-      // Missing is therefore normalized to null, never to zero or an estimate.
-      sugarGrams: item.sugarGrams === undefined ? null : normalizeRange(item.sugarGrams),
-      addedSugarGrams: item.addedSugarGrams === undefined ? null : normalizeRange(item.addedSugarGrams),
-      quantity: normalizedQuantity,
-      observation,
-    };
+
+    // 1. Assure a valid unique string id
+    normalizedItem.id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `food-${foodIndex + 1}`;
+    normalizedItem.estimatedGrams = normalizedEstimatedGrams;
+    normalizedItem.quantity = normalizedQuantity;
+    normalizedItem.observation = observation;
+
+    // Ranges clamped
+    normalizedItem.calories = clampRangeValues(item.calories);
+    normalizedItem.proteinGrams = clampRangeValues(item.proteinGrams);
+    normalizedItem.carbohydrateGrams = clampRangeValues(item.carbohydrateGrams);
+    normalizedItem.fatGrams = clampRangeValues(item.fatGrams);
+    normalizedItem.fiberGrams = clampRangeValues(item.fiberGrams);
+    normalizedItem.sugarGrams = item.sugarGrams === undefined ? null : clampRangeValues(item.sugarGrams);
+    normalizedItem.addedSugarGrams = item.addedSugarGrams === undefined ? null : clampRangeValues(item.addedSugarGrams);
+
+    clampSugarInvariants(normalizedItem);
+
+    return normalizedItem;
   };
-  const totals = source.totals && typeof source.totals === "object" && !Array.isArray(source.totals)
-    ? Object.fromEntries(Object.entries(source.totals as Record<string, unknown>).map(([key, entry]) => [key, key.endsWith("Grams") || key === "calories" ? normalizeRange(entry) : entry]))
-    : source.totals;
-  if (totals && typeof totals === "object" && !Array.isArray(totals)) {
-    const normalizedTotals = totals as Record<string, unknown>;
-    // Keep old provider responses readable while making unavailability
-    // explicit for downstream adapters.
-    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "sugarGrams")) normalizedTotals.sugarGrams = null;
-    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "addedSugarGrams")) normalizedTotals.addedSugarGrams = null;
-  }
-  const foods = Array.isArray(source.foods) ? source.foods.map(normalizeFood) : source.foods;
+
+  const foods = rawFoods.map(normalizeFood);
+
+  // Fix duplicate IDs, dish parentId relationships
   if (Array.isArray(foods)) {
-    const countedDishIds = new Set(foods.flatMap((food) => food && typeof food === "object" && !Array.isArray(food)
-      && (food as Record<string, unknown>).kind === "dish"
-      && (food as Record<string, unknown>).countedInTotals === true
-      && typeof (food as Record<string, unknown>).id === "string"
-      ? [(food as Record<string, unknown>).id as string]
-      : []));
+    const foodIdSet = new Set<string>();
+    foods.forEach((food, index) => {
+      if (!food || typeof food !== "object") return;
+      const f = food as Record<string, unknown>;
+      if (typeof f.id !== "string" || !f.id || foodIdSet.has(f.id)) {
+        f.id = `food-${index + 1}`;
+      }
+      foodIdSet.add(f.id as string);
+    });
+
+    const countedDishIds = new Set(foods.flatMap((food) =>
+      food && typeof food === "object" && (food as Record<string, unknown>).kind === "dish" && (food as Record<string, unknown>).countedInTotals === true && typeof (food as Record<string, unknown>).id === "string"
+        ? [(food as Record<string, unknown>).id as string]
+        : []
+    ));
+
     for (let index = 0; index < foods.length; index += 1) {
       const food = foods[index];
-      if (!food || typeof food !== "object" || Array.isArray(food)) continue;
-      const item = food as Record<string, unknown>;
-      if (typeof item.parentId === "string" && countedDishIds.has(item.parentId) && item.countedInTotals !== false) {
-        foods[index] = { ...item, countedInTotals: false };
+      if (!food || typeof food !== "object") continue;
+      const f = food as Record<string, unknown>;
+      if (typeof f.parentId === "string") {
+        if (f.parentId === f.id || !foodIdSet.has(f.parentId)) {
+          f.parentId = null;
+        } else if (countedDishIds.has(f.parentId) && f.countedInTotals !== false) {
+          f.countedInTotals = false;
+        }
+      }
+      if (f.alcoholic === true) {
+        f.countedInTotals = false;
       }
     }
   }
+
+  // Totals normalization
+  let totals = source.totals && typeof source.totals === "object" && !Array.isArray(source.totals)
+    ? Object.fromEntries(Object.entries(source.totals as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      key.endsWith("Grams") || key === "calories" ? clampRangeValues(entry) : entry,
+    ]))
+    : source.totals;
+
+  if (totals && typeof totals === "object" && !Array.isArray(totals)) {
+    const normalizedTotals = totals as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "sugarGrams")) normalizedTotals.sugarGrams = null;
+    if (!Object.prototype.hasOwnProperty.call(normalizedTotals, "addedSugarGrams")) normalizedTotals.addedSugarGrams = null;
+    clampSugarInvariants(normalizedTotals);
+
+    // Harmonize totals with counted food sum intervals
+    if (Array.isArray(foods)) {
+      const counted = foods.filter((f): f is Record<string, unknown> =>
+        Boolean(f && typeof f === "object" && (f as Record<string, unknown>).countedInTotals !== false && (f as Record<string, unknown>).alcoholic !== true)
+      );
+      harmonizeTotalsOverlap(normalizedTotals, counted);
+    }
+    totals = normalizedTotals;
+  }
+
+  // Sanitize uncertainty signals
+  let uncertaintySignals = Array.isArray(source.uncertaintySignals) ? source.uncertaintySignals : [];
+  if (Array.isArray(foods) && uncertaintySignals.length > 0) {
+    const foodIdSet = new Set(foods.map((f) => f && typeof f === "object" && typeof (f as Record<string, unknown>).id === "string" ? (f as Record<string, unknown>).id as string : null).filter(Boolean));
+    const seenSignals = new Set<string>();
+    const cleaned: Array<Record<string, unknown>> = [];
+    for (const rawSignal of uncertaintySignals) {
+      if (!rawSignal || typeof rawSignal !== "object" || Array.isArray(rawSignal)) continue;
+      const sig = { ...(rawSignal as Record<string, unknown>) };
+      if (typeof sig.foodId === "string" && !foodIdSet.has(sig.foodId)) {
+        sig.foodId = null;
+      }
+      const key = `${sig.code}:${sig.field}:${sig.foodId ?? "meal"}`;
+      if (seenSignals.has(key)) continue;
+      seenSignals.add(key);
+      cleaned.push(sig);
+      if (cleaned.length >= 20) break;
+    }
+    uncertaintySignals = cleaned;
+  }
+
   return {
     ...source,
     foods,
     totals,
+    uncertaintySignals,
   };
 }
 
-function structuredJson(text: string) {
+function structuredJson(text: string, sourcePhotoIds?: readonly string[]) {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1]?.trim();
   const candidates = [fenced, trimmed, ...balancedJsonCandidates(trimmed)].filter((candidate, index, all): candidate is string => Boolean(candidate) && all.indexOf(candidate) === index);
   let lastError: unknown;
   for (const candidate of candidates) {
     try {
-      return normalizeStructuredAnalysis(JSON.parse(candidate) as unknown);
+      return normalizeStructuredAnalysis(JSON.parse(candidate) as unknown, sourcePhotoIds);
     } catch (error) {
       lastError = error;
     }
@@ -593,15 +730,35 @@ function recipeReferencesPrompt(recipeReferences: MealRecipeReference[] | undefi
   ].join("\n");
 }
 
-function previousAnalysisPrompt(previousAnalysis: MealAnalysis | null | undefined) {
+function previousAnalysisPrompt(previousAnalysis: MealAnalysis | null | undefined, hasCorrection = false) {
   if (!previousAnalysis) return "Aucune analyse précédente n'a été fournie comme référence.";
   return [
-    "Analyse précédente conservée (référence textuelle uniquement) : elle peut aider à comprendre une correction, mais elle ne constitue pas une nouvelle preuve et ses anciennes photos ne sont plus disponibles.",
-    `Previous structured analysis (reference only): ${JSON.stringify(previousAnalysis)}`,
+    hasCorrection
+      ? "Analyse précédente du repas (base à conserver et mettre à jour avec la modification utilisateur ci-dessus) :"
+      : "Analyse précédente conservée (référence textuelle uniquement) :",
+    `Previous structured analysis: ${JSON.stringify(previousAnalysis)}`,
+  ].join("\n");
+}
+
+function correctionPrompt(correction: string | null | undefined) {
+  if (!correction?.trim()) return "No user correction was supplied.";
+  return [
+    "=== MODIFICATION / AJOUT EN LANGAGE NATUREL PAR L'UTILISATEUR (PRIORITÉ ABSOLUE) ===",
+    `Modification demandée : "${correction.trim()}"`,
+    "Consignes impératives pour appliquer cette modification :",
+    "1. La demande de l'utilisateur prévaut sur toute déduction visuelle ou textuelle précédente.",
+    "2. Conserve TOUS les aliments de l'analyse précédente qui ne sont pas modifiés ou contredits par cette correction.",
+    "3. Pour tout aliment ajouté ou modifié via la correction (par exemple un dessert, une boisson, un ingrédient oublié ou une portion corrigée) :",
+    "   - S'il n'est pas présent sur les photos fournies, attribue evidenceSource='note', evidence='inferred', evidencePhotoIds=[]. Ne l'exclus JAMAIS.",
+    "   - Renseigne son rôle dans course (ex : 'dessert', 'starter', 'side', 'main') et ses macros/calories de façon cohérente.",
+    "4. Mets à jour la liste complète des foods du repas pour combiner les aliments conservés et les ajouts/modifications.",
+    "5. Recalcule intégralement les totals (calories, protéines, glucides, lipides, fibres, sucres) pour refléter fidèlement le repas complet après modification.",
+    "6. Mets à jour le summary et calorieAnalysis pour refléter l'ensemble du repas mis à jour.",
   ].join("\n");
 }
 
 export function makeTextPrompt(input: MealVisionTextInput) {
+  const hasCorrection = Boolean(input.correction);
   return [
     "Analyse cette description libre d'un repas pour un journal alimentaire personnel. Réponds avec des libellés en français.",
     "Liste chaque aliment cité dans la description et attribue-lui un id local unique (par exemple food-1). Indique une quantité ou une portion seulement si l'utilisateur la donne explicitement (par exemple « 2 bananes ») ; sinon portion à null. Ne jamais inventer de grammes : estimatedGrams à null si la description ne permet pas une estimation responsable.",
@@ -621,13 +778,14 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "confidence à low par défaut, sauf si la description est très précise (aliments, quantités et préparation explicites). Remplis uncertaintySignals avec des codes structurés et un détail concret pour chaque incertitude importante ; conserve aussi uncertainties pour une explication lisible.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     `User description: ${input.note}`,
-    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
-    previousAnalysisPrompt(input.previousAnalysis),
+    correctionPrompt(input.correction),
+    previousAnalysisPrompt(input.previousAnalysis, hasCorrection),
     recipeReferencesPrompt(input.recipeReferences),
   ].join("\n");
 }
 
 export function makePrompt(input: MealVisionInput) {
+  const hasCorrection = Boolean(input.correction);
   const origins = input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
   return [
     "Analyse these photos as one meal for a personal food journal. Réponds avec des libellés en français.",
@@ -652,38 +810,11 @@ export function makePrompt(input: MealVisionInput) {
     "Return a concise summary, itemized foods, total calories and macros, confidence, legacy uncertainties, and structured uncertaintySignals with code, field, foodId, severity, and concrete detail.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     input.note ? `User note: ${input.note}` : "No user note was supplied.",
-    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
-    previousAnalysisPrompt(input.previousAnalysis),
+    correctionPrompt(input.correction),
+    previousAnalysisPrompt(input.previousAnalysis, hasCorrection),
     recipeReferencesPrompt(input.recipeReferences),
     origins,
   ].join("\n");
-}
-
-function makeVerificationPrompt(input: MealVisionVerificationInput) {
-  return [
-    "Relis cette analyse primaire d'un repas avec bienveillance et précision pour un journal alimentaire personnel. Réponds avec des libellés en français.",
-    "Vérifie les ids uniques, les quantités, les plats composés, les parentId, les doublons entre un plat et ses composants, les sauces/préparations plausibles, les foodGroups, les varietyKey, le label alcoholic, les statuts observation, les labels de transformation et d'exposition au sucre, et la cohérence nutritionnelle avec les photos et la note. Les intervalles des aliments comptés doivent seulement rester compatibles avec l'intervalle des totaux ; n'exige jamais une addition exacte des bornes. Corrige seulement lorsqu'une preuve visuelle, textuelle ou une contradiction forte le justifie ; sinon conserve l'analyse primaire.",
-    MEAL_PHOTO_EVIDENCE_CONTRACT_PROMPT,
-    MEAL_VARIETY_CONTRACT_PROMPT,
-    MEAL_QUALITY_CONTRACT_PROMPT,
-    MEAL_SUGAR_CONTRACT_PROMPT,
-    "Un parent kind=dish ne doit pas être compté avec ses composants comptés ; alcoholic=true impose countedInTotals=false et aucune valeur nutritionnelle de contribution. Ne fabrique jamais une quantité, un ingrédient caché ou une précision nutritionnelle. Les traces plausibles de sauce ou d'huile peuvent rester structurées en inferred/unknown avec leur source. Si une photo justifie l'aliment, conserve son identifiant dans evidencePhotoIds.",
-    "Ne transforme pas unknown en none_observed : unknown signifie que l'axe n'est pas déterminable, tandis que none_observed signifie qu'il a été examiné et qu'aucune propriété n'a été observée. Pour qualityProperties, transmets null si unknown et [] seulement pour none_observed. Pour sugarExposure, utilise null si unknown et {concentrated:false, liquid:false} si none_observed.",
-    MEAL_OBSERVATION_CONTRACT_PROMPT,
-    "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs confidence, uncertainties et uncertaintySignals restent internes à l'analyse.",
-    "Une correction utilisateur éventuelle est une indication en langage naturel, à appliquer seulement si elle est compatible avec les preuves.",
-    `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
-    input.note ? `User note: ${input.note}` : "No user note was supplied.",
-    input.correction ? `User correction to apply: ${input.correction}` : "No user correction was supplied.",
-    previousAnalysisPrompt(input.previousAnalysis),
-    recipeReferencesPrompt(input.recipeReferences),
-    `Primary analysis: ${JSON.stringify(input.primaryAnalysis)}`,
-    input.images.length > 0 ? originsForVerification(input) : "No photo was supplied; verify only against the description and the primary analysis.",
-  ].join("\n");
-}
-
-function originsForVerification(input: MealVisionVerificationInput) {
-  return input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
 }
 
 type StructuredRequest = {
@@ -723,7 +854,9 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const payload = {
       model: request.model,
       store: false,
-      prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}`,
+      prompt_cache_key: attempt === 1
+        ? `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}`
+        : `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}-retry-${attempt}`,
       reasoning: { effort: request.reasoningEffort || (request.provider === "xai" && request.model.startsWith("grok-4.3") ? "none" : "low") },
       max_output_tokens: maxOutputTokens,
       instructions: request.instructions,
@@ -859,7 +992,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     if (text) {
       let parsed: unknown;
       try {
-        parsed = structuredJson(text);
+        parsed = structuredJson(text, request.sourcePhotoIds);
       } catch (error) {
         if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
           console.error("[meal-analysis] provider content was not parseable JSON", {
@@ -895,9 +1028,6 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
           return result;
         } catch (error) {
           if (responseStatus !== "incomplete" && attempt < maxAttempts) {
-            // A complete JSON envelope can still contain a transiently
-            // incoherent model answer. Retry the same strict contract once;
-            // never repair the payload or persist it before validation passes.
             lastError = error;
             await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
             continue;
@@ -998,60 +1128,157 @@ async function requestGrokAnalysis({ model, instructions, promptText, imageConte
   });
 }
 
-async function requestOpenAiMealValidation(input: MealVisionVerificationInput, model: string, timeoutMs?: number) {
-  return requestStructuredMealAnalysis({
-    provider: "openai",
-    endpoint: process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses",
-    apiKeyEnv: "OPENAI_API_KEY",
-    model,
-    instructions: MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS,
-    promptText: makeVerificationPrompt(input),
-    // The validator receives the same visual evidence at full detail. Any
-    // lower-resolution path requires a quality benchmark and is deliberately
-    // not enabled by default.
-    imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" })),
-    maxOutputTokens: 6_000,
-    sourcePhotoIds: input.images.map((image) => image.id),
-    reasoningEffort: process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low",
-    requestId: input.requestId,
-    maxAttempts: 1,
-    timeoutMs,
-  });
+async function requestGrokAnalysisStream(
+  request: {
+    model: string;
+    instructions: string;
+    promptText: string;
+    imageContents: Array<{ type: string; image_url: string; detail: VisionImageDetail }>;
+    maxOutputTokens: number;
+    sourcePhotoIds: string[];
+    requestId?: string;
+    timeoutMs?: number;
+    reasoningEffort?: string;
+  },
+  onProgress?: (event: GrokStreamProgressEvent) => void,
+): Promise<MealAnalysis> {
+  const apiKey = process.env.XAI_API_KEY || requireServerEnv("XAI_API_KEY");
+  const endpoint = process.env.XAI_RESPONSES_URL || "https://api.x.ai/v1/responses";
+  const imageCount = request.imageContents.length;
+  const payload = {
+    model: request.model,
+    stream: true,
+    store: false,
+    prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-xai-${request.model}-stream`,
+    reasoning: { effort: request.reasoningEffort || (request.model.startsWith("grok-4.3") ? "none" : "low") },
+    max_output_tokens: request.maxOutputTokens,
+    instructions: request.instructions,
+    input: [{
+      role: "user",
+      content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
+    }],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "soma_meal_analysis",
+        strict: true,
+        schema: mealAnalysisJsonSchema(),
+      },
+    },
+  };
+
+  const timeoutMs = providerTimeoutMs(imageCount === 0 ? TEXT_PROVIDER_TIMEOUT_MS : DEFAULT_PROVIDER_TIMEOUT_MS, request.timeoutMs);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    const code: MealVisionErrorCode = timeout ? "provider_timeout" : "provider_unavailable";
+    throw new MealVisionError(code, providerMessage("xai", code), { cause: error, provider: "xai", requestId: request.requestId, retryable: true });
+  }
+
+  if (!response.ok) {
+    clearTimeout(timeoutId);
+    const retryable = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
+    const code: MealVisionErrorCode = response.status === 401 || response.status === 403
+      ? "provider_auth"
+      : response.status === 429
+        ? "provider_rate_limited"
+        : response.status === 408 || response.status === 425
+          ? "provider_timeout"
+          : response.status >= 500
+            ? "provider_unavailable"
+            : "provider_request";
+    throw new MealVisionError(code, providerMessage("xai", code), { provider: "xai", status: response.status, requestId: request.requestId, retryable });
+  }
+
+  if (!response.body) {
+    clearTimeout(timeoutId);
+    throw new MealVisionError("provider_empty_response", "xAI stream returned empty body.", { provider: "xai", requestId: request.requestId });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullText = "";
+  let detectedDish: string | null = null;
+  const detectedFoods = new Set<string>();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(":") || trimmed === "data: [DONE]") continue;
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6));
+            if (parsed.type === "response.reasoning_summary_text.delta" && typeof parsed.delta === "string") {
+              onProgress?.({ type: "reasoning", delta: parsed.delta });
+            } else if (parsed.type === "response.output_text.delta" && typeof parsed.delta === "string") {
+              fullText += parsed.delta;
+              onProgress?.({ type: "text_delta", delta: parsed.delta });
+
+              if (!detectedDish) {
+                const dishMatch = fullText.match(/"dishType"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+                if (dishMatch && dishMatch[1]) {
+                  detectedDish = dishMatch[1];
+                  onProgress?.({ type: "dish_detected", dishType: detectedDish });
+                }
+              }
+
+              const foodNameMatches = fullText.matchAll(/"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+              for (const match of foodNameMatches) {
+                const name = match[1]?.trim();
+                if (name && !detectedFoods.has(name)) {
+                  detectedFoods.add(name);
+                  onProgress?.({ type: "food_detected", food: name });
+                }
+              }
+            }
+          } catch {
+            // Ignore partial SSE lines
+          }
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!fullText.trim()) {
+    throw new MealVisionError("provider_empty_response", "xAI stream completed without content.", { provider: "xai", requestId: request.requestId });
+  }
+
+  const parsedJson = structuredJson(fullText, request.sourcePhotoIds);
+  const normalized = normalizeStructuredAnalysis(parsedJson, request.sourcePhotoIds) as MealAnalysis;
+  return normalized;
 }
 
 export function createXaiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
-  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.3";
-  const xaiValidatorModel = process.env.XAI_MEAL_VALIDATOR_MODEL || model;
-  const openAiValidatorModel = process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
-  const validator: MealVisionProvider["verify"] = process.env.OPENAI_API_KEY
-    ? (input) => requestOpenAiMealValidation(input, openAiValidatorModel, VALIDATOR_TIMEOUT_MS)
-    : process.env.XAI_MEAL_VALIDATOR_MODEL
-      ? (input) => requestGrokAnalysis({
-        model: xaiValidatorModel,
-        instructions: MEAL_VALIDATOR_PROVIDER_INSTRUCTIONS,
-        promptText: makeVerificationPrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
-        maxOutputTokens: 6_000,
-        sourcePhotoIds: input.images.map((image) => image.id),
-        requestId: input.requestId,
-        maxAttempts: 1,
-        timeoutMs: VALIDATOR_TIMEOUT_MS,
-      })
-      : undefined;
+  const model = process.env.XAI_MEAL_VISION_MODEL || "grok-4.6";
   return {
     name: "xai",
     model,
-    ...(validator ? {
-      verification: process.env.OPENAI_API_KEY
-        ? { provider: "openai", model: openAiValidatorModel }
-        : { provider: "xai", model: xaiValidatorModel },
-    } : {}),
     async analyze(input) {
       return requestGrokAnalysis({
         model,
         instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
         promptText: makePrompt(input),
-        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "high" as VisionImageDetail })),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" as VisionImageDetail })),
         maxOutputTokens: 6_000,
         sourcePhotoIds: input.images.map((image) => image.id),
         requestId: input.requestId,
@@ -1072,7 +1299,30 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number; tim
         timeoutMs: options.timeoutMs ?? providerTimeoutMs(TEXT_PROVIDER_TIMEOUT_MS),
       });
     },
-    ...(validator ? { verify: validator } : {}),
+    async analyzeStream(input, onProgress) {
+      return requestGrokAnalysisStream({
+        model,
+        instructions: MEAL_PHOTO_PROVIDER_INSTRUCTIONS,
+        promptText: makePrompt(input),
+        imageContents: input.images.map((image) => ({ type: "input_image", image_url: imageDataUri(image), detail: "auto" as VisionImageDetail })),
+        maxOutputTokens: 6_000,
+        sourcePhotoIds: input.images.map((image) => image.id),
+        requestId: input.requestId,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(DEFAULT_PROVIDER_TIMEOUT_MS),
+      }, onProgress);
+    },
+    async analyzeTextStream(input, onProgress) {
+      return requestGrokAnalysisStream({
+        model,
+        instructions: MEAL_TEXT_PROVIDER_INSTRUCTIONS,
+        promptText: makeTextPrompt(input),
+        imageContents: [],
+        maxOutputTokens: 3_000,
+        sourcePhotoIds: [],
+        requestId: input.requestId,
+        timeoutMs: options.timeoutMs ?? providerTimeoutMs(TEXT_PROVIDER_TIMEOUT_MS),
+      }, onProgress);
+    },
   };
 }
 
@@ -1082,11 +1332,9 @@ export function getMealVisionProvider(): MealVisionProvider {
 
 function validateProviderResult(value: MealAnalysis, sourcePhotoIds: readonly string[], provider: MealVisionProvider) {
   try {
-    // Built-in adapters already return the canonical parsed value. Validate
-    // custom providers as well, but preserve their object shape so adding this
-    // guard does not unexpectedly inject defaults into existing integrations.
-    validateMealAnalysis(value, { sourcePhotoIds });
-    return value;
+    const sanitized = normalizeStructuredAnalysis(value, sourcePhotoIds) as MealAnalysis;
+    validateMealAnalysis(sanitized, { sourcePhotoIds });
+    return sanitized;
   } catch (error) {
     if (error instanceof MealVisionError) throw error;
     throw new MealVisionError(
@@ -1109,26 +1357,22 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
 }
 
 /**
- * Dispatches one meal analysis according to the available evidence.
- *
- * A meal with at least one available image always uses the vision method once;
- * its note is part of that same request. Only a note-only meal uses the
- * provider's text-only method. The optional validator runs by default and
- * falls back to the primary result when it fails.
+ * Dispatches one meal analysis according to the available evidence using a single
+ * configured vision or text-analysis model without any secondary validator.
  */
-export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { verify?: boolean; requestId?: string } = {}) {
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { requestId?: string } = {}) {
   const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
   const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primaryResponse = input.images.length > 0
     ? await provider.analyze(providerInput)
     : await (async () => {
       const note = input.note?.trim() ?? "";
-      if (!note) throw new Error("A meal needs a note or at least one image before analysis.");
+      if (!note && !input.correction) throw new Error("A meal needs a note, a correction, or at least one image before analysis.");
       if (!provider.analyzeText) throw new Error("This meal analysis provider does not support text-only analysis.");
       return provider.analyzeText({
         mealType: input.mealType,
         mealDate: input.mealDate,
-        note,
+        note: note || (input.correction ? "Mise à jour du repas précédent." : ""),
         ...(input.correction ? { correction: input.correction } : {}),
         ...(input.previousAnalysis ? { previousAnalysis: input.previousAnalysis } : {}),
         ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
@@ -1136,35 +1380,62 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
       });
     })();
   const sourcePhotoIds = input.images.map((image) => image.id);
-  const primary = validateProviderResult(primaryResponse, sourcePhotoIds, provider);
-
-  let result = primary;
-  let validation = {
-    requested: options.verify !== false,
-    configured: Boolean(provider.verify),
+  const result = validateProviderResult(primaryResponse, sourcePhotoIds, provider);
+  const validation = {
+    requested: false,
+    configured: false,
     attempted: false,
     succeeded: false,
-    provider: provider.verification?.provider ?? null,
-    model: provider.verification?.model ?? null,
+    provider: null,
+    model: null,
   };
-  if (options.verify !== false && provider.verify) {
-    validation = { ...validation, attempted: true };
-    try {
-      result = validateProviderResult(await provider.verify({ ...providerInput, primaryAnalysis: primary }), sourcePhotoIds, provider);
-      validation = { ...validation, succeeded: true };
-    } catch (error) {
-      console.warn("[meal-analysis] optional verification failed; primary result preserved", {
-        requestId: providerInput.requestId,
-        provider: provider.name,
-        model: provider.model,
-        stage: "verification",
-        code: error instanceof MealVisionError ? error.code : "unknown",
-      });
-      result = primary;
+  return { result, provider: provider.name, model: provider.model, validation };
+}
+
+export async function analyzeMealInputStream(
+  input: MealVisionInput,
+  provider: MealVisionProvider = getMealVisionProvider(),
+  options: { requestId?: string } = {},
+  onProgress?: (event: GrokStreamProgressEvent) => void,
+) {
+  const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
+  const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
+  let primaryResponse: MealAnalysis;
+  if (input.images.length > 0) {
+    if (provider.analyzeStream) {
+      primaryResponse = await provider.analyzeStream(providerInput, onProgress);
+    } else {
+      primaryResponse = await provider.analyze(providerInput);
+    }
+  } else {
+    const note = input.note?.trim() ?? "";
+    if (!note && !input.correction) throw new Error("A meal needs a note, a correction, or at least one image before analysis.");
+    const textInput = {
+      mealType: input.mealType,
+      mealDate: input.mealDate,
+      note: note || (input.correction ? "Mise à jour du repas précédent." : ""),
+      ...(input.correction ? { correction: input.correction } : {}),
+      ...(input.previousAnalysis ? { previousAnalysis: input.previousAnalysis } : {}),
+      ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
+      ...recipeContext,
+    };
+    if (provider.analyzeTextStream) {
+      primaryResponse = await provider.analyzeTextStream(textInput, onProgress);
+    } else if (provider.analyzeText) {
+      primaryResponse = await provider.analyzeText(textInput);
+    } else {
+      throw new Error("This meal analysis provider does not support text-only analysis.");
     }
   }
-  const finalProvider = validation.succeeded && provider.verification
-    ? provider.verification
-    : { provider: provider.name, model: provider.model };
-  return { result, provider: finalProvider.provider, model: finalProvider.model, validation };
+  const sourcePhotoIds = input.images.map((image) => image.id);
+  const result = validateProviderResult(primaryResponse, sourcePhotoIds, provider);
+  const validation = {
+    requested: false,
+    configured: false,
+    attempted: false,
+    succeeded: false,
+    provider: null,
+    model: null,
+  };
+  return { result, provider: provider.name, model: provider.model, validation };
 }
