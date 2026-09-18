@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { automaticJournalEntriesFor } from "./journal-automatic";
-import { explicitNoBreakfastByDate, lightBreakfastThresholdKcal, lightBreakfastValue } from "./journal-meal-automatic";
+import { explicitNoBreakfastByDate, lightBreakfastThresholdKcal, lightBreakfastValue, mealRecordsByDate, skippedBreakfastDates } from "./journal-meal-automatic";
 import type { ConfirmedMealRecord } from "./meals";
 
 function meal(overrides: Partial<ConfirmedMealRecord> = {}): ConfirmedMealRecord {
@@ -36,6 +36,13 @@ describe("automatic light breakfast", () => {
 
   it("keeps an unrecorded day unknown", () => {
     expect(lightBreakfastValue({ meals: [] })).toBeNull();
+  });
+
+  it("treats a skipped breakfast as an explicit absence and excludes its old analysis", () => {
+    const skipped = meal({ entryState: "skipped", caloriesKcal: { low: 500, likely: 560, high: 650 } });
+    expect(skippedBreakfastDates([skipped])).toEqual(new Set(["2026-09-01"]));
+    expect(mealRecordsByDate([skipped])).toEqual(new Map());
+    expect(lightBreakfastValue({ meals: mealRecordsByDate([skipped]).get("2026-09-01"), explicitlyNoBreakfast: true })).toBe(true);
   });
 
   it("uses the nutrition range instead of false precision", () => {

@@ -23,12 +23,22 @@ export function lightBreakfastThresholdKcal(dailyTargetKcal?: number | null) {
 export function mealRecordsByDate(records: readonly ConfirmedMealRecord[]) {
   const byDate = new Map<string, ConfirmedMealRecord[]>();
   for (const record of records) {
-    if (record.status !== "confirmed" || !/^\d{4}-\d{2}-\d{2}$/.test(record.mealDate)) continue;
+    if (record.status !== "confirmed" || record.entryState === "skipped" || !/^\d{4}-\d{2}-\d{2}$/.test(record.mealDate)) continue;
     const current = byDate.get(record.mealDate) ?? [];
     current.push(record);
     byDate.set(record.mealDate, current);
   }
   return byDate;
+}
+
+export function skippedBreakfastDates(records: readonly {
+  mealDate: string;
+  mealType: string;
+  entryState?: string;
+}[]) {
+  return new Set(records
+    .filter((record) => record.mealType === "breakfast" && record.entryState === "skipped" && /^\d{4}-\d{2}-\d{2}$/.test(record.mealDate))
+    .map((record) => record.mealDate));
 }
 
 function normalizedName(name: string) {
