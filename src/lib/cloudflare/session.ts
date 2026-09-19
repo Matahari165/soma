@@ -196,7 +196,7 @@ function sessionFromRow(row: { session_id?: unknown; platform?: unknown; device_
 
 export async function revokeDeviceSession(userId: string, sessionId: string) {
   if (hasSupabaseRuntime()) {
-    const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", userId).eq("session_id", sessionId).select("session_id");
+    const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", userId).eq("session_id", sessionId).select("token_hash");
     if (result.error) throw new Error(result.error.message);
     return (result.data?.length ?? 0) > 0;
   }
