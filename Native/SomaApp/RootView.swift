@@ -40,6 +40,7 @@ struct RootView: View {
         TabView(selection: Bindable(model).destination) {
             DayView().tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
             AnalysisView().tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
+            ExportView().tabItem { Label("Export", systemImage: "square.and.arrow.up") }.tag(AppModel.Destination.export)
         }
         #endif
     }
@@ -49,6 +50,7 @@ struct RootView: View {
         switch model.destination {
         case .day: DayView()
         case .analysis: AnalysisView()
+        case .export: ExportView()
         }
     }
 }
