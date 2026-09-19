@@ -34,7 +34,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .health: "heart.text.square"
         case .meals: "fork.knife"
         case .sleep: "moon.zzz"
-        case .recovery: "heart.text.square"
+        case .recovery: "heart.circle"
         case .activity: "figure.run"
         case .export: "square.and.arrow.up"
         case .settings: "gearshape"
