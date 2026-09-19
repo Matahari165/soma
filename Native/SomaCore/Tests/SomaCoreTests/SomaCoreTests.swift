@@ -51,6 +51,19 @@ import Testing
     #expect(Set(matrix.relations.map(\.id)).count == 2)
 }
 
+@Test func strongestEffectsDecodesTheCanonicalServerEvidence() throws {
+    let json = #"{"rows":[],"outcomes":[{"id":"hrv","label":"VFC","unit":"ms","direction":"higher"}],"periods":[15,30,90,"all"],"meaningfulRelations":[],"topRelations":[{"predictorId":"walk","outcomeId":"hrv","predictorLabel":"Marche","predictorUnit":"min","predictorKind":"numeric","predictorPresentation":"amount","outcomeLabel":"VFC","outcomeUnit":"ms","effect":4.2,"sampleSize":32,"effectConfidenceLow":1.1,"effectConfidenceHigh":7.3,"effectiveSampleSize":32,"pValue":0.004,"qValue":0.018,"percentEffect":8.1,"comparisonLabel":"+20 min","modelType":"plateau","modelImprovement":0.14,"nonlinearTested":true,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":3,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"strength":"clear","coverageBySource":[{"source":"WHOOP","pairedDays":32,"pairedWeeks":0}],"minimumDaysRemaining":0,"practicallyMeaningful":true,"practicalThreshold":2,"practicalRatio":2.1,"featureEligible":true,"exclusionReasons":[],"excluded":false}],"acuteHighlights":[],"chronicHighlights":[],"coverageByMetric":[{"id":"walk","label":"Marche","recordedDays":32,"requiredDays":15,"sources":[{"source":"Journal","days":32}]}],"collectionProgress":[]}"#
+    let matrix = try JSONDecoder().decode(NativeMatrixResponse.self, from: Data(json.utf8))
+    let relation = try #require(matrix.strongestRelations.first)
+    #expect(matrix.periods == [.days(15), .days(30), .days(90), .all])
+    #expect(relation.effect == 4.2)
+    #expect(relation.qValue == 0.018)
+    #expect(relation.stability?.chronologicalBlocks == 3)
+    #expect(relation.modelType == "plateau")
+    #expect(relation.coverageBySource?.first?.pairedDays == 32)
+    #expect(matrix.outcomes.first?.direction == "higher")
+}
+
 @Test func journalSavePreservesExplicitZeroFalseAndMissing() throws {
     let request = JournalSaveRequest(entryDate: "2026-09-19", entries: [
         JournalSaveEntry(variableId: "zero", value: .number(0)),

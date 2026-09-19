@@ -40,6 +40,12 @@ const matrix = {
   rows: [{ id: "sleep_minutes", label: "Sleep", emoji: "🌙", grain: "day" as const, timeScale: "acute" as const, period: 30 as const, lagLabel: "same day", relations: [] }],
   outcomes: [{ id: "recovery", label: "Recovery", unit: "score", direction: "higher" as const }],
   periods: [30 as const],
+  meaningfulRelations: [],
+  topRelations: [],
+  acuteHighlights: [],
+  chronicHighlights: [],
+  coverageByMetric: [],
+  collectionProgress: [],
 };
 
 describe("native Personal Lab API", () => {
@@ -86,7 +92,7 @@ describe("native Personal Lab API", () => {
     const response = await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=30"));
     const webResponse = await getWebMatrix(new NextRequest("https://soma.example/api/lab/matrix?period=30"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(matrix);
+    expect(await response.json()).toEqual({ period: 30, ...matrix });
     expect(await webResponse.json()).toEqual(matrix);
     expect(getPersonalLabSnapshot).toHaveBeenCalledWith(user, { periods: [30] });
   });
