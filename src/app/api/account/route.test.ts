@@ -4,7 +4,17 @@ import { previewUser } from "@/lib/local-preview";
 import { clearPreviewUserData, createPreviewMeal, listPreviewMeals } from "@/services/meal-preview";
 import { clearPreviewMealRecipes, createMealRecipe, listMealRecipes } from "@/services/meal-recipes";
 import { DELETE as deleteAccount } from "./route";
-import { GET as exportAccount } from "./export/route";
+import { GET as exportAccount, sanitizeExportRows } from "./export/route";
+
+describe("account export redaction", () => {
+  it("excludes the Apple Health sync credential without changing stored profiles", () => {
+    const stored = { user_id: "test-user", apple_health_sync_token: "synthetic-test-secret", display_name: "Test" };
+    const exported = sanitizeExportRows("profiles", [stored]);
+
+    expect(exported).toEqual([{ user_id: "test-user", display_name: "Test" }]);
+    expect(stored.apple_health_sync_token).toBe("synthetic-test-secret");
+  });
+});
 
 describe("local preview account data", () => {
   afterEach(() => {
