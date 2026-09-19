@@ -27,6 +27,24 @@ import Testing
     #expect(day.variables.isEmpty)
 }
 
+@Test func sessionEnvelopeIdentifiesCurrentDeviceAndDates() throws {
+    let json = #"{"user":{"id":"user","email":null,"displayName":"Test User"},"session":{"id":"current-session","platform":"macos","deviceName":"Test Mac","createdAt":"2026-09-19T12:00:00.000Z","expiresAt":"2026-10-19T12:00:00.000Z"}}"#
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    let response = try decoder.decode(SessionResponse.self, from: Data(json.utf8))
+    #expect(response.session.id == "current-session")
+    #expect(response.session.platform == .macos)
+    #expect(response.user.email == nil)
+}
+
+@Test func activeSessionsKeepDifferentPlatformsDistinct() throws {
+    let json = #"{"sessions":[{"id":"ios-session","platform":"ios","deviceName":"iPhone","createdAt":"2026-09-18T12:00:00Z","expiresAt":"2026-10-18T12:00:00Z"},{"id":"web-session","platform":"web","deviceName":"Navigateur","createdAt":"2026-09-17T12:00:00Z","expiresAt":"2026-10-17T12:00:00Z"}]}"#
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    let response = try decoder.decode(DeviceSessionsResponse.self, from: Data(json.utf8))
+    #expect(response.sessions.map(\.platform) == [.ios, .web])
+}
+
 @Test func strongestEffectsRelationsKeepPeriodsAndLagsDistinct() throws {
     let json = #"{"rows":[{"id":"30:walk:lag-0","label":"Marche","relations":[{"predictorId":"walk","outcomeId":"sleep","sampleSize":20,"effect":0.2,"effectConfidenceLow":0.1,"effectConfidenceHigh":0.3,"lagDays":0,"period":30},{"predictorId":"walk","outcomeId":"sleep","sampleSize":18,"effect":0.3,"effectConfidenceLow":0.1,"effectConfidenceHigh":0.5,"lagDays":1,"period":30}]}],"outcomes":[],"periods":[30]}"#
     let matrix = try JSONDecoder().decode(NativeMatrixResponse.self, from: Data(json.utf8))

@@ -110,6 +110,19 @@ export async function getBearerSessionUser(): Promise<SessionUser | null> {
   return getSessionUserForToken(await currentBearerToken());
 }
 
+export async function getBearerDeviceSession(): Promise<DeviceSession | null> {
+  const token = await currentBearerToken();
+  if (!token) return null;
+  const tokenHash = await sha256(token);
+  if (!hasSupabaseRuntime()) {
+    const row = await cloudflareDb().prepare("SELECT session_id, platform, device_name, created_at, expires_at FROM soma_sessions WHERE token_hash = ? AND expires_at > ? LIMIT 1").bind(tokenHash, new Date().toISOString()).first<{ session_id: string | null; platform: string | null; device_name: string | null; created_at: string; expires_at: string }>();
+    return row ? sessionFromRow(row)[0] ?? null : null;
+  }
+  const result = await createCloudflareAdminClient().from("soma_sessions").select("session_id,platform,device_name,created_at,expires_at").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data ? sessionFromRow(result.data)[0] ?? null : null;
+}
+
 async function getSessionUserForToken(token: string | null): Promise<SessionUser | null> {
   if (!token) return null;
   if (hasSupabaseRuntime()) {
@@ -183,7 +196,7 @@ function sessionFromRow(row: { session_id?: unknown; platform?: unknown; device_
 
 export async function revokeDeviceSession(userId: string, sessionId: string) {
   if (hasSupabaseRuntime()) {
-    const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", userId).eq("session_id", sessionId);
+    const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", userId).eq("session_id", sessionId).select("session_id");
     if (result.error) throw new Error(result.error.message);
     return (result.data?.length ?? 0) > 0;
   }

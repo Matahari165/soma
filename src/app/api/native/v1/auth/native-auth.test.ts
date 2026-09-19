@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { verifyCredentialsLogin } from "@/lib/auth-credentials";
-import { createSession, deleteCurrentSession, getBearerSessionUser, hasCompletedOnboarding, listDeviceSessions, revokeDeviceSession } from "@/lib/cloudflare/session";
+import { createSession, deleteCurrentSession, getBearerDeviceSession, getBearerSessionUser, hasCompletedOnboarding, listDeviceSessions, revokeDeviceSession } from "@/lib/cloudflare/session";
 
 import { POST as login } from "./login/route";
 import { DELETE as deleteSession, GET as getSession } from "./session/route";
@@ -12,6 +12,7 @@ vi.mock("@/lib/auth-credentials", () => ({ verifyCredentialsLogin: vi.fn() }));
 vi.mock("@/lib/cloudflare/session", () => ({
   createSession: vi.fn(),
   deleteCurrentSession: vi.fn(),
+  getBearerDeviceSession: vi.fn(),
   getBearerSessionUser: vi.fn(),
   hasCompletedOnboarding: vi.fn(),
   listDeviceSessions: vi.fn(),
@@ -22,7 +23,10 @@ const user = { id: "user-existing", email: "user@example.test", displayName: "Te
 const session = { id: "5f3d636b-50f3-4cbd-a185-58a9aca74e18", platform: "ios" as const, deviceName: "Test iPhone", createdAt: "2026-09-19T12:00:00.000Z", expiresAt: "2026-10-19T12:00:00.000Z" };
 
 describe("native authentication API", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getBearerDeviceSession).mockResolvedValue(session);
+  });
 
   it("creates a revocable iOS bearer session for an existing account", async () => {
     vi.mocked(verifyCredentialsLogin).mockResolvedValue(user);
@@ -54,9 +58,18 @@ describe("native authentication API", () => {
     vi.mocked(listDeviceSessions).mockResolvedValue([session]);
     vi.mocked(revokeDeviceSession).mockResolvedValue(true);
     expect(await (await getSessions()).json()).toEqual({ sessions: [session] });
-    const response = await revokeSession(new Request("https://soma.example", { method: "DELETE" }), { params: Promise.resolve({ id: session.id }) });
+    const otherSessionId = "32a0f234-83dd-4ddb-b642-a0b06adcc331";
+    const response = await revokeSession(new Request("https://soma.example", { method: "DELETE" }), { params: Promise.resolve({ id: otherSessionId }) });
     expect(response.status).toBe(200);
-    expect(revokeDeviceSession).toHaveBeenCalledWith(user.id, session.id);
+    expect(revokeDeviceSession).toHaveBeenCalledWith(user.id, otherSessionId);
+  });
+
+  it("identifies and protects the current bearer session", async () => {
+    vi.mocked(getBearerSessionUser).mockResolvedValue(user);
+    expect(await (await getSession()).json()).toEqual({ user, session });
+    const response = await revokeSession(new Request("https://soma.example", { method: "DELETE" }), { params: Promise.resolve({ id: session.id }) });
+    expect(response.status).toBe(409);
+    expect(revokeDeviceSession).not.toHaveBeenCalled();
   });
 
   it("rejects unauthenticated session access", async () => {

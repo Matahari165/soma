@@ -16,10 +16,12 @@
 		328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
 		4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
 		6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
+		7D8F797DC6CE761F44172AD2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD98A10415D0B6773FB8B475 /* SettingsView.swift */; };
 		8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
 		8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
 		960661874553A56D0D829517 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
+		AA59B36A84BAD43FDB0964FA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD98A10415D0B6773FB8B475 /* SettingsView.swift */; };
 		B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		B7FF3271D30928FA4578CCDD /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = E5345FF1514A80610454C58E /* SomaCore */; };
 		D17F44F4F30638054D488065 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
@@ -37,6 +39,7 @@
 		8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Soma-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0029706B80FF4C1637F9B92 /* Soma-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Soma-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9579222E401A8B593A9A8E4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		CD98A10415D0B6773FB8B475 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SomaCore; path = SomaCore; sourceTree = SOURCE_ROOT; };
 		F42CA9D77DB2222DF4BE9806 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -97,8 +100,17 @@
 				1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */,
 				4F3029B284D51EBBA0D24E58 /* Theme.swift */,
 				2AC2C282B7DA0D90C64263B2 /* Meals */,
+				C86A9F905D3091001257F4A3 /* Settings */,
 			);
 			path = SomaApp;
+			sourceTree = "<group>";
+		};
+		C86A9F905D3091001257F4A3 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				CD98A10415D0B6773FB8B475 /* SettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		E07FA46FB33AC1559D6BFC01 /* Products */ = {
@@ -204,6 +216,7 @@
 				960661874553A56D0D829517 /* LoginView.swift in Sources */,
 				B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */,
 				6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */,
+				AA59B36A84BAD43FDB0964FA /* SettingsView.swift in Sources */,
 				2D01BE1E83D2B896C791BEF9 /* SomaApp.swift in Sources */,
 				1FAE0E20DC49147233239076 /* Theme.swift in Sources */,
 			);
@@ -219,6 +232,7 @@
 				8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */,
 				025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */,
 				4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */,
+				7D8F797DC6CE761F44172AD2 /* SettingsView.swift in Sources */,
 				93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */,
 				D17F44F4F30638054D488065 /* Theme.swift in Sources */,
 			);

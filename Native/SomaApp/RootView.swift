@@ -30,16 +30,12 @@ struct RootView: View {
                 Text(destination.rawValue).tag(destination)
             }
             .navigationTitle("Soma")
-            .safeAreaInset(edge: .bottom) {
-                Button("Se déconnecter") { Task { await model.logout() } }
-                    .buttonStyle(.plain)
-                    .padding()
-            }
         } detail: { destinationView }
         #else
         TabView(selection: Bindable(model).destination) {
-            DayView().tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
-            AnalysisView().tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
+            NavigationStack { DayView() }.tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
+            NavigationStack { AnalysisView() }.tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
+            NavigationStack { SettingsView() }.tabItem { Label("Réglages", systemImage: "gearshape") }.tag(AppModel.Destination.settings)
         }
         #endif
     }
@@ -49,6 +45,7 @@ struct RootView: View {
         switch model.destination {
         case .day: DayView()
         case .analysis: AnalysisView()
+        case .settings: SettingsView()
         }
     }
 }
