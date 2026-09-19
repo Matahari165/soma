@@ -1202,10 +1202,10 @@ export async function streamMealAnalysis(
       }
     }));
 
-    await onEvent({ type: "phase", phase: "validating" });
+    try { await onEvent({ type: "phase", phase: "validating" }); } catch {}
     const validated = validateMealAnalysis(analysed);
 
-    await onEvent({ type: "phase", phase: "finalizing" });
+    try { await onEvent({ type: "phase", phase: "finalizing" }); } catch {}
     
     const completedAt = new Date().toISOString();
     await updateMealAnalysis(userId, analysisRecord.id, {
@@ -1232,7 +1232,9 @@ export async function streamMealAnalysis(
       result: validated,
       completedAt,
     };
-    await onEvent({ type: "complete", meal: updatedMeal, analysis: completedAnalysis });
+    try {
+      await onEvent({ type: "complete", meal: updatedMeal, analysis: completedAnalysis });
+    } catch {}
 
   } catch (error) {
     if (signal?.aborted) return;

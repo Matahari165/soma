@@ -10,7 +10,7 @@
     "baseSha": "74c83bb",
     "pipelineIdentity": "meal-analysis-74c83bb-contract-v1",
     "sourceHashes": {
-      "promptAndNormalization": "sha256:d70ff24b16cc328a7f1a81a665e6c4d64332d210dd809e2648714bcf6fb399c4",
+      "promptAndNormalization": "sha256:770b4b56aaa84b58431c47044453410e92f6be53c23ad4f5cd603975a22889a8",
       "openAiAdapter": "sha256:befe9fefeb13a9ab4a245c0eeeb97009758b6c69c1d45f48c2c1dba21eb78dd1",
       "providerChain": "sha256:659ec1d475fd8bc067b6bb83d8f4ccdc95079a6c56b39b6ebf49f664af18e74c",
       "analysisContract": "sha256:a7d8760ab3a7876f05abfa2e58a47831ecaf5e2e32008872add2b7f4d7448624",

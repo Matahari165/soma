@@ -1169,7 +1169,7 @@ async function requestGrokAnalysisStream(
 
   const timeoutMs = providerTimeoutMs(imageCount === 0 ? TEXT_PROVIDER_TIMEOUT_MS : DEFAULT_PROVIDER_TIMEOUT_MS, request.timeoutMs);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
@@ -1217,6 +1217,8 @@ async function requestGrokAnalysisStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => controller.abort(), 30_000);
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
