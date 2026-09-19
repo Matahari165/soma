@@ -27,6 +27,10 @@ final class AppModel {
     var day: NativeDayResponse?
     var matrix: NativeMatrixResponse?
     var mealDrafts: [MealType: MealDraft] = [:]
+    var mealHistory: [Meal] = []
+    var mealDetails: [String: Meal] = [:]
+    var isLoadingMeals = false
+    var mealsErrorMessage: String?
     var isAuthenticated = false
     var isBootstrapping = true
     var isLoading = false
@@ -52,6 +56,8 @@ final class AppModel {
             loadSyntheticPreview()
             if ProcessInfo.processInfo.arguments.contains("--health-preview") {
                 destination = .health
+            } else if ProcessInfo.processInfo.arguments.contains("--preview-meals") {
+                destination = .day
             } else if ProcessInfo.processInfo.arguments.contains("--preview-export") {
                 destination = .export
             }
@@ -127,18 +133,91 @@ final class AppModel {
         }
     }
 
-    func openMeal(_ type: MealType) async {
-        if mealDrafts[type] == nil {
-            let summary = mealSummary(type)
+    func openMeal(_ type: MealType, mealID: String? = nil) async {
+        let resolvedID = mealID ?? mealSummary(type)?.id
+        if let resolvedID, mealDetails[resolvedID] == nil {
+            do {
+                mealDetails[resolvedID] = try await client.meal(id: resolvedID)
+            } catch APIError.unauthorized {
+                isAuthenticated = false
+                errorMessage = "La session a expiré. Reconnecte-toi."
+                return
+            } catch {
+                mealsErrorMessage = "Ce repas n’a pas pu être chargé."
+                return
+            }
+        }
+        let summary = mealSummary(type)
+        let detail = resolvedID.flatMap { mealDetails[$0] }
+        let draftDate = detail?.mealDate ?? activeDate.rawValue
+        if mealDrafts[type]?.remoteMealId != resolvedID || mealDrafts[type]?.mealDate != draftDate {
             var draft = MealDraft(
-                mealDate: activeDate.rawValue,
+                mealDate: draftDate,
                 mealType: type,
-                note: summary?.note,
-                entryState: summary?.entryState == "skipped" ? .skipped : .recorded
+                note: detail?.note ?? summary?.note,
+                entryState: detail?.entryState ?? (summary?.entryState == "skipped" ? .skipped : .recorded),
+                mouthWarmthIntensity: detail?.mouthWarmthIntensity,
+                stomachOverfullIntensity: detail?.stomachOverfullIntensity
             )
-            draft.remoteMealId = summary?.id
+            draft.remoteMealId = resolvedID
             mealDrafts[type] = draft
             await persistMealDraft(type)
+        }
+    }
+
+    func refreshMeals(days: Int = 28) async {
+        guard !ProcessInfo.processInfo.arguments.contains("--preview-data") else { return }
+        isLoadingMeals = true
+        mealsErrorMessage = nil
+        defer { isLoadingMeals = false }
+        do {
+            let start = try activeDate.adding(days: -(max(days, 1) - 1))
+            let meals = try await client.meals(from: start, to: activeDate)
+            mealHistory = meals.sorted {
+                if $0.mealDate == $1.mealDate { return $0.mealType.sortOrder < $1.mealType.sortOrder }
+                return $0.mealDate > $1.mealDate
+            }
+            for meal in meals { mealDetails[meal.id] = meal }
+        } catch APIError.unauthorized {
+            isAuthenticated = false
+            errorMessage = "La session a expiré. Reconnecte-toi."
+        } catch {
+            mealsErrorMessage = "L’historique des repas n’a pas pu être chargé."
+        }
+    }
+
+    func updateRemotePhotoOrigin(_ origin: MealPhotoOrigin, mealID: String, photoID: String) async {
+        do {
+            _ = try await client.updateMealPhotoOrigin(mealID: mealID, photoID: photoID, origin: origin)
+            mealDetails[mealID] = try await client.meal(id: mealID)
+        } catch {
+            mealsErrorMessage = "La provenance de la photo n’a pas pu être enregistrée."
+        }
+    }
+
+    func deleteRemotePhoto(mealID: String, photoID: String) async {
+        do {
+            try await client.deleteMealPhoto(mealID: mealID, photoID: photoID)
+            mealDetails[mealID] = try await client.meal(id: mealID)
+        } catch {
+            mealsErrorMessage = "La photo n’a pas pu être supprimée."
+        }
+    }
+
+    func deleteMeal(_ meal: Meal) async -> Bool {
+        do {
+            try await client.deleteMeal(id: meal.id)
+            mealHistory.removeAll { $0.id == meal.id }
+            mealDetails[meal.id] = nil
+            if mealDrafts[meal.mealType]?.remoteMealId == meal.id {
+                if let draft = mealDrafts[meal.mealType] { try? await mealDraftStore?.remove(draft.id) }
+                mealDrafts[meal.mealType] = nil
+            }
+            try? await refreshDay()
+            return true
+        } catch {
+            mealsErrorMessage = "Le repas n’a pas pu être supprimé. Une analyse en cours doit d’abord se terminer."
+            return false
         }
     }
 
@@ -202,7 +281,13 @@ final class AppModel {
                 current = try await coordinator.refresh(current)
                 mealDrafts[type] = current
             }
-            if current.stage == .completed { try? await refreshDay() }
+            if current.stage == .completed {
+                try? await refreshDay()
+                if let mealID = current.remoteMealId, let detail = try? await client.meal(id: mealID) {
+                    mealDetails[mealID] = detail
+                }
+                await refreshMeals()
+            }
         } catch APIError.unauthorized {
             isAuthenticated = false
             errorMessage = "La session a expiré. Reconnecte-toi."
@@ -256,6 +341,8 @@ final class AppModel {
         day = nil
         matrix = nil
         mealDrafts = [:]
+        mealHistory = []
+        mealDetails = [:]
         isLoading = false
     }
 
@@ -276,6 +363,8 @@ final class AppModel {
         isAuthenticated = true
         day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
+        mealHistory = (try? JSONDecoder().decode(MealListResponse.self, from: Data(Self.previewMeals.utf8)).meals) ?? []
+        for meal in mealHistory { mealDetails[meal.id] = meal }
     }
 
     private static func journalValue(_ text: String, type: String) -> JSONValue {
@@ -287,4 +376,5 @@ final class AppModel {
 
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"rows":[{"id":"walk","label":"Marche","relations":[{"predictorId":"walk","outcomeId":"sleep","predictorLabel":"Marche","outcomeLabel":"Sommeil","effect":0.34,"sampleSize":24,"effectConfidenceLow":0.11,"effectConfidenceHigh":0.57}]},{"id":"late-meal","label":"Repas tardif","relations":[{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","outcomeLabel":"Récupération","effect":-0.28,"sampleSize":21,"effectConfidenceLow":-0.49,"effectConfidenceHigh":-0.07}]}],"outcomes":[{"id":"sleep","label":"Sommeil","unit":"score"},{"id":"recovery","label":"Récupération","unit":"score"}],"periods":[30]}"#
+    private static let previewMeals = #"{"meals":[{"id":"meal-dinner","mealDate":"2026-09-19","mealType":"dinner","note":"Riz, légumes et tofu","status":"confirmed","entryState":"recorded","mouthWarmthIntensity":0,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T18:00:00Z","updatedAt":"2026-09-19T18:05:00Z","photos":[{"id":"photo-dinner","mealId":"meal-dinner","origin":"homemade","mimeType":"image/jpeg","bytes":120000,"filename":"diner.jpg","createdAt":"2026-09-19T18:00:00Z","storageStatus":"purged","purgedAt":"2026-09-19T18:05:00Z","url":null}],"analysis":{"id":"analysis-dinner","mealId":"meal-dinner","status":"completed","provider":"synthetic","model":"synthetic","result":{"summary":"Repas varié avec une source de protéines végétales.","dishType":"Plat complet","calorieAnalysis":null,"foods":[{"name":"Riz","preparation":"cuit","portion":"1 bol","confidence":"high"},{"name":"Tofu et légumes","preparation":null,"portion":"1 portion","confidence":"medium"}],"totals":{"calories":{"low":480,"likely":560,"high":650},"proteinGrams":{"low":20,"likely":25,"high":31},"carbohydrateGrams":{"low":65,"likely":74,"high":86},"fatGrams":{"low":14,"likely":18,"high":24},"fiberGrams":{"low":8,"likely":11,"high":15},"sugarGrams":null,"addedSugarGrams":null},"confidence":"medium","uncertainties":["Quantité d’huile non précisée"]},"error":null,"errorCode":null,"sourcePhotoIds":["photo-dinner"],"createdAt":"2026-09-19T18:00:00Z","completedAt":"2026-09-19T18:05:00Z"},"lastSuccessfulAnalysis":null},{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","note":null,"status":"draft","entryState":"skipped","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T12:00:00Z","updatedAt":"2026-09-19T12:00:00Z","photos":[],"analysis":null,"lastSuccessfulAnalysis":null},{"id":"meal-yesterday","mealDate":"2026-09-18","mealType":"breakfast","note":"Yaourt et fruits","status":"draft","entryState":"recorded","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-18T07:00:00Z","updatedAt":"2026-09-18T07:00:00Z","photos":[],"analysis":{"id":"analysis-yesterday","mealId":"meal-yesterday","status":"running","provider":"synthetic","model":"synthetic","result":null,"error":null,"errorCode":null,"sourcePhotoIds":[],"createdAt":"2026-09-18T07:00:00Z","completedAt":null},"lastSuccessfulAnalysis":null}]}"#
 }

@@ -47,8 +47,43 @@ public actor APIClient {
         return try await perform(request)
     }
 
+    public func meals(from: LocalDate, to: LocalDate) async throws -> [Meal] {
+        let response: MealListResponse = try await get(path: "/api/native/v1/meals?from=\(from.rawValue)&to=\(to.rawValue)")
+        return response.meals
+    }
+
+    public func meal(id: String) async throws -> Meal {
+        let response: MealResponse = try await get(path: "/api/native/v1/meals/\(pathComponent(id))")
+        return response.meal
+    }
+
     public func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse {
         try await perform(request(path: "/api/native/v1/meals/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteMeal(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/meals/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func updateMealPhotoOrigin(mealID: String, photoID: String, origin: MealPhotoOrigin) async throws -> MealPhoto {
+        let response: MealPhotoResponse = try await perform(request(
+            path: "/api/native/v1/meals/\(pathComponent(mealID))/photos/\(pathComponent(photoID))",
+            method: "PATCH",
+            body: MealPhotoOriginRequest(origin: origin),
+            authenticated: true
+        ))
+        return response.photo
+    }
+
+    public func deleteMealPhoto(mealID: String, photoID: String) async throws {
+        let response: EmptyResponse = try await perform(request(
+            path: "/api/native/v1/meals/\(pathComponent(mealID))/photos/\(pathComponent(photoID))",
+            method: "DELETE",
+            body: Optional<String>.none,
+            authenticated: true
+        ))
+        guard response.ok else { throw APIError.invalidResponse }
     }
 
     public func uploadMealPhotos(mealID: String, photos: [MealDraftPhoto], idempotencyKey: String) async throws -> MealPhotosResponse {
@@ -163,6 +198,7 @@ public struct MealUpdateRequest: Codable, Equatable, Sendable {
 
 public struct MealMutationResponse: Codable, Sendable { public let meal: Meal; public let created: Bool? }
 public struct MealPhotosResponse: Codable, Sendable { public let photos: [MealPhoto] }
+public struct MealPhotoResponse: Codable, Sendable { public let photo: MealPhoto }
 public struct MealAnalysisResponse: Codable, Sendable {
     public let analysis: MealAnalysisRecord?; public let meal: Meal?; public let fresh: Bool?; public let queued: Bool?; public let requestId: String?
 }
@@ -171,6 +207,7 @@ private struct MealCreateRequest: Codable, Sendable {
     let mealDate: String; let mealType: MealType; let note: String?; let entryState: MealEntryState; let mouthWarmthIntensity: Int?; let stomachOverfullIntensity: Int?; let idempotencyKey: String
 }
 private struct MealAnalysisRequest: Codable, Sendable { let force: Bool; let idempotencyKey: String }
+private struct MealPhotoOriginRequest: Codable, Sendable { let origin: MealPhotoOrigin }
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
 private struct EmptyResponse: Decodable { let ok: Bool }

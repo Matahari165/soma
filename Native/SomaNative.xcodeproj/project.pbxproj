@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
+		02ECA8D32C424288B5CF3D7D /* MealEditorTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0524996CBB59F23CA5FEE7B4 /* MealEditorTarget.swift */; };
 		08BB68CBEF15B06ABC55D36A /* StrongestEffectsBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */; };
 		0E8F43B9A0547E484710605D /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A04C295CBF6BB941628873 /* ExportViewModel.swift */; };
 		10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB5C0043159BF548CCC05F /* HealthViewModel.swift */; };
@@ -28,6 +29,7 @@
 		44190D5494017F084647C798 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CD292F9F511616D2B37913 /* ActivityView.swift */; };
 		467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */; };
 		47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */; };
+		49B86C998738E92D7C8A611B /* RemoteMealPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BCF6AD62D2362453BA537D /* RemoteMealPhotosView.swift */; };
 		4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
 		4D96F85FB10E294E9C6C3BFD /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126053CDD274ED65C3271FE1 /* RecoveryView.swift */; };
 		4F5A408685DED959E4754573 /* CompactNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5067655EDC9A9056B4643C48 /* CompactNavigationBar.swift */; };
@@ -42,6 +44,7 @@
 		6C1FA0BB044D1B97724C241F /* SegmentedBarChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */; };
 		6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
 		777F450FFD9EA90020854304 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB5C0043159BF548CCC05F /* HealthViewModel.swift */; };
+		7A4BDCB80C3F7772A1C4E3D1 /* MealDateSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54ECC4B34519D40BAD4D594 /* MealDateSection.swift */; };
 		7AC9A4BF61CC0EDF2720AABA /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C572AD3F64595D081B86F0 /* HealthView.swift */; };
 		7B77BBBD7BE99FBF21467813 /* StrongestEffectRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5467913C668E576E6BE9497D /* StrongestEffectRow.swift */; };
 		8483C9E7281638421AF6AFAF /* TimeSeriesChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */; };
@@ -50,6 +53,7 @@
 		8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		9128A984E260F2850458B05B /* StrongestEffectsContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */; };
 		924E28F5AE62ED26139BE128 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A04C295CBF6BB941628873 /* ExportViewModel.swift */; };
+		92D5EB145A9AA5E984896CA1 /* MealAnalysisResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9710466D2026975042EA37A5 /* MealAnalysisResultView.swift */; };
 		93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
 		960661874553A56D0D829517 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
 		99DB573D099599B98B3E02DD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */; };
@@ -57,17 +61,22 @@
 		A4E7AD902E4B9241CEB1E3CB /* StrongestEffectsContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */; };
 		A9372F3AC900B674865D7285 /* ChartProvenanceLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */; };
 		B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
+		B19F7BFE1DC713846495068A /* MealAnalysisResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9710466D2026975042EA37A5 /* MealAnalysisResultView.swift */; };
 		B37D8515605C2C7CEA2FE771 /* TimeSeriesChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331437DA34C389557545D653 /* TimeSeriesChart.swift */; };
 		B6517F1BA7F662EDA98C2943 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CD292F9F511616D2B37913 /* ActivityView.swift */; };
 		B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
 		B7FF3271D30928FA4578CCDD /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = E5345FF1514A80610454C58E /* SomaCore */; };
 		B8D2176BA8CDC0FD3735148F /* DomainIndicatorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */; };
 		B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
+		BDAE812A35AE59C7F42BA63D /* MealTimelineRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */; };
 		BE65DA0D6E46262C6AFCCFB3 /* DomainIndicatorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */; };
 		C0737ADD64DEF3DDDFB660BC /* TimeSeriesChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */; };
 		C0FC908AE42A0E3859B11150 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C572AD3F64595D081B86F0 /* HealthView.swift */; };
 		C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */; };
+		C251CCA08485C40710654A15 /* RemoteMealPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BCF6AD62D2362453BA537D /* RemoteMealPhotosView.swift */; };
 		C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */; };
+		C6046E1FEA2814EFCA86C245 /* MealDateSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54ECC4B34519D40BAD4D594 /* MealDateSection.swift */; };
+		C7C47E17DEE389DAD7E93317 /* MealTimelineRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */; };
 		CADCCA52F0C89CE311265D39 /* HealthKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91CB0F4F6DA527488579B96E /* HealthKitReader.swift */; };
 		CC4756EE17D413C0A0B15E6C /* AppDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385165A9FC4AE45F368DA7AB /* AppDestination.swift */; };
 		D17F44F4F30638054D488065 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
@@ -78,6 +87,7 @@
 		E58A8677B9834516366C666F /* SegmentedBarChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */; };
 		E95281CD5CB149F37F4095CE /* DomainIndicatorBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */; };
 		ECAA72B94279A96ED624F62D /* AppDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385165A9FC4AE45F368DA7AB /* AppDestination.swift */; };
+		EDBBF1F8843D6531A9AAF0F1 /* MealEditorTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0524996CBB59F23CA5FEE7B4 /* MealEditorTarget.swift */; };
 		EFB0D3ED7CF41E78BCFCA985 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98646E0D474E0229A9FC5E6 /* ExportView.swift */; };
 		F1493FB8A94EAE93A804FEEB /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 956FC67FF5EAA7C4AF90091E /* SomaCore */; };
 		F3800E17B2A40EF792884DCF /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
@@ -86,6 +96,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0524996CBB59F23CA5FEE7B4 /* MealEditorTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditorTarget.swift; sourceTree = "<group>"; };
 		06CD292F9F511616D2B37913 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		126053CDD274ED65C3271FE1 /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
 		1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SomaApp.swift; sourceTree = "<group>"; };
@@ -111,15 +122,19 @@
 		8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedBarChart.swift; sourceTree = "<group>"; };
 		91CB0F4F6DA527488579B96E /* HealthKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitReader.swift; sourceTree = "<group>"; };
 		95C572AD3F64595D081B86F0 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
+		9710466D2026975042EA37A5 /* MealAnalysisResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealAnalysisResultView.swift; sourceTree = "<group>"; };
 		A0029706B80FF4C1637F9B92 /* Soma-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Soma-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A3BCF6AD62D2362453BA537D /* RemoteMealPhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMealPhotosView.swift; sourceTree = "<group>"; };
 		A9579222E401A8B593A9A8E4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B9CF816E306260A7D246202F /* SegmentedBarChartContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedBarChartContent.swift; sourceTree = "<group>"; };
+		C54ECC4B34519D40BAD4D594 /* MealDateSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealDateSection.swift; sourceTree = "<group>"; };
 		C98646E0D474E0229A9FC5E6 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainIndicatorContent.swift; sourceTree = "<group>"; };
 		CF75933C45481C6489F3B978 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
 		D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesChartContent.swift; sourceTree = "<group>"; };
 		D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsContent.swift; sourceTree = "<group>"; };
 		D3A04C295CBF6BB941628873 /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
+		D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTimelineRow.swift; sourceTree = "<group>"; };
 		DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeChartLibraryPreview.swift; sourceTree = "<group>"; };
 		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SomaCore; path = SomaCore; sourceTree = SOURCE_ROOT; };
 		E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsBlock.swift; sourceTree = "<group>"; };
@@ -181,7 +196,12 @@
 		2AC2C282B7DA0D90C64263B2 /* Meals */ = {
 			isa = PBXGroup;
 			children = (
+				9710466D2026975042EA37A5 /* MealAnalysisResultView.swift */,
+				C54ECC4B34519D40BAD4D594 /* MealDateSection.swift */,
+				0524996CBB59F23CA5FEE7B4 /* MealEditorTarget.swift */,
 				3CE784A6E3FC335F901CB868 /* MealEditorView.swift */,
+				D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */,
+				A3BCF6AD62D2362453BA537D /* RemoteMealPhotosView.swift */,
 			);
 			path = Meals;
 			sourceTree = "<group>";
@@ -382,12 +402,17 @@
 				C0FC908AE42A0E3859B11150 /* HealthView.swift in Sources */,
 				777F450FFD9EA90020854304 /* HealthViewModel.swift in Sources */,
 				960661874553A56D0D829517 /* LoginView.swift in Sources */,
+				92D5EB145A9AA5E984896CA1 /* MealAnalysisResultView.swift in Sources */,
+				7A4BDCB80C3F7772A1C4E3D1 /* MealDateSection.swift in Sources */,
+				02ECA8D32C424288B5CF3D7D /* MealEditorTarget.swift in Sources */,
 				B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */,
+				C7C47E17DEE389DAD7E93317 /* MealTimelineRow.swift in Sources */,
 				E38434484197AB899222F800 /* MealsOverviewView.swift in Sources */,
 				47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */,
 				C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */,
 				B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */,
 				4D96F85FB10E294E9C6C3BFD /* RecoveryView.swift in Sources */,
+				49B86C998738E92D7C8A611B /* RemoteMealPhotosView.swift in Sources */,
 				6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */,
 				3EC11A10F0CB03CCE8F781B0 /* ScreenScaffold.swift in Sources */,
 				6C1FA0BB044D1B97724C241F /* SegmentedBarChart.swift in Sources */,
@@ -426,12 +451,17 @@
 				7AC9A4BF61CC0EDF2720AABA /* HealthView.swift in Sources */,
 				10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */,
 				8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */,
+				B19F7BFE1DC713846495068A /* MealAnalysisResultView.swift in Sources */,
+				C6046E1FEA2814EFCA86C245 /* MealDateSection.swift in Sources */,
+				EDBBF1F8843D6531A9AAF0F1 /* MealEditorTarget.swift in Sources */,
 				025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */,
+				BDAE812A35AE59C7F42BA63D /* MealTimelineRow.swift in Sources */,
 				E4640FCB42E8ED0FA9C4628E /* MealsOverviewView.swift in Sources */,
 				C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */,
 				467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */,
 				B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */,
 				6507A9B41A52644960A29EC9 /* RecoveryView.swift in Sources */,
+				C251CCA08485C40710654A15 /* RemoteMealPhotosView.swift in Sources */,
 				4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */,
 				1FE2E72CB816BDFC0A87881D /* ScreenScaffold.swift in Sources */,
 				E58A8677B9834516366C666F /* SegmentedBarChart.swift in Sources */,

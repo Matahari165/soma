@@ -19,7 +19,7 @@ struct DayView: View {
         .navigationTitle("Jour")
         .task(id: model.day?.date) { loadDraft() }
         .sheet(item: $mealEditor) { target in
-            MealEditorView(mealType: target.type)
+            MealEditorView(mealType: target.type, mealID: target.mealID)
         }
     }
 
@@ -64,7 +64,7 @@ struct DayView: View {
                     Button {
                         Task {
                             await model.openMeal(row.type)
-                            mealEditor = MealEditorTarget(type: row.type)
+                            mealEditor = MealEditorTarget(type: row.type, mealID: row.meal?.id)
                         }
                     } label: {
                         HStack {
@@ -112,11 +112,6 @@ struct DayView: View {
             return (variable.id, text)
         })
     }
-}
-
-private struct MealEditorTarget: Identifiable {
-    let type: MealType
-    var id: String { type.rawValue }
 }
 
 private struct JournalEditorRow: View {

@@ -8,10 +8,12 @@ struct MealEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let mealType: MealType
+    let mealID: String?
 
     @State private var note = ""
     @State private var selection: [PhotosPickerItem] = []
     @State private var importError: String?
+    @State private var confirmsDeletion = false
 
     var body: some View {
         NavigationStack {
@@ -21,9 +23,16 @@ struct MealEditorView: View {
                         skippedControl(draft)
                         if draft.entryState == .recorded {
                             noteEditor
+                            if let meal = remoteMeal, !meal.photos.isEmpty {
+                                RemoteMealPhotosView(meal: meal)
+                            }
                             photoSection(draft)
                             submissionSection(draft)
+                            if let result = displayedAnalysis?.result {
+                                MealAnalysisResultView(result: result)
+                            }
                         }
+                        if remoteMeal != nil { deletionSection }
                     } else {
                         ProgressView("Ouverture du brouillon…")
                     }
@@ -40,6 +49,16 @@ struct MealEditorView: View {
         }
         .task { note = model.mealDrafts[mealType]?.note ?? "" }
         .onChange(of: selection) { _, items in Task { await importPhotos(items) } }
+        .confirmationDialog(
+            "Supprimer ce repas ?",
+            isPresented: $confirmsDeletion,
+            titleVisibility: .visible
+        ) {
+            Button("Supprimer le repas", role: .destructive) { Task { await deleteMeal() } }
+            Button("Annuler", role: .cancel) { }
+        } message: {
+            Text("La note, les résultats nutritionnels et les métadonnées des photos seront supprimés.")
+        }
     }
 
     private func skippedControl(_ draft: MealDraft) -> some View {
@@ -144,6 +163,31 @@ struct MealEditorView: View {
         }
     }
 
+    private var deletionSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider().overlay(SomaTheme.rule)
+            Button("Supprimer le repas", systemImage: "trash", role: .destructive) {
+                confirmsDeletion = true
+            }
+            .frame(minHeight: 44)
+        }
+    }
+
+    private var remoteMeal: Meal? {
+        mealID.flatMap { model.mealDetails[$0] }
+    }
+
+    private var displayedAnalysis: MealAnalysisRecord? {
+        guard let meal = remoteMeal else { return nil }
+        if meal.analysis?.status == "completed" { return meal.analysis }
+        return meal.lastSuccessfulAnalysis
+    }
+
+    private func deleteMeal() async {
+        guard let meal = remoteMeal, await model.deleteMeal(meal) else { return }
+        dismiss()
+    }
+
     private func originBinding(_ photo: MealDraftPhoto) -> Binding<MealPhotoOrigin> {
         Binding(
             get: { model.mealDrafts[mealType]?.photos.first(where: { $0.id == photo.id })?.origin ?? .unknown },
@@ -188,17 +232,6 @@ private struct ImportedMealPhoto: Transferable {
 }
 
 private enum MealPhotoImportError: Error { case unsupportedFormat }
-
-private extension MealType {
-    var label: String {
-        switch self {
-        case .breakfast: "Petit-déjeuner"
-        case .lunch: "Déjeuner"
-        case .dinner: "Dîner"
-        case .snack: "Collation"
-        }
-    }
-}
 
 private extension MealDraftStage {
     var isBusy: Bool { [.creating, .uploading, .requestingAnalysis, .polling].contains(self) }
