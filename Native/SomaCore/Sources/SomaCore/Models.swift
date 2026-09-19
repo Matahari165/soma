@@ -233,7 +233,15 @@ public struct MatrixRelation: Codable, Identifiable, Equatable, Sendable {
     public let predictorId: String
     public let outcomeId: String
     public let predictorLabel: String?
+    public let predictorUnit: String?
+    public let predictorKind: String?
+    public let predictorPresentation: String?
+    public let predictorLow: Double?
+    public let predictorHigh: Double?
+    public let predictorDelta: Double?
     public let outcomeLabel: String?
+    public let outcomeUnit: String?
+    public let coefficient: Double?
     public let effect: Double?
     public let sampleSize: Int
     public let effectConfidenceLow: Double?
@@ -241,22 +249,84 @@ public struct MatrixRelation: Codable, Identifiable, Equatable, Sendable {
     public let effectiveSampleSize: Double?
     public let pValue: Double?
     public let qValue: Double?
+    public let percentEffect: Double?
+    public let baselineMean: Double?
+    public let comparisonMean: Double?
+    public let baselineCount: Int?
+    public let comparisonCount: Int?
+    public let comparisonLabel: String?
+    public let modelType: String?
+    public let modelImprovement: Double?
+    public let nonlinearTested: Bool?
     public let lagDays: Int?
     public let grain: String?
     public let timeScale: String?
-    public let period: JSONValue?
+    public let period: AnalysisPeriod?
+    public let family: String?
+    public let method: String?
     public let evidence: String?
+    public let stable: Bool?
+    public let stability: MatrixStability?
+    public let strength: String?
     public let coverageBySource: [MatrixSourceCoverage]?
+    public let sourceEstimates: [MatrixSourceEstimate]?
+    public let doseResponse: MatrixDoseResponse?
+    public let habitualPredictorDelta: Double?
+    public let habitualEffect: Double?
+    public let minimumDaysRemaining: Int?
+    public let practicallyMeaningful: Bool?
+    public let practicalThreshold: Double?
+    public let practicalRatio: Double?
+    public let featureEligible: Bool?
+    public let exclusionReasons: [String]?
+    public let excluded: Bool?
 
     public var id: String {
         let periodKey: String
-        switch period {
-        case .number(let value): periodKey = String(value)
-        case .string(let value): periodKey = value
-        default: periodKey = "unknown"
-        }
+        periodKey = period?.queryValue ?? "unknown"
         return "\(predictorId):\(outcomeId):\(lagDays ?? 0):\(periodKey)"
     }
+}
+
+public enum AnalysisPeriod: Codable, Equatable, Sendable {
+    case days(Int)
+    case all
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Int.self), [15, 30, 90].contains(value) { self = .days(value); return }
+        if let value = try? container.decode(String.self), value == "all" { self = .all; return }
+        throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported analysis period")
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self { case .days(let value): try container.encode(value); case .all: try container.encode("all") }
+    }
+
+    public var queryValue: String { switch self { case .days(let value): String(value); case .all: "all" } }
+}
+
+public struct MatrixStability: Codable, Equatable, Sendable {
+    public let chronologicalBlocks: Int
+    public let directionHeldInBlocks: Bool
+    public let trendAdjustedDirectionHeld: Bool
+    public let outlierAdjustedDirectionHeld: Bool
+}
+
+public struct MatrixDoseResponse: Codable, Equatable, Sendable {
+    public let comparisonLabel: String
+    public let effect: Double
+    public let effectConfidenceLow: Double
+    public let effectConfidenceHigh: Double
+    public let percentEffect: Double?
+    public let baselineMean: Double
+    public let comparisonMean: Double
+    public let sampleSize: Int
+    public let pValue: Double
+    public let modelType: String
+    public let modelImprovement: Double
+    public let nonlinearTested: Bool
 }
 
 public struct MatrixSourceCoverage: Codable, Equatable, Sendable {
@@ -265,17 +335,53 @@ public struct MatrixSourceCoverage: Codable, Equatable, Sendable {
     public let pairedWeeks: Int
 }
 
+public struct MatrixSourceEstimate: Codable, Equatable, Sendable {
+    public let source: String
+    public let sampleSize: Int
+    public let effect: Double
+    public let effectConfidenceLow: Double
+    public let effectConfidenceHigh: Double
+    public let coefficient: Double
+    public let pValue: Double
+}
+
 public struct NativeMatrixResponse: Codable, Equatable, Sendable {
+    public let period: AnalysisPeriod?
     public let rows: [MatrixRow]
     public let outcomes: [MatrixOutcome]
-    public let periods: [JSONValue]
+    public let periods: [AnalysisPeriod]
+    public let meaningfulRelations: [MatrixRelation]?
+    public let topRelations: [MatrixRelation]?
+    public let acuteHighlights: [MatrixRelation]?
+    public let chronicHighlights: [MatrixRelation]?
+    public let coverageByMetric: [MatrixMetricCoverage]?
+    public let collectionProgress: [MatrixMetricCoverage]?
 
     public var relations: [MatrixRelation] { rows.flatMap(\.relations) }
+    public var strongestRelations: [MatrixRelation] { topRelations ?? meaningfulRelations ?? [] }
+}
+
+public struct MatrixMetricCoverage: Codable, Equatable, Sendable {
+    public let id: String
+    public let label: String
+    public let recordedDays: Int
+    public let requiredDays: Int
+    public let sources: [MatrixMetricSource]
+}
+
+public struct MatrixMetricSource: Codable, Equatable, Sendable {
+    public let source: String
+    public let days: Int
 }
 
 public struct MatrixRow: Codable, Equatable, Sendable {
     public let id: String
     public let label: String
+    public let emoji: String?
+    public let grain: String?
+    public let timeScale: String?
+    public let period: AnalysisPeriod?
+    public let lagLabel: String?
     public let relations: [MatrixRelation]
 }
 
@@ -283,4 +389,5 @@ public struct MatrixOutcome: Codable, Equatable, Sendable {
     public let id: String
     public let label: String
     public let unit: String
+    public let direction: String?
 }
