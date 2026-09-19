@@ -101,7 +101,18 @@ public struct MealSummary: Codable, Identifiable, Equatable, Sendable {
     public let note: String?
 }
 
-public enum MealType: String, Codable, CaseIterable, Sendable { case breakfast, lunch, dinner, snack }
+public enum MealType: String, Codable, CaseIterable, Sendable {
+    case breakfast, lunch, dinner, snack
+
+    public var sortOrder: Int {
+        switch self {
+        case .breakfast: 0
+        case .lunch: 1
+        case .dinner: 2
+        case .snack: 3
+        }
+    }
+}
 public enum MealEntryState: String, Codable, Sendable { case recorded, skipped }
 public enum MealStatus: String, Codable, Sendable { case draft, confirmed }
 public enum MealPhotoOrigin: String, Codable, Sendable { case homemade, prepared, mixed, unknown }
@@ -125,12 +136,45 @@ public struct MealAnalysisRecord: Codable, Identifiable, Equatable, Sendable {
     public let status: String
     public let provider: String
     public let model: String
-    public let result: JSONValue?
+    public let result: MealAnalysisResult?
     public let error: String?
     public let errorCode: String?
     public let sourcePhotoIds: [String]
     public let createdAt: String
     public let completedAt: String?
+}
+
+public struct NutritionRange: Codable, Equatable, Sendable {
+    public let low: Double
+    public let likely: Double
+    public let high: Double
+}
+
+public struct MealNutritionTotals: Codable, Equatable, Sendable {
+    public let calories: NutritionRange?
+    public let proteinGrams: NutritionRange?
+    public let carbohydrateGrams: NutritionRange?
+    public let fatGrams: NutritionRange?
+    public let fiberGrams: NutritionRange?
+    public let sugarGrams: NutritionRange?
+    public let addedSugarGrams: NutritionRange?
+}
+
+public struct MealFoodResult: Codable, Equatable, Sendable {
+    public let name: String
+    public let preparation: String?
+    public let portion: String?
+    public let confidence: String
+}
+
+public struct MealAnalysisResult: Codable, Equatable, Sendable {
+    public let summary: String
+    public let dishType: String?
+    public let calorieAnalysis: String?
+    public let foods: [MealFoodResult]
+    public let totals: MealNutritionTotals
+    public let confidence: String
+    public let uncertainties: [String]
 }
 
 public struct Meal: Codable, Identifiable, Equatable, Sendable {
@@ -147,6 +191,14 @@ public struct Meal: Codable, Identifiable, Equatable, Sendable {
     public let photos: [MealPhoto]
     public let analysis: MealAnalysisRecord?
     public let lastSuccessfulAnalysis: MealAnalysisRecord?
+}
+
+public struct MealListResponse: Codable, Equatable, Sendable {
+    public let meals: [Meal]
+}
+
+public struct MealResponse: Codable, Equatable, Sendable {
+    public let meal: Meal
 }
 
 public struct MealSlots: Codable, Equatable, Sendable {

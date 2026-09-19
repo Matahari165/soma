@@ -81,6 +81,16 @@ import Testing
     #expect(decoded.stomachOverfullIntensity == nil)
 }
 
+@Test func confirmedMealDecodesNutritionWithoutInventingMissingValues() throws {
+    let json = #"{"meals":[{"id":"meal-synthetic","mealDate":"2026-09-19","mealType":"dinner","note":"Repas synthétique","status":"confirmed","entryState":"recorded","mouthWarmthIntensity":0,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T18:00:00Z","updatedAt":"2026-09-19T18:05:00Z","photos":[],"analysis":{"id":"analysis-synthetic","mealId":"meal-synthetic","status":"completed","provider":"synthetic","model":"synthetic","result":{"summary":"Résultat synthétique","dishType":null,"calorieAnalysis":null,"foods":[],"totals":{"calories":{"low":400,"likely":500,"high":600},"proteinGrams":null,"carbohydrateGrams":null,"fatGrams":null,"fiberGrams":null},"confidence":"medium","uncertainties":[]},"error":null,"errorCode":null,"sourcePhotoIds":[],"createdAt":"2026-09-19T18:00:00Z","completedAt":"2026-09-19T18:05:00Z"},"lastSuccessfulAnalysis":null}]}"#
+    let response = try JSONDecoder().decode(MealListResponse.self, from: Data(json.utf8))
+    let meal = try #require(response.meals.first)
+    #expect(meal.mouthWarmthIntensity == 0)
+    #expect(meal.stomachOverfullIntensity == nil)
+    #expect(meal.analysis?.result?.totals.calories?.likely == 500)
+    #expect(meal.analysis?.result?.totals.proteinGrams == nil)
+}
+
 @Test func exportManifestDecodesSyntheticReferencesWithoutLoadingAccountData() throws {
     let json = #"{"exportedAt":"2026-09-19T09:30:00.000Z","account":{"id":"synthetic"},"data":{"journal_entries":[]},"archiveDownloads":[{"path":"synthetic/archive.json","signedUrl":"/api/native/v1/account/archive?key=synthetic%2Farchive.json"}],"mealPhotoDownloads":[{"mealId":"meal-synthetic","photoId":"photo-synthetic","path":"/api/native/v1/meals/meal-synthetic/photos/photo-synthetic"}]}"#
     let manifest = try JSONDecoder().decode(ExportManifest.self, from: Data(json.utf8))

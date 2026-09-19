@@ -57,6 +57,26 @@ describe("legacy meal API adapter", () => {
     expect(legacyAnalysisToStructured({ ingredients: [], calories: { low: 400, high: 600 } })).toBeNull();
   });
 
+  it("normalizes a stored legacy analysis before sending it to native clients", () => {
+    const legacyMeal = {
+      ...meal,
+      analysis: {
+        ...meal.analysis!,
+        result: {
+          ingredients: [{ name: "Riz", portion: "1 bol", confidence: "high" }],
+          calories: { low: 400, likely: 500, high: 600 },
+          confidence: "medium",
+        },
+      },
+    } as unknown as Meal;
+
+    expect(mealToApi(legacyMeal).analysis?.result).toMatchObject({
+      summary: "Composition du repas relue par l’utilisateur.",
+      foods: [{ name: "Riz", portion: "1 bol" }],
+      totals: { calories: { low: 400, likely: 500, high: 600 } },
+    });
+  });
+
   it("preserves the rich food labels in the legacy response used by the journal", () => {
     const richMeal = {
       ...meal,

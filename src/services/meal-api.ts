@@ -15,6 +15,11 @@ function entryStateForApi(meal: Meal): MealEntryState {
   return meal.entryState === "skipped" ? "skipped" : "recorded";
 }
 
+function analysisRecordToApi(record: Meal["analysis"] | undefined) {
+  if (!record) return record ?? null;
+  return { ...record, result: legacyAnalysisToStructured(record.result) };
+}
+
 export function mealToApi(meal: Meal) {
   return {
     id: meal.id,
@@ -43,8 +48,8 @@ export function mealToApi(meal: Meal) {
         ? `/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photo.id)}`
         : null,
     })),
-    analysis: meal.analysis,
-    lastSuccessfulAnalysis: meal.lastSuccessfulAnalysis ?? null,
+    analysis: analysisRecordToApi(meal.analysis),
+    lastSuccessfulAnalysis: analysisRecordToApi(meal.lastSuccessfulAnalysis),
   };
 }
 
