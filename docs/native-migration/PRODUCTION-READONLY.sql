@@ -49,6 +49,28 @@ where table_name in (
 group by table_name
 order by table_name;
 
+-- 5 bis. Types de mesures et couverture par fournisseur, sous forme agrégée.
+select json_data->>'provider' as provider,
+       json_data->>'data_type' as data_type,
+       count(*) as record_count,
+       min(json_data->>'civil_date') as first_civil_date,
+       max(json_data->>'civil_date') as last_civil_date
+from public.soma_rows
+where table_name = 'health_records'
+group by 1, 2
+order by 1, 2;
+
+-- 5 ter. Statut des photos et des archives, sans nom de fichier ni objet R2.
+select table_name,
+       case when table_name = 'meal_photos'
+         then coalesce(json_data->>'storage_status', 'unknown')
+         else coalesce(json_data->>'storage_backend', 'unknown') end as storage_state,
+       count(*) as item_count
+from public.soma_rows
+where table_name in ('meal_photos', 'health_record_archives')
+group by 1, 2
+order by 1, 2;
+
 -- 6. Présence des formes Apple Health utilisées par la route actuelle.
 select
   count(*) filter (where table_name = 'profiles' and json_data ? 'apple_health_sync_token')

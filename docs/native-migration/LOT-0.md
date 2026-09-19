@@ -79,6 +79,8 @@ Le dépôt et les données de démonstration ne prouvent pas l'état de la produ
 
 **Déploiement vérifié le 19 septembre 2026 :** la liste Vercel indique un déploiement de production `READY` créé à 06:23 UTC pour le commit `0b999126d99360b937954b1b3ad7755af24e892e`. Cela établit la version déployée, pas le fonctionnement authentifié, les données ni l'exécution des tâches planifiées.
 
+**Accès et routes vérifiés :** aucun accès Supabase ou R2 exploitable n'est disponible dans l'environnement local ; Wrangler répond qu'il n'est pas authentifié. Une vérification HTTP sans contenu personnel a obtenu `200` pour `/`, une redirection vers l'authentification pour `/api/health/apple-sync` et `/api/account/export`, et `401` pour `/api/cron/sync` sans secret. Ces réponses prouvent seulement que les routes existent et protègent ces accès ; elles ne prouvent aucun import ni traitement effectif.
+
 | Contrôle en lecture seule | Résultat attendu dans ce dossier | Statut |
 | --- | --- | --- |
 | Identité et sessions | Nombre de comptes et sessions actives **agrégé**, sans email ni identifiant | À faire avec accès autorisé |
