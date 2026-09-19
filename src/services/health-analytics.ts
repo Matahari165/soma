@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, type SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
@@ -549,6 +549,7 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?:
 
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
+export function getSleepAnalyticsForUser(user: SomaUser) { return loadHealthAnalytics("sleep", user.id); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
 export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
 export function getNativeActivityAnalytics(userId: string) { return loadHealthAnalytics("activity", userId); }

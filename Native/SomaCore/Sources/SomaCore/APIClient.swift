@@ -52,6 +52,10 @@ public actor APIClient {
         try await get(path: "/api/native/v1/lab/matrix?period=\(period)")
     }
 
+    public func sleep() async throws -> NativeSleepResponse {
+        try await get(path: "/api/native/v1/sleep")
+    }
+
     public func effort() async throws -> EffortSnapshot {
         try await get(path: "/api/native/v1/effort")
     }

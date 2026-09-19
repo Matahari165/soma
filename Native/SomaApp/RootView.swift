@@ -6,7 +6,9 @@ struct RootView: View {
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
-        let initialDestination: AppDestination = if arguments.contains("--preview-settings") {
+        let initialDestination: AppDestination = if arguments.contains("--sleep-preview") {
+            .sleep
+        } else if arguments.contains("--preview-settings") {
             .settings
         } else if arguments.contains("--health-preview") {
             .health
