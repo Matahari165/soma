@@ -38,9 +38,17 @@ struct RootView: View {
         } detail: { destinationView }
         #else
         TabView(selection: Bindable(model).destination) {
-            DayView().tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
-            AnalysisView().tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
+            Tab("Jour", systemImage: "calendar", value: AppModel.Destination.day) {
+                DayView()
+            }
+            Tab("Effets", systemImage: "waveform.path.ecg", value: AppModel.Destination.analysis) {
+                AnalysisView()
+            }
+            Tab("Santé", systemImage: "heart.text.square", value: AppModel.Destination.health) {
+                HealthView()
+            }
         }
+        .tint(SomaTheme.primary)
         #endif
     }
 
@@ -49,6 +57,7 @@ struct RootView: View {
         switch model.destination {
         case .day: DayView()
         case .analysis: AnalysisView()
+        case .health: HealthView()
         }
     }
 }
