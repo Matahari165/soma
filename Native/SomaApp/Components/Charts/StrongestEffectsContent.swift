@@ -6,16 +6,17 @@ struct StrongestEffectsContent: View {
     let partialNote: String?
 
     var body: some View {
+        let eligibleEffects = effects.filter(\.isEligible)
         VStack(alignment: .leading, spacing: 16) {
             Text("Strongest Effects").font(.title2)
-            if effects.isEmpty {
+            if eligibleEffects.isEmpty {
                 Label("Pas encore assez de jours comparables", systemImage: "minus.circle")
                     .font(.body)
                     .foregroundStyle(SomaTheme.secondary)
             } else {
-                ForEach(effects.filter(\.isEligible)) { effect in
+                ForEach(eligibleEffects) { effect in
                     StrongestEffectRow(effect: effect)
-                    if effect.id != effects.last?.id { Divider().overlay(SomaTheme.rule) }
+                    if effect.id != eligibleEffects.last?.id { Divider().overlay(SomaTheme.rule) }
                 }
             }
             if let partialNote {

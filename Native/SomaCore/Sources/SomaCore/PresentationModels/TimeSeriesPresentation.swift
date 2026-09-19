@@ -14,6 +14,27 @@ public struct TimeSeries: Identifiable, Equatable, Sendable {
         self.lineStyle = lineStyle
         self.provenance = provenance
     }
+
+    public var measuredSegments: [TimeSeriesSegment] {
+        var segments: [TimeSeriesSegment] = []
+        var current: [ChartPoint] = []
+
+        for point in points {
+            if point.value == nil {
+                if !current.isEmpty {
+                    segments.append(TimeSeriesSegment(id: "\(id)-\(segments.count)", points: current))
+                    current = []
+                }
+            } else {
+                current.append(point)
+            }
+        }
+
+        if !current.isEmpty {
+            segments.append(TimeSeriesSegment(id: "\(id)-\(segments.count)", points: current))
+        }
+        return segments
+    }
 }
 
 public struct TimeSeriesPresentation: Equatable, Sendable {

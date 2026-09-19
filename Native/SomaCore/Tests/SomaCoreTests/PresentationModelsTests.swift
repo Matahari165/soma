@@ -59,3 +59,15 @@ import Testing
     #expect(segments[0].value == nil)
     #expect(segments[1].value == 0)
 }
+
+@Test func timeSeriesBreaksTheLineAcrossMissingMeasurements() {
+    let date = Date(timeIntervalSince1970: 0)
+    let series = TimeSeries(id: "sleep", label: "Sommeil", points: [
+        ChartPoint(id: "one", date: date, value: 7, label: "Jour 1"),
+        ChartPoint(id: "missing", date: date, value: nil, label: "Jour 2"),
+        ChartPoint(id: "three", date: date, value: 8, label: "Jour 3"),
+    ], provenance: .healthSource(name: "Donnees Sante"))
+
+    #expect(series.measuredSegments.count == 2)
+    #expect(series.measuredSegments.map(\.points.count) == [1, 1])
+}

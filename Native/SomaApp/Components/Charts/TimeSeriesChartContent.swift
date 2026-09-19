@@ -16,14 +16,16 @@ struct TimeSeriesChartContent: View {
                     .foregroundStyle(SomaTheme.secondary)
             }
             Chart(presentation.series) { series in
-                ForEach(series.points) { point in
-                    if let value = point.value {
-                        LineMark(x: .value("Date", point.date), y: .value(presentation.unit, value), series: .value("Serie", series.label))
-                            .foregroundStyle(by: .value("Serie", series.label))
-                            .lineStyle(StrokeStyle(lineWidth: 2, dash: series.lineStyle == .dashed ? [6, 5] : []))
-                        PointMark(x: .value("Date", point.date), y: .value(presentation.unit, value))
-                            .symbol(by: .value("Serie", series.label))
-                            .foregroundStyle(by: .value("Serie", series.label))
+                ForEach(series.measuredSegments) { segment in
+                    ForEach(segment.points) { point in
+                        if let value = point.value {
+                            LineMark(x: .value("Date", point.date), y: .value(presentation.unit, value), series: .value("Segment", segment.id))
+                                .foregroundStyle(by: .value("Serie", series.label))
+                                .lineStyle(StrokeStyle(lineWidth: 2, dash: series.lineStyle == .dashed ? [6, 5] : []))
+                            PointMark(x: .value("Date", point.date), y: .value(presentation.unit, value))
+                                .symbol(by: .value("Serie", series.label))
+                                .foregroundStyle(by: .value("Serie", series.label))
+                        }
                     }
                 }
             }
