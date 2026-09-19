@@ -89,7 +89,7 @@ struct JournalSectionView: View {
             } description: {
                 Text(model.errorMessage ?? "Cette journée n’a pas pu être chargée.")
             } actions: {
-                Button("Réessayer") { Task { try? await model.refreshDay() } }
+                Button("Réessayer") { Task { await model.retryDayLoad() } }
             }
         }
     }

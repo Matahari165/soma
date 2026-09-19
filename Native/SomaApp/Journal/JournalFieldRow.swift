@@ -22,11 +22,7 @@ struct JournalFieldRow: View {
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 16)
-            if variable.resolvedCaptureMode == .automatic {
-                readOnlyValue
-            } else {
-                editor
-            }
+            editor
         }
         .padding(.vertical, 8)
         .frame(minHeight: 56)
@@ -41,7 +37,7 @@ struct JournalFieldRow: View {
     @ViewBuilder
     private var statusLabel: some View {
         if variable.resolvedCaptureMode == .automatic {
-            Label("Automatique", systemImage: "waveform.path.ecg")
+            Label("Automatique · \(stateLabel)", systemImage: "waveform.path.ecg")
         } else {
             switch state {
             case .missing:
@@ -56,13 +52,13 @@ struct JournalFieldRow: View {
         }
     }
 
-    private var readOnlyValue: some View {
-        Text(displayValue)
-            .font(.body.monospacedDigit())
-            .foregroundStyle(value == .null ? .secondary : .primary)
-            .frame(minHeight: 44)
-            .accessibilityLabel(variable.name)
-            .accessibilityValue(value == .null ? "Non disponible" : displayValue)
+    private var stateLabel: String {
+        switch state {
+        case .missing: "absent"
+        case .pending: "à enregistrer"
+        case .recorded: "enregistré"
+        case .omitted: "ignoré"
+        }
     }
 
     @ViewBuilder
@@ -81,7 +77,10 @@ struct JournalFieldRow: View {
                         .font(.body.monospacedDigit())
                         .focused($isFocused)
                         .frame(minWidth: 72, idealWidth: 104, maxWidth: 140)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 10)
+                        .background(SomaTheme.rule.opacity(0.55))
+                        .clipShape(.rect(cornerRadius: 4))
                         .submitLabel(.done)
                         .onSubmit(commitText)
                         .onChange(of: text) { _, _ in commitText() }

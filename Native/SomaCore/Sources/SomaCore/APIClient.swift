@@ -281,7 +281,6 @@ private struct MealAnalysisRequest: Codable, Sendable { let force: Bool; let ide
 private struct MealPhotoOriginRequest: Codable, Sendable { let origin: MealPhotoOrigin }
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
-private struct EmptyResponse: Decodable { let ok: Bool }
 private struct APIErrorResponse: Decodable { let error: String }
 private struct AccountDeletionRequest: Encodable { let confirmation: String }
 

@@ -88,7 +88,7 @@ final class AppModel {
     private var effortRequestGeneration = 0
     private var authenticationGeneration = 0
     @ObservationIgnored private var journalAutosaveTask: Task<Void, Never>?
-    @ObservationIgnored private var journalSaveTail: Task<Void, Never>?
+    @ObservationIgnored private var journalSaveTail: Task<Bool, Never>?
     @ObservationIgnored private var failedJournalSave: (mode: String, variableIDs: Set<String>?)?
     private var analysisRequestGeneration = 0
 
@@ -176,6 +176,19 @@ final class AppModel {
         let response = try await client.day(requestedDate)
         if generation == dayRequestGeneration, activeDate == requestedDate, response.date == requestedDate.rawValue {
             acceptDay(response)
+        }
+    }
+
+    func retryDayLoad() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await refreshDay()
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch {
+            errorMessage = "Cette journée n'a pas pu être chargée."
         }
     }
 
@@ -356,10 +369,13 @@ final class AppModel {
 
     func shiftDate(by days: Int) async {
         guard let shifted = try? activeDate.adding(days: days) else { return }
+        journalAutosaveTask?.cancel()
+        if journalDraft?.hasUnsavedChanges == true {
+            guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
+        }
         activeDate = shifted
         day = nil
         journalDraft = nil
-        journalAutosaveTask?.cancel()
         dayRequestGeneration += 1
         let generation = dayRequestGeneration
         isLoading = true
@@ -604,17 +620,17 @@ final class AppModel {
         journalSaveGeneration += 1
         journalSaveState = .idle
         failedJournalSave = nil
-        scheduleJournalAutosave(variableID: variableID)
+        scheduleJournalAutosave()
     }
 
     func validateJournal() async {
         journalAutosaveTask?.cancel()
-        await enqueueJournalSave(mode: "validate", variableIDs: nil)
+        _ = await enqueueJournalSave(mode: "validate", variableIDs: nil)
     }
 
     func retryJournalSave() {
         guard let failedJournalSave else { return }
-        Task { await enqueueJournalSave(mode: failedJournalSave.mode, variableIDs: failedJournalSave.variableIDs) }
+        Task { _ = await enqueueJournalSave(mode: failedJournalSave.mode, variableIDs: failedJournalSave.variableIDs) }
     }
 
     func createJournalVariable(_ request: JournalVariableCreateRequest) async -> Bool {
@@ -664,33 +680,30 @@ final class AppModel {
         return false
     }
 
-    private func scheduleJournalAutosave(variableID: String) {
-        scheduleJournalAutosave(variableIDs: [variableID], delay: .milliseconds(450))
-    }
-
-    private func scheduleJournalAutosave(variableIDs: Set<String>, delay: Duration) {
+    private func scheduleJournalAutosave(delay: Duration = .milliseconds(450)) {
         journalAutosaveTask?.cancel()
         let requestedDate = activeDate
         journalAutosaveTask = Task { [weak self] in
             do { try await Task.sleep(for: delay) } catch { return }
             guard !Task.isCancelled, let self, self.activeDate == requestedDate else { return }
-            await self.enqueueJournalSave(mode: "draft", variableIDs: variableIDs)
+            _ = await self.enqueueJournalSave(mode: "draft", variableIDs: nil)
         }
     }
 
-    private func enqueueJournalSave(mode: String, variableIDs: Set<String>?) async {
+    @discardableResult
+    private func enqueueJournalSave(mode: String, variableIDs: Set<String>?) async -> Bool {
         let preceding = journalSaveTail
-        let task = Task { [weak self] in
-            if let preceding { await preceding.value }
-            guard !Task.isCancelled, let self else { return }
-            await self.persistJournal(mode: mode, variableIDs: variableIDs)
+        let task: Task<Bool, Never> = Task { [weak self] in
+            if let preceding { _ = await preceding.value }
+            guard !Task.isCancelled, let self else { return false }
+            return await self.persistJournal(mode: mode, variableIDs: variableIDs)
         }
         journalSaveTail = task
-        await task.value
+        return await task.value
     }
 
-    private func persistJournal(mode: String, variableIDs: Set<String>?) async {
-        guard let currentDay = day, let draft = journalDraft else { return }
+    private func persistJournal(mode: String, variableIDs: Set<String>?) async -> Bool {
+        guard let currentDay = day, let draft = journalDraft else { return false }
         journalSaveGeneration += 1
         let generation = journalSaveGeneration
         let requestedDate = activeDate
@@ -698,23 +711,29 @@ final class AppModel {
         journalSaveState = .saving
         do {
             let response = try await client.saveJournal(JournalSaveRequest(entryDate: requestedDate.rawValue, mode: mode, entries: entries))
-            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return }
+            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return true }
             journalDraft?.mergeServer(response, acknowledging: entries)
             day = response
             if journalDraft == nil { journalDraft = JournalDraft(day: response) }
             journalSaveState = .saved
             failedJournalSave = nil
+            return true
         } catch APIError.unauthorized {
-            guard generation == journalSaveGeneration else { return }
+            guard generation == journalSaveGeneration else { return false }
             expireLocalSession()
         } catch {
-            guard generation == journalSaveGeneration, requestedDate == activeDate else { return }
+            guard generation == journalSaveGeneration, requestedDate == activeDate else { return false }
             journalSaveState = .failed(mode == "validate" ? "Cette journée n’a pas pu être validée." : "Le brouillon n’a pas pu être enregistré.")
             failedJournalSave = (mode, variableIDs)
         }
+        return false
     }
 
     func logout() async {
+        journalAutosaveTask?.cancel()
+        if journalDraft?.hasUnsavedChanges == true {
+            guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
+        }
         invalidateSleep()
         authenticationGeneration += 1
         dayRequestGeneration += 1
@@ -852,7 +871,6 @@ final class AppModel {
         journalDraft = JournalDraft(day: response)
     }
 
-    private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"period":30,"rows":[],"outcomes":[{"id":"hrv","label":"VFC","unit":"ms","direction":"higher"},{"id":"recovery","label":"Récupération","unit":"pts","direction":"higher"}],"periods":[15,30,90,"all"],"meaningfulRelations":[],"topRelations":[{"predictorId":"walk","outcomeId":"hrv","predictorLabel":"Marche","predictorUnit":"min","predictorKind":"numeric","predictorPresentation":"amount","outcomeLabel":"VFC","outcomeUnit":"ms","effect":4.2,"sampleSize":32,"effectConfidenceLow":1.1,"effectConfidenceHigh":7.3,"qValue":0.018,"percentEffect":8.1,"comparisonLabel":"+20 min","modelType":"plateau","modelImprovement":0.14,"nonlinearTested":true,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":3,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"strength":"clear","coverageBySource":[{"source":"WHOOP","pairedDays":32,"pairedWeeks":0}],"minimumDaysRemaining":0,"practicallyMeaningful":true,"practicalThreshold":2,"practicalRatio":2.1,"featureEligible":true,"exclusionReasons":[],"excluded":false},{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","predictorUnit":"oui/non","predictorKind":"binary","predictorPresentation":"amount","outcomeLabel":"Récupération","outcomeUnit":"pts","effect":-6.4,"sampleSize":28,"effectConfidenceLow":-10.1,"effectConfidenceHigh":-2.7,"qValue":0.031,"comparisonLabel":"yes vs no","modelType":"binary","nonlinearTested":false,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":2,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"coverageBySource":[{"source":"Journal + WHOOP","pairedDays":28,"pairedWeeks":0}],"practicallyMeaningful":true,"practicalThreshold":3,"practicalRatio":2.13,"featureEligible":true,"exclusionReasons":[],"excluded":false}],"acuteHighlights":[],"chronicHighlights":[],"coverageByMetric":[],"collectionProgress":[]}"#
     private static let previewSleep = #"{"timezone":"Europe/Zurich","importedAt":"2026-09-19T07:15:00Z","days":[{"metric_date":"2026-09-17","sleep_minutes":455,"sleep_need_minutes":510,"sleep_efficiency":91,"sleep_regularity":79,"sleep_latency_minutes":14,"sleep_awake_minutes":24,"sleep_awake_percent":5,"sleep_fragmentation":1.2,"sleep_deep_minutes":82,"sleep_deep_percent":18,"sleep_rem_minutes":105,"sleep_rem_percent":23,"sleep_light_minutes":268,"sleep_light_percent":59,"cumulative_sleep_debt_minutes":75,"bedtime":"2026-09-16T22:55:00Z","wake_time":"2026-09-17T06:54:00Z","source_freshness":{"latestMeasuredAt":"2026-09-17T06:54:00Z"}},{"metric_date":"2026-09-18","sleep_minutes":null,"sleep_need_minutes":510,"sleep_efficiency":null,"sleep_regularity":null,"sleep_latency_minutes":null,"sleep_awake_minutes":null,"sleep_awake_percent":null,"sleep_fragmentation":null,"sleep_deep_minutes":null,"sleep_deep_percent":null,"sleep_rem_minutes":null,"sleep_rem_percent":null,"sleep_light_minutes":null,"sleep_light_percent":null,"cumulative_sleep_debt_minutes":null,"bedtime":null,"wake_time":null,"source_freshness":null},{"metric_date":"2026-09-19","sleep_minutes":498,"sleep_need_minutes":510,"sleep_efficiency":94,"sleep_regularity":86,"sleep_latency_minutes":9,"sleep_awake_minutes":18,"sleep_awake_percent":3,"sleep_fragmentation":0.8,"sleep_deep_minutes":96,"sleep_deep_percent":19,"sleep_rem_minutes":119,"sleep_rem_percent":24,"sleep_light_minutes":283,"sleep_light_percent":57,"cumulative_sleep_debt_minutes":32,"bedtime":"2026-09-18T22:31:00Z","wake_time":"2026-09-19T07:07:00Z","source_freshness":{"latestMeasuredAt":"2026-09-19T07:07:00Z"}}],"scores":[{"score_date":"2026-09-19","kind":"sleep","score":91,"algorithm_version":"sleep-v0.2"}],"sleepRecommendation":{"bedtimeMinutes":1350,"wakeTimeMinutes":420,"sleepNeedMinutes":510},"latestSleepStages":[{"type":"DEEP","startTime":"2026-09-18T23:00:00Z","endTime":"2026-09-19T00:36:00Z"},{"type":"REM","startTime":"2026-09-19T04:00:00Z","endTime":"2026-09-19T05:59:00Z"}]}"#
