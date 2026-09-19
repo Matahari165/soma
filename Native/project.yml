@@ -16,31 +16,55 @@ targets:
   Soma-iOS:
     type: application
     platform: iOS
-    sources: [SomaApp]
+    info:
+      path: SomaApp/Info-iOS.plist
+      properties:
+        CFBundleDisplayName: Soma
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.soma.native.ios.oauth
+            CFBundleURLSchemes:
+              - com.soma.native.ios
+        NSHealthShareUsageDescription: "Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance."
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen: {}
+    sources:
+      - path: SomaApp
+        excludes:
+          - Info-iOS.plist
+          - Info-macOS.plist
     dependencies:
       - package: SomaCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.ios
         PRODUCT_NAME: Soma
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Soma
-        INFOPLIST_KEY_NSHealthShareUsageDescription: "Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance."
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         CODE_SIGN_ENTITLEMENTS: SomaApp/Health/Soma-iOS.entitlements
         TARGETED_DEVICE_FAMILY: "1"
   Soma-macOS:
     type: application
     platform: macOS
-    sources: [SomaApp]
+    info:
+      path: SomaApp/Info-macOS.plist
+      properties:
+        CFBundleDisplayName: Soma
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.soma.native.macos.oauth
+            CFBundleURLSchemes:
+              - com.soma.native.macos
+    sources:
+      - path: SomaApp
+        excludes:
+          - Info-iOS.plist
+          - Info-macOS.plist
     dependencies:
       - package: SomaCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.macos
         PRODUCT_NAME: Soma
-        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Soma-iOS:
     build:

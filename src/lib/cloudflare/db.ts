@@ -959,6 +959,54 @@ export function hasSupabaseRuntime() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+export type NativeAuthCodeRecord = {
+  code_hash: string;
+  user_id: string;
+  platform: "ios" | "macos";
+  device_name: string;
+  pkce_challenge: string;
+  created_at: string;
+  expires_at: string;
+};
+
+export async function storeNativeAuthCode(record: NativeAuthCodeRecord) {
+  if (!hasSupabaseRuntime()) {
+    const result = await cloudflareDb().prepare(`
+      INSERT INTO soma_native_auth_codes
+        (code_hash, user_id, platform, device_name, pkce_challenge, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(record.code_hash, record.user_id, record.platform, record.device_name, record.pkce_challenge, record.created_at, record.expires_at).run();
+    if (!result.success) throw new Error(result.error ?? "Native authentication code creation failed.");
+    return;
+  }
+  await supabaseRequest<NativeAuthCodeRecord[]>("soma_native_auth_codes", {
+    method: "POST",
+    headers: new Headers({ Prefer: "return=minimal" }),
+    body: JSON.stringify(record),
+  });
+}
+
+export async function consumeNativeAuthCode(codeHash: string, pkceChallenge: string) {
+  const now = new Date().toISOString();
+  if (!hasSupabaseRuntime()) {
+    return await cloudflareDb().prepare(`
+      DELETE FROM soma_native_auth_codes
+      WHERE code_hash = ? AND pkce_challenge = ? AND expires_at > ?
+      RETURNING code_hash, user_id, platform, device_name, pkce_challenge, created_at, expires_at
+    `).bind(codeHash, pkceChallenge, now).first<NativeAuthCodeRecord>();
+  }
+  const rows = await supabaseRequest<NativeAuthCodeRecord[]>(supabasePath("soma_native_auth_codes", [
+    ["code_hash", `eq.${codeHash}`],
+    ["pkce_challenge", `eq.${pkceChallenge}`],
+    ["expires_at", `gt.${now}`],
+    ["select", "code_hash,user_id,platform,device_name,pkce_challenge,created_at,expires_at"],
+  ]), {
+    method: "DELETE",
+    headers: new Headers({ Prefer: "return=representation" }),
+  });
+  return rows[0] ?? null;
+}
+
 function supabaseConfig() {
   const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
