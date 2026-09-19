@@ -281,11 +281,13 @@ final class AppModel {
 
     func deleteAccount(confirmation: String) async -> Bool {
         guard !isDeletingAccount else { return false }
+        let ownerUserID = currentUser?.id
         isDeletingAccount = true
         accountDeletionErrorMessage = nil
         defer { isDeletingAccount = false }
         do {
             try await client.deleteAccount(confirmation: confirmation)
+            if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
             clearAuthenticatedState()
             return true
         } catch APIError.unauthorized {
@@ -863,6 +865,7 @@ final class AppModel {
     }
 
     func logout() async {
+        let ownerUserID = currentUser?.id
         invalidateSleep()
         authenticationGeneration += 1
         dayRequestGeneration += 1
@@ -874,6 +877,7 @@ final class AppModel {
         errorMessage = nil
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
+        if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
         isAuthenticated = false
         currentUser = nil
         hasCompletedOnboarding = true
@@ -915,6 +919,7 @@ final class AppModel {
     }
 
     private func expireLocalSession() {
+        let ownerUserID = currentUser?.id
         authenticationGeneration += 1
         dayRequestGeneration += 1
         journalSaveGeneration += 1
@@ -943,6 +948,9 @@ final class AppModel {
         effortState = .idle
         isLoadingSessions = false
         errorMessage = "La session a expiré. Reconnecte-toi."
+        if let ownerUserID, let mealDraftStore {
+            Task { try? await mealDraftStore.removeAll(ownerUserID: ownerUserID) }
+        }
     }
 
     private func clearAuthenticatedState() {
