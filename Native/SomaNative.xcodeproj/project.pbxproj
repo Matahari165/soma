@@ -24,7 +24,6 @@
 		2A539E2E824A1B132B25E069 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3DB7CB73A093C9DC4ECC751 /* SleepView.swift */; };
 		2C554CCC03B23C2DD166B364 /* SleepStagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FEF1C739B5E8131DC19F56 /* SleepStagesView.swift */; };
 		2D01BE1E83D2B896C791BEF9 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
-		2E784271D5577B18A2A3ACC3 /* CompactNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5067655EDC9A9056B4643C48 /* CompactNavigationBar.swift */; };
 		328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
 		365B00EE307C428E41491972 /* SleepContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6E96ACE20158CCD5C9C45C /* SleepContentView.swift */; };
 		3C0F86898BD7E616F5D68A7F /* DomainInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF8D471F07D6BE1743DE2B7 /* DomainInsightsView.swift */; };
@@ -36,7 +35,6 @@
 		47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */; };
 		4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
 		4D96F85FB10E294E9C6C3BFD /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126053CDD274ED65C3271FE1 /* RecoveryView.swift */; };
-		4F5A408685DED959E4754573 /* CompactNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5067655EDC9A9056B4643C48 /* CompactNavigationBar.swift */; };
 		4F790CB4ABBE7208DB015DB5 /* SleepFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC023D4ED12BDAC99527D1A /* SleepFormatting.swift */; };
 		5344D96F0EEF4B0073A94986 /* DomainIndicatorBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */; };
 		55DA686EAC3BAFA4CF4E459C /* SleepHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC1C2EFC68FE08E8C6D93A2 /* SleepHistoryView.swift */; };
@@ -114,7 +112,6 @@
 		4EF8D471F07D6BE1743DE2B7 /* DomainInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainInsightsView.swift; sourceTree = "<group>"; };
 		4F3029B284D51EBBA0D24E58 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainIndicatorBlock.swift; sourceTree = "<group>"; };
-		5067655EDC9A9056B4643C48 /* CompactNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactNavigationBar.swift; sourceTree = "<group>"; };
 		5467913C668E576E6BE9497D /* StrongestEffectRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectRow.swift; sourceTree = "<group>"; };
 		58F30841267BAB68184DC9DC /* SleepEvidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepEvidenceView.swift; sourceTree = "<group>"; };
 		59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricTrendContent.swift; sourceTree = "<group>"; };
@@ -257,7 +254,6 @@
 			isa = PBXGroup;
 			children = (
 				385165A9FC4AE45F368DA7AB /* AppDestination.swift */,
-				5067655EDC9A9056B4643C48 /* CompactNavigationBar.swift */,
 			);
 			path = Navigation;
 			sourceTree = "<group>";
@@ -402,7 +398,6 @@
 				19187394B87FFE1385037AA6 /* AppModel.swift in Sources */,
 				A9372F3AC900B674865D7285 /* ChartProvenanceLabel.swift in Sources */,
 				5B19AB7356689DA5604AA323 /* ChartUnavailableView.swift in Sources */,
-				4F5A408685DED959E4754573 /* CompactNavigationBar.swift in Sources */,
 				3CE7E4BB6D0FD9A3A9BC89AF /* ContentStateView.swift in Sources */,
 				1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */,
 				E95281CD5CB149F37F4095CE /* DomainIndicatorBlock.swift in Sources */,
@@ -452,7 +447,6 @@
 				328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */,
 				5ED07A6FD6BCBEDE0ECD66FC /* ChartProvenanceLabel.swift in Sources */,
 				F7AC5A39C0317D31BE45B6E6 /* ChartUnavailableView.swift in Sources */,
-				2E784271D5577B18A2A3ACC3 /* CompactNavigationBar.swift in Sources */,
 				2770D220C98F34E717696318 /* ContentStateView.swift in Sources */,
 				8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */,
 				5344D96F0EEF4B0073A94986 /* DomainIndicatorBlock.swift in Sources */,
