@@ -88,6 +88,8 @@ final class AppModel {
     private var sessionsRequestGeneration = 0
     private var effortRequestGeneration = 0
     private var authenticationGeneration = 0
+    private var mealsRequestGeneration = 0
+    private var mealOperationGeneration: [MealType: Int] = [:]
     @ObservationIgnored private var journalAutosaveTask: Task<Void, Never>?
     @ObservationIgnored private var journalSaveTail: Task<Void, Never>?
     @ObservationIgnored private var failedJournalSave: (mode: String, variableIDs: Set<String>?)?
@@ -135,6 +137,7 @@ final class AppModel {
             #endif
             let context = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
             authenticationGeneration += 1
+            currentUser = context.user
             isAuthenticated = true
             currentUser = context.user
             currentSession = context.session
@@ -324,11 +327,13 @@ final class AppModel {
 
     func deleteAccount(confirmation: String) async -> Bool {
         guard !isDeletingAccount else { return false }
+        let ownerUserID = currentUser?.id
         isDeletingAccount = true
         accountDeletionErrorMessage = nil
         defer { isDeletingAccount = false }
         do {
             try await client.deleteAccount(confirmation: confirmation)
+            if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
             clearAuthenticatedState()
             return true
         } catch APIError.unauthorized {
@@ -402,6 +407,7 @@ final class AppModel {
 
     func shiftDate(by days: Int) async {
         guard let shifted = try? activeDate.adding(days: days) else { return }
+        journalSaveGeneration += 1
         activeDate = shifted
         day = nil
         journalDraft = nil
@@ -415,7 +421,7 @@ final class AppModel {
             let response = try await client.day(shifted)
             if generation == dayRequestGeneration, activeDate == shifted, response.date == shifted.rawValue {
                 acceptDay(response)
-                await restoreMealDrafts()
+                await restoreMealDrafts(for: shifted)
             }
         } catch APIError.unauthorized {
             expireLocalSession()
@@ -447,6 +453,7 @@ final class AppModel {
         let draftDate = detail?.mealDate ?? activeDate.rawValue
         if mealDrafts[type]?.remoteMealId != resolvedID || mealDrafts[type]?.mealDate != draftDate {
             var draft = MealDraft(
+                ownerUserID: currentUser?.id,
                 mealDate: draftDate,
                 mealType: type,
                 note: detail?.note ?? summary?.note,
@@ -455,6 +462,7 @@ final class AppModel {
                 stomachOverfullIntensity: detail?.stomachOverfullIntensity
             )
             draft.remoteMealId = resolvedID
+            draft.hasRemotePhotoEvidence = detail?.photos.contains { ($0.storageStatus ?? "available") == "available" }
             mealDrafts[type] = draft
             await persistMealDraft(type)
         }
@@ -462,14 +470,17 @@ final class AppModel {
 
     func refreshMeals(days: Int = 28) async {
         guard !ProcessInfo.processInfo.arguments.contains("--preview-data") else { return }
+        mealsRequestGeneration += 1
+        let requestGeneration = mealsRequestGeneration
         let generation = authenticationGeneration
+        let requestedDate = activeDate
         isLoadingMeals = true
         mealsErrorMessage = nil
         defer { if generation == authenticationGeneration { isLoadingMeals = false } }
         do {
             let start = try activeDate.adding(days: -(max(days, 1) - 1))
             let meals = try await client.meals(from: start, to: activeDate)
-            guard generation == authenticationGeneration, isAuthenticated else { return }
+            guard generation == authenticationGeneration, requestGeneration == mealsRequestGeneration, activeDate == requestedDate, isAuthenticated else { return }
             mealHistory = meals.sorted {
                 if $0.mealDate == $1.mealDate { return $0.mealType.sortOrder < $1.mealType.sortOrder }
                 return $0.mealDate > $1.mealDate
@@ -487,16 +498,34 @@ final class AppModel {
     func updateRemotePhotoOrigin(_ origin: MealPhotoOrigin, mealID: String, photoID: String) async {
         let generation = authenticationGeneration
         do {
-            _ = try await client.updateMealPhotoOrigin(mealID: mealID, photoID: photoID, origin: origin)
+            _ = try await client.updateMealPhotoDetails(mealID: mealID, photoID: photoID, origin: origin)
             let meal = try await client.meal(id: mealID)
             guard generation == authenticationGeneration, isAuthenticated else { return }
             mealDetails[mealID] = meal
+            await invalidateDraftAfterRemotePhotoChange(meal)
         } catch APIError.unauthorized {
             guard generation == authenticationGeneration else { return }
             expireLocalSession()
         } catch {
             guard generation == authenticationGeneration else { return }
             mealsErrorMessage = "La provenance de la photo n’a pas pu être enregistrée."
+        }
+    }
+
+    func updateRemotePhotoComment(_ comment: String, mealID: String, photoID: String) async {
+        let generation = authenticationGeneration
+        do {
+            _ = try await client.updateMealPhotoDetails(mealID: mealID, photoID: photoID, comment: String(comment.prefix(240)))
+            let meal = try await client.meal(id: mealID)
+            guard generation == authenticationGeneration, isAuthenticated else { return }
+            mealDetails[mealID] = meal
+            await invalidateDraftAfterRemotePhotoChange(meal)
+        } catch APIError.unauthorized {
+            guard generation == authenticationGeneration else { return }
+            expireLocalSession()
+        } catch {
+            guard generation == authenticationGeneration else { return }
+            mealsErrorMessage = "Le commentaire de la photo n’a pas pu être enregistré."
         }
     }
 
@@ -507,6 +536,7 @@ final class AppModel {
             let meal = try await client.meal(id: mealID)
             guard generation == authenticationGeneration, isAuthenticated else { return }
             mealDetails[mealID] = meal
+            await invalidateDraftAfterRemotePhotoChange(meal)
         } catch APIError.unauthorized {
             guard generation == authenticationGeneration else { return }
             expireLocalSession()
@@ -524,7 +554,7 @@ final class AppModel {
             mealHistory.removeAll { $0.id == meal.id }
             mealDetails[meal.id] = nil
             if mealDrafts[meal.mealType]?.remoteMealId == meal.id {
-                if let draft = mealDrafts[meal.mealType] { try? await mealDraftStore?.remove(draft.id) }
+                if let draft = mealDrafts[meal.mealType] { try? await mealDraftStore?.remove(draft.id, ownerUserID: currentUser?.id) }
                 mealDrafts[meal.mealType] = nil
             }
             try? await refreshDay()
@@ -542,7 +572,11 @@ final class AppModel {
 
     func setMealNote(_ note: String, for type: MealType) async {
         guard var draft = mealDrafts[type] else { return }
+        mealOperationGeneration[type, default: 0] += 1
         draft.note = String(note.prefix(500))
+        draft.activeAnalysisRequestId = nil
+        draft.analysisSourceRevision = nil
+        draft.analysisSourceFingerprint = nil
         draft.stage = .local
         draft.lastError = nil
         mealDrafts[type] = draft
@@ -551,6 +585,7 @@ final class AppModel {
 
     func setMealSkipped(_ skipped: Bool, for type: MealType) async {
         guard var draft = mealDrafts[type] else { return }
+        mealOperationGeneration[type, default: 0] += 1
         draft.entryState = skipped ? .skipped : .recorded
         draft.stage = .local
         draft.lastError = nil
@@ -561,6 +596,7 @@ final class AppModel {
 
     func addMealPhoto(sourceURL: URL, filename: String, mimeType: String, to type: MealType) async throws {
         guard var draft = mealDrafts[type], draft.photos.count < 6 else { return }
+        mealOperationGeneration[type, default: 0] += 1
         let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appending(path: "Soma/MealDraftPhotos/\(draft.id.uuidString.lowercased())", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -576,16 +612,58 @@ final class AppModel {
 
     func setPhotoOrigin(_ origin: MealPhotoOrigin, photoID: UUID, for type: MealType) async {
         guard var draft = mealDrafts[type], let index = draft.photos.firstIndex(where: { $0.id == photoID }) else { return }
+        mealOperationGeneration[type, default: 0] += 1
         draft.photos[index].origin = origin
+        if let mealID = draft.remoteMealId, let remotePhotoID = draft.remotePhotoIDsByDraftID?[photoID] {
+            do { _ = try await client.updateMealPhotoDetails(mealID: mealID, photoID: remotePhotoID, origin: origin) }
+            catch { draft.lastError = "La provenance n’a pas pu être enregistrée."; mealDrafts[type] = draft; await persistMealDraft(type); return }
+        }
+        draft.activeAnalysisRequestId = nil
+        draft.analysisSourceRevision = nil
+        draft.analysisSourceFingerprint = nil
+        draft.stage = .local
+        draft.lastError = nil
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func setPhotoComment(_ comment: String, photoID: UUID, for type: MealType) async {
+        guard var draft = mealDrafts[type], let index = draft.photos.firstIndex(where: { $0.id == photoID }) else { return }
+        mealOperationGeneration[type, default: 0] += 1
+        draft.photos[index].comment = String(comment.prefix(240))
+        if let mealID = draft.remoteMealId, let remotePhotoID = draft.remotePhotoIDsByDraftID?[photoID] {
+            do { _ = try await client.updateMealPhotoDetails(mealID: mealID, photoID: remotePhotoID, comment: draft.photos[index].comment) }
+            catch { draft.lastError = "Le commentaire n’a pas pu être enregistré."; mealDrafts[type] = draft; await persistMealDraft(type); return }
+        }
+        draft.activeAnalysisRequestId = nil
+        draft.analysisSourceRevision = nil
+        draft.analysisSourceFingerprint = nil
+        draft.stage = .local
+        draft.lastError = nil
         mealDrafts[type] = draft
         await persistMealDraft(type)
     }
 
     func removeMealPhoto(_ photoID: UUID, from type: MealType) async {
         guard var draft = mealDrafts[type], let photo = draft.photos.first(where: { $0.id == photoID }) else { return }
+        mealOperationGeneration[type, default: 0] += 1
+        if let mealID = draft.remoteMealId, let remotePhotoID = draft.remotePhotoIDsByDraftID?[photoID] {
+            do {
+                try await client.deleteMealPhoto(mealID: mealID, photoID: remotePhotoID)
+            } catch {
+                draft.lastError = "La photo envoyée n’a pas pu être supprimée. Réessaie."
+                mealDrafts[type] = draft
+                await persistMealDraft(type)
+                return
+            }
+        }
         try? FileManager.default.removeItem(at: photo.fileURL)
         draft.photos.removeAll { $0.id == photoID }
         draft.uploadedPhotoDraftIDs.remove(photoID)
+        draft.remotePhotoIDsByDraftID?[photoID] = nil
+        draft.activeAnalysisRequestId = nil
+        draft.analysisSourceRevision = nil
+        draft.analysisSourceFingerprint = nil
         draft.stage = .local
         mealDrafts[type] = draft
         await persistMealDraft(type)
@@ -594,20 +672,42 @@ final class AppModel {
     func submitMeal(_ type: MealType) async {
         guard let coordinator = mealCoordinator, let draft = mealDrafts[type] else { return }
         let generation = authenticationGeneration
+        let requestedDate = activeDate
+        mealOperationGeneration[type, default: 0] += 1
+        let operation = mealOperationGeneration[type, default: 0]
+        func isCurrent() -> Bool { generation == authenticationGeneration && operation == mealOperationGeneration[type] && requestedDate == activeDate && isAuthenticated }
         do {
             var current = try await coordinator.submit(draft)
-            guard generation == authenticationGeneration, isAuthenticated else { return }
+            guard isCurrent() else { return }
             mealDrafts[type] = current
-            while current.stage == .polling {
+            // The editor can start from an empty slot. As soon as the server
+            // has assigned the durable meal id, load its detail so the result
+            // is visible even though the sheet originally had a nil id.
+            if let mealID = current.remoteMealId, let detail = try? await client.meal(id: mealID) {
+                guard isCurrent() else { return }
+                mealDetails[mealID] = detail
+            }
+            var remainingPolls = 30
+            while current.stage == .polling, remainingPolls > 0 {
                 try await Task.sleep(for: .seconds(2))
                 current = try await coordinator.refresh(current)
-                guard generation == authenticationGeneration, isAuthenticated else { return }
+                guard isCurrent() else { return }
                 mealDrafts[type] = current
+                if let mealID = current.remoteMealId, let detail = try? await client.meal(id: mealID) {
+                    guard isCurrent() else { return }
+                    mealDetails[mealID] = detail
+                }
+                remainingPolls -= 1
             }
-            if current.stage == .completed {
+            if current.stage == .polling {
+                current.lastError = "L’analyse continue en arrière-plan. Rouvre ce repas pour reprendre le suivi."
+                mealDrafts[type] = current
+                try? await mealDraftStore?.save(current)
+            }
+            if current.stage == .awaitingConfirmation || current.stage == .confirmed {
                 try? await refreshDay()
                 if let mealID = current.remoteMealId, let detail = try? await client.meal(id: mealID) {
-                    guard generation == authenticationGeneration, isAuthenticated else { return }
+                    guard isCurrent() else { return }
                     mealDetails[mealID] = detail
                 }
                 await refreshMeals()
@@ -616,21 +716,71 @@ final class AppModel {
             guard generation == authenticationGeneration else { return }
             expireLocalSession()
         } catch {
-            guard generation == authenticationGeneration, isAuthenticated else { return }
-            if let restored = try? await mealDraftStore?.load(draft.id) { mealDrafts[type] = restored }
+            guard isCurrent() else { return }
+            if let store = mealDraftStore, let restored = try? await store.load(draft.id, ownerUserID: currentUser?.id) {
+                mealDrafts[type] = restored
+            }
         }
     }
 
-    private func restoreMealDrafts() async {
-        guard let drafts = try? await mealDraftStore?.loadAll() else { return }
+    func confirmMeal(_ type: MealType) async {
+        guard let coordinator = mealCoordinator, let draft = mealDrafts[type] else { return }
+        mealOperationGeneration[type, default: 0] += 1
+        let generation = authenticationGeneration
+        let operation = mealOperationGeneration[type, default: 0]
+        do {
+            let confirmed = try await coordinator.confirm(draft)
+            guard generation == authenticationGeneration, operation == mealOperationGeneration[type], isAuthenticated else { return }
+            mealDrafts[type] = confirmed
+            try? await refreshDay()
+            await refreshMeals()
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch {
+            mealsErrorMessage = "Le résultat n’a pas pu être confirmé. Réessaie."
+        }
+    }
+
+    private func restoreMealDrafts(for requestedDate: LocalDate? = nil) async {
+        guard let userID = currentUser?.id, let drafts = try? await mealDraftStore?.loadAll(ownerUserID: userID) else { return }
+        guard requestedDate == nil || requestedDate == activeDate else { return }
         mealDrafts = drafts
-            .filter { $0.mealDate == activeDate.rawValue }
-            .reduce(into: [:]) { result, draft in result[draft.mealType] = draft }
+            .filter { $0.ownerUserID == userID && $0.mealDate == (requestedDate ?? activeDate).rawValue }
+            .reduce(into: [:]) { result, draft in
+                var restored = draft
+                if restored.stage == .completed { restored.stage = .awaitingConfirmation }
+                result[restored.mealType] = restored
+            }
+        for draft in mealDrafts.values {
+            guard let mealID = draft.remoteMealId, let detail = try? await client.meal(id: mealID) else { continue }
+            guard requestedDate == nil || requestedDate == activeDate else { return }
+            mealDetails[mealID] = detail
+        }
+        for (type, draft) in mealDrafts where draft.stage.isResumable {
+            Task { await submitMeal(type) }
+        }
     }
 
     private func persistMealDraft(_ type: MealType) async {
-        guard let draft = mealDrafts[type] else { return }
+        guard var draft = mealDrafts[type], let userID = currentUser?.id else { return }
+        if draft.ownerUserID != userID {
+            draft.ownerUserID = userID
+            mealDrafts[type] = draft
+        }
         try? await mealDraftStore?.save(draft)
+    }
+
+    private func invalidateDraftAfterRemotePhotoChange(_ meal: Meal) async {
+        guard var draft = mealDrafts[meal.mealType], draft.remoteMealId == meal.id else { return }
+        mealOperationGeneration[meal.mealType, default: 0] += 1
+        draft.hasRemotePhotoEvidence = meal.photos.contains { ($0.storageStatus ?? "available") == "available" }
+        draft.activeAnalysisRequestId = nil
+        draft.analysisSourceRevision = nil
+        draft.analysisSourceFingerprint = nil
+        draft.stage = .local
+        draft.lastError = nil
+        mealDrafts[meal.mealType] = draft
+        await persistMealDraft(meal.mealType)
     }
 
     private func mealSummary(_ type: MealType) -> MealSummary? {
@@ -761,6 +911,7 @@ final class AppModel {
     }
 
     func logout() async {
+        let ownerUserID = currentUser?.id
         invalidateSleep()
         authenticationGeneration += 1
         dayRequestGeneration += 1
@@ -772,6 +923,7 @@ final class AppModel {
         errorMessage = nil
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
+        if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
         isAuthenticated = false
         currentUser = nil
         hasCompletedOnboarding = true
@@ -813,6 +965,7 @@ final class AppModel {
     }
 
     private func expireLocalSession() {
+        let ownerUserID = currentUser?.id
         authenticationGeneration += 1
         dayRequestGeneration += 1
         journalSaveGeneration += 1
@@ -841,6 +994,9 @@ final class AppModel {
         effortState = .idle
         isLoadingSessions = false
         errorMessage = "La session a expiré. Reconnecte-toi."
+        if let ownerUserID, let mealDraftStore {
+            Task { try? await mealDraftStore.removeAll(ownerUserID: ownerUserID) }
+        }
     }
 
     private func clearAuthenticatedState() {

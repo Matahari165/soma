@@ -545,6 +545,10 @@ export const updateMealInputSchema = z.object({
   entryState: mealEntryStateSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),
   stomachOverfullIntensity: mealFeelingInputSchema.nullable().optional(),
+  /** Optional proof binding for native confirmation. */
+  analysisRequestId: z.string().trim().min(8).max(160).optional(),
+  analysisSourceRevision: z.string().trim().max(120).optional(),
+  analysisSourceFingerprint: z.string().trim().regex(/^[a-f0-9]{64}$/i).optional(),
   /** A user-confirmed correction is a new provenance-preserving analysis row. */
   confirmedAnalysis: mealAnalysisSchema.nullable().optional(),
 }).refine((input) => Object.keys(input).length > 0, { message: "At least one meal field is required." });
@@ -564,6 +568,8 @@ export type MealPhoto = {
   mimeType: MealPhotoMime;
   bytes: number;
   filename?: string | null;
+  /** Optional context for this image only; distinct from the meal note. */
+  comment?: string | null;
   createdAt: string;
   /** Storage lifecycle is explicit: metadata survives binary purge. */
   storageStatus?: MealPhotoStorageStatus;
@@ -599,6 +605,10 @@ export type MealAnalysisRecord = {
   status: "queued" | "running" | "completed" | "failed";
   provider: string;
   model: string;
+  /** Stable identity of the durable request that produced this row. */
+  analysisRequestId?: string | null;
+  /** UpdatedAt revision of the evidence snapshot used by this row. */
+  sourceRevision?: string | null;
   result: MealAnalysis | null;
   error: string | null;
   /** Optional provenance of the source snapshot; old analysis rows omit it. */
