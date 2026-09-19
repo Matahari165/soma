@@ -31,6 +31,10 @@ struct RootView: View {
             if model.isBootstrapping {
                 ProgressView("Ouverture de Soma…")
                     .accessibilityLabel("Ouverture de Soma en cours")
+            } else if model.isAuthenticated && !model.hasCompletedOnboarding {
+                OnboardingView(displayName: model.currentUser?.displayName ?? "") { openHealth in
+                    destination = openHealth ? .health : .day
+                }
             } else if model.isAuthenticated {
                 authenticatedContent
             } else {
@@ -87,8 +91,8 @@ struct RootView: View {
     }
 
     @ViewBuilder
-    private func destinationView(for destination: AppDestination) -> some View {
-        switch destination {
+    private func destinationView(for target: AppDestination) -> some View {
+        switch target {
         case .day: DayView()
         case .analysis: AnalysisView()
         case .health: HealthView()
@@ -97,7 +101,7 @@ struct RootView: View {
         case .recovery: RecoveryView()
         case .activity: ActivityView()
         case .export: ExportView()
-        case .settings: SettingsView()
+        case .settings: SettingsView { destination = $0 }
         }
     }
 }
