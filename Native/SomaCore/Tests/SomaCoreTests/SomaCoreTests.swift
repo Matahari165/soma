@@ -69,8 +69,86 @@ import Testing
     try await store.save(draft)
     let loaded = try await store.load(draft.id)
     #expect(loaded?.createIdempotencyKey == draft.createIdempotencyKey)
-    #expect(loaded?.uploadIdempotencyKey == draft.uploadIdempotencyKey)
     #expect(loaded?.analysisIdempotencyKey == draft.analysisIdempotencyKey)
+}
+
+@Test func mealDraftsAreIsolatedByUserAndCanBePurgedPerUser() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let alice = MealDraft(ownerUserID: "user-alice", mealDate: "2026-09-19", mealType: .lunch, note: "Alice")
+    let bob = MealDraft(ownerUserID: "user-bob", mealDate: "2026-09-19", mealType: .lunch, note: "Bob")
+    try await store.save(alice)
+    try await store.save(bob)
+    #expect((try await store.loadAll(ownerUserID: "user-alice")).map(\.id) == [alice.id])
+    #expect((try await store.loadAll(ownerUserID: "user-bob")).map(\.id) == [bob.id])
+    let removed = try await store.removeAll(ownerUserID: "user-alice")
+    #expect(removed == 1)
+    let removedDraft = try await store.load(alice.id, ownerUserID: "user-alice")
+    let retainedDraft = try await store.load(bob.id, ownerUserID: "user-bob")
+    #expect(removedDraft == nil)
+    #expect(retainedDraft?.note == "Bob")
+}
+
+@Test func everyDraftPhotoKeepsItsOwnStableUploadKeyAndComment() throws {
+    let first = MealDraftPhoto(fileURL: URL(fileURLWithPath: "/tmp/synthetic-one.jpg"), filename: "one.jpg", mimeType: "image/jpeg", origin: .homemade, comment: "Assiette principale")
+    let second = MealDraftPhoto(fileURL: URL(fileURLWithPath: "/tmp/synthetic-two.jpg"), filename: "two.jpg", mimeType: "image/jpeg", origin: .mixed)
+    let decoded = try JSONDecoder().decode([MealDraftPhoto].self, from: JSONEncoder().encode([first, second]))
+    #expect(decoded[0].uploadIdempotencyKey == first.uploadIdempotencyKey)
+    #expect(decoded[0].uploadIdempotencyKey != decoded[1].uploadIdempotencyKey)
+    #expect(decoded[0].comment == "Assiette principale")
+    #expect(decoded[1].comment == nil)
+}
+
+@Test func analysisResultMustBeConfirmedExplicitly() throws {
+    var draft = MealDraft(mealDate: "2026-09-19", mealType: .dinner, note: "Repas synthétique")
+    draft.stage = .awaitingConfirmation
+    let decoded = try JSONDecoder().decode(MealDraft.self, from: JSONEncoder().encode(draft))
+    #expect(decoded.stage == .awaitingConfirmation)
+    #expect(decoded.entryState == .recorded)
+}
+
+@Test func transientMealDraftStagesAreResumableAfterRestore() {
+    #expect(MealDraftStage.creating.isResumable)
+    #expect(MealDraftStage.uploading.isResumable)
+    #expect(MealDraftStage.requestingAnalysis.isResumable)
+    #expect(MealDraftStage.polling.isResumable)
+    #expect(!MealDraftStage.failed.isResumable)
+    #expect(!MealDraftStage.awaitingConfirmation.isResumable)
+}
+
+@Test func staleAnalysisResponseDoesNotCompleteCurrentRequest() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let api = MealSubmissionStub(status: MealAnalysisResponse(
+        analysis: MealAnalysisRecord(id: "analysis-old", mealId: "meal-1", status: "completed", provider: "stub", model: "stub", result: nil, error: nil, errorCode: nil, analysisRequestId: "request-old", sourceRevision: "revision-old", sourceFingerprint: "fingerprint-old", sourcePhotoIds: [], createdAt: "2026-09-19T10:00:00Z", completedAt: "2026-09-19T10:00:01Z"),
+        meal: nil, fresh: false, queued: false, requestId: "request-old"
+    ))
+    var draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, note: "Repas")
+    draft.remoteMealId = "meal-1"
+    draft.stage = .polling
+    draft.activeAnalysisRequestId = "request-current"
+    draft.analysisSourceFingerprint = "fingerprint-current"
+    let result = try await MealSubmissionCoordinator(api: api, store: store, pollTimeout: .milliseconds(50)).refresh(draft)
+    #expect(result.stage == .polling)
+    #expect(result.activeAnalysisRequestId == "request-current")
+}
+
+@Test func pollingTimeoutMarksDraftRetryable() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let api = MealSubmissionStub(statusDelay: .milliseconds(100))
+    var draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, note: "Repas")
+    draft.remoteMealId = "meal-1"
+    draft.stage = .polling
+    draft.activeAnalysisRequestId = "request-current"
+    try await store.save(draft)
+    let result = try await MealSubmissionCoordinator(api: api, store: store, pollTimeout: .milliseconds(1)).submit(draft)
+    #expect(result.stage == .failed)
+    #expect(result.lastError != nil)
+    #expect((try await store.load(draft.id))?.stage == .failed)
 }
 
 @Test func skippedDraftRemainsDistinctFromAbsentFeelings() throws {
@@ -117,4 +195,24 @@ import Testing
     #expect(url.host == "soma.example")
     #expect(url.path == "/api/native/v1/account/archive")
     #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value == "synthetic folder/archive+one.json")
+}
+
+private actor MealSubmissionStub: MealSubmissionAPI {
+    let statusResponse: MealAnalysisResponse?
+    let statusDelay: Duration?
+
+    init(status: MealAnalysisResponse? = nil, statusDelay: Duration? = nil) {
+        self.statusResponse = status
+        self.statusDelay = statusDelay
+    }
+
+    func createMeal(from draft: MealDraft) async throws -> MealMutationResponse { fatalError("not used") }
+    func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse { fatalError("not used") }
+    func uploadMealPhotos(mealID: String, photos: [MealDraftPhoto], idempotencyKey: String) async throws -> MealPhotosResponse { fatalError("not used") }
+    func requestMealAnalysis(mealID: String, idempotencyKey: String, force: Bool) async throws -> MealAnalysisResponse { fatalError("not used") }
+
+    func mealAnalysisStatus(mealID: String, requestID: String?) async throws -> MealAnalysisResponse {
+        if let statusDelay { try await Task.sleep(for: statusDelay) }
+        return statusResponse ?? MealAnalysisResponse(analysis: nil, meal: nil, fresh: false, queued: true, requestId: requestID)
+    }
 }

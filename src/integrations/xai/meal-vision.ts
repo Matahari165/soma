@@ -20,6 +20,7 @@ export type MealVisionImage = {
   id: string;
   mimeType: string;
   origin: MealOrigin;
+  comment?: string | null;
   data: ArrayBuffer;
 };
 
@@ -786,7 +787,10 @@ export function makeTextPrompt(input: MealVisionTextInput) {
 
 export function makePrompt(input: MealVisionInput) {
   const hasCorrection = Boolean(input.correction);
-  const origins = input.images.map((image, index) => `Photo ${index + 1} id: ${image.id} source: ${image.origin}`).join("\n");
+  const origins = input.images.map((image, index) => {
+    const context = image.comment?.trim() ? ` comment: ${image.comment.trim().slice(0, 240)}` : "";
+    return `Photo ${index + 1} id: ${image.id} source: ${image.origin}${context}`;
+  }).join("\n");
   return [
     "Analyse these photos as one meal for a personal food journal. Réponds avec des libellés en français.",
     "Identify only foods and drinks that are visible or strongly supported by the images. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support.",

@@ -40,6 +40,7 @@ type PhotoRow = Row & {
   bytes: number;
   created_at: string;
   filename?: string | null;
+  comment?: string | null;
   upload_idempotency_key?: string | null;
   storage_status?: MealPhoto["storageStatus"];
   purged_at?: string | null;
@@ -49,6 +50,7 @@ type AnalysisRow = Row & {
   user_id: string;
   meal_id: string;
   analysis_request_id?: string | null;
+  source_revision?: string | null;
   status: MealAnalysisRecord["status"];
   provider: string;
   model: string;
@@ -83,8 +85,8 @@ type FeelingsRow = Row & {
 };
 
 const mealListColumns = "id,user_id,meal_date,meal_type,note,status,entry_state,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
-const mealListPhotoColumns = "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,storage_status,purged_at";
-const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,source_fingerprint,source_photo_ids,created_at,completed_at,pipeline";
+const mealListPhotoColumns = "id,user_id,meal_id,origin,object_path,mime_type,bytes,created_at,filename,comment,storage_status,purged_at";
+const mealListAnalysisColumns = "id,user_id,meal_id,status,provider,model,result,error,error_code,analysis_request_id,source_revision,source_fingerprint,source_photo_ids,created_at,completed_at,pipeline";
 const mealListFeelingColumns = "id,user_id,meal_id,mouth_warmth_intensity,stomach_overfull_intensity,created_at,updated_at";
 
 function asNullableString(value: unknown) {
@@ -116,6 +118,7 @@ function photoFromRow(row: PhotoRow): MealPhoto {
     mimeType: row.mime_type,
     bytes: Number(row.bytes),
     filename: asNullableString(row.filename),
+    comment: asNullableString(row.comment),
     createdAt: row.created_at,
     storageStatus: row.storage_status === "purged" || row.storage_status === "purge_pending" ? row.storage_status : "available",
     purgedAt: asNullableString(row.purged_at),
@@ -129,6 +132,8 @@ function analysisFromRow(row: AnalysisRow): MealAnalysisRecord {
     status: row.status,
     provider: row.provider,
     model: row.model,
+    analysisRequestId: asNullableString(row.analysis_request_id),
+    sourceRevision: asNullableString(row.source_revision),
     result: row.result && typeof row.result === "object" ? row.result : null,
     error: asNullableString(row.error),
     sourceFingerprint: asNullableString(row.source_fingerprint),
@@ -311,6 +316,12 @@ export async function insertPhoto(row: PhotoRow) {
 export async function updatePhotoOrigin(userId: string, mealId: string, photoId: string, origin: MealOrigin) {
   const { data, error } = await createCloudflareAdminClient().from("meal_photos").update({ origin }).eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId).select("*").maybeSingle();
   if (error) throw new Error("The meal photo origin could not be updated.");
+  return data ? photoFromRow(data as PhotoRow) : null;
+}
+
+export async function updatePhotoDetails(userId: string, mealId: string, photoId: string, values: { origin?: MealOrigin; comment?: string | null }) {
+  const { data, error } = await createCloudflareAdminClient().from("meal_photos").update(values).eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId).select("*").maybeSingle();
+  if (error) throw new Error("The meal photo details could not be updated.");
   return data ? photoFromRow(data as PhotoRow) : null;
 }
 

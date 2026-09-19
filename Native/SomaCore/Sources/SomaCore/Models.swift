@@ -124,6 +124,7 @@ public struct MealPhoto: Codable, Identifiable, Equatable, Sendable {
     public let mimeType: String
     public let bytes: Int
     public let filename: String?
+    public let comment: String?
     public let createdAt: String
     public let storageStatus: String?
     public let purgedAt: String?
@@ -139,6 +140,12 @@ public struct MealAnalysisRecord: Codable, Identifiable, Equatable, Sendable {
     public let result: MealAnalysisResult?
     public let error: String?
     public let errorCode: String?
+    /// Stable identity of the durable analysis request. Older API responses may omit it.
+    public let analysisRequestId: String?
+    /// Revision of the meal evidence used by this analysis (the meal updatedAt at enqueue time).
+    public let sourceRevision: String?
+    /// Fingerprint of the note, photo identities, origins and comments used by this analysis.
+    public let sourceFingerprint: String?
     public let sourcePhotoIds: [String]
     public let createdAt: String
     public let completedAt: String?

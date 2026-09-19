@@ -5,9 +5,10 @@ export const maxDuration = 60;
 import { mealAnalysisCorrectionSchema, mealAnalysisRequestSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
+import { findMealAnalysisByRequestId } from "@/repositories/meals";
 import { mealToApi } from "@/services/meal-api";
 import { analyzePreviewMeal, findPreviewMeal, streamPreviewMeal } from "@/services/meal-preview";
-import { enqueueMealAnalysis, findMeal, MealServiceError, processNextMealAnalysis, streamMealAnalysis } from "@/services/meals";
+import { enqueueMealAnalysis, findMeal, MealServiceError, processNextMealAnalysis } from "@/services/meals";
 
 function analysisRequestId(request: Request, fallback?: string) {
   const supplied = request.headers.get("x-analysis-request-id") ?? fallback;
@@ -77,15 +78,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
               }
             });
           } else {
-            await streamMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId }, async (event) => {
-              if (event.type === "complete") {
-                sendEvent("complete", { meal: event.meal ? mealToApi(event.meal) : null, analysis: event.analysis });
-              } else if (event.type === "error") {
-                sendEvent("error", { error: event.error, code: event.code });
-              } else {
-                sendEvent(event.type, event);
+            // SSE observes the same durable job as polling. It never owns a
+            // second provider execution, so closing the tab cannot cancel or
+            // duplicate the analysis.
+            const queued = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
+            if (queued.queued) startQueuedMealAnalysis(user.id, queued.analysis.id, requestId);
+            sendEvent("phase", { phase: queued.analysis.status });
+            for (let attempt = 0; attempt < 25 && !request.signal.aborted; attempt += 1) {
+              const meal = await findMeal(user.id, id);
+              const analysis = await findMealAnalysisByRequestId(user.id, id, requestId);
+              if (meal && analysis?.status === "completed") {
+                sendEvent("complete", { meal: mealToApi(meal), analysis });
+                break;
               }
-            }, request.signal);
+              if (analysis?.status === "failed") {
+                sendEvent("error", { error: analysis.error, code: analysis.errorCode });
+                break;
+              }
+              if (attempt === 24) {
+                sendEvent("phase", { phase: "polling", resumable: true });
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 2_000));
+            }
           }
         } catch (error) {
           sendEvent("error", { error: error instanceof Error ? error.message : "Stream failed", code: "UNKNOWN_STREAM_ERROR" });
@@ -143,7 +158,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const meal = await findMeal(user.id, id);
     if (!meal) return jsonWithRequestId({ error: "Meal not found.", code: "not_found" }, { status: 404, headers: { "Cache-Control": "private, no-store" } }, crypto.randomUUID());
     const requestId = request.headers.get("x-analysis-request-id") ?? crypto.randomUUID();
-    return jsonWithRequestId({ analysis: meal.analysis, meal: mealToApi(meal), requestId }, { headers: { "Cache-Control": "private, no-store" } }, requestId);
+    const analysis = request.headers.has("x-analysis-request-id")
+      ? await findMealAnalysisByRequestId(user.id, id, requestId)
+      : meal.analysis;
+    return jsonWithRequestId({ analysis, meal: mealToApi(meal), requestId }, { headers: { "Cache-Control": "private, no-store" } }, requestId);
   } catch (error) {
     console.error("[meal-analysis] status route failed", { stage: "status_route", reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ error: "L’état de l’analyse n’est pas disponible pour le moment.", code: "STORAGE_ERROR" }, { status: 503, headers: { "Cache-Control": "private, no-store" } });

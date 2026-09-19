@@ -96,11 +96,11 @@ public actor APIClient {
         guard response.ok else { throw APIError.invalidResponse }
     }
 
-    public func updateMealPhotoOrigin(mealID: String, photoID: String, origin: MealPhotoOrigin) async throws -> MealPhoto {
+    public func updateMealPhotoDetails(mealID: String, photoID: String, origin: MealPhotoOrigin? = nil, comment: String? = nil) async throws -> MealPhoto {
         let response: MealPhotoResponse = try await perform(request(
             path: "/api/native/v1/meals/\(pathComponent(mealID))/photos/\(pathComponent(photoID))",
             method: "PATCH",
-            body: MealPhotoOriginRequest(origin: origin),
+            body: MealPhotoDetailsRequest(origin: origin, comment: comment),
             authenticated: true
         ))
         return response.photo
@@ -125,6 +125,9 @@ public actor APIClient {
         defer { try? output.close() }
         for (index, photo) in photos.enumerated() {
             try output.write(contentsOf: Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"origin_\(index)\"\r\n\r\n\(photo.origin.rawValue)\r\n".utf8))
+            if let comment = photo.comment?.trimmingCharacters(in: .whitespacesAndNewlines), !comment.isEmpty {
+                try output.write(contentsOf: Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"comment_\(index)\"\r\n\r\n\(String(comment.prefix(240)))\r\n".utf8))
+            }
             try output.write(contentsOf: Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"photos\"; filename=\"\(safeFilename(photo.filename))\"\r\nContent-Type: \(photo.mimeType)\r\n\r\n".utf8))
             try streamFile(photo.fileURL, to: output)
             try output.write(contentsOf: Data("\r\n".utf8))
@@ -134,6 +137,7 @@ public actor APIClient {
         try output.close()
         var request = try request(path: "/api/native/v1/meals/\(pathComponent(mealID))/photos", body: Optional<String>.none, authenticated: true)
         request.httpMethod = "POST"
+        request.timeoutInterval = 90
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         return try await performUpload(request, fromFile: multipartFile)
@@ -169,6 +173,7 @@ public actor APIClient {
         guard let url = URL(string: path, relativeTo: baseURL) else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {
             request.httpBody = try JSONEncoder().encode(body)
@@ -225,10 +230,41 @@ public actor APIClient {
     }
 }
 
+/// The small API surface used by the meal workflow. Keeping it separate makes
+/// the actor workflow testable without touching a real network session.
+public protocol MealSubmissionAPI: Sendable {
+    func createMeal(from draft: MealDraft) async throws -> MealMutationResponse
+    func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse
+    func uploadMealPhotos(mealID: String, photos: [MealDraftPhoto], idempotencyKey: String) async throws -> MealPhotosResponse
+    func requestMealAnalysis(mealID: String, idempotencyKey: String, force: Bool) async throws -> MealAnalysisResponse
+    func mealAnalysisStatus(mealID: String, requestID: String?) async throws -> MealAnalysisResponse
+}
+
+extension APIClient: MealSubmissionAPI {}
+
 public struct MealUpdateRequest: Codable, Equatable, Sendable {
-    public var mealDate: String?; public var mealType: MealType?; public var note: String?; public var status: MealStatus?; public var entryState: MealEntryState?; public var mouthWarmthIntensity: Int?; public var stomachOverfullIntensity: Int?
-    public init(mealDate: String? = nil, mealType: MealType? = nil, note: String? = nil, status: MealStatus? = nil, entryState: MealEntryState? = nil, mouthWarmthIntensity: Int? = nil, stomachOverfullIntensity: Int? = nil) {
-        self.mealDate = mealDate; self.mealType = mealType; self.note = note; self.status = status; self.entryState = entryState; self.mouthWarmthIntensity = mouthWarmthIntensity; self.stomachOverfullIntensity = stomachOverfullIntensity
+    public var mealDate: String?; public var mealType: MealType?; public var note: String?; public var status: MealStatus?; public var entryState: MealEntryState?; public var mouthWarmthIntensity: Int?; public var stomachOverfullIntensity: Int?; public var analysisRequestId: String?; public var analysisSourceRevision: String?; public var analysisSourceFingerprint: String?
+    public init(mealDate: String? = nil, mealType: MealType? = nil, note: String? = nil, status: MealStatus? = nil, entryState: MealEntryState? = nil, mouthWarmthIntensity: Int? = nil, stomachOverfullIntensity: Int? = nil, analysisRequestId: String? = nil, analysisSourceRevision: String? = nil, analysisSourceFingerprint: String? = nil) {
+        self.mealDate = mealDate; self.mealType = mealType; self.note = note; self.status = status; self.entryState = entryState; self.mouthWarmthIntensity = mouthWarmthIntensity; self.stomachOverfullIntensity = stomachOverfullIntensity; self.analysisRequestId = analysisRequestId; self.analysisSourceRevision = analysisSourceRevision; self.analysisSourceFingerprint = analysisSourceFingerprint
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case mealDate, mealType, note, status, entryState, mouthWarmthIntensity, stomachOverfullIntensity
+        case analysisRequestId, analysisSourceRevision, analysisSourceFingerprint
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(mealDate, forKey: .mealDate)
+        try values.encodeIfPresent(mealType, forKey: .mealType)
+        try values.encodeIfPresent(note, forKey: .note)
+        try values.encodeIfPresent(status, forKey: .status)
+        try values.encodeIfPresent(entryState, forKey: .entryState)
+        try values.encodeIfPresent(mouthWarmthIntensity, forKey: .mouthWarmthIntensity)
+        try values.encodeIfPresent(stomachOverfullIntensity, forKey: .stomachOverfullIntensity)
+        try values.encodeIfPresent(analysisRequestId, forKey: .analysisRequestId)
+        try values.encodeIfPresent(analysisSourceRevision, forKey: .analysisSourceRevision)
+        try values.encodeIfPresent(analysisSourceFingerprint, forKey: .analysisSourceFingerprint)
     }
 }
 
@@ -243,7 +279,18 @@ private struct MealCreateRequest: Codable, Sendable {
     let mealDate: String; let mealType: MealType; let note: String?; let entryState: MealEntryState; let mouthWarmthIntensity: Int?; let stomachOverfullIntensity: Int?; let idempotencyKey: String
 }
 private struct MealAnalysisRequest: Codable, Sendable { let force: Bool; let idempotencyKey: String }
-private struct MealPhotoOriginRequest: Codable, Sendable { let origin: MealPhotoOrigin }
+private struct MealPhotoDetailsRequest: Codable, Sendable {
+    let origin: MealPhotoOrigin?
+    let comment: String?
+
+    private enum CodingKeys: String, CodingKey { case origin, comment }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(origin, forKey: .origin)
+        try values.encodeIfPresent(comment, forKey: .comment)
+    }
+}
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
 private struct EmptyResponse: Decodable { let ok: Bool }

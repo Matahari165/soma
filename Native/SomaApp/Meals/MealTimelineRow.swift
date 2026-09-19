@@ -59,6 +59,8 @@ private struct MealDisplayStatus {
             label = "Erreur"; symbol = "exclamationmark.triangle"; color = SomaTheme.warning
         } else if meal.status == .confirmed {
             label = "Confirmé"; symbol = "checkmark.circle"; color = SomaTheme.signal
+        } else if meal.analysis?.status == "completed" {
+            label = "À confirmer"; symbol = "questionmark.circle"; color = SomaTheme.primary
         } else {
             label = "Saisi"; symbol = "pencil.line"; color = SomaTheme.primary
         }
