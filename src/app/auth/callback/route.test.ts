@@ -31,6 +31,7 @@ beforeEach(() => {
   vi.mocked(upsertGoogleUser).mockResolvedValue({ id: "user-1", email: "user@example.com", displayName: "User" });
   vi.mocked(createSession).mockResolvedValue({
     token: "tok-test",
+    session: { id: "session-web", platform: "web", deviceName: "Web browser", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString() },
     cookieOptions: {
       httpOnly: true,
       secure: true,

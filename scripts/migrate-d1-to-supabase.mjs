@@ -119,7 +119,7 @@ async function copyRuntimeRows() {
 async function main() {
   const users = await copyPhysicalTable("soma_users", "id, google_subject, email, display_name, avatar_url, created_at, updated_at", "id", "google_subject");
   const rows = await copyRuntimeRows();
-  const sessions = await copyPhysicalTable("soma_sessions", "token_hash, user_id, expires_at, created_at", "token_hash", "token_hash");
+  const sessions = await copyPhysicalTable("soma_sessions", "token_hash, session_id, user_id, platform, device_name, expires_at, created_at", "token_hash", "token_hash");
   const [sourceCount] = await cloudflareQuery("SELECT COUNT(*) AS count, SUM(length(json_data)) AS json_bytes FROM soma_rows");
   const targetSomaRows = await supabaseCount("soma_rows");
   console.log(JSON.stringify({

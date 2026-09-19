@@ -119,6 +119,7 @@ describe("Auth Credentials API routes", () => {
       });
       vi.mocked(createSession).mockResolvedValue({
         token: "tok-123",
+        session: { id: "session-web", platform: "web", deviceName: "Web browser", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString() },
         cookieOptions: {
           httpOnly: true,
           secure: true,

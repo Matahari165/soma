@@ -21,6 +21,7 @@ const publicPaths = [
 ];
 
 const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
+const nativeAuthPrefix = "/api/native/v1/auth/";
 
 export function requestBodyLimitForPath(pathname: string) {
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
@@ -57,23 +58,28 @@ export async function middleware(request: NextRequest) {
     return response;
   };
   const publicMachineRoute = publicMachinePaths.some((path) => request.nextUrl.pathname.startsWith(path));
+  const publicNativeAuthRoute = request.nextUrl.pathname.startsWith(nativeAuthPrefix);
+  const bearerRequest = /^Bearer [A-Za-z0-9_-]{32,}$/.test(request.headers.get("authorization") ?? "");
   const unsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
-  if (unsafeMethod && !publicMachineRoute) {
+  if (unsafeMethod) {
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    const requestLimit = requestBodyLimitForPath(request.nextUrl.pathname);
+    if (contentLength > requestLimit) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
+  }
+  if (unsafeMethod && !publicMachineRoute && !publicNativeAuthRoute && !bearerRequest) {
     const origin = request.headers.get("origin");
     const requestHost = request.headers.get("host");
     const allowedOrigins = new Set([request.nextUrl.origin, new URL(request.url).origin, new URL(process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin).origin]);
     const parsedOrigin = origin ? new URL(origin) : null;
     const sameRequestHost = Boolean(parsedOrigin && requestHost && parsedOrigin.host === requestHost && ["http:", "https:"].includes(parsedOrigin.protocol));
     if (!origin || (!allowedOrigins.has(origin) && !sameRequestHost)) return secureResponse(NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 }));
-    const contentLength = Number(request.headers.get("content-length") ?? 0);
-    const requestLimit = requestBodyLimitForPath(request.nextUrl.pathname);
-    if (contentLength > requestLimit) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
   }
 
   const response = createResponse();
   const isPublicPath = request.nextUrl.pathname === "/"
     || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
-    || publicAuthPaths.includes(request.nextUrl.pathname);
+    || publicAuthPaths.includes(request.nextUrl.pathname)
+    || publicNativeAuthRoute;
 
   if (isLocalPreviewMode()) {
     if (request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
@@ -85,8 +91,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=configuration", request.url));
   }
 
-  const hasSessionCookie = Boolean(request.cookies.get("soma_session")?.value);
-  if (!hasSessionCookie && !isPublicPath) {
+  const hasSessionCredential = Boolean(request.cookies.get("soma_session")?.value) || bearerRequest;
+  if (!hasSessionCredential && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
