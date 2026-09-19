@@ -21,6 +21,7 @@ __pycache__/
 # Editors and operating systems
 .DS_Store
 *.swp
+.build/
 
 # Logs
 *.log
@@ -36,4 +37,3 @@ next-env.d.ts
 .dev.vars
 .impeccable/
 .codex-worktree/
-

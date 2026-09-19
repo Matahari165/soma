@@ -17,7 +17,13 @@ export async function PUT(request: Request) {
     return NextResponse.json({ ok: true, ...saved, day }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The journal could not be saved.";
-    const status = message.includes("available") || message.includes("invalid") || message.includes("could not be checked") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status });
+    const inputMessages = new Set([
+      "Journal drafts are available for today and the previous four days.",
+      "One journal variable is unavailable.",
+      "One journal value is invalid.",
+      "Automatic journal variables cannot be written through this route.",
+    ]);
+    if (inputMessages.has(message)) return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: "The journal could not be saved." }, { status: 500 });
   }
 }

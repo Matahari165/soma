@@ -1,6 +1,6 @@
 import "server-only";
 
-import { normalizeJournalValue, saveJournalEntriesSchema, type JournalDay, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
+import { journalCaptureMode, normalizeJournalValue, saveJournalEntriesSchema, type JournalDay, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import type { Meal, MealType } from "@/domain/meals";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadJournalData } from "@/services/journal";
@@ -42,12 +42,13 @@ async function profileTimeZone(userId: string) {
 
 export function nativeLabDayPayload(input: { date: string; timezone: string; journal: JournalData; meals: Meal[] }): NativeLabDay {
   const mealsBySlot = new Map(input.meals.map((meal) => [meal.mealType, meal]));
+  const activeVariableIds = new Set(input.journal.variables.filter((variable) => variable.isActive).map((variable) => variable.id));
   return {
     date: input.date,
     timezone: input.timezone,
     journal: {
-      variables: input.journal.variables,
-      entries: input.journal.entries.filter((entry) => entry.entryDate === input.date),
+      variables: input.journal.variables.filter((variable) => variable.isActive),
+      entries: input.journal.entries.filter((entry) => entry.entryDate === input.date && activeVariableIds.has(entry.variableId)),
       day: input.journal.days.find((day) => day.entryDate === input.date) ?? null,
     },
     meals: Object.fromEntries(MEAL_SLOTS.map((slot) => {
@@ -90,6 +91,7 @@ export async function saveNativeJournalEntries(userId: string, input: NativeJour
   const normalized = input.entries.map((entry) => {
     const variable = variables.get(entry.variableId);
     if (!variable || !variable.isActive) return { ...entry, variable: null, value: null, invalid: false };
+    if (journalCaptureMode(variable) === "automatic") throw new Error("Automatic journal variables cannot be written through this route.");
     const value = normalizeJournalValue(variable, entry.value);
     return { ...entry, variable, value, invalid: entry.value !== null && entry.value !== "" && value === null };
   });

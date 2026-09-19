@@ -96,4 +96,15 @@ describe("native Personal Lab API", () => {
     expect((await saveJournal(new Request("https://soma.example/api/native/v1/lab/journal", { method: "PUT", body: "{}" }))).status).toBe(400);
     expect((await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=7"))).status).toBe(400);
   });
+
+  it("does not expose internal journal storage errors", async () => {
+    vi.mocked(saveNativeJournalEntries).mockRejectedValue(new Error("private database detail"));
+    const response = await saveJournal(new Request("https://soma.example/api/native/v1/lab/journal", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entryDate: "2026-09-18", mode: "draft", entries: [{ variableId, value: 0 }] }),
+    }));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "The journal could not be saved." });
+  });
 });
