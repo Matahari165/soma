@@ -122,7 +122,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <main className="main-content">{children}</main>
+      <main key={pathname} className="main-content animate-surface-enter">{children}</main>
     </div>
   );
 }

@@ -45,6 +45,73 @@
   }
 }
 
+/* Tactile micro-interactions and animations (DESIGN.md compliant) */
+.btn-press,
+.interactive-press {
+  transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.btn-press:active:not(:disabled),
+.interactive-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.interactive-press-sm:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.animate-surface-enter {
+  animation: surfaceEnter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-stagger-1 {
+  animation-delay: 40ms;
+}
+
+.animate-stagger-2 {
+  animation-delay: 80ms;
+}
+
+@keyframes surfaceEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-date-fade {
+  animation: dateFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dateFadeIn {
+  from {
+    opacity: 0.85;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-value-bump {
+  animation: valueBump 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes valueBump {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+  100% { transform: translateY(0); }
+}
+
+.transition-bar {
+  transition: width 450ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 .personal-lab-workspace .journal-choice--binary {
   width: 112px !important;
   min-width: 112px !important;
@@ -464,8 +531,9 @@ textarea:focus-visible,
   border: 1px solid transparent;
   color: var(--lab-text-secondary);
   font-size: .875rem;
-  transition: color var(--fast), background var(--fast), border-color var(--fast);
+  transition: color var(--fast), background var(--fast), border-color var(--fast), transform var(--snappy);
 }
+.nav-link:active { transform: scale(0.98); }
 .nav-link svg { width: 18px; color: currentColor; stroke-width: 1.45; }
 .nav-link:hover { border-color: var(--lab-border); background: var(--lab-surface-subtle); color: var(--lab-text-primary); }
 .nav-link--active { border-color: var(--lab-brand); background: var(--lab-brand); color: var(--lab-surface); }
@@ -484,7 +552,9 @@ textarea:focus-visible,
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--lab-border);
+  transition: border-color var(--fast), background var(--fast), transform var(--snappy);
 }
+.profile-card:active { transform: scale(0.98); }
 .avatar {
   display: grid;
   width: 34px;
@@ -501,6 +571,23 @@ textarea:focus-visible,
 .profile-card--active { color: var(--lab-brand); }
 .sidebar-secondary > .sidebar-toggle { display: grid; margin: 0 auto 8px; }
 .sidebar--collapsed .sidebar-secondary { justify-items: center; }
+
+.page-title {
+  font-family: var(--font-soma-title);
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+}
+
+.section-label {
+  color: var(--muted);
+  font-family: var(--font-soma-ui);
+  font-size: .75rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
 .sidebar--collapsed .profile-card { display: flex; width: 44px; min-height: 56px; justify-content: center; padding-top: 12px; }
 .sidebar--collapsed .profile-card > span:nth-child(2),
 .sidebar--collapsed .profile-card > svg { display: none; }
@@ -533,7 +620,13 @@ textarea:focus-visible,
   color: var(--lab-surface);
   font-size: .875rem;
   font-weight: 650;
-  transition: background var(--fast), color var(--fast), border-color var(--fast);
+  transition: background var(--fast), color var(--fast), border-color var(--fast), transform var(--snappy);
+}
+.primary-button:active,
+.secondary-button:active,
+.danger-button:active,
+.google-button:active {
+  transform: scale(0.97);
 }
 .primary-button:hover, .google-button:hover { background: var(--lab-text-primary); border-color: var(--lab-text-primary); }
 .secondary-button { border-color: var(--lab-border-strong); background: transparent; color: var(--lab-text-primary); }
@@ -548,7 +641,9 @@ textarea:focus-visible,
   border-radius: var(--radius-control);
   background: var(--lab-surface);
   color: currentColor;
+  transition: border-color var(--fast), background var(--fast), transform var(--snappy);
 }
+.icon-button:active { transform: scale(0.95); }
 .icon-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-subtle); }
 .text-link {
   display: inline-flex;
@@ -582,4 +677,19 @@ svg.spin {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   svg.spin { animation: none; }
+  .animate-fade-in,
+  .animate-surface-enter,
+  .animate-date-fade,
+  .animate-value-bump {
+    animation: none !important;
+    transform: none !important;
+  }
+  .btn-press:active:not(:disabled),
+  .interactive-press:active:not(:disabled),
+  .interactive-press-sm:active:not(:disabled) {
+    transform: none !important;
+  }
+  .transition-bar {
+    transition: none !important;
+  }
 }

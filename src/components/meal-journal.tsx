@@ -1211,7 +1211,7 @@ function MealLabHeader({
           {onToggleTargets && (
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 active:scale-[0.98] transition-transform duration-150"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 interactive-press active:scale-[0.97]"
               aria-label="Edit daily targets"
               aria-expanded={targetsExpanded}
               aria-controls="meal-target-editor"
@@ -1224,7 +1224,7 @@ function MealLabHeader({
           {!hideAddMealButton && (
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed interactive-press active:scale-[0.97]"
               aria-label="Add a meal"
               title="Add a meal"
               disabled={addDisabled}
@@ -1237,7 +1237,7 @@ function MealLabHeader({
         </div>
       </div>
       <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
-        <div className="h-full bg-sage rounded-full transition-all duration-300" style={{ width: `${calPct}%` }} />
+        <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${calPct}%` }} />
       </div>
     </header>
   );

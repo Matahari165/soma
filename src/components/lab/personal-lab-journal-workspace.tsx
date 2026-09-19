@@ -72,7 +72,7 @@ export function PersonalLabDateStrip({
                   disabled={disabled}
                   aria-current="date"
                   onClick={() => onDateChange(date)}
-                  className="flex flex-col items-center justify-center min-w-[130px] py-1.5 px-3 rounded bg-surface-elevated border border-hairline-light transition-colors relative text-left"
+                  className="flex flex-col items-center justify-center min-w-[130px] py-1.5 px-3 rounded bg-surface-elevated border border-hairline-light transition-all duration-150 relative text-left interactive-press active:scale-[0.96]"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono font-medium text-content-primary">
@@ -95,7 +95,7 @@ export function PersonalLabDateStrip({
                 type="button"
                 disabled={disabled}
                 onClick={() => onDateChange(date)}
-                className="flex flex-col items-center justify-center min-w-[110px] py-1.5 px-3 rounded hover:bg-surface-elevated/40 transition-colors text-left group"
+                className="flex flex-col items-center justify-center min-w-[110px] py-1.5 px-3 rounded hover:bg-surface-elevated/40 transition-all duration-150 text-left group interactive-press active:scale-[0.96]"
               >
                 <div className="flex items-center gap-1.5 text-[11px] font-mono text-content-secondary">
                   <span>{isToday ? `Today, ${monthDay}` : weekday}</span>
@@ -269,12 +269,12 @@ export function PersonalLabJournalWorkspace({
         </div>
       </fieldset>
     </div> : null}
-    <div className={`personal-lab-workbench ${styles.stitchWorkbench} max-w-[1360px] mx-auto px-6 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start`}>
-      <div className={`personal-lab-journal-column ${styles.stitchProtocolColumn} lg:col-span-7 lg:order-1 space-y-9`} id="daily-journal" data-purpose="daily-protocol-journal">
+    <div className={`personal-lab-workbench ${styles.stitchWorkbench} max-w-[1360px] mx-auto px-6 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start animate-surface-enter`}>
+      <div key={`journal-${activeDate}`} className={`personal-lab-journal-column ${styles.stitchProtocolColumn} lg:col-span-7 lg:order-1 space-y-9 animate-date-fade`} id="daily-journal" data-purpose="daily-protocol-journal">
         <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
-      <div className={`personal-lab-meal-column ${styles.stitchMealColumn} lg:col-span-5 lg:order-2 space-y-7`} data-purpose="nutrition-journal">
+      <div key={`meal-${activeDate}`} className={`personal-lab-meal-column ${styles.stitchMealColumn} lg:col-span-5 lg:order-2 space-y-7 animate-date-fade animate-stagger-1`} data-purpose="nutrition-journal">
         <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} designVariant="v1" />
       </div>
     </div>

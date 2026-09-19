@@ -365,7 +365,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
             <button
               type="button"
               disabled={disabled}
-              className="w-full py-1 text-center rounded bg-surface-elevated text-sage border border-sage/20 font-medium transition-all duration-200 ease-out"
+              className="w-full py-1 text-center rounded bg-surface-elevated text-sage border border-sage/20 font-medium transition-all duration-200 cubic-bezier(0.16, 1, 0.3, 1) interactive-press active:scale-[0.96]"
               onClick={() => onChange(null)}
               aria-label={`Reset ${journalVariableLabel(variable)}`}
             >
@@ -380,7 +380,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
             <button
               type="button"
               disabled={disabled}
-              className="w-full py-1 text-center rounded bg-surface-elevated text-content-secondary border border-hairline font-medium transition-all duration-200 ease-out"
+              className="w-full py-1 text-center rounded bg-surface-elevated text-content-secondary border border-hairline font-medium transition-all duration-200 cubic-bezier(0.16, 1, 0.3, 1) interactive-press active:scale-[0.96]"
               onClick={() => onChange(null)}
               aria-label={`Reset ${journalVariableLabel(variable)}`}
             >
@@ -394,7 +394,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
           <button
             type="button"
             disabled={disabled}
-            className="w-1/2 py-1 text-center rounded transition-all duration-200 text-content-secondary hover:text-content-primary"
+            className="w-1/2 py-1 text-center rounded transition-all duration-200 text-content-secondary hover:text-content-primary interactive-press active:scale-[0.94]"
             onClick={() => onChange(true)}
           >
             Yes
@@ -402,7 +402,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
           <button
             type="button"
             disabled={disabled}
-            className="w-1/2 py-1 text-center rounded transition-all duration-200 text-content-secondary hover:text-content-primary"
+            className="w-1/2 py-1 text-center rounded transition-all duration-200 text-content-secondary hover:text-content-primary interactive-press active:scale-[0.94]"
             onClick={() => onChange(false)}
           >
             No
@@ -631,7 +631,7 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
     && (draft.variableType !== "category" || categoryOptions.length >= 2)
     && (draft.captureMode !== "automatic" || draft.automaticMetricId !== null);
 
-  const tools = !open ? null : <section ref={managerRef} id="journal-manager" className="journal-manager" aria-label="Habit settings">
+  const tools = !open ? null : <section ref={managerRef} id="journal-manager" className="journal-manager animate-surface-enter" aria-label="Habit settings">
     <div className="journal-manager__header-actions">
       {!creating && <button className="secondary-button" type="button" onClick={() => { setCreating(true); setError(null); }}>Add a habit</button>}
     </div>
@@ -689,7 +689,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
           <div className="flex items-center gap-2.5">
             <span className="text-xs font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
             <div className="w-20 h-1 bg-hairline-light rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'}`} style={{ width: `${adherencePct}%` }} />
+              <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'} transition-bar`} style={{ width: `${adherencePct}%` }} />
             </div>
           </div>
         </div>
@@ -1081,7 +1081,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               <p className="text-xs text-content-secondary font-mono mt-1">{completionCount} of {activeVariables.length} logged · Adherence {adherenceRate}%</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated rounded transition-colors" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
+              <button className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated rounded transition-all duration-150 interactive-press active:scale-[0.97]" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
                 if (managerOpen) {
                   setManagerOpen(false);
                   managerTriggerRef.current?.focus();
@@ -1091,13 +1091,13 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               }} ref={managerTriggerRef}>
                 {managerOpen ? "Done editing" : "Edit protocol"}
               </button>
-              <button className={`px-3 py-1 text-xs font-sans rounded transition-colors ${validating ? "border border-hairline bg-surface-elevated text-content-tertiary cursor-not-allowed" : "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium"}`} type="button" onClick={() => void validate()} disabled={validating}>
+              <button className={`px-3 py-1 text-xs font-sans rounded transition-all duration-150 interactive-press active:scale-[0.97] ${validating ? "border border-hairline bg-surface-elevated text-content-tertiary cursor-not-allowed" : "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium"}`} type="button" onClick={() => void validate()} disabled={validating}>
                 {validating ? 'Validating…' : 'Validate day'}
               </button>
             </div>
           </div>
           <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
-            <div className="h-full bg-sage rounded-full transition-all duration-300" style={{ width: `${adherenceRate}%` }} />
+            <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${adherenceRate}%` }} />
           </div>
         </div>
       ) : (
