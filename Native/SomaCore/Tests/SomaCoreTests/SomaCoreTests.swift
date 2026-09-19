@@ -80,3 +80,31 @@ import Testing
     #expect(decoded.mouthWarmthIntensity == nil)
     #expect(decoded.stomachOverfullIntensity == nil)
 }
+
+@Test func exportManifestDecodesSyntheticReferencesWithoutLoadingAccountData() throws {
+    let json = #"{"exportedAt":"2026-09-19T09:30:00.000Z","account":{"id":"synthetic"},"data":{"journal_entries":[]},"archiveDownloads":[{"path":"synthetic/archive.json","signedUrl":"/api/native/v1/account/archive?key=synthetic%2Farchive.json"}],"mealPhotoDownloads":[{"mealId":"meal-synthetic","photoId":"photo-synthetic","path":"/api/native/v1/meals/meal-synthetic/photos/photo-synthetic"}]}"#
+    let manifest = try JSONDecoder().decode(ExportManifest.self, from: Data(json.utf8))
+    #expect(manifest.exportedAt == "2026-09-19T09:30:00.000Z")
+    #expect(manifest.archiveDownloads.map(\.path) == ["synthetic/archive.json"])
+    #expect(manifest.mealPhotoDownloads.map(\.photoId) == ["photo-synthetic"])
+}
+
+@Test func exportProgressDistinguishesKnownAndUnknownTotals() {
+    #expect(ExportDownloadProgress(completedBytes: 25, totalBytes: 100).fractionCompleted == 0.25)
+    #expect(ExportDownloadProgress(completedBytes: 25, totalBytes: nil).fractionCompleted == nil)
+}
+
+@Test func exportFilenameSanitizationPreventsPathTraversal() {
+    #expect(AccountExportClient.safeFilename("../../private/export\n.json") == "..-..-private-export-.json")
+    #expect(AccountExportClient.safeFilename("   ") == "soma-export")
+}
+
+@Test func archiveDownloadAlwaysUsesTheNativeHostAndEncodedKey() throws {
+    let url = try AccountExportClient.archiveURL(
+        baseURL: URL(string: "https://soma.example")!,
+        objectPath: "synthetic folder/archive+one.json"
+    )
+    #expect(url.host == "soma.example")
+    #expect(url.path == "/api/native/v1/account/archive")
+    #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value == "synthetic folder/archive+one.json")
+}

@@ -36,6 +36,7 @@ struct RootView: View {
             NavigationStack { DayView() }.tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
             NavigationStack { AnalysisView() }.tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
             NavigationStack { SettingsView() }.tabItem { Label("Réglages", systemImage: "gearshape") }.tag(AppModel.Destination.settings)
+            NavigationStack { ExportView() }.tabItem { Label("Export", systemImage: "square.and.arrow.up") }.tag(AppModel.Destination.export)
         }
         #endif
     }
@@ -46,6 +47,7 @@ struct RootView: View {
         case .day: DayView()
         case .analysis: AnalysisView()
         case .settings: SettingsView()
+        case .export: ExportView()
         }
     }
 }

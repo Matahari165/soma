@@ -12,6 +12,7 @@ final class AppModel {
         case day = "Jour"
         case analysis = "Strongest Effects"
         case settings = "Réglages"
+        case export = "Export"
         var id: Self { self }
     }
 
@@ -51,6 +52,7 @@ final class AppModel {
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
             if ProcessInfo.processInfo.arguments.contains("--preview-settings") { destination = .settings }
+            if ProcessInfo.processInfo.arguments.contains("--preview-export") { destination = .export }
             isBootstrapping = false
         }
     }
