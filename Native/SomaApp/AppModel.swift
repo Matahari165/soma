@@ -44,6 +44,7 @@ final class AppModel {
     var isSleepLoading = false
     var sleepErrorMessage: String?
     var recovery: NativeRecoveryResponse?
+    var currentUser: SessionUser?
     var currentSession: DeviceSession?
     var deviceSessions: [DeviceSession] = []
     var mealDrafts: [MealType: MealDraft] = [:]
@@ -61,6 +62,11 @@ final class AppModel {
     var sessionsErrorMessage: String?
     var isLoadingSessions = false
     var revokingSessionIDs: Set<String> = []
+    var hasCompletedOnboarding = true
+    var isSavingOnboarding = false
+    var onboardingErrorMessage: String?
+    var isDeletingAccount = false
+    var accountDeletionErrorMessage: String?
 
     private let client: APIClient
     private let googleAuthenticationSession = GoogleAuthenticationSession()
@@ -86,6 +92,9 @@ final class AppModel {
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
+            if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
+                hasCompletedOnboarding = false
+            }
             if ProcessInfo.processInfo.arguments.contains("--preview-settings") {
                 destination = .settings
             } else if ProcessInfo.processInfo.arguments.contains("--health-preview") {
@@ -114,7 +123,10 @@ final class AppModel {
             let context = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
             authenticationGeneration += 1
             isAuthenticated = true
+            currentUser = context.user
             currentSession = context.session
+            hasCompletedOnboarding = context.hasCompletedOnboarding
+            guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
             await restoreMealDrafts()
         }
@@ -142,7 +154,10 @@ final class AppModel {
             let context = try await client.completeGoogleLogin(callbackURL: callbackURL, callbackScheme: callbackScheme, deviceName: deviceName, attempt: attempt)
             authenticationGeneration += 1
             isAuthenticated = true
+            currentUser = context.user
             currentSession = context.session
+            hasCompletedOnboarding = context.hasCompletedOnboarding
+            guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
             await restoreMealDrafts()
         } catch NativeOAuthError.cancelled {
@@ -173,8 +188,11 @@ final class AppModel {
             }
             let context = try await client.sessionContext()
             authenticationGeneration += 1
+            currentUser = context.user
             currentSession = context.session
             isAuthenticated = true
+            hasCompletedOnboarding = context.hasCompletedOnboarding
+            guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
             await restoreMealDrafts()
         } catch APIError.unauthorized {
@@ -264,6 +282,48 @@ final class AppModel {
             expireLocalSession()
         } catch {
             sessionsErrorMessage = "Cet appareil n’a pas pu être déconnecté. Réessaie."
+        }
+    }
+
+    func completeOnboarding(_ request: OnboardingRequest) async -> Bool {
+        guard !isSavingOnboarding else { return false }
+        isSavingOnboarding = true
+        onboardingErrorMessage = nil
+        defer { isSavingOnboarding = false }
+        do {
+            try await client.completeOnboarding(request)
+            if let context = try? await client.sessionContext() {
+                currentUser = context.user
+                currentSession = context.session
+            }
+            try await refreshDay()
+            await restoreMealDrafts()
+            hasCompletedOnboarding = true
+            return true
+        } catch APIError.unauthorized {
+            expireLocalSession()
+            return false
+        } catch {
+            onboardingErrorMessage = "Le profil n’a pas pu être enregistré. Vérifie ta connexion puis réessaie."
+            return false
+        }
+    }
+
+    func deleteAccount(confirmation: String) async -> Bool {
+        guard !isDeletingAccount else { return false }
+        isDeletingAccount = true
+        accountDeletionErrorMessage = nil
+        defer { isDeletingAccount = false }
+        do {
+            try await client.deleteAccount(confirmation: confirmation)
+            clearAuthenticatedState()
+            return true
+        } catch APIError.unauthorized {
+            expireLocalSession()
+            return false
+        } catch {
+            accountDeletionErrorMessage = "Le compte n’a pas pu être supprimé. Aucune suppression partielle n’est confirmée. Réessaie plus tard."
+            return false
         }
     }
 
@@ -594,6 +654,8 @@ final class AppModel {
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
         isAuthenticated = false
+        currentUser = nil
+        hasCompletedOnboarding = true
         day = nil
         matrix = nil
         loadedAnalysisPeriod = nil
@@ -637,6 +699,8 @@ final class AppModel {
         invalidateSleep()
         effortRequestGeneration += 1
         isAuthenticated = false
+        currentUser = nil
+        hasCompletedOnboarding = true
         currentSession = nil
         deviceSessions = []
         day = nil
@@ -655,9 +719,31 @@ final class AppModel {
         errorMessage = "La session a expiré. Reconnecte-toi."
     }
 
+    private func clearAuthenticatedState() {
+        invalidateSleep()
+        authenticationGeneration += 1
+        dayRequestGeneration += 1
+        journalSaveGeneration += 1
+        sessionsRequestGeneration += 1
+        effortRequestGeneration += 1
+        isAuthenticated = false
+        currentUser = nil
+        currentSession = nil
+        hasCompletedOnboarding = true
+        deviceSessions = []
+        day = nil
+        matrix = nil
+        recovery = nil
+        mealDrafts = [:]
+        mealHistory = []
+        mealDetails = [:]
+        effortState = .idle
+    }
+
     private func loadSyntheticPreview() {
         authenticationGeneration += 1
         isAuthenticated = true
+        currentUser = SessionUser(id: "preview-user", email: "jeremy@example.test", displayName: "Jérémy")
         day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
         loadedAnalysisPeriod = "30"

@@ -18,7 +18,11 @@ public actor APIClient {
         let request = try request(path: "/api/native/v1/auth/login", method: "POST", body: LoginRequest(email: email, password: password, platform: platform, deviceName: deviceName), authenticated: false)
         let response: LoginResponse = try await perform(request)
         try tokenStore.save(response.token)
-        return SessionResponse(user: response.user, session: response.session)
+        return SessionResponse(
+            user: response.user,
+            session: response.session,
+            hasCompletedOnboarding: response.hasCompletedOnboarding
+        )
     }
 
     public func googleAuthenticationURL(platform: String, attempt: NativeOAuthAttempt) throws -> URL {
@@ -45,7 +49,11 @@ public actor APIClient {
         request.timeoutInterval = 15
         let response: LoginResponse = try await perform(request)
         try tokenStore.save(response.token)
-        return SessionResponse(user: response.user, session: response.session)
+        return SessionResponse(
+            user: response.user,
+            session: response.session,
+            hasCompletedOnboarding: response.hasCompletedOnboarding
+        )
     }
 
     public func day(_ date: LocalDate) async throws -> NativeDayResponse {
@@ -73,6 +81,22 @@ public actor APIClient {
     public func revokeDeviceSession(id: String) async throws {
         let request = try request(path: "/api/native/v1/auth/sessions/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true)
         let _: EmptyResponse = try await perform(request)
+    }
+
+    public func completeOnboarding(_ body: OnboardingRequest) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/onboarding", method: "POST", body: body, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func deleteAccount(confirmation: String) async throws {
+        let response: EmptyResponse = try await perform(request(
+            path: "/api/native/v1/account",
+            method: "DELETE",
+            body: AccountDeletionRequest(confirmation: confirmation),
+            authenticated: true
+        ))
+        guard response.ok else { throw APIError.invalidResponse }
+        try tokenStore.clear()
     }
 
     public func matrix(period: String) async throws -> NativeMatrixResponse {
@@ -275,6 +299,7 @@ private struct MealPhotoOriginRequest: Codable, Sendable { let origin: MealPhoto
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
 private struct NativeOAuthExchangeRequest: Encodable { let code: String; let codeVerifier: String; let deviceName: String }
 private struct EmptyResponse: Decodable { let ok: Bool }
+private struct AccountDeletionRequest: Encodable { let confirmation: String }
 
 public enum APIError: Error, Equatable, Sendable {
     case invalidURL

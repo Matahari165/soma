@@ -34,13 +34,36 @@ private struct EmptyTokenStore: TokenStore {
 }
 
 @Test func sessionEnvelopeIdentifiesCurrentDeviceAndDates() throws {
-    let json = #"{"user":{"id":"user","email":null,"displayName":"Test User"},"session":{"id":"current-session","platform":"macos","deviceName":"Test Mac","createdAt":"2026-09-19T12:00:00.000Z","expiresAt":"2026-10-19T12:00:00.000Z"}}"#
+    let json = #"{"user":{"id":"user","email":null,"displayName":"Test User"},"session":{"id":"current-session","platform":"macos","deviceName":"Test Mac","createdAt":"2026-09-19T12:00:00.000Z","expiresAt":"2026-10-19T12:00:00.000Z"},"hasCompletedOnboarding":true}"#
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     let response = try decoder.decode(SessionResponse.self, from: Data(json.utf8))
     #expect(response.session.id == "current-session")
     #expect(response.session.platform == .macos)
     #expect(response.user.email == nil)
+    #expect(response.hasCompletedOnboarding)
+}
+
+@Test func onboardingRequestEncodesServerContract() throws {
+    let request = OnboardingRequest(
+        displayName: "Test",
+        dateOfBirth: "1999-09-19",
+        heightCm: 178,
+        weightKg: 72,
+        sexForHealthCalculations: .preferNotToSay,
+        primaryGoal: .maintainHealth,
+        baseSleepTargetMinutes: 510,
+        usualWakeTime: "07:00",
+        importRange: .allHistory,
+        timezone: "Europe/Zurich"
+    )
+    let object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+    #expect(object["sexForHealthCalculations"] as? String == "prefer_not_to_say")
+    #expect(object["primaryGoal"] as? String == "maintain_health")
+    #expect(object["importRange"] as? String == "all_history")
+    #expect(object["selectedHabits"] as? [String] == [])
+    #expect(object.keys.contains("secondaryGoal"))
+    #expect(object["secondaryGoal"] is NSNull)
 }
 
 @Test func activeSessionsKeepDifferentPlatformsDistinct() throws {
