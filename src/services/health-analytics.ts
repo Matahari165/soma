@@ -398,12 +398,14 @@ export function heartRateWindowForCivilDate(civilDate: string, timeZone: string)
   return start && end ? { start: start.toISOString(), end: end.toISOString() } : null;
 }
 
-async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
-  if (isLocalPreviewMode()) return buildPreviewAnalytics();
-  const user = await getCurrentUser();
+async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?: string): Promise<HealthAnalytics> {
+  if (!explicitUserId && isLocalPreviewMode()) return buildPreviewAnalytics();
+  const user = explicitUserId ? { id: explicitUserId } : await getCurrentUser();
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [], effortTargets: effortScoreTargets(), effortTargetSource: "fallback" };
-  const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
+  // Native Bearer sessions have no Web cookie. Their authenticated routes use
+  // the server-side client with an explicit, already-authorized user id.
+  const supabase = explicitUserId ? admin : await createCloudflareServerClient();
   // Detail reads are useful context, but the daily metrics and persisted scores
   // are the primary page data. Start every read immediately, then give the
   // secondary reads a short budget so one stalled chart cannot hold the page.
@@ -549,4 +551,5 @@ export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
 export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
+export function getNativeActivityAnalytics(userId: string) { return loadHealthAnalytics("activity", userId); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }
