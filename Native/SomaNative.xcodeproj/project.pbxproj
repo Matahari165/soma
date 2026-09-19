@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
 		1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		19187394B87FFE1385037AA6 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
@@ -19,6 +20,7 @@
 		8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
 		960661874553A56D0D829517 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
+		B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		B7FF3271D30928FA4578CCDD /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = E5345FF1514A80610454C58E /* SomaCore */; };
 		D17F44F4F30638054D488065 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
 		F1493FB8A94EAE93A804FEEB /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 956FC67FF5EAA7C4AF90091E /* SomaCore */; };
@@ -29,6 +31,7 @@
 		1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SomaApp.swift; sourceTree = "<group>"; };
 		224766560DE9DD880F8B8101 /* DayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayView.swift; sourceTree = "<group>"; };
 		366C20FFC5747948E9D5D7BE /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		3CE784A6E3FC335F901CB868 /* MealEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditorView.swift; sourceTree = "<group>"; };
 		492A88C4D9678A2D190181FF /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		4F3029B284D51EBBA0D24E58 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Soma-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -67,6 +70,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		2AC2C282B7DA0D90C64263B2 /* Meals */ = {
+			isa = PBXGroup;
+			children = (
+				3CE784A6E3FC335F901CB868 /* MealEditorView.swift */,
+			);
+			path = Meals;
+			sourceTree = "<group>";
+		};
 		93F83F584100C0A6898372D5 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -85,6 +96,7 @@
 				A9579222E401A8B593A9A8E4 /* RootView.swift */,
 				1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */,
 				4F3029B284D51EBBA0D24E58 /* Theme.swift */,
+				2AC2C282B7DA0D90C64263B2 /* Meals */,
 			);
 			path = SomaApp;
 			sourceTree = "<group>";
@@ -190,6 +202,7 @@
 				19187394B87FFE1385037AA6 /* AppModel.swift in Sources */,
 				1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */,
 				960661874553A56D0D829517 /* LoginView.swift in Sources */,
+				B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */,
 				6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */,
 				2D01BE1E83D2B896C791BEF9 /* SomaApp.swift in Sources */,
 				1FAE0E20DC49147233239076 /* Theme.swift in Sources */,
@@ -204,6 +217,7 @@
 				328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */,
 				8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */,
 				8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */,
+				025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */,
 				4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */,
 				93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */,
 				D17F44F4F30638054D488065 /* Theme.swift in Sources */,

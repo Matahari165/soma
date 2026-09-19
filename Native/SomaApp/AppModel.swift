@@ -15,21 +15,28 @@ final class AppModel {
     var activeDate: LocalDate
     var day: NativeDayResponse?
     var matrix: NativeMatrixResponse?
+    var mealDrafts: [MealType: MealDraft] = [:]
     var isAuthenticated = false
     var isBootstrapping = true
     var isLoading = false
     var errorMessage: String?
 
     private let client: APIClient
+    private let mealDraftStore: MealDraftStore?
+    private let mealCoordinator: MealSubmissionCoordinator?
     private var dayRequestGeneration = 0
     private var journalSaveGeneration = 0
 
     init() {
         activeDate = (try? LocalDate.today()) ?? (try! LocalDate("2026-09-19"))
-        client = APIClient(
+        let client = APIClient(
             baseURL: URL(string: "https://soma-neon-phi.vercel.app")!,
             tokenStore: KeychainTokenStore()
         )
+        self.client = client
+        let store = try? MealDraftStore()
+        mealDraftStore = store
+        mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
             isBootstrapping = false
@@ -48,6 +55,7 @@ final class AppModel {
             _ = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
             isAuthenticated = true
             try await refreshDay()
+            await restoreMealDrafts()
         }
     }
 
@@ -58,6 +66,7 @@ final class AppModel {
             _ = try await client.currentSession()
             isAuthenticated = true
             try await refreshDay()
+            await restoreMealDrafts()
         } catch APIError.unauthorized {
             isAuthenticated = false
         } catch {
@@ -90,12 +99,121 @@ final class AppModel {
         defer { isLoading = false }
         do {
             let response = try await client.day(shifted)
-            if generation == dayRequestGeneration, activeDate == shifted, response.date == shifted.rawValue { day = response }
+            if generation == dayRequestGeneration, activeDate == shifted, response.date == shifted.rawValue {
+                day = response
+                await restoreMealDrafts()
+            }
         } catch APIError.unauthorized {
             isAuthenticated = false
             errorMessage = "La session a expiré. Reconnecte-toi."
         } catch {
             if activeDate == shifted { errorMessage = "Cette journée n'a pas pu être chargée." }
+        }
+    }
+
+    func openMeal(_ type: MealType) async {
+        if mealDrafts[type] == nil {
+            let summary = mealSummary(type)
+            var draft = MealDraft(
+                mealDate: activeDate.rawValue,
+                mealType: type,
+                note: summary?.note,
+                entryState: summary?.entryState == "skipped" ? .skipped : .recorded
+            )
+            draft.remoteMealId = summary?.id
+            mealDrafts[type] = draft
+            await persistMealDraft(type)
+        }
+    }
+
+    func setMealNote(_ note: String, for type: MealType) async {
+        guard var draft = mealDrafts[type] else { return }
+        draft.note = String(note.prefix(500))
+        draft.stage = .local
+        draft.lastError = nil
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func setMealSkipped(_ skipped: Bool, for type: MealType) async {
+        guard var draft = mealDrafts[type] else { return }
+        draft.entryState = skipped ? .skipped : .recorded
+        draft.stage = .local
+        draft.lastError = nil
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func addMealPhoto(sourceURL: URL, filename: String, mimeType: String, to type: MealType) async throws {
+        guard var draft = mealDrafts[type], draft.photos.count < 6 else { return }
+        let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appending(path: "Soma/MealDraftPhotos/\(draft.id.uuidString.lowercased())", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        let ext = sourceURL.pathExtension.isEmpty ? (mimeType == "image/png" ? "png" : "jpg") : sourceURL.pathExtension.lowercased()
+        let destination = base.appending(path: "\(UUID().uuidString.lowercased()).\(ext)")
+        try FileManager.default.copyItem(at: sourceURL, to: destination)
+        draft.photos.append(MealDraftPhoto(fileURL: destination, filename: filename, mimeType: mimeType, origin: .unknown))
+        draft.stage = .local
+        draft.lastError = nil
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func setPhotoOrigin(_ origin: MealPhotoOrigin, photoID: UUID, for type: MealType) async {
+        guard var draft = mealDrafts[type], let index = draft.photos.firstIndex(where: { $0.id == photoID }) else { return }
+        draft.photos[index].origin = origin
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func removeMealPhoto(_ photoID: UUID, from type: MealType) async {
+        guard var draft = mealDrafts[type], let photo = draft.photos.first(where: { $0.id == photoID }) else { return }
+        try? FileManager.default.removeItem(at: photo.fileURL)
+        draft.photos.removeAll { $0.id == photoID }
+        draft.uploadedPhotoDraftIDs.remove(photoID)
+        draft.stage = .local
+        mealDrafts[type] = draft
+        await persistMealDraft(type)
+    }
+
+    func submitMeal(_ type: MealType) async {
+        guard let coordinator = mealCoordinator, let draft = mealDrafts[type] else { return }
+        do {
+            var current = try await coordinator.submit(draft)
+            mealDrafts[type] = current
+            while current.stage == .polling {
+                try await Task.sleep(for: .seconds(2))
+                current = try await coordinator.refresh(current)
+                mealDrafts[type] = current
+            }
+            if current.stage == .completed { try? await refreshDay() }
+        } catch APIError.unauthorized {
+            isAuthenticated = false
+            errorMessage = "La session a expiré. Reconnecte-toi."
+        } catch {
+            if let restored = try? await mealDraftStore?.load(draft.id) { mealDrafts[type] = restored }
+        }
+    }
+
+    private func restoreMealDrafts() async {
+        guard let drafts = try? await mealDraftStore?.loadAll() else { return }
+        mealDrafts = drafts
+            .filter { $0.mealDate == activeDate.rawValue }
+            .reduce(into: [:]) { result, draft in result[draft.mealType] = draft }
+    }
+
+    private func persistMealDraft(_ type: MealType) async {
+        guard let draft = mealDrafts[type] else { return }
+        try? await mealDraftStore?.save(draft)
+    }
+
+    private func mealSummary(_ type: MealType) -> MealSummary? {
+        guard let meals = day?.meals else { return nil }
+        switch type {
+        case .breakfast: return meals.breakfast
+        case .lunch: return meals.lunch
+        case .dinner: return meals.dinner
+        case .snack: return meals.snack
         }
     }
 
@@ -121,6 +239,7 @@ final class AppModel {
         isAuthenticated = false
         day = nil
         matrix = nil
+        mealDrafts = [:]
         isLoading = false
     }
 

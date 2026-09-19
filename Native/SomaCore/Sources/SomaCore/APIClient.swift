@@ -40,6 +40,52 @@ public actor APIClient {
         return response.day
     }
 
+    public func createMeal(from draft: MealDraft) async throws -> MealMutationResponse {
+        let body = MealCreateRequest(mealDate: draft.mealDate, mealType: draft.mealType, note: draft.note, entryState: draft.entryState, mouthWarmthIntensity: draft.mouthWarmthIntensity, stomachOverfullIntensity: draft.stomachOverfullIntensity, idempotencyKey: draft.createIdempotencyKey)
+        var request = try request(path: "/api/native/v1/meals", method: "POST", body: body, authenticated: true)
+        request.setValue(draft.createIdempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        return try await perform(request)
+    }
+
+    public func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse {
+        try await perform(request(path: "/api/native/v1/meals/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func uploadMealPhotos(mealID: String, photos: [MealDraftPhoto], idempotencyKey: String) async throws -> MealPhotosResponse {
+        let boundary = "SomaBoundary-\(UUID().uuidString)"
+        let multipartFile = FileManager.default.temporaryDirectory.appending(path: "soma-upload-\(UUID().uuidString).multipart")
+        FileManager.default.createFile(atPath: multipartFile.path, contents: nil)
+        defer { try? FileManager.default.removeItem(at: multipartFile) }
+        let output = try FileHandle(forWritingTo: multipartFile)
+        defer { try? output.close() }
+        for (index, photo) in photos.enumerated() {
+            try output.write(contentsOf: Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"origin_\(index)\"\r\n\r\n\(photo.origin.rawValue)\r\n".utf8))
+            try output.write(contentsOf: Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"photos\"; filename=\"\(safeFilename(photo.filename))\"\r\nContent-Type: \(photo.mimeType)\r\n\r\n".utf8))
+            try streamFile(photo.fileURL, to: output)
+            try output.write(contentsOf: Data("\r\n".utf8))
+        }
+        try output.write(contentsOf: Data("--\(boundary)--\r\n".utf8))
+        try output.synchronize()
+        try output.close()
+        var request = try request(path: "/api/native/v1/meals/\(pathComponent(mealID))/photos", body: Optional<String>.none, authenticated: true)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        return try await performUpload(request, fromFile: multipartFile)
+    }
+
+    public func requestMealAnalysis(mealID: String, idempotencyKey: String, force: Bool = false) async throws -> MealAnalysisResponse {
+        var request = try request(path: "/api/native/v1/meals/\(pathComponent(mealID))/analysis", method: "POST", body: MealAnalysisRequest(force: force, idempotencyKey: idempotencyKey), authenticated: true)
+        request.setValue(idempotencyKey, forHTTPHeaderField: "X-Analysis-Request-Id")
+        return try await perform(request)
+    }
+
+    public func mealAnalysisStatus(mealID: String, requestID: String? = nil) async throws -> MealAnalysisResponse {
+        var request = try request(path: "/api/native/v1/meals/\(pathComponent(mealID))/analysis", body: Optional<String>.none, authenticated: true)
+        if let requestID { request.setValue(requestID, forHTTPHeaderField: "X-Analysis-Request-Id") }
+        return try await perform(request)
+    }
+
     public func logout() async throws {
         let request = try request(path: "/api/native/v1/auth/session", method: "DELETE", body: Optional<String>.none, authenticated: true)
         var remoteError: Error?
@@ -72,6 +118,15 @@ public actor APIClient {
 
     private func perform<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let (data, response) = try await session.data(for: request)
+        return try decode(data: data, response: response, request: request)
+    }
+
+    private func performUpload<Response: Decodable>(_ request: URLRequest, fromFile fileURL: URL) async throws -> Response {
+        let (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        return try decode(data: data, response: response, request: request)
+    }
+
+    private func decode<Response: Decodable>(data: Data, response: URLResponse, request: URLRequest) throws -> Response {
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         if http.statusCode == 401 {
             let sentToken = request.value(forHTTPHeaderField: "Authorization")?.dropFirst("Bearer ".count)
@@ -83,7 +138,39 @@ public actor APIClient {
         guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
         return try JSONDecoder().decode(Response.self, from: data)
     }
+
+    private func pathComponent(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? value
+    }
+
+    private func safeFilename(_ value: String) -> String {
+        value.replacingOccurrences(of: "\"", with: "_").replacingOccurrences(of: "\r", with: "_").replacingOccurrences(of: "\n", with: "_")
+    }
+
+    private func streamFile(_ fileURL: URL, to output: FileHandle) throws {
+        let input = try FileHandle(forReadingFrom: fileURL)
+        defer { try? input.close() }
+        while let chunk = try input.read(upToCount: 1_048_576), !chunk.isEmpty { try output.write(contentsOf: chunk) }
+    }
 }
+
+public struct MealUpdateRequest: Codable, Equatable, Sendable {
+    public var mealDate: String?; public var mealType: MealType?; public var note: String?; public var status: MealStatus?; public var entryState: MealEntryState?; public var mouthWarmthIntensity: Int?; public var stomachOverfullIntensity: Int?
+    public init(mealDate: String? = nil, mealType: MealType? = nil, note: String? = nil, status: MealStatus? = nil, entryState: MealEntryState? = nil, mouthWarmthIntensity: Int? = nil, stomachOverfullIntensity: Int? = nil) {
+        self.mealDate = mealDate; self.mealType = mealType; self.note = note; self.status = status; self.entryState = entryState; self.mouthWarmthIntensity = mouthWarmthIntensity; self.stomachOverfullIntensity = stomachOverfullIntensity
+    }
+}
+
+public struct MealMutationResponse: Codable, Sendable { public let meal: Meal; public let created: Bool? }
+public struct MealPhotosResponse: Codable, Sendable { public let photos: [MealPhoto] }
+public struct MealAnalysisResponse: Codable, Sendable {
+    public let analysis: MealAnalysisRecord?; public let meal: Meal?; public let fresh: Bool?; public let queued: Bool?; public let requestId: String?
+}
+
+private struct MealCreateRequest: Codable, Sendable {
+    let mealDate: String; let mealType: MealType; let note: String?; let entryState: MealEntryState; let mouthWarmthIntensity: Int?; let stomachOverfullIntensity: Int?; let idempotencyKey: String
+}
+private struct MealAnalysisRequest: Codable, Sendable { let force: Bool; let idempotencyKey: String }
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
 private struct EmptyResponse: Decodable { let ok: Bool }

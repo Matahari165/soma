@@ -75,6 +75,54 @@ public struct MealSummary: Codable, Identifiable, Equatable, Sendable {
     public let note: String?
 }
 
+public enum MealType: String, Codable, CaseIterable, Sendable { case breakfast, lunch, dinner, snack }
+public enum MealEntryState: String, Codable, Sendable { case recorded, skipped }
+public enum MealStatus: String, Codable, Sendable { case draft, confirmed }
+public enum MealPhotoOrigin: String, Codable, Sendable { case homemade, prepared, mixed, unknown }
+
+public struct MealPhoto: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public let mealId: String
+    public let origin: MealPhotoOrigin
+    public let mimeType: String
+    public let bytes: Int
+    public let filename: String?
+    public let createdAt: String
+    public let storageStatus: String?
+    public let purgedAt: String?
+    public let url: String?
+}
+
+public struct MealAnalysisRecord: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public let mealId: String
+    public let status: String
+    public let provider: String
+    public let model: String
+    public let result: JSONValue?
+    public let error: String?
+    public let errorCode: String?
+    public let sourcePhotoIds: [String]
+    public let createdAt: String
+    public let completedAt: String?
+}
+
+public struct Meal: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public let mealDate: String
+    public let mealType: MealType
+    public let note: String?
+    public let status: MealStatus
+    public let entryState: MealEntryState
+    public let mouthWarmthIntensity: Int?
+    public let stomachOverfullIntensity: Int?
+    public let createdAt: String
+    public let updatedAt: String
+    public let photos: [MealPhoto]
+    public let analysis: MealAnalysisRecord?
+    public let lastSuccessfulAnalysis: MealAnalysisRecord?
+}
+
 public struct MealSlots: Codable, Equatable, Sendable {
     public let breakfast: MealSummary?
     public let lunch: MealSummary?

@@ -42,3 +42,23 @@ import Testing
     let decoded = try JSONDecoder().decode(JournalSaveRequest.self, from: JSONEncoder().encode(request))
     #expect(decoded.entries.map(\.value) == [.number(0), .bool(false), .null])
 }
+
+@Test func mealDraftKeepsStableOperationKeysAcrossPersistence() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let draft = MealDraft(mealDate: "2026-09-19", mealType: .dinner)
+    try await store.save(draft)
+    let loaded = try await store.load(draft.id)
+    #expect(loaded?.createIdempotencyKey == draft.createIdempotencyKey)
+    #expect(loaded?.uploadIdempotencyKey == draft.uploadIdempotencyKey)
+    #expect(loaded?.analysisIdempotencyKey == draft.analysisIdempotencyKey)
+}
+
+@Test func skippedDraftRemainsDistinctFromAbsentFeelings() throws {
+    let draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, entryState: .skipped)
+    let decoded = try JSONDecoder().decode(MealDraft.self, from: JSONEncoder().encode(draft))
+    #expect(decoded.entryState == .skipped)
+    #expect(decoded.mouthWarmthIntensity == nil)
+    #expect(decoded.stomachOverfullIntensity == nil)
+}

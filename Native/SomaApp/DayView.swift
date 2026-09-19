@@ -4,6 +4,7 @@ import SomaCore
 struct DayView: View {
     @Environment(AppModel.self) private var model
     @State private var journalDraft: [String: String] = [:]
+    @State private var mealEditor: MealEditorTarget?
 
     var body: some View {
         ScrollView {
@@ -17,6 +18,9 @@ struct DayView: View {
         }
         .navigationTitle("Jour")
         .task(id: model.day?.date) { loadDraft() }
+        .sheet(item: $mealEditor) { target in
+            MealEditorView(mealType: target.type)
+        }
     }
 
     private var dateHeader: some View {
@@ -56,20 +60,38 @@ struct DayView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Repas").font(.system(.title2, design: .serif))
             if let slots = model.day?.meals {
-                ForEach(slots.ordered, id: \.0) { label, meal in
-                    HStack {
-                        Text(label)
+                ForEach(mealRows(slots), id: \.type) { row in
+                    Button {
+                        Task {
+                            await model.openMeal(row.type)
+                            mealEditor = MealEditorTarget(type: row.type)
+                        }
+                    } label: {
+                        HStack {
+                        Text(row.label)
                         Spacer()
-                        if let meal {
+                        if let meal = row.meal {
                             Text(meal.entryState == "skipped" ? "Ignoré" : meal.status == "confirmed" ? "Confirmé" : "Brouillon")
                                 .foregroundStyle(meal.entryState == "skipped" ? SomaTheme.warning : SomaTheme.primary)
                         } else { Text("Absent").foregroundStyle(SomaTheme.secondary) }
+                        Image(systemName: "chevron.right").foregroundStyle(SomaTheme.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
                     .frame(minHeight: 44)
-                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(row.label), \(row.meal?.entryState == "skipped" ? "ignoré" : row.meal?.status == "confirmed" ? "confirmé" : row.meal == nil ? "absent" : "brouillon")")
                 }
             }
         }
+    }
+
+    private func mealRows(_ slots: MealSlots) -> [(type: MealType, label: String, meal: MealSummary?)] {
+        [
+            (.breakfast, "Petit-déjeuner", slots.breakfast),
+            (.lunch, "Déjeuner", slots.lunch),
+            (.dinner, "Dîner", slots.dinner),
+            (.snack, "Collation", slots.snack),
+        ]
     }
 
     private func binding(for id: String) -> Binding<String> {
@@ -90,6 +112,11 @@ struct DayView: View {
             return (variable.id, text)
         })
     }
+}
+
+private struct MealEditorTarget: Identifiable {
+    let type: MealType
+    var id: String { type.rawValue }
 }
 
 private struct JournalEditorRow: View {
