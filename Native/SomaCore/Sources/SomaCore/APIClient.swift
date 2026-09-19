@@ -56,6 +56,10 @@ public actor APIClient {
         try await get(path: "/api/native/v1/effort")
     }
 
+    public func recovery() async throws -> NativeRecoveryResponse {
+        try await get(path: "/api/native/v1/recovery")
+    }
+
     public func saveJournal(_ body: JournalSaveRequest) async throws -> NativeDayResponse {
         let request = try request(path: "/api/native/v1/lab/journal", method: "PUT", body: body, authenticated: true)
         let response: JournalSaveResponse = try await perform(request)
