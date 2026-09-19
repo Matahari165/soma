@@ -12,6 +12,8 @@ struct RootView: View {
             .health
         } else if arguments.contains("--preview-meals") {
             .meals
+        } else if arguments.contains("--recovery-preview") {
+            .recovery
         } else if arguments.contains("--preview-export") {
             .export
         } else {
