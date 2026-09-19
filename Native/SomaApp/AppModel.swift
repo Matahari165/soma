@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import SomaCore
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 @Observable
@@ -8,14 +11,15 @@ final class AppModel {
     enum Destination: String, CaseIterable, Identifiable {
         case day = "Jour"
         case analysis = "Strongest Effects"
+        case settings = "Réglages"
         case health = "Santé"
         case export = "Export"
 
         static var allCases: [Destination] {
             #if os(iOS)
-            [.day, .analysis, .health, .export]
+            [.day, .analysis, .health, .export, .settings]
             #else
-            [.day, .analysis, .export]
+            [.day, .analysis, .export, .settings]
             #endif
         }
 
@@ -27,6 +31,8 @@ final class AppModel {
     var day: NativeDayResponse?
     var matrix: NativeMatrixResponse?
     var recovery: NativeRecoveryResponse?
+    var currentSession: DeviceSession?
+    var deviceSessions: [DeviceSession] = []
     var mealDrafts: [MealType: MealDraft] = [:]
     var isAuthenticated = false
     var isBootstrapping = true
@@ -34,12 +40,17 @@ final class AppModel {
     var isRecoveryLoading = false
     var errorMessage: String?
     var recoveryErrorMessage: String?
+    var sessionsErrorMessage: String?
+    var isLoadingSessions = false
+    var revokingSessionIDs: Set<String> = []
 
     private let client: APIClient
     private let mealDraftStore: MealDraftStore?
     private let mealCoordinator: MealSubmissionCoordinator?
     private var dayRequestGeneration = 0
     private var journalSaveGeneration = 0
+    private var sessionsRequestGeneration = 0
+    private var authenticationGeneration = 0
 
     init() {
         activeDate = (try? LocalDate.today()) ?? (try! LocalDate("2026-09-19"))
@@ -53,7 +64,9 @@ final class AppModel {
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
-            if ProcessInfo.processInfo.arguments.contains("--health-preview") {
+            if ProcessInfo.processInfo.arguments.contains("--preview-settings") {
+                destination = .settings
+            } else if ProcessInfo.processInfo.arguments.contains("--health-preview") {
                 destination = .health
             } else if ProcessInfo.processInfo.arguments.contains("--preview-export") {
                 destination = .export
@@ -69,10 +82,12 @@ final class AppModel {
             let deviceName = Host.current().localizedName ?? "Mac"
             #else
             let platform = "ios"
-            let deviceName = "iPhone"
+            let deviceName = UIDevice.current.name
             #endif
-            _ = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
+            let context = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
+            authenticationGeneration += 1
             isAuthenticated = true
+            currentSession = context.session
             try await refreshDay()
             await restoreMealDrafts()
         }
@@ -82,12 +97,18 @@ final class AppModel {
         guard !ProcessInfo.processInfo.arguments.contains("--preview-data") else { return }
         defer { isBootstrapping = false }
         do {
-            _ = try await client.currentSession()
+            guard try await client.hasAuthenticationToken() else {
+                isAuthenticated = false
+                return
+            }
+            let context = try await client.sessionContext()
+            authenticationGeneration += 1
+            currentSession = context.session
             isAuthenticated = true
             try await refreshDay()
             await restoreMealDrafts()
         } catch APIError.unauthorized {
-            isAuthenticated = false
+            expireLocalSession()
         } catch {
             errorMessage = "Soma est momentanément indisponible."
         }
@@ -104,19 +125,65 @@ final class AppModel {
     }
 
     func refreshAnalysis() async {
-        await perform { matrix = try await client.matrix(period: "30") }
+        let generation = authenticationGeneration
+        await perform {
+            let response = try await client.matrix(period: "30")
+            if generation == authenticationGeneration, isAuthenticated { matrix = response }
+        }
+    }
+
+    func refreshSessions() async {
+        guard !ProcessInfo.processInfo.arguments.contains("--preview-data") else { return }
+        sessionsRequestGeneration += 1
+        let generation = sessionsRequestGeneration
+        isLoadingSessions = true
+        sessionsErrorMessage = nil
+        defer { if generation == sessionsRequestGeneration { isLoadingSessions = false } }
+        do {
+            async let context = client.sessionContext()
+            async let sessions = client.deviceSessions()
+            let (newContext, newSessions) = try await (context, sessions)
+            guard generation == sessionsRequestGeneration else { return }
+            currentSession = newContext.session
+            deviceSessions = newSessions
+        } catch APIError.unauthorized {
+            guard generation == sessionsRequestGeneration else { return }
+            expireLocalSession()
+        } catch {
+            guard generation == sessionsRequestGeneration else { return }
+            sessionsErrorMessage = "Les appareils n’ont pas pu être chargés."
+        }
+    }
+
+    func revokeSession(_ session: DeviceSession) async {
+        guard session.id != currentSession?.id, !revokingSessionIDs.contains(session.id) else { return }
+        revokingSessionIDs.insert(session.id)
+        sessionsErrorMessage = nil
+        defer { revokingSessionIDs.remove(session.id) }
+        do {
+            try await client.revokeDeviceSession(id: session.id)
+            deviceSessions.removeAll { $0.id == session.id }
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch {
+            sessionsErrorMessage = "Cet appareil n’a pas pu être déconnecté. Réessaie."
+        }
     }
 
     func refreshRecovery() async {
+        let generation = authenticationGeneration
         isRecoveryLoading = true
         recoveryErrorMessage = nil
         defer { isRecoveryLoading = false }
         do {
-            recovery = try await client.recovery()
+            let response = try await client.recovery()
+            guard generation == authenticationGeneration, isAuthenticated else { return }
+            recovery = response
         } catch APIError.unauthorized {
-            isAuthenticated = false
-            recoveryErrorMessage = "La session a expiré. Reconnecte-toi."
+            guard generation == authenticationGeneration else { return }
+            expireLocalSession()
         } catch {
+            guard generation == authenticationGeneration else { return }
             recoveryErrorMessage = "Les données de récupération n’ont pas pu être chargées."
         }
     }
@@ -137,8 +204,7 @@ final class AppModel {
                 await restoreMealDrafts()
             }
         } catch APIError.unauthorized {
-            isAuthenticated = false
-            errorMessage = "La session a expiré. Reconnecte-toi."
+            expireLocalSession()
         } catch {
             if activeDate == shifted { errorMessage = "Cette journée n'a pas pu être chargée." }
         }
@@ -211,18 +277,20 @@ final class AppModel {
 
     func submitMeal(_ type: MealType) async {
         guard let coordinator = mealCoordinator, let draft = mealDrafts[type] else { return }
+        let generation = authenticationGeneration
         do {
             var current = try await coordinator.submit(draft)
+            guard generation == authenticationGeneration, isAuthenticated else { return }
             mealDrafts[type] = current
             while current.stage == .polling {
                 try await Task.sleep(for: .seconds(2))
                 current = try await coordinator.refresh(current)
+                guard generation == authenticationGeneration, isAuthenticated else { return }
                 mealDrafts[type] = current
             }
             if current.stage == .completed { try? await refreshDay() }
         } catch APIError.unauthorized {
-            isAuthenticated = false
-            errorMessage = "La session a expiré. Reconnecte-toi."
+            expireLocalSession()
         } catch {
             if let restored = try? await mealDraftStore?.load(draft.id) { mealDrafts[type] = restored }
         }
@@ -265,14 +333,20 @@ final class AppModel {
     }
 
     func logout() async {
+        authenticationGeneration += 1
+        dayRequestGeneration += 1
+        journalSaveGeneration += 1
+        sessionsRequestGeneration += 1
         isLoading = true
         errorMessage = nil
         do { try await client.logout() }
-        catch { errorMessage = "La session locale est fermée. La révocation distante sera retentée plus tard." }
+        catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
         isAuthenticated = false
         day = nil
         matrix = nil
         recovery = nil
+        currentSession = nil
+        deviceSessions = []
         mealDrafts = [:]
         isLoading = false
     }
@@ -283,18 +357,41 @@ final class AppModel {
         defer { isLoading = false }
         do { try await operation() }
         catch APIError.unauthorized {
-            isAuthenticated = false
-            errorMessage = "La session a expiré. Reconnecte-toi."
+            expireLocalSession()
         } catch {
             errorMessage = "Soma est momentanément indisponible."
         }
     }
 
+    private func expireLocalSession() {
+        authenticationGeneration += 1
+        dayRequestGeneration += 1
+        journalSaveGeneration += 1
+        sessionsRequestGeneration += 1
+        isAuthenticated = false
+        currentSession = nil
+        deviceSessions = []
+        day = nil
+        matrix = nil
+        recovery = nil
+        mealDrafts = [:]
+        isLoadingSessions = false
+        errorMessage = "La session a expiré. Reconnecte-toi."
+    }
+
     private func loadSyntheticPreview() {
+        authenticationGeneration += 1
         isAuthenticated = true
         day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
         recovery = try? JSONDecoder().decode(NativeRecoveryResponse.self, from: Data(Self.previewRecovery.utf8))
+        let now = Date()
+        let previewCurrentSession = DeviceSession(id: "preview-current", platform: Self.previewPlatform, deviceName: Self.previewDeviceName, createdAt: now.addingTimeInterval(-86_400), expiresAt: now.addingTimeInterval(2_505_600))
+        currentSession = previewCurrentSession
+        deviceSessions = [
+            previewCurrentSession,
+            DeviceSession(id: "preview-other", platform: .web, deviceName: "Safari sur MacBook Air", createdAt: now.addingTimeInterval(-604_800), expiresAt: now.addingTimeInterval(1_987_200)),
+        ]
     }
 
     private static func journalValue(_ text: String, type: String) -> JSONValue {
@@ -307,4 +404,12 @@ final class AppModel {
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"rows":[{"id":"walk","label":"Marche","relations":[{"predictorId":"walk","outcomeId":"sleep","predictorLabel":"Marche","outcomeLabel":"Sommeil","effect":0.34,"sampleSize":24,"effectConfidenceLow":0.11,"effectConfidenceHigh":0.57}]},{"id":"late-meal","label":"Repas tardif","relations":[{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","outcomeLabel":"Récupération","effect":-0.28,"sampleSize":21,"effectConfidenceLow":-0.49,"effectConfidenceHigh":-0.07}]}],"outcomes":[{"id":"sleep","label":"Sommeil","unit":"score"},{"id":"recovery","label":"Récupération","unit":"score"}],"periods":[30]}"#
     private static let previewRecovery = #"{"timezone":"Europe/Zurich","periodDays":30,"latestDate":"2026-09-19","freshness":{"measuredAt":"2026-09-19T07:10:00.000Z","importedAt":"2026-09-19T08:02:00.000Z","state":"current","coverage":1},"score":{"value":74,"reason":null,"average":69.4,"measuredDays":26,"coverage":1,"algorithmVersion":"recovery-v1","components":{"hrv":{"value":78,"weight":0.4},"restingHeartRate":{"value":72,"weight":0.3},"sleep":{"value":70,"weight":0.3}}},"signals":{"hrv":{"current":57,"reference":51.8,"measuredDays":27,"unit":"ms"},"restingHeartRate":{"current":56,"reference":59.2,"measuredDays":29,"unit":"bpm"}},"trends":{"hrv":[{"date":"2026-09-12","value":48},{"date":"2026-09-13","value":51},{"date":"2026-09-14","value":null},{"date":"2026-09-15","value":53},{"date":"2026-09-16","value":50},{"date":"2026-09-17","value":55},{"date":"2026-09-18","value":54},{"date":"2026-09-19","value":57}],"restingHeartRate":[{"date":"2026-09-12","value":61},{"date":"2026-09-13","value":60},{"date":"2026-09-14","value":null},{"date":"2026-09-15","value":59},{"date":"2026-09-16","value":58},{"date":"2026-09-17","value":58},{"date":"2026-09-18","value":57},{"date":"2026-09-19","value":56}]},"provenance":{"measurements":{"kind":"health_source","label":"Sources santé importées"},"score":{"kind":"soma_calculation","label":"Calcul Soma"}}}"#
+
+    #if os(macOS)
+    private static let previewPlatform: SessionPlatform = .macos
+    private static let previewDeviceName = "MacBook Air"
+    #else
+    private static let previewPlatform: SessionPlatform = .ios
+    private static let previewDeviceName = "iPhone"
+    #endif
 }
