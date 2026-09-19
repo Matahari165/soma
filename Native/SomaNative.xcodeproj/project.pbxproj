@@ -7,6 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000001 /* OnboardingDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* OnboardingDraft.swift */; };
+		A10000000000000000000002 /* OnboardingDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* OnboardingDraft.swift */; };
+		A10000000000000000000003 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* OnboardingView.swift */; };
+		A10000000000000000000004 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* OnboardingView.swift */; };
+		A10000000000000000000005 /* SettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* SettingsSection.swift */; };
+		A10000000000000000000006 /* SettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* SettingsSection.swift */; };
+		A10000000000000000000007 /* SettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* SettingsRows.swift */; };
+		A10000000000000000000008 /* SettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* SettingsRows.swift */; };
+		A10000000000000000000009 /* AccountDeletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* AccountDeletionView.swift */; };
+		A1000000000000000000000A /* AccountDeletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* AccountDeletionView.swift */; };
 		00F8B17425025E051CF7847D /* SleepContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6E96ACE20158CCD5C9C45C /* SleepContentView.swift */; };
 		025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
@@ -118,6 +128,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A20000000000000000000001 /* OnboardingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDraft.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* SettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSection.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* SettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRows.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* AccountDeletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletionView.swift; sourceTree = "<group>"; };
 		0524996CBB59F23CA5FEE7B4 /* MealEditorTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditorTarget.swift; sourceTree = "<group>"; };
 		06CD292F9F511616D2B37913 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		0B556D2FFD43188636F24906 /* RecoveryFactorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryFactorsView.swift; sourceTree = "<group>"; };
@@ -288,12 +303,15 @@
 		57FD5AEE46E51E22A033B652 /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				A20000000000000000000005 /* AccountDeletionView.swift */,
 				06CD292F9F511616D2B37913 /* ActivityView.swift */,
 				83CD7BCACDDEB77308BEC82E /* ContentStateView.swift */,
 				4EF8D471F07D6BE1743DE2B7 /* DomainInsightsView.swift */,
 				E8C00BB85429948B5334F59C /* MealsOverviewView.swift */,
 				EE49280B07228D4794AA3ABF /* ScreenScaffold.swift */,
 				F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */,
+				A20000000000000000000003 /* SettingsSection.swift */,
+				A20000000000000000000004 /* SettingsRows.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -304,6 +322,15 @@
 				385165A9FC4AE45F368DA7AB /* AppDestination.swift */,
 			);
 			path = Navigation;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000001 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* OnboardingDraft.swift */,
+				A20000000000000000000002 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		93F83F584100C0A6898372D5 /* Packages */ = {
@@ -332,6 +359,7 @@
 				18A371A40807DC6B676E6DD9 /* Health */,
 				2AC2C282B7DA0D90C64263B2 /* Meals */,
 				828FE7A661260687433AF38A /* Navigation */,
+				A30000000000000000000001 /* Onboarding */,
 				1EED474EDFF9918DF485655A /* Recovery */,
 				57FD5AEE46E51E22A033B652 /* Screens */,
 				211228A4E48982F6EA47FBBD /* Sleep */,
@@ -444,6 +472,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000009 /* AccountDeletionView.swift in Sources */,
 				44190D5494017F084647C798 /* ActivityView.swift in Sources */,
 				75BA14A8B010510C2062F95C /* AnalysisEffectsChart.swift in Sources */,
 				EDB61843BBAAA6813B7055A5 /* AnalysisRelationDetail.swift in Sources */,
@@ -470,6 +499,8 @@
 				B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */,
 				C7C47E17DEE389DAD7E93317 /* MealTimelineRow.swift in Sources */,
 				E38434484197AB899222F800 /* MealsOverviewView.swift in Sources */,
+				A10000000000000000000001 /* OnboardingDraft.swift in Sources */,
+				A10000000000000000000003 /* OnboardingView.swift in Sources */,
 				47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */,
 				C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */,
 				B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */,
@@ -483,6 +514,8 @@
 				6C1FA0BB044D1B97724C241F /* SegmentedBarChart.swift in Sources */,
 				DA9403437F137775B0FA25CB /* SegmentedBarChartContent.swift in Sources */,
 				99DB573D099599B98B3E02DD /* SettingsView.swift in Sources */,
+				A10000000000000000000005 /* SettingsSection.swift in Sources */,
+				A10000000000000000000007 /* SettingsRows.swift in Sources */,
 				365B00EE307C428E41491972 /* SleepContentView.swift in Sources */,
 				0B906C3E1355C2848C0FBAEA /* SleepEvidenceView.swift in Sources */,
 				C7B22591B69063525732C68E /* SleepFormatting.swift in Sources */,
@@ -504,6 +537,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1000000000000000000000A /* AccountDeletionView.swift in Sources */,
 				B6517F1BA7F662EDA98C2943 /* ActivityView.swift in Sources */,
 				F513BEAA0F6E19FC72309ECD /* AnalysisEffectsChart.swift in Sources */,
 				E156D42F450143C11701939B /* AnalysisRelationDetail.swift in Sources */,
@@ -530,6 +564,8 @@
 				025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */,
 				BDAE812A35AE59C7F42BA63D /* MealTimelineRow.swift in Sources */,
 				E4640FCB42E8ED0FA9C4628E /* MealsOverviewView.swift in Sources */,
+				A10000000000000000000002 /* OnboardingDraft.swift in Sources */,
+				A10000000000000000000004 /* OnboardingView.swift in Sources */,
 				C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */,
 				467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */,
 				B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */,
@@ -543,6 +579,8 @@
 				E58A8677B9834516366C666F /* SegmentedBarChart.swift in Sources */,
 				609D45E0F0A87953C1E3C375 /* SegmentedBarChartContent.swift in Sources */,
 				9A45C4C96A58A0102C2AC632 /* SettingsView.swift in Sources */,
+				A10000000000000000000006 /* SettingsSection.swift in Sources */,
+				A10000000000000000000008 /* SettingsRows.swift in Sources */,
 				00F8B17425025E051CF7847D /* SleepContentView.swift in Sources */,
 				B33E07AD9414399E5AD99849 /* SleepEvidenceView.swift in Sources */,
 				4F790CB4ABBE7208DB015DB5 /* SleepFormatting.swift in Sources */,
