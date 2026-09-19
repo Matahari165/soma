@@ -20,6 +20,7 @@
 		10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB5C0043159BF548CCC05F /* HealthViewModel.swift */; };
 		1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		15EE65F36CE0FDE9E3F85D0B /* SleepHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC1C2EFC68FE08E8C6D93A2 /* SleepHistoryView.swift */; };
+		16018040288AD6E26E50052A /* GoogleAuthenticationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1832D488AEC949F3DBC7F5CC /* GoogleAuthenticationSession.swift */; };
 		19187394B87FFE1385037AA6 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
 		1D24E019051004296FB79015 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D542C938708A05448081260E /* RecoveryView.swift */; };
 		1FAE0E20DC49147233239076 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
@@ -35,6 +36,7 @@
 		3418A4FC627B26B30A024666 /* AnalysisRelationList.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFBBF4424741EA3A44C381AA /* AnalysisRelationList.swift */; };
 		365B00EE307C428E41491972 /* SleepContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6E96ACE20158CCD5C9C45C /* SleepContentView.swift */; };
 		37F809F02362932220B12A51 /* SettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C22E12B0E7083618BDC870 /* SettingsRows.swift */; };
+		3869680A98E8414A2F49118E /* GoogleAuthenticationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1832D488AEC949F3DBC7F5CC /* GoogleAuthenticationSession.swift */; };
 		3C0F86898BD7E616F5D68A7F /* DomainInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF8D471F07D6BE1743DE2B7 /* DomainInsightsView.swift */; };
 		3CE7E4BB6D0FD9A3A9BC89AF /* ContentStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CD7BCACDDEB77308BEC82E /* ContentStateView.swift */; };
 		3EC11A10F0CB03CCE8F781B0 /* ScreenScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE49280B07228D4794AA3ABF /* ScreenScaffold.swift */; };
@@ -142,6 +144,7 @@
 		06CD292F9F511616D2B37913 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		08C9EE4851DC2732A71F5CA7 /* JournalVariableEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalVariableEditorView.swift; sourceTree = "<group>"; };
 		0B556D2FFD43188636F24906 /* RecoveryFactorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryFactorsView.swift; sourceTree = "<group>"; };
+		1832D488AEC949F3DBC7F5CC /* GoogleAuthenticationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthenticationSession.swift; sourceTree = "<group>"; };
 		18FEF1C739B5E8131DC19F56 /* SleepStagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStagesView.swift; sourceTree = "<group>"; };
 		1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SomaApp.swift; sourceTree = "<group>"; };
 		1C48E27CE5D2A6D84DDE4839 /* OnboardingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDraft.swift; sourceTree = "<group>"; };
@@ -377,6 +380,7 @@
 				366C20FFC5747948E9D5D7BE /* AnalysisView.swift */,
 				492A88C4D9678A2D190181FF /* AppModel.swift */,
 				224766560DE9DD880F8B8101 /* DayView.swift */,
+				1832D488AEC949F3DBC7F5CC /* GoogleAuthenticationSession.swift */,
 				F42CA9D77DB2222DF4BE9806 /* LoginView.swift */,
 				A9579222E401A8B593A9A8E4 /* RootView.swift */,
 				1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */,
@@ -517,6 +521,7 @@
 				3C0F86898BD7E616F5D68A7F /* DomainInsightsView.swift in Sources */,
 				6666584F2FD70D590D0CECAC /* ExportView.swift in Sources */,
 				924E28F5AE62ED26139BE128 /* ExportViewModel.swift in Sources */,
+				3869680A98E8414A2F49118E /* GoogleAuthenticationSession.swift in Sources */,
 				6579C7AC1F615B1C2516F68C /* HealthKitReader.swift in Sources */,
 				C0FC908AE42A0E3859B11150 /* HealthView.swift in Sources */,
 				777F450FFD9EA90020854304 /* HealthViewModel.swift in Sources */,
@@ -587,6 +592,7 @@
 				85DBED51CF77FCA256740787 /* DomainInsightsView.swift in Sources */,
 				EFB0D3ED7CF41E78BCFCA985 /* ExportView.swift in Sources */,
 				0E8F43B9A0547E484710605D /* ExportViewModel.swift in Sources */,
+				16018040288AD6E26E50052A /* GoogleAuthenticationSession.swift in Sources */,
 				CADCCA52F0C89CE311265D39 /* HealthKitReader.swift in Sources */,
 				7AC9A4BF61CC0EDF2720AABA /* HealthView.swift in Sources */,
 				10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */,
@@ -644,7 +650,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SomaApp/Info-macOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -661,11 +667,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SomaApp/Health/Soma-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Soma;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = "SomaApp/Info-iOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -682,7 +684,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SomaApp/Info-macOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -699,11 +701,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SomaApp/Health/Soma-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Soma;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = "SomaApp/Info-iOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
