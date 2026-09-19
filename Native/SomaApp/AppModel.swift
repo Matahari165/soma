@@ -8,6 +8,12 @@ import UIKit
 @MainActor
 @Observable
 final class AppModel {
+    enum JournalSaveState: Equatable {
+        case idle
+        case saving
+        case saved
+        case failed(String)
+    }
     enum EffortState {
         case idle
         case loading
@@ -35,6 +41,10 @@ final class AppModel {
     var destination: Destination = .day
     var activeDate: LocalDate
     var day: NativeDayResponse?
+    var journalDraft: JournalDraft?
+    var journalSaveState: JournalSaveState = .idle
+    var journalMutationIDs: Set<String> = []
+    var journalMutationErrorMessage: String?
     var matrix: NativeMatrixResponse?
     var analysisPeriod = "30"
     var loadedAnalysisPeriod: String?
@@ -78,6 +88,9 @@ final class AppModel {
     private var sessionsRequestGeneration = 0
     private var effortRequestGeneration = 0
     private var authenticationGeneration = 0
+    @ObservationIgnored private var journalAutosaveTask: Task<Void, Never>?
+    @ObservationIgnored private var journalSaveTail: Task<Void, Never>?
+    @ObservationIgnored private var failedJournalSave: (mode: String, variableIDs: Set<String>?)?
     private var analysisRequestGeneration = 0
 
     init() {
@@ -208,7 +221,7 @@ final class AppModel {
         let requestedDate = activeDate
         let response = try await client.day(requestedDate)
         if generation == dayRequestGeneration, activeDate == requestedDate, response.date == requestedDate.rawValue {
-            day = response
+            acceptDay(response)
         }
     }
 
@@ -391,6 +404,8 @@ final class AppModel {
         guard let shifted = try? activeDate.adding(days: days) else { return }
         activeDate = shifted
         day = nil
+        journalDraft = nil
+        journalAutosaveTask?.cancel()
         dayRequestGeneration += 1
         let generation = dayRequestGeneration
         isLoading = true
@@ -399,7 +414,7 @@ final class AppModel {
         do {
             let response = try await client.day(shifted)
             if generation == dayRequestGeneration, activeDate == shifted, response.date == shifted.rawValue {
-                day = response
+                acceptDay(response)
                 await restoreMealDrafts()
             }
         } catch APIError.unauthorized {
@@ -628,17 +643,120 @@ final class AppModel {
         }
     }
 
-    func saveJournal(values: [String: String]) async {
-        guard let currentDay = day else { return }
+    func setJournalValue(_ value: JSONValue, for variableID: String) {
+        guard var draft = journalDraft else { return }
+        draft.set(value, for: variableID)
+        journalDraft = draft
+        journalSaveGeneration += 1
+        journalSaveState = .idle
+        failedJournalSave = nil
+        scheduleJournalAutosave(variableID: variableID)
+    }
+
+    func validateJournal() async {
+        journalAutosaveTask?.cancel()
+        await enqueueJournalSave(mode: "validate", variableIDs: nil)
+    }
+
+    func retryJournalSave() {
+        guard let failedJournalSave else { return }
+        Task { await enqueueJournalSave(mode: failedJournalSave.mode, variableIDs: failedJournalSave.variableIDs) }
+    }
+
+    func createJournalVariable(_ request: JournalVariableCreateRequest) async -> Bool {
+        let mutationID = "new"
+        guard !journalMutationIDs.contains(mutationID) else { return false }
+        journalMutationIDs.insert(mutationID)
+        defer { journalMutationIDs.remove(mutationID) }
+        journalMutationErrorMessage = nil
+        do {
+            _ = try await client.createJournalVariable(request)
+            try await refreshDay()
+            return true
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch let APIError.server(_, message) {
+            journalMutationErrorMessage = message ?? "Cette habitude n’a pas pu être créée."
+        } catch {
+            journalMutationErrorMessage = "Cette habitude n’a pas pu être créée."
+        }
+        return false
+    }
+
+    func updateJournalVariable(_ request: JournalVariableUpdateRequest) async -> Bool {
+        await performJournalVariableUpdate(id: request.id) { try await self.client.updateJournalVariable(request) }
+    }
+
+    func updateJournalVariable(_ request: JournalVariableDefinitionUpdateRequest) async -> Bool {
+        await performJournalVariableUpdate(id: request.id) { try await self.client.updateJournalVariable(request) }
+    }
+
+    private func performJournalVariableUpdate(id: String, operation: () async throws -> JournalVariableMutationResponse) async -> Bool {
+        guard !journalMutationIDs.contains(id) else { return false }
+        journalMutationIDs.insert(id)
+        defer { journalMutationIDs.remove(id) }
+        journalMutationErrorMessage = nil
+        do {
+            _ = try await operation()
+            try await refreshDay()
+            return true
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch let APIError.server(_, message) {
+            journalMutationErrorMessage = message ?? "Cette habitude n’a pas pu être modifiée."
+        } catch {
+            journalMutationErrorMessage = "Cette habitude n’a pas pu être modifiée."
+        }
+        return false
+    }
+
+    private func scheduleJournalAutosave(variableID: String) {
+        scheduleJournalAutosave(variableIDs: [variableID], delay: .milliseconds(450))
+    }
+
+    private func scheduleJournalAutosave(variableIDs: Set<String>, delay: Duration) {
+        journalAutosaveTask?.cancel()
+        let requestedDate = activeDate
+        journalAutosaveTask = Task { [weak self] in
+            do { try await Task.sleep(for: delay) } catch { return }
+            guard !Task.isCancelled, let self, self.activeDate == requestedDate else { return }
+            await self.enqueueJournalSave(mode: "draft", variableIDs: variableIDs)
+        }
+    }
+
+    private func enqueueJournalSave(mode: String, variableIDs: Set<String>?) async {
+        let preceding = journalSaveTail
+        let task = Task { [weak self] in
+            if let preceding { await preceding.value }
+            guard !Task.isCancelled, let self else { return }
+            await self.persistJournal(mode: mode, variableIDs: variableIDs)
+        }
+        journalSaveTail = task
+        await task.value
+    }
+
+    private func persistJournal(mode: String, variableIDs: Set<String>?) async {
+        guard let currentDay = day, let draft = journalDraft else { return }
         journalSaveGeneration += 1
         let generation = journalSaveGeneration
         let requestedDate = activeDate
-        let entries = currentDay.variables.filter { $0.isActive && $0.captureMode != "automatic" }.map { variable in
-            JournalSaveEntry(variableId: variable.id, value: Self.journalValue(values[variable.id] ?? "", type: variable.variableType))
-        }
-        await perform {
-            let response = try await client.saveJournal(JournalSaveRequest(entryDate: requestedDate.rawValue, entries: entries))
-            if generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue { day = response }
+        let entries = draft.entries(for: currentDay.variables, only: variableIDs)
+        journalSaveState = .saving
+        do {
+            let response = try await client.saveJournal(JournalSaveRequest(entryDate: requestedDate.rawValue, mode: mode, entries: entries))
+            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return }
+            journalDraft?.mergeServer(response, acknowledging: entries)
+            day = response
+            if journalDraft == nil { journalDraft = JournalDraft(day: response) }
+            journalSaveState = .saved
+            failedJournalSave = nil
+        } catch APIError.unauthorized {
+            guard generation == journalSaveGeneration else { return }
+            expireLocalSession()
+        } catch {
+            guard generation == journalSaveGeneration, requestedDate == activeDate else { return }
+            journalSaveState = .failed(mode == "validate" ? "Cette journée n’a pas pu être validée." : "Le brouillon n’a pas pu être enregistré.")
+            failedJournalSave = (mode, variableIDs)
         }
     }
 
@@ -647,6 +765,7 @@ final class AppModel {
         authenticationGeneration += 1
         dayRequestGeneration += 1
         journalSaveGeneration += 1
+        journalAutosaveTask?.cancel()
         sessionsRequestGeneration += 1
         effortRequestGeneration += 1
         isLoading = true
@@ -657,6 +776,8 @@ final class AppModel {
         currentUser = nil
         hasCompletedOnboarding = true
         day = nil
+        journalDraft = nil
+        journalSaveState = .idle
         matrix = nil
         loadedAnalysisPeriod = nil
         analysisRequestGeneration += 1
@@ -695,6 +816,7 @@ final class AppModel {
         authenticationGeneration += 1
         dayRequestGeneration += 1
         journalSaveGeneration += 1
+        journalAutosaveTask?.cancel()
         sessionsRequestGeneration += 1
         invalidateSleep()
         effortRequestGeneration += 1
@@ -704,6 +826,8 @@ final class AppModel {
         currentSession = nil
         deviceSessions = []
         day = nil
+        journalDraft = nil
+        journalSaveState = .idle
         matrix = nil
         loadedAnalysisPeriod = nil
         analysisRequestGeneration += 1
@@ -744,7 +868,9 @@ final class AppModel {
         authenticationGeneration += 1
         isAuthenticated = true
         currentUser = SessionUser(id: "preview-user", email: "jeremy@example.test", displayName: "Jérémy")
-        day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
+        if let preview = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8)) {
+            acceptDay(preview)
+        }
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
         loadedAnalysisPeriod = "30"
         sleep = try? JSONDecoder().decode(NativeSleepResponse.self, from: Data(Self.previewSleep.utf8))
@@ -761,14 +887,19 @@ final class AppModel {
         ]
     }
 
-    private static func journalValue(_ text: String, type: String) -> JSONValue {
-        guard !text.isEmpty else { return .null }
-        if type == "boolean" { return .bool(text == "true") }
-        if ["number", "count", "duration", "scale"].contains(type), let number = Double(text) { return .number(number) }
-        return .string(text)
+    private func acceptDay(_ response: NativeDayResponse) {
+        if var draft = journalDraft, day?.date == response.date, draft.hasUnsavedChanges {
+            draft.mergeServer(response)
+            day = response
+            journalDraft = draft
+            return
+        }
+        day = response
+        journalDraft = JournalDraft(day: response)
     }
 
-    private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
+    private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
+    private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"period":30,"rows":[],"outcomes":[{"id":"hrv","label":"VFC","unit":"ms","direction":"higher"},{"id":"recovery","label":"Récupération","unit":"pts","direction":"higher"}],"periods":[15,30,90,"all"],"meaningfulRelations":[],"topRelations":[{"predictorId":"walk","outcomeId":"hrv","predictorLabel":"Marche","predictorUnit":"min","predictorKind":"numeric","predictorPresentation":"amount","outcomeLabel":"VFC","outcomeUnit":"ms","effect":4.2,"sampleSize":32,"effectConfidenceLow":1.1,"effectConfidenceHigh":7.3,"qValue":0.018,"percentEffect":8.1,"comparisonLabel":"+20 min","modelType":"plateau","modelImprovement":0.14,"nonlinearTested":true,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":3,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"strength":"clear","coverageBySource":[{"source":"WHOOP","pairedDays":32,"pairedWeeks":0}],"minimumDaysRemaining":0,"practicallyMeaningful":true,"practicalThreshold":2,"practicalRatio":2.1,"featureEligible":true,"exclusionReasons":[],"excluded":false},{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","predictorUnit":"oui/non","predictorKind":"binary","predictorPresentation":"amount","outcomeLabel":"Récupération","outcomeUnit":"pts","effect":-6.4,"sampleSize":28,"effectConfidenceLow":-10.1,"effectConfidenceHigh":-2.7,"qValue":0.031,"comparisonLabel":"yes vs no","modelType":"binary","nonlinearTested":false,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":2,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"coverageBySource":[{"source":"Journal + WHOOP","pairedDays":28,"pairedWeeks":0}],"practicallyMeaningful":true,"practicalThreshold":3,"practicalRatio":2.13,"featureEligible":true,"exclusionReasons":[],"excluded":false}],"acuteHighlights":[],"chronicHighlights":[],"coverageByMetric":[],"collectionProgress":[]}"#
     private static let previewSleep = #"{"timezone":"Europe/Zurich","importedAt":"2026-09-19T07:15:00Z","days":[{"metric_date":"2026-09-17","sleep_minutes":455,"sleep_need_minutes":510,"sleep_efficiency":91,"sleep_regularity":79,"sleep_latency_minutes":14,"sleep_awake_minutes":24,"sleep_awake_percent":5,"sleep_fragmentation":1.2,"sleep_deep_minutes":82,"sleep_deep_percent":18,"sleep_rem_minutes":105,"sleep_rem_percent":23,"sleep_light_minutes":268,"sleep_light_percent":59,"cumulative_sleep_debt_minutes":75,"bedtime":"2026-09-16T22:55:00Z","wake_time":"2026-09-17T06:54:00Z","source_freshness":{"latestMeasuredAt":"2026-09-17T06:54:00Z"}},{"metric_date":"2026-09-18","sleep_minutes":null,"sleep_need_minutes":510,"sleep_efficiency":null,"sleep_regularity":null,"sleep_latency_minutes":null,"sleep_awake_minutes":null,"sleep_awake_percent":null,"sleep_fragmentation":null,"sleep_deep_minutes":null,"sleep_deep_percent":null,"sleep_rem_minutes":null,"sleep_rem_percent":null,"sleep_light_minutes":null,"sleep_light_percent":null,"cumulative_sleep_debt_minutes":null,"bedtime":null,"wake_time":null,"source_freshness":null},{"metric_date":"2026-09-19","sleep_minutes":498,"sleep_need_minutes":510,"sleep_efficiency":94,"sleep_regularity":86,"sleep_latency_minutes":9,"sleep_awake_minutes":18,"sleep_awake_percent":3,"sleep_fragmentation":0.8,"sleep_deep_minutes":96,"sleep_deep_percent":19,"sleep_rem_minutes":119,"sleep_rem_percent":24,"sleep_light_minutes":283,"sleep_light_percent":57,"cumulative_sleep_debt_minutes":32,"bedtime":"2026-09-18T22:31:00Z","wake_time":"2026-09-19T07:07:00Z","source_freshness":{"latestMeasuredAt":"2026-09-19T07:07:00Z"}}],"scores":[{"score_date":"2026-09-19","kind":"sleep","score":91,"algorithm_version":"sleep-v0.2"}],"sleepRecommendation":{"bedtimeMinutes":1350,"wakeTimeMinutes":420,"sleepNeedMinutes":510},"latestSleepStages":[{"type":"DEEP","startTime":"2026-09-18T23:00:00Z","endTime":"2026-09-19T00:36:00Z"},{"type":"REM","startTime":"2026-09-19T04:00:00Z","endTime":"2026-09-19T05:59:00Z"}]}"#
     private static let previewMeals = #"{"meals":[{"id":"meal-dinner","mealDate":"2026-09-19","mealType":"dinner","note":"Riz, légumes et tofu","status":"confirmed","entryState":"recorded","mouthWarmthIntensity":0,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T18:00:00Z","updatedAt":"2026-09-19T18:05:00Z","photos":[{"id":"photo-dinner","mealId":"meal-dinner","origin":"homemade","mimeType":"image/jpeg","bytes":120000,"filename":"diner.jpg","createdAt":"2026-09-19T18:00:00Z","storageStatus":"purged","purgedAt":"2026-09-19T18:05:00Z","url":null}],"analysis":{"id":"analysis-dinner","mealId":"meal-dinner","status":"completed","provider":"synthetic","model":"synthetic","result":{"summary":"Repas varié avec une source de protéines végétales.","dishType":"Plat complet","calorieAnalysis":null,"foods":[{"name":"Riz","preparation":"cuit","portion":"1 bol","confidence":"high"},{"name":"Tofu et légumes","preparation":null,"portion":"1 portion","confidence":"medium"}],"totals":{"calories":{"low":480,"likely":560,"high":650},"proteinGrams":{"low":20,"likely":25,"high":31},"carbohydrateGrams":{"low":65,"likely":74,"high":86},"fatGrams":{"low":14,"likely":18,"high":24},"fiberGrams":{"low":8,"likely":11,"high":15},"sugarGrams":null,"addedSugarGrams":null},"confidence":"medium","uncertainties":["Quantité d’huile non précisée"]},"error":null,"errorCode":null,"sourcePhotoIds":["photo-dinner"],"createdAt":"2026-09-19T18:00:00Z","completedAt":"2026-09-19T18:05:00Z"},"lastSuccessfulAnalysis":null},{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","note":null,"status":"draft","entryState":"skipped","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T12:00:00Z","updatedAt":"2026-09-19T12:00:00Z","photos":[],"analysis":null,"lastSuccessfulAnalysis":null},{"id":"meal-yesterday","mealDate":"2026-09-18","mealType":"breakfast","note":"Yaourt et fruits","status":"draft","entryState":"recorded","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-18T07:00:00Z","updatedAt":"2026-09-18T07:00:00Z","photos":[],"analysis":{"id":"analysis-yesterday","mealId":"meal-yesterday","status":"running","provider":"synthetic","model":"synthetic","result":null,"error":null,"errorCode":null,"sourcePhotoIds":[],"createdAt":"2026-09-18T07:00:00Z","completedAt":null},"lastSuccessfulAnalysis":null}]}"#

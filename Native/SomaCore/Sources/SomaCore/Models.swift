@@ -168,30 +168,203 @@ public struct JournalSaveRequest: Codable, Equatable, Sendable {
 
 public struct JournalSaveResponse: Codable, Sendable {
     public let ok: Bool
+    public let status: JournalDayStatus?
+    public let saved: Int?
+    public let omitted: Int?
     public let day: NativeDayResponse
+}
+
+public enum JournalVariableType: String, Codable, CaseIterable, Sendable {
+    case boolean, count, duration, number, scale, category, time
+}
+
+public enum JournalCaptureMode: String, Codable, CaseIterable, Sendable {
+    case manual, automatic
+}
+
+public enum JournalTrackingCadence: String, Codable, CaseIterable, Sendable {
+    case daily, weekly
+}
+
+public enum JournalDayPeriod: String, Codable, CaseIterable, Sendable {
+    case context, morning, day, evening, sleep, other
+}
+
+public enum JournalDayStatus: String, Codable, Sendable {
+    case draft, validated
 }
 
 public struct JournalVariable: Codable, Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
-    public let variableType: String
+    public let variableType: JournalVariableType
     public let unit: String?
     public let options: [String]
+    public let position: Int
     public let isActive: Bool
-    public let captureMode: String?
+    public let emoji: String
+    public let defaultValue: JSONValue?
+    public let dayPeriod: JournalDayPeriod
+    public let captureMode: JournalCaptureMode?
     public let automaticMetricId: String?
+    public let trackingCadence: JournalTrackingCadence?
+
+    public init(id: String, name: String, variableType: JournalVariableType, unit: String?, options: [String], position: Int, isActive: Bool, emoji: String, defaultValue: JSONValue?, dayPeriod: JournalDayPeriod, captureMode: JournalCaptureMode?, automaticMetricId: String?, trackingCadence: JournalTrackingCadence?) {
+        self.id = id
+        self.name = name
+        self.variableType = variableType
+        self.unit = unit
+        self.options = options
+        self.position = position
+        self.isActive = isActive
+        self.emoji = emoji
+        self.defaultValue = defaultValue
+        self.dayPeriod = dayPeriod
+        self.captureMode = captureMode
+        self.automaticMetricId = automaticMetricId
+        self.trackingCadence = trackingCadence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        variableType = try container.decode(JournalVariableType.self, forKey: .variableType)
+        unit = try container.decodeIfPresent(String.self, forKey: .unit)
+        options = try container.decodeIfPresent([String].self, forKey: .options) ?? []
+        position = try container.decodeIfPresent(Int.self, forKey: .position) ?? 0
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        emoji = try container.decodeIfPresent(String.self, forKey: .emoji) ?? "🧪"
+        defaultValue = try container.decodeIfPresent(JSONValue.self, forKey: .defaultValue)
+        dayPeriod = try container.decodeIfPresent(JournalDayPeriod.self, forKey: .dayPeriod) ?? .day
+        captureMode = try container.decodeIfPresent(JournalCaptureMode.self, forKey: .captureMode)
+        automaticMetricId = try container.decodeIfPresent(String.self, forKey: .automaticMetricId)
+        trackingCadence = try container.decodeIfPresent(JournalTrackingCadence.self, forKey: .trackingCadence)
+    }
+
+    public var resolvedCaptureMode: JournalCaptureMode { captureMode ?? .manual }
+    public var resolvedTrackingCadence: JournalTrackingCadence { trackingCadence ?? .daily }
 }
 
 public struct JournalEntry: Codable, Equatable, Sendable {
     public let variableId: String
     public let entryDate: String
     public let value: JSONValue
+    public let source: String?
 }
 
 public struct JournalDay: Codable, Equatable, Sendable {
     public let entryDate: String
-    public let status: String
+    public let status: JournalDayStatus
+    public let validatedAt: String?
     public let omittedVariableIds: [String]
+}
+
+public struct JournalVariableCreateRequest: Codable, Equatable, Sendable {
+    public let name: String
+    public let variableType: JournalVariableType
+    public let unit: String?
+    public let options: [String]
+    public let emoji: String
+    public let defaultValue: JSONValue?
+    public let dayPeriod: JournalDayPeriod
+    public let captureMode: JournalCaptureMode
+    public let automaticMetricId: String?
+    public let trackingCadence: JournalTrackingCadence
+
+    public init(name: String, variableType: JournalVariableType, unit: String? = nil, options: [String] = [], emoji: String = "🧪", defaultValue: JSONValue? = nil, dayPeriod: JournalDayPeriod = .day, captureMode: JournalCaptureMode = .manual, automaticMetricId: String? = nil, trackingCadence: JournalTrackingCadence = .daily) {
+        self.name = name
+        self.variableType = variableType
+        self.unit = unit
+        self.options = options
+        self.emoji = emoji
+        self.defaultValue = defaultValue
+        self.dayPeriod = dayPeriod
+        self.captureMode = captureMode
+        self.automaticMetricId = automaticMetricId
+        self.trackingCadence = trackingCadence
+    }
+}
+
+public struct JournalVariableUpdateRequest: Codable, Equatable, Sendable {
+    public let id: String
+    public var name: String?
+    public var variableType: JournalVariableType?
+    public var unit: String?
+    public var options: [String]?
+    public var position: Int?
+    public var isActive: Bool?
+    public var emoji: String?
+    public var defaultValue: JSONValue?
+    public var dayPeriod: JournalDayPeriod?
+    public var captureMode: JournalCaptureMode?
+    public var automaticMetricId: String?
+    public var trackingCadence: JournalTrackingCadence?
+
+    public init(id: String, name: String? = nil, variableType: JournalVariableType? = nil, unit: String? = nil, options: [String]? = nil, position: Int? = nil, isActive: Bool? = nil, emoji: String? = nil, defaultValue: JSONValue? = nil, dayPeriod: JournalDayPeriod? = nil, captureMode: JournalCaptureMode? = nil, automaticMetricId: String? = nil, trackingCadence: JournalTrackingCadence? = nil) {
+        self.id = id
+        self.name = name
+        self.variableType = variableType
+        self.unit = unit
+        self.options = options
+        self.position = position
+        self.isActive = isActive
+        self.emoji = emoji
+        self.defaultValue = defaultValue
+        self.dayPeriod = dayPeriod
+        self.captureMode = captureMode
+        self.automaticMetricId = automaticMetricId
+        self.trackingCadence = trackingCadence
+    }
+}
+
+/// The complete editable definition of a variable. Unlike a partial update,
+/// optional values are deliberately encoded as `null` so an existing unit or
+/// default can be cleared without affecting reorder/archive requests.
+public struct JournalVariableDefinitionUpdateRequest: Encodable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let variableType: JournalVariableType?
+    public let unit: String?
+    public let options: [String]?
+    public let emoji: String
+    public let defaultValue: JSONValue?
+    public let dayPeriod: JournalDayPeriod
+    public let trackingCadence: JournalTrackingCadence
+
+    public init(id: String, name: String, variableType: JournalVariableType? = nil, unit: String?, options: [String]?, emoji: String, defaultValue: JSONValue?, dayPeriod: JournalDayPeriod, trackingCadence: JournalTrackingCadence) {
+        self.id = id
+        self.name = name
+        self.variableType = variableType
+        self.unit = unit
+        self.options = options
+        self.emoji = emoji
+        self.defaultValue = defaultValue
+        self.dayPeriod = dayPeriod
+        self.trackingCadence = trackingCadence
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, variableType, unit, options, emoji, defaultValue, dayPeriod, trackingCadence
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(variableType, forKey: .variableType)
+        if let unit { try container.encode(unit, forKey: .unit) } else { try container.encodeNil(forKey: .unit) }
+        try container.encodeIfPresent(options, forKey: .options)
+        try container.encode(emoji, forKey: .emoji)
+        if let defaultValue { try container.encode(defaultValue, forKey: .defaultValue) } else { try container.encodeNil(forKey: .defaultValue) }
+        try container.encode(dayPeriod, forKey: .dayPeriod)
+        try container.encode(trackingCadence, forKey: .trackingCadence)
+    }
+}
+
+public struct JournalVariableMutationResponse: Codable, Equatable, Sendable {
+    public let ok: Bool
+    public let id: String?
 }
 
 public struct MealSummary: Codable, Identifiable, Equatable, Sendable {
