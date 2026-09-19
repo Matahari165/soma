@@ -7,18 +7,9 @@ import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createR2ArchiveDownloadUrl } from "@/lib/r2";
 import { listPreviewMeals } from "@/services/meal-preview";
 import { mealToApi } from "@/services/meal-api";
+import { sanitizeExportRows } from "./sanitize";
 
 const userTables = ["profiles", "health_goals", "sleep_preferences", "dashboard_layouts", "nutrition_targets", "sync_jobs", "health_records", "health_record_archives", "daily_health_metrics", "daily_calendar_metrics", "daily_checkins", "journal_variables", "journal_entries", "journal_days", "journal_imports", "lab_narratives", "daily_scores", "insights", "correlation_results", "briefs", "workout_programs", "workout_program_exercises", "workout_sessions", "workout_session_sets", "meals", "meal_photos", "meal_feelings", "meal_analyses", "consent_events", "audit_events"];
-
-export function sanitizeExportRows(table: string, rows: unknown[]): unknown[] {
-  if (table !== "profiles") return rows;
-  return rows.map((row) => {
-    if (!row || typeof row !== "object" || Array.isArray(row)) return row;
-    const profile = { ...row } as Record<string, unknown>;
-    delete profile.apple_health_sync_token;
-    return profile;
-  });
-}
 
 export async function GET() {
   if (isLocalPreviewMode()) {

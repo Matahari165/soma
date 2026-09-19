@@ -4,7 +4,8 @@ import { previewUser } from "@/lib/local-preview";
 import { clearPreviewUserData, createPreviewMeal, listPreviewMeals } from "@/services/meal-preview";
 import { clearPreviewMealRecipes, createMealRecipe, listMealRecipes } from "@/services/meal-recipes";
 import { DELETE as deleteAccount } from "./route";
-import { GET as exportAccount, sanitizeExportRows } from "./export/route";
+import { GET as exportAccount } from "./export/route";
+import { sanitizeExportRows } from "./export/sanitize";
 
 describe("account export redaction", () => {
   it("excludes the Apple Health sync credential without changing stored profiles", () => {
