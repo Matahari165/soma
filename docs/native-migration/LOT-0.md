@@ -77,6 +77,8 @@ Quand le runtime Supabase est configuré, l'adaptateur actuel place les tables m
 
 Le dépôt et les données de démonstration ne prouvent pas l'état de la production. La configuration locale de ce checkout est en mode aperçu et ne contient pas d'accès Supabase de production. Aucune ligne personnelle n'a donc été interrogée pour ce lot.
 
+**Déploiement vérifié le 19 septembre 2026 :** la liste Vercel indique un déploiement de production `READY` créé à 06:23 UTC pour le commit `0b999126d99360b937954b1b3ad7755af24e892e`. Cela établit la version déployée, pas le fonctionnement authentifié, les données ni l'exécution des tâches planifiées.
+
 | Contrôle en lecture seule | Résultat attendu dans ce dossier | Statut |
 | --- | --- | --- |
 | Identité et sessions | Nombre de comptes et sessions actives **agrégé**, sans email ni identifiant | À faire avec accès autorisé |
