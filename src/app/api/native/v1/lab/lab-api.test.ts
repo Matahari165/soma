@@ -87,13 +87,16 @@ describe("native Personal Lab API", () => {
     expect(saveNativeJournalEntries).toHaveBeenCalledWith(user.id, expect.objectContaining({ entryDate: "2026-09-18", mode: "validate" }));
   });
 
-  it("uses the same matrix snapshot contract as the Web route", async () => {
+  it("uses the same matrix snapshot as the Web route and exposes the native statistical details", async () => {
     vi.mocked(getPersonalLabSnapshot).mockResolvedValue({ matrix } as never);
     const response = await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=30"));
     const webResponse = await getWebMatrix(new NextRequest("https://soma.example/api/lab/matrix?period=30"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ period: 30, ...matrix });
-    expect(await webResponse.json()).toEqual(matrix);
+    const nativePayload = await response.json();
+    const webPayload = await webResponse.json();
+    expect(nativePayload).toEqual({ period: 30, ...matrix });
+    expect(webPayload).toEqual({ rows: matrix.rows, outcomes: matrix.outcomes, periods: matrix.periods });
+    expect(nativePayload).toMatchObject(webPayload);
     expect(getPersonalLabSnapshot).toHaveBeenCalledWith(user, { periods: [30] });
   });
 
