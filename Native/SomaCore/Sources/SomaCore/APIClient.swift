@@ -34,6 +34,10 @@ public actor APIClient {
         try await get(path: "/api/native/v1/lab/matrix?period=\(period)")
     }
 
+    public func sleep() async throws -> NativeSleepResponse {
+        try await get(path: "/api/native/v1/sleep")
+    }
+
     public func saveJournal(_ body: JournalSaveRequest) async throws -> NativeDayResponse {
         let request = try request(path: "/api/native/v1/lab/journal", method: "PUT", body: body, authenticated: true)
         let response: JournalSaveResponse = try await perform(request)

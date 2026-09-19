@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, type SomaUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
@@ -398,9 +398,9 @@ export function heartRateWindowForCivilDate(civilDate: string, timeZone: string)
   return start && end ? { start: start.toISOString(), end: end.toISOString() } : null;
 }
 
-async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
+async function loadHealthAnalytics(scope: HealthAnalyticsScope, authenticatedUser?: SomaUser): Promise<HealthAnalytics> {
   if (isLocalPreviewMode()) return buildPreviewAnalytics();
-  const user = await getCurrentUser();
+  const user = authenticatedUser ?? await getCurrentUser();
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [], effortTargets: effortScoreTargets(), effortTargetSource: "fallback" };
   const supabase = await createCloudflareServerClient();
   const admin = createCloudflareAdminClient();
@@ -547,6 +547,7 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
 
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
+export function getSleepAnalyticsForUser(user: SomaUser) { return loadHealthAnalytics("sleep", user); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
 export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }

@@ -26,6 +26,9 @@ final class AppModel {
     var activeDate: LocalDate
     var day: NativeDayResponse?
     var matrix: NativeMatrixResponse?
+    var sleep: NativeSleepResponse?
+    var isSleepLoading = false
+    var sleepErrorMessage: String?
     var mealDrafts: [MealType: MealDraft] = [:]
     var isAuthenticated = false
     var isBootstrapping = true
@@ -37,6 +40,7 @@ final class AppModel {
     private let mealCoordinator: MealSubmissionCoordinator?
     private var dayRequestGeneration = 0
     private var journalSaveGeneration = 0
+    private var sleepRequestGeneration = 0
 
     init() {
         activeDate = (try? LocalDate.today()) ?? (try! LocalDate("2026-09-19"))
@@ -60,6 +64,7 @@ final class AppModel {
     }
 
     func login(email: String, password: String) async {
+        invalidateSleep()
         await perform {
             #if os(macOS)
             let platform = "macos"
@@ -77,6 +82,7 @@ final class AppModel {
 
     func restoreSession() async {
         guard !ProcessInfo.processInfo.arguments.contains("--preview-data") else { return }
+        invalidateSleep()
         defer { isBootstrapping = false }
         do {
             _ = try await client.currentSession()
@@ -85,6 +91,7 @@ final class AppModel {
             await restoreMealDrafts()
         } catch APIError.unauthorized {
             isAuthenticated = false
+            invalidateSleep()
         } catch {
             errorMessage = "Soma est momentanément indisponible."
         }
@@ -102,6 +109,32 @@ final class AppModel {
 
     func refreshAnalysis() async {
         await perform { matrix = try await client.matrix(period: "30") }
+    }
+
+    func refreshSleep() async {
+        sleepRequestGeneration += 1
+        let generation = sleepRequestGeneration
+        isSleepLoading = true
+        sleepErrorMessage = nil
+        defer {
+            if generation == sleepRequestGeneration { isSleepLoading = false }
+        }
+        do {
+            let response = try await client.sleep()
+            if generation == sleepRequestGeneration, isAuthenticated {
+                sleep = response
+            }
+        } catch APIError.unauthorized {
+            if generation == sleepRequestGeneration {
+                isAuthenticated = false
+                invalidateSleep()
+                sleepErrorMessage = "La session a expiré. Reconnecte-toi."
+            }
+        } catch {
+            if generation == sleepRequestGeneration {
+                sleepErrorMessage = "Les données de sommeil sont momentanément indisponibles."
+            }
+        }
     }
 
     func shiftDate(by days: Int) async {
@@ -248,6 +281,7 @@ final class AppModel {
     }
 
     func logout() async {
+        invalidateSleep()
         isLoading = true
         errorMessage = nil
         do { try await client.logout() }
@@ -266,16 +300,25 @@ final class AppModel {
         do { try await operation() }
         catch APIError.unauthorized {
             isAuthenticated = false
+            invalidateSleep()
             errorMessage = "La session a expiré. Reconnecte-toi."
         } catch {
             errorMessage = "Soma est momentanément indisponible."
         }
     }
 
+    private func invalidateSleep() {
+        sleepRequestGeneration += 1
+        sleep = nil
+        isSleepLoading = false
+        sleepErrorMessage = nil
+    }
+
     private func loadSyntheticPreview() {
         isAuthenticated = true
         day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
+        sleep = try? JSONDecoder().decode(NativeSleepResponse.self, from: Data(Self.previewSleep.utf8))
     }
 
     private static func journalValue(_ text: String, type: String) -> JSONValue {
@@ -287,4 +330,5 @@ final class AppModel {
 
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"rows":[{"id":"walk","label":"Marche","relations":[{"predictorId":"walk","outcomeId":"sleep","predictorLabel":"Marche","outcomeLabel":"Sommeil","effect":0.34,"sampleSize":24,"effectConfidenceLow":0.11,"effectConfidenceHigh":0.57}]},{"id":"late-meal","label":"Repas tardif","relations":[{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","outcomeLabel":"Récupération","effect":-0.28,"sampleSize":21,"effectConfidenceLow":-0.49,"effectConfidenceHigh":-0.07}]}],"outcomes":[{"id":"sleep","label":"Sommeil","unit":"score"},{"id":"recovery","label":"Récupération","unit":"score"}],"periods":[30]}"#
+    private static let previewSleep = #"{"timezone":"Europe/Zurich","importedAt":"2026-09-19T07:15:00Z","days":[{"metric_date":"2026-09-17","sleep_minutes":455,"sleep_need_minutes":510,"sleep_efficiency":91,"sleep_regularity":79,"sleep_latency_minutes":14,"sleep_awake_minutes":24,"sleep_awake_percent":5,"sleep_fragmentation":1.2,"sleep_deep_minutes":82,"sleep_deep_percent":18,"sleep_rem_minutes":105,"sleep_rem_percent":23,"sleep_light_minutes":268,"sleep_light_percent":59,"cumulative_sleep_debt_minutes":75,"bedtime":"2026-09-16T22:55:00Z","wake_time":"2026-09-17T06:54:00Z","source_freshness":{"latestMeasuredAt":"2026-09-17T06:54:00Z"}},{"metric_date":"2026-09-18","sleep_minutes":null,"sleep_need_minutes":510,"sleep_efficiency":null,"sleep_regularity":null,"sleep_latency_minutes":null,"sleep_awake_minutes":null,"sleep_awake_percent":null,"sleep_fragmentation":null,"sleep_deep_minutes":null,"sleep_deep_percent":null,"sleep_rem_minutes":null,"sleep_rem_percent":null,"sleep_light_minutes":null,"sleep_light_percent":null,"cumulative_sleep_debt_minutes":null,"bedtime":null,"wake_time":null,"source_freshness":null},{"metric_date":"2026-09-19","sleep_minutes":498,"sleep_need_minutes":510,"sleep_efficiency":94,"sleep_regularity":86,"sleep_latency_minutes":9,"sleep_awake_minutes":18,"sleep_awake_percent":3,"sleep_fragmentation":0.8,"sleep_deep_minutes":96,"sleep_deep_percent":19,"sleep_rem_minutes":119,"sleep_rem_percent":24,"sleep_light_minutes":283,"sleep_light_percent":57,"cumulative_sleep_debt_minutes":32,"bedtime":"2026-09-18T22:31:00Z","wake_time":"2026-09-19T07:07:00Z","source_freshness":{"latestMeasuredAt":"2026-09-19T07:07:00Z"}}],"scores":[{"score_date":"2026-09-19","kind":"sleep","score":91,"algorithm_version":"sleep-v0.2"}],"sleepRecommendation":{"bedtimeMinutes":1350,"wakeTimeMinutes":420,"sleepNeedMinutes":510},"latestSleepStages":[{"type":"DEEP","startTime":"2026-09-18T23:00:00Z","endTime":"2026-09-19T00:36:00Z"},{"type":"REM","startTime":"2026-09-19T04:00:00Z","endTime":"2026-09-19T05:59:00Z"}]}"#
 }
