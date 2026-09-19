@@ -2,7 +2,21 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    @State private var destination: AppDestination = .day
+    @State private var destination: AppDestination
+
+    init() {
+        let arguments = ProcessInfo.processInfo.arguments
+        let initialDestination: AppDestination = if arguments.contains("--preview-settings") {
+            .settings
+        } else if arguments.contains("--health-preview") {
+            .health
+        } else if arguments.contains("--preview-export") {
+            .export
+        } else {
+            .day
+        }
+        _destination = State(initialValue: initialDestination)
+    }
 
     var body: some View {
         Group {
@@ -54,6 +68,7 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             CompactNavigationBar(selection: $destination)
         }
+        .tint(SomaTheme.primary)
         #endif
     }
 
@@ -62,6 +77,7 @@ struct RootView: View {
         switch destination {
         case .day: DayView()
         case .analysis: AnalysisView()
+        case .health: HealthView()
         case .meals: MealsOverviewView()
         case .sleep: SleepView()
         case .recovery: RecoveryView()

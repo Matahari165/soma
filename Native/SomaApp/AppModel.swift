@@ -12,7 +12,17 @@ final class AppModel {
         case day = "Jour"
         case analysis = "Strongest Effects"
         case settings = "Réglages"
+        case health = "Santé"
         case export = "Export"
+
+        static var allCases: [Destination] {
+            #if os(iOS)
+            [.day, .analysis, .health, .export, .settings]
+            #else
+            [.day, .analysis, .export, .settings]
+            #endif
+        }
+
         var id: Self { self }
     }
 
@@ -51,8 +61,13 @@ final class AppModel {
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
-            if ProcessInfo.processInfo.arguments.contains("--preview-settings") { destination = .settings }
-            if ProcessInfo.processInfo.arguments.contains("--preview-export") { destination = .export }
+            if ProcessInfo.processInfo.arguments.contains("--preview-settings") {
+                destination = .settings
+            } else if ProcessInfo.processInfo.arguments.contains("--health-preview") {
+                destination = .health
+            } else if ProcessInfo.processInfo.arguments.contains("--preview-export") {
+                destination = .export
+            }
             isBootstrapping = false
         }
     }
