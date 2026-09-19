@@ -48,6 +48,7 @@ describe("native authentication API", () => {
 
   it("reads and deletes the bearer session", async () => {
     vi.mocked(getBearerSessionUser).mockResolvedValue(user);
+    vi.mocked(hasCompletedOnboarding).mockResolvedValue(true);
     expect((await getSession()).status).toBe(200);
     expect((await deleteSession()).status).toBe(200);
     expect(deleteCurrentSession).toHaveBeenCalledOnce();
@@ -66,7 +67,8 @@ describe("native authentication API", () => {
 
   it("identifies and protects the current bearer session", async () => {
     vi.mocked(getBearerSessionUser).mockResolvedValue(user);
-    expect(await (await getSession()).json()).toEqual({ user, session });
+    vi.mocked(hasCompletedOnboarding).mockResolvedValue(true);
+    expect(await (await getSession()).json()).toEqual({ user, session, hasCompletedOnboarding: true });
     const response = await revokeSession(new Request("https://soma.example", { method: "DELETE" }), { params: Promise.resolve({ id: session.id }) });
     expect(response.status).toBe(409);
     expect(revokeDeviceSession).not.toHaveBeenCalled();

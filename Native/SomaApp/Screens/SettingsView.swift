@@ -4,33 +4,19 @@ import SomaCore
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var sessionToRevoke: DeviceSession?
+    @State private var showsAccountDeletion = false
+
+    let navigate: (AppDestination) -> Void
 
     var body: some View {
         ScreenScaffold(title: "Paramètres") {
-            VStack(alignment: .leading, spacing: 0) {
-                settingsRow(label: "Session", value: model.isAuthenticated ? "Connectée" : "Indisponible")
-                Divider().overlay(SomaTheme.rule)
-                settingsRow(label: "Date active", value: model.activeDate.rawValue)
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Appareils connectés")
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
-                sessionsContent
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Button("Se déconnecter de cet appareil", role: .destructive) {
-                    Task { await model.logout() }
-                }
-                .disabled(model.isLoading)
-                .frame(minHeight: 44)
-
-                Text("Les autres appareils restent connectés.")
-                    .font(.caption)
-                    .foregroundStyle(SomaTheme.secondary)
-            }
+            accountSection
+            SettingsSection(title: "Sessions et appareils") { sessionsContent }
+            healthSourcesSection
+            dataSection
+            legalSection
+            sessionActionsSection
+            dangerSection
         }
         .task { await model.refreshSessions() }
         .refreshable { await model.refreshSessions() }
@@ -49,7 +35,96 @@ struct SettingsView: View {
             }
             Button("Annuler", role: .cancel) { sessionToRevoke = nil }
         } message: { _ in
-            Text("Cette session devra se reconnecter pour accéder à Soma.")
+            Text("Cette session devra se reconnecter. Les données déjà enregistrées dans Soma restent intactes.")
+        }
+        .sheet(isPresented: $showsAccountDeletion) {
+            AccountDeletionView()
+                .environment(model)
+        }
+    }
+
+    private var accountSection: some View {
+        SettingsSection(title: "Compte") {
+            SettingsValueRow(label: "Nom", value: model.currentUser?.displayName ?? "Indisponible")
+            SettingsValueRow(label: "Adresse email", value: model.currentUser?.email ?? "Indisponible")
+            SettingsValueRow(label: "Session", value: model.isAuthenticated ? "Connectée" : "Indisponible")
+        }
+    }
+
+    private var healthSourcesSection: some View {
+        SettingsSection(title: "Sources de santé") {
+            #if os(iOS)
+            SettingsActionRow(
+                title: "Santé Apple",
+                detail: "Disponible sur cet iPhone · état d’autorisation à vérifier",
+                symbol: "heart.text.square",
+                actionTitle: "Vérifier"
+            ) { navigate(.health) }
+            #else
+            SettingsStatusRow(
+                title: "Santé Apple",
+                detail: "Configuration requise dans l’app iPhone",
+                symbol: "heart.text.square"
+            )
+            #endif
+            SettingsStatusRow(
+                title: "Google Health",
+                detail: "Configuration et état disponibles sur le site Soma",
+                symbol: "globe"
+            )
+            Link(destination: Self.webSettingsURL) {
+                Label("Ouvrir les réglages web", systemImage: "arrow.up.right.square")
+            }
+            .frame(minHeight: 44)
+            .accessibilityHint("Ouvre le site sécurisé de Soma dans le navigateur")
+            Text("Déconnecter une source arrête les futurs imports. L’historique déjà importé n’est jamais supprimé automatiquement.")
+                .font(.callout)
+                .foregroundStyle(SomaTheme.secondary)
+        }
+    }
+
+    private var dataSection: some View {
+        SettingsSection(title: "Données") {
+            SettingsActionRow(
+                title: "Exporter mes données",
+                detail: "Créer une copie JSON et télécharger les archives disponibles",
+                symbol: "square.and.arrow.up",
+                actionTitle: "Ouvrir"
+            ) { navigate(.export) }
+        }
+    }
+
+    private var legalSection: some View {
+        SettingsSection(title: "Informations légales") {
+            Link("Confidentialité", destination: Self.privacyURL)
+                .frame(minHeight: 44, alignment: .leading)
+            Divider().overlay(SomaTheme.rule)
+            Link("Conditions d’utilisation", destination: Self.termsURL)
+                .frame(minHeight: 44, alignment: .leading)
+        }
+    }
+
+    private var sessionActionsSection: some View {
+        SettingsSection(title: "Connexion") {
+            Button("Se déconnecter de cet appareil", role: .destructive) {
+                Task { await model.logout() }
+            }
+            .disabled(model.isLoading)
+            .frame(minHeight: 44)
+            Text("Seule cette session est fermée. Les autres appareils et les données enregistrées restent disponibles.")
+                .font(.callout)
+                .foregroundStyle(SomaTheme.secondary)
+        }
+    }
+
+    private var dangerSection: some View {
+        SettingsSection(title: "Zone sensible") {
+            Text("La suppression efface définitivement le compte, le journal, les repas, les analyses, les sessions et les fichiers de santé stockés par Soma. Cette action ne peut pas être annulée.")
+                .foregroundStyle(SomaTheme.secondary)
+            Button("Supprimer définitivement le compte", role: .destructive) {
+                showsAccountDeletion = true
+            }
+            .frame(minHeight: 44)
         }
     }
 
@@ -65,20 +140,21 @@ struct SettingsView: View {
             .accessibilityElement(children: .combine)
         } else if let error = model.sessionsErrorMessage, model.deviceSessions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text(error)
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(SomaTheme.warning)
                 Button("Réessayer") { Task { await model.refreshSessions() } }
                     .frame(minHeight: 44)
             }
         } else if model.deviceSessions.isEmpty {
-            Text("Aucun appareil actif.")
-                .foregroundStyle(SomaTheme.secondary)
-                .frame(minHeight: 52)
+            ContentUnavailableView(
+                "Aucun appareil actif",
+                systemImage: "rectangle.connected.to.line.below",
+                description: Text("Les sessions apparaîtront ici après une connexion.")
+            )
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(sortedSessions.enumerated()), id: \.element.id) { index, session in
-                    if index > 0 {
-                        Divider().overlay(SomaTheme.rule)
-                    }
+                    if index > 0 { Divider().overlay(SomaTheme.rule) }
                     SessionRow(
                         session: session,
                         isCurrent: session.id == model.currentSession?.id,
@@ -87,12 +163,10 @@ struct SettingsView: View {
                     )
                 }
             }
-
             if let error = model.sessionsErrorMessage {
                 HStack {
-                    Text(error)
+                    Label(error, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(SomaTheme.warning)
-                        .accessibilityAddTraits(.isStaticText)
                     Spacer()
                     Button("Réessayer") { Task { await model.refreshSessions() } }
                         .frame(minHeight: 44)
@@ -109,68 +183,7 @@ struct SettingsView: View {
         }
     }
 
-    private func settingsRow(label: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-            Spacer()
-            Text(value)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(SomaTheme.secondary)
-                .multilineTextAlignment(.trailing)
-        }
-        .frame(minHeight: 52)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct SessionRow: View {
-    let session: DeviceSession
-    let isCurrent: Bool
-    let isRevoking: Bool
-    let revoke: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: iconName)
-                .frame(width: 24)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
-                    Text(session.deviceName)
-                        .lineLimit(2)
-                    if isCurrent {
-                        Text("Cet appareil")
-                            .font(.caption)
-                            .foregroundStyle(SomaTheme.signal)
-                    }
-                }
-                Text("Connecté le \(session.createdAt.formatted(date: .abbreviated, time: .shortened)) · expire le \(session.expiresAt.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.caption)
-                    .foregroundStyle(SomaTheme.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 8)
-
-            if !isCurrent {
-                Button(isRevoking ? "Déconnexion…" : "Déconnecter", role: .destructive, action: revoke)
-                    .disabled(isRevoking)
-                    .accessibilityLabel("Déconnecter \(session.deviceName)")
-                    .accessibilityValue(isRevoking ? "En cours" : "")
-                    .frame(minHeight: 44)
-            }
-        }
-        .padding(.vertical, 4)
-        .frame(minHeight: 60)
-        .accessibilityElement(children: .contain)
-    }
-
-    private var iconName: String {
-        switch session.platform {
-        case .ios: "iphone"
-        case .macos: "desktopcomputer"
-        case .web: "globe"
-        }
-    }
+    private static let webSettingsURL = URL(string: "https://soma-neon-phi.vercel.app/settings")!
+    private static let privacyURL = URL(string: "https://soma-neon-phi.vercel.app/privacy")!
+    private static let termsURL = URL(string: "https://soma-neon-phi.vercel.app/terms")!
 }
