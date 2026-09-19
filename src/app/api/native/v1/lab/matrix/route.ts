@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const snapshot = await getPersonalLabSnapshot(user, { periods: [period] });
-    return NextResponse.json({ rows: snapshot.matrix.rows, outcomes: snapshot.matrix.outcomes, periods: snapshot.matrix.periods }, {
+    return NextResponse.json({ period, ...snapshot.matrix }, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {
