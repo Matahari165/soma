@@ -32,7 +32,7 @@ describe("production-only application contract", () => {
 
   it("keeps the product home and sign-in page reachable when local auth is not configured", () => {
     expect(proxySource).toContain('request.nextUrl.pathname === "/"');
-    expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("const hasSessionCookie"));
+    expect(proxySource.indexOf("if (isPublicPath) return secureResponse(response)")).toBeLessThan(proxySource.indexOf("const hasSessionCredential"));
   });
 
   it("does not trust an unverified session cookie to bypass the sign-in page", () => {
