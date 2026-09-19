@@ -25,6 +25,37 @@ public actor APIClient {
         )
     }
 
+    public func googleAuthenticationURL(platform: String, attempt: NativeOAuthAttempt) throws -> URL {
+        guard var components = URLComponents(url: baseURL.appending(path: "/api/native/v1/auth/google"), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "platform", value: platform),
+            URLQueryItem(name: "code_challenge", value: attempt.codeChallenge),
+            URLQueryItem(name: "state", value: attempt.state),
+        ]
+        guard let url = components.url else { throw APIError.invalidURL }
+        return url
+    }
+
+    public func completeGoogleLogin(callbackURL: URL, callbackScheme: String, deviceName: String, attempt: NativeOAuthAttempt) async throws -> SessionResponse {
+        let callback = try NativeOAuthCallback.parse(callbackURL, expectedScheme: callbackScheme, expectedState: attempt.state)
+        var request = try request(
+            path: "/api/native/v1/auth/google/exchange",
+            method: "POST",
+            body: NativeOAuthExchangeRequest(code: callback.code, codeVerifier: attempt.codeVerifier, deviceName: deviceName),
+            authenticated: false
+        )
+        request.timeoutInterval = 15
+        let response: LoginResponse = try await perform(request)
+        try tokenStore.save(response.token)
+        return SessionResponse(
+            user: response.user,
+            session: response.session,
+            hasCompletedOnboarding: response.hasCompletedOnboarding
+        )
+    }
+
     public func day(_ date: LocalDate) async throws -> NativeDayResponse {
         try await get(path: "/api/native/v1/lab/day?date=\(date.rawValue)")
     }
@@ -328,6 +359,7 @@ private struct MealPhotoDetailsRequest: Codable, Sendable {
 }
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
+private struct NativeOAuthExchangeRequest: Encodable { let code: String; let codeVerifier: String; let deviceName: String }
 private struct APIErrorResponse: Decodable { let error: String }
 private struct AccountDeletionRequest: Encodable { let confirmation: String }
 

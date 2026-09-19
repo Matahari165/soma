@@ -2,6 +2,12 @@ import Foundation
 import Testing
 @testable import SomaCore
 
+private struct EmptyTokenStore: TokenStore {
+    func read() throws -> String? { nil }
+    func save(_ token: String) throws {}
+    func clear() throws {}
+}
+
 @Test func localDateMovesWithoutChangingSource() throws {
     let today = try LocalDate("2026-09-19")
     #expect(try today.adding(days: -1).rawValue == "2026-09-18")
@@ -66,6 +72,37 @@ import Testing
     decoder.dateDecodingStrategy = .iso8601
     let response = try decoder.decode(DeviceSessionsResponse.self, from: Data(json.utf8))
     #expect(response.sessions.map(\.platform) == [.ios, .web])
+}
+
+@Test func nativeOAuthUsesPKCEAndRejectsUnexpectedCallbacks() throws {
+    let attempt = NativeOAuthAttempt(state: String(repeating: "s", count: 43), codeVerifier: String(repeating: "v", count: 48))
+    #expect(attempt.codeChallenge.count == 43)
+    let code = String(repeating: "c", count: 64)
+    let callback = URL(string: "com.soma.native.ios://auth/callback?code=\(code)&state=\(attempt.state)")!
+    #expect(try NativeOAuthCallback.parse(callback, expectedScheme: "com.soma.native.ios", expectedState: attempt.state).code == code)
+    #expect(throws: NativeOAuthError.invalidState) {
+        try NativeOAuthCallback.parse(callback, expectedScheme: "com.soma.native.ios", expectedState: "wrong-state")
+    }
+    #expect(throws: NativeOAuthError.invalidCallback) {
+        try NativeOAuthCallback.parse(callback, expectedScheme: "com.soma.native.macos", expectedState: attempt.state)
+    }
+}
+
+@Test func nativeOAuthCancellationIsDistinctFromInvalidCallback() throws {
+    let state = String(repeating: "s", count: 43)
+    let callback = URL(string: "com.soma.native.macos://auth/callback?error=cancelled&state=\(state)")!
+    #expect(throws: NativeOAuthError.cancelled) {
+        try NativeOAuthCallback.parse(callback, expectedScheme: "com.soma.native.macos", expectedState: state)
+    }
+}
+
+@Test func nativeOAuthStartURLDoesNotExposeDeviceName() async throws {
+    let client = APIClient(baseURL: URL(string: "https://soma.example")!, tokenStore: EmptyTokenStore())
+    let attempt = NativeOAuthAttempt(state: String(repeating: "s", count: 43), codeVerifier: String(repeating: "v", count: 48))
+    let url = try await client.googleAuthenticationURL(platform: "ios", attempt: attempt)
+    let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+    #expect(query.first(where: { $0.name == "device_name" }) == nil)
+    #expect(query.first(where: { $0.name == "code_challenge" })?.value == attempt.codeChallenge)
 }
 
 @Test func strongestEffectsRelationsKeepPeriodsAndLagsDistinct() throws {

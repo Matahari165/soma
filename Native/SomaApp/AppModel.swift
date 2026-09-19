@@ -79,6 +79,7 @@ final class AppModel {
     var accountDeletionErrorMessage: String?
 
     private let client: APIClient
+    private let googleAuthenticationSession = GoogleAuthenticationSession()
     private let mealDraftStore: MealDraftStore?
     private let mealCoordinator: MealSubmissionCoordinator?
     private var dayRequestGeneration = 0
@@ -144,6 +145,51 @@ final class AppModel {
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
             await restoreMealDrafts()
+        }
+    }
+
+    func loginWithGoogle() async {
+        guard !isLoading else { return }
+        invalidateSleep()
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            #if os(macOS)
+            let platform = "macos"
+            let deviceName = Host.current().localizedName ?? "Mac"
+            let callbackScheme = "com.soma.native.macos"
+            #else
+            let platform = "ios"
+            let deviceName = UIDevice.current.name
+            let callbackScheme = "com.soma.native.ios"
+            #endif
+            let attempt = try NativeOAuthAttempt()
+            let authenticationURL = try await client.googleAuthenticationURL(platform: platform, attempt: attempt)
+            let callbackURL = try await googleAuthenticationSession.authenticate(at: authenticationURL, callbackScheme: callbackScheme)
+            let context = try await client.completeGoogleLogin(callbackURL: callbackURL, callbackScheme: callbackScheme, deviceName: deviceName, attempt: attempt)
+            authenticationGeneration += 1
+            isAuthenticated = true
+            currentUser = context.user
+            currentSession = context.session
+            hasCompletedOnboarding = context.hasCompletedOnboarding
+            guard context.hasCompletedOnboarding else { return }
+            try await refreshDay()
+            await restoreMealDrafts()
+        } catch NativeOAuthError.cancelled {
+            // Closing the system authentication sheet is an intentional, non-error outcome.
+        } catch NativeOAuthError.invalidCallback, NativeOAuthError.invalidState {
+            errorMessage = "La réponse Google n’est pas valide. Réessaie."
+        } catch NativeOAuthError.providerUnavailable {
+            errorMessage = "Google ne peut pas être ouvert sur cet appareil."
+        } catch APIError.unauthorized {
+            errorMessage = "La connexion Google a expiré. Réessaie."
+        } catch let error as URLError where error.code == .timedOut {
+            errorMessage = "La connexion prend trop de temps. Vérifie le réseau puis réessaie."
+        } catch let error as URLError where error.code == .notConnectedToInternet {
+            errorMessage = "Aucun réseau. Reconnecte-toi puis réessaie."
+        } catch {
+            errorMessage = "La connexion Google est momentanément indisponible."
         }
     }
 

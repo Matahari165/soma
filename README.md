@@ -183,12 +183,9 @@ Open [http://localhost:3000](http://localhost:3000) to explore the interface wit
 
 ### 4. Live Production-Connected Mode
 For full live operation with third-party providers:
-1. Configure your Supabase instance credentials (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
-2. Run database migrations:
-   ```bash
-   pnpm db:migrate:supabase
-   ```
-3. Add your Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and token encryption key (`TOKEN_ENCRYPTION_KEY`).
+1. Configure your server-only Supabase credentials (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+2. Apply the SQL files in `supabase/migrations/` with the Supabase CLI or SQL Editor. `pnpm db:migrate:supabase` migrates D1 data; it does not apply schema migrations.
+3. Add your Google OAuth credentials (`GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`) and token encryption key (`TOKEN_ENCRYPTION_KEY`). The historical `GOOGLE_HEALTH_*` pair remains a fallback.
 4. Add Cloudflare R2 credentials (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`) for media processing.
 5. Set AI provider keys (`XAI_API_KEY`, `OPENAI_API_KEY`).
 
