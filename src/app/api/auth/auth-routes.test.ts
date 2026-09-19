@@ -10,7 +10,11 @@ vi.mock("@/lib/auth-credentials", () => ({
   createCredentialsUser: vi.fn(),
   verifyCredentialsLogin: vi.fn(),
   validateEmail: vi.fn((email: string) => ({ valid: email.includes("@") })),
-  validatePassword: vi.fn((pw: string) => ({ valid: pw.length >= 8 })),
+  validatePassword: vi.fn((pw: unknown) => typeof pw !== "string" || pw.length < 8
+    ? { valid: false, error: "Password must be at least 8 characters long." }
+    : pw.length > 128
+      ? { valid: false, error: "Password must be at most 128 characters long." }
+      : { valid: true }),
 }));
 
 vi.mock("@/lib/cloudflare/session", () => ({
@@ -79,6 +83,30 @@ describe("Auth Credentials API routes", () => {
       expect(response.status).toBe(400);
       const json = await response.json();
       expect(json.error).toMatch(/at least 8 characters/i);
+    });
+
+    it("rejects overlong passwords with the correct limit", async () => {
+      const response = await registerHandler(new Request("https://soma.fit/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "alex@soma.fit", password: "x".repeat(129) }),
+      }));
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toMatch(/at most 128 characters/i);
+      expect(createCredentialsUser).not.toHaveBeenCalled();
+    });
+
+    it("does not expose storage errors to the browser", async () => {
+      vi.mocked(createCredentialsUser).mockRejectedValue(new Error("private storage detail"));
+      const response = await registerHandler(new Request("https://soma.fit/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "alex@soma.fit", password: "long-enough-password" }),
+      }));
+
+      expect(response.status).toBe(500);
+      expect((await response.json()).error).not.toContain("private storage detail");
     });
   });
 

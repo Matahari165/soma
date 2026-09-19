@@ -16,7 +16,7 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function validatePassword(password: string): { valid: boolean; error?: string } {
+export function validatePassword(password: unknown): { valid: boolean; error?: string } {
   if (typeof password !== "string" || password.length < 8) {
     return { valid: false, error: "Password must be at least 8 characters long." };
   }
@@ -150,6 +150,8 @@ export async function createCredentialsUser(input: {
       updated_at: now,
     });
     if (credResult.error) {
+      // Avoid leaving an account that cannot sign in if credential storage fails.
+      await admin.from("soma_users").delete().eq("id", userId);
       throw new Error(credResult.error.message || "Failed to store user credentials.");
     }
 

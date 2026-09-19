@@ -20,9 +20,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
   }
 
-  if (typeof password !== "string" || !validatePassword(password).valid) {
+  const passwordCheck = validatePassword(password);
+  if (typeof password !== "string" || !passwordCheck.valid) {
     return NextResponse.json(
-      { error: "Password must be at least 8 characters long." },
+      { error: passwordCheck.error },
       { status: 400 },
     );
   }
@@ -48,6 +49,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Account registration failed.";
     const isConflict = message.toLowerCase().includes("already exists");
-    return NextResponse.json({ error: message }, { status: isConflict ? 409 : 500 });
+    return NextResponse.json(
+      { error: isConflict ? message : "Account creation is temporarily unavailable. Please try again later." },
+      { status: isConflict ? 409 : 500 },
+    );
   }
 }
