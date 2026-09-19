@@ -8,7 +8,17 @@ final class AppModel {
     enum Destination: String, CaseIterable, Identifiable {
         case day = "Jour"
         case analysis = "Strongest Effects"
+        case health = "Santé"
         case export = "Export"
+
+        static var allCases: [Destination] {
+            #if os(iOS)
+            [.day, .analysis, .health, .export]
+            #else
+            [.day, .analysis, .export]
+            #endif
+        }
+
         var id: Self { self }
     }
 
@@ -40,7 +50,11 @@ final class AppModel {
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
         if ProcessInfo.processInfo.arguments.contains("--preview-data") {
             loadSyntheticPreview()
-            if ProcessInfo.processInfo.arguments.contains("--preview-export") { destination = .export }
+            if ProcessInfo.processInfo.arguments.contains("--health-preview") {
+                destination = .health
+            } else if ProcessInfo.processInfo.arguments.contains("--preview-export") {
+                destination = .export
+            }
             isBootstrapping = false
         }
     }
