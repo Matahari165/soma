@@ -47,9 +47,16 @@ struct TimeSeriesChartContent: View {
 
     private var accessibilitySummary: String {
         let summaries = presentation.series.map { series in
-            let observed = series.points.compactMap(\.value)
-            guard let first = observed.first, let last = observed.last else { return "\(series.label), aucune mesure" }
-            return "\(series.label), de \(first.formatted()) a \(last.formatted()) \(presentation.unit)"
+            let observedPoints = series.points.filter { $0.value != nil }
+            guard let firstPoint = observedPoints.first,
+                  let lastPoint = observedPoints.last,
+                  let firstValue = firstPoint.value,
+                  let lastValue = lastPoint.value else {
+                return "\(series.label), aucune mesure sur \(presentation.periodLabel)"
+            }
+            let missingCount = series.points.count - observedPoints.count
+            let missingSummary = missingCount == 0 ? "aucune mesure manquante" : "\(missingCount) mesure(s) manquante(s)"
+            return "\(series.label), \(observedPoints.count) mesures sur \(presentation.periodLabel), du \(firstPoint.date.formatted(date: .abbreviated, time: .omitted)) au \(lastPoint.date.formatted(date: .abbreviated, time: .omitted)), de \(firstValue.formatted()) à \(lastValue.formatted()) \(presentation.unit), \(missingSummary)"
         }
         return ([presentation.title] + summaries).joined(separator: ". ")
     }

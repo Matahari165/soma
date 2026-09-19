@@ -58,6 +58,14 @@ struct StrongestEffectRow: View {
     }
 
     private var accessibilityText: String {
-        "Association entre \(effect.predictor) et \(effect.outcome), effet \(effect.effect.formatted(.number.precision(.fractionLength(2)))), \(effect.sampleSize) observations, \(effect.lagLabel), \(effect.periodLabel)"
+        "Association \(directionLabel) entre \(effect.predictor) et \(effect.outcome), effet \(effect.effect.formatted(.number.precision(.fractionLength(2)))), \(effect.sampleSize) observations, \(effect.lagLabel), \(effect.periodLabel)"
+    }
+
+    private var directionLabel: String {
+        switch effect.direction {
+        case .favorable: "favorable"
+        case .unfavorable: "défavorable"
+        case .neutral: "neutre"
+        }
     }
 }
