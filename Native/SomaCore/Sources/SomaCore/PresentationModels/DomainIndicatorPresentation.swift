@@ -6,11 +6,11 @@ public struct DomainIndicatorPresentation: Equatable, Sendable {
     public let score: Double
     public let scoreLabel: String
     public let detail: String
-    public let coverage: Double
+    public let coverage: Double?
     public let provenance: DataProvenance
     public let components: [MetricComponentPresentation]
 
-    public init(domain: HealthDomain, title: String, score: Double, scoreLabel: String, detail: String, coverage: Double, provenance: DataProvenance, components: [MetricComponentPresentation] = []) {
+    public init(domain: HealthDomain, title: String, score: Double, scoreLabel: String, detail: String, coverage: Double?, provenance: DataProvenance, components: [MetricComponentPresentation] = []) {
         self.domain = domain
         self.title = title
         self.score = score

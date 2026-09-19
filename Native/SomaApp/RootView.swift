@@ -8,6 +8,8 @@ struct RootView: View {
         let arguments = ProcessInfo.processInfo.arguments
         let initialDestination: AppDestination = if arguments.contains("--health-preview") {
             .health
+        } else if arguments.contains("--effort-preview") {
+            .activity
         } else if arguments.contains("--preview-export") {
             .export
         } else {

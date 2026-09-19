@@ -5,6 +5,12 @@ import SomaCore
 @MainActor
 @Observable
 final class AppModel {
+    enum EffortState {
+        case idle
+        case loading
+        case loaded(EffortSnapshot)
+        case failed(String)
+    }
     enum Destination: String, CaseIterable, Identifiable {
         case day = "Jour"
         case analysis = "Strongest Effects"
@@ -31,6 +37,7 @@ final class AppModel {
     var isBootstrapping = true
     var isLoading = false
     var errorMessage: String?
+    var effortState: EffortState = .idle
 
     private let client: APIClient
     private let mealDraftStore: MealDraftStore?
@@ -102,6 +109,18 @@ final class AppModel {
 
     func refreshAnalysis() async {
         await perform { matrix = try await client.matrix(period: "30") }
+    }
+
+    func refreshEffort() async {
+        effortState = .loading
+        do {
+            effortState = .loaded(try await client.effort())
+        } catch APIError.unauthorized {
+            isAuthenticated = false
+            effortState = .failed("La session a expiré. Reconnecte-toi.")
+        } catch {
+            effortState = .failed("Les données d’effort sont momentanément indisponibles.")
+        }
     }
 
     func shiftDate(by days: Int) async {
@@ -276,6 +295,7 @@ final class AppModel {
         isAuthenticated = true
         day = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8))
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
+        effortState = (try? JSONDecoder().decode(EffortSnapshot.self, from: Data(Self.previewEffort.utf8))).map(EffortState.loaded) ?? .idle
     }
 
     private static func journalValue(_ text: String, type: String) -> JSONValue {
@@ -287,4 +307,5 @@ final class AppModel {
 
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"isActive":true,"captureMode":"manual","automaticMetricId":null}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"rows":[{"id":"walk","label":"Marche","relations":[{"predictorId":"walk","outcomeId":"sleep","predictorLabel":"Marche","outcomeLabel":"Sommeil","effect":0.34,"sampleSize":24,"effectConfidenceLow":0.11,"effectConfidenceHigh":0.57}]},{"id":"late-meal","label":"Repas tardif","relations":[{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","outcomeLabel":"Récupération","effect":-0.28,"sampleSize":21,"effectConfidenceLow":-0.49,"effectConfidenceHigh":-0.07}]}],"outcomes":[{"id":"sleep","label":"Sommeil","unit":"score"},{"id":"recovery","label":"Récupération","unit":"score"}],"periods":[30]}"#
+    private static let previewEffort = #"{"timezone":"Europe/Zurich","period":{"days":30,"startDate":"2026-08-21","endDate":"2026-09-19"},"latestObservedDate":"2026-09-19","importedAt":"2026-09-19T18:05:00Z","measuredAt":"2026-09-19T18:00:00Z","latest":{"date":"2026-09-19","steps":8900,"exerciseMinutes":44,"activeEnergyKcal":540,"zoneMinutes":33,"weeklyLoad":408,"acuteChronicLoadRatio":1.04,"zones":{"light":12,"moderate":10,"vigorous":7,"peak":4},"provenance":"google_health"},"score":{"value":61,"date":"2026-09-19","coverage":1,"algorithmVersion":"effort-v3","provenance":"soma_calculation"},"coverage":{"expectedDays":30,"observedActivityDays":24,"byMetric":{"steps":0.8,"exercise_minutes":0.7,"active_energy_kcal":0.77,"zone_minutes":0.7}},"trends":[{"date":"2026-09-17","steps":7200,"exerciseMinutes":null,"activeEnergyKcal":420,"zoneMinutes":null},{"date":"2026-09-18","steps":0,"exerciseMinutes":0,"activeEnergyKcal":0,"zoneMinutes":0},{"date":"2026-09-19","steps":8900,"exerciseMinutes":44,"activeEnergyKcal":540,"zoneMinutes":33}],"exercises":[{"id":"synthetic-run","date":"2026-09-19","name":"Course extérieure","type":"RUNNING","durationMinutes":44,"activeMinutes":41,"calories":430,"distanceKm":7.2,"averageHeartRate":151,"zoneMinutes":36,"averageSpeedKph":9.8,"averagePaceSecondsPerKm":367,"elevationGainMeters":94,"steps":null,"runVo2Max":null,"swimLengths":null,"cadence":null,"strideLengthMeters":null,"groundContactMilliseconds":null,"verticalOscillationMillimeters":null,"verticalRatio":null,"provenance":"google_health"}]}"#
 }

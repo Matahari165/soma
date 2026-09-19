@@ -44,6 +44,12 @@ import Testing
     #expect(indicator.coverage == 1)
 }
 
+@Test func domainIndicatorKeepsUnknownCoverageUnavailable() {
+    let indicator = DomainIndicatorPresentation(domain: .effort, title: "Effort", score: 42, scoreLabel: "42 / 100", detail: "Mesuré", coverage: nil, provenance: .somaCalculation(version: nil))
+
+    #expect(indicator.coverage == nil)
+}
+
 @Test func strongestEffectKeepsEvidenceMetadata() {
     let effect = StrongestEffectPresentation(id: "walk-sleep", predictor: "Marche", outcome: "Sommeil", effect: 0.31, confidenceRange: 0.12...0.48, sampleSize: 28, lagLabel: "le lendemain", periodLabel: "30 jours", direction: .favorable, qValue: 0.02, stability: 0.84)
 

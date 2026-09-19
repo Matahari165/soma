@@ -25,7 +25,7 @@ struct DomainIndicatorContent: View {
             HStack {
                 Text(presentation.detail).font(.body)
                 Spacer()
-                Text("Couverture \((presentation.coverage * 100).formatted(.number.precision(.fractionLength(0)))) %")
+                Text(coverageLabel)
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(SomaTheme.secondary)
             }
@@ -45,8 +45,16 @@ struct DomainIndicatorContent: View {
             ChartProvenanceLabel(provenance: presentation.provenance)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityValue("\(presentation.scoreLabel), couverture \((presentation.coverage * 100).formatted(.number.precision(.fractionLength(0)))) pour cent")
+        .accessibilityValue("\(presentation.scoreLabel), \(coverageAccessibilityLabel)")
     }
 
     private var clampedScore: Double { min(max(presentation.score, 0), 100) / 100 }
+
+    private var coverageLabel: String {
+        presentation.coverage.map { "Couverture \(($0 * 100).formatted(.number.precision(.fractionLength(0)))) %" } ?? "Couverture —"
+    }
+
+    private var coverageAccessibilityLabel: String {
+        presentation.coverage.map { "couverture \(($0 * 100).formatted(.number.precision(.fractionLength(0)))) pour cent" } ?? "couverture indisponible"
+    }
 }
