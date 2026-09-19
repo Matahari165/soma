@@ -117,14 +117,13 @@ actor HealthKitReader: HealthSnapshotReading {
                 sortDescriptors: [SortDescriptor(\.startDate)]
             )
             let sleepSamples = try await sleepQuery.result(for: store)
-            records.append(contentsOf: sleepSamples.compactMap { sample in
-                guard let category = sleepCategory(sample.value) else { return nil }
+            records.append(contentsOf: sleepSamples.map { sample in
                 return HealthSampleRecord(
                     id: sample.uuid.uuidString.lowercased(),
                     metric: .sleepAnalysis,
                     startDate: sample.startDate,
                     endDate: sample.endDate,
-                    value: .category(category),
+                    value: .category(sleepCategory(sample.value)),
                     unit: nil,
                     provenance: provenance(for: sample)
                 )
@@ -204,8 +203,10 @@ actor HealthKitReader: HealthSnapshotReading {
         )
     }
 
-    private func sleepCategory(_ rawValue: Int) -> String? {
-        guard let value = HKCategoryValueSleepAnalysis(rawValue: rawValue) else { return nil }
+    private func sleepCategory(_ rawValue: Int) -> String {
+        guard let value = HKCategoryValueSleepAnalysis(rawValue: rawValue) else {
+            return "unknown_\(rawValue)"
+        }
         switch value {
         case .inBed: return "in_bed"
         case .asleepUnspecified: return "asleep_unspecified"
@@ -213,7 +214,7 @@ actor HealthKitReader: HealthSnapshotReading {
         case .asleepCore: return "asleep_core"
         case .asleepDeep: return "asleep_deep"
         case .asleepREM: return "asleep_rem"
-        @unknown default: return nil
+        @unknown default: return "unknown_\(rawValue)"
         }
     }
 }
