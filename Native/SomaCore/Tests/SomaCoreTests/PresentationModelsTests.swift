@@ -71,3 +71,40 @@ import Testing
     #expect(series.measuredSegments.count == 2)
     #expect(series.measuredSegments.map(\.points.count) == [1, 1])
 }
+
+@Test func recoveryResponseKeepsMissingSignalsAndMeasuredZeroDistinct() throws {
+    let json = #"{"timezone":"Europe/Zurich","periodDays":30,"latestDate":"2026-09-19","freshness":{"measuredAt":null,"importedAt":null,"state":"partial","coverage":0.3333333333},"score":{"value":null,"reason":"La fréquence cardiaque au repos est absente.","average":null,"measuredDays":0,"coverage":0.3333333333,"algorithmVersion":"recovery-v1","components":{"hrv":{"value":null,"weight":0.4},"restingHeartRate":{"value":null,"weight":0.3},"sleep":{"value":null,"weight":0.3}}},"signals":{"hrv":{"current":0,"reference":48,"measuredDays":8,"unit":"ms"},"restingHeartRate":{"current":null,"reference":60,"measuredDays":8,"unit":"bpm"}},"trends":{"hrv":[{"date":"2026-09-18","value":null},{"date":"2026-09-19","value":0}],"restingHeartRate":[{"date":"2026-09-18","value":60},{"date":"2026-09-19","value":null}]},"provenance":{"measurements":{"kind":"health_source","label":"Sources santé importées"},"score":{"kind":"soma_calculation","label":"Calcul Soma"}}}"#
+    let response = try JSONDecoder().decode(NativeRecoveryResponse.self, from: Data(json.utf8))
+
+    #expect(response.signals.hrv.current == 0)
+    #expect(response.signals.restingHeartRate.current == nil)
+    #expect(response.trends.hrv[0].value == nil)
+    #expect(response.trends.hrv[1].value == 0)
+    #expect(response.score.value == nil)
+}
+
+@Test func recoveryPresentationNeverInventsAnUnavailableScore() throws {
+    let json = #"{"timezone":"Europe/Zurich","periodDays":30,"latestDate":"2026-09-19","freshness":{"measuredAt":"2026-09-19T07:00:00.000Z","importedAt":"2026-09-19T08:00:00.000Z","state":"current","coverage":0.6666666667},"score":{"value":null,"reason":"Il faut au moins 7 mesures historiques de VFC.","average":null,"measuredDays":0,"coverage":0.6666666667,"algorithmVersion":"recovery-v1","components":{"hrv":{"value":null,"weight":0.4},"restingHeartRate":{"value":62,"weight":0.3},"sleep":{"value":71,"weight":0.3}}},"signals":{"hrv":{"current":52,"reference":51,"measuredDays":3,"unit":"ms"},"restingHeartRate":{"current":58,"reference":60,"measuredDays":8,"unit":"bpm"}},"trends":{"hrv":[{"date":"2026-09-19","value":52}],"restingHeartRate":[{"date":"2026-09-19","value":58}]},"provenance":{"measurements":{"kind":"health_source","label":"Sources santé importées"},"score":{"kind":"soma_calculation","label":"Calcul Soma"}}}"#
+    let response = try JSONDecoder().decode(NativeRecoveryResponse.self, from: Data(json.utf8))
+    let presentation = RecoveryPresentation(response: response)
+
+    if case .unavailable(let reason) = presentation.indicator {
+        #expect(reason.contains("7 mesures"))
+    } else {
+        Issue.record("Le score indisponible ne doit pas devenir une valeur numérique")
+    }
+}
+
+@Test func recoveryPresentationExposesPersistedScoreCoverageAndReferences() throws {
+    let json = #"{"timezone":"Europe/Zurich","periodDays":30,"latestDate":"2026-09-19","freshness":{"measuredAt":"2026-09-19T07:00:00.000Z","importedAt":"2026-09-19T08:00:00.000Z","state":"current","coverage":1},"score":{"value":74,"reason":null,"average":70,"measuredDays":24,"coverage":1,"algorithmVersion":"recovery-v1","components":{"hrv":{"value":78,"weight":0.4},"restingHeartRate":{"value":72,"weight":0.3},"sleep":{"value":70,"weight":0.3}}},"signals":{"hrv":{"current":57,"reference":52,"measuredDays":27,"unit":"ms"},"restingHeartRate":{"current":56,"reference":59,"measuredDays":29,"unit":"bpm"}},"trends":{"hrv":[{"date":"2026-09-18","value":55},{"date":"2026-09-19","value":57}],"restingHeartRate":[{"date":"2026-09-18","value":57},{"date":"2026-09-19","value":56}]},"provenance":{"measurements":{"kind":"health_source","label":"Sources santé importées"},"score":{"kind":"soma_calculation","label":"Calcul Soma"}}}"#
+    let response = try JSONDecoder().decode(NativeRecoveryResponse.self, from: Data(json.utf8))
+    let presentation = RecoveryPresentation(response: response)
+
+    if case .available(let indicator) = presentation.indicator {
+        #expect(indicator.score == 74)
+        #expect(indicator.coverage == 1)
+        #expect(indicator.components.first?.targetLabel?.contains("n=27") == true)
+    } else {
+        Issue.record("Le score persistant calculable doit rester disponible")
+    }
+}
