@@ -2,12 +2,18 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @State private var destination: AppDestination = .day
 
     var body: some View {
         Group {
-            if model.isBootstrapping { ProgressView("Ouverture de Soma…") }
-            else if model.isAuthenticated { authenticatedContent }
-            else { LoginView() }
+            if model.isBootstrapping {
+                ProgressView("Ouverture de Soma…")
+                    .accessibilityLabel("Ouverture de Soma en cours")
+            } else if model.isAuthenticated {
+                authenticatedContent
+            } else {
+                LoginView()
+            }
         }
         .somaScreen()
         .overlay(alignment: .bottom) {
@@ -24,30 +30,44 @@ struct RootView: View {
     @ViewBuilder
     private var authenticatedContent: some View {
         #if os(macOS)
-        @Bindable var model = model
         NavigationSplitView {
-            List(AppModel.Destination.allCases, selection: $model.destination) { destination in
-                Text(destination.rawValue).tag(destination)
+            List(AppDestination.allCases, selection: $destination) { destination in
+                Label(destination.title, systemImage: destination.systemImage)
+                    .tag(destination)
             }
             .navigationTitle("Soma")
-        } detail: { destinationView }
+            .navigationSplitViewColumnWidth(min: 188, ideal: 208, max: 240)
+            .safeAreaInset(edge: .bottom) {
+                Button("Se déconnecter") { Task { await model.logout() } }
+                    .buttonStyle(.plain)
+                    .padding()
+            }
+        } detail: {
+            destinationView
+                .id(destination)
+        }
         #else
-        TabView(selection: Bindable(model).destination) {
-            NavigationStack { DayView() }.tabItem { Label("Jour", systemImage: "calendar") }.tag(AppModel.Destination.day)
-            NavigationStack { AnalysisView() }.tabItem { Label("Effets", systemImage: "waveform.path.ecg") }.tag(AppModel.Destination.analysis)
-            NavigationStack { SettingsView() }.tabItem { Label("Réglages", systemImage: "gearshape") }.tag(AppModel.Destination.settings)
-            NavigationStack { ExportView() }.tabItem { Label("Export", systemImage: "square.and.arrow.up") }.tag(AppModel.Destination.export)
+        NavigationStack {
+            destinationView
+                .id(destination)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            CompactNavigationBar(selection: $destination)
         }
         #endif
     }
 
     @ViewBuilder
     private var destinationView: some View {
-        switch model.destination {
+        switch destination {
         case .day: DayView()
         case .analysis: AnalysisView()
-        case .settings: SettingsView()
+        case .meals: MealsOverviewView()
+        case .sleep: SleepView()
+        case .recovery: RecoveryView()
+        case .activity: ActivityView()
         case .export: ExportView()
+        case .settings: SettingsView()
         }
     }
 }

@@ -6,21 +6,32 @@ struct SettingsView: View {
     @State private var sessionToRevoke: DeviceSession?
 
     var body: some View {
-        List {
-            Section("Appareils connectés") {
+        ScreenScaffold(title: "Paramètres") {
+            VStack(alignment: .leading, spacing: 0) {
+                settingsRow(label: "Session", value: model.isAuthenticated ? "Connectée" : "Indisponible")
+                Divider().overlay(SomaTheme.rule)
+                settingsRow(label: "Date active", value: model.activeDate.rawValue)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Appareils connectés")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 sessionsContent
             }
 
-            Section {
+            VStack(alignment: .leading, spacing: 8) {
                 Button("Se déconnecter de cet appareil", role: .destructive) {
                     Task { await model.logout() }
                 }
                 .disabled(model.isLoading)
-            } footer: {
+                .frame(minHeight: 44)
+
                 Text("Les autres appareils restent connectés.")
+                    .font(.caption)
+                    .foregroundStyle(SomaTheme.secondary)
             }
         }
-        .navigationTitle("Réglages")
         .task { await model.refreshSessions() }
         .refreshable { await model.refreshSessions() }
         .confirmationDialog(
@@ -50,24 +61,33 @@ struct SettingsView: View {
                 Text("Chargement des appareils…")
                     .foregroundStyle(SomaTheme.secondary)
             }
+            .frame(minHeight: 52)
             .accessibilityElement(children: .combine)
         } else if let error = model.sessionsErrorMessage, model.deviceSessions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text(error)
                 Button("Réessayer") { Task { await model.refreshSessions() } }
+                    .frame(minHeight: 44)
             }
         } else if model.deviceSessions.isEmpty {
             Text("Aucun appareil actif.")
                 .foregroundStyle(SomaTheme.secondary)
+                .frame(minHeight: 52)
         } else {
-            ForEach(sortedSessions) { session in
-                SessionRow(
-                    session: session,
-                    isCurrent: session.id == model.currentSession?.id,
-                    isRevoking: model.revokingSessionIDs.contains(session.id),
-                    revoke: { sessionToRevoke = session }
-                )
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(sortedSessions.enumerated()), id: \.element.id) { index, session in
+                    if index > 0 {
+                        Divider().overlay(SomaTheme.rule)
+                    }
+                    SessionRow(
+                        session: session,
+                        isCurrent: session.id == model.currentSession?.id,
+                        isRevoking: model.revokingSessionIDs.contains(session.id),
+                        revoke: { sessionToRevoke = session }
+                    )
+                }
             }
+
             if let error = model.sessionsErrorMessage {
                 HStack {
                     Text(error)
@@ -75,6 +95,7 @@ struct SettingsView: View {
                         .accessibilityAddTraits(.isStaticText)
                     Spacer()
                     Button("Réessayer") { Task { await model.refreshSessions() } }
+                        .frame(minHeight: 44)
                 }
             }
         }
@@ -86,6 +107,19 @@ struct SettingsView: View {
             if $1.id == model.currentSession?.id { return false }
             return $0.createdAt > $1.createdAt
         }
+    }
+
+    private func settingsRow(label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+            Spacer()
+            Text(value)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(SomaTheme.secondary)
+                .multilineTextAlignment(.trailing)
+        }
+        .frame(minHeight: 52)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -128,6 +162,7 @@ private struct SessionRow: View {
             }
         }
         .padding(.vertical, 4)
+        .frame(minHeight: 60)
         .accessibilityElement(children: .contain)
     }
 
