@@ -10,6 +10,8 @@ struct RootView: View {
             .settings
         } else if arguments.contains("--health-preview") {
             .health
+        } else if arguments.contains("--preview-meals") {
+            .meals
         } else if arguments.contains("--effort-preview") {
             .activity
         } else if arguments.contains("--recovery-preview") {
