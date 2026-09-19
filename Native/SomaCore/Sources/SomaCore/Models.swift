@@ -4,6 +4,12 @@ public struct SessionUser: Codable, Equatable, Sendable {
     public let id: String
     public let email: String?
     public let displayName: String
+
+    public init(id: String, email: String?, displayName: String) {
+        self.id = id
+        self.email = email
+        self.displayName = displayName
+    }
 }
 
 public struct LoginResponse: Codable, Sendable {
@@ -11,11 +17,99 @@ public struct LoginResponse: Codable, Sendable {
     public let tokenType: String
     public let user: SessionUser
     public let session: DeviceSession
+    public let hasCompletedOnboarding: Bool
 }
 
 public struct SessionResponse: Codable, Sendable {
     public let user: SessionUser
     public let session: DeviceSession
+    public let hasCompletedOnboarding: Bool
+}
+
+public enum HealthCalculationSex: String, Codable, CaseIterable, Sendable {
+    case female, male, intersex
+    case preferNotToSay = "prefer_not_to_say"
+}
+
+public enum FitnessGoal: String, Codable, CaseIterable, Sendable {
+    case buildMuscle = "build_muscle"
+    case improveEndurance = "improve_endurance"
+    case improveCardio = "improve_cardio"
+    case generalFitness = "general_fitness"
+    case maintainHealth = "maintain_health"
+    case other
+}
+
+public enum HealthImportRange: String, Codable, CaseIterable, Sendable {
+    case ninetyDays = "90_days"
+    case allHistory = "all_history"
+}
+
+public struct OnboardingRequest: Encodable, Equatable, Sendable {
+    public let displayName: String
+    public let dateOfBirth: String
+    public let heightCm: Double
+    public let weightKg: Double
+    public let sexForHealthCalculations: HealthCalculationSex
+    public let primaryGoal: FitnessGoal
+    public let secondaryGoal: FitnessGoal?
+    public let baseSleepTargetMinutes: Int
+    public let usualWakeTime: String
+    public let importRange: HealthImportRange
+    public let timezone: String
+    public let selectedHabits: [String]
+
+    public init(
+        displayName: String,
+        dateOfBirth: String,
+        heightCm: Double,
+        weightKg: Double,
+        sexForHealthCalculations: HealthCalculationSex,
+        primaryGoal: FitnessGoal,
+        secondaryGoal: FitnessGoal? = nil,
+        baseSleepTargetMinutes: Int,
+        usualWakeTime: String,
+        importRange: HealthImportRange,
+        timezone: String,
+        selectedHabits: [String] = []
+    ) {
+        self.displayName = displayName
+        self.dateOfBirth = dateOfBirth
+        self.heightCm = heightCm
+        self.weightKg = weightKg
+        self.sexForHealthCalculations = sexForHealthCalculations
+        self.primaryGoal = primaryGoal
+        self.secondaryGoal = secondaryGoal
+        self.baseSleepTargetMinutes = baseSleepTargetMinutes
+        self.usualWakeTime = usualWakeTime
+        self.importRange = importRange
+        self.timezone = timezone
+        self.selectedHabits = selectedHabits
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case displayName, dateOfBirth, heightCm, weightKg, sexForHealthCalculations
+        case primaryGoal, secondaryGoal, baseSleepTargetMinutes, usualWakeTime
+        case importRange, timezone, selectedHabits, customHabits
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(dateOfBirth, forKey: .dateOfBirth)
+        try container.encode(heightCm, forKey: .heightCm)
+        try container.encode(weightKg, forKey: .weightKg)
+        try container.encode(sexForHealthCalculations, forKey: .sexForHealthCalculations)
+        try container.encode(primaryGoal, forKey: .primaryGoal)
+        try container.encodeIfPresent(secondaryGoal, forKey: .secondaryGoal)
+        if secondaryGoal == nil { try container.encodeNil(forKey: .secondaryGoal) }
+        try container.encode(baseSleepTargetMinutes, forKey: .baseSleepTargetMinutes)
+        try container.encode(usualWakeTime, forKey: .usualWakeTime)
+        try container.encode(importRange, forKey: .importRange)
+        try container.encode(timezone, forKey: .timezone)
+        try container.encode(selectedHabits, forKey: .selectedHabits)
+        try container.encode([String](), forKey: .customHabits)
+    }
 }
 
 public enum SessionPlatform: String, Codable, Sendable {
@@ -40,6 +134,14 @@ public struct DeviceSession: Codable, Identifiable, Equatable, Sendable {
 
 public struct DeviceSessionsResponse: Codable, Equatable, Sendable {
     public let sessions: [DeviceSession]
+}
+
+public struct EmptyResponse: Codable, Equatable, Sendable {
+    public let ok: Bool
+
+    public init(ok: Bool) {
+        self.ok = ok
+    }
 }
 
 public struct JournalSaveEntry: Codable, Equatable, Sendable {

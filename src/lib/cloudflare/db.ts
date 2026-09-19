@@ -928,6 +928,7 @@ function createD1AdminClient() {
             const db = cloudflareDb();
             await db.batch([
               db.prepare("DELETE FROM soma_sessions WHERE user_id = ?").bind(userId),
+              db.prepare("DELETE FROM soma_credentials WHERE user_id = ?").bind(userId),
               db.prepare("DELETE FROM soma_users WHERE id = ?").bind(userId),
               db.prepare("DELETE FROM soma_rows WHERE user_id = ?").bind(userId),
             ]);
@@ -1347,6 +1348,7 @@ function createSupabaseAdminClient() {
         async deleteUser(userId: string) {
           try {
             await supabaseRequest<unknown[]>(supabasePath("soma_sessions", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+            await supabaseRequest<unknown[]>(supabasePath("soma_credentials", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             await supabaseRequest<unknown[]>(supabasePath("soma_users", [["id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             return { data: null, error: null };
