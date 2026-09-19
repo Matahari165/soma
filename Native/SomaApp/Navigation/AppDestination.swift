@@ -7,6 +7,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
     case sleep
     case recovery
     case activity
+    case export
     case settings
 
     var id: Self { self }
@@ -19,6 +20,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .sleep: "Sommeil"
         case .recovery: "Récupération"
         case .activity: "Effort"
+        case .export: "Export"
         case .settings: "Paramètres"
         }
     }
@@ -31,6 +33,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .sleep: "moon.zzz"
         case .recovery: "heart.text.square"
         case .activity: "figure.run"
+        case .export: "square.and.arrow.up"
         case .settings: "gearshape"
         }
     }

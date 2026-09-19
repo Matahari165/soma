@@ -66,6 +66,7 @@ struct RootView: View {
         case .sleep: SleepView()
         case .recovery: RecoveryView()
         case .activity: ActivityView()
+        case .export: ExportView()
         case .settings: SettingsView()
         }
     }

@@ -45,6 +45,10 @@
 		F1493FB8A94EAE93A804FEEB /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 956FC67FF5EAA7C4AF90091E /* SomaCore */; };
 		F3800E17B2A40EF792884DCF /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
 		FA693144035B221994833C0D /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF75933C45481C6489F3B978 /* SleepView.swift */; };
+		A10000000000000000000001 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* ExportView.swift */; };
+		A10000000000000000000002 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* ExportView.swift */; };
+		A10000000000000000000004 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* ExportViewModel.swift */; };
+		A10000000000000000000006 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* ExportViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +73,8 @@
 		EE49280B07228D4794AA3ABF /* ScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScaffold.swift; sourceTree = "<group>"; };
 		F42CA9D77DB2222DF4BE9806 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +138,15 @@
 			path = Navigation;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000007 /* Export */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000003 /* ExportView.swift */,
+				A10000000000000000000005 /* ExportViewModel.swift */,
+			);
+			path = Export;
+			sourceTree = "<group>";
+		};
 		93F83F584100C0A6898372D5 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -143,6 +158,7 @@
 		AEDB86E4E75469EB3FBD82D6 /* SomaApp */ = {
 			isa = PBXGroup;
 			children = (
+				A10000000000000000000007 /* Export */,
 				366C20FFC5747948E9D5D7BE /* AnalysisView.swift */,
 				492A88C4D9678A2D190181FF /* AppModel.swift */,
 				224766560DE9DD880F8B8101 /* DayView.swift */,
@@ -255,6 +271,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				44190D5494017F084647C798 /* ActivityView.swift in Sources */,
+				A10000000000000000000001 /* ExportView.swift in Sources */,
+				A10000000000000000000004 /* ExportViewModel.swift in Sources */,
 				02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */,
 				CC4756EE17D413C0A0B15E6C /* AppDestination.swift in Sources */,
 				19187394B87FFE1385037AA6 /* AppModel.swift in Sources */,
@@ -280,6 +298,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B6517F1BA7F662EDA98C2943 /* ActivityView.swift in Sources */,
+				A10000000000000000000002 /* ExportView.swift in Sources */,
+				A10000000000000000000006 /* ExportViewModel.swift in Sources */,
 				F3800E17B2A40EF792884DCF /* AnalysisView.swift in Sources */,
 				ECAA72B94279A96ED624F62D /* AppDestination.swift in Sources */,
 				328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */,
