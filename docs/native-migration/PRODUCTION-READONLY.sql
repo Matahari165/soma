@@ -80,3 +80,32 @@ select
   count(*) filter (where table_name = 'daily_health_metrics' and json_data ? 'active_energy_kcal')
     as health_days_with_active_energy_kcal
 from public.soma_rows;
+
+-- 7. Schéma physique réellement présent (noms de tables seulement).
+select table_name
+from information_schema.tables
+where table_schema = 'public'
+  and table_name in (
+    'profiles', 'daily_health_metrics', 'provider_connections',
+    'soma_rows', 'soma_users', 'soma_sessions'
+  )
+order by table_name;
+
+-- 8. Planificateur Supabase. Les exécutions réussies prouvent le lancement
+-- du SQL par pg_cron, pas la réussite de l'appel HTTP vers Vercel.
+select extname
+from pg_extension
+where extname in ('pg_cron', 'pg_net')
+order by extname;
+
+-- À omettre si pg_cron n'est pas installé.
+select jobname, schedule, active
+from cron.job
+where jobname like 'soma%'
+order by jobname;
+
+select status, start_time, end_time
+from cron.job_run_details
+where jobid in (select jobid from cron.job where jobname = 'soma-sync-worker')
+order by start_time desc
+limit 5;
