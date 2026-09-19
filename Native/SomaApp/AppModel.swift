@@ -168,6 +168,7 @@ final class AppModel {
         }
         do {
             let response = try await client.matrix(period: requestedPeriod)
+            guard response.period?.queryValue == requestedPeriod else { throw APIError.invalidResponse }
             guard requestGeneration == analysisRequestGeneration,
                   generation == authenticationGeneration,
                   analysisPeriod == requestedPeriod,
