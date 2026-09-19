@@ -45,6 +45,12 @@
   }
 }
 
+.personal-lab-workspace .journal-choice--binary {
+  width: 112px !important;
+  min-width: 112px !important;
+  max-width: 112px !important;
+}
+
 .stitch-stepper {
   display: inline-flex !important;
   align-items: center !important;

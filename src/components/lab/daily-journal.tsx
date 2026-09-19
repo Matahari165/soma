@@ -1075,7 +1075,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
 
       const headerElement = isPersonalLab ? (
         <div className="pb-4 border-b border-hairline space-y-2.5">
-          <div className="flex items-end justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
               <h1 className="font-serif text-2xl tracking-normal text-content-primary font-normal" id="journal-title">Daily Protocol</h1>
               <p className="text-xs text-content-secondary font-mono mt-1">{completionCount} of {activeVariables.length} logged · Adherence {adherenceRate}%</p>

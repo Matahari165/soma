@@ -1202,7 +1202,7 @@ function MealLabHeader({
 
   return (
     <header className="pb-4 border-b border-hairline space-y-2.5">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h2 id="meal-journal-title" className="font-serif text-2xl tracking-normal text-content-primary font-normal">Nutrition Log</h2>
           <p className="text-xs text-content-secondary font-mono mt-1">{formattedCalories} / {formattedTarget} kcal</p>

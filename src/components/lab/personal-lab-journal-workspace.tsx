@@ -52,9 +52,9 @@ export function PersonalLabDateStrip({
   onDateChange: (date: string) => void;
 }) {
   return (
-    <section className="w-full border-b border-hairline bg-surface-card/40 personal-lab-day-strip" data-purpose="timeline-selector" aria-label="Shared day between meals and journal">
-      <div className="max-w-[1360px] mx-auto px-6 py-3">
-        <div className="flex items-center justify-between overflow-x-auto no-scrollbar gap-2 personal-lab-day-strip__days" role="group" aria-label="Available days">
+    <section className="w-full border-b border-hairline bg-surface-card/40 personal-lab-day-strip overflow-hidden" data-purpose="timeline-selector" aria-label="Shared day between meals and journal">
+      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 py-3 w-full min-w-0">
+        <div className="flex items-center justify-between overflow-x-auto no-scrollbar gap-2 personal-lab-day-strip__days w-full min-w-0" role="group" aria-label="Available days">
           {dates.map((date) => {
             const isSelected = date === selectedDate;
             const isToday = date === todayDate;
@@ -259,7 +259,7 @@ export function PersonalLabJournalWorkspace({
     return map;
   }, [data]);
 
-  return <div className="personal-lab-workspace" data-design-variant={designVariant}>
+  return <div className="personal-lab-workspace w-full max-w-full overflow-x-clip" data-design-variant={designVariant}>
     {sharedDateNavigation}
     {showVariantSwitcher ? <div className={styles.controlRow}>
       <fieldset className={styles.variantSwitcher}>
