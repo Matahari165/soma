@@ -97,6 +97,86 @@ import Testing
     #expect(decoded.entries.map(\.value) == [.number(0), .bool(false), .null])
 }
 
+@Test func journalDraftKeepsOmittedDefaultZeroAndFalseDistinct() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"omitted","name":"Omitted","variableType":"number","unit":null,"options":[],"position":10,"isActive":true,"emoji":"—","defaultValue":3,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"zero","name":"Zero","variableType":"number","unit":null,"options":[],"position":20,"isActive":true,"emoji":"0","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"false","name":"False","variableType":"boolean","unit":null,"options":[],"position":30,"isActive":true,"emoji":"N","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"zero","entryDate":"2026-09-19","value":0},{"variableId":"false","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["omitted"]}},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    let draft = JournalDraft(day: day)
+    #expect(draft.values["omitted"] == .null)
+    #expect(draft.values["zero"] == .number(0))
+    #expect(draft.values["false"] == .bool(false))
+}
+
+@Test func journalDraftDoesNotSendDefaultsAndKeepsExplicitNull() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"defaulted","name":"Caffeine","variableType":"number","unit":"mg","options":[],"position":10,"isActive":true,"emoji":"☕","defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"zero","name":"Zero","variableType":"number","unit":null,"options":[],"position":20,"isActive":true,"emoji":"0","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"zero","entryDate":"2026-09-19","value":0}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+
+    #expect(draft.state(for: "defaulted") == .missing)
+    #expect(draft.entries(for: day.variables).map(\.variableId) == ["zero"])
+
+    draft.set(.null, for: "defaulted")
+    #expect(draft.state(for: "defaulted") == .pending)
+    #expect(draft.entries(for: day.variables) == [
+        JournalSaveEntry(variableId: "defaulted", value: .null),
+        JournalSaveEntry(variableId: "zero", value: .number(0)),
+    ])
+}
+
+@Test func journalDraftRetainsNewerEditsWhenAnOlderSnapshotArrives() throws {
+    let initialJSON = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":null,"options":[],"position":10,"isActive":true,"emoji":"🧠","defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":1}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":[]}},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let olderResponseJSON = initialJSON.replacingOccurrences(of: "\"value\":1", with: "\"value\":0")
+    let savedResponseJSON = initialJSON.replacingOccurrences(of: "\"value\":1", with: "\"value\":2")
+    let initial = try JSONDecoder().decode(NativeDayResponse.self, from: Data(initialJSON.utf8))
+    let olderResponse = try JSONDecoder().decode(NativeDayResponse.self, from: Data(olderResponseJSON.utf8))
+    let savedResponse = try JSONDecoder().decode(NativeDayResponse.self, from: Data(savedResponseJSON.utf8))
+    var draft = JournalDraft(day: initial)
+
+    draft.set(.number(2), for: "focus")
+    draft.mergeServer(olderResponse)
+    #expect(draft.state(for: "focus") == .pending)
+    #expect(draft.values["focus"] == .number(2))
+
+    draft.mergeServer(savedResponse, acknowledging: [JournalSaveEntry(variableId: "focus", value: .number(2))])
+    #expect(draft.state(for: "focus") == .recorded)
+    #expect(draft.values["focus"] == .number(2))
+}
+
+@Test func updateRequestEncodesExplicitNullSeparatelyFromAnAbsentKey() throws {
+    let omitted = try JSONSerialization.jsonObject(with: JSONEncoder().encode(JournalVariableUpdateRequest(id: "variable"))) as? [String: Any]
+    let cleared = try JSONSerialization.jsonObject(with: JSONEncoder().encode(JournalVariableUpdateRequest(id: "variable", defaultValue: .null))) as? [String: Any]
+
+    #expect(omitted?["defaultValue"] == nil)
+    #expect(cleared?["defaultValue"] is NSNull)
+}
+
+@Test func journalParserUsesTheServerTypeBounds() throws {
+    let json = #"{"id":"scale","name":"Energy","variableType":"scale","unit":null,"options":[],"position":10,"isActive":true,"emoji":"E","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}"#
+    let variable = try JSONDecoder().decode(JournalVariable.self, from: Data(json.utf8))
+    #expect(JournalValueParser.parse("0", for: variable) == nil)
+    #expect(JournalValueParser.parse("1", for: variable) == .number(1))
+    #expect(JournalValueParser.parse("5", for: variable) == .number(5))
+    #expect(JournalValueParser.parse("6", for: variable) == nil)
+}
+
+@Test func journalDefinitionUpdateCanExplicitlyClearUnitAndDefault() throws {
+    let request = JournalVariableDefinitionUpdateRequest(
+        id: "focus",
+        name: "Concentration",
+        unit: nil,
+        options: nil,
+        emoji: "🎯",
+        defaultValue: nil,
+        dayPeriod: .day,
+        trackingCadence: .daily
+    )
+    let object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+    #expect(object.keys.contains("unit"))
+    #expect(object["unit"] is NSNull)
+    #expect(object.keys.contains("defaultValue"))
+    #expect(object["defaultValue"] is NSNull)
+    #expect(!object.keys.contains("variableType"))
+}
+
 @Test func mealDraftKeepsStableOperationKeysAcrossPersistence() async throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
     defer { try? FileManager.default.removeItem(at: directory) }

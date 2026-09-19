@@ -90,6 +90,18 @@ public actor APIClient {
         return response.day
     }
 
+    public func createJournalVariable(_ body: JournalVariableCreateRequest) async throws -> JournalVariableMutationResponse {
+        try await perform(request(path: "/api/native/v1/lab/variables", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateJournalVariable(_ body: JournalVariableUpdateRequest) async throws -> JournalVariableMutationResponse {
+        try await perform(request(path: "/api/native/v1/lab/variables", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func updateJournalVariable(_ body: JournalVariableDefinitionUpdateRequest) async throws -> JournalVariableMutationResponse {
+        try await perform(request(path: "/api/native/v1/lab/variables", method: "PATCH", body: body, authenticated: true))
+    }
+
     public func createMeal(from draft: MealDraft) async throws -> MealMutationResponse {
         let body = MealCreateRequest(mealDate: draft.mealDate, mealType: draft.mealType, note: draft.note, entryState: draft.entryState, mouthWarmthIntensity: draft.mouthWarmthIntensity, stomachOverfullIntensity: draft.stomachOverfullIntensity, idempotencyKey: draft.createIdempotencyKey)
         var request = try request(path: "/api/native/v1/meals", method: "POST", body: body, authenticated: true)
@@ -220,7 +232,10 @@ public actor APIClient {
             }
             throw APIError.unauthorized
         }
-        guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = (try? JSONDecoder().decode(APIErrorResponse.self, from: data))?.error
+            throw APIError.server(status: http.statusCode, message: message)
+        }
         return try Self.decoder.decode(Response.self, from: data)
     }
 
@@ -266,11 +281,13 @@ private struct MealAnalysisRequest: Codable, Sendable { let force: Bool; let ide
 private struct MealPhotoOriginRequest: Codable, Sendable { let origin: MealPhotoOrigin }
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
+private struct EmptyResponse: Decodable { let ok: Bool }
+private struct APIErrorResponse: Decodable { let error: String }
 private struct AccountDeletionRequest: Encodable { let confirmation: String }
 
 public enum APIError: Error, Equatable, Sendable {
     case invalidURL
     case invalidResponse
     case unauthorized
-    case http(Int)
+    case server(status: Int, message: String?)
 }
