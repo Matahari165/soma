@@ -30,12 +30,14 @@ struct RootView: View {
             }
         }
         .somaScreen()
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .top, spacing: 0) {
             if let message = model.errorMessage {
                 Text(message)
                     .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(SomaTheme.rule)
+                    .accessibilityLabel("Erreur : \(message)")
                     .accessibilityAddTraits(.isStaticText)
             }
         }
@@ -57,23 +59,27 @@ struct RootView: View {
                     .padding()
             }
         } detail: {
-            destinationView
+            destinationView(for: destination)
                 .id(destination)
         }
         #else
-        NavigationStack {
-            destinationView
-                .id(destination)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            CompactNavigationBar(selection: $destination)
+        TabView(selection: $destination) {
+            ForEach(AppDestination.allCases) { tab in
+                NavigationStack {
+                    destinationView(for: tab)
+                }
+                .tabItem {
+                    Label(tab.title, systemImage: tab.systemImage)
+                }
+                .tag(tab)
+            }
         }
         .tint(SomaTheme.primary)
         #endif
     }
 
     @ViewBuilder
-    private var destinationView: some View {
+    private func destinationView(for destination: AppDestination) -> some View {
         switch destination {
         case .day: DayView()
         case .analysis: AnalysisView()
