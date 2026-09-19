@@ -47,6 +47,9 @@ struct RootView: View {
             Tab("Santé", systemImage: "heart.text.square", value: AppModel.Destination.health) {
                 HealthView()
             }
+            Tab("Export", systemImage: "square.and.arrow.up", value: AppModel.Destination.export) {
+                ExportView()
+            }
         }
         .tint(SomaTheme.primary)
         #endif
@@ -58,6 +61,7 @@ struct RootView: View {
         case .day: DayView()
         case .analysis: AnalysisView()
         case .health: HealthView()
+        case .export: ExportView()
         }
     }
 }

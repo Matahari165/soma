@@ -9,12 +9,13 @@ final class AppModel {
         case day = "Jour"
         case analysis = "Strongest Effects"
         case health = "Santé"
+        case export = "Export"
 
         static var allCases: [Destination] {
             #if os(iOS)
-            [.day, .analysis, .health]
+            [.day, .analysis, .health, .export]
             #else
-            [.day, .analysis]
+            [.day, .analysis, .export]
             #endif
         }
 
@@ -51,6 +52,8 @@ final class AppModel {
             loadSyntheticPreview()
             if ProcessInfo.processInfo.arguments.contains("--health-preview") {
                 destination = .health
+            } else if ProcessInfo.processInfo.arguments.contains("--preview-export") {
+                destination = .export
             }
             isBootstrapping = false
         }

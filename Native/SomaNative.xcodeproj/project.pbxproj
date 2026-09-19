@@ -9,45 +9,93 @@
 /* Begin PBXBuildFile section */
 		025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
 		02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
+		08BB68CBEF15B06ABC55D36A /* StrongestEffectsBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */; };
+		0E8F43B9A0547E484710605D /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A04C295CBF6BB941628873 /* ExportViewModel.swift */; };
 		10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB5C0043159BF548CCC05F /* HealthViewModel.swift */; };
 		1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
 		19187394B87FFE1385037AA6 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
 		1FAE0E20DC49147233239076 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
 		2D01BE1E83D2B896C791BEF9 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
 		328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492A88C4D9678A2D190181FF /* AppModel.swift */; };
+		41DF69B4636EA3250E234B0C /* StrongestEffectRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5467913C668E576E6BE9497D /* StrongestEffectRow.swift */; };
+		467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */; };
+		47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */; };
 		4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
+		5344D96F0EEF4B0073A94986 /* DomainIndicatorBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */; };
+		5B19AB7356689DA5604AA323 /* ChartUnavailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */; };
+		5ED07A6FD6BCBEDE0ECD66FC /* ChartProvenanceLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */; };
+		609D45E0F0A87953C1E3C375 /* SegmentedBarChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9CF816E306260A7D246202F /* SegmentedBarChartContent.swift */; };
 		6579C7AC1F615B1C2516F68C /* HealthKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91CB0F4F6DA527488579B96E /* HealthKitReader.swift */; };
+		6666584F2FD70D590D0CECAC /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98646E0D474E0229A9FC5E6 /* ExportView.swift */; };
+		687742C6418C2657A620F2EA /* TimeSeriesChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331437DA34C389557545D653 /* TimeSeriesChart.swift */; };
+		6C1FA0BB044D1B97724C241F /* SegmentedBarChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */; };
 		6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9579222E401A8B593A9A8E4 /* RootView.swift */; };
 		777F450FFD9EA90020854304 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CB5C0043159BF548CCC05F /* HealthViewModel.swift */; };
 		7AC9A4BF61CC0EDF2720AABA /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C572AD3F64595D081B86F0 /* HealthView.swift */; };
+		7B77BBBD7BE99FBF21467813 /* StrongestEffectRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5467913C668E576E6BE9497D /* StrongestEffectRow.swift */; };
+		8483C9E7281638421AF6AFAF /* TimeSeriesChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */; };
 		8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
 		8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224766560DE9DD880F8B8101 /* DayView.swift */; };
+		9128A984E260F2850458B05B /* StrongestEffectsContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */; };
+		924E28F5AE62ED26139BE128 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A04C295CBF6BB941628873 /* ExportViewModel.swift */; };
 		93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */; };
 		960661874553A56D0D829517 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
+		A4E7AD902E4B9241CEB1E3CB /* StrongestEffectsContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */; };
+		A9372F3AC900B674865D7285 /* ChartProvenanceLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */; };
 		B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE784A6E3FC335F901CB868 /* MealEditorView.swift */; };
+		B37D8515605C2C7CEA2FE771 /* TimeSeriesChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331437DA34C389557545D653 /* TimeSeriesChart.swift */; };
+		B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
 		B7FF3271D30928FA4578CCDD /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = E5345FF1514A80610454C58E /* SomaCore */; };
+		B8D2176BA8CDC0FD3735148F /* DomainIndicatorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */; };
+		B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
+		BE65DA0D6E46262C6AFCCFB3 /* DomainIndicatorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */; };
+		C0737ADD64DEF3DDDFB660BC /* TimeSeriesChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */; };
 		C0FC908AE42A0E3859B11150 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C572AD3F64595D081B86F0 /* HealthView.swift */; };
+		C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */; };
+		C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */; };
 		CADCCA52F0C89CE311265D39 /* HealthKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91CB0F4F6DA527488579B96E /* HealthKitReader.swift */; };
 		D17F44F4F30638054D488065 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3029B284D51EBBA0D24E58 /* Theme.swift */; };
+		DA9403437F137775B0FA25CB /* SegmentedBarChartContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9CF816E306260A7D246202F /* SegmentedBarChartContent.swift */; };
+		DDF0F799E581E8248EC0BE4E /* StrongestEffectsBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */; };
+		E58A8677B9834516366C666F /* SegmentedBarChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */; };
+		E95281CD5CB149F37F4095CE /* DomainIndicatorBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */; };
+		EFB0D3ED7CF41E78BCFCA985 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98646E0D474E0229A9FC5E6 /* ExportView.swift */; };
 		F1493FB8A94EAE93A804FEEB /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 956FC67FF5EAA7C4AF90091E /* SomaCore */; };
 		F3800E17B2A40EF792884DCF /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366C20FFC5747948E9D5D7BE /* AnalysisView.swift */; };
+		F7AC5A39C0317D31BE45B6E6 /* ChartUnavailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SomaApp.swift; sourceTree = "<group>"; };
 		202087BC7BEBC45110E8909D /* Soma-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Soma-iOS.entitlements"; sourceTree = "<group>"; };
 		224766560DE9DD880F8B8101 /* DayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayView.swift; sourceTree = "<group>"; };
+		233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricTrendBlock.swift; sourceTree = "<group>"; };
+		331437DA34C389557545D653 /* TimeSeriesChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesChart.swift; sourceTree = "<group>"; };
 		366C20FFC5747948E9D5D7BE /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		3CE784A6E3FC335F901CB868 /* MealEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditorView.swift; sourceTree = "<group>"; };
+		4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartUnavailableView.swift; sourceTree = "<group>"; };
 		492A88C4D9678A2D190181FF /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		4F3029B284D51EBBA0D24E58 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainIndicatorBlock.swift; sourceTree = "<group>"; };
+		5467913C668E576E6BE9497D /* StrongestEffectRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectRow.swift; sourceTree = "<group>"; };
+		59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricTrendContent.swift; sourceTree = "<group>"; };
 		8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Soma-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		82CB5C0043159BF548CCC05F /* HealthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthViewModel.swift; sourceTree = "<group>"; };
+		8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartProvenanceLabel.swift; sourceTree = "<group>"; };
+		8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedBarChart.swift; sourceTree = "<group>"; };
 		91CB0F4F6DA527488579B96E /* HealthKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitReader.swift; sourceTree = "<group>"; };
 		95C572AD3F64595D081B86F0 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		A0029706B80FF4C1637F9B92 /* Soma-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Soma-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9579222E401A8B593A9A8E4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B9CF816E306260A7D246202F /* SegmentedBarChartContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedBarChartContent.swift; sourceTree = "<group>"; };
+		C98646E0D474E0229A9FC5E6 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainIndicatorContent.swift; sourceTree = "<group>"; };
+		D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesChartContent.swift; sourceTree = "<group>"; };
+		D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsContent.swift; sourceTree = "<group>"; };
+		D3A04C295CBF6BB941628873 /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
+		DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeChartLibraryPreview.swift; sourceTree = "<group>"; };
 		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SomaCore; path = SomaCore; sourceTree = SOURCE_ROOT; };
+		E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsBlock.swift; sourceTree = "<group>"; };
 		F42CA9D77DB2222DF4BE9806 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -71,6 +119,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0284E1F8B9830435E681C197 /* Export */ = {
+			isa = PBXGroup;
+			children = (
+				C98646E0D474E0229A9FC5E6 /* ExportView.swift */,
+				D3A04C295CBF6BB941628873 /* ExportViewModel.swift */,
+			);
+			path = Export;
+			sourceTree = "<group>";
+		};
 		0F654F680B92EF0DF0EC477F = {
 			isa = PBXGroup;
 			children = (
@@ -99,6 +156,27 @@
 			path = Meals;
 			sourceTree = "<group>";
 		};
+		30E4B818CBD4ED127B3BF0C7 /* Charts */ = {
+			isa = PBXGroup;
+			children = (
+				8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */,
+				4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */,
+				4FDA8D2FF3C6B9EA4AF39968 /* DomainIndicatorBlock.swift */,
+				CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */,
+				233606C0288A7E90E914E0B0 /* MetricTrendBlock.swift */,
+				59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */,
+				DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */,
+				8C9012426C1A194AFCC2C759 /* SegmentedBarChart.swift */,
+				B9CF816E306260A7D246202F /* SegmentedBarChartContent.swift */,
+				5467913C668E576E6BE9497D /* StrongestEffectRow.swift */,
+				E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */,
+				D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */,
+				331437DA34C389557545D653 /* TimeSeriesChart.swift */,
+				D2074BD6985058DACE25B157 /* TimeSeriesChartContent.swift */,
+			);
+			path = Charts;
+			sourceTree = "<group>";
+		};
 		93F83F584100C0A6898372D5 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -117,10 +195,20 @@
 				A9579222E401A8B593A9A8E4 /* RootView.swift */,
 				1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */,
 				4F3029B284D51EBBA0D24E58 /* Theme.swift */,
+				C637B41B4C80FBB0B3924462 /* Components */,
+				0284E1F8B9830435E681C197 /* Export */,
 				18A371A40807DC6B676E6DD9 /* Health */,
 				2AC2C282B7DA0D90C64263B2 /* Meals */,
 			);
 			path = SomaApp;
+			sourceTree = "<group>";
+		};
+		C637B41B4C80FBB0B3924462 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				30E4B818CBD4ED127B3BF0C7 /* Charts */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		E07FA46FB33AC1559D6BFC01 /* Products */ = {
@@ -222,15 +310,31 @@
 			files = (
 				02CC6718A049EC5A74E42F43 /* AnalysisView.swift in Sources */,
 				19187394B87FFE1385037AA6 /* AppModel.swift in Sources */,
+				A9372F3AC900B674865D7285 /* ChartProvenanceLabel.swift in Sources */,
+				5B19AB7356689DA5604AA323 /* ChartUnavailableView.swift in Sources */,
 				1481FBD405BD1A418D96F6BD /* DayView.swift in Sources */,
+				E95281CD5CB149F37F4095CE /* DomainIndicatorBlock.swift in Sources */,
+				BE65DA0D6E46262C6AFCCFB3 /* DomainIndicatorContent.swift in Sources */,
+				6666584F2FD70D590D0CECAC /* ExportView.swift in Sources */,
+				924E28F5AE62ED26139BE128 /* ExportViewModel.swift in Sources */,
 				6579C7AC1F615B1C2516F68C /* HealthKitReader.swift in Sources */,
 				C0FC908AE42A0E3859B11150 /* HealthView.swift in Sources */,
 				777F450FFD9EA90020854304 /* HealthViewModel.swift in Sources */,
 				960661874553A56D0D829517 /* LoginView.swift in Sources */,
 				B0B935E8D5E617C28234F5AB /* MealEditorView.swift in Sources */,
+				47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */,
+				C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */,
+				B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */,
 				6E22D7904BD0127ED11122F0 /* RootView.swift in Sources */,
+				6C1FA0BB044D1B97724C241F /* SegmentedBarChart.swift in Sources */,
+				DA9403437F137775B0FA25CB /* SegmentedBarChartContent.swift in Sources */,
 				2D01BE1E83D2B896C791BEF9 /* SomaApp.swift in Sources */,
+				7B77BBBD7BE99FBF21467813 /* StrongestEffectRow.swift in Sources */,
+				08BB68CBEF15B06ABC55D36A /* StrongestEffectsBlock.swift in Sources */,
+				9128A984E260F2850458B05B /* StrongestEffectsContent.swift in Sources */,
 				1FAE0E20DC49147233239076 /* Theme.swift in Sources */,
+				687742C6418C2657A620F2EA /* TimeSeriesChart.swift in Sources */,
+				8483C9E7281638421AF6AFAF /* TimeSeriesChartContent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,15 +344,31 @@
 			files = (
 				F3800E17B2A40EF792884DCF /* AnalysisView.swift in Sources */,
 				328FA273D34D5C1712AF2F6C /* AppModel.swift in Sources */,
+				5ED07A6FD6BCBEDE0ECD66FC /* ChartProvenanceLabel.swift in Sources */,
+				F7AC5A39C0317D31BE45B6E6 /* ChartUnavailableView.swift in Sources */,
 				8AA387A1B5873A31D2A14E47 /* DayView.swift in Sources */,
+				5344D96F0EEF4B0073A94986 /* DomainIndicatorBlock.swift in Sources */,
+				B8D2176BA8CDC0FD3735148F /* DomainIndicatorContent.swift in Sources */,
+				EFB0D3ED7CF41E78BCFCA985 /* ExportView.swift in Sources */,
+				0E8F43B9A0547E484710605D /* ExportViewModel.swift in Sources */,
 				CADCCA52F0C89CE311265D39 /* HealthKitReader.swift in Sources */,
 				7AC9A4BF61CC0EDF2720AABA /* HealthView.swift in Sources */,
 				10F28174FB85A8DCD2AA64B9 /* HealthViewModel.swift in Sources */,
 				8A69E5E5F21A385ABCBC45F5 /* LoginView.swift in Sources */,
 				025AB7E45DF16823E8AA56E5 /* MealEditorView.swift in Sources */,
+				C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */,
+				467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */,
+				B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */,
 				4C99BF3830DE6A0A80025E57 /* RootView.swift in Sources */,
+				E58A8677B9834516366C666F /* SegmentedBarChart.swift in Sources */,
+				609D45E0F0A87953C1E3C375 /* SegmentedBarChartContent.swift in Sources */,
 				93997233AA09299F99FD6A15 /* SomaApp.swift in Sources */,
+				41DF69B4636EA3250E234B0C /* StrongestEffectRow.swift in Sources */,
+				DDF0F799E581E8248EC0BE4E /* StrongestEffectsBlock.swift in Sources */,
+				A4E7AD902E4B9241CEB1E3CB /* StrongestEffectsContent.swift in Sources */,
 				D17F44F4F30638054D488065 /* Theme.swift in Sources */,
+				B37D8515605C2C7CEA2FE771 /* TimeSeriesChart.swift in Sources */,
+				C0737ADD64DEF3DDDFB660BC /* TimeSeriesChartContent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
