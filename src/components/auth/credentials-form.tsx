@@ -121,6 +121,8 @@ export function CredentialsForm({ next }: { next?: string | null }) {
             id="auth-password"
             type="password"
             required
+            minLength={mode === "register" ? 8 : undefined}
+            maxLength={mode === "register" ? 128 : undefined}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
             value={password}

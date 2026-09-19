@@ -20,6 +20,8 @@ const publicPaths = [
   "/terms",
 ];
 
+const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
+
 export function requestBodyLimitForPath(pathname: string) {
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
     ? MAX_MEAL_MULTIPART_BYTES
@@ -69,7 +71,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = createResponse();
-  const isPublicPath = request.nextUrl.pathname === "/" || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
+  const isPublicPath = request.nextUrl.pathname === "/"
+    || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+    || publicAuthPaths.includes(request.nextUrl.pathname);
 
   if (isLocalPreviewMode()) {
     if (request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
