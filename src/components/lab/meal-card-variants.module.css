@@ -1351,20 +1351,6 @@
   cursor: not-allowed;
 }
 
-:global(.animate-fade-in) {
-  animation: mealCardFadeIn 300ms ease-out forwards;
-}
-
-@keyframes mealCardFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editButton:active:not(:disabled),
 .analyzeButton:active:not(:disabled),
