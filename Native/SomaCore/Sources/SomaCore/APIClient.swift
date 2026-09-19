@@ -14,11 +14,11 @@ public actor APIClient {
         self.tokenStore = tokenStore
     }
 
-    public func login(email: String, password: String, platform: String, deviceName: String) async throws -> SessionUser {
+    public func login(email: String, password: String, platform: String, deviceName: String) async throws -> SessionResponse {
         let request = try request(path: "/api/native/v1/auth/login", method: "POST", body: LoginRequest(email: email, password: password, platform: platform, deviceName: deviceName), authenticated: false)
         let response: LoginResponse = try await perform(request)
         try tokenStore.save(response.token)
-        return response.user
+        return SessionResponse(user: response.user, session: response.session)
     }
 
     public func day(_ date: LocalDate) async throws -> NativeDayResponse {
@@ -28,6 +28,24 @@ public actor APIClient {
     public func currentSession() async throws -> SessionUser {
         let response: SessionResponse = try await get(path: "/api/native/v1/auth/session")
         return response.user
+    }
+
+    public func hasAuthenticationToken() throws -> Bool {
+        try tokenStore.read() != nil
+    }
+
+    public func sessionContext() async throws -> SessionResponse {
+        try await get(path: "/api/native/v1/auth/session")
+    }
+
+    public func deviceSessions() async throws -> [DeviceSession] {
+        let response: DeviceSessionsResponse = try await get(path: "/api/native/v1/auth/sessions")
+        return response.sessions
+    }
+
+    public func revokeDeviceSession(id: String) async throws {
+        let request = try request(path: "/api/native/v1/auth/sessions/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true)
+        let _: EmptyResponse = try await perform(request)
     }
 
     public func matrix(period: String) async throws -> NativeMatrixResponse {
@@ -171,7 +189,7 @@ public actor APIClient {
             throw APIError.unauthorized
         }
         guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
-        return try JSONDecoder().decode(Response.self, from: data)
+        return try Self.decoder.decode(Response.self, from: data)
     }
 
     private func pathComponent(_ value: String) -> String {
@@ -186,6 +204,12 @@ public actor APIClient {
         let input = try FileHandle(forReadingFrom: fileURL)
         defer { try? input.close() }
         while let chunk = try input.read(upToCount: 1_048_576), !chunk.isEmpty { try output.write(contentsOf: chunk) }
+    }
+
+    private static var decoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }
 

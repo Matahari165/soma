@@ -17,6 +17,22 @@ struct SomaScreen: ViewModifier {
     }
 }
 
+struct SomaPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(SomaTheme.canvas)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 16)
+            .background(SomaTheme.primary.opacity(configuration.isPressed ? 0.82 : 1))
+            .clipShape(.rect(cornerRadius: 4))
+            .opacity(isEnabled ? 1 : 0.48)
+            .contentShape(.rect)
+    }
+}
+
 extension View {
     func somaScreen() -> some View { modifier(SomaScreen()) }
 }

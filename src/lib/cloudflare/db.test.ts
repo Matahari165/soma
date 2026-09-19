@@ -225,6 +225,39 @@ describe("Supabase storage pagination", () => {
     }
   });
 
+  it("keeps the physical session key when a projected delete revokes a device session", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (init?.method === "DELETE") {
+        expect(url.searchParams.get("token_hash")).toBe("eq.hashed-token");
+        return new Response(null, { status: 204 });
+      }
+      expect(url.searchParams.get("user_id")).toBe("eq.user-1");
+      expect(url.searchParams.get("session_id")).toBe("eq.session-1");
+      expect(url.searchParams.get("select")).toBe("token_hash");
+      return new Response(JSON.stringify([{ token_hash: "hashed-token" }]), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", "user-1").eq("session_id", "session-1").select("token_hash");
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual([{ token_hash: "hashed-token" }]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
   it("pushes compound OR date filters to Supabase instead of scanning all history", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

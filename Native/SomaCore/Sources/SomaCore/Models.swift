@@ -10,10 +10,36 @@ public struct LoginResponse: Codable, Sendable {
     public let token: String
     public let tokenType: String
     public let user: SessionUser
+    public let session: DeviceSession
 }
 
 public struct SessionResponse: Codable, Sendable {
     public let user: SessionUser
+    public let session: DeviceSession
+}
+
+public enum SessionPlatform: String, Codable, Sendable {
+    case web, ios, macos
+}
+
+public struct DeviceSession: Codable, Identifiable, Equatable, Sendable {
+    public let id: String
+    public let platform: SessionPlatform
+    public let deviceName: String
+    public let createdAt: Date
+    public let expiresAt: Date
+
+    public init(id: String, platform: SessionPlatform, deviceName: String, createdAt: Date, expiresAt: Date) {
+        self.id = id
+        self.platform = platform
+        self.deviceName = deviceName
+        self.createdAt = createdAt
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct DeviceSessionsResponse: Codable, Equatable, Sendable {
+    public let sessions: [DeviceSession]
 }
 
 public struct JournalSaveEntry: Codable, Equatable, Sendable {

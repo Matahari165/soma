@@ -3,6 +3,7 @@ import SomaCore
 
 struct DayView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var journalDraft: [String: String] = [:]
     @State private var mealEditor: MealEditorTarget?
 
@@ -13,7 +14,8 @@ struct DayView: View {
                 journal
                 meals
             }
-            .padding(24)
+            .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 24)
+            .padding(.vertical, 24)
             .frame(maxWidth: 920, alignment: .leading)
         }
         .navigationTitle("Jour")
@@ -25,9 +27,13 @@ struct DayView: View {
 
     private var dateHeader: some View {
         HStack {
-            Button("Jour précédent", systemImage: "chevron.left") { Task { await model.shiftDate(by: -1) } }.labelStyle(.iconOnly)
+            Button("Jour précédent", systemImage: "chevron.left") { Task { await model.shiftDate(by: -1) } }
+                .labelStyle(.iconOnly)
+                .frame(width: 44, height: 44)
             Text(model.activeDate.rawValue).font(.system(.title2, design: .monospaced)).accessibilityLabel("Date active, \(model.activeDate.rawValue)")
-            Button("Jour suivant", systemImage: "chevron.right") { Task { await model.shiftDate(by: 1) } }.labelStyle(.iconOnly)
+            Button("Jour suivant", systemImage: "chevron.right") { Task { await model.shiftDate(by: 1) } }
+                .labelStyle(.iconOnly)
+                .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
         .frame(minHeight: 44)
@@ -35,7 +41,9 @@ struct DayView: View {
 
     private var journal: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Journal").font(.system(.title2, design: .serif))
+            Text("Journal")
+                .font(.system(.title2, design: .serif))
+                .accessibilityAddTraits(.isHeader)
             if let day = model.day {
                 ForEach(day.variables.filter(\.isActive)) { variable in
                     let entry = day.entries.first { $0.variableId == variable.id }
@@ -50,15 +58,19 @@ struct DayView: View {
                     Divider().overlay(SomaTheme.rule)
                 }
                 Button("Enregistrer le journal") { Task { await model.saveJournal(values: journalDraft) } }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(SomaPrimaryButtonStyle())
+                    .frame(maxWidth: horizontalSizeClass == .compact ? .infinity : nil)
                     .disabled(model.isLoading)
+                    .accessibilityHint("Enregistre les valeurs du journal pour la date affichée")
             } else { Text("Aucune donnée pour cette date.").foregroundStyle(SomaTheme.secondary) }
         }
     }
 
     private var meals: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Repas").font(.system(.title2, design: .serif))
+            Text("Repas")
+                .font(.system(.title2, design: .serif))
+                .accessibilityAddTraits(.isHeader)
             if let slots = model.day?.meals {
                 ForEach(mealRows(slots), id: \.type) { row in
                     Button {
@@ -130,6 +142,7 @@ private struct JournalEditorRow: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 130)
+                .frame(minHeight: 44)
             } else if variable.variableType == "category" {
                 Picker(variable.name, selection: $value) {
                     Text("—").tag("")
@@ -137,10 +150,13 @@ private struct JournalEditorRow: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 180)
+                .frame(minHeight: 44)
             } else {
                 TextField(variable.variableType == "time" ? "23:00" : "—", text: $value)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 150)
+                    .frame(minHeight: 44)
+                    .accessibilityLabel(variable.name)
                     #if os(iOS)
                     .keyboardType(["number", "count", "duration", "scale"].contains(variable.variableType) ? .decimalPad : .default)
                     #endif
