@@ -143,74 +143,32 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 .personal-lab-page .personal-lab-day-strip small { color: inherit; font-size: var(--lab-type-label); line-height: 16px; text-transform: none; }
 .personal-lab-day-strip__check { margin-left: 4px; color: var(--lab-signal); font-weight: 700; }
 .personal-lab-day-strip button[aria-current="date"] .personal-lab-day-strip__check { color: var(--lab-surface); }
-
-.personal-lab-workbench { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--lab-column-gap); min-width: 0; }
+.personal-lab-workbench {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--lab-column-gap);
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .personal-lab-workbench {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    column-gap: 48px !important;
+    align-items: start !important;
+    max-width: 1360px !important;
+    margin: 0 auto !important;
+  }
+}
 .personal-lab-journal-column, .personal-lab-meal-column { min-width: 0; }
-.personal-lab-journal-column { order: 1; }
-.personal-lab-meal-column { order: 2; }
-.personal-lab-journal-column .journal-card--personal-lab { position: static; padding: 0; border: 0; background: transparent; }
-.personal-lab-journal-column .journal-card--personal-lab > .journal-card__header {
-  position: absolute;
-  top: 12px;
-  right: 0;
-  z-index: 3;
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: 0;
+@media (min-width: 1024px) {
+  .personal-lab-journal-column { grid-column: span 7 / span 7 !important; order: 1 !important; }
+  .personal-lab-meal-column { grid-column: span 5 / span 5 !important; order: 2 !important; }
 }
-.personal-lab-journal-column .journal-card--personal-lab .journal-card__heading { display: none; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-card__actions { gap: 8px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-save-status { min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button { min-height: 24px; padding: 5px 12px; border: 0; border-radius: var(--lab-radius-sm); background: var(--lab-brand); color: var(--lab-surface); font-size: var(--lab-type-ui); font-weight: 650; }
-.personal-lab-journal-column .journal-card--personal-lab .primary-button:hover { background: color-mix(in srgb, var(--lab-brand) 80%, var(--lab-text-primary)); }
-.personal-lab-journal-column .journal-card--personal-lab .text-link { position: absolute; width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0; opacity: 0; }
-.personal-lab-journal-column .journal-card--personal-lab .text-link:focus-visible { position: static; width: auto; height: 24px; padding: 4px 8px; border: 1px solid var(--lab-border); opacity: 1; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-sections { display: flex; flex-direction: column; gap: var(--lab-column-gap); margin: 0; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period {
-  min-height: 0;
-  padding: var(--lab-card-padding);
-  border: 1px solid var(--lab-border-strong);
-  border-radius: var(--lab-radius-sm);
-  background: var(--lab-surface);
-  box-shadow: var(--lab-shadow-subtle);
+@media (max-width: 1023px) {
+  .personal-lab-journal-column { grid-column: 1 / -1 !important; order: 1 !important; }
+  .personal-lab-meal-column { grid-column: 1 / -1 !important; order: 2 !important; }
 }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__header {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: var(--lab-radius-xs);
-  background: #f2f6f0;
-}
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 { display: flex; min-width: 0; align-items: baseline; gap: 10px; color: var(--lab-text-primary); font-size: 22px; font-weight: 560; letter-spacing: -.33px; line-height: 28px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__header h3 button { display: flex; min-height: 32px; align-items: baseline; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-period__index { color: var(--lab-text-secondary); font-size: var(--lab-type-label); font-weight: 650; letter-spacing: .8px; line-height: 16px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 0; margin-top: 12px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field { min-height: 44px; gap: 8px; padding: 8px 4px; border: 0; border-bottom: 1px solid #edf1ec; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field:nth-child(n + 2) { border-top: 0; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field__heading { grid-template-columns: minmax(0, 1fr); gap: 0; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field__emoji { display: none; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field__label { color: var(--lab-text-primary); font-size: var(--lab-type-ui); line-height: 18px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field__label small { display: none; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice,
-.personal-lab-journal-column .journal-card--personal-lab .journal-number,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field > input,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field > select { width: 92px; min-height: 24px; border: 0; border-radius: var(--lab-radius-xs); background: var(--lab-control-track); font-size: var(--lab-type-ui); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice button { min-height: var(--lab-journal-control-height); border-radius: var(--lab-radius-xs); font-size: var(--lab-type-ui); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-choice button[aria-pressed="true"] { background: var(--lab-brand); color: var(--lab-surface); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number { display: flex; align-items: center; padding-left: 8px; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number input { min-height: var(--lab-journal-control-height); padding: 6px 8px; border: 0; background: transparent; font-size: var(--lab-type-ui); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-number span { padding-right: 6px; color: var(--lab-text-secondary); font-size: var(--lab-type-label); }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed { background: transparent; }
-.personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed .journal-choice,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed .journal-number,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed > input,
-.personal-lab-journal-column .journal-card--personal-lab .journal-field--confirmed > select { background: var(--lab-surface-selected); }
 
+.personal-lab-journal-column .journal-card--personal-lab { position: static; padding: 0; border: 0; background: transparent; }
 .personal-lab-meal-column { display: flex; flex-direction: column; gap: var(--lab-column-gap); }
 .personal-lab-correlations { padding: var(--lab-card-padding); border: 1px solid var(--lab-border-strong); border-radius: var(--lab-radius-sm); background: var(--lab-surface); box-shadow: var(--lab-shadow-subtle); }
 .personal-lab-correlations__header { display: flex; min-height: 32px; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 16px; }

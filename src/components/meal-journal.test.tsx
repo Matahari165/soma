@@ -1010,4 +1010,34 @@ describe("apiMealToRecord", () => {
     expect(html).toContain("Analysis details");
     expect(html).not.toContain("Confirm meal");
   });
+
+  it("renders clean calorie header without logged or pending counts and without floating delete row in lab mode", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
+      date,
+      meals: {
+        breakfast: {
+          id: "meal-lab-header-test",
+          date,
+          slot: "breakfast",
+          note: "Petit dej",
+          photos: [],
+          analysis: {
+            dishType: "Granola",
+            ingredients: [],
+            calories: { low: null, likely: 450, high: null },
+            proteinGrams: { low: null, likely: 15, high: null },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+      },
+    }} />);
+
+    expect(html).toContain("Nutrition Log");
+    expect(html).toContain('<p class="text-xs text-content-secondary font-mono mt-1">450 / 3,000 kcal</p>');
+    expect(html).not.toContain("logged ·");
+    expect(html).not.toContain("pending</p>");
+    expect(html).not.toContain("labMealDeleteRow");
+  });
 });

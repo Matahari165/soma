@@ -1,5 +1,222 @@
 @import "tailwindcss";
 
+@theme {
+  --color-obsidian: #050505;
+  --color-surface-subtle: #0c0c0c;
+  --color-surface-elevated: #121212;
+  --color-surface-card: #0a0a0a;
+  --color-hairline: #1a1a1a;
+  --color-hairline-light: #262626;
+  --color-hairline-border: #1f1f1f;
+  --color-sage: #d5e5da;
+  --color-sage-muted: #8ba293;
+  --color-sage-dark: #1e2d24;
+  --color-signal-warn: #d5c397;
+  --color-signal-neg: #e2b2aa;
+  --color-content-primary: #f1f1f1;
+  --color-content-secondary: #888888;
+  --color-content-tertiary: #555555;
+  --font-serif: Newsreader, Georgia, serif;
+  --font-sans: "Schibsted Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Azeret Mono", "SF Mono", ui-monospace, monospace;
+}
+
+.stepper-btn:hover {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.hover-border:hover {
+  border-color: #333333;
+}
+
+.animate-fade-in {
+  animation: mealCardFadeIn 300ms ease-out forwards;
+}
+
+@keyframes mealCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tactile micro-interactions and animations (DESIGN.md compliant) */
+.btn-press,
+.interactive-press {
+  transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.btn-press:active:not(:disabled),
+.interactive-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.interactive-press-sm:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.animate-surface-enter {
+  animation: surfaceEnter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-stagger-1 {
+  animation-delay: 40ms;
+}
+
+.animate-stagger-2 {
+  animation-delay: 80ms;
+}
+
+@keyframes surfaceEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-date-fade {
+  animation: dateFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dateFadeIn {
+  from {
+    opacity: 0.85;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-value-bump {
+  animation: valueBump 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes valueBump {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+  100% { transform: translateY(0); }
+}
+
+.transition-bar {
+  transition: width 450ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.personal-lab-workspace .journal-choice--binary {
+  width: 112px !important;
+  min-width: 112px !important;
+  max-width: 112px !important;
+}
+
+.stitch-stepper {
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 1px solid var(--color-hairline) !important;
+  border-radius: 4px !important;
+  background-color: var(--color-surface-card) !important;
+  padding: 2px 4px !important;
+  box-sizing: border-box !important;
+  gap: 4px !important;
+}
+
+.stitch-stepper button {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: var(--color-content-secondary) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease !important;
+}
+
+.stitch-stepper button:hover:not(:disabled) {
+  background-color: var(--color-surface-elevated) !important;
+  color: var(--color-content-primary) !important;
+}
+
+.stitch-stepper button:active:not(:disabled) {
+  transform: scale(0.9) !important;
+}
+
+.stitch-stepper button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+}
+
+.stitch-stepper .stitch-stepper__value {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  padding: 0 4px !important;
+}
+
+.stitch-stepper input {
+  width: 3.5ch !important;
+  min-width: 2ch !important;
+  max-width: 6ch !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--color-content-primary) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  text-align: right !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -moz-appearance: textfield !important;
+}
+
+.stitch-stepper input::-webkit-outer-spin-button,
+.stitch-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+.stitch-stepper .stitch-stepper__unit {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  color: var(--color-content-secondary) !important;
+  white-space: nowrap !important;
+}
+
+.journal-card--personal-lab .journal-achievement__bar {
+  display: inline-block;
+  vertical-align: middle;
+  width: 4rem;
+  height: 0.25rem;
+  background-color: #262626;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.journal-card--personal-lab .journal-achievement__fill {
+  display: block;
+  height: 100%;
+  background-color: #d5e5da;
+  border-radius: 9999px;
+}
+
 /* SOMA — PERSONAL LAB
    A calm, precise surface for reading a personal body history. */
 
@@ -314,8 +531,9 @@ textarea:focus-visible,
   border: 1px solid transparent;
   color: var(--lab-text-secondary);
   font-size: .875rem;
-  transition: color var(--fast), background var(--fast), border-color var(--fast);
+  transition: color var(--fast), background var(--fast), border-color var(--fast), transform var(--snappy);
 }
+.nav-link:active { transform: scale(0.98); }
 .nav-link svg { width: 18px; color: currentColor; stroke-width: 1.45; }
 .nav-link:hover { border-color: var(--lab-border); background: var(--lab-surface-subtle); color: var(--lab-text-primary); }
 .nav-link--active { border-color: var(--lab-brand); background: var(--lab-brand); color: var(--lab-surface); }
@@ -334,7 +552,9 @@ textarea:focus-visible,
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--lab-border);
+  transition: border-color var(--fast), background var(--fast), transform var(--snappy);
 }
+.profile-card:active { transform: scale(0.98); }
 .avatar {
   display: grid;
   width: 34px;
@@ -351,6 +571,23 @@ textarea:focus-visible,
 .profile-card--active { color: var(--lab-brand); }
 .sidebar-secondary > .sidebar-toggle { display: grid; margin: 0 auto 8px; }
 .sidebar--collapsed .sidebar-secondary { justify-items: center; }
+
+.page-title {
+  font-family: var(--font-soma-title);
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+}
+
+.section-label {
+  color: var(--muted);
+  font-family: var(--font-soma-ui);
+  font-size: .75rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
 .sidebar--collapsed .profile-card { display: flex; width: 44px; min-height: 56px; justify-content: center; padding-top: 12px; }
 .sidebar--collapsed .profile-card > span:nth-child(2),
 .sidebar--collapsed .profile-card > svg { display: none; }
@@ -383,7 +620,13 @@ textarea:focus-visible,
   color: var(--lab-surface);
   font-size: .875rem;
   font-weight: 650;
-  transition: background var(--fast), color var(--fast), border-color var(--fast);
+  transition: background var(--fast), color var(--fast), border-color var(--fast), transform var(--snappy);
+}
+.primary-button:active,
+.secondary-button:active,
+.danger-button:active,
+.google-button:active {
+  transform: scale(0.97);
 }
 .primary-button:hover, .google-button:hover { background: var(--lab-text-primary); border-color: var(--lab-text-primary); }
 .secondary-button { border-color: var(--lab-border-strong); background: transparent; color: var(--lab-text-primary); }
@@ -398,7 +641,9 @@ textarea:focus-visible,
   border-radius: var(--radius-control);
   background: var(--lab-surface);
   color: currentColor;
+  transition: border-color var(--fast), background var(--fast), transform var(--snappy);
 }
+.icon-button:active { transform: scale(0.95); }
 .icon-button:hover { border-color: var(--lab-brand); background: var(--lab-surface-subtle); }
 .text-link {
   display: inline-flex;
@@ -432,4 +677,19 @@ svg.spin {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   svg.spin { animation: none; }
+  .animate-fade-in,
+  .animate-surface-enter,
+  .animate-date-fade,
+  .animate-value-bump {
+    animation: none !important;
+    transform: none !important;
+  }
+  .btn-press:active:not(:disabled),
+  .interactive-press:active:not(:disabled),
+  .interactive-press-sm:active:not(:disabled) {
+    transform: none !important;
+  }
+  .transition-bar {
+    transition: none !important;
+  }
 }

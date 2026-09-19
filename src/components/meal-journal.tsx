@@ -1177,14 +1177,70 @@ function MealHomeHeader() {
   </header>;
 }
 
-function MealLabHeader({ onAddMeal, addDisabled, hideAddMealButton = false, onToggleTargets, targetsExpanded = false }: { onAddMeal: () => void; addDisabled: boolean; hideAddMealButton?: boolean; onToggleTargets?: () => void; targetsExpanded?: boolean }) {
-  return <header className={styles.labHeader}>
-    <h2 id="meal-journal-title" className="sr-only">Meals</h2>
-    <div className={styles.labHeaderButtons}>
-      {onToggleTargets && <button type="button" aria-label="Edit daily targets" aria-expanded={targetsExpanded} aria-controls="meal-target-editor" onClick={onToggleTargets}><Pencil size={17} aria-hidden="true" /></button>}
-      {!hideAddMealButton && <button type="button" aria-label="Add a meal" title="Add a meal" disabled={addDisabled} onClick={onAddMeal}><Plus size={17} aria-hidden="true" /></button>}
-    </div>
-  </header>;
+function MealLabHeader({
+  onAddMeal,
+  addDisabled,
+  hideAddMealButton = false,
+  onToggleTargets,
+  targetsExpanded = false,
+  calories = null,
+  targetCalories = 2400,
+}: {
+  onAddMeal: () => void;
+  addDisabled: boolean;
+  hideAddMealButton?: boolean;
+  onToggleTargets?: () => void;
+  targetsExpanded?: boolean;
+  calories?: number | null;
+  targetCalories?: number | null;
+}) {
+  const calVal = calories ?? 0;
+  const targetVal = targetCalories ?? 2400;
+  const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
+  const formattedCalories = new Intl.NumberFormat("en-US").format(calVal);
+  const formattedTarget = new Intl.NumberFormat("en-US").format(targetVal);
+
+  return (
+    <header className="pb-4 border-b border-hairline space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h2 id="meal-journal-title" className="font-serif text-2xl tracking-normal text-content-primary font-normal">Nutrition Log</h2>
+          <p className="text-xs text-content-secondary font-mono mt-1">{formattedCalories} / {formattedTarget} kcal</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {onToggleTargets && (
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 interactive-press active:scale-[0.97]"
+              aria-label="Edit daily targets"
+              aria-expanded={targetsExpanded}
+              aria-controls="meal-target-editor"
+              onClick={onToggleTargets}
+            >
+              <Pencil size={13} aria-hidden="true" />
+              <span>Targets</span>
+            </button>
+          )}
+          {!hideAddMealButton && (
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed interactive-press active:scale-[0.97]"
+              aria-label="Add a meal"
+              title="Add a meal"
+              disabled={addDisabled}
+              onClick={onAddMeal}
+            >
+              <Plus size={13} aria-hidden="true" />
+              <span>Add meal</span>
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
+        <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${calPct}%` }} />
+      </div>
+    </header>
+  );
 }
 
 export function MealJournal({ date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, allowTargetEditing, designVariant = "v1" }: Props) {
@@ -2042,13 +2098,35 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
     if (!availableMealSlot || navigationDisabled) return;
     setEntryRequest((current) => ({ slot: availableMealSlot, sequence: (current?.sequence ?? 0) + 1 }));
   };
-  const pageHeader = variant === "home" ? <MealHomeHeader /> : variant === "lab" ? <MealLabHeader onAddMeal={openAvailableMeal} addDisabled={!availableMealSlot || navigationDisabled} hideAddMealButton={hideAddMealButton} onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined} targetsExpanded={targetsExpanded} /> : <MealPageHeader totals={currentDayTotal} targets={variant === "meals" ? targets : effectiveTargets} mealsVariant={variant === "meals"} targetsExpanded={targetsExpanded} onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined} />;
+
+  const readyData = data ?? emptyData(selectedDate);
+  const labCalories = currentDayTotal?.calories ?? 0;
+  const labTargetCalories = effectiveTargets?.caloriesKcal?.likely ?? targets?.caloriesKcal?.likely ?? 2400;
+
+  const pageHeader = variant === "home"
+    ? <MealHomeHeader />
+    : variant === "lab"
+    ? <MealLabHeader
+        onAddMeal={openAvailableMeal}
+        addDisabled={!availableMealSlot || navigationDisabled}
+        hideAddMealButton={hideAddMealButton}
+        onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined}
+        targetsExpanded={targetsExpanded}
+        calories={labCalories}
+        targetCalories={labTargetCalories}
+      />
+    : <MealPageHeader
+        totals={currentDayTotal}
+        targets={variant === "meals" ? targets : effectiveTargets}
+        mealsVariant={variant === "meals"}
+        targetsExpanded={targetsExpanded}
+        onToggleTargets={variant === "meals" ? () => setTargetsExpanded((expanded) => !expanded) : undefined}
+      />;
   const rootClass = [styles.root, className, variant === "lab" ? styles.labRoot : "", variant === "meals" ? styles.mealsPageRoot : ""].filter(Boolean).join(" ");
 
   if (loadState === "loading") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.loadingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><span>Loading meals…</span></div></section>;
   if (loadState === "error") return <section className={rootClass} aria-labelledby="meal-journal-title">{pageHeader}{dateNavigation}<div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Unable to load meals</strong><span>{loadError}</span></div><button className={styles.retryButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" />Try again</button></div></section>;
 
-  const readyData = data ?? emptyData(selectedDate);
   const slotBusy = (slot: MealSlot) => savingSlot === slot || analyzingSlots.includes(slot);
   return <section className={rootClass} aria-labelledby="meal-journal-title">
     {pageHeader}
@@ -2120,10 +2198,8 @@ export function MealJournal({ date, today: providedToday, initialData, api, clas
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}
                 onMarkRecorded={() => void changeEntryState(slot, "recorded")}
+                onDeleteMeal={!disabledSlots.includes(slot) ? () => removeMeal(slot) : undefined}
               />
-              {meal && !disabledSlots.includes(slot) && meal.entryState !== "skipped" && meal.status !== "accepted" && meal.status !== "analyzing" && (meal.analysis || !meal.id.startsWith("meal-")) && <div className={styles.labMealDeleteRow}>
-                <button className={styles.deleteMealButton} type="button" disabled={slotBusy(slot)} onClick={() => removeMeal(slot)}>Delete meal</button>
-              </div>}
             </>
           ) : (
             <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />

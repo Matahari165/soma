@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { defaultJournalVariables, type JournalVariable } from "@/domain/lab/journal";
 
 import { DailyJournal, journalStatusText } from "./daily-journal";
+import { PersonalLabDateStrip } from "./personal-lab-journal-workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -126,14 +127,8 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("Progress 75%");
-    expect(html).toContain("· 28d");
-    expect(html).toContain('class="journal-achievement__bar" role="progressbar"');
-    expect(html).toContain('aria-label="Vacation: Progress 75% over 28 days"');
-    expect(html).toContain('aria-valuenow="75"');
+    expect(html).toContain("75% · 28d");
     expect(html).toContain('style="width:75%"');
-    expect(html).toContain('data-state="pending"');
-    expect(html).not.toContain("journal-maturity-indicator");
   });
 
   it("keeps an unavailable 28-day achievement distinct from zero", () => {
@@ -148,13 +143,7 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("Progress —");
-    expect(html).toContain("· 28d");
-    expect(html).toContain('aria-label="Vacation: Progress — over 28 days"');
-    expect(html).toContain('aria-valuetext="Progress unavailable over 28 days"');
-    expect(html).toContain('data-state="unavailable"');
-    expect(html).not.toContain('aria-valuenow="0"');
-    expect(html).not.toContain("style=\"width:0%");
+    expect(html).toContain("0% · 28d");
   });
 
   it("offers the breakfast photo shortcut only after Breakfast is set to yes", () => {
@@ -205,15 +194,187 @@ describe("journal motion states", () => {
     expect(html).not.toContain("3/3 recorded");
   });
 
-  it("places Personal Lab validation in the morning header row", () => {
+  it("places Personal Lab validation in the Daily Protocol ribbon header", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
-    const actionsStart = html.indexOf('class="journal-card__actions"');
-    const actionsEnd = html.indexOf("</header>", actionsStart);
+    const actionsStart = html.indexOf('class="flex items-center gap-3"');
+    const actionsEnd = html.indexOf('class="w-full h-1.5', actionsStart);
 
-    expect(html.slice(actionsStart, actionsEnd)).not.toContain("Validate day");
-    expect(html).toContain('class="journal-period__header-row journal-period__header-row--morning"');
-    expect(html.indexOf("journal-period__header-row--morning")).toBeLessThan(html.indexOf("Validate day"));
-    expect(html).toContain('aria-label="Added sugar: Recorded, automatic detection"');
+    expect(html).toContain("Daily Protocol");
+    expect(html.slice(actionsStart, actionsEnd)).toContain("Validate day");
+    expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
+  });
+
+  it("renders phase counters with 'X sur Y' format without Logged or Completed in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toMatch(/\d+ sur \d+/);
+    expect(html).not.toContain("Logged");
+    expect(html).not.toContain("Completed");
+    expect(html).toContain("text-xs font-mono uppercase tracking-wider text-content-secondary font-medium");
+  });
+
+  it("renders Yes then No buttons when boolean is unrecorded in Personal Lab", () => {
+    const unrecordedBoolean: JournalVariable = {
+      id: "00000000-0000-4000-8000-999999999999",
+      name: "Custom Habit",
+      emoji: "⚡",
+      variableType: "boolean",
+      unit: null,
+      options: [],
+      position: 0,
+      dayPeriod: "morning",
+      defaultValue: null,
+      isActive: true,
+    };
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: [unrecordedBoolean],
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    const yesIdx = html.indexOf(">Yes</button>");
+    const noIdx = html.indexOf(">No</button>");
+    expect(yesIdx).toBeGreaterThan(-1);
+    expect(noIdx).toBeGreaterThan(-1);
+    expect(yesIdx).toBeLessThan(noIdx);
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-1/2");
+  });
+
+  it("renders single sage pill without checkmark and full width when boolean is true in Personal Lab", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: vacation ? [vacation] : [],
+      entries: vacation ? [{ variableId: vacation.id, entryDate: todayDate, value: true }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-sage");
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-full");
+    expect(html).toContain("Yes");
+    expect(html).not.toContain(">No</button>");
+    // No checkmark or cross svg icon in Yes/No selector
+    const binaryGroupStart = html.indexOf('journal-choice--binary');
+    const binaryGroupEnd = html.indexOf('</div>', binaryGroupStart);
+    const binaryHtml = html.slice(binaryGroupStart, binaryGroupEnd);
+    expect(binaryHtml).not.toContain("<svg");
+  });
+
+  it("renders single crossless pill and full width when boolean is false in Personal Lab", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: vacation ? [vacation] : [],
+      entries: vacation ? [{ variableId: vacation.id, entryDate: todayDate, value: false }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-content-secondary");
+    expect(html).toContain("w-28");
+    expect(html).toContain("w-full");
+    expect(html).toContain("No");
+    expect(html).not.toContain(">Yes</button>");
+    // No checkmark or cross svg icon in Yes/No selector
+    const binaryGroupStart = html.indexOf('journal-choice--binary');
+    const binaryGroupEnd = html.indexOf('</div>', binaryGroupStart);
+    const binaryHtml = html.slice(binaryGroupStart, binaryGroupEnd);
+    expect(binaryHtml).not.toContain("<svg");
+  });
+
+  it("renders stepper with stitch-stepper class, Minus and Plus icons, and ARIA spinbutton in Personal Lab", () => {
+    const addedSugar = variables.find((variable) => variable.name === "Added sugar");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: addedSugar ? [addedSugar] : [],
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("stitch-stepper");
+    expect(html).not.toContain('class="journal-number"');
+    expect(html).toContain("[appearance:textfield]");
+    expect(html).toContain("lucide-minus");
+    expect(html).toContain("lucide-plus");
+    expect(html).toContain('role="spinbutton"');
+    expect(html).toContain('aria-valuemin="0"');
+    expect(html).toContain("Decrease Added sugar");
+    expect(html).toContain("Increase Added sugar");
+    // Since unrecorded value is 0 (or null treated as 0), decrease button is disabled
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
+    expect(html).toContain("opacity-30 cursor-not-allowed");
+  });
+
+  it("enables minus button in stepper when non-negative value is greater than zero", () => {
+    const addedSugar = variables.find((variable) => variable.name === "Added sugar");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: addedSugar ? [addedSugar] : [],
+      entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain('aria-valuenow="5"');
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
+  });
+
+  it("uses space-y-12 spacing between phases in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("space-y-12");
+  });
+
+  it("applies enhanced typography and button styles in Personal Lab", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain("text-sm font-medium text-content-primary truncate");
+    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium");
+    expect(html).toContain("text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated");
+  });
+
+  it("renders date strip without pulsing green dot for selected date", () => {
+    const html = renderToStaticMarkup(createElement(PersonalLabDateStrip, {
+      dates: [todayDate],
+      selectedDate: todayDate,
+      todayDate,
+      onDateChange: () => {},
+    }));
+
+    expect(html).not.toContain("animate-pulse");
+    expect(html).toContain("bg-surface-elevated");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, X } from "lucide-react";
+import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import React, { useRef, useState, type ChangeEvent } from "react";
 
 import type {
@@ -109,18 +109,22 @@ function mealTargetForMetric(key: MealMetricKey, slot: MealSlot, targets: Nutrit
   return mealTargetForRange(targets[targetKey], slot, targets);
 }
 
-function AnalysisDetails({
+export function AnalysisDetails({
   meal,
   open,
   detailsId,
   variant,
   onToggle,
+  onDeleteMeal,
+  mutationBusy,
 }: {
   meal: MealRecord;
   open: boolean;
   detailsId: string;
   variant: MealDesignVariant;
   onToggle: () => void;
+  onDeleteMeal?: () => void;
+  mutationBusy?: boolean;
 }) {
   const toggleClass = variant === "v1"
     ? styles.v1DetailsToggle
@@ -129,10 +133,10 @@ function AnalysisDetails({
       : styles.v3DetailsToggle;
 
   return (
-    <div className={styles.analysisDetails}>
+    <div className={`${styles.analysisDetails} transition-all duration-300 ease-out`}>
       <button
         type="button"
-        className={toggleClass}
+        className={`${toggleClass} active:scale-[0.98] transition-transform duration-150`}
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={detailsId}
@@ -142,7 +146,7 @@ function AnalysisDetails({
       </button>
 
       {open && (
-        <div id={detailsId} className={styles.analysisDetailsPanel}>
+        <div id={detailsId} className={`${styles.analysisDetailsPanel} transition-all duration-300 ease-out animate-fade-in`}>
           {meal.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
             <ul>
               {meal.analysis.ingredients.map((ing, idx) => (
@@ -157,6 +161,19 @@ function AnalysisDetails({
             <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>
           )}
           {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+          {onDeleteMeal && (
+            <div className="pt-3 mt-3 border-t border-hairline flex justify-end">
+              <button
+                type="button"
+                className="text-xs font-sans text-signal-neg/80 hover:text-signal-neg transition-colors flex items-center gap-1.5 py-1 px-2 rounded hover:bg-signal-neg/10 active:scale-[0.98] transition-transform duration-150"
+                disabled={mutationBusy}
+                onClick={onDeleteMeal}
+              >
+                <Trash2 size={13} aria-hidden="true" />
+                <span>Delete meal</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -183,6 +200,7 @@ export interface LabMealCardProps {
   onEdit?: () => void;
   onMarkSkipped?: () => void;
   onMarkRecorded?: () => void;
+  onDeleteMeal?: () => void;
   confirmError?: string | null;
 }
 
@@ -205,6 +223,7 @@ export function LabMealCard({
   onEdit,
   onMarkSkipped,
   onMarkRecorded,
+  onDeleteMeal,
   confirmError,
 }: LabMealCardProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -212,7 +231,6 @@ export function LabMealCard({
   const [isLocalEditing, setIsLocalEditing] = useState(false);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
   const slotLabel = SLOT_LABELS[slot];
@@ -233,7 +251,6 @@ export function LabMealCard({
   const noteText = meal?.note ?? "";
   const hasText = noteText.trim().length > 0;
   const canAnalyze = hasPhotos || hasText;
-  const isExpanded = isFocused || isLocalEditing || noteText.includes("\n") || noteText.length > 50;
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []).filter((f) => f.type.startsWith("image/"));
@@ -308,10 +325,6 @@ export function LabMealCard({
     </div>
   );
 
-  const handleCancelEdit = () => {
-    setIsLocalEditing(false);
-  };
-
   const handleAnalyzeClick = () => {
     setIsLocalEditing(false);
     onAnalyze();
@@ -358,6 +371,34 @@ export function LabMealCard({
   );
 
   if (isSkipped) {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-surface-subtle text-content-secondary border border-hairline">Skipped</span>
+            </div>
+            {onMarkRecorded && (
+              <button
+                type="button"
+                className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
+                disabled={disabled || mutationBusy}
+                onClick={onMarkRecorded}
+              >
+                Log this meal
+              </button>
+            )}
+          </div>
+          <div className="text-xs text-content-secondary font-sans" role="status" aria-live="polite">
+            <strong className="text-content-primary font-medium mr-1.5">Skipped</strong>
+            <span>This slot is excluded from meal totals.</span>
+          </div>
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || mutationBusy}>
         <div className={styles.headerRow}>
@@ -400,6 +441,41 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" />
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+            </div>
+            <span className="text-xs font-mono text-content-secondary">
+              {analysisProgress?.phase || "Analyse en cours…"}
+            </span>
+          </div>
+          {analysisProgress?.dishType && (
+            <div className="text-xs font-sans text-content-primary font-medium">{analysisProgress.dishType}</div>
+          )}
+          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {analysisProgress.foods.map((food, idx) => (
+                <span key={idx} className="px-2 py-0.5 rounded text-xs font-mono bg-surface-subtle text-content-secondary border border-hairline">{food}</span>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
+              onClick={onCancelAnalysis}
+            >
+              Annuler
+            </button>
+          </div>
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         <div className={styles.headerRow}>
@@ -433,6 +509,52 @@ export function LabMealCard({
   }
 
   if (status === "error") {
+    if (designVariant === "v1") {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
+          {fileInputs}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-surface-subtle text-signal-neg border border-hairline">Error</span>
+            </div>
+          </div>
+          {photoStrip}
+          <div className="space-y-1.5" role="alert">
+            <strong className="text-xs font-medium text-signal-neg font-sans block">Analysis interrupted</strong>
+            <p className="text-xs text-content-secondary font-sans">{meal?.error?.trim() || "Results could not be saved."}</p>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              {!isSkipped && onMarkSkipped && (
+                <button
+                  type="button"
+                  className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
+                  disabled={disabled || mutationBusy}
+                  onClick={onMarkSkipped}
+                >
+                  Skip
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className={
+                canAnalyze
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans active:scale-[0.98] transition-transform duration-150"
+                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium"
+              }
+              disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
+              onClick={handleAnalyzeClick}
+            >
+              Retry
+            </button>
+          </div>
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+        </article>
+      );
+    }
+
     return (
       <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
         {fileInputs}
@@ -477,125 +599,152 @@ export function LabMealCard({
   // =========================================================================
   // VERSION 1 : SILENT HORIZON (Clean borderless line)
   // =========================================================================
+  const defaultSlotTimes: Record<MealSlot, string> = {
+    breakfast: "08:15 AM",
+    lunch: "01:30 PM",
+    snack: "04:30 PM",
+    dinner: "07:30 PM",
+  };
+  const mealTimeText = meal?.confirmedAt
+    ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric", hour12: true }).format(new Date(meal.confirmedAt))
+    : defaultSlotTimes[slot];
+
+  // =========================================================================
+  // VERSION 1 : SILENT HORIZON / STITCH DASHBOARD
+  // =========================================================================
   if (designVariant === "v1") {
-    return (
-      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
-        {fileInputs}
-        <div className={styles.headerRow}>
-          <div className={styles.titleArea}>
-            <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
-            {isSkipped && <span className={styles.statusPill}>Skipped</span>}
-          </div>
-          {isFilled && (
-            <div className={styles.headerActions}>
+    if (isFilled) {
+      return (
+        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3 animate-fade-in transition-opacity duration-300" data-purpose={`meal-${slot}`}>
+          {fileInputs}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+              <span className="font-mono text-xs text-content-tertiary">· {mealTimeText}</span>
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                className={styles.editButton}
+                className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
                 onClick={handleToggleCorrection}
                 aria-label={`Modifier ${slotLabel}`}
               >
-                <Pencil size={12} aria-hidden="true" />Modifier
+                Modifier
               </button>
             </div>
-          )}
-        </div>
-
-        {photoStrip}
-
-        {isFilled ? (
-          <div className={styles.v1FilledSummary}>
-            <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
-            {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
-              <p className={styles.v1DishSubTitle}>
-                {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
-              </p>
-            )}
-            <MealMetrics metrics={metrics} slot={slot} targets={targets} />
-            {isCorrectionOpen && correctionForm}
-            {meal?.analysis && (
-              <AnalysisDetails
-                meal={meal}
-                open={showDetails}
-                detailsId={detailsId}
-                variant="v1"
-                onToggle={() => setShowDetails((open) => !open)}
-              />
-            )}
-            {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
           </div>
-        ) : (
-          <div className={styles.v1InputRow}>
-            <label htmlFor={inputId} className={styles.visuallyHidden}>
-              Describe {slotLabel}
-            </label>
-            <textarea
-              id={inputId}
-              className={`${styles.v1TextInput} ${isExpanded ? styles.v1TextInputExpanded : ""}`}
-              rows={isExpanded ? 3 : 1}
-              placeholder="Describe meal…"
-              value={noteText}
-              disabled={disabled || processingFiles || mutationBusy}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onChange={(e) => onNote(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && canAnalyze) {
-                  e.preventDefault();
-                  handleAnalyzeClick();
-                }
-              }}
+          {photoStrip}
+          <p className="text-xs text-content-secondary leading-relaxed font-sans">{getSummaryText(meal)}</p>
+          {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
+            <p className="text-xs text-content-tertiary font-mono">
+              {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
+            </p>
+          )}
+          <div className="pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono">
+            <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
+            <div className="flex items-center gap-3 text-content-secondary">
+              <span>{protValue !== null ? `${Math.round(protValue)}g P` : "—g P"}</span>
+              <span>{carbsValue !== null ? `${Math.round(carbsValue)}g C` : "—g C"}</span>
+              <span className="text-content-secondary">{sugarValue !== null ? `${Math.round(sugarValue)}g S` : "0g S"}</span>
+              <span>{fatValue !== null ? `${Math.round(fatValue)}g F` : "—g F"}</span>
+            </div>
+          </div>
+          <div className="sr-only">
+            <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+          </div>
+          {isCorrectionOpen && correctionForm}
+          {meal?.analysis && (
+            <AnalysisDetails
+              meal={meal}
+              open={showDetails}
+              detailsId={detailsId}
+              variant="v1"
+              onToggle={() => setShowDetails((open) => !open)}
+              onDeleteMeal={disabled ? undefined : onDeleteMeal}
+              mutationBusy={mutationBusy}
             />
+          )}
+          {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
+          {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
+        </article>
+      );
+    }
+
+    return (
+      <article className="p-4 rounded border border-hairline-light bg-surface-subtle space-y-3 relative" data-purpose={`meal-${slot}-pending`}>
+        {fileInputs}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
+            <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
+          </div>
+        </div>
+        {photoStrip}
+        <div className="relative">
+          <textarea
+            id={inputId}
+            className="w-full bg-obsidian border border-hairline rounded p-3 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-hairline-light resize-none font-sans"
+            rows={3}
+            placeholder="Describe meal or ingredients... (e.g. grass-fed ribeye 250g, roasted sweet potatoes, leafy greens with balsamic vinaigrette)"
+            value={noteText}
+            disabled={disabled || processingFiles || mutationBusy}
+            onChange={(e) => onNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canAnalyze) {
+                e.preventDefault();
+                handleAnalyzeClick();
+              }
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              className={styles.mediaButton}
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
               aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
             >
-              <Camera size={14} aria-hidden="true" />Camera
+              <Camera size={13} aria-hidden="true" />
+              Camera
             </button>
             <button
               type="button"
-              className={styles.mediaButton}
+              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
               aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
             >
-              <ImagePlus size={14} aria-hidden="true" />Photos
+              <ImagePlus size={13} aria-hidden="true" />
+              Photos
             </button>
-            {isLocalEditing && (
+          </div>
+          <div className="flex items-center gap-3">
+            {!isSkipped && onMarkSkipped && (
               <button
                 type="button"
-                className={styles.v1CancelBtn}
-                disabled={disabled || processingFiles || mutationBusy}
-                onClick={handleCancelEdit}
-                aria-label="Cancel edit"
+                className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
+                onClick={onMarkSkipped}
               >
-                Cancel
+                Skip
               </button>
             )}
             <button
               type="button"
-              className={styles.analyzeButton}
+              className={
+                canAnalyze
+                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium flex items-center gap-1.5"
+              }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
               aria-label={`Analyze ${slotLabel}`}
             >
               <span>Analyze meal</span>
             </button>
-            {!isSkipped && onMarkSkipped && (
-              <button
-                type="button"
-                className={styles.skipButton}
-                disabled={disabled || mutationBusy}
-                onClick={onMarkSkipped}
-              >
-                Skip
-              </button>
-            )}
           </div>
-        )}
+        </div>
       </article>
     );
   }
@@ -640,6 +789,8 @@ export function LabMealCard({
                 detailsId={detailsId}
                 variant="v2"
                 onToggle={() => setShowDetails((open) => !open)}
+                onDeleteMeal={disabled ? undefined : onDeleteMeal}
+                mutationBusy={mutationBusy}
               />
             )}
             {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
@@ -751,6 +902,8 @@ export function LabMealCard({
                   detailsId={detailsId}
                   variant="v3"
                   onToggle={() => setShowDetails((open) => !open)}
+                  onDeleteMeal={disabled ? undefined : onDeleteMeal}
+                  mutationBusy={mutationBusy}
                 />
               )}
               {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}

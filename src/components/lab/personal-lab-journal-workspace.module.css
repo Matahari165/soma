@@ -100,3 +100,53 @@
   .progressFill,
   .variantButtons button { transition: none; }
 }
+
+.stitchWorkbench {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+@media (min-width: 1024px) {
+  .stitchWorkbench {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    column-gap: 48px !important;
+    row-gap: 0 !important;
+    align-items: start !important;
+  }
+
+  .stitchProtocolColumn {
+    grid-column: span 7 / span 7 !important;
+    order: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .stitchMealColumn {
+    grid-column: span 5 / span 5 !important;
+    order: 2 !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .stitchWorkbench {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    padding: 24px 16px !important;
+  }
+
+  .stitchProtocolColumn {
+    grid-column: 1 / -1 !important;
+    order: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .stitchMealColumn {
+    grid-column: 1 / -1 !important;
+    order: 2 !important;
+    min-width: 0 !important;
+  }
+}
