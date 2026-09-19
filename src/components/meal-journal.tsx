@@ -50,12 +50,18 @@ import {
   type MealTargetSlot,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
-import { fetchMealWithTimeout, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, MEAL_ANALYSIS_STATUS_TIMEOUT_MS } from "@/services/meal-client";
+import {
+  classifyMealClientError,
+  fetchMealWithTimeout,
+  MEAL_ANALYSIS_REQUEST_TIMEOUT_MS,
+  MEAL_ANALYSIS_STATUS_TIMEOUT_MS,
+  visibleAnalysisError,
+} from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import { LabMealCard, type MealDesignVariant } from "@/components/lab/meal-card-variants";
 import styles from "./meal-journal.module.css";
 
-export { apiMealToRecord, MEAL_SLOTS };
+export { apiMealToRecord, MEAL_SLOTS, visibleAnalysisError };
 export type { MealEntryState } from "@/domain/meals";
 export type MealAnalysisProgress = {
   phase?: string;
@@ -494,8 +500,30 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
           }
         }
       }
+    } catch (readError) {
+      // If the stream is interrupted (network glitch, client timeout, or disconnect),
+      // verify if the server completed the analysis in the background before failing.
+      try {
+        const statusRes = await fetchMealWithTimeout(
+          `/api/meals/${encodeURIComponent(mealId)}/analyze`,
+          { cache: "no-store" },
+          5_000,
+          { operation: "load" }
+        );
+        const statusBody = await readJson(statusRes) as { meal?: unknown };
+        if (statusBody?.meal) {
+          return apiMealToRecord(statusBody.meal);
+        }
+      } catch {
+        // Fall through to throw classified error
+      }
+      throw classifyMealClientError(readError, "analyze", analysisRequestId);
     } finally {
-      reader.releaseLock();
+      try {
+        reader.releaseLock();
+      } catch {
+        // Reader may already be released
+      }
     }
   }
 
@@ -690,10 +718,6 @@ function statusLabel(meal: MealRecord | null) {
   if (hasPhotos) return "Photos to analyze";
   if (hasText) return "Note to analyze";
   return "Draft";
-}
-
-function visibleAnalysisError(message: string | null | undefined) {
-  return message ?? "Analysis did not succeed. Check your connection and try again.";
 }
 
 export const MEAL_NOTE_MAX_LENGTH = 500;

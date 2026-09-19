@@ -9,6 +9,7 @@ import type {
   NutritionRange,
 } from "@/domain/meal-record";
 import { mealTargetForRange, type NutritionTargets } from "@/domain/nutrition-targets";
+import { visibleAnalysisError } from "@/services/meal-client";
 import styles from "./meal-card-variants.module.css";
 
 export type MealDesignVariant = "v1" | "v2" | "v3";
@@ -522,7 +523,7 @@ export function LabMealCard({
           {photoStrip}
           <div className="space-y-1.5" role="alert">
             <strong className="text-xs font-medium text-signal-neg font-sans block">Analysis interrupted</strong>
-            <p className="text-xs text-content-secondary font-sans">{meal?.error?.trim() || "Results could not be saved."}</p>
+            <p className="text-xs text-content-secondary font-sans">{visibleAnalysisError(meal?.error)}</p>
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
@@ -568,7 +569,7 @@ export function LabMealCard({
         <div className={styles.errorState} role="alert">
           <div className={styles.errorCopy}>
             <strong>Analysis interrupted</strong>
-            <span>{meal?.error?.trim() || "Results could not be saved."}</span>
+            <span>{visibleAnalysisError(meal?.error)}</span>
           </div>
           <div className={styles.errorActions}>
             <button
@@ -665,7 +666,7 @@ export function LabMealCard({
             />
           )}
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-          {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
+          {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {visibleAnalysisError(meal.error)}</p>}
         </article>
       );
     }
@@ -794,7 +795,7 @@ export function LabMealCard({
               />
             )}
             {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
+            {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {visibleAnalysisError(meal.error)}</p>}
           </div>
         ) : (
           <div className={styles.v2EmptyContainer}>
@@ -907,7 +908,7 @@ export function LabMealCard({
                 />
               )}
               {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-              {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {meal.error}</p>}
+              {meal?.error && <p className={styles.analysisWarning} role="alert">Re-analysis interrupted. The previous analysis is retained. {visibleAnalysisError(meal.error)}</p>}
             </>
           ) : (
             <div className={styles.v3InputGroup}>

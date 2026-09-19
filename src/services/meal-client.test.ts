@@ -22,6 +22,31 @@ describe("meal client transport errors", () => {
     expect(classifyMealClientError(error, "upload").message).toBe("Uploading photos took too long. Check your connection and try again.");
   });
 
+  it("turns WebKit 'Fetch is aborted' error into an analysis timeout message", () => {
+    const error = new Error("Fetch is aborted");
+    error.name = "AbortError";
+
+    const classified = classifyMealClientError(error, "analyze", "analysis-webkit-1");
+    expect(classified).toMatchObject({
+      name: "MealClientError",
+      code: "timeout",
+      operation: "analyze",
+      requestId: "analysis-webkit-1",
+      message: "Analysis is taking longer than expected. Please try again in a few moments.",
+    });
+  });
+
+  it("turns raw DOMException 'Fetch is aborted' without AbortError name into timeout", () => {
+    const error = new Error("Fetch is aborted");
+
+    const classified = classifyMealClientError(error, "analyze", "analysis-webkit-2");
+    expect(classified).toMatchObject({
+      code: "timeout",
+      operation: "analyze",
+      message: "Analysis is taking longer than expected. Please try again in a few moments.",
+    });
+  });
+
   it("does not add a deadline to meal analysis requests", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
 
@@ -31,3 +56,4 @@ describe("meal client transport errors", () => {
     fetchMock.mockRestore();
   });
 });
+

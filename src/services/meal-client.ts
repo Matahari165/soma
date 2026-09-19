@@ -1,7 +1,7 @@
 export type MealRequestOperation = "load" | "create" | "update" | "upload" | "analyze";
 export type MealClientErrorCode = "network" | "timeout" | "unknown";
 
-export const MEAL_ANALYSIS_REQUEST_TIMEOUT_MS = 15_000;
+export const MEAL_ANALYSIS_REQUEST_TIMEOUT_MS = 75_000;
 export const MEAL_ANALYSIS_STATUS_TIMEOUT_MS = 10_000;
 
 const operationMessages: Record<MealRequestOperation, { timeout: string; network: string }> = {
@@ -52,8 +52,9 @@ export function classifyMealClientError(error: unknown, operation: MealRequestOp
   if (error instanceof MealClientError) return error;
   const name = errorName(error);
   const message = errorMessage(error);
-  const timeout = name === "AbortError" || name === "TimeoutError";
-  const network = /failed to fetch|network|load failed/i.test(message) || (name === "TypeError" && /fetch|network|load/i.test(message));
+  const isAbort = name === "AbortError" || /abort/i.test(name) || /abort/i.test(message);
+  const timeout = isAbort || name === "TimeoutError" || /timed?\s*out/i.test(message);
+  const network = /failed to fetch|network|load failed|connection/i.test(message) || (name === "TypeError" && /fetch|network|load/i.test(message));
   const code: MealClientErrorCode = timeout ? "timeout" : network ? "network" : "unknown";
   const safeMessage = code === "timeout"
     ? operationMessages[operation].timeout
@@ -63,6 +64,20 @@ export function classifyMealClientError(error: unknown, operation: MealRequestOp
   return new MealClientError(safeMessage, code, operation, requestId, { cause: error });
 }
 
+export function visibleAnalysisError(message: string | null | undefined): string {
+  if (!message || !message.trim()) {
+    return "Analysis did not succeed. Check your connection and try again.";
+  }
+  const clean = message.trim();
+  if (/aborted|abort/i.test(clean)) {
+    return "Analysis is taking longer than expected. Please try again in a few moments.";
+  }
+  if (/failed to fetch|network|load failed|connection/i.test(clean)) {
+    return "Connection to Soma was interrupted. Please check your connection and try again.";
+  }
+  return clean;
+}
+
 async function requestMeal(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -70,16 +85,72 @@ async function requestMeal(
   timeoutMs?: number,
 ) {
   const controller = timeoutMs === undefined ? null : new AbortController();
-  const timer = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : null;
-  let responseReturned = false;
+  let timer = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : null;
+  const clearTimer = () => {
+    if (timer !== null) {
+      globalThis.clearTimeout(timer);
+      timer = null;
+    }
+  };
   try {
     const response = await fetch(input, controller ? { ...init, signal: controller.signal } : init);
-    // Keep the signal alive until the caller consumes the response body. This
-    // prevents a response that sends headers but never finishes JSON from
-    // bypassing the request deadline.
-    responseReturned = true;
+    // Attach cleanup to ensure the timer does not leak when body is consumed or released.
+    if (timer !== null) {
+      if (response.body && typeof response.body.getReader === "function") {
+        const originalGetReader = response.body.getReader.bind(response.body);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (response.body as any).getReader = (...args: any[]) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const reader = (originalGetReader as any)(...args);
+          const originalRead = reader.read.bind(reader);
+          const originalReleaseLock = reader.releaseLock.bind(reader);
+          const originalCancel = reader.cancel.bind(reader);
+
+          reader.read = async () => {
+            try {
+              const res = await originalRead();
+              if (res.done) clearTimer();
+              return res;
+            } catch (err) {
+              clearTimer();
+              throw err;
+            }
+          };
+          reader.releaseLock = () => {
+            clearTimer();
+            originalReleaseLock();
+          };
+          reader.cancel = async (reason?: unknown) => {
+            clearTimer();
+            return originalCancel(reason);
+          };
+          return reader;
+        };
+      }
+      if (typeof response.json === "function") {
+        const originalJson = response.json.bind(response);
+        response.json = async () => {
+          try {
+            return await originalJson();
+          } finally {
+            clearTimer();
+          }
+        };
+      }
+      if (typeof response.text === "function") {
+        const originalText = response.text.bind(response);
+        response.text = async () => {
+          try {
+            return await originalText();
+          } finally {
+            clearTimer();
+          }
+        };
+      }
+    }
     return response;
   } catch (error) {
+    clearTimer();
     const classified = classifyMealClientError(error, options.operation, options.requestId);
     console.warn("[meal-analysis] client request failed", {
       requestId: options.requestId,
@@ -88,8 +159,6 @@ async function requestMeal(
       reason: errorName(error),
     });
     throw classified;
-  } finally {
-    if (timer !== null && !responseReturned) globalThis.clearTimeout(timer);
   }
 }
 

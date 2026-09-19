@@ -322,5 +322,42 @@ describe("LabMealCard nutrition chart", () => {
     expect(openHtml).toContain("transition-all duration-300 ease-out");
     expect(openHtml).toContain("active:scale-[0.98]");
   });
+
+  it("sanitizes raw 'Fetch is aborted' error and renders a user-friendly timeout message", () => {
+    const meal: MealRecord = {
+      id: "meal-error-test",
+      date: "2026-09-19",
+      slot: "breakfast",
+      note: "Simple text note",
+      photos: [],
+      analysis: null,
+      mouthHeat: null,
+      stomachLoad: null,
+      status: "error",
+      error: "Fetch is aborted",
+    };
+
+    const html = renderToStaticMarkup(
+      <LabMealCard
+        meal={meal}
+        slot="breakfast"
+        saving={false}
+        processingFiles={false}
+        mutationBusy={false}
+        designVariant="v1"
+        onFiles={() => undefined}
+        onRemovePhoto={() => undefined}
+        onAnalyze={() => undefined}
+        onCancelAnalysis={() => undefined}
+        onNote={() => undefined}
+      />
+    );
+
+    expect(html).toContain("Analysis interrupted");
+    expect(html).not.toContain("Fetch is aborted");
+    expect(html).toContain("Analysis is taking longer than expected. Please try again in a few moments.");
+    expect(html).toContain("Retry");
+  });
 });
+
 

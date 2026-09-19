@@ -1,5 +1,7 @@
 import { after, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 import { mealAnalysisCorrectionSchema, mealAnalysisRequestSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
@@ -57,7 +59,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const stream = new ReadableStream({
       async start(controller) {
         function sendEvent(event: string, data: unknown) {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          try {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            // Client closed connection or aborted stream
+          }
         }
         try {
           if (isLocalPreviewMode()) {
@@ -84,7 +90,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         } catch (error) {
           sendEvent("error", { error: error instanceof Error ? error.message : "Stream failed", code: "UNKNOWN_STREAM_ERROR" });
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch {
+            // Already closed or aborted
+          }
         }
       }
     });
