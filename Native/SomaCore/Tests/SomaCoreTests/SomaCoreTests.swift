@@ -192,6 +192,16 @@ import Testing
     #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "auto", value: .bool(false))])
 }
 
+@Test func journalDraftDoesNotPersistAnUnchangedGeneratedValue() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"auto","name":"Detected","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":true,"emoji":"⚙️","defaultValue":null,"dayPeriod":"day","captureMode":"automatic","automaticMetricId":"run_day","trackingCadence":"daily"},{"id":"manual","name":"Mood","variableType":"scale","unit":null,"options":[],"position":20,"isActive":true,"emoji":"🙂","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"auto","entryDate":"2026-09-19","value":true,"source":"automatic"}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+    draft.set(.number(4), for: "manual")
+    #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "manual", value: .number(4))])
+    draft.set(.bool(false), for: "auto")
+    #expect(draft.entries(for: day.variables).contains(JournalSaveEntry(variableId: "auto", value: .bool(false))))
+}
+
 @Test func mealDraftKeepsStableOperationKeysAcrossPersistence() async throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
     defer { try? FileManager.default.removeItem(at: directory) }

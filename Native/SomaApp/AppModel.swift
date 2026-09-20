@@ -641,7 +641,11 @@ final class AppModel {
         journalMutationErrorMessage = nil
         do {
             _ = try await client.createJournalVariable(request)
-            try await refreshDay()
+            do {
+                try await refreshDay()
+            } catch {
+                journalMutationErrorMessage = "Habitude créée. Recharge le journal pour l’afficher."
+            }
             return true
         } catch APIError.unauthorized {
             expireLocalSession()
@@ -668,7 +672,11 @@ final class AppModel {
         journalMutationErrorMessage = nil
         do {
             _ = try await operation()
-            try await refreshDay()
+            do {
+                try await refreshDay()
+            } catch {
+                journalMutationErrorMessage = "Modification enregistrée. Recharge le journal pour l’afficher."
+            }
             return true
         } catch APIError.unauthorized {
             expireLocalSession()

@@ -10,9 +10,11 @@ public enum JournalValueState: Equatable, Sendable {
 public struct JournalDraft: Equatable, Sendable {
     public private(set) var values: [String: JSONValue]
     public private(set) var states: [String: JournalValueState]
+    public private(set) var automaticSourceVariableIDs: Set<String>
 
     public init(day: NativeDayResponse) {
         let entries = Dictionary(uniqueKeysWithValues: day.entries.map { ($0.variableId, $0.value) })
+        automaticSourceVariableIDs = Set(day.entries.compactMap { $0.source == "automatic" ? $0.variableId : nil })
         let omitted = Set(day.day?.omittedVariableIds ?? [])
         var nextStates: [String: JournalValueState] = [:]
         var nextValues: [String: JSONValue] = [:]
@@ -37,6 +39,7 @@ public struct JournalDraft: Equatable, Sendable {
     public mutating func set(_ value: JSONValue, for variableID: String) {
         values[variableID] = value
         states[variableID] = .pending
+        automaticSourceVariableIDs.remove(variableID)
     }
 
     public func state(for variableID: String) -> JournalValueState {
@@ -53,6 +56,7 @@ public struct JournalDraft: Equatable, Sendable {
                 variable.isActive
                     && (variableIDs?.contains(variable.id) ?? true)
                     && state(for: variable.id) != .missing
+                    && !automaticSourceVariableIDs.contains(variable.id)
             }
             .map { JournalSaveEntry(variableId: $0.id, value: values[$0.id] ?? .null) }
     }
