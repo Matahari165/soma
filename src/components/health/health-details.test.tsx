@@ -139,8 +139,8 @@ describe("health route states", () => {
     expect(readable).toContain("Recent activity");
     expect(readable).toContain("Running");
     expect(readable).toContain("Today");
-    expect(readable).toContain("Pace / speed");
-    expect(readable).toContain("Active time");
+    expect(readable).toContain("Allure / vitesse");
+    expect(readable).toContain("Temps actif");
 
     const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
     expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10,000 steps" });

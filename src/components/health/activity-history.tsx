@@ -35,6 +35,12 @@ function metric(value: number | null, unit: string, digits = 0) {
     : "Indisponible";
 }
 
+function pace(exercise: ExerciseSummary) {
+  const seconds = exercise.averagePaceSecondsPerKm;
+  if (seconds === null || !Number.isFinite(seconds)) return metric(exercise.averageSpeedKph, "km/h", 1);
+  return `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")} min/km`;
+}
+
 export function ActivityHistory({ exercises }: { exercises: ExerciseSummary[] }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const visible = exercises.filter((exercise) => exerciseMatchesFilter(exercise.type, filter));
@@ -56,7 +62,9 @@ export function ActivityHistory({ exercises }: { exercises: ExerciseSummary[] })
         <dl className={styles.activityHistoryMetrics}>
           <div><dt>Distance</dt><dd>{metric(exercise.distanceKm, "km", 2)}</dd></div>
           <div><dt>Temps total</dt><dd>{metric(exercise.durationMinutes, "min")}</dd></div>
+          <div><dt>Temps actif</dt><dd>{metric(exercise.activeMinutes, "min")}</dd></div>
           <div><dt>Vitesse</dt><dd>{metric(exercise.averageSpeedKph, "km/h", 1)}</dd></div>
+          <div><dt>Allure / vitesse</dt><dd>{pace(exercise)}</dd></div>
           <div><dt>FC moyenne</dt><dd>{metric(exercise.averageHeartRate, "bpm")}</dd></div>
           <div><dt>Calories estimées</dt><dd>{metric(exercise.calories, "kcal")}</dd></div>
         </dl>
