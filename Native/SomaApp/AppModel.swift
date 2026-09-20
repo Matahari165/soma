@@ -463,6 +463,24 @@ final class AppModel {
             )
             draft.remoteMealId = resolvedID
             draft.hasRemotePhotoEvidence = detail?.photos.contains { ($0.storageStatus ?? "available") == "available" }
+            if let detail {
+                let analysis = detail.analysis ?? detail.lastSuccessfulAnalysis
+                draft.activeAnalysisRequestId = analysis?.analysisRequestId
+                draft.analysisSourceRevision = analysis?.sourceRevision
+                draft.analysisSourceFingerprint = analysis?.sourceFingerprint
+                if detail.status == .confirmed {
+                    draft.stage = .confirmed
+                } else {
+                    switch detail.analysis?.status {
+                    case "completed": draft.stage = .awaitingConfirmation
+                    case "queued", "running": draft.stage = .polling
+                    case "failed":
+                        draft.stage = .failed
+                        draft.lastError = detail.analysis?.error
+                    default: draft.stage = .local
+                    }
+                }
+            }
             mealDrafts[type] = draft
             await persistMealDraft(type)
         }
