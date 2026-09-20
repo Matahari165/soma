@@ -4,8 +4,8 @@ import { mealOriginSchema } from "@/domain/meals";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { getR2MealPhotoObject } from "@/lib/r2";
-import { findPreviewMeal, findPreviewPhoto, removePreviewPhoto, updatePreviewPhotoOrigin } from "@/services/meal-preview";
-import { findMealPhoto, MealServiceError, removeMealPhoto, updateMealPhotoOrigin, findMeal } from "@/services/meals";
+import { findPreviewMeal, findPreviewPhoto, removePreviewPhoto, updatePreviewPhotoDetails } from "@/services/meal-preview";
+import { findMealPhoto, MealServiceError, removeMealPhoto, updateMealPhotoDetails, findMeal } from "@/services/meals";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string; photoId: string }> }) {
   const user = await getCurrentUser();
@@ -56,15 +56,18 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 export async function PATCH(request: Request, context: { params: Promise<{ id: string; photoId: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const parsed = mealOriginSchema.safeParse((await request.json().catch(() => null) as { origin?: unknown } | null)?.origin);
-  if (!parsed.success) return NextResponse.json({ error: "Choose homemade, prepared / bought, or mixed for this photo." }, { status: 400 });
+  const body = await request.json().catch(() => null) as { origin?: unknown; comment?: unknown } | null;
+  const parsedOrigin = body?.origin === undefined ? null : mealOriginSchema.safeParse(body.origin);
+  if (parsedOrigin && !parsedOrigin.success) return NextResponse.json({ error: "Choose homemade, prepared / bought, or mixed for this photo." }, { status: 400 });
+  if (body?.comment !== undefined && body.comment !== null && typeof body.comment !== "string") return NextResponse.json({ error: "The photo comment is invalid." }, { status: 400 });
+  if (!parsedOrigin && body?.comment === undefined) return NextResponse.json({ error: "No photo change was provided." }, { status: 400 });
   const { id, photoId } = await context.params;
   if (isLocalPreviewMode()) {
-    const photo = updatePreviewPhotoOrigin(user.id, id, photoId, parsed.data);
+    const photo = updatePreviewPhotoDetails(user.id, id, photoId, { ...(parsedOrigin ? { origin: parsedOrigin.data } : {}), ...(body?.comment !== undefined ? { comment: typeof body.comment === "string" ? body.comment : null } : {}) });
     return photo ? NextResponse.json({ photo, preview: true }) : NextResponse.json({ error: "Photo not found." }, { status: 404 });
   }
   try {
-    const photo = await updateMealPhotoOrigin(user.id, id, photoId, parsed.data);
+    const photo = await updateMealPhotoDetails(user.id, id, photoId, { ...(parsedOrigin ? { origin: parsedOrigin.data } : {}), ...(body?.comment !== undefined ? { comment: typeof body.comment === "string" ? body.comment : null } : {}) });
     return NextResponse.json({ photo });
   } catch (error) {
     if (error instanceof MealServiceError) {

@@ -14,6 +14,7 @@ struct MealEditorView: View {
     @State private var selection: [PhotosPickerItem] = []
     @State private var importError: String?
     @State private var confirmsDeletion = false
+    @State private var draftPhotoComments: [UUID: String] = [:]
 
     var body: some View {
         NavigationStack {
@@ -47,7 +48,10 @@ struct MealEditorView: View {
                 }
             }
         }
-        .task { note = model.mealDrafts[mealType]?.note ?? "" }
+        .task {
+            note = model.mealDrafts[mealType]?.note ?? ""
+            draftPhotoComments = Dictionary(uniqueKeysWithValues: (model.mealDrafts[mealType]?.photos ?? []).map { ($0.id, $0.comment ?? "") })
+        }
         .onChange(of: selection) { _, items in Task { await importPhotos(items) } }
         .confirmationDialog(
             "Supprimer ce repas ?",
@@ -89,8 +93,13 @@ struct MealEditorView: View {
                 .clipShape(.rect(cornerRadius: 8))
                 .accessibilityLabel("Description du repas")
                 .onChange(of: note) { _, value in
-                    if value.count > 500 { note = String(value.prefix(500)) }
-                    Task { await model.setMealNote(String(value.prefix(500)), for: mealType) }
+                    let normalized = String(value.prefix(500))
+                    if value != normalized {
+                        note = normalized
+                        return
+                    }
+                    guard normalized != (model.mealDrafts[mealType]?.note ?? "") else { return }
+                    Task { await model.setMealNote(normalized, for: mealType) }
                 }
             Text("\(note.count)/500")
                 .font(.caption)
@@ -130,6 +139,16 @@ struct MealEditorView: View {
                         Text("Mixte").tag(MealPhotoOrigin.mixed)
                     }
                     .pickerStyle(.menu)
+                    TextField("Commentaire facultatif pour cette photo", text: commentBinding(photo), axis: .vertical)
+                        .lineLimit(1...3)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(draft.stage.isBusy)
+                        .accessibilityHint("Décrit uniquement cette photo, indépendamment de la description générale")
+                    Button("Enregistrer le commentaire") {
+                        Task { await model.setPhotoComment(draftPhotoComments[photo.id] ?? "", photoID: photo.id, for: mealType) }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(draft.stage.isBusy)
                 }
                 .padding(.vertical, 6)
                 Divider().overlay(SomaTheme.rule)
@@ -145,8 +164,11 @@ struct MealEditorView: View {
             if draft.stage.isBusy {
                 ProgressView(draft.stage.label)
                     .accessibilityLabel(draft.stage.label)
-            } else if draft.stage == .completed {
-                Label("Analyse terminée", systemImage: "checkmark.circle.fill")
+            } else if draft.stage == .awaitingConfirmation {
+                Label("Résultat à confirmer", systemImage: "checkmark.circle")
+                    .foregroundStyle(SomaTheme.primary)
+            } else if draft.stage == .confirmed {
+                Label("Repas confirmé", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(SomaTheme.primary)
             } else if draft.stage == .failed {
                 Label("Envoi interrompu", systemImage: "exclamationmark.triangle")
@@ -155,11 +177,18 @@ struct MealEditorView: View {
                     .foregroundStyle(SomaTheme.secondary)
             }
 
-            Button(draft.stage == .failed ? "Réessayer" : "Analyser le repas", systemImage: draft.stage == .failed ? "arrow.clockwise" : "sparkles") {
-                Task { await model.submitMeal(mealType) }
+            if draft.stage == .awaitingConfirmation {
+                Button("Confirmer le résultat", systemImage: "checkmark") {
+                    Task { await model.confirmMeal(mealType) }
+                }
+                .buttonStyle(.borderedProminent)
+            } else if draft.stage != .confirmed {
+                Button(draft.stage == .failed ? "Réessayer" : draft.stage == .polling ? "Reprendre le suivi" : "Analyser le repas", systemImage: draft.stage == .failed ? "arrow.clockwise" : "sparkles") {
+                    Task { await model.submitMeal(mealType) }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!draft.canSubmit || draft.stage.isBusy)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(!draft.canSubmit || draft.stage.isBusy)
         }
     }
 
@@ -174,10 +203,11 @@ struct MealEditorView: View {
     }
 
     private var remoteMeal: Meal? {
-        mealID.flatMap { model.mealDetails[$0] }
+        (mealID ?? model.mealDrafts[mealType]?.remoteMealId).flatMap { model.mealDetails[$0] }
     }
 
     private var displayedAnalysis: MealAnalysisRecord? {
+        guard let draft = model.mealDrafts[mealType], draft.stage == .awaitingConfirmation || draft.stage == .confirmed else { return nil }
         guard let meal = remoteMeal else { return nil }
         if meal.analysis?.status == "completed" { return meal.analysis }
         return meal.lastSuccessfulAnalysis
@@ -192,6 +222,13 @@ struct MealEditorView: View {
         Binding(
             get: { model.mealDrafts[mealType]?.photos.first(where: { $0.id == photo.id })?.origin ?? .unknown },
             set: { origin in Task { await model.setPhotoOrigin(origin, photoID: photo.id, for: mealType) } }
+        )
+    }
+
+    private func commentBinding(_ photo: MealDraftPhoto) -> Binding<String> {
+        Binding(
+            get: { draftPhotoComments[photo.id] ?? photo.comment ?? "" },
+            set: { draftPhotoComments[photo.id] = String($0.prefix(240)) }
         )
     }
 
@@ -234,7 +271,7 @@ private struct ImportedMealPhoto: Transferable {
 private enum MealPhotoImportError: Error { case unsupportedFormat }
 
 private extension MealDraftStage {
-    var isBusy: Bool { [.creating, .uploading, .requestingAnalysis, .polling].contains(self) }
+    var isBusy: Bool { [.creating, .uploading, .requestingAnalysis].contains(self) }
     var label: String {
         switch self {
         case .local: "Brouillon enregistré"
@@ -242,8 +279,10 @@ private extension MealDraftStage {
         case .uploading: "Envoi des photos…"
         case .requestingAnalysis: "Lancement de l’analyse…"
         case .polling: "Analyse en cours…"
-        case .completed: "Analyse terminée"
+        case .awaitingConfirmation: "Résultat à confirmer"
+        case .confirmed: "Repas confirmé"
         case .failed: "Envoi interrompu"
+        case .completed: "Résultat à confirmer"
         }
     }
 }
@@ -251,7 +290,7 @@ private extension MealDraftStage {
 private extension MealDraft {
     var canSubmit: Bool {
         entryState == .skipped || (
-            (!(note ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photos.isEmpty)
+            (hasRemotePhotoEvidence == true || !photos.isEmpty || !(note ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             && photos.allSatisfy { $0.origin != .unknown }
         )
     }

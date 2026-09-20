@@ -3,17 +3,24 @@ import { NextRequest } from "next/server";
 
 import { getBearerSessionUser } from "@/lib/cloudflare/session";
 import { getCurrentUser } from "@/lib/auth";
-import { getNativeLabDay, saveNativeJournalEntries } from "@/services/native-lab";
+import { createNativeJournalVariable, getNativeLabDay, saveNativeJournalEntries, updateNativeJournalVariable } from "@/services/native-lab";
 import { getPersonalLabSnapshot } from "@/services/personal-lab";
 
 import { GET as getWebMatrix } from "@/app/api/lab/matrix/route";
 import { GET as getDay } from "./day/route";
 import { PUT as saveJournal } from "./journal/route";
 import { GET as getMatrix } from "./matrix/route";
+import { PATCH as patchVariable, POST as createVariable } from "./variables/route";
 
 vi.mock("@/lib/cloudflare/session", () => ({ getBearerSessionUser: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
-vi.mock("@/services/native-lab", () => ({ getNativeLabDay: vi.fn(), saveNativeJournalEntries: vi.fn() }));
+vi.mock("@/services/native-lab", () => ({
+  createNativeJournalVariable: vi.fn(),
+  getNativeLabDay: vi.fn(),
+  NativeJournalVariableError: class NativeJournalVariableError extends Error {},
+  saveNativeJournalEntries: vi.fn(),
+  updateNativeJournalVariable: vi.fn(),
+}));
 vi.mock("@/services/personal-lab", () => ({ getPersonalLabSnapshot: vi.fn() }));
 
 const user = { id: "user-native", email: "native@example.test", displayName: "Native User" };
@@ -40,6 +47,12 @@ const matrix = {
   rows: [{ id: "sleep_minutes", label: "Sleep", emoji: "🌙", grain: "day" as const, timeScale: "acute" as const, period: 30 as const, lagLabel: "same day", relations: [] }],
   outcomes: [{ id: "recovery", label: "Recovery", unit: "score", direction: "higher" as const }],
   periods: [30 as const],
+  meaningfulRelations: [],
+  topRelations: [],
+  acuteHighlights: [],
+  chronicHighlights: [],
+  coverageByMetric: [],
+  collectionProgress: [],
 };
 
 describe("native Personal Lab API", () => {
@@ -53,6 +66,8 @@ describe("native Personal Lab API", () => {
     vi.mocked(getBearerSessionUser).mockResolvedValue(null);
     expect((await getDay(new Request("https://soma.example/api/native/v1/lab/day?date=2026-09-18"))).status).toBe(401);
     expect((await saveJournal(new Request("https://soma.example/api/native/v1/lab/journal", { method: "PUT", body: "{}" }))).status).toBe(401);
+    expect((await createVariable(new Request("https://soma.example/api/native/v1/lab/variables", { method: "POST", body: "{}" }))).status).toBe(401);
+    expect((await patchVariable(new Request("https://soma.example/api/native/v1/lab/variables", { method: "PATCH", body: "{}" }))).status).toBe(401);
     expect((await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=30"))).status).toBe(401);
   });
 
@@ -81,13 +96,16 @@ describe("native Personal Lab API", () => {
     expect(saveNativeJournalEntries).toHaveBeenCalledWith(user.id, expect.objectContaining({ entryDate: "2026-09-18", mode: "validate" }));
   });
 
-  it("uses the same matrix snapshot contract as the Web route", async () => {
+  it("uses the same matrix snapshot as the Web route and exposes the native statistical details", async () => {
     vi.mocked(getPersonalLabSnapshot).mockResolvedValue({ matrix } as never);
     const response = await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=30"));
     const webResponse = await getWebMatrix(new NextRequest("https://soma.example/api/lab/matrix?period=30"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(matrix);
-    expect(await webResponse.json()).toEqual(matrix);
+    const nativePayload = await response.json();
+    const webPayload = await webResponse.json();
+    expect(nativePayload).toEqual({ period: 30, ...matrix });
+    expect(webPayload).toEqual({ rows: matrix.rows, outcomes: matrix.outcomes, periods: matrix.periods });
+    expect(nativePayload).toMatchObject(webPayload);
     expect(getPersonalLabSnapshot).toHaveBeenCalledWith(user, { periods: [30] });
   });
 
@@ -95,6 +113,37 @@ describe("native Personal Lab API", () => {
     expect((await getDay(new Request("https://soma.example/api/native/v1/lab/day?date=18-09-2026"))).status).toBe(400);
     expect((await saveJournal(new Request("https://soma.example/api/native/v1/lab/journal", { method: "PUT", body: "{}" }))).status).toBe(400);
     expect((await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=7"))).status).toBe(400);
+    expect((await createVariable(new Request("https://soma.example/api/native/v1/lab/variables", {
+      method: "POST",
+      body: JSON.stringify({ name: "Lieu", variableType: "category", options: ["Maison"] }),
+    }))).status).toBe(400);
+    expect((await patchVariable(new Request("https://soma.example/api/native/v1/lab/variables", {
+      method: "PATCH",
+      body: JSON.stringify({ id: "not-a-uuid", position: 20 }),
+    }))).status).toBe(400);
+  });
+
+  it("uses the bearer identity for variable mutations without falling back to the web cookie", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null);
+    vi.mocked(createNativeJournalVariable).mockResolvedValue({ ok: true, id: variableId });
+    vi.mocked(updateNativeJournalVariable).mockResolvedValue({ ok: true, id: variableId });
+
+    const createResponse = await createVariable(new Request("https://soma.example/api/native/v1/lab/variables", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Énergie", variableType: "scale" }),
+    }));
+    const patchResponse = await patchVariable(new Request("https://soma.example/api/native/v1/lab/variables", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: variableId, defaultValue: null }),
+    }));
+
+    expect(createResponse.status).toBe(200);
+    expect(patchResponse.status).toBe(200);
+    expect(getCurrentUser).not.toHaveBeenCalled();
+    expect(createNativeJournalVariable).toHaveBeenCalledWith(user.id, expect.objectContaining({ name: "Énergie" }));
+    expect(updateNativeJournalVariable).toHaveBeenCalledWith(user.id, expect.objectContaining({ id: variableId, defaultValue: null }));
   });
 
   it("does not expose internal journal storage errors", async () => {

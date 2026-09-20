@@ -45,6 +45,7 @@ import {
   updateMeal,
   updateMealAnalysis,
   updatePhotoOrigin,
+  updatePhotoDetails,
   updatePhotoStorage,
   touchMealAnalysis,
   upsertMealFeelings,
@@ -175,11 +176,19 @@ function analysisUsedForConfirmation(meal: Meal) {
 export async function computeMealSourceFingerprint(meal: Pick<Meal, "note" | "photos">) {
   const photos = meal.photos
     .filter((photo) => (photo.storageStatus ?? "available") === "available")
-    .map((photo) => ({ id: photo.id, origin: photo.origin, status: photo.storageStatus ?? "available" }))
+    .map((photo) => ({ id: photo.id, origin: photo.origin, comment: photo.comment?.trim() ?? "", status: photo.storageStatus ?? "available" }))
     .sort((left, right) => left.id.localeCompare(right.id));
   const payload = JSON.stringify({ version: 1, note: meal.note?.trim() ?? "", photos });
   const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function analysisSourceStillCurrent(userId: string, mealId: string, sourceRevision: string | null | undefined, sourceFingerprint: string | null | undefined) {
+  const meal = await findMeal(userId, mealId);
+  if (!meal) return false;
+  if (sourceRevision && meal.updatedAt !== sourceRevision) return false;
+  if (!sourceFingerprint) return true;
+  return await computeMealSourceFingerprint(meal) === sourceFingerprint;
 }
 
 async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photos"][number]) {
@@ -429,6 +438,15 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
   }
   const activePhotos = current.photos.filter((photo) => (photo.storageStatus ?? "available") === "available");
   if (confirmedAnalysis && input.status !== "confirmed") throw new MealServiceError("invalid", "An edited analysis is saved when the meal is confirmed.");
+  if (input.status === "confirmed" && (input.analysisRequestId || input.analysisSourceRevision || input.analysisSourceFingerprint)) {
+    const analysis = analysisUsedForConfirmation(current);
+    if (!analysis
+      || (input.analysisRequestId && analysis.analysisRequestId !== input.analysisRequestId)
+      || (input.analysisSourceRevision && analysis.sourceRevision !== input.analysisSourceRevision)
+      || (input.analysisSourceFingerprint && analysis.sourceFingerprint !== input.analysisSourceFingerprint)) {
+      throw new MealServiceError("invalid", "Le résultat à confirmer n’est plus celui des preuves actuelles. Relance l’analyse.", "source_unavailable");
+    }
+  }
   const effectiveNote = input.note !== undefined ? input.note : current.note;
   if (input.status === "confirmed") {
     if (activePhotos.length === 0 && !effectiveNote?.trim()) {
@@ -501,7 +519,7 @@ export async function updateMealRecord(userId: string, mealId: string, input: Up
   return updated;
 }
 
-export async function addMealPhotos(userId: string, mealId: string, files: Array<{ id?: string; filename?: string | null; mimeType: MealPhotoMime; size: number; data: ArrayBuffer; origin: MealOrigin }>, options: { idempotencyKey?: string } = {}) {
+export async function addMealPhotos(userId: string, mealId: string, files: Array<{ id?: string; filename?: string | null; comment?: string | null; mimeType: MealPhotoMime; size: number; data: ArrayBuffer; origin: MealOrigin }>, options: { idempotencyKey?: string } = {}) {
   assertMealId(mealId);
   if (!await findMeal(userId, mealId)) throw new MealServiceError("not_found", "Meal not found.");
   if (files.length < 1) throw new MealServiceError("invalid", "Add at least one photo.");
@@ -557,6 +575,7 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
             created_at: new Date().toISOString(),
             upload_idempotency_key: options.idempotencyKey ?? null,
             filename: file.filename ?? null,
+            comment: file.comment?.trim().slice(0, 240) || null,
             storage_status: "available",
             purged_at: null,
           });
@@ -590,6 +609,18 @@ export async function updateMealPhotoOrigin(userId: string, mealId: string, phot
   assertMealId(mealId);
   if (!/^[0-9a-f-]{20,80}$/i.test(photoId)) throw new MealServiceError("invalid", "The photo id is invalid.");
   const updated = await updatePhotoOrigin(userId, mealId, photoId, origin);
+  if (!updated) throw new MealServiceError("not_found", "Photo not found.");
+  await updateMeal(userId, mealId, { status: "draft" });
+  return updated;
+}
+
+export async function updateMealPhotoDetails(userId: string, mealId: string, photoId: string, values: { origin?: MealOrigin; comment?: string | null }) {
+  assertMealId(mealId);
+  if (!/^[0-9a-f-]{20,80}$/i.test(photoId)) throw new MealServiceError("invalid", "The photo id is invalid.");
+  const comment = values.comment === undefined ? undefined : values.comment?.trim().slice(0, 240) || null;
+  const update = { ...values };
+  if (comment !== undefined) update.comment = comment;
+  const updated = await updatePhotoDetails(userId, mealId, photoId, update);
   if (!updated) throw new MealServiceError("not_found", "Photo not found.");
   await updateMeal(userId, mealId, { status: "draft" });
   return updated;
@@ -687,6 +718,7 @@ async function enqueueMealAnalysisLocked(userId: string, mealId: string, options
     provider: configured.name,
     model: configured.model,
     analysis_request_id: options.analysisRequestId ?? null,
+    source_revision: meal.updatedAt,
     result: null,
     error: null,
     error_code: null,
@@ -789,7 +821,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
     const [images, recipeReferences] = await Promise.all([
       Promise.all(availablePhotos.map(async (photo) => {
         const data = await timedMealStage("photo_download", { mealId: candidate.meal_id, requestId }, () => loadMealPhotoForAnalysis(photo.objectPath));
-        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data };
+        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: photo.comment ?? null, data };
       })),
       findRelevantMealRecipeReferences(candidate.user_id, { note, correction: candidate.source_correction ?? undefined }).catch((error) => {
         console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId, stage: "worker_recipe_context", reason: error instanceof Error ? error.name : "unknown" });
@@ -811,6 +843,9 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
     } catch {
       throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
     }
+    if (!await analysisSourceStillCurrent(candidate.user_id, candidate.meal_id, candidate.source_revision, candidate.source_fingerprint)) {
+      throw new MealServiceError("invalid", "Les preuves du repas ont changé pendant l’analyse. Relance-la.", "source_unavailable");
+    }
     const completed = await updateMealAnalysis(candidate.user_id, candidate.id, {
       status: "completed",
       provider: analysed.provider,
@@ -824,7 +859,6 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
       failure_started_at: null,
       retry_after_at: null,
     }, "running", leaseToken);
-    await finalizeMealAnalysis(candidate.user_id, candidate.meal_id, completed);
     return { processed: true as const, analysis: completed, previous: running };
   } catch (error) {
     const failure = workerFailure(error);
@@ -908,6 +942,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       provider: options.provider?.name ?? getConfiguredMealAnalysisProvider().name,
       model: options.provider?.model ?? getConfiguredMealAnalysisProvider().model,
       analysis_request_id: options.analysisRequestId ?? null,
+      source_revision: currentMeal.updatedAt,
       result: null,
       error: null,
       source_fingerprint: sourceFingerprint,
@@ -939,7 +974,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         Promise.all(availablePhotos.map(async (photo) => {
           const object = await getR2MealPhotoObject(photo.objectPath);
           if (!object) throw new MealServiceError("unavailable", "Une photo du repas n’est plus disponible.", "source_unavailable");
-          return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: await object.arrayBuffer() };
+          return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: photo.comment ?? null, data: await object.arrayBuffer() };
         })),
         findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch((error) => {
           console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId: options.analysisRequestId, mealId, stage: "recipe_context", reason: error instanceof Error ? error.name : "unknown" });
@@ -962,6 +997,9 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
       } catch {
         throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
       }
+      if (!await analysisSourceStillCurrent(userId, mealId, currentMeal.updatedAt, sourceFingerprint)) {
+        throw new MealServiceError("invalid", "Les preuves du repas ont changé pendant l’analyse. Relance-la.", "source_unavailable");
+      }
       const completed = await updateMealAnalysis(userId, analysisId, {
         status: "completed",
         provider: analysed.provider,
@@ -974,7 +1012,6 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         failure_started_at: null,
         retry_after_at: null,
       }, "running");
-      await finalizeMealAnalysis(userId, mealId, completed);
       const refreshed = await findMeal(userId, mealId);
       return { analysis: refreshed?.analysis ?? completed, fresh: true };
     } catch (error) {
@@ -1166,7 +1203,7 @@ export async function streamMealAnalysis(
     const [images, recipeReferences] = await Promise.all([
       Promise.all(availablePhotos.map(async (photo) => {
         const data = await timedMealStage("photo_download", { mealId, requestId }, () => loadMealPhotoForAnalysis(photo.objectPath));
-        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data };
+        return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: photo.comment ?? null, data };
       })),
       findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch((error) => {
         console.warn("[meal-analysis-stream] recipe context unavailable", { requestId, stage: "worker_recipe_context", reason: error instanceof Error ? error.name : "unknown" });
@@ -1215,13 +1252,6 @@ export async function streamMealAnalysis(
       heartbeat_at: null,
       lease_token: null,
     }, "running", leaseToken);
-
-    await finalizeMealAnalysis(userId, mealId, {
-      id: analysisRecord.id,
-      sourceFingerprint: analysisRecord.sourceFingerprint,
-      sourcePhotoIds: analysisRecord.sourcePhotoIds,
-      result: validated,
-    });
 
     const updatedMeal = await findMeal(userId, mealId);
     if (!updatedMeal) throw new MealServiceError("unavailable", "The meal could not be reloaded.");

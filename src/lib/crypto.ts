@@ -33,3 +33,7 @@ export function createPkcePair() {
 export function stableHash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
+
+export function pkceChallenge(value: string) {
+  return createHash("sha256").update(value, "ascii").digest("base64url");
+}

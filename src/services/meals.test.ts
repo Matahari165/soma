@@ -83,13 +83,29 @@ describe("meal analysis provenance", () => {
     expect(state.updateMeal).not.toHaveBeenCalled();
   });
 
+  it("binds native confirmation to the exact analysis identity and source", async () => {
+    const photos = [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" }];
+    const sourceFingerprint = await computeMealSourceFingerprint({ note: null, photos });
+    state.findMeal.mockResolvedValue({
+      id: "12345678-1234-1234-1234-123456789012", userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const,
+      note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null,
+      createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "revision-1", photos,
+      analysis: { id: "analysis-xai", mealId: "12345678-1234-1234-1234-123456789012", status: "completed" as const, provider: "xai", model: "grok-4.6", result: canonicalCorrection, error: null, analysisRequestId: "request-1", sourceRevision: "revision-1", sourceFingerprint, sourcePhotoIds: ["photo-1"], createdAt: "2026-08-31T10:01:00.000Z", completedAt: "2026-08-31T10:01:01.000Z" },
+    });
+
+    await expect(updateMealRecord("user-1", "12345678-1234-1234-1234-123456789012", { status: "confirmed", analysisRequestId: "request-old", analysisSourceRevision: "revision-1", analysisSourceFingerprint: sourceFingerprint })).rejects.toMatchObject({ code: "invalid" });
+    expect(state.updateMeal).not.toHaveBeenCalled();
+  });
+
   it("keeps the source fingerprint stable and changes it when photo proof changes", async () => {
     const photos = [{ id: "photo-1", mealId: "meal", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 1, createdAt: "2026-08-31T10:00:00.000Z" }];
     const first = await computeMealSourceFingerprint({ note: "Pâtes", photos });
     const reordered = await computeMealSourceFingerprint({ note: " Pâtes ", photos: [...photos].reverse() });
     const changed = await computeMealSourceFingerprint({ note: "Pâtes", photos: photos.map((photo) => ({ ...photo, origin: "prepared" as const })) });
+    const commentChanged = await computeMealSourceFingerprint({ note: "Pâtes", photos: photos.map((photo) => ({ ...photo, comment: "Sauce à gauche" })) });
     expect(reordered).toBe(first);
     expect(changed).not.toBe(first);
+    expect(commentChanged).not.toBe(first);
   });
 
   it("refuses to purge a photo-only meal without a completed analysis", async () => {
@@ -425,7 +441,7 @@ describe("meal text-only analysis", () => {
   });
 
   it("analyses an image-only meal with one vision call", async () => {
-    const photo = { id: "photo-1", mealId: baseId, origin: "homemade" as const, objectPath: "private/photo-1", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const };
+    const photo = { id: "photo-1", mealId: baseId, origin: "homemade" as const, comment: "Plat principal", objectPath: "private/photo-1", mimeType: "image/jpeg" as const, bytes: 3, createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const };
     state.findMeal.mockResolvedValue({ id: baseId, userId: "user-1", mealDate: "2026-08-31", mealType: "lunch" as const, note: null, status: "draft" as const, mouthWarmthIntensity: null, stomachOverfullIntensity: null, createdAt: "2026-08-31T10:00:00.000Z", updatedAt: "2026-08-31T10:00:00.000Z", photos: [photo], analysis: null });
     vi.mocked(getR2MealPhotoObject).mockResolvedValue(new Response(Uint8Array.from([1, 2, 3])));
     const analyze = vi.fn().mockResolvedValue(textOnlyAnalysis);
@@ -434,7 +450,7 @@ describe("meal text-only analysis", () => {
     await analyzeMeal("user-1", baseId, { provider: { name: "stub", model: "stub-1", analyze, analyzeText } });
 
     expect(analyze).toHaveBeenCalledTimes(1);
-    expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: null, images: [{ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, data: expect.any(ArrayBuffer) }] });
+    expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: null, images: [{ id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: "Plat principal", data: expect.any(ArrayBuffer) }] });
     expect(analyzeText).not.toHaveBeenCalled();
   });
 
@@ -458,10 +474,10 @@ describe("meal text-only analysis", () => {
 
     expect(analyze).toHaveBeenCalledTimes(1);
     expect(analyze).toHaveBeenCalledWith({ mealType: "lunch", mealDate: "2026-08-31", note: "Pâtes avec sauce tomate", images: [
-      { id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: expect.any(ArrayBuffer) },
-      { id: "photo-2", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
-      { id: "photo-3", mimeType: "image/jpeg", origin: "homemade", data: expect.any(ArrayBuffer) },
-      { id: "photo-4", mimeType: "image/png", origin: "homemade", data: expect.any(ArrayBuffer) },
+      { id: "photo-1", mimeType: "image/jpeg", origin: "homemade", comment: null, data: expect.any(ArrayBuffer) },
+      { id: "photo-2", mimeType: "image/png", origin: "homemade", comment: null, data: expect.any(ArrayBuffer) },
+      { id: "photo-3", mimeType: "image/jpeg", origin: "homemade", comment: null, data: expect.any(ArrayBuffer) },
+      { id: "photo-4", mimeType: "image/png", origin: "homemade", comment: null, data: expect.any(ArrayBuffer) },
     ] });
     expect(analyzeText).not.toHaveBeenCalled();
   });

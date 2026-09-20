@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { onboardingSchema } from "@/domain/profile";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { isLocalPreviewMode } from "@/lib/env";
-import { ensureJournalVariables } from "@/services/journal";
+import { completeOnboarding } from "@/services/onboarding";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -22,35 +20,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (isLocalPreviewMode()) return NextResponse.json({ ok: true, preview: true });
-
-  const input = parsed.data;
-  const admin = createCloudflareAdminClient();
-  const { error } = await admin.rpc("complete_soma_onboarding", {
-    p_user_id: user.id,
-    p_display_name: input.displayName,
-    p_timezone: input.timezone,
-    p_date_of_birth: input.dateOfBirth,
-    p_height_cm: input.heightCm,
-    p_weight_kg: input.weightKg,
-    p_sex_for_health_calculations: input.sexForHealthCalculations,
-    p_import_range: input.importRange,
-    p_base_sleep_target_minutes: input.baseSleepTargetMinutes,
-    p_usual_wake_time: input.usualWakeTime,
-    p_primary_goal: input.primaryGoal,
-    p_secondary_goal: input.secondaryGoal,
-  });
-
-  if (error) return NextResponse.json({ error: "Your profile could not be saved." }, { status: 500 });
-
-  try {
-    await ensureJournalVariables(user.id, {
-      selectedHabitNames: input.selectedHabits,
-      customHabits: input.customHabits,
-    });
-  } catch {
-    return NextResponse.json({ error: "Your profile was saved, but the journal could not be initialized." }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true });
+  const result = await completeOnboarding(user.id, parsed.data);
+  return NextResponse.json(result.ok ? result : { error: result.error }, { status: result.ok ? 200 : result.status });
 }

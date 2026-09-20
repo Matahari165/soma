@@ -1,6 +1,6 @@
 import "server-only";
 
-import { journalCaptureMode, normalizeJournalValue, saveJournalEntriesSchema, type JournalDay, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
+import { createJournalVariableSchema, defaultMatchesType, journalAutomaticSource, journalVariableSourceError, normalizeJournalValue, saveJournalEntriesSchema, updateJournalVariableSchema, type JournalDay, type JournalEntry, type JournalVariable } from "@/domain/lab/journal";
 import type { Meal, MealType } from "@/domain/meals";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { loadJournalData } from "@/services/journal";
@@ -74,6 +74,90 @@ export async function getNativeLabDay(userId: string, date: string): Promise<Nat
 }
 
 export type NativeJournalSave = z.infer<typeof saveJournalEntriesSchema>;
+export type NativeJournalVariableCreate = z.infer<typeof createJournalVariableSchema>;
+export type NativeJournalVariableUpdate = z.infer<typeof updateJournalVariableSchema>;
+
+export class NativeJournalVariableError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "NativeJournalVariableError";
+  }
+}
+
+export async function createNativeJournalVariable(userId: string, input: NativeJournalVariableCreate) {
+  const admin = createCloudflareAdminClient();
+  const { data: existing, error: countError } = await admin.from("journal_variables").select("position").eq("user_id", userId);
+  if (countError) throw new NativeJournalVariableError(500, "Your journal could not be checked.");
+  if ((existing?.length ?? 0) >= 50) throw new NativeJournalVariableError(409, "Your journal already has 50 variables.");
+
+  const trackingCadence = input.trackingCadence ?? journalAutomaticSource(input.automaticMetricId)?.defaultTrackingCadence ?? "daily";
+  const { data, error } = await admin.from("journal_variables").insert({
+    user_id: userId,
+    name: input.name,
+    variable_type: input.variableType,
+    unit: input.unit || null,
+    options: input.options,
+    emoji: input.emoji,
+    default_value: input.defaultValue ?? null,
+    day_period: input.dayPeriod,
+    capture_mode: input.captureMode,
+    automatic_metric_id: input.captureMode === "automatic" ? input.automaticMetricId : null,
+    tracking_cadence: trackingCadence,
+    is_active: true,
+    position: Math.max(190, ...(existing ?? []).map((variable) => Number(variable.position) || 0)) + 10,
+  }).select("id").single();
+  if (error) throw new NativeJournalVariableError(error.code === "23505" ? 409 : 500, error.code === "23505" ? "A variable with this name already exists." : "This variable could not be created.");
+  return { ok: true, id: data.id };
+}
+
+export async function updateNativeJournalVariable(userId: string, input: NativeJournalVariableUpdate) {
+  const { id, name, variableType, unit, options, position, isActive, emoji, defaultValue, dayPeriod, captureMode, automaticMetricId, trackingCadence } = input;
+  const admin = createCloudflareAdminClient();
+  const { data: current, error: currentError } = await admin.from("journal_variables").select("variable_type,capture_mode,automatic_metric_id,tracking_cadence,default_value,options").eq("id", id).eq("user_id", userId).maybeSingle();
+  if (currentError) throw new NativeJournalVariableError(500, "This measure could not be checked.");
+  if (!current) throw new NativeJournalVariableError(404, "Variable not found.");
+
+  const nextCaptureMode = captureMode ?? (current.capture_mode === "automatic" ? "automatic" : "manual");
+  const nextAutomaticMetricId = captureMode === "manual"
+    ? null
+    : automaticMetricId !== undefined
+      ? automaticMetricId
+      : (typeof current.automatic_metric_id === "string" ? current.automatic_metric_id : null);
+  const currentTrackingCadence = current.tracking_cadence === "weekly" ? "weekly" : current.tracking_cadence === "daily" ? "daily" : journalAutomaticSource(current.automatic_metric_id)?.defaultTrackingCadence ?? "daily";
+  const nextTrackingCadence = trackingCadence ?? ((automaticMetricId !== undefined || captureMode !== undefined) ? journalAutomaticSource(nextAutomaticMetricId)?.defaultTrackingCadence ?? currentTrackingCadence : currentTrackingCadence);
+  const sourceError = journalVariableSourceError({ captureMode: nextCaptureMode, automaticMetricId: nextAutomaticMetricId, variableType: variableType ?? current.variable_type });
+  if (sourceError) throw new NativeJournalVariableError(400, sourceError);
+  const nextType = variableType ?? current.variable_type;
+  const nextOptions = options ?? (Array.isArray(current.options) ? current.options : []);
+  const nextDefaultValue = defaultValue !== undefined ? defaultValue : current.default_value;
+  if (!defaultMatchesType(nextType, nextDefaultValue, nextOptions)) {
+    throw new NativeJournalVariableError(400, "The default does not match this measure type.");
+  }
+
+  if (variableType !== undefined) {
+    const { count, error: countError } = await admin.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("variable_id", id);
+    if (countError) throw new NativeJournalVariableError(500, "This measure could not be checked.");
+    if ((count ?? 0) > 0) throw new NativeJournalVariableError(409, "A measure type cannot change after data is recorded. Archive it and create a new measure.");
+  }
+
+  const updates = {
+    ...(name !== undefined ? { name } : {}),
+    ...(variableType !== undefined ? { variable_type: variableType } : {}),
+    ...(unit !== undefined ? { unit: unit || null } : {}),
+    ...(options !== undefined ? { options } : {}),
+    ...(position !== undefined ? { position } : {}),
+    ...(isActive !== undefined ? { is_active: isActive } : {}),
+    ...(emoji !== undefined ? { emoji } : {}),
+    ...(defaultValue !== undefined ? { default_value: defaultValue } : {}),
+    ...(dayPeriod !== undefined ? { day_period: dayPeriod } : {}),
+    ...(trackingCadence !== undefined || automaticMetricId !== undefined || captureMode !== undefined ? { tracking_cadence: nextTrackingCadence } : {}),
+    ...(captureMode !== undefined || automaticMetricId !== undefined ? { capture_mode: nextCaptureMode, automatic_metric_id: nextCaptureMode === "automatic" ? nextAutomaticMetricId : null } : {}),
+  };
+  const { data, error } = await admin.from("journal_variables").update(updates).eq("id", id).eq("user_id", userId).select("id").maybeSingle();
+  if (error) throw new NativeJournalVariableError(error.code === "23505" ? 409 : 500, error.code === "23505" ? "A variable with this name already exists." : "This variable could not be updated.");
+  if (!data) throw new NativeJournalVariableError(404, "Variable not found.");
+  return { ok: true, id: data.id };
+}
 
 export async function saveNativeJournalEntries(userId: string, input: NativeJournalSave) {
   const admin = createCloudflareAdminClient();
@@ -86,12 +170,11 @@ export async function saveNativeJournalEntries(userId: string, input: NativeJour
   const dayResult = await admin.from("journal_days").select("status").eq("user_id", userId).eq("entry_date", input.entryDate).maybeSingle();
   if (dayResult.error) throw new Error("This journal day could not be checked.");
 
-  const journal = await loadJournalData(userId, { includeAutomaticEntries: false, ensureDefaults: false });
+  const journal = await loadJournalData(userId, { from: input.entryDate, to: input.entryDate, includeAutomaticEntries: false, ensureDefaults: false });
   const variables = new Map(journal.variables.map((variable) => [variable.id, variable]));
   const normalized = input.entries.map((entry) => {
     const variable = variables.get(entry.variableId);
     if (!variable || !variable.isActive) return { ...entry, variable: null, value: null, invalid: false };
-    if (journalCaptureMode(variable) === "automatic") throw new Error("Automatic journal variables cannot be written through this route.");
     const value = normalizeJournalValue(variable, entry.value);
     return { ...entry, variable, value, invalid: entry.value !== null && entry.value !== "" && value === null };
   });
