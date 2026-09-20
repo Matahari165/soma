@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, Camera, ChevronDown, ChevronUp, ImagePlus, Pencil, Trash2, X } from "lucide-react";
-import React, { useRef, useState, type ChangeEvent } from "react";
+import React, { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import type {
   MealRecord,
@@ -233,6 +233,7 @@ export function LabMealCard({
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  const autoConfirmMealRef = useRef<string | null>(null);
 
   const slotLabel = SLOT_LABELS[slot];
   const headingId = `meal-${slot}-title`;
@@ -252,6 +253,19 @@ export function LabMealCard({
   const noteText = meal?.note ?? "";
   const hasText = noteText.trim().length > 0;
   const canAnalyze = hasPhotos || hasText;
+  const confirmRetryAction = status === "review" && meal?.error && onConfirm && (
+    <button type="button" className={styles.analyzeButton} disabled={saving || mutationBusy} onClick={onConfirm}>Retry confirmation</button>
+  );
+
+  useEffect(() => {
+    if (status !== "review" || !meal?.analysis || meal.error) {
+      if (status !== "review") autoConfirmMealRef.current = null;
+      return;
+    }
+    if (autoConfirmMealRef.current === meal.id) return;
+    autoConfirmMealRef.current = meal.id;
+    onConfirm?.();
+  }, [meal?.analysis, meal?.error, meal?.id, onConfirm, status]);
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []).filter((f) => f.type.startsWith("image/"));
@@ -600,16 +614,6 @@ export function LabMealCard({
   // =========================================================================
   // VERSION 1 : SILENT HORIZON (Clean borderless line)
   // =========================================================================
-  const defaultSlotTimes: Record<MealSlot, string> = {
-    breakfast: "08:15 AM",
-    lunch: "01:30 PM",
-    snack: "04:30 PM",
-    dinner: "07:30 PM",
-  };
-  const mealTimeText = meal?.confirmedAt
-    ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric", hour12: true }).format(new Date(meal.confirmedAt))
-    : defaultSlotTimes[slot];
-
   // =========================================================================
   // VERSION 1 : SILENT HORIZON / STITCH DASHBOARD
   // =========================================================================
@@ -621,7 +625,6 @@ export function LabMealCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
-              <span className="font-mono text-xs text-content-tertiary">· {mealTimeText}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -641,6 +644,7 @@ export function LabMealCard({
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
             </p>
           )}
+          {confirmRetryAction}
           <div className="pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono">
             <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
             <div className="flex items-center gap-3 text-content-secondary">
@@ -782,6 +786,7 @@ export function LabMealCard({
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+            {confirmRetryAction}
             {isCorrectionOpen && correctionForm}
             {meal?.analysis && (
               <AnalysisDetails
@@ -895,6 +900,7 @@ export function LabMealCard({
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
               <MealMetrics metrics={metrics} slot={slot} targets={targets} />
+              {confirmRetryAction}
               {isCorrectionOpen && correctionForm}
               {meal?.analysis && (
                 <AnalysisDetails
