@@ -5,12 +5,19 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var sessionToRevoke: DeviceSession?
     @State private var showsAccountDeletion = false
+    #if os(macOS)
+    @Environment(VisualBreakController.self) private var visualBreaks
+    @AppStorage("visualBreak.showMenuBarIcon") private var showMenuBarIcon = true
+    #endif
 
     let navigate: (AppDestination) -> Void
 
     var body: some View {
         ScreenScaffold(title: "Paramètres") {
             accountSection
+            #if os(macOS)
+            visualBreakSection
+            #endif
             SettingsSection(title: "Sessions et appareils") { sessionsContent }
             healthSourcesSection
             dataSection
@@ -42,6 +49,30 @@ struct SettingsView: View {
                 .environment(model)
         }
     }
+
+    #if os(macOS)
+    private var visualBreakSection: some View {
+        @Bindable var breaks = visualBreaks
+        return SettingsSection(title: "Pauses visuelles") {
+            Toggle("Activer les pauses", isOn: $breaks.enabled)
+            Picker("Toutes les", selection: $breaks.intervalMinutes) {
+                ForEach(1...120, id: \.self) { Text("\($0) min").tag($0) }
+            }
+            .disabled(!visualBreaks.enabled)
+            Picker("Durée", selection: $breaks.durationSeconds) {
+                ForEach(stride(from: 5, through: 120, by: 5).map { $0 }, id: \.self) {
+                    Text("\($0) s").tag($0)
+                }
+            }
+            .disabled(!visualBreaks.enabled)
+            Toggle("Sur tous les écrans", isOn: $breaks.allDisplays)
+                .disabled(!visualBreaks.enabled)
+            Toggle("Icône dans la barre des menus", isOn: $showMenuBarIcon)
+            Button("Tester la pause") { visualBreaks.test() }
+                .frame(minHeight: 44)
+        }
+    }
+    #endif
 
     private var accountSection: some View {
         SettingsSection(title: "Compte") {
