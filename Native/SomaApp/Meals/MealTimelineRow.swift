@@ -60,7 +60,7 @@ private struct MealDisplayStatus {
         } else if meal.status == .confirmed {
             label = "Confirmé"; symbol = "checkmark.circle"; color = SomaTheme.signal
         } else if meal.analysis?.status == "completed" {
-            label = "À confirmer"; symbol = "questionmark.circle"; color = SomaTheme.primary
+            label = "Analyse terminée"; symbol = "checkmark.circle"; color = SomaTheme.secondary
         } else {
             label = "Saisi"; symbol = "pencil.line"; color = SomaTheme.primary
         }
