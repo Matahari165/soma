@@ -41,7 +41,10 @@ public struct NativeOAuthCallback: Equatable, Sendable {
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let value = { (name: String) in query.first(where: { $0.name == name })?.value }
         guard value("state") == expectedState else { throw NativeOAuthError.invalidState }
-        if value("error") == "cancelled" { throw NativeOAuthError.cancelled }
+        if let error = value("error") {
+            if error == "cancelled" { throw NativeOAuthError.cancelled }
+            throw NativeOAuthError.providerFailure
+        }
         guard let code = value("code"), code.range(of: #"^[A-Za-z0-9_-]{43,128}$"#, options: .regularExpression) != nil else {
             throw NativeOAuthError.invalidCallback
         }
@@ -55,6 +58,8 @@ public enum NativeOAuthError: Error, Equatable, Sendable {
     case invalidState
     case randomGenerationFailed
     case providerUnavailable
+    case providerFailure
+    case timedOut
 }
 
 private extension Data {

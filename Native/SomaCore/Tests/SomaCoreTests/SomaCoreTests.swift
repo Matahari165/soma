@@ -96,6 +96,14 @@ private struct EmptyTokenStore: TokenStore {
     }
 }
 
+@Test func nativeOAuthProviderFailureIsDistinctFromInvalidCallback() throws {
+    let state = String(repeating: "s", count: 43)
+    let callback = URL(string: "com.soma.native.macos://auth/callback?error=oauth_callback&state=\(state)")!
+    #expect(throws: NativeOAuthError.providerFailure) {
+        try NativeOAuthCallback.parse(callback, expectedScheme: "com.soma.native.macos", expectedState: state)
+    }
+}
+
 @Test func nativeOAuthStartURLDoesNotExposeDeviceName() async throws {
     let client = APIClient(baseURL: URL(string: "https://soma.example")!, tokenStore: EmptyTokenStore())
     let attempt = NativeOAuthAttempt(state: String(repeating: "s", count: 43), codeVerifier: String(repeating: "v", count: 48))
