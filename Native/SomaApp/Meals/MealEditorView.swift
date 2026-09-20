@@ -3,6 +3,9 @@ import PhotosUI
 import SwiftUI
 import SomaCore
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#endif
 
 struct MealEditorView: View {
     @Environment(AppModel.self) private var model
@@ -13,6 +16,7 @@ struct MealEditorView: View {
     @State private var note = ""
     @State private var selection: [PhotosPickerItem] = []
     @State private var importError: String?
+    @State private var isPresentingCamera = false
     @State private var confirmsDeletion = false
     @State private var draftPhotoComments: [UUID: String] = [:]
 
@@ -53,6 +57,18 @@ struct MealEditorView: View {
             draftPhotoComments = Dictionary(uniqueKeysWithValues: (model.mealDrafts[mealType]?.photos ?? []).map { ($0.id, $0.comment ?? "") })
         }
         .onChange(of: selection) { _, items in Task { await importPhotos(items) } }
+#if os(iOS)
+        .sheet(isPresented: $isPresentingCamera) {
+            MealCameraPicker(
+                onImage: { image in
+                    isPresentingCamera = false
+                    Task { await importCapturedPhoto(image) }
+                },
+                onCancel: { isPresentingCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+#endif
         .confirmationDialog(
             "Supprimer ce repas ?",
             isPresented: $confirmsDeletion,
@@ -114,11 +130,22 @@ struct MealEditorView: View {
                 Spacer()
                 Text("\(draft.photos.count)/6").foregroundStyle(SomaTheme.secondary)
             }
-            PhotosPicker(selection: $selection, maxSelectionCount: max(0, 6 - draft.photos.count), matching: .images) {
-                Label("Choisir des photos", systemImage: "photo.on.rectangle")
+            HStack(spacing: 12) {
+#if os(iOS)
+                Button {
+                    isPresentingCamera = true
+                } label: {
+                    Label("Prendre une photo", systemImage: "camera")
+                }
+                .buttonStyle(.bordered)
+                .disabled(draft.photos.count >= 6 || draft.stage.isBusy || !UIImagePickerController.isSourceTypeAvailable(.camera))
+#endif
+                PhotosPicker(selection: $selection, maxSelectionCount: max(0, 6 - draft.photos.count), matching: .images) {
+                    Label("Ajouter une photo", systemImage: "photo.on.rectangle")
+                }
+                .buttonStyle(.bordered)
+                .disabled(draft.photos.count >= 6 || draft.stage.isBusy)
             }
-            .buttonStyle(.bordered)
-            .disabled(draft.photos.count >= 6 || draft.stage.isBusy)
 
             ForEach(draft.photos) { photo in
                 VStack(alignment: .leading, spacing: 8) {
@@ -164,9 +191,9 @@ struct MealEditorView: View {
             if draft.stage.isBusy {
                 ProgressView(draft.stage.label)
                     .accessibilityLabel(draft.stage.label)
-            } else if draft.stage == .awaitingConfirmation {
-                Label("Résultat à confirmer", systemImage: "checkmark.circle")
-                    .foregroundStyle(SomaTheme.primary)
+            } else if draft.stage.isFinalizing {
+                ProgressView(draft.stage.label)
+                    .accessibilityLabel(draft.stage.label)
             } else if draft.stage == .confirmed {
                 Label("Repas confirmé", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(SomaTheme.primary)
@@ -177,12 +204,7 @@ struct MealEditorView: View {
                     .foregroundStyle(SomaTheme.secondary)
             }
 
-            if draft.stage == .awaitingConfirmation {
-                Button("Confirmer le résultat", systemImage: "checkmark") {
-                    Task { await model.confirmMeal(mealType) }
-                }
-                .buttonStyle(.borderedProminent)
-            } else if draft.stage != .confirmed {
+            if !draft.stage.isBusy && !draft.stage.isFinalizing && draft.stage != .confirmed {
                 Button(draft.stage == .failed ? "Réessayer" : draft.stage == .polling ? "Reprendre le suivi" : "Analyser le repas", systemImage: draft.stage == .failed ? "arrow.clockwise" : "sparkles") {
                     Task { await model.submitMeal(mealType) }
                 }
@@ -207,7 +229,7 @@ struct MealEditorView: View {
     }
 
     private var displayedAnalysis: MealAnalysisRecord? {
-        guard let draft = model.mealDrafts[mealType], draft.stage == .awaitingConfirmation || draft.stage == .confirmed else { return nil }
+        guard let draft = model.mealDrafts[mealType], draft.stage == .confirmed else { return nil }
         guard let meal = remoteMeal else { return nil }
         if meal.analysis?.status == "completed" { return meal.analysis }
         return meal.lastSuccessfulAnalysis
@@ -246,6 +268,24 @@ struct MealEditorView: View {
             }
         }
     }
+
+#if os(iOS)
+    private func importCapturedPhoto(_ image: UIImage) async {
+        importError = nil
+        guard let data = image.jpegData(compressionQuality: 0.92) else {
+            importError = "La photo prise n’a pas pu être préparée. Réessaie."
+            return
+        }
+        let temporary = FileManager.default.temporaryDirectory.appending(path: "soma-camera-\(UUID().uuidString).jpg")
+        do {
+            try data.write(to: temporary, options: .atomic)
+            defer { try? FileManager.default.removeItem(at: temporary) }
+            try await model.addMealPhoto(sourceURL: temporary, filename: temporary.lastPathComponent, mimeType: "image/jpeg", to: mealType)
+        } catch {
+            importError = "La photo prise n’a pas pu être ajoutée. Réessaie."
+        }
+    }
+#endif
 }
 
 private struct ImportedMealPhoto: Transferable {
@@ -270,8 +310,43 @@ private struct ImportedMealPhoto: Transferable {
 
 private enum MealPhotoImportError: Error { case unsupportedFormat }
 
+#if os(iOS)
+private struct MealCameraPicker: UIViewControllerRepresentable {
+    let onImage: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) { }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        private let parent: MealCameraPicker
+
+        init(_ parent: MealCameraPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage { parent.onImage(image) }
+            parent.onCancel()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onCancel()
+        }
+    }
+}
+#endif
+
 private extension MealDraftStage {
     var isBusy: Bool { [.creating, .uploading, .requestingAnalysis].contains(self) }
+    var isFinalizing: Bool { self == .awaitingConfirmation || self == .completed }
     var label: String {
         switch self {
         case .local: "Brouillon enregistré"
@@ -279,10 +354,10 @@ private extension MealDraftStage {
         case .uploading: "Envoi des photos…"
         case .requestingAnalysis: "Lancement de l’analyse…"
         case .polling: "Analyse en cours…"
-        case .awaitingConfirmation: "Résultat à confirmer"
+        case .awaitingConfirmation: "Finalisation du repas…"
         case .confirmed: "Repas confirmé"
         case .failed: "Envoi interrompu"
-        case .completed: "Résultat à confirmer"
+        case .completed: "Finalisation du repas…"
         }
     }
 }

@@ -11,7 +11,7 @@ public actor MealSubmissionCoordinator {
     public func submit(_ draft: MealDraft) async throws -> MealDraft {
         var current = draft
         do {
-            if current.stage == .polling {
+            if current.stage == .polling || current.stage == .awaitingConfirmation || current.stage == .completed {
                 return try await refresh(current)
             }
             let isRetry = current.stage == .failed
@@ -69,7 +69,9 @@ public actor MealSubmissionCoordinator {
                         try await persist(&current, stage: .polling)
                         return current
                     }
-                    if response.analysis?.status == "completed" { try await persist(&current, stage: .awaitingConfirmation); return current }
+                    if response.analysis?.status == "completed" {
+                        return try await confirmCompleted(&current, response: response)
+                    }
                     if response.analysis?.status == "failed" {
                         current.lastError = response.analysis?.error ?? "L’analyse du repas a échoué."
                         current.stage = .failed
@@ -109,28 +111,10 @@ public actor MealSubmissionCoordinator {
             return current
         }
         switch response.analysis?.status {
-        case "completed": try await persist(&current, stage: .awaitingConfirmation)
+        case "completed": return try await confirmCompleted(&current, response: response)
         case "failed": current.lastError = response.analysis?.error; try await persist(&current, stage: .failed)
         default: try await persist(&current, stage: .polling)
         }
-        return current
-    }
-
-    @discardableResult
-    public func confirm(_ draft: MealDraft) async throws -> MealDraft {
-        guard let mealID = draft.remoteMealId else { throw MealSubmissionError.missingRemoteMeal }
-        guard draft.stage == .awaitingConfirmation else { throw MealSubmissionError.analysisNotReady }
-        var current = draft
-        _ = try await api.updateMeal(
-            id: mealID,
-            body: MealUpdateRequest(
-                status: .confirmed,
-                analysisRequestId: current.activeAnalysisRequestId,
-                analysisSourceRevision: current.analysisSourceRevision,
-                analysisSourceFingerprint: current.analysisSourceFingerprint
-            )
-        )
-        try await persist(&current, stage: .confirmed)
         return current
     }
 
@@ -169,6 +153,23 @@ public actor MealSubmissionCoordinator {
     private func persist(_ draft: inout MealDraft, stage: MealDraftStage) async throws {
         draft.stage = stage; draft.lastError = nil; try await store.save(draft)
     }
+
+    private func confirmCompleted(_ draft: inout MealDraft, response: MealAnalysisResponse) async throws -> MealDraft {
+        guard let mealID = draft.remoteMealId else { throw MealSubmissionError.missingRemoteMeal }
+        if response.meal?.status != .confirmed {
+            _ = try await api.updateMeal(
+                id: mealID,
+                body: MealUpdateRequest(
+                    status: .confirmed,
+                    analysisRequestId: draft.activeAnalysisRequestId,
+                    analysisSourceRevision: draft.analysisSourceRevision,
+                    analysisSourceFingerprint: draft.analysisSourceFingerprint
+                )
+            )
+        }
+        try await persist(&draft, stage: .confirmed)
+        return draft
+    }
 }
 
-public enum MealSubmissionError: Error, Sendable { case missingRemoteMeal, analysisNotReady, timeout }
+public enum MealSubmissionError: Error, Sendable { case missingRemoteMeal, timeout }

@@ -583,7 +583,10 @@ final class AppModel {
                     draft.stage = .confirmed
                 } else {
                     switch detail.analysis?.status {
-                    case "completed": draft.stage = .awaitingConfirmation
+                    // A completed analysis is only confirmed after the server
+                    // has durably transitioned the meal. Resume the idempotent
+                    // finalization path instead of trusting the analysis row.
+                    case "completed": draft.stage = .polling
                     case "queued", "running": draft.stage = .polling
                     case "failed":
                         draft.stage = .failed
@@ -833,7 +836,7 @@ final class AppModel {
                 mealDrafts[type] = current
                 try? await mealDraftStore?.save(current)
             }
-            if current.stage == .awaitingConfirmation || current.stage == .confirmed {
+            if current.stage == .confirmed {
                 try? await refreshDay()
                 if let mealID = current.remoteMealId, let detail = try? await client.meal(id: mealID) {
                     guard isCurrent() else { return }
@@ -852,24 +855,6 @@ final class AppModel {
         }
     }
 
-    func confirmMeal(_ type: MealType) async {
-        guard let coordinator = mealCoordinator, let draft = mealDrafts[type] else { return }
-        mealOperationGeneration[type, default: 0] += 1
-        let generation = authenticationGeneration
-        let operation = mealOperationGeneration[type, default: 0]
-        do {
-            let confirmed = try await coordinator.confirm(draft)
-            guard generation == authenticationGeneration, operation == mealOperationGeneration[type], isAuthenticated else { return }
-            mealDrafts[type] = confirmed
-            try? await refreshDay()
-            await refreshMeals()
-        } catch APIError.unauthorized {
-            expireLocalSession()
-        } catch {
-            mealsErrorMessage = "Le résultat n’a pas pu être confirmé. Réessaie."
-        }
-    }
-
     private func restoreMealDrafts(for requestedDate: LocalDate? = nil) async {
         guard let userID = currentUser?.id, let drafts = try? await mealDraftStore?.loadAll(ownerUserID: userID) else { return }
         guard requestedDate == nil || requestedDate == activeDate else { return }
@@ -877,7 +862,7 @@ final class AppModel {
             .filter { $0.ownerUserID == userID && $0.mealDate == (requestedDate ?? activeDate).rawValue }
             .reduce(into: [:]) { result, draft in
                 var restored = draft
-                if restored.stage == .completed { restored.stage = .awaitingConfirmation }
+                if restored.stage == .completed || restored.stage == .awaitingConfirmation { restored.stage = .polling }
                 result[restored.mealType] = restored
             }
         for draft in mealDrafts.values {
