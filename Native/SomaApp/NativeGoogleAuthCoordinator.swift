@@ -17,8 +17,7 @@ import AppKit
 final class NativeGoogleAuthCoordinator {
     private var supabase: SupabaseClient?
     #if os(macOS)
-    private var webAuthenticationSession: ASWebAuthenticationSession?
-    private var presentationContext: NativeOAuthPresentationContext?
+    private var activeAttempt: MacOAuthAttempt?
     #endif
 
     func signIn() async throws -> String {
@@ -107,22 +106,32 @@ final class NativeGoogleAuthCoordinator {
             ?? NSApplication.shared.windows.first(where: { $0.isVisible }) else {
             throw NativeOAuthError.providerUnavailable
         }
-        defer {
-            webAuthenticationSession = nil
-            presentationContext = nil
-        }
-        return try await withCheckedThrowingContinuation { continuation in
-            let context = NativeOAuthPresentationContext(window: window)
-            let session = Self.makeWebAuthenticationSession(
-                url: url,
-                callbackURLScheme: Self.macOSRedirectURL.scheme!,
-                continuation: continuation
-            )
-            session.presentationContextProvider = context
-            presentationContext = context
-            webAuthenticationSession = session
-            if !session.start() {
-                continuation.resume(throwing: NativeOAuthError.providerUnavailable)
+        activeAttempt?.finish(.failure(NativeOAuthError.cancelled), cancelSession: true)
+        let attempt = MacOAuthAttempt(window: window)
+        activeAttempt = attempt
+        defer { if activeAttempt === attempt { activeAttempt = nil } }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                attempt.continuation = continuation
+                let session = Self.makeWebAuthenticationSession(
+                    url: url,
+                    callbackURLScheme: Self.macOSRedirectURL.scheme!,
+                    attempt: attempt
+                )
+                session.presentationContextProvider = attempt.presentationContext
+                attempt.session = session
+                attempt.timeoutTask = Task {
+                    try? await Task.sleep(for: .seconds(300))
+                    guard !Task.isCancelled else { return }
+                    attempt.finish(.failure(NativeOAuthError.timedOut), cancelSession: true)
+                }
+                if !session.start() {
+                    attempt.finish(.failure(NativeOAuthError.providerUnavailable))
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                attempt.finish(.failure(CancellationError()), cancelSession: true)
             }
         }
     }
@@ -131,12 +140,14 @@ final class NativeGoogleAuthCoordinator {
     nonisolated private static func makeWebAuthenticationSession(
         url: URL,
         callbackURLScheme: String,
-        continuation: CheckedContinuation<URL, any Error>
+        attempt: MacOAuthAttempt
     ) -> ASWebAuthenticationSession {
         ASWebAuthenticationSession(url: url, callbackURLScheme: callbackURLScheme) { resultURL, error in
-            if let error { continuation.resume(throwing: error) }
-            else if let resultURL { continuation.resume(returning: resultURL) }
-            else { continuation.resume(throwing: NativeGoogleSignInError.missingResult) }
+            let result: Result<URL, any Error>
+            if let error { result = .failure(error) }
+            else if let resultURL { result = .success(resultURL) }
+            else { result = .failure(NativeGoogleSignInError.missingResult) }
+            Task { @MainActor in attempt.finish(result) }
         }
     }
     #else
@@ -210,6 +221,29 @@ final class NativeGoogleAuthCoordinator {
 }
 
 #if os(macOS)
+@MainActor
+private final class MacOAuthAttempt {
+    let presentationContext: NativeOAuthPresentationContext
+    var session: ASWebAuthenticationSession?
+    var continuation: CheckedContinuation<URL, any Error>?
+    var timeoutTask: Task<Void, Never>?
+
+    init(window: NSWindow) {
+        presentationContext = NativeOAuthPresentationContext(window: window)
+    }
+
+    func finish(_ result: Result<URL, any Error>, cancelSession: Bool = false) {
+        guard let continuation else { return }
+        self.continuation = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        let session = self.session
+        self.session = nil
+        if cancelSession { session?.cancel() }
+        continuation.resume(with: result)
+    }
+}
+
 private final class NativeOAuthPresentationContext: NSObject, ASWebAuthenticationPresentationContextProviding {
     private let window: NSWindow
 
