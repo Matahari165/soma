@@ -5,6 +5,7 @@ import SomaCore
 struct DayView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var mealEditor: MealEditorTarget?
 
     var body: some View {
@@ -18,6 +19,7 @@ struct DayView: View {
             .frame(maxWidth: 1120, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .coordinateSpace(name: "dayScroll")
         .navigationTitle("Jour")
         .task {
             if model.overview == nil { await model.refreshOverview() }
@@ -42,10 +44,13 @@ struct DayView: View {
     private var arrival: some View {
         ZStack(alignment: .topLeading) {
             GeometryReader { geometry in
+                let scrollOffset = geometry.frame(in: .named("dayScroll")).minY
                 Image("DayMountainBackdrop")
                     .resizable()
                     .scaledToFill()
                     .frame(width: geometry.size.width, height: geometry.size.height)
+                    .scaleEffect(accessibilityReduceMotion ? 1 : 1.05)
+                    .offset(y: mountainOffset(for: scrollOffset))
                     .clipped()
             }
             LinearGradient(colors: [.black.opacity(0.68), .black.opacity(0.52), SomaTheme.canvas], startPoint: .top, endPoint: .bottom)
@@ -66,6 +71,11 @@ struct DayView: View {
         }
         .frame(minHeight: horizontalSizeClass == .compact ? 500 : 560)
         .clipped()
+    }
+
+    private func mountainOffset(for scrollOffset: CGFloat) -> CGFloat {
+        guard !accessibilityReduceMotion else { return 0 }
+        return min(max(-scrollOffset * 0.12, -12), 18)
     }
 
     private var greetingName: String {
@@ -268,6 +278,8 @@ struct DayView: View {
 
 private struct OverviewSummaryView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @State private var radarIsVisible = false
 
     let overview: NativeOverviewResponse
     let selectedDate: String
@@ -276,6 +288,19 @@ private struct OverviewSummaryView: View {
         OverviewRadarView(today: overview.today, historyPoint: selectedDate == overview.todayDate ? nil : overview.today.history.first(where: { $0.date == selectedDate }))
             .frame(width: horizontalSizeClass == .compact ? 300 : 360)
             .frame(maxWidth: .infinity)
+            .opacity(radarIsVisible || accessibilityReduceMotion ? 1 : 0.65)
+            .scaleEffect(accessibilityReduceMotion || radarIsVisible ? 1 : 0.96)
+            .offset(y: accessibilityReduceMotion || radarIsVisible ? 0 : 10)
+            .onAppear {
+                guard !radarIsVisible else { return }
+                guard !accessibilityReduceMotion else {
+                    radarIsVisible = true
+                    return
+                }
+                withAnimation(.easeOut(duration: 0.56)) {
+                    radarIsVisible = true
+                }
+            }
     }
 
 }

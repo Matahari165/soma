@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var destination: AppDestination
     @State private var selectedTab: NativePrimaryTab
     @State private var signalsPath: [AppDestination] = []
@@ -103,6 +104,11 @@ struct RootView: View {
         } detail: {
             destinationView(for: destination)
                 .id(destination)
+                .transition(accessibilityReduceMotion ? .identity : .push(from: .trailing))
+                .animation(
+                    accessibilityReduceMotion ? nil : .easeOut(duration: 0.22),
+                    value: destination
+                )
         }
         .tint(SomaTheme.secondary)
         #else
