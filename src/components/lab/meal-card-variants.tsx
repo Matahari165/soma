@@ -221,6 +221,7 @@ export function LabMealCard({
   onCancelAnalysis,
   onNote,
   onCorrection,
+  onConfirm,
   onEdit,
   onMarkSkipped,
   onMarkRecorded,
