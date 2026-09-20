@@ -32,10 +32,7 @@ struct SomaApp: App {
         MenuBarExtra(isInserted: $showMenuBarIcon) {
             VisualBreakMenu(controller: visualBreaks)
         } label: {
-            Image(systemName: "eye")
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 18, height: 18)
-                .accessibilityLabel("Pauses visuelles Soma")
+            SomaMenuBarMark()
         }
         .menuBarExtraStyle(.menu)
         #endif
@@ -43,6 +40,23 @@ struct SomaApp: App {
 }
 
 #if os(macOS)
+private struct SomaMenuBarMark: View {
+    var body: some View {
+        ZStack {
+            Image("AppIcon_Assets/living-system")
+                .resizable()
+                .renderingMode(.template)
+            Image("AppIcon_Assets/signal")
+                .resizable()
+                .renderingMode(.template)
+        }
+        .frame(width: 24, height: 24)
+        .frame(width: 18, height: 18)
+        .foregroundStyle(.primary)
+        .accessibilityLabel("Pauses visuelles Soma")
+    }
+}
+
 private struct VisualBreakMenu: View {
     @Bindable var controller: VisualBreakController
 
