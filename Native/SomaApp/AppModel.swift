@@ -91,7 +91,7 @@ final class AppModel {
     private var mealsRequestGeneration = 0
     private var mealOperationGeneration: [MealType: Int] = [:]
     @ObservationIgnored private var journalAutosaveTask: Task<Void, Never>?
-    @ObservationIgnored private var journalSaveTail: Task<Void, Never>?
+    @ObservationIgnored private var journalSaveTail: Task<Bool, Never>?
     @ObservationIgnored private var failedJournalSave: (mode: String, variableIDs: Set<String>?)?
     private var analysisRequestGeneration = 0
 
@@ -225,6 +225,19 @@ final class AppModel {
         let response = try await client.day(requestedDate)
         if generation == dayRequestGeneration, activeDate == requestedDate, response.date == requestedDate.rawValue {
             acceptDay(response)
+        }
+    }
+
+    func retryDayLoad() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await refreshDay()
+        } catch APIError.unauthorized {
+            expireLocalSession()
+        } catch {
+            errorMessage = "Cette journée n'a pas pu être chargée."
         }
     }
 
@@ -407,11 +420,14 @@ final class AppModel {
 
     func shiftDate(by days: Int) async {
         guard let shifted = try? activeDate.adding(days: days) else { return }
+        journalAutosaveTask?.cancel()
+        if journalDraft?.hasUnsavedChanges == true {
+            guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
+        }
         journalSaveGeneration += 1
         activeDate = shifted
         day = nil
         journalDraft = nil
-        journalAutosaveTask?.cancel()
         dayRequestGeneration += 1
         let generation = dayRequestGeneration
         isLoading = true
@@ -818,17 +834,17 @@ final class AppModel {
         journalSaveGeneration += 1
         journalSaveState = .idle
         failedJournalSave = nil
-        scheduleJournalAutosave(variableID: variableID)
+        scheduleJournalAutosave()
     }
 
     func validateJournal() async {
         journalAutosaveTask?.cancel()
-        await enqueueJournalSave(mode: "validate", variableIDs: nil)
+        _ = await enqueueJournalSave(mode: "validate", variableIDs: nil)
     }
 
     func retryJournalSave() {
         guard let failedJournalSave else { return }
-        Task { await enqueueJournalSave(mode: failedJournalSave.mode, variableIDs: failedJournalSave.variableIDs) }
+        Task { _ = await enqueueJournalSave(mode: failedJournalSave.mode, variableIDs: failedJournalSave.variableIDs) }
     }
 
     func createJournalVariable(_ request: JournalVariableCreateRequest) async -> Bool {
@@ -839,7 +855,11 @@ final class AppModel {
         journalMutationErrorMessage = nil
         do {
             _ = try await client.createJournalVariable(request)
-            try await refreshDay()
+            do {
+                try await refreshDay()
+            } catch {
+                journalMutationErrorMessage = "Habitude créée. Recharge le journal pour l’afficher."
+            }
             return true
         } catch APIError.unauthorized {
             expireLocalSession()
@@ -866,7 +886,11 @@ final class AppModel {
         journalMutationErrorMessage = nil
         do {
             _ = try await operation()
-            try await refreshDay()
+            do {
+                try await refreshDay()
+            } catch {
+                journalMutationErrorMessage = "Modification enregistrée. Recharge le journal pour l’afficher."
+            }
             return true
         } catch APIError.unauthorized {
             expireLocalSession()
@@ -878,33 +902,30 @@ final class AppModel {
         return false
     }
 
-    private func scheduleJournalAutosave(variableID: String) {
-        scheduleJournalAutosave(variableIDs: [variableID], delay: .milliseconds(450))
-    }
-
-    private func scheduleJournalAutosave(variableIDs: Set<String>, delay: Duration) {
+    private func scheduleJournalAutosave(delay: Duration = .milliseconds(450)) {
         journalAutosaveTask?.cancel()
         let requestedDate = activeDate
         journalAutosaveTask = Task { [weak self] in
             do { try await Task.sleep(for: delay) } catch { return }
             guard !Task.isCancelled, let self, self.activeDate == requestedDate else { return }
-            await self.enqueueJournalSave(mode: "draft", variableIDs: variableIDs)
+            _ = await self.enqueueJournalSave(mode: "draft", variableIDs: nil)
         }
     }
 
-    private func enqueueJournalSave(mode: String, variableIDs: Set<String>?) async {
+    @discardableResult
+    private func enqueueJournalSave(mode: String, variableIDs: Set<String>?) async -> Bool {
         let preceding = journalSaveTail
-        let task = Task { [weak self] in
-            if let preceding { await preceding.value }
-            guard !Task.isCancelled, let self else { return }
-            await self.persistJournal(mode: mode, variableIDs: variableIDs)
+        let task: Task<Bool, Never> = Task { [weak self] in
+            if let preceding { _ = await preceding.value }
+            guard !Task.isCancelled, let self else { return false }
+            return await self.persistJournal(mode: mode, variableIDs: variableIDs)
         }
         journalSaveTail = task
-        await task.value
+        return await task.value
     }
 
-    private func persistJournal(mode: String, variableIDs: Set<String>?) async {
-        guard let currentDay = day, let draft = journalDraft else { return }
+    private func persistJournal(mode: String, variableIDs: Set<String>?) async -> Bool {
+        guard let currentDay = day, let draft = journalDraft else { return false }
         journalSaveGeneration += 1
         let generation = journalSaveGeneration
         let requestedDate = activeDate
@@ -912,23 +933,32 @@ final class AppModel {
         journalSaveState = .saving
         do {
             let response = try await client.saveJournal(JournalSaveRequest(entryDate: requestedDate.rawValue, mode: mode, entries: entries))
-            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return }
+            // A newer edit arrived while this request was in flight. It remains
+            // pending, so navigation/logout must not treat this response as a
+            // successful flush and discard the newer value.
+            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return false }
             journalDraft?.mergeServer(response, acknowledging: entries)
             day = response
             if journalDraft == nil { journalDraft = JournalDraft(day: response) }
             journalSaveState = .saved
             failedJournalSave = nil
+            return true
         } catch APIError.unauthorized {
-            guard generation == journalSaveGeneration else { return }
+            guard generation == journalSaveGeneration else { return false }
             expireLocalSession()
         } catch {
-            guard generation == journalSaveGeneration, requestedDate == activeDate else { return }
+            guard generation == journalSaveGeneration, requestedDate == activeDate else { return false }
             journalSaveState = .failed(mode == "validate" ? "Cette journée n’a pas pu être validée." : "Le brouillon n’a pas pu être enregistré.")
             failedJournalSave = (mode, variableIDs)
         }
+        return false
     }
 
     func logout() async {
+        journalAutosaveTask?.cancel()
+        if journalDraft?.hasUnsavedChanges == true {
+            guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
+        }
         let ownerUserID = currentUser?.id
         invalidateSleep()
         authenticationGeneration += 1

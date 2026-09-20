@@ -149,6 +149,7 @@ private struct EmptyTokenStore: TokenStore {
     var draft = JournalDraft(day: day)
 
     #expect(draft.state(for: "defaulted") == .missing)
+    #expect(draft.values["defaulted"] == .null)
     #expect(draft.entries(for: day.variables).map(\.variableId) == ["zero"])
 
     draft.set(.null, for: "defaulted")
@@ -195,6 +196,12 @@ private struct EmptyTokenStore: TokenStore {
     #expect(JournalValueParser.parse("6", for: variable) == nil)
 }
 
+@Test func journalParserAcceptsFrenchDecimalSeparator() throws {
+    let json = #"{"id":"number","name":"Weight","variableType":"number","unit":"kg","options":[],"position":10,"isActive":true,"emoji":"⚖️","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}"#
+    let variable = try JSONDecoder().decode(JournalVariable.self, from: Data(json.utf8))
+    #expect(JournalValueParser.parse("1,5", for: variable) == .number(1.5))
+}
+
 @Test func journalDefinitionUpdateCanExplicitlyClearUnitAndDefault() throws {
     let request = JournalVariableDefinitionUpdateRequest(
         id: "focus",
@@ -212,6 +219,34 @@ private struct EmptyTokenStore: TokenStore {
     #expect(object.keys.contains("defaultValue"))
     #expect(object["defaultValue"] is NSNull)
     #expect(!object.keys.contains("variableType"))
+}
+
+@Test func journalDraftSendsAnExplicitAutomaticOverride() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"auto","name":"Detected","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":true,"emoji":"⚙️","defaultValue":null,"dayPeriod":"day","captureMode":"automatic","automaticMetricId":"run_day","trackingCadence":"daily"}],"entries":[],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+    draft.set(.bool(false), for: "auto")
+    #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "auto", value: .bool(false))])
+}
+
+@Test func journalDraftDoesNotPersistAnUnchangedGeneratedValue() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"auto","name":"Detected","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":true,"emoji":"⚙️","defaultValue":null,"dayPeriod":"day","captureMode":"automatic","automaticMetricId":"run_day","trackingCadence":"daily"},{"id":"manual","name":"Mood","variableType":"scale","unit":null,"options":[],"position":20,"isActive":true,"emoji":"🙂","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"auto","entryDate":"2026-09-19","value":true,"source":"automatic"}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+    draft.set(.number(4), for: "manual")
+    #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "manual", value: .number(4))])
+    draft.set(.bool(false), for: "auto")
+    #expect(draft.entries(for: day.variables).contains(JournalSaveEntry(variableId: "auto", value: .bool(false))))
+}
+
+@Test func journalDraftKeepsAnAutomaticOverrideEligibleAfterAStaleRefresh() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"auto","name":"Detected","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":true,"emoji":"⚙️","defaultValue":null,"dayPeriod":"day","captureMode":"automatic","automaticMetricId":"run_day","trackingCadence":"daily"}],"entries":[{"variableId":"auto","entryDate":"2026-09-19","value":true,"source":"automatic"}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+    draft.set(.bool(false), for: "auto")
+    draft.mergeServer(day)
+    #expect(draft.state(for: "auto") == .pending)
+    #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "auto", value: .bool(false))])
 }
 
 @Test func mealDraftKeepsStableOperationKeysAcrossPersistence() async throws {

@@ -14,13 +14,22 @@ struct DayView: View {
                 meals
             }
             .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 24)
-            .padding(.vertical, 24)
+            .padding(.top, 24)
+            .padding(.bottom, bottomContentPadding)
             .frame(maxWidth: 920, alignment: .leading)
         }
         .navigationTitle("Jour")
         .sheet(item: $mealEditor) { target in
             MealEditorView(mealType: target.type, mealID: target.mealID)
         }
+    }
+
+    private var bottomContentPadding: CGFloat {
+        #if os(iOS)
+        96
+        #else
+        24
+        #endif
     }
 
     private var dateHeader: some View {

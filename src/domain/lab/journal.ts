@@ -143,7 +143,7 @@ export function journalVariableSourceError({ captureMode, automaticMetricId, var
   return null;
 }
 
-function defaultMatchesType(variableType: JournalVariableType, value: JournalEntryValue | null | undefined, choices: string[]) {
+export function defaultMatchesType(variableType: JournalVariableType, value: JournalEntryValue | null | undefined, choices: string[]) {
   if (value === null || value === undefined) return true;
   if (variableType === "boolean") return typeof value === "boolean";
   if (variableType === "category") return typeof value === "string" && choices.includes(value);
@@ -204,6 +204,14 @@ export const saveJournalEntriesSchema = z.object({
   entryDate: z.iso.date(),
   mode: z.enum(["draft", "validate"]).default("draft"),
   entries: z.array(z.object({ variableId: z.string().uuid(), value: rawEntryValue })).max(100),
+}).superRefine((value, context) => {
+  const seen = new Set<string>();
+  value.entries.forEach((entry, index) => {
+    if (seen.has(entry.variableId)) {
+      context.addIssue({ code: "custom", path: ["entries", index, "variableId"], message: "Each journal variable can appear only once." });
+    }
+    seen.add(entry.variableId);
+  });
 });
 
 export function journalValuesForDate(variables: readonly JournalVariable[], entries: readonly JournalEntry[], days: readonly JournalDay[], date: string): JournalDraft {

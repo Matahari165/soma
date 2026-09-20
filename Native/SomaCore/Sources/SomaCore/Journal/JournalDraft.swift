@@ -10,9 +10,11 @@ public enum JournalValueState: Equatable, Sendable {
 public struct JournalDraft: Equatable, Sendable {
     public private(set) var values: [String: JSONValue]
     public private(set) var states: [String: JournalValueState]
+    public private(set) var automaticSourceVariableIDs: Set<String>
 
     public init(day: NativeDayResponse) {
         let entries = Dictionary(uniqueKeysWithValues: day.entries.map { ($0.variableId, $0.value) })
+        automaticSourceVariableIDs = Set(day.entries.compactMap { $0.source == "automatic" ? $0.variableId : nil })
         let omitted = Set(day.day?.omittedVariableIds ?? [])
         var nextStates: [String: JournalValueState] = [:]
         var nextValues: [String: JSONValue] = [:]
@@ -25,8 +27,9 @@ public struct JournalDraft: Equatable, Sendable {
                 nextValues[variable.id] = entry
             } else {
                 nextStates[variable.id] = .missing
-                // A default is presentation only. It does not become a journal observation.
-                nextValues[variable.id] = variable.resolvedCaptureMode == .manual ? variable.defaultValue ?? .null : .null
+                // Missing stays visually and semantically empty. A configured
+                // default is metadata, not a recorded observation or a zero.
+                nextValues[variable.id] = .null
             }
         }
         states = nextStates
@@ -36,6 +39,7 @@ public struct JournalDraft: Equatable, Sendable {
     public mutating func set(_ value: JSONValue, for variableID: String) {
         values[variableID] = value
         states[variableID] = .pending
+        automaticSourceVariableIDs.remove(variableID)
     }
 
     public func state(for variableID: String) -> JournalValueState {
@@ -50,9 +54,9 @@ public struct JournalDraft: Equatable, Sendable {
         variables
             .filter { variable in
                 variable.isActive
-                    && variable.resolvedCaptureMode == .manual
                     && (variableIDs?.contains(variable.id) ?? true)
                     && state(for: variable.id) != .missing
+                    && !automaticSourceVariableIDs.contains(variable.id)
             }
             .map { JournalSaveEntry(variableId: $0.id, value: values[$0.id] ?? .null) }
     }
@@ -77,6 +81,7 @@ public struct JournalDraft: Equatable, Sendable {
             }
             next.values[variableID] = value
             next.states[variableID] = .pending
+            next.automaticSourceVariableIDs.remove(variableID)
         }
         self = next
     }
@@ -104,16 +109,16 @@ public enum JournalValueParser {
             guard trimmed.range(of: #"^([01]\d|2[0-3]):[0-5]\d$"#, options: .regularExpression) != nil else { return nil }
             return .string(trimmed)
         case .count:
-            guard let value = Double(trimmed), value.isFinite, value >= 0, value <= 1_000_000, value.rounded() == value else { return nil }
+            guard let value = Double(localizedNumber(trimmed)), value.isFinite, value >= 0, value <= 1_000_000, value.rounded() == value else { return nil }
             return .number(value)
         case .duration:
-            guard let value = Double(trimmed), value.isFinite, value >= 0, value <= 1_000_000 else { return nil }
+            guard let value = Double(localizedNumber(trimmed)), value.isFinite, value >= 0, value <= 1_000_000 else { return nil }
             return .number(value)
         case .scale:
-            guard let value = Double(trimmed), value.isFinite, value.rounded() == value, (1...5).contains(Int(value)) else { return nil }
+            guard let value = Double(localizedNumber(trimmed)), value.isFinite, value.rounded() == value, (1...5).contains(Int(value)) else { return nil }
             return .number(value)
         case .number:
-            guard let value = Double(trimmed), value.isFinite, abs(value) <= 1_000_000 else { return nil }
+            guard let value = Double(localizedNumber(trimmed)), value.isFinite, abs(value) <= 1_000_000 else { return nil }
             if ["caffeine", "added sugar", "magnesium"].contains(variable.name.lowercased()), value < 0 { return nil }
             return .number(value)
         }
@@ -126,5 +131,9 @@ public enum JournalValueParser {
         case .string(let value): value
         default: ""
         }
+    }
+
+    private static func localizedNumber(_ value: String) -> String {
+        value.replacingOccurrences(of: ",", with: ".")
     }
 }

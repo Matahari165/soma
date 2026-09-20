@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, healthyHabitCatalog, journalAutomaticDefaultMatches, journalAutomaticMetricIds, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, updateJournalDraft, type JournalVariable } from "./journal";
+import { createJournalVariableSchema, defaultJournalVariables, dinnerTimeForDisplay, healthyHabitCatalog, journalAutomaticDefaultMatches, journalAutomaticMetricIds, journalDayPeriod, journalDraftsForDates, journalEntriesForSave, journalValueAsNumber, journalValueMeetsGoal, journalVariableSuggestions, normalizedAddedSugarJournalValue, normalizeDinnerTimeInput, normalizeJournalValue, reconcileJournalDrafts, saveJournalEntriesSchema, updateJournalDraft, type JournalVariable } from "./journal";
 
 const variable = (variableType: JournalVariable["variableType"], options: string[] = []): JournalVariable => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -53,6 +53,15 @@ describe("journal values", () => {
     const reloaded = journalDraftsForDates(dates, [dinner], [{ variableId: dinner.id, entryDate: dates[0], value: "22:30" }], []);
     expect(reloaded[dates[0]]?.[dinner.id]).toBe("22:30");
     expect(reloaded[dates[1]]?.[dinner.id]).toBeNull();
+  });
+
+  it("rejects duplicate variable ids in one journal save", () => {
+    const duplicate = "00000000-0000-4000-8000-000000000001";
+    expect(saveJournalEntriesSchema.safeParse({
+      entryDate: "2026-09-19",
+      mode: "draft",
+      entries: [{ variableId: duplicate, value: 1 }, { variableId: duplicate, value: 2 }],
+    }).success).toBe(false);
   });
 
   it("refreshes saved dates from the server without overwriting a pending date", () => {

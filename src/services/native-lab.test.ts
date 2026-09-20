@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe("native journal persistence", () => {
-  it("calls the four argument migration signature without an omission flag", async () => {
+  it("keeps draft omissions incremental and limits the read to the active date", async () => {
     await saveNativeJournalEntries("user-native", {
       entryDate: "2026-09-19",
       mode: "draft",
@@ -53,11 +53,12 @@ describe("native journal persistence", () => {
       p_entry_date: "2026-09-19",
       p_entries: [{ variable_id: "00000000-0000-4000-8000-000000000001", value: 3 }],
       p_validate: false,
+      p_replace_omissions: false,
     });
-    expect(state.rpc.mock.calls[0]?.[1]).not.toHaveProperty("p_replace_omissions");
+    expect(state.loadJournalData).toHaveBeenCalledWith("user-native", expect.objectContaining({ from: "2026-09-19", to: "2026-09-19" }));
   });
 
-  it("never accepts an automatic value as a native user observation", async () => {
+  it("allows the same manual override of an automatic value as the web journal", async () => {
     state.loadJournalData.mockResolvedValueOnce({
       variables: [{ id: "00000000-0000-4000-8000-000000000002", name: "Detected", variableType: "boolean", unit: null, options: [], position: 10, isActive: true, emoji: "⚙️", defaultValue: null, dayPeriod: "day", captureMode: "automatic", automaticMetricId: "run_day", trackingCadence: "daily" }],
       entries: [],
@@ -68,7 +69,7 @@ describe("native journal persistence", () => {
       entryDate: "2026-09-19",
       mode: "draft",
       entries: [{ variableId: "00000000-0000-4000-8000-000000000002", value: true }],
-    })).rejects.toThrow("Automatic journal variables cannot be written through this route.");
-    expect(state.rpc).not.toHaveBeenCalled();
+    })).resolves.toMatchObject({ saved: 1 });
+    expect(state.rpc).toHaveBeenCalledOnce();
   });
 });
