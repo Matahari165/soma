@@ -1248,7 +1248,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
   maybeSingle() { this.cardinality = "maybeSingle"; return this as unknown as PromiseLike<SingleResult>; }
 
   private isPhysicalTable() {
-    return this.table === "soma_users" || this.table === "soma_sessions" || this.table === "soma_credentials";
+    return this.table === "soma_users" || this.table === "soma_sessions" || this.table === "soma_credentials" || this.table === "soma_auth_identities";
   }
 
   private async readRows() {

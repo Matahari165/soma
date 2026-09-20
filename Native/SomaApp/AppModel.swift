@@ -79,7 +79,7 @@ final class AppModel {
     var accountDeletionErrorMessage: String?
 
     private let client: APIClient
-    private let googleAuthenticationSession = GoogleAuthenticationSession()
+    private let googleAuthentication = NativeGoogleAuthCoordinator()
     private let mealDraftStore: MealDraftStore?
     private let mealCoordinator: MealSubmissionCoordinator?
     private var dayRequestGeneration = 0
@@ -161,16 +161,12 @@ final class AppModel {
             #if os(macOS)
             let platform = "macos"
             let deviceName = Host.current().localizedName ?? "Mac"
-            let callbackScheme = "com.soma.native.macos"
             #else
             let platform = "ios"
             let deviceName = UIDevice.current.name
-            let callbackScheme = "com.soma.native.ios"
             #endif
-            let attempt = try NativeOAuthAttempt()
-            let authenticationURL = try await client.googleAuthenticationURL(platform: platform, attempt: attempt)
-            let callbackURL = try await googleAuthenticationSession.authenticate(at: authenticationURL, callbackScheme: callbackScheme)
-            let context = try await client.completeGoogleLogin(callbackURL: callbackURL, callbackScheme: callbackScheme, deviceName: deviceName, attempt: attempt)
+            let supabaseAccessToken = try await googleAuthentication.signIn()
+            let context = try await client.completeSupabaseGoogleLogin(accessToken: supabaseAccessToken, platform: platform, deviceName: deviceName)
             authenticationGeneration += 1
             let resumesExpiredJournal = reconcileExpiredJournal(for: context.user.id)
             isAuthenticated = true
@@ -193,6 +189,8 @@ final class AppModel {
             errorMessage = "Google ne peut pas être ouvert sur cet appareil."
         } catch APIError.unauthorized {
             errorMessage = "La connexion Google a expiré. Réessaie."
+        } catch NativeGoogleSignInError.missingConfiguration {
+            errorMessage = "La connexion Google n’est pas encore configurée pour cette version de Soma."
         } catch let error as URLError where error.code == .timedOut {
             errorMessage = "La connexion prend trop de temps. Vérifie le réseau puis réessaie."
         } catch let error as URLError where error.code == .notConnectedToInternet {
@@ -200,6 +198,10 @@ final class AppModel {
         } catch {
             errorMessage = "La connexion Google est momentanément indisponible."
         }
+    }
+
+    func handleAuthenticationURL(_ url: URL) {
+        _ = googleAuthentication.handle(url)
     }
 
     func restoreSession() async {
@@ -357,6 +359,7 @@ final class AppModel {
         defer { isDeletingAccount = false }
         do {
             try await client.deleteAccount(confirmation: confirmation)
+            await googleAuthentication.signOut()
             if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
             clearAuthenticatedState()
             return true
@@ -982,6 +985,7 @@ final class AppModel {
         errorMessage = nil
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
+        await googleAuthentication.signOut()
         if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
         isAuthenticated = false
         currentUser = nil
