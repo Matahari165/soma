@@ -41,7 +41,7 @@ describe("journal motion states", () => {
     expect(html).not.toContain("0/2 recorded");
     expect(html).toContain('data-complete="false"');
     expect(html).toContain('aria-label="Confirm displayed value for Alcohol"');
-    expect(html).toContain('aria-label="Confirm displayed value for Vacation"');
+    expect(html).toContain('aria-label="Confirm No for Vacation"');
     expect(html).toContain('aria-label="Confirm all displayed values for Morning"');
     expect(html).toContain('aria-label="Confirm all displayed values for Day context"');
     expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Automatic detection"');
@@ -250,6 +250,22 @@ describe("journal motion states", () => {
     expect(yesIdx).toBeLessThan(noIdx);
     expect(html).toContain("w-28");
     expect(html).toContain("w-1/2");
+  });
+
+  it("keeps both answers visible until a boolean default is recorded", () => {
+    const vacation = variables.find((variable) => variable.name === "Vacation");
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: vacation ? [vacation] : [],
+      entries: [],
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain(">Yes</button>");
+    expect(html).toContain(">No</button>");
+    expect(html).toContain(`Confirm No for Vacation`);
   });
 
   it("renders single sage pill without checkmark and full width when boolean is true in Personal Lab", () => {

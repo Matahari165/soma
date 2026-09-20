@@ -353,13 +353,13 @@ function QuantityStepper({
   );
 }
 
-function Field({ variable, value, draftKey, onChange, onCommit, disabled = false, presentation = "default" }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean; presentation?: "default" | "personal-lab" }) {
+function Field({ variable, value, draftKey, onChange, onCommit, disabled = false, presentation = "default", confirmed = false }: { variable: JournalVariable; value: DraftValue; draftKey: string; onChange: (value: DraftValue) => void; onCommit?: () => void; disabled?: boolean; presentation?: "default" | "personal-lab"; confirmed?: boolean }) {
   const inputId = `journal-${variable.id}`;
 
   if (variable.variableType === "boolean") {
     if (presentation === "personal-lab") {
       const containerClass = "inline-flex w-28 p-0.5 rounded bg-surface-card border border-hairline font-mono text-xs overflow-hidden relative journal-choice journal-choice--binary";
-      if (value === true) {
+      if (confirmed && value === true) {
         return (
           <div className={containerClass} role="group" aria-label={journalVariableLabel(variable)}>
             <button
@@ -374,7 +374,7 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
           </div>
         );
       }
-      if (value === false) {
+      if (confirmed && value === false) {
         return (
           <div className={containerClass} role="group" aria-label={journalVariableLabel(variable)}>
             <button
@@ -410,9 +410,14 @@ function Field({ variable, value, draftKey, onChange, onCommit, disabled = false
         </div>
       );
     }
+    if (confirmed && typeof value === "boolean") {
+      return <div className="journal-choice" role="group" aria-label={journalVariableLabel(variable)} style={{ gridTemplateColumns: "1fr" }}>
+        <button type="button" disabled={disabled} className="is-selected" aria-label={`Reset ${journalVariableLabel(variable)}`} onClick={() => onChange(null)}>{value ? "Yes" : "No"}</button>
+      </div>;
+    }
     const options = [{ label: "Yes", value: true }, { label: "No", value: false }];
     return <div className="journal-choice" role="group" aria-label={journalVariableLabel(variable)}>
-      {options.map((option) => <button type="button" disabled={disabled} className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
+      {options.map((option) => <button type="button" disabled={disabled} onClick={() => onChange(option.value)} key={option.label}>{option.label}</button>)}
     </div>;
   }
 
@@ -680,21 +685,28 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
   if (isPersonalLab) {
     const adherencePct = achievement?.percentage ?? 0;
     const windowDays = achievement ? achievementWindowDays(achievement) : 28;
-    return (
-      <div className="py-3.5 flex items-center justify-between gap-4 group">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-content-primary truncate">{variable.name}</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
-            <div className="w-20 h-1 bg-hairline-light rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'} transition-bar`} style={{ width: `${adherencePct}%` }} />
-            </div>
-          </div>
+    const canConfirm = !disabled && !editMode && !confirmed && (variable.variableType === "boolean" || value !== null);
+    const confirmValue = () => onChange(value === null ? true : value);
+    const confirmationLabel = `Confirm ${variable.variableType === "boolean" ? value === false ? "No" : "Yes" : "displayed value"} for ${journalVariableLabel(variable)}`;
+    const heading = <>
+      <div className="flex items-center gap-2">
+        {confirmed ? <CircleCheck size={15} aria-hidden="true" /> : skipped ? <CircleMinus size={15} aria-hidden="true" /> : <CircleDashed size={15} aria-hidden="true" />}
+        <span className="text-sm font-medium text-content-primary truncate">{variable.name}</span>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <span className="text-xs font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>
+        <div className="w-20 h-1 bg-hairline-light rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${adherencePct > 50 ? 'bg-sage' : 'bg-content-secondary'} transition-bar`} style={{ width: `${adherencePct}%` }} />
         </div>
+      </div>
+    </>;
+    return (
+      <div className="py-3.5 flex items-center justify-between gap-4 group" data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
+        if (canConfirm && !(event.target as HTMLElement).closest("button, a, input, select, textarea")) confirmValue();
+      }}>
+        {canConfirm || editMode && onEdit ? <button type="button" className="space-y-1.5 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label={canConfirm ? confirmationLabel : `Edit ${journalVariableLabel(variable)}`} onClick={canConfirm ? confirmValue : onEdit}>{heading}</button> : <div className="space-y-1.5 flex-1 min-w-0">{heading}</div>}
         <div className="shrink-0">
-          <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />
+          <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} confirmed={confirmed} />
         </div>
       </div>
     );
@@ -711,7 +723,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
     skipped ? "journal-field--skipped" : "",
     feedbackToken ? "journal-field--changed" : "",
   ].filter(Boolean).join(" ");
-  const canConfirmDisplayedValue = !disabled && !confirmed && !skipped && value !== null && variable.variableType !== "scale";
+  const canConfirmDisplayedValue = !disabled && !editMode && !confirmed && variable.variableType !== "scale" && (value !== null || variable.variableType === "boolean");
   const achievementLabel = achievement?.percentage === null ? "Progress —" : achievement ? `Progress ${achievement.percentage}%` : null;
   const label = journalVariableLabel(variable);
   const automaticDetectionLabel = isAutomatic ? "Automatic detection" : null;
@@ -763,16 +775,18 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
     </>
   );
 
-  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} data-day-status={dayValidated ? "validated" : "draft"} aria-label={accessibleLabel}>
+  return <div className={classes} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} data-day-status={dayValidated ? "validated" : "draft"} aria-label={accessibleLabel} onClick={(event) => {
+    if (canConfirmDisplayedValue && !(event.target as HTMLElement).closest("button, a, input, select, textarea")) onChange(value === null ? true : value);
+  }}>
     {editMode && onEdit
       ? <button className="journal-field__heading journal-field__edit-trigger" type="button" aria-label={`Edit ${label}`} aria-expanded={editOpen} aria-controls={editorId} onClick={onEdit}>{headingContent}</button>
       : canConfirmDisplayedValue
-      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirm displayed value for ${label}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("en-US")}` : ""}`} onClick={() => onChange(value)}>{headingContent}</button>
+      ? <button className="journal-field__heading journal-field__confirm-default" type="button" aria-label={`Confirm ${variable.variableType === "boolean" ? value === false ? "No" : "Yes" : "displayed value"} for ${label}${automaticDetectionLabel ? `, ${automaticDetectionLabel.toLocaleLowerCase("en-US")}` : ""}`} onClick={() => onChange(value === null ? true : value)}>{headingContent}</button>
       : <div className="journal-field__heading">{headingContent}</div>}
     {feedbackToken ? <span key={`${variable.id}-${feedbackToken}`} className="journal-field__feedback" aria-hidden="true" /> : null}
     {journalVariableKey(variable.name) === "breakfast" && value === true
-      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} /><Link href="/meals#meal-breakfast" aria-label="Add breakfast photo"><ImagePlus size={15} aria-hidden="true" />Add photo</Link></div>
-      : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} />}
+      ? <div className="journal-breakfast-actions"><Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} confirmed={confirmed} /><Link href="/meals#meal-breakfast" aria-label="Add breakfast photo"><ImagePlus size={15} aria-hidden="true" />Add photo</Link></div>
+      : <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} confirmed={confirmed} />}
   </div>;
 }
 
