@@ -13,6 +13,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
     -scheme Soma-macOS -configuration Debug -destination 'generic/platform=macOS' \
     -derivedDataPath /private/tmp/soma-native-interface-derived-mac \
     -clonedSourcePackagesDirPath /private/tmp/soma-native-interface-packages-mac \
+    ARCHS=arm64 ONLY_ACTIVE_ARCH=YES COMPILER_INDEX_STORE_ENABLE=NO \
     CODE_SIGNING_ALLOWED=NO build
 
 open -n "$app_path" --args --preview-data

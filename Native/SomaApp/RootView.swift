@@ -104,6 +104,7 @@ struct RootView: View {
             destinationView(for: destination)
                 .id(destination)
         }
+        .tint(SomaTheme.secondary)
         #else
         TabView(selection: $selectedTab) {
             NavigationStack { DayView() }

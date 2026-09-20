@@ -9,16 +9,14 @@ struct DayView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                dateHeader
-                overviewSection
-                JournalSectionView()
-                meals
+            VStack(alignment: .leading, spacing: 0) {
+                arrival
+                dayPicker
+                dayContent
             }
-            .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 24)
-            .padding(.top, 24)
             .padding(.bottom, bottomContentPadding)
-            .frame(maxWidth: 920, alignment: .leading)
+            .frame(maxWidth: 1120, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
         .navigationTitle("Jour")
         .task {
@@ -41,24 +39,174 @@ struct DayView: View {
         #endif
     }
 
+    private var arrival: some View {
+        ZStack(alignment: .topLeading) {
+            GeometryReader { geometry in
+                Image("DayMountainBackdrop")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+            }
+            LinearGradient(colors: [.black.opacity(0.68), .black.opacity(0.52), SomaTheme.canvas], startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .leading, spacing: 16) {
+                Text("\(greetingName),\ngarde le fil.")
+                    .font(.system(size: horizontalSizeClass == .compact ? 42 : 56, weight: .regular, design: .serif))
+                    .tracking(-1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                dateHeader
+                journalProgress
+                overviewSection
+            }
+            .padding(.horizontal, horizontalSizeClass == .compact ? 20 : 32)
+            .padding(.top, horizontalSizeClass == .compact ? 24 : 36)
+            .padding(.bottom, 26)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(minHeight: horizontalSizeClass == .compact ? 500 : 560)
+        .clipped()
+    }
+
+    private var greetingName: String {
+        let name = model.currentUser?.displayName.split(separator: " ").first.map(String.init)
+        return name.flatMap { $0.isEmpty ? nil : $0 } ?? "Bonjour"
+    }
+
     private var dateHeader: some View {
-        HStack {
+        HStack(spacing: 8) {
             Button("Jour précédent", systemImage: "chevron.left") { Task { await model.shiftDate(by: -1) } }
                 .labelStyle(.iconOnly)
                 .frame(width: 44, height: 44)
-            Text(model.activeDate.rawValue).font(SomaTheme.numberFont(19)).accessibilityLabel("Date active, \(model.activeDate.rawValue)")
+                .disabled(model.isPreviewMode)
+            Text(formattedDate(model.activeDate))
+                .font(SomaTheme.numberFont(12))
+                .accessibilityLabel("Date active, \(formattedDate(model.activeDate))")
             Button("Jour suivant", systemImage: "chevron.right") { Task { await model.shiftDate(by: 1) } }
                 .labelStyle(.iconOnly)
                 .frame(width: 44, height: 44)
+                .disabled(model.isPreviewMode)
         }
         .buttonStyle(.plain)
         .frame(minHeight: 44)
     }
 
+    private var journalProgress: some View {
+        let active = model.day?.variables.filter(\.isActive) ?? []
+        let completed = model.journalDraft?.completedCount(for: active) ?? 0
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("JOURNAL RENSEIGNÉ")
+                Spacer()
+                Text("\(completed) / \(active.count)")
+            }
+            .font(SomaTheme.numberFont(11))
+            .foregroundStyle(SomaTheme.secondary)
+            ProgressView(value: Double(completed), total: Double(max(active.count, 1)))
+                .tint(SomaTheme.primary)
+                .accessibilityLabel("Journal renseigné")
+                .accessibilityValue("\(completed) sur \(active.count)")
+        }
+        .frame(maxWidth: 330)
+    }
+
+    private var dayPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { offset in
+                    let date = (try? model.activeDate.adding(days: -offset)) ?? model.activeDate
+                    let selected = date == model.activeDate
+                    let isToday = date.rawValue == (try? LocalDate.today())?.rawValue
+                    Button {
+                        guard !selected else { return }
+                        Task { await model.shiftDate(by: -offset) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(isToday ? "Aujourd’hui" : shortDate(date))
+                                .font(SomaTheme.numberFont(12))
+                            Text(selected ? journalCountLabel : "—")
+                                .font(.caption)
+                                .foregroundStyle(SomaTheme.secondary)
+                        }
+                        .frame(minWidth: 108, minHeight: 48, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .background(selected ? SomaTheme.surface : .clear)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.isPreviewMode && !selected)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, horizontalSizeClass == .compact ? 12 : 24)
+        .overlay(alignment: .bottom) { SomaTheme.rule.frame(height: 1) }
+    }
+
+    @ViewBuilder
+    private var dayContent: some View {
+        if horizontalSizeClass == .compact {
+            VStack(alignment: .leading, spacing: 32) {
+                JournalSectionView()
+                meals
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 28)
+        } else {
+            HStack(alignment: .top, spacing: 32) {
+                JournalSectionView().frame(maxWidth: .infinity, alignment: .leading)
+                meals.frame(width: 300, alignment: .leading)
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 32)
+        }
+    }
+
+    private var journalCountLabel: String {
+        let active = model.day?.variables.filter(\.isActive) ?? []
+        let completed = model.journalDraft?.completedCount(for: active) ?? 0
+        return "\(completed)/\(active.count)"
+    }
+
+    private func formattedDate(_ date: LocalDate) -> String {
+        guard let value = Self.inputDateFormatter.date(from: date.rawValue) else { return date.rawValue }
+        return Self.longDateFormatter.string(from: value)
+    }
+
+    private func shortDate(_ date: LocalDate) -> String {
+        guard let value = Self.inputDateFormatter.date(from: date.rawValue) else { return date.rawValue }
+        return Self.shortDateFormatter.string(from: value)
+    }
+
+    private static let inputDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let longDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_CH")
+        formatter.dateFormat = "EEEE d MMMM"
+        return formatter
+    }()
+
+    private static let shortDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_CH")
+        formatter.dateFormat = "d EEE"
+        return formatter
+    }()
+
     @ViewBuilder
     private var overviewSection: some View {
-        if let overview = model.overview, overview.todayDate == model.activeDate.rawValue {
-            OverviewSummaryView(overview: overview)
+        if let overview = model.overview,
+           overview.todayDate == model.activeDate.rawValue || overview.today.history.contains(where: { $0.date == model.activeDate.rawValue }) {
+            OverviewSummaryView(overview: overview, selectedDate: model.activeDate.rawValue)
         } else if model.overview == nil, model.isOverviewLoading {
             ContentStateView(kind: .loading("Chargement des signaux du jour…"))
         } else if model.overview == nil, let message = model.overviewErrorMessage {
@@ -79,18 +227,28 @@ struct DayView: View {
                             mealEditor = MealEditorTarget(type: row.type, mealID: row.meal?.id)
                         }
                     } label: {
-                        HStack {
-                        Text(row.label)
-                        Spacer()
-                        if let meal = row.meal {
-                            Text(meal.entryState == "skipped" ? "Ignoré" : meal.status == "confirmed" ? "Confirmé" : "Brouillon")
-                                .foregroundStyle(meal.entryState == "skipped" ? SomaTheme.warning : SomaTheme.primary)
-                        } else { Text("Absent").foregroundStyle(SomaTheme.secondary) }
-                        Image(systemName: "chevron.right").foregroundStyle(SomaTheme.secondary)
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(row.label)
+                                if let note = row.meal?.note, !note.isEmpty {
+                                    Text(note)
+                                        .font(.callout)
+                                        .foregroundStyle(SomaTheme.secondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            if let meal = row.meal {
+                                Text(meal.entryState == "skipped" ? "Ignoré" : meal.status == "confirmed" ? "Confirmé" : "Brouillon")
+                                    .font(.caption)
+                                    .foregroundStyle(meal.entryState == "skipped" ? SomaTheme.warning : SomaTheme.primary)
+                            } else { Text("Absent").font(.caption).foregroundStyle(SomaTheme.secondary) }
+                            Image(systemName: "chevron.right").foregroundStyle(SomaTheme.secondary)
                         }
                     }
                     .buttonStyle(.plain)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 64)
+                    .overlay(alignment: .bottom) { SomaTheme.rule.frame(height: 1) }
                     .accessibilityLabel("\(row.label), \(row.meal?.entryState == "skipped" ? "ignoré" : row.meal?.status == "confirmed" ? "confirmé" : row.meal == nil ? "absent" : "brouillon")")
                 }
             }
@@ -112,150 +270,25 @@ private struct OverviewSummaryView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     let overview: NativeOverviewResponse
+    let selectedDate: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Signaux du jour")
-                    .font(.system(.title2, design: .serif))
-                    .accessibilityAddTraits(.isHeader)
-                Spacer(minLength: 12)
-                Text(overview.todayDate)
-                    .font(SomaTheme.numberFont(12))
-                    .foregroundStyle(SomaTheme.secondary)
-            }
-
-            if horizontalSizeClass == .compact {
-                OverviewRadarView(today: overview.today)
-                    .frame(maxWidth: 320)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                signalList
-            } else {
-                HStack(alignment: .top, spacing: 24) {
-                    OverviewRadarView(today: overview.today)
-                        .frame(width: 252)
-                    signalList
-                        .frame(maxWidth: 430, alignment: .leading)
-                }
-            }
-
-            Text("Les mesures viennent des sources indiquées ; les scores et moyennes sont calculés par Soma.")
-                .font(.caption)
-                .foregroundStyle(SomaTheme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        OverviewRadarView(today: overview.today, historyPoint: selectedDate == overview.todayDate ? nil : overview.today.history.first(where: { $0.date == selectedDate }))
+            .frame(width: horizontalSizeClass == .compact ? 300 : 360)
+            .frame(maxWidth: .infinity)
     }
 
-    private var signalList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OverviewSignalRow(
-                label: "Sommeil",
-                value: formatDuration(overview.today.sleepMinutes),
-                comparison: comparison(value: overview.today.sleepMinutes, average: overview.today.averageSleepMinutes),
-                source: overview.today.provenance.sleep.label
-            )
-            Divider().overlay(SomaTheme.rule)
-            OverviewSignalRow(
-                label: "Récupération",
-                value: formatScore(overview.today.recoveryScore),
-                comparison: comparison(value: overview.today.recoveryScore, average: overview.today.averageRecoveryScore),
-                source: overview.today.provenance.recovery.label
-            )
-            Divider().overlay(SomaTheme.rule)
-            OverviewSignalRow(
-                label: "Effort",
-                value: formatScore(overview.today.effortScore),
-                comparison: effortComparison,
-                source: effortSource
-            )
-            Divider().overlay(SomaTheme.rule)
-            OverviewSignalRow(
-                label: "Calories",
-                value: formatCalories(overview.today.caloriesKcal),
-                comparison: calorieComparison,
-                source: overview.today.provenance.calories.label
-            )
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private var effortSource: String {
-        guard let coverage = overview.today.effortCoverage else { return overview.today.provenance.effort.label }
-        return "\(overview.today.provenance.effort.label) · couverture \(formatPercentage(coverage))"
-    }
-
-    private var effortComparison: String {
-        comparison(value: overview.today.effortScore, average: overview.today.averageEffortScore)
-    }
-
-    private var calorieComparison: String {
-        let target = overview.today.calorieTarget
-        let targetText = target.map { "Cible \(formatCalories($0))" } ?? "Cible indisponible"
-        let averageText = overview.today.averageCaloriesKcal.map { "Moy. 30 j \(formatCalories($0))" } ?? "Moy. 30 j —"
-        return "\(targetText) · \(averageText)"
-    }
-
-    private func comparison(value: Double?, average: Double?) -> String {
-        guard let value, let average else { return "Moy. 30 j —" }
-        let delta = value - average
-        if abs(delta) < 0.5 { return "Moy. 30 j · stable" }
-        return delta > 0 ? "Moy. 30 j · ↑" : "Moy. 30 j · ↓"
-    }
-
-    private func formatDuration(_ value: Double?) -> String {
-        guard let value else { return "—" }
-        let minutes = max(0, Int(value.rounded()))
-        return "\(minutes / 60) h \(String(format: "%02d", minutes % 60))"
-    }
-
-    private func formatScore(_ value: Double?) -> String {
-        guard let value else { return "—" }
-        return value.formatted(.number.precision(.fractionLength(0)))
-    }
-
-    private func formatCalories(_ value: Double?) -> String {
-        guard let value else { return "—" }
-        return "\(value.formatted(.number.precision(.fractionLength(0)))) kcal"
-    }
-
-    private func formatPercentage(_ value: Double) -> String {
-        "\((value * 100).formatted(.number.precision(.fractionLength(0)))) %"
-    }
-}
-
-private struct OverviewSignalRow: View {
-    let label: String
-    let value: String
-    let comparison: String
-    let source: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(label)
-                    .font(.body)
-                Text(source)
-                    .font(.caption)
-                    .foregroundStyle(SomaTheme.secondary)
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 12)
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(value)
-                    .font(SomaTheme.numberFont())
-                Text(comparison)
-                    .font(.caption)
-                    .foregroundStyle(SomaTheme.secondary)
-                    .multilineTextAlignment(.trailing)
-            }
-        }
-        .frame(minHeight: 56)
-        .accessibilityElement(children: .combine)
-    }
 }
 
 private struct OverviewRadarView: View {
     let today: NativeOverviewToday
+    let historyPoint: NativeOverviewHistoryPoint?
+
+    private var sleepMinutes: Double? { historyPoint == nil ? today.sleepMinutes : historyPoint?.sleepMinutes }
+    private var recoveryScore: Double? { historyPoint == nil ? today.recoveryScore : historyPoint?.recoveryScore }
+    private var effortScore: Double? { historyPoint == nil ? today.effortScore : historyPoint?.effortScore }
+    private var caloriesKcal: Double? { historyPoint == nil ? today.caloriesKcal : historyPoint?.caloriesKcal }
+    private var calorieTarget: Double? { historyPoint == nil ? today.calorieTarget : historyPoint?.calorieTarget }
 
     private let axes = [
         "Sommeil",
@@ -273,7 +306,7 @@ private struct OverviewRadarView: View {
                 ZStack {
                     ForEach(1...4, id: \.self) { level in
                         radarPath(center: center, radius: radius * CGFloat(level) / 4)
-                            .stroke(SomaTheme.rule.opacity(level == 4 ? 0.9 : 0.55), lineWidth: 1)
+                            .stroke(SomaTheme.primary.opacity(level == 4 ? 0.44 : 0.18), lineWidth: 1)
                     }
                     ForEach(0..<axes.count, id: \.self) { index in
                         let endpoint = point(index: index, ratio: 1, center: center, radius: radius)
@@ -281,17 +314,17 @@ private struct OverviewRadarView: View {
                             path.move(to: center)
                             path.addLine(to: endpoint)
                         }
-                        .stroke(SomaTheme.rule.opacity(0.65), lineWidth: 1)
+                        .stroke(SomaTheme.primary.opacity(0.22), lineWidth: 1)
                     }
                     valueShape(center: center, radius: radius)
                     ForEach(Array(axes.enumerated()), id: \.offset) { index, label in
                         let location = labelPoint(index: index, center: center, radius: radius)
                         VStack(spacing: 2) {
                             Text(label)
-                                .font(.caption)
+                                .font(.system(size: 13))
                             Text(displayValue(for: index))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(SomaTheme.secondary)
+                                .font(SomaTheme.numberFont(12))
+                                .foregroundStyle(SomaTheme.primary)
                         }
                         .position(location)
                         .accessibilityElement(children: .combine)
@@ -301,24 +334,21 @@ private struct OverviewRadarView: View {
             }
             .aspectRatio(1, contentMode: .fit)
 
-            Text("Contour = repère disponible")
-                .font(.caption2)
-                .foregroundStyle(SomaTheme.secondary)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Résumé radar des signaux du jour")
     }
 
     private func ratios() -> [Double?] {
-        let calorieRatio: Double? = if let calories = today.caloriesKcal, let target = today.calorieTarget, target > 0 {
+        let calorieRatio: Double? = if let calories = caloriesKcal, let target = calorieTarget, target > 0 {
             min(max(calories / target, 0), 1)
         } else {
             nil
         }
         return [
-            today.sleepMinutes.map { min(max($0 / 510, 0), 1) },
-            today.recoveryScore.map { min(max($0 / 100, 0), 1) },
-            today.effortScore.map { min(max($0 / 100, 0), 1) },
+            sleepMinutes.map { min(max($0 / 510, 0), 1) },
+            recoveryScore.map { min(max($0 / 100, 0), 1) },
+            effortScore.map { min(max($0 / 100, 0), 1) },
             calorieRatio,
         ]
     }
@@ -372,10 +402,10 @@ private struct OverviewRadarView: View {
 
     private func displayValue(for index: Int) -> String {
         switch index {
-        case 0: return duration(today.sleepMinutes)
-        case 1: return score(today.recoveryScore)
-        case 2: return score(today.effortScore)
-        default: return calories(today.caloriesKcal)
+        case 0: return duration(sleepMinutes)
+        case 1: return score(recoveryScore)
+        case 2: return score(effortScore)
+        default: return calories(caloriesKcal)
         }
     }
 
