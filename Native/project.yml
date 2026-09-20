@@ -42,6 +42,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.ios
         PRODUCT_NAME: Soma
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: SomaApp/Health/Soma-iOS.entitlements
         TARGETED_DEVICE_FAMILY: "1"
   Soma-macOS:
@@ -67,6 +68,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.macos
         PRODUCT_NAME: Soma
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 schemes:
   Soma-iOS:
     build:

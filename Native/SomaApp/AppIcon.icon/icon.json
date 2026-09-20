@@ -1,0 +1,27 @@
+{
+  "fill" : {
+    "solid" : "extended-srgb:0.01961,0.01961,0.01961,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "signal.png",
+          "name" : "signal"
+        },
+        {
+          "image-name" : "living-system.png",
+          "name" : "living-system"
+        },
+        {
+          "image-name" : "background.png",
+          "name" : "background"
+        }
+      ],
+      "name" : "Soma"
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

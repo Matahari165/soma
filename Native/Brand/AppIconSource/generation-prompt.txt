@@ -1,0 +1,5 @@
+Use case: precise-object-edit
+Asset type: final 1024x1024 Apple app icon master for iOS and macOS
+Primary request: Refine the selected Soma icon only. Preserve the exact asymmetric oval membrane, the two interior observation points, their connecting bridge, overall placement, proportions, and generous margin. Convert every area to strictly flat solid colors with crisp antialiased edges: background exactly near-black #050505, membrane and lower node exactly warm off-white #EEEEEC, upper observation node exactly muted blue-gray #ADC5DF. Remove all shading, gradients, highlights, shadows, bevels, texture, and glow. Keep the full-bleed square canvas and do not add rounded corners.
+Constraints: no geometry change beyond tiny edge cleanup; no transparency; no text; no border; no watermark; no new element.
+Avoid: gradient, gloss, 3D, shadow, neon, blur, tiny details.
