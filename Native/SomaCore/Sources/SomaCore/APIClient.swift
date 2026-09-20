@@ -56,6 +56,24 @@ public actor APIClient {
         )
     }
 
+    public func completeSupabaseGoogleLogin(accessToken: String, platform: String, deviceName: String) async throws -> SessionResponse {
+        var request = try request(
+            path: "/api/native/v2/auth/bridge",
+            method: "POST",
+            body: NativeSupabaseBridgeRequest(platform: platform, deviceName: deviceName),
+            authenticated: false
+        )
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+        let response: LoginResponse = try await perform(request)
+        try tokenStore.save(response.token)
+        return SessionResponse(
+            user: response.user,
+            session: response.session,
+            hasCompletedOnboarding: response.hasCompletedOnboarding
+        )
+    }
+
     public func day(_ date: LocalDate) async throws -> NativeDayResponse {
         try await get(path: "/api/native/v1/lab/day?date=\(date.rawValue)")
     }
@@ -360,6 +378,7 @@ private struct MealPhotoDetailsRequest: Codable, Sendable {
 
 private struct LoginRequest: Encodable { let email: String; let password: String; let platform: String; let deviceName: String }
 private struct NativeOAuthExchangeRequest: Encodable { let code: String; let codeVerifier: String; let deviceName: String }
+private struct NativeSupabaseBridgeRequest: Encodable { let platform: String; let deviceName: String }
 private struct APIErrorResponse: Decodable { let error: String }
 private struct AccountDeletionRequest: Encodable { let confirmation: String }
 

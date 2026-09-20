@@ -11,6 +11,7 @@ struct SomaApp: App {
                 .environment(model)
                 .preferredColorScheme(.dark)
                 .task { await model.restoreSession() }
+                .onOpenURL { model.handleAuthenticationURL($0) }
         }
         #if os(macOS)
         .defaultSize(width: 1_440, height: 900)

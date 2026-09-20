@@ -30,8 +30,26 @@
 				<string>com.soma.native.macos</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps.soma.macos</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID_MACOS)</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_CLIENT_ID_MACOS)</string>
+	<key>GIDServerClientID</key>
+	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
+	<key>SomaSupabasePublishableKey</key>
+	<string>$(SOMA_SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>SomaSupabaseURL</key>
+	<string>$(SOMA_SUPABASE_URL)</string>
 </dict>
 </plist>
