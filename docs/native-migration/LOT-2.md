@@ -6,12 +6,12 @@
 
 Permettre à un compte Soma existant d'ouvrir une session distincte sur iPhone ou Mac, puis de révoquer un appareil sans déconnecter les autres. Le Web conserve son cookie actuel. Les applications natives utilisent un jeton opaque transmis dans l'en-tête `Authorization: Bearer` et conservé uniquement dans le Keychain.
 
-Ce lot ne crée pas encore l'application Swift et ne porte aucune donnée métier. Aucun projet Swift n'existe dans le dépôt. Les écrans natifs dépendront des contrats métier du lot 1.
+Le client Swift iPhone et Mac consomme désormais ces contrats. Il conserve les sessions Bearer dans le Keychain et réutilise le compte Web existant par email/mot de passe ou par Google.
 
 ## Décisions
 
-- La première connexion native utilise l'email et le mot de passe d'un compte existant.
-- Google OAuth natif est reporté : le flux Web actuel ne doit pas transmettre un jeton final dans une URL.
+- La connexion native accepte l'email et le mot de passe d'un compte existant.
+- Google OAuth passe par le serveur Soma, utilise PKCE et ne transmet qu'un code éphémère à usage unique dans l'URL de retour native ; le jeton final est obtenu par un échange serveur puis stocké dans le Keychain.
 - Le serveur reste l'autorité d'identité. Un client natif ne contacte jamais Supabase directement.
 - Le jeton brut n'est retourné qu'à sa création. Seule son empreinte SHA-256 est stockée côté serveur.
 - Chaque session reçoit un identifiant révocable, une plateforme, un nom d'appareil et une expiration.
@@ -22,6 +22,8 @@ Ce lot ne crée pas encore l'application Swift et ne porte aucune donnée métie
 | Route | Résultat |
 | --- | --- |
 | `POST /api/native/v1/auth/login` | Vérifie un compte existant et crée une session `ios` ou `macos` sans cookie Web |
+| `GET /api/native/v1/auth/google` | Démarre Google OAuth avec un état signé et un challenge PKCE natif |
+| `POST /api/native/v1/auth/google/exchange` | Consomme une fois le code éphémère et crée la session Bearer native |
 | `GET /api/native/v1/auth/session` | Retourne l'identité de la session Bearer courante |
 | `DELETE /api/native/v1/auth/session` | Déconnecte et invalide la session courante |
 | `GET /api/native/v1/auth/sessions` | Liste les sessions actives du compte sans exposer de jeton ni d'empreinte |
@@ -53,4 +55,4 @@ Le lot 2 sera clos lorsque les preuves suivantes seront réunies sur un compte d
 
 ## Limites avant bêta
 
-La récupération de mot de passe, la vérification d'email, la limitation des tentatives, MFA et Google OAuth natif restent à concevoir avant une bêta externe. Le client Swift devra effacer son Keychain après `401`, révocation, déconnexion ou suppression de compte.
+La récupération de mot de passe, la vérification d'email, la limitation des tentatives et MFA restent à concevoir avant une bêta externe. Le client Swift devra effacer son Keychain après `401`, révocation, déconnexion ou suppression de compte.

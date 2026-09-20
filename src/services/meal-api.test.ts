@@ -53,6 +53,24 @@ describe("legacy meal API adapter", () => {
     expect(mealToLegacyApi(skipped)).toMatchObject({ entryState: "skipped", note: null, analysis: null });
   });
 
+  it("keeps a per-photo comment separate from the meal note", () => {
+    const withPhoto = {
+      ...meal,
+      note: "Description générale",
+      status: "draft" as const,
+      photos: [{
+        id: "photo-1", mealId: meal.id, origin: "mixed" as const,
+        objectPath: "private/synthetic", mimeType: "image/jpeg" as const,
+        bytes: 12, filename: "synthetic.jpg", comment: "Sauce visible à gauche",
+        createdAt: "2026-08-31T10:00:00.000Z", storageStatus: "available" as const,
+      }],
+    } satisfies Meal;
+    expect(mealToApi(withPhoto)).toMatchObject({
+      note: "Description générale",
+      photos: [{ comment: "Sauce visible à gauche", origin: "mixed" }],
+    });
+  });
+
   it("does not invent a midpoint for a legacy range without likely", () => {
     expect(legacyAnalysisToStructured({ ingredients: [], calories: { low: 400, high: 600 } })).toBeNull();
   });

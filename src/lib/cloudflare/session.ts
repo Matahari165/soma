@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies, headers } from "next/headers";
 
-import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime } from "@/lib/cloudflare/db";
+import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime, storeNativeAuthCode } from "@/lib/cloudflare/db";
 
 export const SESSION_COOKIE = "soma_session";
 const SESSION_DAYS = 30;
@@ -73,6 +73,22 @@ export async function createSession(userId: string, device: { platform?: Session
   if (!result.success) throw new Error(result.error ?? "Session creation failed.");
   if (setCookie) (await cookies()).set(SESSION_COOKIE, token, cookieOptions);
   return { token, cookieOptions, session: { id: sessionId, platform, deviceName, createdAt: now.toISOString(), expiresAt: expires.toISOString() } satisfies DeviceSession };
+}
+
+export async function createNativeAuthCode(userId: string, input: { platform: "ios" | "macos"; pkceChallenge: string }) {
+  const code = randomToken(48);
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + 2 * 60 * 1_000);
+  await storeNativeAuthCode({
+    code_hash: await sha256(code),
+    user_id: userId,
+    platform: input.platform,
+    device_name: input.platform === "ios" ? "iPhone" : "Mac",
+    pkce_challenge: input.pkceChallenge,
+    created_at: createdAt.toISOString(),
+    expires_at: expiresAt.toISOString(),
+  });
+  return code;
 }
 
 function bearerToken(value: string | null) {
@@ -174,6 +190,20 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
     WHERE sessions.token_hash = ? AND sessions.expires_at > ?
     LIMIT 1
   `).bind(await sha256(token), new Date().toISOString()).first<{ id: string; email: string | null; display_name: string }>();
+  return row ? { id: row.id, email: row.email, displayName: row.display_name } : null;
+}
+
+export async function sessionUserById(userId: string): Promise<SessionUser | null> {
+  if (hasSupabaseRuntime()) {
+    const result = await createCloudflareAdminClient().from("soma_users").select("id,email,display_name").eq("id", userId).maybeSingle();
+    if (result.error) throw new Error(result.error.message);
+    return result.data ? {
+      id: result.data.id,
+      email: typeof result.data.email === "string" ? result.data.email : null,
+      displayName: typeof result.data.display_name === "string" ? result.data.display_name : "Soma user",
+    } : null;
+  }
+  const row = await cloudflareDb().prepare("SELECT id, email, display_name FROM soma_users WHERE id = ? LIMIT 1").bind(userId).first<{ id: string; email: string | null; display_name: string }>();
   return row ? { id: row.id, email: row.email, displayName: row.display_name } : null;
 }
 

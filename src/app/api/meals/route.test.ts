@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { POST as createMeal, GET as listMeals, PUT as saveMeal } from "./route";
-import { PATCH as patchMeal } from "./[id]/route";
+import { GET as getMeal, PATCH as patchMeal } from "./[id]/route";
 import { POST as uploadPhotos } from "./[id]/photos/route";
 import { POST as analyzeMeal } from "./[id]/analyze/route";
 import { DELETE as deletePhoto, GET as getPhoto, PATCH as patchPhoto } from "./[id]/photos/[photoId]/route";
@@ -70,7 +70,7 @@ describe("meal API local preview flow", () => {
     const analysed = await legacyAnalyzeMeal(new Request("https://soma.example/api/meals/analyze", { method: "POST", body: form }));
     expect(analysed.status).toBe(200);
     const meal = (await analysed.json()).meal as { id: string; status: string; analysis: { calories: { low: number; high: number } } };
-    expect(meal.status).toBe("confirmed");
+    expect(meal.status).toBe("review");
     const saved = await saveMeal(new Request("https://soma.example/api/meals", { method: "PUT", body: JSON.stringify({ meal: { ...meal, status: "confirmed", mouthHeat: 2, stomachLoad: null } }), headers: { "content-type": "application/json" } }));
     expect(saved.status).toBe(200);
     const loaded = await listMeals(new Request("https://soma.example/api/meals?date=2026-09-01"));
@@ -89,6 +89,24 @@ describe("meal API local preview flow", () => {
     const patched = await patchPhoto(new Request(`https://soma.example/api/meals/${meal.id}/photos/${photo.id}`, { method: "PATCH", body: JSON.stringify({ origin: "prepared" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: meal.id, photoId: photo.id }) });
     expect(patched.status).toBe(200);
     expect((await patched.json()).photo.origin).toBe("prepared");
+  });
+
+  it("round-trips a photo comment through upload, meal GET and PATCH", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", body: JSON.stringify({ mealDate: "2026-09-02", mealType: "lunch" }), headers: { "content-type": "application/json" } }));
+    const meal = (await created.json()).meal as { id: string };
+    const form = new FormData();
+    form.append("photos", new File([Uint8Array.from([1, 2, 3])], "lunch.jpg", { type: "image/jpeg" }));
+    form.append("origin", "mixed");
+    form.append("comment_0", "Sauce à gauche");
+    const uploaded = await uploadPhotos(new Request(`https://soma.example/api/meals/${meal.id}/photos`, { method: "POST", body: form }), { params: Promise.resolve({ id: meal.id }) });
+    const photo = (await uploaded.json()).photos[0] as { id: string; comment: string };
+    expect(photo.comment).toBe("Sauce à gauche");
+
+    const loaded = await getMeal(new Request(`https://soma.example/api/meals/${meal.id}`), { params: Promise.resolve({ id: meal.id }) });
+    expect((await loaded.json()).meal.photos[0].comment).toBe("Sauce à gauche");
+    const patched = await patchPhoto(new Request(`https://soma.example/api/meals/${meal.id}/photos/${photo.id}`, { method: "PATCH", body: JSON.stringify({ comment: "Dessert à part" }), headers: { "content-type": "application/json" } }), { params: Promise.resolve({ id: meal.id, photoId: photo.id }) });
+    expect((await patched.json()).photo.comment).toBe("Dessert à part");
   });
 
   it("deletes an uploaded photo", async () => {

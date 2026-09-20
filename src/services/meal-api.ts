@@ -39,6 +39,7 @@ export function mealToApi(meal: Meal) {
       mimeType: photo.mimeType,
       bytes: photo.bytes,
       filename: photo.filename ?? null,
+      comment: photo.comment ?? null,
       createdAt: photo.createdAt,
       storageStatus: photo.storageStatus ?? "available",
       purgedAt: photo.purgedAt ?? null,
