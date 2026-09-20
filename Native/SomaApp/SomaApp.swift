@@ -238,6 +238,8 @@ final class VisualBreakController {
             panel.orderFrontRegardless()
             panels.append(panel)
         }
+        // Non-activating panels still need a key window to receive Escape.
+        panels.first?.makeKeyAndOrderFront(nil)
     }
 
     private func updatePanels() {
