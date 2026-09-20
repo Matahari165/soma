@@ -1,7 +1,8 @@
 import "server-only";
 
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
-import { getNativeActivityAnalytics } from "@/services/health-analytics";
+import { exerciseSummaryFromRecord, getNativeActivityAnalytics } from "@/services/health-analytics";
+import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 
 const RAW_KEYS = ["steps", "exercise_minutes", "active_energy_kcal", "zone_minutes"] as const;
 
@@ -95,14 +96,28 @@ export function nativeEffortPayload(data: HealthAnalytics) {
         zoneMinutes: day?.zone_minutes ?? null,
       };
     }) : [],
-    exercises: latest
-      ? data.exercises
-          .filter((exercise) => exercise.date >= addDays(latest.metric_date, -29) && exercise.date <= latest.metric_date)
-          .map((exercise) => ({ ...exercise, provenance: "google_health" as const }))
-      : [],
+    exercises: data.exercises.map((exercise) => ({ ...exercise, provenance: "google_health" as const })),
   };
 }
 
+async function allImportedExercises(userId: string) {
+  const admin = createCloudflareAdminClient();
+  const pageSize = 500;
+  const records: ReturnType<typeof exerciseSummaryFromRecord>[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await admin.from("health_records")
+      .select("source_record_id,civil_date,start_time,end_time,payload")
+      .eq("user_id", userId).eq("data_type", "exercise")
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Exercise history could not be loaded.");
+    const page = (data ?? []).map(exerciseSummaryFromRecord);
+    records.push(...page);
+    if (page.length < pageSize) return records;
+  }
+}
+
 export async function getNativeEffort(userId: string) {
-  return nativeEffortPayload(await getNativeActivityAnalytics(userId));
+  const [analytics, exercises] = await Promise.all([getNativeActivityAnalytics(userId), allImportedExercises(userId)]);
+  return nativeEffortPayload({ ...analytics, exercises });
 }

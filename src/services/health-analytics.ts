@@ -495,7 +495,34 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?:
     const bpm = findNumber(record.payload, ["beatsPerMinute"]);
     return bpm === null || !record.measured_at || (latestRecoveryDate && civilDateIn(record.measured_at, timezone) !== latestRecoveryDate) ? [] : [{ measuredAt: record.measured_at, bpm }];
   }).reverse();
-  const exerciseSummaries = (exercises ?? []).map((record): ExerciseSummary => {
+  const exerciseSummaries = (exercises ?? []).map(exerciseSummaryFromRecord);
+  const targetMinutes = Number(sleepPreferences?.base_target_minutes);
+  const sleepRecommendation = scope === "sleep"
+    ? sleepRecommendationFor({
+      days: orderedMetrics,
+      timezone,
+      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 510,
+      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
+      windDownMinutes: Number(sleepPreferences?.wind_down_minutes) || 30,
+    })
+    : null;
+  return {
+    timezone,
+    importedAt: connection?.last_synced_at ?? null,
+    days: orderedMetrics,
+    scores: [...((scores ?? []) as ScoreDay[])].reverse(),
+    sleepRecommendation,
+    latestSleepStages,
+    heartRateSamples,
+    exercises: exerciseSummaries,
+    effortTargets,
+    effortTargetSource,
+  };
+}
+
+type ExerciseRecord = { source_record_id: string; civil_date: string | null; start_time: string | null; end_time: string | null; payload: unknown };
+
+export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSummary {
     const exercise = findObject(record.payload, "exercise") ?? {};
     const metricsSummary = isObject(exercise.metricsSummary) ? exercise.metricsSummary : {};
     const duration = record.start_time && record.end_time ? (Date.parse(record.end_time) - Date.parse(record.start_time)) / 60_000 : null;
@@ -522,29 +549,6 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?:
       verticalOscillationMillimeters: findNumber(metricsSummary, ["avgVerticalOscillationMillimeters"]),
       verticalRatio: findNumber(metricsSummary, ["avgVerticalRatio"]),
     };
-  });
-  const targetMinutes = Number(sleepPreferences?.base_target_minutes);
-  const sleepRecommendation = scope === "sleep"
-    ? sleepRecommendationFor({
-      days: orderedMetrics,
-      timezone,
-      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 510,
-      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
-      windDownMinutes: Number(sleepPreferences?.wind_down_minutes) || 30,
-    })
-    : null;
-  return {
-    timezone,
-    importedAt: connection?.last_synced_at ?? null,
-    days: orderedMetrics,
-    scores: [...((scores ?? []) as ScoreDay[])].reverse(),
-    sleepRecommendation,
-    latestSleepStages,
-    heartRateSamples,
-    exercises: exerciseSummaries,
-    effortTargets,
-    effortTargetSource,
-  };
 }
 
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
