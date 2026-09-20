@@ -92,11 +92,12 @@ struct SettingsView: View {
                 actionTitle: "Vérifier"
             ) { navigate(.health) }
             #else
-            SettingsStatusRow(
+            SettingsActionRow(
                 title: "Santé Apple",
-                detail: "Configuration requise dans l’app iPhone",
-                symbol: "heart.text.square"
-            )
+                detail: "Accès aux données Santé disponible dans l’app iPhone",
+                symbol: "heart.text.square",
+                actionTitle: "Ouvrir"
+            ) { navigate(.health) }
             #endif
             SettingsStatusRow(
                 title: "Google Health",

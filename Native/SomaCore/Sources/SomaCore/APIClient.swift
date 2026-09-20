@@ -7,11 +7,13 @@ public actor APIClient {
     private let baseURL: URL
     private let session: URLSession
     private let tokenStore: any TokenStore
+    private let networkEnabled: Bool
 
-    public init(baseURL: URL, session: URLSession = .shared, tokenStore: any TokenStore) {
+    public init(baseURL: URL, session: URLSession = .shared, tokenStore: any TokenStore, networkEnabled: Bool = true) {
         self.baseURL = baseURL
         self.session = session
         self.tokenStore = tokenStore
+        self.networkEnabled = networkEnabled
     }
 
     public func login(email: String, password: String, platform: String, deviceName: String) async throws -> SessionResponse {
@@ -76,6 +78,54 @@ public actor APIClient {
 
     public func day(_ date: LocalDate) async throws -> NativeDayResponse {
         try await get(path: "/api/native/v1/lab/day?date=\(date.rawValue)")
+    }
+
+    public func overview() async throws -> NativeOverviewResponse {
+        try await get(path: "/api/native/v1/lab/overview")
+    }
+
+    public func getNutrition(for date: LocalDate, days: Int) async throws -> NativeNutritionResponse {
+        let requestedDays = [7, 14, 30].contains(days) ? days : 30
+        return try await get(path: "/api/native/v1/nutrition?date=\(date.rawValue)&days=\(requestedDays)")
+    }
+
+    public func upsertNutritionSupplementEntry(_ body: NutritionSupplementEntryRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/entries", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionSupplementEntry(id: String, body: NutritionSupplementEntryUpdateRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/entries/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionSupplementEntry(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/supplements/entries/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func createNutritionSupplementDefinition(_ body: NutritionSupplementDefinitionCreateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionSupplementDefinition(id: String, body: NutritionSupplementDefinitionUpdateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionSupplementDefinition(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/supplements/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func createNutritionRecipe(_ body: NutritionRecipeCreateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/recipes", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionRecipe(id: String, body: NutritionRecipeUpdateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/recipes/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionRecipe(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/recipes/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
     }
 
     public func currentSession() async throws -> SessionUser {
@@ -268,11 +318,13 @@ public actor APIClient {
     }
 
     private func perform<Response: Decodable>(_ request: URLRequest) async throws -> Response {
+        guard networkEnabled else { throw URLError(.notConnectedToInternet) }
         let (data, response) = try await session.data(for: request)
         return try decode(data: data, response: response, request: request)
     }
 
     private func performUpload<Response: Decodable>(_ request: URLRequest, fromFile fileURL: URL) async throws -> Response {
+        guard networkEnabled else { throw URLError(.notConnectedToInternet) }
         let (data, response) = try await session.upload(for: request, fromFile: fileURL)
         return try decode(data: data, response: response, request: request)
     }

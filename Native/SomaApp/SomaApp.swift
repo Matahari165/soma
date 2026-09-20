@@ -2,6 +2,7 @@ import SwiftUI
 import Observation
 import SomaCore
 #if os(macOS)
+import CoreText
 import AppKit
 import Quartz
 #endif
@@ -13,6 +14,16 @@ struct SomaApp: App {
     @State private var visualBreaks = VisualBreakController()
     @AppStorage("visualBreak.showMenuBarIcon") private var showMenuBarIcon = true
     #endif
+
+    init() {
+        #if os(macOS)
+        for name in ["SchibstedGrotesk", "AzeretMono"] {
+            if let url = Bundle.main.url(forResource: name, withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -26,7 +37,7 @@ struct SomaApp: App {
                 #endif
         }
         #if os(macOS)
-        .defaultSize(width: 1_440, height: 900)
+        .defaultSize(width: 1_180, height: 760)
         #endif
         #if os(macOS)
         MenuBarExtra(isInserted: $showMenuBarIcon) {

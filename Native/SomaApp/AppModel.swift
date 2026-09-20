@@ -54,6 +54,9 @@ final class AppModel {
     var isSleepLoading = false
     var sleepErrorMessage: String?
     var recovery: NativeRecoveryResponse?
+    var overview: NativeOverviewResponse?
+    var isOverviewLoading = false
+    var overviewErrorMessage: String?
     var currentUser: SessionUser?
     var currentSession: DeviceSession?
     var deviceSessions: [DeviceSession] = []
@@ -63,6 +66,7 @@ final class AppModel {
     var isLoadingMeals = false
     var mealsErrorMessage: String?
     var isAuthenticated = false
+    var isPreviewMode: Bool { ProcessInfo.processInfo.arguments.contains("--preview-data") }
     var isBootstrapping = true
     var isLoading = false
     var isRecoveryLoading = false
@@ -85,6 +89,7 @@ final class AppModel {
     private var dayRequestGeneration = 0
     private var journalSaveGeneration = 0
     private var sleepRequestGeneration = 0
+    private var overviewRequestGeneration = 0
     private var sessionsRequestGeneration = 0
     private var effortRequestGeneration = 0
     private var authenticationGeneration = 0
@@ -97,16 +102,19 @@ final class AppModel {
     private var analysisRequestGeneration = 0
 
     init() {
+        let previewMode = ProcessInfo.processInfo.arguments.contains("--preview-data")
         activeDate = (try? LocalDate.today()) ?? (try! LocalDate("2026-09-19"))
+        let tokenStore: any TokenStore = previewMode ? PreviewTokenStore() : KeychainTokenStore()
         let client = APIClient(
             baseURL: URL(string: "https://soma-neon-phi.vercel.app")!,
-            tokenStore: KeychainTokenStore()
+            tokenStore: tokenStore,
+            networkEnabled: !previewMode
         )
         self.client = client
-        let store = try? MealDraftStore()
+        let store = previewMode ? nil : (try? MealDraftStore())
         mealDraftStore = store
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
-        if ProcessInfo.processInfo.arguments.contains("--preview-data") {
+        if previewMode {
             loadSyntheticPreview()
             if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
                 hasCompletedOnboarding = false
@@ -146,12 +154,14 @@ final class AppModel {
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            await refreshOverview()
             if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         }
     }
 
     func loginWithGoogle() async {
+        guard !isPreviewMode else { return }
         guard !isLoading else { return }
         invalidateSleep()
         isLoading = true
@@ -175,6 +185,7 @@ final class AppModel {
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            await refreshOverview()
             if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         } catch NativeOAuthError.cancelled {
@@ -201,6 +212,7 @@ final class AppModel {
     }
 
     func handleAuthenticationURL(_ url: URL) {
+        guard !isPreviewMode else { return }
         _ = googleAuthentication.handle(url)
     }
 
@@ -222,6 +234,7 @@ final class AppModel {
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            await refreshOverview()
             if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         } catch APIError.unauthorized {
@@ -239,6 +252,69 @@ final class AppModel {
         if generation == dayRequestGeneration, activeDate == requestedDate, response.date == requestedDate.rawValue {
             acceptDay(response)
         }
+    }
+
+    func refreshOverview() async {
+        guard !isPreviewMode else { return }
+        overviewRequestGeneration += 1
+        let generation = overviewRequestGeneration
+        isOverviewLoading = true
+        overviewErrorMessage = nil
+        defer {
+            if generation == overviewRequestGeneration { isOverviewLoading = false }
+        }
+        do {
+            let response = try await client.overview()
+            guard generation == overviewRequestGeneration, isAuthenticated else { return }
+            overview = response
+        } catch APIError.unauthorized {
+            guard generation == overviewRequestGeneration else { return }
+            expireLocalSession()
+        } catch {
+            guard generation == overviewRequestGeneration, isAuthenticated else { return }
+            overviewErrorMessage = "La synthèse du jour n’a pas pu être chargée."
+        }
+    }
+
+    func loadNutrition(for date: LocalDate, days: Int) async throws -> NativeNutritionResponse {
+        if isPreviewMode { return PreviewNutrition.response(for: date, days: days) }
+        return try await client.getNutrition(for: date, days: days)
+    }
+
+    func upsertNutritionSupplementEntry(_ body: NutritionSupplementEntryRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await client.upsertNutritionSupplementEntry(body)
+    }
+
+    func updateNutritionSupplementEntry(id: String, body: NutritionSupplementEntryUpdateRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await client.updateNutritionSupplementEntry(id: id, body: body)
+    }
+
+    func deleteNutritionSupplementEntry(id: String) async throws {
+        try await client.deleteNutritionSupplementEntry(id: id)
+    }
+
+    func createNutritionSupplementDefinition(_ body: NutritionSupplementDefinitionCreateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await client.createNutritionSupplementDefinition(body)
+    }
+
+    func updateNutritionSupplementDefinition(id: String, body: NutritionSupplementDefinitionUpdateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await client.updateNutritionSupplementDefinition(id: id, body: body)
+    }
+
+    func deleteNutritionSupplementDefinition(id: String) async throws {
+        try await client.deleteNutritionSupplementDefinition(id: id)
+    }
+
+    func createNutritionRecipe(_ body: NutritionRecipeCreateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await client.createNutritionRecipe(body)
+    }
+
+    func updateNutritionRecipe(id: String, body: NutritionRecipeUpdateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await client.updateNutritionRecipe(id: id, body: body)
+    }
+
+    func deleteNutritionRecipe(id: String) async throws {
+        try await client.deleteNutritionRecipe(id: id)
     }
 
     func retryDayLoad() async {
@@ -339,6 +415,7 @@ final class AppModel {
                 currentSession = context.session
             }
             try await refreshDay()
+            await refreshOverview()
             await restoreMealDrafts()
             hasCompletedOnboarding = true
             return true
@@ -360,7 +437,7 @@ final class AppModel {
         do {
             try await client.deleteAccount(confirmation: confirmation)
             await googleAuthentication.signOut()
-            if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
+            if let ownerUserID { _ = try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
             clearAuthenticatedState()
             return true
         } catch APIError.unauthorized {
@@ -373,6 +450,7 @@ final class AppModel {
     }
 
     func refreshSleep() async {
+        guard !isPreviewMode else { return }
         sleepRequestGeneration += 1
         let generation = sleepRequestGeneration
         isSleepLoading = true
@@ -398,6 +476,7 @@ final class AppModel {
     }
 
     func refreshEffort() async {
+        guard !isPreviewMode else { return }
         effortRequestGeneration += 1
         let generation = effortRequestGeneration
         effortState = .loading
@@ -415,6 +494,7 @@ final class AppModel {
     }
 
     func refreshRecovery() async {
+        guard !isPreviewMode else { return }
         let generation = authenticationGeneration
         isRecoveryLoading = true
         recoveryErrorMessage = nil
@@ -433,6 +513,7 @@ final class AppModel {
     }
 
     func shiftDate(by days: Int) async {
+        guard !isPreviewMode else { return }
         guard let shifted = try? activeDate.adding(days: days) else { return }
         journalAutosaveTask?.cancel()
         if journalDraft?.hasUnsavedChanges == true {
@@ -969,6 +1050,7 @@ final class AppModel {
     }
 
     func logout() async {
+        guard !isPreviewMode else { return }
         journalAutosaveTask?.cancel()
         if journalDraft?.hasUnsavedChanges == true {
             guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
@@ -981,12 +1063,13 @@ final class AppModel {
         journalAutosaveTask?.cancel()
         sessionsRequestGeneration += 1
         effortRequestGeneration += 1
+        overviewRequestGeneration += 1
         isLoading = true
         errorMessage = nil
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
         await googleAuthentication.signOut()
-        if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
+        if let ownerUserID { _ = try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
         isAuthenticated = false
         currentUser = nil
         hasCompletedOnboarding = true
@@ -1000,6 +1083,9 @@ final class AppModel {
         isAnalysisLoading = false
         analysisErrorMessage = nil
         recovery = nil
+        overview = nil
+        isOverviewLoading = false
+        overviewErrorMessage = nil
         currentSession = nil
         deviceSessions = []
         mealDrafts = [:]
@@ -1038,6 +1124,7 @@ final class AppModel {
         sessionsRequestGeneration += 1
         invalidateSleep()
         effortRequestGeneration += 1
+        overviewRequestGeneration += 1
         isAuthenticated = false
         currentUser = nil
         hasCompletedOnboarding = true
@@ -1060,6 +1147,9 @@ final class AppModel {
         isAnalysisLoading = false
         analysisErrorMessage = nil
         recovery = nil
+        overview = nil
+        isOverviewLoading = false
+        overviewErrorMessage = nil
         mealDrafts = [:]
         mealHistory = []
         mealDetails = [:]
@@ -1079,6 +1169,7 @@ final class AppModel {
         journalSaveGeneration += 1
         sessionsRequestGeneration += 1
         effortRequestGeneration += 1
+        overviewRequestGeneration += 1
         isAuthenticated = false
         currentUser = nil
         currentSession = nil
@@ -1089,6 +1180,9 @@ final class AppModel {
         expiredJournalOwnerUserID = nil
         matrix = nil
         recovery = nil
+        overview = nil
+        isOverviewLoading = false
+        overviewErrorMessage = nil
         mealDrafts = [:]
         mealHistory = []
         mealDetails = [:]
@@ -1100,10 +1194,12 @@ final class AppModel {
         isAuthenticated = true
         currentUser = SessionUser(id: "preview-user", email: "jeremy@example.test", displayName: "Jérémy")
         if let preview = try? JSONDecoder().decode(NativeDayResponse.self, from: Data(Self.previewDay.utf8)) {
+            activeDate = (try? LocalDate(preview.date)) ?? activeDate
             acceptDay(preview)
         }
         matrix = try? JSONDecoder().decode(NativeMatrixResponse.self, from: Data(Self.previewMatrix.utf8))
         loadedAnalysisPeriod = "30"
+        overview = try? JSONDecoder().decode(NativeOverviewResponse.self, from: Data(Self.previewOverview.utf8))
         sleep = try? JSONDecoder().decode(NativeSleepResponse.self, from: Data(Self.previewSleep.utf8))
         mealHistory = (try? JSONDecoder().decode(MealListResponse.self, from: Data(Self.previewMeals.utf8)).meals) ?? []
         for meal in mealHistory { mealDetails[meal.id] = meal }
@@ -1144,6 +1240,7 @@ final class AppModel {
 
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
     private static let previewMatrix = #"{"period":30,"rows":[],"outcomes":[{"id":"hrv","label":"VFC","unit":"ms","direction":"higher"},{"id":"recovery","label":"Récupération","unit":"pts","direction":"higher"}],"periods":[15,30,90,"all"],"meaningfulRelations":[],"topRelations":[{"predictorId":"walk","outcomeId":"hrv","predictorLabel":"Marche","predictorUnit":"min","predictorKind":"numeric","predictorPresentation":"amount","outcomeLabel":"VFC","outcomeUnit":"ms","effect":4.2,"sampleSize":32,"effectConfidenceLow":1.1,"effectConfidenceHigh":7.3,"qValue":0.018,"percentEffect":8.1,"comparisonLabel":"+20 min","modelType":"plateau","modelImprovement":0.14,"nonlinearTested":true,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":3,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"strength":"clear","coverageBySource":[{"source":"WHOOP","pairedDays":32,"pairedWeeks":0}],"minimumDaysRemaining":0,"practicallyMeaningful":true,"practicalThreshold":2,"practicalRatio":2.1,"featureEligible":true,"exclusionReasons":[],"excluded":false},{"predictorId":"late-meal","outcomeId":"recovery","predictorLabel":"Repas tardif","predictorUnit":"oui/non","predictorKind":"binary","predictorPresentation":"amount","outcomeLabel":"Récupération","outcomeUnit":"pts","effect":-6.4,"sampleSize":28,"effectConfidenceLow":-10.1,"effectConfidenceHigh":-2.7,"qValue":0.031,"comparisonLabel":"yes vs no","modelType":"binary","nonlinearTested":false,"lagDays":1,"grain":"day","timeScale":"acute","period":30,"evidence":"established","stable":true,"stability":{"chronologicalBlocks":2,"directionHeldInBlocks":true,"trendAdjustedDirectionHeld":true,"outlierAdjustedDirectionHeld":true},"coverageBySource":[{"source":"Journal + WHOOP","pairedDays":28,"pairedWeeks":0}],"practicallyMeaningful":true,"practicalThreshold":3,"practicalRatio":2.13,"featureEligible":true,"exclusionReasons":[],"excluded":false}],"acuteHighlights":[],"chronicHighlights":[],"coverageByMetric":[],"collectionProgress":[]}"#
+    private static let previewOverview = #"{"todayDate":"2026-09-19","overnightFingerprint":"preview-overnight","greetingName":"Jérémy","timeZone":"Europe/Zurich","today":{"sleepMinutes":498,"sleepRegularity":86,"recoveryScore":74,"effortScore":61,"effortCoverage":1,"caloriesKcal":560,"calorieTarget":2400,"averageSleepMinutes":472,"averageSleepRegularity":81,"averageRecoveryScore":69,"averageEffortScore":58,"averageCaloriesKcal":2140,"history":[{"date":"2026-09-13","sleepMinutes":455,"recoveryScore":68,"effortScore":52,"caloriesKcal":1980,"calorieTarget":2300},{"date":"2026-09-14","sleepMinutes":null,"recoveryScore":null,"effortScore":0,"caloriesKcal":0,"calorieTarget":2300},{"date":"2026-09-15","sleepMinutes":480,"recoveryScore":70,"effortScore":55,"caloriesKcal":2210,"calorieTarget":2350},{"date":"2026-09-16","sleepMinutes":465,"recoveryScore":67,"effortScore":49,"caloriesKcal":null,"calorieTarget":2350},{"date":"2026-09-17","sleepMinutes":455,"recoveryScore":66,"effortScore":54,"caloriesKcal":2050,"calorieTarget":2380},{"date":"2026-09-18","sleepMinutes":null,"recoveryScore":null,"effortScore":null,"caloriesKcal":null,"calorieTarget":2400},{"date":"2026-09-19","sleepMinutes":498,"recoveryScore":74,"effortScore":61,"caloriesKcal":560,"calorieTarget":2400}],"deepWorkMinutes":null,"calendarDeepWorkMinutes":120,"deepWorkSource":"calendar","focus":0,"energy":null,"activity":{"kind":"run","distanceKm":7.2,"durationMinutes":44,"intensityMinutes":null},"provenance":{"sleep":{"kind":"health_source","label":"Sources santé importées"},"sleepRegularity":{"kind":"health_source","label":"Sources santé importées"},"recovery":{"kind":"soma_calculation","label":"Calcul Soma"},"effort":{"kind":"soma_calculation","label":"Calcul Soma"},"calories":{"kind":"soma_meals","label":"Repas confirmés"},"calorieTarget":{"kind":"soma_calculation","label":"Cible nutritionnelle Soma"},"averages":{"kind":"soma_calculation","label":"Moyennes Soma"}}}}"#
     private static let previewSleep = #"{"timezone":"Europe/Zurich","importedAt":"2026-09-19T07:15:00Z","days":[{"metric_date":"2026-09-17","sleep_minutes":455,"sleep_need_minutes":510,"sleep_efficiency":91,"sleep_regularity":79,"sleep_latency_minutes":14,"sleep_awake_minutes":24,"sleep_awake_percent":5,"sleep_fragmentation":1.2,"sleep_deep_minutes":82,"sleep_deep_percent":18,"sleep_rem_minutes":105,"sleep_rem_percent":23,"sleep_light_minutes":268,"sleep_light_percent":59,"cumulative_sleep_debt_minutes":75,"bedtime":"2026-09-16T22:55:00Z","wake_time":"2026-09-17T06:54:00Z","source_freshness":{"latestMeasuredAt":"2026-09-17T06:54:00Z"}},{"metric_date":"2026-09-18","sleep_minutes":null,"sleep_need_minutes":510,"sleep_efficiency":null,"sleep_regularity":null,"sleep_latency_minutes":null,"sleep_awake_minutes":null,"sleep_awake_percent":null,"sleep_fragmentation":null,"sleep_deep_minutes":null,"sleep_deep_percent":null,"sleep_rem_minutes":null,"sleep_rem_percent":null,"sleep_light_minutes":null,"sleep_light_percent":null,"cumulative_sleep_debt_minutes":null,"bedtime":null,"wake_time":null,"source_freshness":null},{"metric_date":"2026-09-19","sleep_minutes":498,"sleep_need_minutes":510,"sleep_efficiency":94,"sleep_regularity":86,"sleep_latency_minutes":9,"sleep_awake_minutes":18,"sleep_awake_percent":3,"sleep_fragmentation":0.8,"sleep_deep_minutes":96,"sleep_deep_percent":19,"sleep_rem_minutes":119,"sleep_rem_percent":24,"sleep_light_minutes":283,"sleep_light_percent":57,"cumulative_sleep_debt_minutes":32,"bedtime":"2026-09-18T22:31:00Z","wake_time":"2026-09-19T07:07:00Z","source_freshness":{"latestMeasuredAt":"2026-09-19T07:07:00Z"}}],"scores":[{"score_date":"2026-09-19","kind":"sleep","score":91,"algorithm_version":"sleep-v0.2"}],"sleepRecommendation":{"bedtimeMinutes":1350,"wakeTimeMinutes":420,"sleepNeedMinutes":510},"latestSleepStages":[{"type":"DEEP","startTime":"2026-09-18T23:00:00Z","endTime":"2026-09-19T00:36:00Z"},{"type":"REM","startTime":"2026-09-19T04:00:00Z","endTime":"2026-09-19T05:59:00Z"}]}"#
     private static let previewMeals = #"{"meals":[{"id":"meal-dinner","mealDate":"2026-09-19","mealType":"dinner","note":"Riz, légumes et tofu","status":"confirmed","entryState":"recorded","mouthWarmthIntensity":0,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T18:00:00Z","updatedAt":"2026-09-19T18:05:00Z","photos":[{"id":"photo-dinner","mealId":"meal-dinner","origin":"homemade","mimeType":"image/jpeg","bytes":120000,"filename":"diner.jpg","createdAt":"2026-09-19T18:00:00Z","storageStatus":"purged","purgedAt":"2026-09-19T18:05:00Z","url":null}],"analysis":{"id":"analysis-dinner","mealId":"meal-dinner","status":"completed","provider":"synthetic","model":"synthetic","result":{"summary":"Repas varié avec une source de protéines végétales.","dishType":"Plat complet","calorieAnalysis":null,"foods":[{"name":"Riz","preparation":"cuit","portion":"1 bol","confidence":"high"},{"name":"Tofu et légumes","preparation":null,"portion":"1 portion","confidence":"medium"}],"totals":{"calories":{"low":480,"likely":560,"high":650},"proteinGrams":{"low":20,"likely":25,"high":31},"carbohydrateGrams":{"low":65,"likely":74,"high":86},"fatGrams":{"low":14,"likely":18,"high":24},"fiberGrams":{"low":8,"likely":11,"high":15},"sugarGrams":null,"addedSugarGrams":null},"confidence":"medium","uncertainties":["Quantité d’huile non précisée"]},"error":null,"errorCode":null,"sourcePhotoIds":["photo-dinner"],"createdAt":"2026-09-19T18:00:00Z","completedAt":"2026-09-19T18:05:00Z"},"lastSuccessfulAnalysis":null},{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","note":null,"status":"draft","entryState":"skipped","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-19T12:00:00Z","updatedAt":"2026-09-19T12:00:00Z","photos":[],"analysis":null,"lastSuccessfulAnalysis":null},{"id":"meal-yesterday","mealDate":"2026-09-18","mealType":"breakfast","note":"Yaourt et fruits","status":"draft","entryState":"recorded","mouthWarmthIntensity":null,"stomachOverfullIntensity":null,"createdAt":"2026-09-18T07:00:00Z","updatedAt":"2026-09-18T07:00:00Z","photos":[],"analysis":{"id":"analysis-yesterday","mealId":"meal-yesterday","status":"running","provider":"synthetic","model":"synthetic","result":null,"error":null,"errorCode":null,"sourcePhotoIds":[],"createdAt":"2026-09-18T07:00:00Z","completedAt":null},"lastSuccessfulAnalysis":null}]}"#
     private static let previewEffort = #"{"timezone":"Europe/Zurich","period":{"days":30,"startDate":"2026-08-21","endDate":"2026-09-19"},"latestObservedDate":"2026-09-19","importedAt":"2026-09-19T18:05:00Z","measuredAt":"2026-09-19T18:00:00Z","latest":{"date":"2026-09-19","steps":8900,"exerciseMinutes":44,"activeEnergyKcal":540,"zoneMinutes":33,"weeklyLoad":408,"acuteChronicLoadRatio":1.04,"zones":{"light":12,"moderate":10,"vigorous":7,"peak":4},"provenance":"google_health"},"score":{"value":61,"date":"2026-09-19","coverage":1,"algorithmVersion":"effort-v3","provenance":"soma_calculation"},"coverage":{"expectedDays":30,"observedActivityDays":24,"byMetric":{"steps":0.8,"exercise_minutes":0.7,"active_energy_kcal":0.77,"zone_minutes":0.7}},"trends":[{"date":"2026-09-17","steps":7200,"exerciseMinutes":null,"activeEnergyKcal":420,"zoneMinutes":null},{"date":"2026-09-18","steps":0,"exerciseMinutes":0,"activeEnergyKcal":0,"zoneMinutes":0},{"date":"2026-09-19","steps":8900,"exerciseMinutes":44,"activeEnergyKcal":540,"zoneMinutes":33}],"exercises":[{"id":"synthetic-run","date":"2026-09-19","name":"Course extérieure","type":"RUNNING","durationMinutes":44,"activeMinutes":41,"calories":430,"distanceKm":7.2,"averageHeartRate":151,"zoneMinutes":36,"averageSpeedKph":9.8,"averagePaceSecondsPerKm":367,"elevationGainMeters":94,"steps":null,"runVo2Max":null,"swimLengths":null,"cadence":null,"strideLengthMeters":null,"groundContactMilliseconds":null,"verticalOscillationMillimeters":null,"verticalRatio":null,"provenance":"google_health"}]}"#
@@ -1156,4 +1253,10 @@ final class AppModel {
     private static let previewPlatform: SessionPlatform = .ios
     private static let previewDeviceName = "iPhone"
     #endif
+}
+
+private struct PreviewTokenStore: TokenStore {
+    func read() throws -> String? { "preview-only" }
+    func save(_ token: String) throws {}
+    func clear() throws {}
 }
