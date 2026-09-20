@@ -23,6 +23,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.ios
         PRODUCT_NAME: Soma
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Soma
         INFOPLIST_KEY_NSHealthShareUsageDescription: "Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance."
@@ -40,6 +41,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soma.native.macos
         PRODUCT_NAME: Soma
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   Soma-iOS:
