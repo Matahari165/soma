@@ -719,7 +719,10 @@ final class AppModel {
         journalSaveState = .saving
         do {
             let response = try await client.saveJournal(JournalSaveRequest(entryDate: requestedDate.rawValue, mode: mode, entries: entries))
-            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return true }
+            // A newer edit arrived while this request was in flight. It remains
+            // pending, so navigation/logout must not treat this response as a
+            // successful flush and discard the newer value.
+            guard generation == journalSaveGeneration, requestedDate == activeDate, response.date == requestedDate.rawValue else { return false }
             journalDraft?.mergeServer(response, acknowledging: entries)
             day = response
             if journalDraft == nil { journalDraft = JournalDraft(day: response) }

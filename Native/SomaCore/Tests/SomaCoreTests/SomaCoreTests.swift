@@ -202,6 +202,16 @@ import Testing
     #expect(draft.entries(for: day.variables).contains(JournalSaveEntry(variableId: "auto", value: .bool(false))))
 }
 
+@Test func journalDraftKeepsAnAutomaticOverrideEligibleAfterAStaleRefresh() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"auto","name":"Detected","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":true,"emoji":"⚙️","defaultValue":null,"dayPeriod":"day","captureMode":"automatic","automaticMetricId":"run_day","trackingCadence":"daily"}],"entries":[{"variableId":"auto","entryDate":"2026-09-19","value":true,"source":"automatic"}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    var draft = JournalDraft(day: day)
+    draft.set(.bool(false), for: "auto")
+    draft.mergeServer(day)
+    #expect(draft.state(for: "auto") == .pending)
+    #expect(draft.entries(for: day.variables) == [JournalSaveEntry(variableId: "auto", value: .bool(false))])
+}
+
 @Test func mealDraftKeepsStableOperationKeysAcrossPersistence() async throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
     defer { try? FileManager.default.removeItem(at: directory) }

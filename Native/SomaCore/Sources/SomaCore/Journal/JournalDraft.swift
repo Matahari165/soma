@@ -81,6 +81,7 @@ public struct JournalDraft: Equatable, Sendable {
             }
             next.values[variableID] = value
             next.states[variableID] = .pending
+            next.automaticSourceVariableIDs.remove(variableID)
         }
         self = next
     }
