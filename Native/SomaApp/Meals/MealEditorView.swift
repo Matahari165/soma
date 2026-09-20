@@ -93,8 +93,13 @@ struct MealEditorView: View {
                 .clipShape(.rect(cornerRadius: 8))
                 .accessibilityLabel("Description du repas")
                 .onChange(of: note) { _, value in
-                    if value.count > 500 { note = String(value.prefix(500)) }
-                    Task { await model.setMealNote(String(value.prefix(500)), for: mealType) }
+                    let normalized = String(value.prefix(500))
+                    if value != normalized {
+                        note = normalized
+                        return
+                    }
+                    guard normalized != (model.mealDrafts[mealType]?.note ?? "") else { return }
+                    Task { await model.setMealNote(normalized, for: mealType) }
                 }
             Text("\(note.count)/500")
                 .font(.caption)
