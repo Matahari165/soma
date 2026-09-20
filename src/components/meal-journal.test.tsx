@@ -290,6 +290,17 @@ describe("MealJournal", () => {
     expect(html).not.toContain(">Cibles du jour<");
   });
 
+  it("keeps the meals page journal consultable without duplicate capture controls", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" readOnly date={date} today={date} initialData={{ date, meals: {
+      lunch: { id: "saved-lunch", date, slot: "lunch", note: "Riz", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+    } }} />);
+    expect(html).toContain("Riz");
+    expect(html).not.toContain("<textarea");
+    expect(html).not.toContain('type="file"');
+    expect(html).not.toContain('aria-label="Add a meal"');
+    expect(html).not.toContain("Analyze Lunch");
+  });
+
   it("affiche un créneau explicitement pas pris sans lancer ni afficher une analyse", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {
       snack: {
@@ -433,6 +444,19 @@ describe("MealJournal", () => {
     expect(result.id).toBe("0199a111-b222-7ccc-8ddd-eeeeeeeeeeee");
   });
 
+  it("retains the server id and queued status when analysis continues in the background", async () => {
+    const createdIds: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/meals") return Response.json({ meal: { id: "server-meal" } }, { status: 201 });
+      expect((init?.headers as Record<string, string>).Accept).toBeUndefined();
+      return Response.json({ meal: { id: "server-meal", mealDate: date, mealType: "lunch", note: "Riz", status: "draft", photos: [], analysis: { status: "queued" } } }, { status: 202 });
+    }));
+    const result = await defaultAnalyze({ date, slot: "lunch", files: [], meal: { id: "meal-local", date, slot: "lunch", note: "Riz", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" } }, { onMealCreated: (id) => createdIds.push(id) });
+    expect(createdIds).toEqual(["server-meal"]);
+    expect(result.status).toBe("accepted");
+  });
+
   it("updates and analyzes an existing text-only meal without requiring photos", async () => {
     const requests: Array<{ url: string; method: string; body?: unknown }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -535,8 +559,7 @@ describe("MealJournal", () => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       requests.push({ url, init });
       if (url.includes("/photos")) return Response.json({ photos: [
-        { id: "server-photo-1", mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "homemade", mimeType: "image/jpeg", bytes: first.size, filename: first.name, createdAt: `${date}T12:00:00.000Z` },
-        { id: "server-photo-2", mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "prepared", mimeType: "image/jpeg", bytes: second.size, filename: second.name, createdAt: `${date}T12:00:00.000Z` },
+        { id: `server-photo-${requests.filter((request) => request.url.includes("/photos")).length}`, mealId: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", origin: "homemade", mimeType: "image/jpeg", bytes: first.size, filename: first.name, createdAt: `${date}T12:00:00.000Z` },
       ] }, { status: 201 });
       return Response.json({ meal: { id: "0199a111-b222-7ccc-8ddd-eeeeeeeeeeee", mealDate: date, mealType: "lunch", note: null, status: "draft", photos: [], analysis: null } });
     }));
@@ -552,8 +575,8 @@ describe("MealJournal", () => {
         slot: "lunch",
         note: "Pâtes",
         photos: [
-          { id: "photo-1", url: "blob:one", filename: "IMG_0001.jpg", origin: "homemade" },
-          { id: "photo-2", url: "blob:two", filename: "IMG_0001.jpg", origin: "prepared" },
+          { id: "photo-1", url: "blob:one", filename: "IMG_0001.jpg", origin: "homemade", comment: "Sauce à part" },
+          { id: "photo-2", url: "blob:two", filename: "IMG_0001.jpg", origin: "prepared", comment: "Dessert" },
         ],
         analysis: null,
         mouthHeat: null,
@@ -562,10 +585,15 @@ describe("MealJournal", () => {
       },
     });
 
-    const upload = requests.find((request) => request.url.includes("/photos"));
-    expect(upload?.init?.headers).toEqual({ "Idempotency-Key": "meal-0199a111-b222-7ccc-8ddd-eeeeeeeeeeee-photos-photo-1-photo-2" });
-    expect((upload?.init?.body as FormData).get("origins")).toBe(JSON.stringify(["homemade", "prepared"]));
-    expect((upload?.init?.body as FormData).getAll("photos")).toEqual([first, second]);
+    const uploads = requests.filter((request) => request.url.includes("/photos"));
+    expect(uploads).toHaveLength(2);
+    expect(uploads.map((upload) => upload.init?.headers)).toEqual([
+      { "Idempotency-Key": "meal-0199a111-b222-7ccc-8ddd-eeeeeeeeeeee-photo-photo-1" },
+      { "Idempotency-Key": "meal-0199a111-b222-7ccc-8ddd-eeeeeeeeeeee-photo-photo-2" },
+    ]);
+    expect(uploads.map((upload) => (upload.init?.body as FormData).getAll("photos"))).toEqual([[first], [second]]);
+    expect(uploads.map((upload) => (upload.init?.body as FormData).get("comment_0"))).toEqual(["Sauce à part", "Dessert"]);
+    expect(uploads.map((upload) => (upload.init?.body as FormData).get("origin"))).toEqual(["homemade", "prepared"]);
   });
 
   it("returns uploaded photo records before analysis so a failed retry does not resend them", async () => {

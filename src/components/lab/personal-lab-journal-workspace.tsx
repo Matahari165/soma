@@ -275,7 +275,7 @@ export function PersonalLabJournalWorkspace({
         <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
       <div key={`meal-${activeDate}`} className={`personal-lab-meal-column ${styles.stitchMealColumn} lg:col-span-5 lg:order-2 space-y-7 animate-date-fade animate-stagger-1`} data-purpose="nutrition-journal">
-        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} designVariant="v1" />
+        <MealJournal date={data.todayDate} today={data.todayDate} className="meal-journal-lab" variant="lab" selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} publishMealTotals disabledSlots={disabledSlots} hideAddMealButton={hideAddMealButton} allowTargetEditing designVariant="v1" />
       </div>
     </div>
   </div>;
