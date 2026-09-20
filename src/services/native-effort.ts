@@ -1,8 +1,7 @@
 import "server-only";
 
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
-import { exerciseSummaryFromRecord, getNativeActivityAnalytics } from "@/services/health-analytics";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { allImportedExercises, getNativeActivityAnalytics } from "@/services/health-analytics";
 
 const RAW_KEYS = ["steps", "exercise_minutes", "active_energy_kcal", "zone_minutes"] as const;
 
@@ -98,23 +97,6 @@ export function nativeEffortPayload(data: HealthAnalytics) {
     }) : [],
     exercises: data.exercises.map((exercise) => ({ ...exercise, provenance: "google_health" as const })),
   };
-}
-
-async function allImportedExercises(userId: string) {
-  const admin = createCloudflareAdminClient();
-  const pageSize = 500;
-  const records: ReturnType<typeof exerciseSummaryFromRecord>[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await admin.from("health_records")
-      .select("source_record_id,civil_date,start_time,end_time,payload")
-      .eq("user_id", userId).eq("data_type", "exercise")
-      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
-      .range(offset, offset + pageSize - 1);
-    if (error) throw new Error("Exercise history could not be loaded.");
-    const page = (data ?? []).map(exerciseSummaryFromRecord);
-    records.push(...page);
-    if (page.length < pageSize) return records;
-  }
 }
 
 export async function getNativeEffort(userId: string) {

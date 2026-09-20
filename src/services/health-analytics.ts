@@ -551,10 +551,32 @@ export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSumma
     };
 }
 
+export async function allImportedExercises(userId: string): Promise<ExerciseSummary[]> {
+  const admin = createCloudflareAdminClient();
+  const pageSize = 500;
+  const records: ExerciseSummary[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await admin.from("health_records")
+      .select("source_record_id,civil_date,start_time,end_time,payload")
+      .eq("user_id", userId).eq("data_type", "exercise")
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Exercise history could not be loaded.");
+    const page = (data ?? []).map(exerciseSummaryFromRecord);
+    records.push(...page);
+    if (page.length < pageSize) return records;
+  }
+}
+
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
 export function getSleepAnalyticsForUser(user: SomaUser) { return loadHealthAnalytics("sleep", user.id); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
-export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
+export async function getActivityAnalytics() {
+  const analytics = await loadHealthAnalytics("activity");
+  if (isLocalPreviewMode()) return analytics;
+  const user = await getCurrentUser();
+  return user ? { ...analytics, exercises: await allImportedExercises(user.id) } : analytics;
+}
 export function getNativeActivityAnalytics(userId: string) { return loadHealthAnalytics("activity", userId); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }
