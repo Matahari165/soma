@@ -22,6 +22,7 @@ const publicPaths = [
 
 const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
 const nativeAuthPrefix = "/api/native/v1/auth/";
+const nativeGoogleBridgePath = "/api/native/v2/auth/bridge";
 
 export function requestBodyLimitForPath(pathname: string) {
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
@@ -58,7 +59,8 @@ export async function middleware(request: NextRequest) {
     return response;
   };
   const publicMachineRoute = publicMachinePaths.some((path) => request.nextUrl.pathname.startsWith(path));
-  const publicNativeAuthRoute = request.nextUrl.pathname.startsWith(nativeAuthPrefix);
+  const publicNativeAuthRoute = request.nextUrl.pathname.startsWith(nativeAuthPrefix)
+    || request.nextUrl.pathname === nativeGoogleBridgePath;
   const bearerRequest = /^Bearer [A-Za-z0-9_-]{32,}$/.test(request.headers.get("authorization") ?? "");
   const unsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
   if (unsafeMethod) {

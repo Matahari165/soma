@@ -28,6 +28,15 @@ describe("unauthenticated auth routes", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("allows the native Supabase bridge to verify an originless JWT itself", async () => {
+    const response = await middleware(new NextRequest("https://soma.example/api/native/v2/auth/bridge", {
+      method: "POST",
+      headers: { authorization: "Bearer header.payload.signature", host: "soma.example" },
+    }));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("lets native auth handlers return JSON for originless mutations", async () => {
     const token = "a".repeat(43);
     const authorized = await middleware(new NextRequest("https://soma.example/api/native/v1/auth/session", {
