@@ -141,6 +141,10 @@
 		F7AC5A39C0317D31BE45B6E6 /* ChartUnavailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */; };
 		FA39D8FA4EADC51EEDC5F7A8 /* AccountDeletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22538519D9BDC92B61625BBA /* AccountDeletionView.swift */; };
 		FE2E6979B2363290DB1B9F10 /* JournalVariableEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C9EE4851DC2732A71F5CA7 /* JournalVariableEditorView.swift */; };
+		A00000000000000000000001 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
+		A00000000000000000000002 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
+		A00000000000000000000003 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
+		A00000000000000000000004 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -214,6 +218,8 @@
 		EE49280B07228D4794AA3ABF /* ScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScaffold.swift; sourceTree = "<group>"; };
 		F42CA9D77DB2222DF4BE9806 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A00000000000000000000005 /* SchibstedGrotesk.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SchibstedGrotesk.ttf; sourceTree = "<group>"; };
+		A00000000000000000000006 /* AzeretMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AzeretMono.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -377,6 +383,15 @@
 			path = Journal;
 			sourceTree = "<group>";
 		};
+		A00000000000000000000007 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000005 /* SchibstedGrotesk.ttf */,
+				A00000000000000000000006 /* AzeretMono.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		AEDB86E4E75469EB3FBD82D6 /* SomaApp */ = {
 			isa = PBXGroup;
 			children = (
@@ -385,6 +400,7 @@
 				DFBBF4424741EA3A44C381AA /* AnalysisRelationList.swift */,
 				366C20FFC5747948E9D5D7BE /* AnalysisView.swift */,
 				86CE441AF5E495F8828D6916 /* AppIcon.icon */,
+				A00000000000000000000007 /* Fonts */,
 				492A88C4D9678A2D190181FF /* AppModel.swift */,
 				4F56C028536CD5E3AAA0B606 /* Assets.xcassets */,
 				224766560DE9DD880F8B8101 /* DayView.swift */,
@@ -516,6 +532,8 @@
 			files = (
 				C337B537A8A1C9A6629FAA8E /* AppIcon.icon in Resources */,
 				38780C04E4497C05AC3970CF /* Assets.xcassets in Resources */,
+				A00000000000000000000001 /* SchibstedGrotesk.ttf in Resources */,
+				A00000000000000000000003 /* AzeretMono.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -525,6 +543,8 @@
 			files = (
 				F36DB90005DC9EEC1750E665 /* AppIcon.icon in Resources */,
 				CAA1264157384AA6324B1428 /* Assets.xcassets in Resources */,
+				A00000000000000000000002 /* SchibstedGrotesk.ttf in Resources */,
+				A00000000000000000000004 /* AzeretMono.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

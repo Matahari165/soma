@@ -103,10 +103,25 @@ describe("native Personal Lab API", () => {
     expect(response.status).toBe(200);
     const nativePayload = await response.json();
     const webPayload = await webResponse.json();
-    expect(nativePayload).toEqual({ period: 30, ...matrix });
+    expect(nativePayload).toEqual({ period: 30, ...matrix, meaningfulRelationsWithoutStability: [], publishedRelationIDs: [] });
     expect(webPayload).toEqual({ rows: matrix.rows, outcomes: matrix.outcomes, periods: matrix.periods });
     expect(nativePayload).toMatchObject(webPayload);
     expect(getPersonalLabSnapshot).toHaveBeenCalledWith(user, { periods: [30] });
+  });
+
+  it("publishes the full matrix using the server's stability gate", async () => {
+    const base = {
+      predictorId: "sleep_minutes", outcomeId: "recovery", lagDays: 0, period: 30,
+      excluded: false, featureEligible: true, qValue: 0.01,
+      practicallyMeaningful: true, stable: true,
+    };
+    vi.mocked(getPersonalLabSnapshot).mockResolvedValue({ matrix: {
+      ...matrix,
+      rows: [{ ...matrix.rows[0], relations: [base, { ...base, predictorId: "steps", stable: false }] }],
+    } } as never);
+    const response = await getMatrix(new NextRequest("https://soma.example/api/native/v1/lab/matrix?period=30"));
+    expect(response.status).toBe(200);
+    expect((await response.json()).publishedRelationIDs).toEqual(["sleep_minutes:recovery:0:30"]);
   });
 
   it("rejects malformed dates, journal bodies and matrix periods", async () => {

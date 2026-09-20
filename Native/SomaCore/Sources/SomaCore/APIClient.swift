@@ -60,6 +60,54 @@ public actor APIClient {
         try await get(path: "/api/native/v1/lab/day?date=\(date.rawValue)")
     }
 
+    public func overview() async throws -> NativeOverviewResponse {
+        try await get(path: "/api/native/v1/lab/overview")
+    }
+
+    public func getNutrition(for date: LocalDate, days: Int) async throws -> NativeNutritionResponse {
+        let requestedDays = [7, 14, 30].contains(days) ? days : 30
+        return try await get(path: "/api/native/v1/nutrition?date=\(date.rawValue)&days=\(requestedDays)")
+    }
+
+    public func upsertNutritionSupplementEntry(_ body: NutritionSupplementEntryRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/entries", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionSupplementEntry(id: String, body: NutritionSupplementEntryUpdateRequest) async throws -> NutritionSupplementEntryMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/entries/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionSupplementEntry(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/supplements/entries/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func createNutritionSupplementDefinition(_ body: NutritionSupplementDefinitionCreateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionSupplementDefinition(id: String, body: NutritionSupplementDefinitionUpdateRequest) async throws -> NutritionSupplementDefinitionMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/supplements/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionSupplementDefinition(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/supplements/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
+    public func createNutritionRecipe(_ body: NutritionRecipeCreateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/recipes", method: "POST", body: body, authenticated: true))
+    }
+
+    public func updateNutritionRecipe(id: String, body: NutritionRecipeUpdateRequest) async throws -> NutritionRecipeMutationResponse {
+        try await perform(request(path: "/api/native/v1/nutrition/recipes/\(pathComponent(id))", method: "PATCH", body: body, authenticated: true))
+    }
+
+    public func deleteNutritionRecipe(id: String) async throws {
+        let response: EmptyResponse = try await perform(request(path: "/api/native/v1/nutrition/recipes/\(pathComponent(id))", method: "DELETE", body: Optional<String>.none, authenticated: true))
+        guard response.ok else { throw APIError.invalidResponse }
+    }
+
     public func currentSession() async throws -> SessionUser {
         let response: SessionResponse = try await get(path: "/api/native/v1/auth/session")
         return response.user

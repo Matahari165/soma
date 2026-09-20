@@ -633,6 +633,8 @@ public struct NativeMatrixResponse: Codable, Equatable, Sendable {
     public let outcomes: [MatrixOutcome]
     public let periods: [AnalysisPeriod]
     public let meaningfulRelations: [MatrixRelation]?
+    public let meaningfulRelationsWithoutStability: [MatrixRelation]?
+    public let publishedRelationIDs: [String]?
     public let topRelations: [MatrixRelation]?
     public let acuteHighlights: [MatrixRelation]?
     public let chronicHighlights: [MatrixRelation]?

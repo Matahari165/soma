@@ -3,6 +3,8 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @State private var destination: AppDestination
+    @State private var selectedTab: NativePrimaryTab
+    @State private var explorePath: [AppDestination] = []
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -24,6 +26,10 @@ struct RootView: View {
             .day
         }
         _destination = State(initialValue: initialDestination)
+        _selectedTab = State(initialValue: NativePrimaryTab(for: initialDestination))
+        if ![.day, .meals, .analysis, .settings].contains(initialDestination) {
+            _explorePath = State(initialValue: [initialDestination])
+        }
     }
 
     var body: some View {
@@ -33,7 +39,7 @@ struct RootView: View {
                     .accessibilityLabel("Ouverture de Soma en cours")
             } else if model.isAuthenticated && !model.hasCompletedOnboarding {
                 OnboardingView(displayName: model.currentUser?.displayName ?? "") { openHealth in
-                    destination = openHealth ? .health : .day
+                    navigate(to: openHealth ? .health : .day)
                 }
             } else if model.isAuthenticated {
                 authenticatedContent
@@ -59,10 +65,24 @@ struct RootView: View {
     private var authenticatedContent: some View {
         #if os(macOS)
         NavigationSplitView {
-            List(AppDestination.allCases, selection: $destination) { destination in
-                Label(destination.title, systemImage: destination.systemImage)
-                    .tag(destination)
+            List(selection: $destination) {
+                Section {
+                    sidebarRow(.day)
+                    sidebarRow(.meals)
+                    sidebarRow(.analysis)
+                }
+                Section("Signaux") {
+                    sidebarRow(.sleep)
+                    sidebarRow(.recovery)
+                    sidebarRow(.activity)
+                }
+                Section("Données") {
+                    sidebarRow(.health)
+                    sidebarRow(.export)
+                    sidebarRow(.settings)
+                }
             }
+            .listStyle(.sidebar)
             .navigationTitle("Soma")
             .navigationSplitViewColumnWidth(min: 188, ideal: 208, max: 240)
             .safeAreaInset(edge: .bottom) {
@@ -75,16 +95,38 @@ struct RootView: View {
                 .id(destination)
         }
         #else
-        TabView(selection: $destination) {
-            ForEach(AppDestination.allCases) { tab in
-                NavigationStack {
-                    destinationView(for: tab)
+        TabView(selection: $selectedTab) {
+            NavigationStack { DayView() }
+                .tabItem { Label("Jour", systemImage: "calendar") }
+                .tag(NativePrimaryTab.day)
+            NavigationStack { MealsOverviewView() }
+                .tabItem { Label("Repas", systemImage: "fork.knife") }
+                .tag(NativePrimaryTab.meals)
+            NavigationStack { AnalysisView() }
+                .tabItem { Label("Analyses", systemImage: "waveform.path.ecg") }
+                .tag(NativePrimaryTab.analysis)
+            NavigationStack(path: $explorePath) {
+                List {
+                    Section("Signaux") {
+                        exploreLink(.sleep)
+                        exploreLink(.recovery)
+                        exploreLink(.activity)
+                    }
+                    Section("Données") {
+                        exploreLink(.health)
+                        exploreLink(.export)
+                    }
                 }
-                .tabItem {
-                    Label(tab.title, systemImage: tab.systemImage)
+                .navigationTitle("Explorer")
+                .navigationDestination(for: AppDestination.self) { target in
+                    destinationView(for: target)
                 }
-                .tag(tab)
             }
+            .tabItem { Label("Explorer", systemImage: "chart.xyaxis.line") }
+            .tag(NativePrimaryTab.explore)
+            NavigationStack { SettingsView { navigate(to: $0) } }
+                .tabItem { Label("Réglages", systemImage: "gearshape") }
+                .tag(NativePrimaryTab.settings)
         }
         .tint(SomaTheme.primary)
         #endif
@@ -101,7 +143,41 @@ struct RootView: View {
         case .recovery: RecoveryView()
         case .activity: ActivityView()
         case .export: ExportView()
-        case .settings: SettingsView { destination = $0 }
+        case .settings: SettingsView { navigate(to: $0) }
+        }
+    }
+
+    private func exploreLink(_ target: AppDestination) -> some View {
+        NavigationLink(value: target) {
+            Label(target.title, systemImage: target.systemImage)
+                .frame(minHeight: 44)
+        }
+    }
+
+    private func sidebarRow(_ target: AppDestination) -> some View {
+        Label(target.title, systemImage: target.systemImage)
+            .tag(target)
+    }
+
+    private func navigate(to target: AppDestination) {
+        destination = target
+        #if os(iOS)
+        selectedTab = NativePrimaryTab(for: target)
+        explorePath = selectedTab == .explore ? [target] : []
+        #endif
+    }
+}
+
+private enum NativePrimaryTab: Hashable {
+    case day, meals, analysis, explore, settings
+
+    init(for destination: AppDestination) {
+        switch destination {
+        case .day: self = .day
+        case .meals: self = .meals
+        case .analysis: self = .analysis
+        case .settings: self = .settings
+        default: self = .explore
         }
     }
 }
