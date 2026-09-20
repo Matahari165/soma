@@ -66,6 +66,7 @@ final class AppModel {
     var isLoadingMeals = false
     var mealsErrorMessage: String?
     var isAuthenticated = false
+    var isPreviewMode: Bool { ProcessInfo.processInfo.arguments.contains("--preview-data") }
     var isBootstrapping = true
     var isLoading = false
     var isRecoveryLoading = false
@@ -101,16 +102,19 @@ final class AppModel {
     private var analysisRequestGeneration = 0
 
     init() {
+        let previewMode = ProcessInfo.processInfo.arguments.contains("--preview-data")
         activeDate = (try? LocalDate.today()) ?? (try! LocalDate("2026-09-19"))
+        let tokenStore: any TokenStore = previewMode ? PreviewTokenStore() : KeychainTokenStore()
         let client = APIClient(
             baseURL: URL(string: "https://soma-neon-phi.vercel.app")!,
-            tokenStore: KeychainTokenStore()
+            tokenStore: tokenStore,
+            networkEnabled: !previewMode
         )
         self.client = client
-        let store = try? MealDraftStore()
+        let store = previewMode ? nil : (try? MealDraftStore())
         mealDraftStore = store
         mealCoordinator = store.map { MealSubmissionCoordinator(api: client, store: $0) }
-        if ProcessInfo.processInfo.arguments.contains("--preview-data") {
+        if previewMode {
             loadSyntheticPreview()
             if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
                 hasCompletedOnboarding = false
@@ -157,6 +161,7 @@ final class AppModel {
     }
 
     func loginWithGoogle() async {
+        guard !isPreviewMode else { return }
         guard !isLoading else { return }
         invalidateSleep()
         isLoading = true
@@ -207,6 +212,7 @@ final class AppModel {
     }
 
     func handleAuthenticationURL(_ url: URL) {
+        guard !isPreviewMode else { return }
         _ = googleAuthentication.handle(url)
     }
 
@@ -270,26 +276,7 @@ final class AppModel {
     }
 
     func loadNutrition(for date: LocalDate, days: Int) async throws -> NativeNutritionResponse {
-        if ProcessInfo.processInfo.arguments.contains("--preview-data") {
-            let from = (try? date.adding(days: -(max(days, 1) - 1)).rawValue) ?? date.rawValue
-            return NativeNutritionResponse(
-                date: date.rawValue,
-                timezone: "Europe/Zurich",
-                period: NutritionPeriod(from: from, to: date.rawValue, days: days),
-                score: nil,
-                rolling: [],
-                scoreTrend: [],
-                daily: nil,
-                nutritionHistory: [],
-                foodGroupHistory: [],
-                targets: nil,
-                provenance: NutritionProvenance(
-                    source: "preview", calculation: "none", from: from, to: date.rawValue,
-                    confirmedMealCount: 0, measuredDays: 0,
-                    note: "Aucune mesure nutritionnelle dans la démonstration."
-                )
-            )
-        }
+        if isPreviewMode { return PreviewNutrition.response(for: date, days: days) }
         return try await client.getNutrition(for: date, days: days)
     }
 
@@ -449,7 +436,7 @@ final class AppModel {
         do {
             try await client.deleteAccount(confirmation: confirmation)
             await googleAuthentication.signOut()
-            if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
+            if let ownerUserID { _ = try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
             clearAuthenticatedState()
             return true
         } catch APIError.unauthorized {
@@ -462,6 +449,7 @@ final class AppModel {
     }
 
     func refreshSleep() async {
+        guard !isPreviewMode else { return }
         sleepRequestGeneration += 1
         let generation = sleepRequestGeneration
         isSleepLoading = true
@@ -487,6 +475,7 @@ final class AppModel {
     }
 
     func refreshEffort() async {
+        guard !isPreviewMode else { return }
         effortRequestGeneration += 1
         let generation = effortRequestGeneration
         effortState = .loading
@@ -504,6 +493,7 @@ final class AppModel {
     }
 
     func refreshRecovery() async {
+        guard !isPreviewMode else { return }
         let generation = authenticationGeneration
         isRecoveryLoading = true
         recoveryErrorMessage = nil
@@ -522,6 +512,7 @@ final class AppModel {
     }
 
     func shiftDate(by days: Int) async {
+        guard !isPreviewMode else { return }
         guard let shifted = try? activeDate.adding(days: days) else { return }
         journalAutosaveTask?.cancel()
         if journalDraft?.hasUnsavedChanges == true {
@@ -1058,6 +1049,7 @@ final class AppModel {
     }
 
     func logout() async {
+        guard !isPreviewMode else { return }
         journalAutosaveTask?.cancel()
         if journalDraft?.hasUnsavedChanges == true {
             guard await enqueueJournalSave(mode: "draft", variableIDs: nil) else { return }
@@ -1076,7 +1068,7 @@ final class AppModel {
         do { try await client.logout() }
         catch { errorMessage = "La session locale est fermée. La déconnexion distante n’a pas pu être confirmée." }
         await googleAuthentication.signOut()
-        if let ownerUserID { try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
+        if let ownerUserID { _ = try? await mealDraftStore?.removeAll(ownerUserID: ownerUserID) }
         isAuthenticated = false
         currentUser = nil
         hasCompletedOnboarding = true
@@ -1260,4 +1252,10 @@ final class AppModel {
     private static let previewPlatform: SessionPlatform = .ios
     private static let previewDeviceName = "iPhone"
     #endif
+}
+
+private struct PreviewTokenStore: TokenStore {
+    func read() throws -> String? { "preview-only" }
+    func save(_ token: String) throws {}
+    func clear() throws {}
 }

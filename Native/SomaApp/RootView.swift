@@ -10,6 +10,8 @@ struct RootView: View {
         let arguments = ProcessInfo.processInfo.arguments
         let initialDestination: AppDestination = if arguments.contains("--sleep-preview") {
             .sleep
+        } else if arguments.contains("--preview-analysis") {
+            .analysis
         } else if arguments.contains("--preview-settings") {
             .settings
         } else if arguments.contains("--health-preview") {
@@ -86,9 +88,16 @@ struct RootView: View {
             .navigationTitle("Soma")
             .navigationSplitViewColumnWidth(min: 188, ideal: 208, max: 240)
             .safeAreaInset(edge: .bottom) {
-                Button("Se déconnecter") { Task { await model.logout() } }
-                    .buttonStyle(.plain)
-                    .padding()
+                if model.isPreviewMode {
+                    Label("Démo · données fictives · lecture seule", systemImage: "eye")
+                        .font(.caption)
+                        .foregroundStyle(SomaTheme.secondary)
+                        .padding()
+                } else {
+                    Button("Se déconnecter") { Task { await model.logout() } }
+                        .buttonStyle(.plain)
+                        .padding()
+                }
             }
         } detail: {
             destinationView(for: destination)
@@ -124,7 +133,7 @@ struct RootView: View {
             }
             .tabItem { Label("Explorer", systemImage: "chart.xyaxis.line") }
             .tag(NativePrimaryTab.explore)
-            NavigationStack { SettingsView { navigate(to: $0) } }
+            NavigationStack { SettingsView { navigate(to: $0) }.disabled(model.isPreviewMode) }
                 .tabItem { Label("Réglages", systemImage: "gearshape") }
                 .tag(NativePrimaryTab.settings)
         }
@@ -142,8 +151,23 @@ struct RootView: View {
         case .sleep: SleepView()
         case .recovery: RecoveryView()
         case .activity: ActivityView()
-        case .export: ExportView()
-        case .settings: SettingsView { navigate(to: $0) }
+        case .export:
+            if model.isPreviewMode {
+                ContentUnavailableView("Export désactivé en démonstration", systemImage: "square.and.arrow.up", description: Text("Les données affichées sont fictives."))
+            } else {
+                ExportView()
+            }
+        case .settings:
+            SettingsView { navigate(to: $0) }
+                .disabled(model.isPreviewMode)
+                .safeAreaInset(edge: .top) {
+                    if model.isPreviewMode {
+                        Text("Mode démonstration · actions désactivées")
+                            .font(.caption)
+                            .foregroundStyle(SomaTheme.secondary)
+                            .padding(12)
+                    }
+                }
         }
     }
 

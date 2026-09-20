@@ -102,9 +102,11 @@
 		B37D8515605C2C7CEA2FE771 /* TimeSeriesChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331437DA34C389557545D653 /* TimeSeriesChart.swift */; };
 		B6517F1BA7F662EDA98C2943 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CD292F9F511616D2B37913 /* ActivityView.swift */; };
 		B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
+		B6D3C8046F23FDE269319284 /* PreviewNutrition.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B302 /* PreviewNutrition.swift */; };
 		B7FF3271D30928FA4578CCDD /* SomaCore in Frameworks */ = {isa = PBXBuildFile; productRef = E5345FF1514A80610454C58E /* SomaCore */; };
 		B8D2176BA8CDC0FD3735148F /* DomainIndicatorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD13282B8F976EDF828D129A /* DomainIndicatorContent.swift */; };
 		B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */; };
+		B96E8F964ED5AAD472668168 /* PreviewNutrition.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECC157E6A7A69C9DF17B302 /* PreviewNutrition.swift */; };
 		BCC4C78BF6E563B797C97BE2 /* RecoverySignalReferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF68D017D6E296D4E9F0744 /* RecoverySignalReferenceView.swift */; };
 		BD46504C8B0E18F3858A705F /* SleepStagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FEF1C739B5E8131DC19F56 /* SleepStagesView.swift */; };
 		BDAE812A35AE59C7F42BA63D /* MealTimelineRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */; };
@@ -216,6 +218,7 @@
 		D80E85084ABF0B16420DBEFA /* MealTimelineRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTimelineRow.swift; sourceTree = "<group>"; };
 		DDB7BB49D178563E16A22148 /* JournalSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalSectionView.swift; sourceTree = "<group>"; };
 		DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeChartLibraryPreview.swift; sourceTree = "<group>"; };
+		DECC157E6A7A69C9DF17B302 /* PreviewNutrition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewNutrition.swift; sourceTree = "<group>"; };
 		DFBBF4424741EA3A44C381AA /* AnalysisRelationList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRelationList.swift; sourceTree = "<group>"; };
 		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SomaCore; path = SomaCore; sourceTree = SOURCE_ROOT; };
 		E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsBlock.swift; sourceTree = "<group>"; };
@@ -423,6 +426,7 @@
 				F453133F3A2F05F3E407AA85 /* Soma-macOS.entitlements */,
 				1BB15031A0DA5C0CC3F85D31 /* SomaApp.swift */,
 				4F3029B284D51EBBA0D24E58 /* Theme.swift */,
+				DECC157E6A7A69C9DF17B302 /* PreviewNutrition.swift */,
 				C637B41B4C80FBB0B3924462 /* Components */,
 				0284E1F8B9830435E681C197 /* Export */,
 				18A371A40807DC6B676E6DD9 /* Health */,
@@ -611,6 +615,7 @@
 				47DAB19FFB852EFD9B80E647 /* MetricTrendBlock.swift in Sources */,
 				C1EAA5195EFE7A7CE29975D4 /* MetricTrendContent.swift in Sources */,
 				B96E8F964ED5AAD472668167 /* NativeChartLibraryPreview.swift in Sources */,
+				B96E8F964ED5AAD472668168 /* PreviewNutrition.swift in Sources */,
 				17103205A11CA20AB35D37C1 /* NativeGoogleAuthCoordinator.swift in Sources */,
 				834D27005FD99E4347C89F42 /* OnboardingDraft.swift in Sources */,
 				D7C1A64395AA2B562C5AE4FB /* OnboardingView.swift in Sources */,
@@ -683,6 +688,7 @@
 				C48E8F0DE38BAABEDF9D2983 /* MetricTrendBlock.swift in Sources */,
 				467956225B13ED7A66BC8031 /* MetricTrendContent.swift in Sources */,
 				B6D3C8046F23FDE269319283 /* NativeChartLibraryPreview.swift in Sources */,
+				B6D3C8046F23FDE269319284 /* PreviewNutrition.swift in Sources */,
 				88FEF3796A977F1431875072 /* NativeGoogleAuthCoordinator.swift in Sources */,
 				0ABAAA711853A9F33C14C750 /* OnboardingDraft.swift in Sources */,
 				20810F51353BD441509BD635 /* OnboardingView.swift in Sources */,

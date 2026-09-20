@@ -1357,11 +1357,16 @@ private struct NutritionSupplementDefinitionEditor: View {
 }
 
 private struct NutritionWebLink: View {
+    @Environment(AppModel.self) private var model
     let title: String
     let fragment: String
 
     var body: some View {
-        if let url = URL(string: "https://soma-neon-phi.vercel.app/meals#\(fragment)") {
+        if model.isPreviewMode {
+            Text("Lien Web désactivé dans la démonstration")
+                .font(.caption)
+                .foregroundStyle(SomaTheme.secondary)
+        } else if let url = URL(string: "https://soma-neon-phi.vercel.app/meals#\(fragment)") {
             Link(destination: url) {
                 Label(title, systemImage: "arrow.up.right.square")
                     .font(.callout)

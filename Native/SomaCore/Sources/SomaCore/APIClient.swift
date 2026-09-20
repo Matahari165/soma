@@ -7,11 +7,13 @@ public actor APIClient {
     private let baseURL: URL
     private let session: URLSession
     private let tokenStore: any TokenStore
+    private let networkEnabled: Bool
 
-    public init(baseURL: URL, session: URLSession = .shared, tokenStore: any TokenStore) {
+    public init(baseURL: URL, session: URLSession = .shared, tokenStore: any TokenStore, networkEnabled: Bool = true) {
         self.baseURL = baseURL
         self.session = session
         self.tokenStore = tokenStore
+        self.networkEnabled = networkEnabled
     }
 
     public func login(email: String, password: String, platform: String, deviceName: String) async throws -> SessionResponse {
@@ -316,11 +318,13 @@ public actor APIClient {
     }
 
     private func perform<Response: Decodable>(_ request: URLRequest) async throws -> Response {
+        guard networkEnabled else { throw URLError(.notConnectedToInternet) }
         let (data, response) = try await session.data(for: request)
         return try decode(data: data, response: response, request: request)
     }
 
     private func performUpload<Response: Decodable>(_ request: URLRequest, fromFile fileURL: URL) async throws -> Response {
+        guard networkEnabled else { throw URLError(.notConnectedToInternet) }
         let (data, response) = try await session.upload(for: request, fromFile: fileURL)
         return try decode(data: data, response: response, request: request)
     }
