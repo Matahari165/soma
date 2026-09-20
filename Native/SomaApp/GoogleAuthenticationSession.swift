@@ -19,7 +19,7 @@ final class GoogleAuthenticationSession: NSObject, ASWebAuthenticationPresentati
         }
         activeAnchor = anchor
         return try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { [weak self] callbackURL, error in
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(callbackScheme)) { [weak self] callbackURL, error in
                 self?.activeSession = nil
                 self?.activeAnchor = nil
                 if let authenticationError = error as? ASWebAuthenticationSessionError,
