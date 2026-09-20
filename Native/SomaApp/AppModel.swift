@@ -88,6 +88,7 @@ final class AppModel {
     private var sessionsRequestGeneration = 0
     private var effortRequestGeneration = 0
     private var authenticationGeneration = 0
+    private var expiredJournalOwnerUserID: String?
     private var mealsRequestGeneration = 0
     private var mealOperationGeneration: [MealType: Int] = [:]
     @ObservationIgnored private var journalAutosaveTask: Task<Void, Never>?
@@ -137,6 +138,7 @@ final class AppModel {
             #endif
             let context = try await client.login(email: email, password: password, platform: platform, deviceName: deviceName)
             authenticationGeneration += 1
+            let resumesExpiredJournal = reconcileExpiredJournal(for: context.user.id)
             currentUser = context.user
             isAuthenticated = true
             currentUser = context.user
@@ -144,6 +146,7 @@ final class AppModel {
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         }
     }
@@ -169,12 +172,14 @@ final class AppModel {
             let callbackURL = try await googleAuthenticationSession.authenticate(at: authenticationURL, callbackScheme: callbackScheme)
             let context = try await client.completeGoogleLogin(callbackURL: callbackURL, callbackScheme: callbackScheme, deviceName: deviceName, attempt: attempt)
             authenticationGeneration += 1
+            let resumesExpiredJournal = reconcileExpiredJournal(for: context.user.id)
             isAuthenticated = true
             currentUser = context.user
             currentSession = context.session
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         } catch NativeOAuthError.cancelled {
             // Closing the system authentication sheet is an intentional, non-error outcome.
@@ -204,12 +209,14 @@ final class AppModel {
             }
             let context = try await client.sessionContext()
             authenticationGeneration += 1
+            let resumesExpiredJournal = reconcileExpiredJournal(for: context.user.id)
             currentUser = context.user
             currentSession = context.session
             isAuthenticated = true
             hasCompletedOnboarding = context.hasCompletedOnboarding
             guard context.hasCompletedOnboarding else { return }
             try await refreshDay()
+            if resumesExpiredJournal { _ = await enqueueJournalSave(mode: "draft", variableIDs: nil) }
             await restoreMealDrafts()
         } catch APIError.unauthorized {
             expireLocalSession()
@@ -977,6 +984,7 @@ final class AppModel {
         hasCompletedOnboarding = true
         day = nil
         journalDraft = nil
+        expiredJournalOwnerUserID = nil
         journalSaveState = .idle
         matrix = nil
         loadedAnalysisPeriod = nil
@@ -1014,6 +1022,7 @@ final class AppModel {
 
     private func expireLocalSession() {
         let ownerUserID = currentUser?.id
+        let preservesJournalDraft = journalDraft?.hasUnsavedChanges == true && ownerUserID != nil
         authenticationGeneration += 1
         dayRequestGeneration += 1
         journalSaveGeneration += 1
@@ -1026,9 +1035,17 @@ final class AppModel {
         hasCompletedOnboarding = true
         currentSession = nil
         deviceSessions = []
-        day = nil
-        journalDraft = nil
-        journalSaveState = .idle
+        if preservesJournalDraft {
+            expiredJournalOwnerUserID = ownerUserID
+            journalSaveState = .failed("Reconnecte-toi pour enregistrer ce brouillon.")
+            failedJournalSave = ("draft", nil)
+        } else {
+            day = nil
+            journalDraft = nil
+            expiredJournalOwnerUserID = nil
+            journalSaveState = .idle
+            failedJournalSave = nil
+        }
         matrix = nil
         loadedAnalysisPeriod = nil
         analysisRequestGeneration += 1
@@ -1060,6 +1077,8 @@ final class AppModel {
         hasCompletedOnboarding = true
         deviceSessions = []
         day = nil
+        journalDraft = nil
+        expiredJournalOwnerUserID = nil
         matrix = nil
         recovery = nil
         mealDrafts = [:]
@@ -1100,6 +1119,19 @@ final class AppModel {
         }
         day = response
         journalDraft = JournalDraft(day: response)
+    }
+
+    private func reconcileExpiredJournal(for userID: String) -> Bool {
+        guard let ownerUserID = expiredJournalOwnerUserID else { return false }
+        let resumesExpiredJournal = ownerUserID == userID
+        if ownerUserID != userID {
+            day = nil
+            journalDraft = nil
+            journalSaveState = .idle
+            failedJournalSave = nil
+        }
+        expiredJournalOwnerUserID = nil
+        return resumesExpiredJournal
     }
 
     private static let previewDay = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":"/10","options":[],"position":10,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"walk","name":"Marche","variableType":"number","unit":"min","options":[],"position":20,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"caffeine","name":"Caféine","variableType":"number","unit":"mg","options":[],"position":30,"isActive":true,"defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"},{"id":"meditation","name":"Méditation","variableType":"boolean","unit":null,"options":[],"position":40,"isActive":true,"defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":0},{"variableId":"meditation","entryDate":"2026-09-19","value":false}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":["walk"]}},"meals":{"breakfast":null,"lunch":{"id":"meal-lunch","mealDate":"2026-09-19","mealType":"lunch","status":"draft","entryState":"skipped","note":null},"dinner":null,"snack":null}}"#
