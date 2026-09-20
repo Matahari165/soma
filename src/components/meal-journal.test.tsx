@@ -391,8 +391,11 @@ describe("MealJournal", () => {
     expect(html).toContain("Analysis results");
     expect(html).toContain("Nutritional summary");
     expect(html).toContain("Sensations");
+    expect(html).toContain("Finalisation…");
     expect(html).toContain("<details");
     expect(html).toContain("open=\"\"");
+    expect(html).not.toContain("Confirm result");
+    expect(html).not.toContain("Valider le repas");
     expect(html.match(/Analysis results/g)).toHaveLength(1);
   });
 
