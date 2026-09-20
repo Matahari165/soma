@@ -5,6 +5,7 @@ type QueryCall = {
   table: string;
   filters: Array<{ method: string; column?: string; value?: unknown }>;
   limits: number[];
+  range?: [number, number];
 };
 
 const testState = vi.hoisted(() => ({
@@ -45,7 +46,7 @@ function resultFor(query: QueryCall): QueryResult {
 
   const dataType = query.filters.find((filter) => filter.method === "eq" && filter.column === "data_type")?.value;
   if (dataType === "sleep") return { data: testState.sleeps, error: null };
-  if (dataType === "exercise") return { data: testState.exercises, error: null };
+  if (dataType === "exercise") return { data: query.range ? testState.exercises.slice(query.range[0], query.range[1] + 1) : testState.exercises, error: null };
   if (dataType === "heart-rate") return { data: testState.heartRates, error: null };
   return { data: [], error: null };
 }
@@ -67,6 +68,7 @@ function createQuery(table: string) {
     return chain;
   });
   chain.limit = vi.fn((value: number) => chain("limit", String(value)));
+  chain.range = vi.fn((from: number, to: number) => { query.range = [from, to]; return chain; });
   chain.maybeSingle = vi.fn(() => Promise.resolve(resultFor(query)));
   chain.then = ((resolve: Parameters<Promise<QueryResult>["then"]>[0], reject: Parameters<Promise<QueryResult>["then"]>[1]) => Promise.resolve(resultFor(query)).then(resolve, reject)) as unknown;
   testState.queries.push(query);
@@ -142,13 +144,16 @@ describe("health analytics first-screen loading", () => {
     });
   });
 
-  it("keeps exercise history bounded to the sessions shown on Effort", async () => {
-    await getActivityAnalytics();
+  it("keeps daily metrics bounded but loads the complete exercise history", async () => {
+    testState.exercises = Array.from({ length: 501 }, (_, index) => ({ source_record_id: `exercise-${index}`, civil_date: "2026-09-10", start_time: null, end_time: null, payload: { exercise: { exerciseType: "RUNNING" } } }));
+    const analytics = await getActivityAnalytics();
 
     expect(queriesFor("daily_health_metrics")[0]?.limits).toEqual([30]);
     expect(queriesFor("daily_scores")[0]?.limits).toEqual([30]);
     const exerciseQuery = queriesFor("health_records").find((query) => query.filters.some((filter) => filter.column === "data_type" && filter.value === "exercise"));
     expect(exerciseQuery?.limits).toEqual([20]);
+    expect(analytics.exercises).toHaveLength(501);
+    expect(queriesFor("health_records").filter((query) => query.range).map((query) => query.range)).toEqual([[0, 499], [500, 999]]);
     expect(queriesFor("health_records").some((query) => query.filters.some((filter) => filter.value === "heart-rate"))).toBe(false);
   });
 

@@ -21,21 +21,56 @@ struct ActivityView: View {
 
 private struct EffortContent: View {
     let snapshot: EffortSnapshot
+    @State private var selectedActivity: ActivityFilter = .all
 
     var body: some View {
-        if snapshot.latest == nil {
+        if snapshot.latest == nil && snapshot.exercises.isEmpty {
             ContentStateView(kind: .empty(title: "Aucune activité importée", detail: "Soma n’a reçu aucune mesure d’effort sur cette période. Une absence n’est pas affichée comme zéro."))
             evidence
         } else {
             LazyVStack(alignment: .leading, spacing: 32) {
-                summary
-                latestMetrics
-                if let exercise = snapshot.exercises.first { EffortExerciseView(exercise: exercise) }
-                trends
+                if snapshot.latest != nil {
+                    summary
+                    latestMetrics
+                }
+                activityHistory
+                if snapshot.latest != nil { trends }
                 if let zones = snapshot.latest?.zones, zones.hasMeasurements { zoneDistribution(zones) }
                 evidence
             }
         }
+    }
+
+    private var activityHistory: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader("Activités", trailing: "\(filteredExercises.count) séances")
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(ActivityFilter.allCases) { filter in
+                        Button(filter.title) { selectedActivity = filter }
+                            .buttonStyle(.bordered)
+                            .tint(selectedActivity == filter ? SomaTheme.primary : SomaTheme.secondary)
+                            .frame(minHeight: 44)
+                            .accessibilityAddTraits(selectedActivity == filter ? [.isSelected] : [])
+                    }
+                }
+            }
+            if filteredExercises.isEmpty {
+                Text("Aucune séance importée pour ce filtre.")
+                    .foregroundStyle(SomaTheme.secondary)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(filteredExercises) { exercise in
+                        EffortExerciseView(exercise: exercise)
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+
+    private var filteredExercises: [EffortExercise] {
+        snapshot.exercises.filter { selectedActivity.includes($0.type) }
     }
 
     private var summary: some View {
@@ -161,35 +196,60 @@ private struct EffortContent: View {
     }()
 }
 
+private enum ActivityFilter: String, CaseIterable, Identifiable {
+    case all, run, boxing, hiking, walking, strength
+
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .all: "Toutes"
+        case .run: "Run"
+        case .boxing: "Boxe"
+        case .hiking: "Randonnée"
+        case .walking: "Marche"
+        case .strength: "Musculation"
+        }
+    }
+    func includes(_ type: String) -> Bool {
+        let normalized = type.uppercased().replacingOccurrences(of: "-", with: "_")
+        return switch self {
+        case .all: true
+        case .run: ["RUNNING", "JOGGING", "TRAIL_RUNNING"].contains(normalized)
+        case .boxing: ["BOXING", "BOXE"].contains(normalized)
+        case .hiking: normalized == "HIKING"
+        case .walking: normalized == "WALKING"
+        case .strength: ["WEIGHT_TRAINING", "STRENGTH_TRAINING"].contains(normalized)
+        }
+    }
+}
+
 private struct EffortExerciseView: View {
     let exercise: EffortExercise
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Séance récente").font(.system(.title2, design: .serif)).accessibilityAddTraits(.isHeader)
+                Text(exercise.name).font(.headline)
                 Spacer()
                 Text(exercise.date).font(.caption.monospacedDigit()).foregroundStyle(SomaTheme.secondary)
             }
-            Text(exercise.name).font(.headline)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 16)], alignment: .leading, spacing: 12) {
-                value("Durée", exercise.durationMinutes, "min")
-                value("Calories", exercise.calories, "kcal")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], alignment: .leading, spacing: 12) {
                 value("Distance", exercise.distanceKm, "km", digits: 2)
+                value("Temps total", exercise.durationMinutes, "min")
+                value("Vitesse", exercise.averageSpeedKph, "km/h", digits: 1)
                 value("FC moyenne", exercise.averageHeartRate, "bpm")
-                value("Zones", exercise.zoneMinutes, "min")
+                value("Calories estimées", exercise.calories, "kcal")
             }
-            ChartProvenanceLabel(provenance: .healthSource(name: "Données Santé"))
         }
+        .padding(.vertical, 16)
     }
 
     @ViewBuilder private func value(_ label: String, _ number: Double?, _ unit: String, digits: Int = 0) -> some View {
-        if let number {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(label).font(.caption).foregroundStyle(SomaTheme.secondary)
-                Text("\(number.formatted(.number.precision(.fractionLength(digits)))) \(unit)").font(.body.monospacedDigit())
-            }
-            .accessibilityElement(children: .combine)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(SomaTheme.secondary)
+            Text(number.map { "\($0.formatted(.number.precision(.fractionLength(digits)))) \(unit)" } ?? "Indisponible")
+                .font(.body.monospacedDigit())
         }
+        .accessibilityElement(children: .combine)
     }
 }

@@ -280,6 +280,21 @@
 .exerciseTable tbody th { color: var(--effort-text); font-weight: 400; }
 .exerciseTable tbody th svg { margin-right: 6px; vertical-align: -2px; }
 .exerciseTable tbody th small { display: block; padding-left: 21px; color: var(--effort-muted); font-size: 10px; }
+.activityFilters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.activityFilters button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--effort-rule); border-radius: 4px; background: transparent; color: var(--effort-muted); font: 400 13px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
+.activityFilters button[aria-pressed="true"] { border-color: var(--effort-rule-strong); background: var(--lab-surface-selected, #222); color: var(--effort-text); }
+.activityFilters button:hover { color: var(--effort-text); border-color: var(--effort-rule-strong); }
+.activityFilters button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 3px; }
+.activityHistory { margin: 0; padding: 0; list-style: none; }
+.activityHistoryRow { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr); gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--effort-rule); }
+.activityHistoryIdentity { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.activityHistoryIdentity strong { font: 500 15px/21px var(--font-soma-ui), system-ui, sans-serif; color: var(--effort-text); }
+.activityHistoryIdentity span { font: 400 12px/18px var(--font-soma-mono), ui-monospace, monospace; color: var(--effort-muted); }
+.activityHistoryMetrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.activityHistoryMetrics div { min-width: 0; }
+.activityHistoryMetrics dt { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.activityHistoryMetrics dd { margin: 4px 0 0; color: var(--effort-text); font: 400 13px/20px var(--font-soma-mono), ui-monospace, monospace; overflow-wrap: anywhere; }
+.activityHistoryEmpty { margin: 0; padding: 16px 0; color: var(--effort-muted); font: 400 14px/21px var(--font-soma-ui), system-ui, sans-serif; }
 .empty { display: flex; min-height: 180px; align-items: center; gap: 16px; color: var(--effort-muted); }
 .empty h2 { margin: 0; color: var(--effort-text); font: 400 22px/28px Georgia, "Times New Roman", serif; }
 .empty p { margin: 4px 0 0; color: var(--effort-muted); font: 400 14px/20px var(--font-soma-ui), system-ui, sans-serif; }
@@ -288,6 +303,7 @@
   .scoreOverview { grid-template-columns: minmax(0, 420px) minmax(300px, 1fr); gap: 36px; }
   .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exerciseDetailGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .activityHistoryMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
@@ -318,6 +334,8 @@
   .trendGrid { grid-template-columns: 1fr; gap: 24px; }
   .featuredActivityMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .exerciseDetailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .activityHistoryRow { grid-template-columns: 1fr; gap: 12px; }
+  .activityHistoryMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sectionHeader { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 
