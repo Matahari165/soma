@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   applicationName: "Soma",
   description: "A personal health laboratory to understand the relationships between sleep, recovery, movement, and performance.",
   icons: {
-    icon: [{ url: "/icon.png?v=discobolus-5", type: "image/png" }],
-    shortcut: [{ url: "/favicon.ico?v=discobolus-5" }],
-    apple: [{ url: "/apple-icon.png?v=discobolus-5", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/icon.png?v=soma-symbol-1", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico?v=soma-symbol-1" }],
+    apple: [{ url: "/apple-icon.png?v=soma-symbol-1", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
