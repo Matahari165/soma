@@ -4,7 +4,9 @@
 const MAX_IMAGE_EDGE = 1024;
 const IMAGE_QUALITY = 0.75;
 const REENCODE_AFTER_BYTES = 800 * 1024;
-const MAX_NORMALIZED_BYTES = 8 * 1024 * 1024;
+// Vercel rejects a Function request body above 4.5 MB before our upload route
+// can parse it. Leave space for multipart framing and photo metadata.
+const MAX_NORMALIZED_BYTES = 4 * 1024 * 1024;
 
 function imageExtension(name: string) {
   const extension = name.lastIndexOf(".");

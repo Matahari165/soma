@@ -6,6 +6,15 @@ import type { MealRecord } from "@/domain/meal-record";
 import { AnalysisDetails, LabMealCard } from "./meal-card-variants";
 
 describe("LabMealCard nutrition chart", () => {
+  it("offers confirmation after analysis and a comment for each draft photo", () => {
+    const meal: MealRecord = { id: "meal-lunch", date: "2026-08-31", slot: "lunch", note: "Riz", photos: [{ id: "photo-one", url: "blob:one", origin: "homemade", comment: "Sauce à part" }], analysis: { ingredients: [], calories: { low: 200, likely: 250, high: 300 }, proteinGrams: { low: 5, likely: 8, high: 12 } }, mouthHeat: null, stomachLoad: null, status: "review" };
+    const props = { meal, slot: "lunch" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined, onConfirm: () => undefined, onPhotoComment: () => undefined };
+    const review = renderToStaticMarkup(<LabMealCard {...props} />);
+    expect(review).toContain("Valider le repas");
+    const draft = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, analysis: null, status: "draft" }} />);
+    expect(draft).toContain("Sauce à part");
+    expect(draft).toContain("commentaire facultatif");
+  });
   it("renders independent vertical meal targets for every nutrition metric", () => {
     const meal: MealRecord = {
       id: "meal-lunch-chart",
@@ -359,5 +368,4 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain("Retry");
   });
 });
-
 

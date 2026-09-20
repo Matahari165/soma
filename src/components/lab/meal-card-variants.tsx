@@ -193,6 +193,7 @@ export interface LabMealCardProps {
   analysisProgress?: { phase?: string; dishType?: string; foods: string[] } | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
+  onPhotoComment?: (photoId: string, comment: string) => void;
   onAnalyze: () => void;
   onCancelAnalysis: () => void;
   onNote: (note: string) => void;
@@ -217,10 +218,12 @@ export function LabMealCard({
   analysisProgress,
   onFiles,
   onRemovePhoto,
+  onPhotoComment,
   onAnalyze,
   onCancelAnalysis,
   onNote,
   onCorrection,
+  onConfirm,
   onEdit,
   onMarkSkipped,
   onMarkRecorded,
@@ -435,9 +438,15 @@ export function LabMealCard({
           >
             <X size={12} />
           </button>
+          <label className={styles.photoCommentLabel} htmlFor={`meal-${slot}-photo-${photo.id}-comment`}>Photo {idx + 1} · commentaire facultatif</label>
+          <input id={`meal-${slot}-photo-${photo.id}-comment`} className={styles.photoCommentInput} type="text" maxLength={240} value={photo.comment ?? ""} placeholder="Ex. : sauce à part" disabled={mutationBusy || processingFiles} onChange={(event) => onPhotoComment?.(photo.id, event.target.value)} />
         </div>
       ))}
     </div>
+  );
+
+  const confirmAction = status === "review" && onConfirm && (
+    <button type="button" className={styles.analyzeButton} disabled={saving || mutationBusy} onClick={onConfirm}>Valider le repas</button>
   );
 
   // Analyzing indicator
@@ -636,6 +645,7 @@ export function LabMealCard({
           </div>
           {photoStrip}
           <p className="text-xs text-content-secondary leading-relaxed font-sans">{getSummaryText(meal)}</p>
+          {confirmAction}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
             <p className="text-xs text-content-tertiary font-mono">
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
@@ -781,6 +791,7 @@ export function LabMealCard({
         {isFilled ? (
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
+            {confirmAction}
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
             {isCorrectionOpen && correctionForm}
             {meal?.analysis && (
@@ -894,6 +905,7 @@ export function LabMealCard({
           {isFilled ? (
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
+              {confirmAction}
               <MealMetrics metrics={metrics} slot={slot} targets={targets} />
               {isCorrectionOpen && correctionForm}
               {meal?.analysis && (

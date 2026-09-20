@@ -26,7 +26,7 @@ vi.mock("./lab-arrival", () => ({
   },
 }));
 vi.mock("./personal-lab-journal-workspace", () => ({
-  PersonalLabJournalWorkspace: ({ selectedDate, onDateChange, hideAddMealButton }: { selectedDate?: string; onDateChange?: (date: string) => void; hideAddMealButton?: boolean }) => <div data-testid="journal" data-date={selectedDate} data-hide-add={String(hideAddMealButton)}>
+  PersonalLabJournalWorkspace: ({ selectedDate, onDateChange, hideAddMealButton }: { selectedDate?: string; onDateChange?: (date: string) => void; hideAddMealButton?: boolean }) => <div data-testid="journal" data-date={selectedDate} data-hide-add={String(hideAddMealButton ?? false)}>
     <button type="button" data-testid="journal-select-yesterday" onClick={() => onDateChange?.("2026-09-11")}>journal yesterday</button>
   </div>,
 }));
@@ -101,7 +101,7 @@ describe("homepage streamed date ownership", () => {
 
     expect(container.querySelector("[data-testid=arrival]")?.getAttribute("data-date")).toBe("2026-09-12");
     expect(container.querySelector("[data-testid=journal]")?.getAttribute("data-date")).toBe("2026-09-12");
-    expect(container.querySelector("[data-testid=journal]")?.getAttribute("data-hide-add")).toBe("true");
+    expect(container.querySelector("[data-testid=journal]")?.getAttribute("data-hide-add")).toBe("false");
     expect(container.querySelector("[data-testid=radar]")?.getAttribute("data-date")).toBe("2026-09-12");
     expect(container.querySelector("[data-testid=radar]")?.getAttribute("data-calories")).toBe("2200");
 

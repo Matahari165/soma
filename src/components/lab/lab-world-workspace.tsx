@@ -51,7 +51,6 @@ function StreamedJournalCapture({
     selectedDate={selectedDate}
     onDateChange={onDateChange}
     availableDates={availableDates}
-    hideAddMealButton
   />;
 }
 
