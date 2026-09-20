@@ -22,7 +22,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SOMA_SUPABASE_URL: https://udqcmptudauxdfkjauad.supabase.co
     SOMA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_HAos_GDaKQmGrj3uLQbMFQ_NY-5oCWY
-    GOOGLE_SERVER_CLIENT_ID: 288016413243-pn9btqlc2plgso2fdfbeoi732ultc3kv.apps.googleusercontent.com
+    GOOGLE_SERVER_CLIENT_ID: 288016413243-vg8flbiu23pmlbn3bh6qm5jdhs21jh4k.apps.googleusercontent.com
     GOOGLE_CLIENT_ID_IOS: 288016413243-a4gao0ki41jn4drs0um2p7bdgr1kmnna.apps.googleusercontent.com
     GOOGLE_REVERSED_CLIENT_ID_IOS: com.googleusercontent.apps.288016413243-a4gao0ki41jn4drs0um2p7bdgr1kmnna
     GOOGLE_CLIENT_ID_MACOS: 288016413243-jh5ivegcm4cc1vq6ajc41rq7e683c4du.apps.googleusercontent.com
