@@ -65,7 +65,8 @@ export async function GET(request: Request) {
   const nextPath = flow === "web" ? safeNextPath(cookieStore.get("soma_oauth_next")?.value) : "/";
   if (isNative && !nativeContext) return failure("oauth_state");
   if (!verifier) return failure("oauth_state");
-  if (url.searchParams.get("error")) return failure("cancelled");
+  const providerError = url.searchParams.get("error");
+  if (providerError) return failure(providerError === "access_denied" ? "cancelled" : "oauth_provider");
   if (!code) return failure("oauth_state");
 
   try {

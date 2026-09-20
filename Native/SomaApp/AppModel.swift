@@ -185,6 +185,10 @@ final class AppModel {
             // Closing the system authentication sheet is an intentional, non-error outcome.
         } catch NativeOAuthError.invalidCallback, NativeOAuthError.invalidState {
             errorMessage = "La réponse Google n’est pas valide. Réessaie."
+        } catch NativeOAuthError.providerFailure {
+            errorMessage = "Google a répondu, mais Soma n’a pas pu terminer la connexion. Réessaie."
+        } catch NativeOAuthError.timedOut {
+            errorMessage = "La connexion Google n’a pas répondu. Ferme la page du navigateur puis réessaie."
         } catch NativeOAuthError.providerUnavailable {
             errorMessage = "Google ne peut pas être ouvert sur cet appareil."
         } catch APIError.unauthorized {

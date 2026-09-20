@@ -202,6 +202,28 @@ describe("Google OAuth callback", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("returns a visible provider failure to the native app", async () => {
+    const nativeContext = encodeNativeGoogleAuthContext({
+      platform: "macos",
+      pkceChallenge: "c".repeat(43),
+      state: "s".repeat(43),
+    });
+    vi.mocked(cookies).mockResolvedValue({
+      get: vi.fn((name: string) => ({
+        soma_native_oauth_state: { value: "expected-state" },
+        soma_native_oauth_verifier: { value: "verifier" },
+        [NATIVE_AUTH_CONTEXT_COOKIE]: { value: nativeContext },
+      })[name]),
+      delete: deleteCookie,
+    } as never);
+
+    const response = await GET(new Request("https://soma.example/auth/callback?error=server_error&state=expected-state"));
+    const location = new URL(response.headers.get("location") as string);
+    expect(location.protocol).toBe("com.soma.native.macos:");
+    expect(location.searchParams.get("error")).toBe("oauth_provider");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("rejects a native cancellation callback with the wrong Google state", async () => {
     const nativeContext = encodeNativeGoogleAuthContext({
       platform: "ios",
