@@ -158,8 +158,8 @@ struct DayView: View {
     private var dayContent: some View {
         if horizontalSizeClass == .compact {
             VStack(alignment: .leading, spacing: 32) {
-                JournalSectionView()
                 meals
+                JournalSectionView()
             }
             .padding(.horizontal, 16)
             .padding(.top, 28)

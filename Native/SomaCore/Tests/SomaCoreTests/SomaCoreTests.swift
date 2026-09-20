@@ -168,6 +168,17 @@ private struct EmptyTokenStore: TokenStore {
     ])
 }
 
+@Test func archivedHabitKeepsItsRecordedHistoryWithoutDailyPrompt() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"archived","name":"Course","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":false,"emoji":"—","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"archived","entryDate":"2026-09-19","value":false}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    let draft = JournalDraft(day: day)
+
+    #expect(draft.state(for: "archived") == .recorded)
+    #expect(draft.values["archived"] == .bool(false))
+    #expect(draft.completedCount(for: day.variables) == 0)
+    #expect(draft.entries(for: day.variables).isEmpty)
+}
+
 @Test func journalDraftRetainsNewerEditsWhenAnOlderSnapshotArrives() throws {
     let initialJSON = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":null,"options":[],"position":10,"isActive":true,"emoji":"🧠","defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":1}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":[]}},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
     let olderResponseJSON = initialJSON.replacingOccurrences(of: "\"value\":1", with: "\"value\":0")
