@@ -10,12 +10,52 @@ struct JournalSectionView: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             content
+            archivedHistory
             status
         }
         .sheet(isPresented: $presentsManager) {
             JournalManagerView()
                 .environment(model)
         }
+    }
+
+    @ViewBuilder
+    private var archivedHistory: some View {
+        if let day = model.day, let draft = model.journalDraft {
+            let recorded = day.variables
+                .filter { !$0.isActive && draft.state(for: $0.id) == .recorded }
+                .sorted { $0.position < $1.position }
+            if !recorded.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Anciennes habitudes")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    ForEach(recorded) { variable in
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(variable.name)
+                            Spacer(minLength: 8)
+                            Text(archivedValue(draft.values[variable.id] ?? .null, unit: variable.unit))
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(SomaTheme.secondary)
+                        }
+                        .frame(minHeight: 44)
+                        Divider().overlay(SomaTheme.rule)
+                    }
+                }
+                .accessibilityHint("Valeurs conservées, non demandées dans le suivi quotidien")
+            }
+        }
+    }
+
+    private func archivedValue(_ value: JSONValue, unit: String?) -> String {
+        let text: String
+        switch value {
+        case .bool(let answer): text = answer ? "Oui" : "Non"
+        case .null: text = "Non renseigné"
+        default: text = JournalValueParser.text(value)
+        }
+        guard let unit, !unit.isEmpty, value != .null else { return text }
+        return "\(text) \(unit)"
     }
 
     private var header: some View {

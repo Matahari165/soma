@@ -27,7 +27,7 @@ struct JournalManagerView: View {
                         }
                     }
                 } footer: {
-                    Text("Archiver retire l’habitude du journal sans supprimer son historique.")
+                    Text("Supprimer du suivi conserve toutes les anciennes réponses.")
                 }
             }
             .navigationTitle("Habitudes")
@@ -46,12 +46,12 @@ struct JournalManagerView: View {
                 JournalVariableEditorView(variable: variable).environment(model)
             }
             .confirmationDialog(
-                "Archiver cette habitude ?",
+                "Supprimer cette habitude du suivi ?",
                 isPresented: archiveBinding,
                 titleVisibility: .visible,
                 presenting: archiveCandidate
             ) { variable in
-                Button("Archiver \(variable.name)", role: .destructive) {
+                Button("Supprimer \(variable.name) du suivi", role: .destructive) {
                     Task { _ = await model.updateJournalVariable(JournalVariableUpdateRequest(id: variable.id, isActive: false)) }
                 }
                 Button("Annuler", role: .cancel) { archiveCandidate = nil }
@@ -96,7 +96,7 @@ struct JournalManagerView: View {
             .disabled(variables.last?.id == variable.id || model.journalMutationIDs.contains(variable.id))
             Menu("Actions", systemImage: "ellipsis") {
                 Button("Modifier", systemImage: "pencil") { editor = variable }
-                Button("Archiver", systemImage: "archivebox", role: .destructive) { archiveCandidate = variable }
+                Button("Supprimer du suivi", systemImage: "archivebox", role: .destructive) { archiveCandidate = variable }
             }
             .labelStyle(.iconOnly)
         }
