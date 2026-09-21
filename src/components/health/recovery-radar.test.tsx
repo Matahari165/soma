@@ -58,3 +58,8 @@ it("does not invent a radar structure when fewer than three dimensions are suppl
   expect((html.match(/data-testid="recovery-radar-label"/g) ?? []).length).toBe(2);
   expect(html).not.toContain('data-testid="recovery-radar-value"');
 });
+
+it("keeps the source for the opened detail instead of the radar label", () => {
+  const html = renderToStaticMarkup(<RecoveryRadar dimensions={[{ ...dimensions[0], sourceLabel: "Google Health" }]} interactive onSelect={() => undefined} />);
+  expect(html).not.toContain("Google Health");
+});

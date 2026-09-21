@@ -14,6 +14,7 @@ import {
   journalValuesForDate,
   dinnerTimeForDisplay,
   isDinnerTimeVariable,
+  isRetiredBedtimeJournalVariable,
   normalizeDinnerTimeInput,
   reconcileJournalDrafts,
   journalVariableSuggestions,
@@ -539,7 +540,7 @@ function VariableManager({ variables, open, managerRef, children }: { variables:
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [lastRemoved, setLastRemoved] = useState<{ id: string; label: string } | null>(null);
   const lastFailedRequest = useRef<{ method: "POST" | "PATCH"; body: unknown; busy: string } | null>(null);
-  const activeVariables = variables.filter((variable) => variable.isActive);
+  const activeVariables = variables.filter((variable) => variable.isActive && !isRetiredBedtimeJournalVariable(variable));
   const activeNames = new Set(activeVariables.map((variable) => variable.name.toLocaleLowerCase("en")));
   const suggestions = journalVariableSuggestions.filter((suggestion) => !activeNames.has(suggestion.name.toLocaleLowerCase("en")));
 
@@ -823,7 +824,7 @@ export type DailyJournalProps = {
 
 export function DailyJournal({ variables, entries, days, achievements, todayDate, selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, availableDates, onTodayBreakfastValidation, onTodayMorningValidation, presentation = "default", activeEffectsByVariable, statusTreatment = "v1", onCompletionChange }: DailyJournalProps) {
   const router = useRouter();
-  const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive).sort((first, second) => first.position - second.position), [variables]);
+  const activeVariables = useMemo(() => variables.filter((variable) => variable.isActive && !isRetiredBedtimeJournalVariable(variable)).sort((first, second) => first.position - second.position), [variables]);
   const achievementsByVariable = useMemo(() => new Map((achievements ?? []).map((achievement) => [achievement.variableId, achievement])), [achievements]);
   const sections = useMemo(() => journalDisplayOrder.flatMap((periodId) => {
     const period = journalDayPeriods.find((candidate) => candidate.id === periodId);

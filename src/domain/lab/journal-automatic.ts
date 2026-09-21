@@ -57,7 +57,6 @@ function automaticValue(variable: JournalVariable, day: AutomaticJournalHealthDa
   if (!day.bedtime) return null;
   const clock = localClock(day.bedtime, timeZone);
   if (!clock) return null;
-  if (source.id === "bedtime") return clock.value;
   // A sleep onset between midnight and noon belongs to the late-night side of
   // the target, not to the next evening's "before 23 h" success.
   return clock.hour >= 12 && clock.value < "23:00";

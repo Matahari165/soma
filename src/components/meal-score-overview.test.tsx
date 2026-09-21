@@ -105,9 +105,27 @@ describe("MealScoreOverviewPanel", () => {
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
     expect(html).toContain('data-key="nutritionAdequacy"');
     expect(html).toContain("Dietary dimensions profile");
+    expect((html.match(/data-testid="meal-score-line-point"/g) ?? [])).toHaveLength(2);
+    expect(html).not.toContain('data-testid="meal-score-line-segment"');
+    expect(html).toContain("65%");
     expect(html).not.toContain("Couverture nutritionnelle");
     expect(html).not.toContain("Exposition liquide / concentrée");
     expect(html).not.toContain("Ultra-transformation");
+    expect(html).not.toContain("NaN");
+  });
+
+  it("relie seulement les jours de score repas consécutifs et garde zéro mesuré", () => {
+    const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
+      { date: "2026-09-08", score: 61 },
+      { date: "2026-09-09", score: 0 },
+      { date: "2026-09-10", score: null },
+      { date: "2026-09-11", score: 72 },
+      { date: "2026-09-12", score: 74 },
+    ]} />);
+
+    expect((html.match(/data-testid="meal-score-line-point"/g) ?? [])).toHaveLength(4);
+    expect((html.match(/data-testid="meal-score-line-segment"/g) ?? [])).toHaveLength(2);
+    expect(html).toContain('bottom:0%');
     expect(html).not.toContain("NaN");
   });
 });

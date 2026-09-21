@@ -93,8 +93,7 @@ function comparisonFor(dimension: ActivityRadarDimension) {
 function readableDimension(dimension: ActivityRadarDimension) {
   const value = dimension.valueLabel?.trim() || (measured(dimension.normalizedValue) ? "mesuré" : "indisponible");
   const comparison = comparisonFor(dimension);
-  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
-  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}${dimension.scoreRole ? `. ${dimension.scoreRole}` : ""}${source}`;
+  return `${dimension.label} : ${value}${comparison ? `. ${comparison.label}` : ""}${dimension.scoreRole ? `. ${dimension.scoreRole}` : ""}`;
 }
 
 function descriptionFor(dimensions: readonly ActivityRadarDimension[]) {
@@ -146,7 +145,6 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
         const interactiveAxis = interactive && Boolean(onSelect);
         const selected = selectedId === dimension.id;
         const comparison = comparisonFor(dimension);
-        const sourceLabel = dimension.sourceLabel?.trim() || null;
         function handleKeyDown(event: KeyboardEvent<SVGGElement>) {
           if (!interactiveAxis) return;
           if (event.key === "Enter" || event.key === " ") {
@@ -190,7 +188,6 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
               {dimension.valueLabel?.trim() || (!measured(dimension.normalizedValue) ? "—" : "mesuré")}
               {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx="6">{comparison.arrow}</tspan>}
             </text>
-            {sourceLabel ? <text className={styles.valueLabel} x={position.x} y={position.y} dy={position.valueDy + 14} textAnchor={position.anchor}>{sourceLabel}</text> : null}
           </g>
         </g>;
       })}

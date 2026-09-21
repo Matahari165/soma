@@ -2,7 +2,7 @@ import "server-only";
 
 import { aggregateConfirmedMeals, type ConfirmedMealRecord } from "@/domain/lab/meals";
 import { automaticJournalEntriesFor, type AutomaticJournalHealthDay } from "@/domain/lab/journal-automatic";
-import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, healthyHabitCatalog, isAddedSugarVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, normalizedJournalVariableName, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
+import { ADDED_SUGAR_AUTOMATIC_METRIC_ID, defaultJournalVariables, healthyHabitCatalog, isAddedSugarVariable, isRetiredBedtimeJournalVariable, journalAutomaticMetricId, journalAutomaticSource, journalCaptureMode, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, normalizedJournalVariableName, type JournalDay, type JournalEntry, type JournalEntryValue, type JournalVariable, type JournalVariableType } from "@/domain/lab/journal";
 import { explicitNoBreakfastByDate, mealRecordsByDate as mealRecordsByDateForJournal, skippedBreakfastDates } from "@/domain/lab/journal-meal-automatic";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
@@ -180,7 +180,7 @@ export async function loadJournalData(userId: string, options: { from?: string; 
     omittedVariableIds: Array.isArray(row.omitted_variables) ? row.omitted_variables.filter((value: unknown): value is string => typeof value === "string") : [],
   }));
   let automaticEntries: JournalEntry[] = [];
-  const automaticVariables = variables.filter((variable) => journalCaptureMode(variable) === "automatic");
+  const automaticVariables = variables.filter((variable) => journalCaptureMode(variable) === "automatic" && !isRetiredBedtimeJournalVariable(variable));
   if (options.includeAutomaticEntries !== false && automaticVariables.length > 0) {
     const needsHealth = automaticVariables.some((variable) => {
       const metricId = journalAutomaticMetricId(variable);

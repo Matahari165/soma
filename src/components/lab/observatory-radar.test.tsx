@@ -56,6 +56,7 @@ it("renders radar metrics for a specific past date", () => {
 it("scales label offsets proportionally with the radius prop", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={data} radius={380} />);
   expect(html).toContain('class="radar-number"');
+  expect(html.slice(0, html.indexOf("</svg>"))).not.toContain("Google Health");
 });
 
 it("caps every plotted metric at its target while keeping the real values visible", () => {

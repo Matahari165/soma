@@ -54,3 +54,8 @@ it("keeps an explicit zero at the center as a measured point", () => {
   expect(html).toContain('cx="210" cy="210"');
   expect(html).toContain("0 min");
 });
+
+it("keeps the source for the detail instead of the radar label", () => {
+  const html = renderToStaticMarkup(<ActivityRadar dimensions={[{ ...dimensions[0], sourceLabel: "Google Health" }]} interactive onSelect={() => undefined} />);
+  expect(html).not.toContain("Google Health");
+});

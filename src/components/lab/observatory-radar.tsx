@@ -128,7 +128,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     if (id) window.requestAnimationFrame(() => buttonRefs.current[id]?.focus());
   }
   return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
-    <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}. Source : ${axis.source}.`).join(" ")}`}>
+    <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
         <polygon className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
@@ -141,7 +141,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";
         const comparison=trend==="↑"?"Au-dessus de la moyenne sur 30 jours":trend==="↓"?"Sous la moyenne sur 30 jours":trend==="↔"?"Au niveau de la moyenne sur 30 jours":"Moyenne indisponible";
         const selected = selectedId === axis.id;
-        const readable = `${axis.label} : ${axis.display}${axis.unit ? ` ${axis.unit}` : ""}. ${comparison}. Objectif : ${axis.goal}. Source : ${axis.source}. Afficher les détails de cette dimension.`;
+        const readable = `${axis.label} : ${axis.display}${axis.unit ? ` ${axis.unit}` : ""}. ${comparison}. Objectif : ${axis.goal}. Afficher les détails de cette dimension.`;
         let labelX = 330;
         let labelY = 280;
         let numberX = 330;
@@ -195,10 +195,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
 
         return (
           <g key={axis.id} className={`radar-axis-label radar-axis-label--${i}`} role="button" tabIndex={0} aria-controls={detailId} aria-expanded={selected} aria-label={readable} data-selected={selected} onClick={() => select(axis.id)} onKeyDown={handleKeyDown} ref={(node) => { buttonRefs.current[axis.id] = node; }}>
-            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}. Source : ${axis.source}.`}</title>
+            <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}.`}</title>
             <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label" aria-hidden="true">{axis.label}</text>
             <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number" aria-hidden="true">{valueText}</text>
-            <text x={numberX} y={numberY + 16} textAnchor={textAnchor} className="radar-number" aria-hidden="true" fontSize={11}>{axis.source}</text>
           </g>
         );
       })}
