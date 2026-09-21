@@ -12,6 +12,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-live-metr
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-live-metrics .personal-lab-metric { display:block; background:transparent; min-height:0; padding:8px 0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-metric__trace { display:none; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-card--personal-lab,.journal-period,.journal-field,.personal-lab-day-strip__days,.meal-journal-lab,.strongest-effects-panel,.strongest-effects,.strongest-effects__comparison-group,.strongest-effects__comparison-group li > button) { border:0!important; box-shadow:none!important; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .meal-journal-lab { background:transparent!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(button,input,textarea,select,.journal-number,.journal-clock,.journal-choice) { border:0!important; box-shadow:none; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab { padding:20px; background:#0a0c0e; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-period { padding:16px 0; background:transparent; }
@@ -688,9 +689,9 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     display:flex;
     flex-wrap:nowrap;
     justify-content:flex-start;
-    gap:10px;
+    gap:18px;
     min-height:52px;
-    padding:4px 10px;
+    padding:4px 16px;
     overflow-x:auto;
     overflow-y:hidden;
     scrollbar-width:none;
@@ -704,7 +705,8 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     justify-content:center;
     margin:0;
     padding:0;
-    font-size:11px;
+    font-size:17px;
+    white-space:nowrap;
     text-align:center;
   }
   html[data-lab-theme="observatory"] .lab-global-nav a:first-child,
@@ -731,16 +733,25 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     max-width:none;
     margin:0;
   }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress__header { font-size:13px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress__track { height:10px; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art {
     width:100%!important;
-    height:min(430px,110vw)!important;
-    min-height:min(430px,110vw)!important;
-    margin:28px 0 0!important;
+    height:min(470px,calc(110vw + 40px))!important;
+    min-height:min(470px,calc(110vw + 40px))!important;
+    margin:48px 0 40px!important;
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .observatory-radar { transform:none!important; }
 
-  html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-100px); }
-  html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(100px); }
+  html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-24px); }
+  html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(24px); }
+
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip { min-height:52px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip__days { overflow-x:auto; height:52px; min-height:52px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button { flex-basis:96px; min-height:52px; height:52px; font-size:14px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button > small { font-size:13px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .meal-journal-lab #meal-journal-title { font-size:20px; white-space:nowrap; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .meal-journal-lab header button { min-height:44px; }
 
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-workspace-header__row {
     display:flex;
