@@ -29,6 +29,11 @@ html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-co
   margin-top: 4px;
   color: var(--arrival-ink, var(--lab-text-primary));
 }
+@media(max-width:700px) {
+  .arrival-journal-progress { width:100%; max-width:none; gap:10px; margin-top:20px; }
+  .arrival-journal-progress__header { font-size:13px; }
+  .arrival-journal-progress__track { height:10px; }
+}
 
 .arrival-journal-progress__header {
   display: flex;

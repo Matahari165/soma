@@ -26,7 +26,7 @@
 /* One restrained authored entrance for the landing scene. */
 .lab-continuous .arrival-masthead,
 .lab-continuous .arrival-heading,
-.lab-continuous .arrival-habit-progress,
+.lab-continuous .arrival-journal-progress,
 .lab-continuous .arrival-artwork {
   animation-timing-function: var(--soma-ease-enter) !important;
   animation-fill-mode: both !important;
@@ -34,7 +34,7 @@
 
 .lab-continuous .arrival-masthead { animation-duration: 620ms !important; }
 .lab-continuous .arrival-heading { animation-duration: 760ms !important; animation-delay: 60ms; }
-.lab-continuous .arrival-habit-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
+.lab-continuous .arrival-journal-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
 .lab-continuous .arrival-artwork { animation-duration: 860ms !important; animation-delay: 170ms; }
 
 @keyframes soma-scene-enter {
@@ -72,7 +72,7 @@ details > summary {
 
   .lab-continuous .arrival-masthead,
   .lab-continuous .arrival-heading,
-  .lab-continuous .arrival-habit-progress,
+  .lab-continuous .arrival-journal-progress,
   .lab-continuous .arrival-artwork {
     animation: none !important;
     opacity: 1 !important;

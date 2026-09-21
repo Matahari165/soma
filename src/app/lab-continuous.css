@@ -25,10 +25,14 @@ html[data-lab-theme] .app-shell:has(.lab-continuous) .main-content { margin-left
 .lab-live-metrics .personal-lab-metric__trace { display:none; }
 .lab-live-metrics .personal-lab-metric__bars { height:36px; }
 .lab-continuous :is(#daily-journal,#meal-journal-title) { scroll-margin-top:110px; }
-/* Progressive enhancement: the artwork recedes as the useful content arrives. */
+/* Progressive enhancement: the artwork recedes as the useful content arrives,
+   and capture widgets reveal as they enter the viewport. */
 @supports (animation-timeline: scroll()) {
  .lab-continuous .lab-intro .arrival-art { animation:lab-scroll-art linear both; animation-timeline:scroll(root); animation-range:0px 650px; }
  .lab-continuous .lab-world__effects { animation:lab-scroll-reveal linear both; animation-timeline:view(); animation-range:entry 0% entry 22%; }
+}
+@supports (animation-timeline: view()) {
+ .lab-continuous .personal-lab-day-strip, .lab-continuous .journal-card--personal-lab, .lab-continuous .meal-journal-lab { animation:lab-scroll-reveal linear both; animation-timeline:view(); animation-range:entry 0% entry 18%; }
 }
 @keyframes lab-scroll-art { from { transform:translateY(0); opacity:1; } to { transform:translateY(60px); opacity:.2; } }
 @keyframes lab-scroll-reveal { from { opacity:.55; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
