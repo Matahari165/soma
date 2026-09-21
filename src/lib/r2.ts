@@ -124,6 +124,37 @@ export async function getR2MealPhotoObject(key: string, signal?: AbortSignal) {
 export async function deleteR2MealPhotoObject(key: string) {
   await deleteR2Object(key);
 }
+
+function assistantAttachmentExtension(mimeType: string) {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  if (mimeType === "image/heic") return "heic";
+  return "jpg";
+}
+
+/** Private conversation media. Object names contain UUIDs only. */
+export function assistantAttachmentObjectPath(input: {
+  userId: string; conversationId: string; attachmentId: string; mimeType: string;
+}) {
+  return `assistant/${encodeURIComponent(input.userId)}/${encodeURIComponent(input.conversationId)}/${encodeURIComponent(input.attachmentId)}.${assistantAttachmentExtension(input.mimeType)}`;
+}
+
+export async function putR2AssistantAttachment(key: string, body: ArrayBuffer, mimeType: string) {
+  await putStorageObject(key, body, {
+    contentType: mimeType,
+    cacheControl: "private, no-store",
+    metadata: { "soma-object": "assistant-attachment-v1" },
+  });
+}
+
+export async function getR2AssistantAttachment(key: string, signal?: AbortSignal) {
+  return getStorageObject(key, signal);
+}
+
+export async function deleteR2AssistantAttachment(key: string) {
+  await deleteR2Object(key);
+}
+
 export async function putR2ArchiveObject(key: string, body: Buffer) {
   await putStorageObject(key, body, {
     contentType: "application/gzip",
