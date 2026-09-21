@@ -196,7 +196,7 @@ describe("journal motion states", () => {
   it("places Personal Lab validation in the Daily Protocol ribbon header", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
-    const actionsStart = html.indexOf('class="flex items-center gap-3"');
+    const actionsStart = html.indexOf('journal-workspace-header__actions');
     const actionsEnd = html.indexOf('class="w-full h-1.5', actionsStart);
 
     expect(html).toContain("Daily Protocol");
@@ -377,8 +377,11 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain("text-sm font-medium text-content-primary truncate");
-    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium");
-    expect(html).toContain("text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated");
+    expect(html).toContain("journal-header-validate");
+    expect(html).toContain("text-content-secondary hover:text-content-primary");
+    expect(html).toContain('aria-label="Edit protocol"');
+    expect(html).toContain("text-content-secondary border border-hairline");
+    expect(html).not.toContain("Edit protocol</button>");
   });
 
   it("renders date strip without pulsing green dot for selected date", () => {
@@ -390,6 +393,6 @@ describe("journal motion states", () => {
     }));
 
     expect(html).not.toContain("animate-pulse");
-    expect(html).toContain("bg-surface-elevated");
+    expect(html).toContain("is-selected personal-lab-day-strip__day");
   });
 });

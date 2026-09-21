@@ -77,8 +77,9 @@
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
-  gap: 48px;
+  gap: 64px;
   align-items: center;
+  padding-left: 32px;
 }
 
 .radarStage {
@@ -198,7 +199,7 @@
 
 .scoreSummary {
   min-width: 0;
-  padding-left: clamp(20px, 3vw, 40px);
+  padding-left: clamp(24px, 4vw, 48px);
   border-left: 1px solid var(--effort-rule);
 }
 
@@ -280,11 +281,25 @@
 .exerciseTable tbody th { color: var(--effort-text); font-weight: 400; }
 .exerciseTable tbody th svg { margin-right: 6px; vertical-align: -2px; }
 .exerciseTable tbody th small { display: block; padding-left: 21px; color: var(--effort-muted); font-size: 10px; }
-.activityFilters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.activityFilterGroups { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 20px; }
+.activityFilters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .activityFilters button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--effort-rule); border-radius: 4px; background: transparent; color: var(--effort-muted); font: 400 13px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
 .activityFilters button[aria-pressed="true"] { border-color: var(--effort-rule-strong); background: var(--lab-surface-selected, #222); color: var(--effort-text); }
 .activityFilters button:hover { color: var(--effort-text); border-color: var(--effort-rule-strong); }
 .activityFilters button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 3px; }
+.periodPicker { position: relative; flex: 0 0 auto; }
+.periodTrigger { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--effort-rule); border-radius: 4px; background: transparent; color: var(--effort-text); font: 400 13px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
+.periodTrigger svg:last-child { transition: transform 220ms cubic-bezier(.16, 1, .3, 1); }
+.periodTrigger[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+.periodTrigger:hover { border-color: var(--effort-rule-strong); }
+.periodTrigger:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 3px; }
+.periodPanel { position: absolute; z-index: 8; top: calc(100% + 8px); right: 0; width: min(280px, calc(100vw - 32px)); overflow: hidden; padding: 0 8px; border: 1px solid transparent; border-radius: 4px; background: var(--lab-canvas, #050505); opacity: 0; visibility: hidden; transform: translateY(-8px); clip-path: inset(0 0 100% 0); transition: opacity 240ms cubic-bezier(.16, 1, .3, 1), transform 240ms cubic-bezier(.16, 1, .3, 1), clip-path 300ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 300ms, border-color 240ms ease; }
+.periodPanel[data-open="true"] { padding-block: 8px; border-color: var(--effort-rule); opacity: 1; visibility: visible; transform: translateY(0); clip-path: inset(0); transition-delay: 0s; }
+.periodOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.periodOptions button { min-height: 40px; padding: 7px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--effort-muted); text-align: left; font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
+.periodOptions button:hover,
+.periodOptions button[aria-pressed="true"] { background: var(--lab-surface-selected, #222); color: var(--effort-text); }
+.periodOptions button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: -2px; }
 .activityHistory { margin: 0; padding: 0; list-style: none; }
 .activityHistoryRow { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr); gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--effort-rule); }
 .activityHistoryIdentity { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -294,6 +309,15 @@
 .activityHistoryMetrics div { min-width: 0; }
 .activityHistoryMetrics dt { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .activityHistoryMetrics dd { margin: 4px 0 0; color: var(--effort-text); font: 400 13px/20px var(--font-soma-mono), ui-monospace, monospace; overflow-wrap: anywhere; }
+.activityAverageRow {
+  margin-block: 4px;
+  padding-inline: 12px;
+  border-block: 1px solid var(--effort-rule-strong);
+  background: var(--lab-surface-subtle, #0c0c0c);
+}
+.activityAverageRow .activityHistoryIdentity strong { color: var(--effort-accent); }
+.activityAverageRow .activityHistoryIdentity,
+.activityAverageRow .activityHistoryMetrics { padding-block: 2px; }
 .activityHistoryEmpty { margin: 0; padding: 16px 0; color: var(--effort-muted); font: 400 14px/21px var(--font-soma-ui), system-ui, sans-serif; }
 .empty { display: flex; min-height: 180px; align-items: center; gap: 16px; color: var(--effort-muted); }
 .empty h2 { margin: 0; color: var(--effort-text); font: 400 22px/28px Georgia, "Times New Roman", serif; }
@@ -308,7 +332,7 @@
 
 @media (max-width: 720px) {
   .root :global(.health-detail-page--activity) { gap: 24px; padding: 24px 16px 48px; }
-  .scoreOverview { grid-template-columns: 1fr; gap: 32px; align-items: start; }
+  .scoreOverview { grid-template-columns: 1fr; gap: 32px; align-items: start; padding-left: 0; }
   .scoreSummary { padding: 0 0 24px; border-left: 0; border-bottom: 1px solid var(--effort-rule); }
   .scoreButton { margin-top: 12px; }
   .scoreButton > strong { font-size: 64px; line-height: 1; }
@@ -319,6 +343,11 @@
   .featuredActivityMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .readingsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
   .section :global(.stage-legend) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activityFilterGroups { align-items: stretch; flex-direction: column; }
+  .periodPicker,
+  .periodTrigger { width: 100%; }
+  .periodTrigger { justify-content: space-between; }
+  .periodPanel { right: auto; left: 0; width: 100%; }
 }
 
 @media (max-width: 560px) {

@@ -119,13 +119,13 @@
 
   .stitchProtocolColumn {
     grid-column: span 7 / span 7 !important;
-    order: 1 !important;
+    order: 2 !important;
     min-width: 0 !important;
   }
 
   .stitchMealColumn {
     grid-column: span 5 / span 5 !important;
-    order: 2 !important;
+    order: 1 !important;
     min-width: 0 !important;
   }
 }
@@ -140,13 +140,13 @@
 
   .stitchProtocolColumn {
     grid-column: 1 / -1 !important;
-    order: 1 !important;
+    order: 2 !important;
     min-width: 0 !important;
   }
 
   .stitchMealColumn {
     grid-column: 1 / -1 !important;
-    order: 2 !important;
+    order: 1 !important;
     min-width: 0 !important;
   }
 }

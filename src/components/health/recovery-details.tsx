@@ -11,7 +11,6 @@ import { MetricTrendCard } from "./metric-trend-card";
 import type { RecoveryRadarDimension } from "./recovery-radar";
 import { RecoveryRadar } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
-import { RecoveryScrollReveal } from "./recovery-scroll-reveal";
 import styles from "./recovery-redesign.module.css";
 
 type TrendKind = "hrv_daily" | "hrv_nightly" | "resting_heart_rate" | "respiratory_rate";
@@ -241,7 +240,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery)} out of 100.</span>}
     >
       <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-recovery-scroll-reveal-root="true">
-        <RecoveryScrollReveal />
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
             <div className={styles.radarRegion}>

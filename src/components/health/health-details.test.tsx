@@ -136,11 +136,12 @@ describe("health route states", () => {
     expect(readable).toContain("Radar de l’effort avec 5 composantes");
     expect(readable).toContain("Weekly load");
     expect(readable).toContain("Context · excluded from score");
-    expect(readable).toContain("Recent activity");
+    expect(readable).toContain("Workout history");
     expect(readable).toContain("Running");
-    expect(readable).toContain("Today");
-    expect(readable).toContain("Allure / vitesse");
-    expect(readable).toContain("Temps actif");
+    expect(readable).toContain("Pace");
+    expect(readable).toContain("Max HR");
+    expect(readable).not.toContain("Recent activity");
+    expect(readable).not.toContain("Active time");
 
     const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
     expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10,000 steps" });
@@ -382,6 +383,6 @@ describe("health route states", () => {
     }));
 
     expect(markup).toMatch(/25\s*%\s*score coverage/i);
-    expect(markup).toContain("Strength training");
+    expect(markup).toContain("Strength");
   });
 });

@@ -13,7 +13,7 @@ export function LabGlobalNavigation() {
   return <nav className="lab-global-nav" aria-label="Main navigation">
     <Link href="/" prefetch={false} aria-current={pathname === "/" ? "page" : undefined} onClick={(event) => { if (pathname !== "/") return; event.preventDefault(); window.history.replaceState(null, "", "/"); window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }}>Personal Lab</Link>
     <Link href="/analysis" prefetch={false} aria-current={pathname.startsWith("/analysis") ? "page" : undefined}>Analysis</Link>
-    <Link href="/meals" prefetch={false} aria-current={pathname === "/meals" ? "page" : undefined}>Meals</Link>
+    <Link href="/meals" prefetch={false} aria-current={pathname === "/meals" ? "page" : undefined}>Nutrition</Link>
     <Link href="/sleep" prefetch={false} aria-current={pathname === "/sleep" ? "page" : undefined}>Sleep</Link>
     <Link href="/recovery" prefetch={false} aria-current={pathname === "/recovery" ? "page" : undefined}>Recovery</Link>
     <Link href="/activity" prefetch={false} aria-current={pathname === "/activity" ? "page" : undefined}>Activity</Link>

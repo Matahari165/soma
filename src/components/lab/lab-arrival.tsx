@@ -15,12 +15,7 @@ type JournalProgress = { date: string; count: number; total: number };
 
 export function LabArrival({
   theme,
-  date,
   radar,
-  selectedDate,
-  todayDate,
-  availableDates,
-  onDateChange,
   personalization,
 }: {
   theme: string;
@@ -59,11 +54,6 @@ export function LabArrival({
     window.addEventListener(JOURNAL_PROGRESS_EVENT, onJournalProgress);
     return () => window.removeEventListener(JOURNAL_PROGRESS_EVENT, onJournalProgress);
   }, []);
-  const currentIndex = availableDates && selectedDate ? availableDates.indexOf(selectedDate) : -1;
-  const canGoPrevious = onDateChange && availableDates && currentIndex > 0;
-  const canGoNext = onDateChange && availableDates && currentIndex >= 0 && currentIndex < availableDates.length - 1 && selectedDate !== todayDate;
-  const displayDate = date ? `${date.charAt(0).toLocaleUpperCase("en-US")}${date.slice(1)}` : date;
-
   return <section className="lab-arrival" data-arrival-theme={theme} aria-label="Personal lab home" key={theme}>
     <div className="arrival-composition" style={{ position: "relative" }}>
       <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}`} style={{ position: "relative", zIndex: 1 }}>
@@ -71,37 +61,10 @@ export function LabArrival({
           {message.lines.map((line, index) => <span className="arrival-title-line" key={`${message.moment}-${index}`}><span>{line}</span></span>)}
         </h1>
         {message.activityNote && <p className="arrival-signal"><span className="sr-only">Notable signal: </span>{message.activityNote}</p>}
-        <div className="arrival-date-nav" role="group" aria-label="Day navigation">
-          {onDateChange && availableDates && (
-            <button
-              type="button"
-              className="arrival-date-nav__btn"
-              disabled={!canGoPrevious}
-              onClick={() => canGoPrevious && onDateChange(availableDates[currentIndex - 1])}
-              aria-label="Previous day"
-              style={{ minHeight: 44, minWidth: 44 }}
-            >
-              ‹
-            </button>
-          )}
-          <time className="arrival-date">{displayDate}</time>
-          {onDateChange && availableDates && (
-            <button
-              type="button"
-              className="arrival-date-nav__btn"
-              disabled={!canGoNext}
-              onClick={() => canGoNext && onDateChange(availableDates[currentIndex + 1])}
-              aria-label="Next day"
-              style={{ minHeight: 44, minWidth: 44 }}
-            >
-              ›
-            </button>
-          )}
-        </div>
         {journalProgress && <div className="arrival-journal-progress" aria-label={`Journal progress: ${journalProgress.count} habits confirmed out of ${journalProgress.total}`}>
           <div className="arrival-journal-progress__header">
-            <span>Confirmed habits</span>
-            <span>{journalProgress.count} / {journalProgress.total}</span>
+            <span>Habits</span>
+            <span>{journalProgress.count}/{journalProgress.total}</span>
           </div>
           <div className="arrival-journal-progress__track" role="progressbar" aria-valuemin={0} aria-valuemax={journalProgress.total} aria-valuenow={journalProgress.count} aria-label={`Journal progress: ${journalProgress.count} out of ${journalProgress.total}`}>
             <span style={{ transform: `scaleX(${journalProgress.total > 0 ? Math.min(1, journalProgress.count / journalProgress.total) : 0})` }} />

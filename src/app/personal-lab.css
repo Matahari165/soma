@@ -160,12 +160,12 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
 }
 .personal-lab-journal-column, .personal-lab-meal-column { min-width: 0; }
 @media (min-width: 1024px) {
-  .personal-lab-journal-column { grid-column: span 7 / span 7 !important; order: 1 !important; }
-  .personal-lab-meal-column { grid-column: span 5 / span 5 !important; order: 2 !important; }
+  .personal-lab-journal-column { grid-column: span 7 / span 7 !important; order: 2 !important; }
+  .personal-lab-meal-column { grid-column: span 5 / span 5 !important; order: 1 !important; }
 }
 @media (max-width: 1023px) {
-  .personal-lab-journal-column { grid-column: 1 / -1 !important; order: 1 !important; }
-  .personal-lab-meal-column { grid-column: 1 / -1 !important; order: 2 !important; }
+  .personal-lab-journal-column { grid-column: 1 / -1 !important; order: 2 !important; }
+  .personal-lab-meal-column { grid-column: 1 / -1 !important; order: 1 !important; }
 }
 
 .personal-lab-journal-column .journal-card--personal-lab { position: static; padding: 0; border: 0; background: transparent; }
@@ -1599,4 +1599,16 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   display: block;
   height: 100%;
   background: var(--lab-signal);
+}
+.personal-lab-workbench .workspace-panel-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 40px !important;
+  font-weight: 400 !important;
+  line-height: 48px !important;
+  letter-spacing: -.025em !important;
+}
+
+@media (max-width: 700px) {
+  .personal-lab-workbench .workspace-panel-title { font-size: 32px !important; line-height: 40px !important; }
 }

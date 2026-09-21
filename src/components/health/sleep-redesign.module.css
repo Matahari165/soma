@@ -140,7 +140,7 @@
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
-  gap: 48px;
+  gap: 64px;
   align-items: start;
 }
 

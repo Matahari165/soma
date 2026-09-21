@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exerciseMatchesFilter } from "./activity-history";
+import { activityAverages, displayedActivities, exerciseIsInPeriod, exerciseMatchesFilter } from "./activity-history";
 
 describe("activity history filters", () => {
   it("groups imported jogging and trail running under Run", () => {
@@ -13,5 +13,28 @@ describe("activity history filters", () => {
     expect(exerciseMatchesFilter("WEIGHT_TRAINING", "strength")).toBe(true);
     expect(exerciseMatchesFilter("STRENGTH_TRAINING", "strength")).toBe(true);
     expect(exerciseMatchesFilter("UNKNOWN", "all")).toBe(true);
+  });
+
+  it("uses inclusive rolling period boundaries", () => {
+    expect(exerciseIsInPeriod("2026-09-15", "2026-09-21", 7)).toBe(true);
+    expect(exerciseIsInPeriod("2026-09-14", "2026-09-21", 7)).toBe(false);
+    expect(exerciseIsInPeriod("2026-09-21", "2026-09-21", 7)).toBe(true);
+    expect(exerciseIsInPeriod("2026-09-22", "2026-09-21", 7)).toBe(false);
+  });
+
+  it("averages each available measure independently without turning missing data into zero", () => {
+    const base = { id: "a", date: "2026-09-21", name: "Run", type: "RUNNING", durationMinutes: null, activeMinutes: null, zoneMinutes: null, averageSpeedKph: null, elevationGainMeters: null, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null };
+    const result = activityAverages([
+      { ...base, distanceKm: 0, calories: 400, averageHeartRate: 140, maximumHeartRate: 170, averagePaceSecondsPerKm: 360 },
+      { ...base, id: "b", distanceKm: null, calories: 600, averageHeartRate: null, maximumHeartRate: 180, averagePaceSecondsPerKm: 420 },
+    ]);
+    expect(result).toEqual({ distanceKm: 0, calories: 500, averageHeartRate: 140, maximumHeartRate: 175, averagePaceSecondsPerKm: 390 });
+  });
+
+  it("shows only the first three recent workouts until a filter is used", () => {
+    const exercises = ["2026-09-18", "2026-09-21", "2026-09-17", "2026-09-20", "2026-09-19"]
+      .map((date, index) => ({ id: String(index), date })) as never[];
+    expect(displayedActivities(exercises, false).map((exercise) => exercise.date)).toEqual(["2026-09-21", "2026-09-20", "2026-09-19"]);
+    expect(displayedActivities(exercises, true)).toHaveLength(5);
   });
 });

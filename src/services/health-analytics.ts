@@ -73,7 +73,7 @@ export type HealthMetricDay = {
 export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown>; algorithm_version?: string | null };
 export type SleepStageSegment = { type: "AWAKE" | "LIGHT" | "DEEP" | "REM" | "ASLEEP" | "RESTLESS"; startTime: string; endTime: string };
 export type HeartRateSample = { measuredAt: string; bpm: number };
-export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null };
+export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; maximumHeartRate?: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null };
 
 export type HealthAnalytics = {
   timezone: string;
@@ -258,8 +258,8 @@ export function buildPreviewAnalytics(): HealthAnalytics {
     ],
     heartRateSamples: Array.from({ length: 48 }, (_, index) => ({ measuredAt: new Date(now.getTime() - (47 - index) * 30 * 60_000).toISOString(), bpm: Math.round(62 + Math.sin(index / 3) * 8 + (index > 27 && index < 32 ? 55 : 0)) })),
     exercises: [
-      { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 41, calories: 430, distanceKm: 7.2, averageHeartRate: 151, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1 },
-      { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
+      { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 41, calories: 430, distanceKm: 7.2, averageHeartRate: 151, maximumHeartRate: 178, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1 },
+      { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, maximumHeartRate: 157, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
     ],
     effortTargets: effortScoreTargets(),
     effortTargetSource: "fallback",
@@ -536,6 +536,8 @@ export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSumma
       calories: findNumber(metricsSummary, ["caloriesKcal"]),
       distanceKm: (() => { const mm = findNumber(metricsSummary, ["distanceMillimeters"]); return mm === null ? null : mm / 1_000_000; })(),
       averageHeartRate: findNumber(metricsSummary, ["averageHeartRateBeatsPerMinute"]),
+      maximumHeartRate: findNumber(metricsSummary, ["maximumHeartRateBeatsPerMinute", "maxHeartRateBeatsPerMinute", "maximumHeartRate", "maxHeartRate"])
+        ?? findNumber(exercise, ["maximumHeartRateBeatsPerMinute", "maxHeartRateBeatsPerMinute", "maximumHeartRate", "maxHeartRate"]),
       zoneMinutes: findNumber(metricsSummary, ["activeZoneMinutes"]),
       averageSpeedKph: (() => { const mm = findNumber(metricsSummary, ["averageSpeedMillimetersPerSecond"]); return mm === null ? null : mm * 0.0036; })(),
       averagePaceSecondsPerKm: (() => { const secondsPerMeter = findNumber(metricsSummary, ["averagePaceSecondsPerMeter"]); return secondsPerMeter === null ? null : secondsPerMeter * 1000; })(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type KeyboardEvent } from "react";
+import { useId, type CSSProperties, type KeyboardEvent } from "react";
 
 import styles from "./activity-radar.module.css";
 
@@ -36,12 +36,12 @@ export type ActivityRadarProps = {
   registerButton?: (id: string, node: SVGGElement | null) => void;
 };
 
-const VIEWBOX_WIDTH = 420;
+const VIEWBOX_WIDTH = 500;
 const VIEWBOX_HEIGHT = 420;
-const CENTER_X = 210;
+const CENTER_X = 250;
 const CENTER_Y = 210;
-const RADIUS = 150;
-const LABEL_RADIUS = RADIUS + 38;
+const RADIUS = 132;
+const LABEL_RADIUS = RADIUS + 34;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 
 function measured(value: number | null): value is number {
@@ -135,9 +135,9 @@ export function ActivityRadar({ dimensions, title = "Radar de l’effort", class
       })}
 
       {hasMeasuredPoint && <g className={styles.dataLayer} aria-hidden="true">
-        {!hasValueShape && valueSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.valueSegment} x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />)}
         {hasValueShape && <polygon className={styles.valueArea} points={pointString(availablePoints)} />}
-        {measuredPoints.map((point, index) => point && <circle key={`point-${dimensions[index].id}`} className={styles.point} cx={point[0]} cy={point[1]} r="5" />)}
+        {valueSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.valueSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />)}
+        {measuredPoints.map((point, index) => point && <circle key={`point-${dimensions[index].id}`} className={styles.point} data-radar-point="" data-radar-point-index={index} style={{ "--radar-point-index": index } as CSSProperties} cx={point[0]} cy={point[1]} r="5" />)}
       </g>}
 
       {dimensions.map((dimension, index) => {

@@ -173,6 +173,12 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     focusAxis(next);
   }
 
+  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100));
+  const radarSegments = measuredPoints.flatMap((point, index) => {
+    const next = measuredPoints[(index + 1) % measuredPoints.length];
+    return point && next ? [{ from: point, to: next }] : [];
+  });
+
   return <figure className={styles.balanceRadar}>
     <svg viewBox="0 0 420 420" role="group" aria-labelledby="meal-balance-radar-title meal-balance-radar-description">
       <title id="meal-balance-radar-title">Dietary dimensions profile</title>
@@ -204,7 +210,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         >
           <line className={styles.radarAxis} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
           <line className={styles.radarAxisHit} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
-          {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
+          {point ? <circle className={styles.radarPoint} data-radar-point="" data-radar-point-index={index} style={{ "--radar-point-index": index } as CSSProperties} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
           <circle className={styles.radarLabelHit} cx={x} cy={y} r="30" aria-hidden="true" />
           <circle className={styles.radarFocusRing} cx={x} cy={y} r="26" aria-hidden="true" />
           <text className={styles.radarLabel} x={x} y={y} textAnchor={anchor} aria-hidden="true">
@@ -214,6 +220,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         </g>;
       })}
       {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
+      {radarSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.radarSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
     </svg>
     <figcaption className={styles.srOnly}>Interactive chart. The five axes are keyboard-accessible buttons.</figcaption>
   </figure>;
@@ -339,7 +346,6 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
             <div><dt>Status</dt><dd>{daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "—"}</dd></div>
             <div><dt>Confidence</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
           </dl>
-          <p className={styles.scoreNote}>Score calculated from logged meals. “Skipped” is an explicit log, not a zero meal.</p>
         </article>
       </div>
 

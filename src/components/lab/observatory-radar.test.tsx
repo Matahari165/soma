@@ -15,6 +15,9 @@ it("compares each value with its own 30-day average, including equality", () => 
   expect(html).toContain("15.8 ↔");
   expect(html).toMatch(/↓ 1[\s\u202f]800 kcal/);
   expect(html).toContain('class="radar-value"');
+  expect((html.match(/class="radar-value-segment"/g) ?? []).length).toBe(4);
+  expect(html).toContain('data-radar-point-index="0"');
+  expect(html).toContain('--radar-segment-index:0');
 });
 it("does not invent a zero or close the radar when a measure is absent", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={{...data, caloriesKcal:null, effortScore:null, averageRecoveryScore:null}} />);
@@ -87,7 +90,7 @@ it("uses the personal calorie target received from the meal journal", async () =
 
 it("uses the approved fixed local presentation without exposing controls", () => {
   expect(OBSERVATORY_RADAR_PRESENTATION).toEqual({
-    size: 250,
+      size: 290,
     shiftY: -24,
     shiftX: -24,
     backdrop: "mont-nuages-user",
