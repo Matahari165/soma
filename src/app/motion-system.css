@@ -1,0 +1,81 @@
+/* Soma motion system: calm, finite and shared by every product page. */
+
+:root {
+  --soma-ease-enter: cubic-bezier(.16, 1, .3, 1);
+  --soma-ease-state: cubic-bezier(.2, .8, .2, 1);
+  --soma-motion-feedback: 165ms;
+  --soma-motion-state: 240ms;
+  --soma-motion-enter: 680ms;
+  --soma-motion-distance: 10px;
+}
+
+[data-soma-motion="pending"] {
+  opacity: 0;
+  transform: translate3d(0, var(--soma-motion-distance), 0);
+}
+
+[data-soma-motion="visible"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity var(--soma-motion-enter) var(--soma-ease-enter),
+    transform var(--soma-motion-enter) var(--soma-ease-enter);
+  transition-delay: calc(var(--soma-motion-order, 0) * 70ms);
+}
+
+/* One restrained authored entrance for the landing scene. */
+.lab-continuous .arrival-masthead,
+.lab-continuous .arrival-heading,
+.lab-continuous .arrival-habit-progress,
+.lab-continuous .arrival-artwork {
+  animation-timing-function: var(--soma-ease-enter) !important;
+  animation-fill-mode: both !important;
+}
+
+.lab-continuous .arrival-masthead { animation-duration: 620ms !important; }
+.lab-continuous .arrival-heading { animation-duration: 760ms !important; animation-delay: 60ms; }
+.lab-continuous .arrival-habit-progress { animation: soma-scene-enter 720ms var(--soma-ease-enter) 120ms both; }
+.lab-continuous .arrival-artwork { animation-duration: 860ms !important; animation-delay: 170ms; }
+
+@keyframes soma-scene-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Controls acknowledge state without lifting, bouncing or glowing. */
+:is(button, [role="button"], a)[aria-pressed],
+:is(button, [role="button"], a)[aria-selected],
+details > summary {
+  transition-duration: var(--soma-motion-feedback);
+  transition-timing-function: var(--soma-ease-state);
+}
+
+@media (max-width: 700px) {
+  :root {
+    --soma-motion-enter: 620ms;
+    --soma-motion-distance: 8px;
+  }
+
+  [data-soma-motion="visible"] {
+    transition-delay: calc(var(--soma-motion-order, 0) * 45ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-soma-motion],
+  [data-soma-motion="pending"],
+  [data-soma-motion="visible"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .lab-continuous .arrival-masthead,
+  .lab-continuous .arrival-heading,
+  .lab-continuous .arrival-habit-progress,
+  .lab-continuous .arrival-artwork {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

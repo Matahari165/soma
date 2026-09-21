@@ -58,9 +58,9 @@
   fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
   stroke: none;
   fill-opacity: 0;
-  animation: recoveryRadarFill 3900ms cubic-bezier(.22,.61,.36,1) 260ms both;
+  animation: recoveryRadarFill 2200ms cubic-bezier(.16,1,.3,1) 240ms both;
 }
-.valueSegment { fill:none; stroke:var(--lab-text-primary,#f1f1f1); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:recoveryRadarTrace 760ms cubic-bezier(.22,.61,.36,1) calc(360ms + var(--radar-segment-index,0) * 900ms) both; }
+.valueSegment { fill:none; stroke:var(--lab-text-primary,#f1f1f1); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:recoveryRadarTrace 380ms cubic-bezier(.16,1,.3,1) calc(420ms + var(--radar-segment-index,0) * 420ms) both; }
 
 .valuePoint {
   fill: var(--lab-text-primary, #f1f1f1);
@@ -70,9 +70,9 @@
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: recoveryRadarPoint 320ms cubic-bezier(.22,.61,.36,1) calc(1040ms + (var(--radar-point-index,0) - 1) * 900ms) both;
+  animation: recoveryRadarPoint 220ms cubic-bezier(.16,1,.3,1) calc(800ms + (var(--radar-point-index,0) - 1) * 420ms) both;
 }
-.valuePoint[data-radar-point-index="0"] { animation-delay:120ms; }
+.valuePoint[data-radar-point-index="0"] { animation-delay:200ms; }
 @keyframes recoveryRadarTrace { to { stroke-dashoffset:0; } }
 @keyframes recoveryRadarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
 @keyframes recoveryRadarPoint { from { opacity:0; transform:scale(.82); } 70% { opacity:1; transform:scale(1.035); } to { opacity:1; transform:scale(1); } }
