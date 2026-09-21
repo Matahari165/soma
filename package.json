@@ -32,9 +32,11 @@
     "db:migrate:local": "wrangler d1 migrations apply soma-core --local",
     "db:migrate:remote": "wrangler d1 migrations apply soma-core --remote",
     "db:migrate:supabase": "node scripts/migrate-d1-to-supabase.mjs",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:live:meal-analysis": "MEAL_ANALYSIS_LIVE_SMOKE=1 MEAL_ANALYSIS_LIVE_CONFIRM=YES vitest run --config vitest.live.config.ts src/scripts/meal-analysis-live-smoke.live.test.ts",
+    "test:live:meal-balance": "MEAL_BALANCE_REALISTIC_LIVE=1 vitest run --config vitest.live.config.ts src/scripts/meal-balance-realistic.live.test.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
