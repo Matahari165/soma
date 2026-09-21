@@ -77,38 +77,11 @@ function comparison(value: number | null, average: number | null): ActivityRadar
   return value > average ? "up" : "down";
 }
 function comparisonLabel(average: number | null, unit: string) { return measured(average) ? `30-day avg · ${formatComponentValue(average, unit)}` : undefined; }
-function exerciseTypeLabel(type: string) {
-  const labels: Record<string, string> = { RUNNING: "Running", TRAIL_RUNNING: "Trail running", WALKING: "Walking", HIKING: "Hiking", CYCLING: "Cycling", SWIMMING: "Swimming", WEIGHT_TRAINING: "Strength training", STRENGTH_TRAINING: "Strength training", SURFING: "Surfing", SURF: "Surfing", BOXING: "Boxing", BOXE: "Boxing", YOGA: "Yoga", HIIT: "HIIT", OTHER: "Other" };
-  const normalized = type.trim().replaceAll("-", "_").toUpperCase();
-  return labels[normalized] ?? normalized.toLocaleLowerCase("en-US").replaceAll("_", " ");
-}
-
 function dateOffset(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`);
   if (!Number.isFinite(value.getTime())) return null;
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
-}
-
-function activityDateLabel(date: string, currentDate: string) {
-  if (date === currentDate) return "Today";
-  if (date === dateOffset(currentDate, -1)) return "Yesterday";
-  return date;
-}
-
-function selectNotableExercise(exercises: readonly HealthAnalytics["exercises"][number][], currentDate: string) {
-  const recent = [...exercises].filter((exercise) => exercise.date).sort((first, second) => second.date.localeCompare(first.date));
-  return recent.find((exercise) => exercise.date === currentDate)
-    ?? recent.find((exercise) => exercise.date === dateOffset(currentDate, -1))
-    ?? recent[0];
-}
-
-function paceOrSpeed(exercise: HealthAnalytics["exercises"][number]) {
-  if (measured(exercise.averagePaceSecondsPerKm) && exercise.averagePaceSecondsPerKm > 0) {
-    const seconds = Math.round(exercise.averagePaceSecondsPerKm);
-    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /km`;
-  }
-  return measured(exercise.averageSpeedKph) ? `${decimal(exercise.averageSpeedKph, 1)} km/h` : null;
 }
 
 function finiteValuesInWindow<Key extends NumericHealthMetricKey>(days: readonly HealthMetricDay[], key: Key, endDate: string): number[] {
@@ -185,19 +158,16 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     comparisonTone: "neutral",
     sourceLabel: "Soma",
   }] : [];
-  const latestExercise = selectNotableExercise(data.exercises, currentDate);
-
   return <div className={styles.root}>
     <HealthPageShell kind="activity" title="Activity" description="Activity score based on zone minutes, exercise duration, active energy, and steps." score={score} freshness={freshness} timezone={data.timezone} showFreshness={true} heroScore={<span className="sr-only">Activity score: {score === null ? "unavailable" : `${score} out of 100`}. 30-day average: {averages.effort === null ? "unavailable" : `${Math.round(averages.effort)} out of 100`}. {scoreCoverage === null ? "Score coverage unavailable" : `${Math.round(scoreCoverage * 100)}% score coverage`}.</span>}>
       <section className={`${styles.content} health-observatory-content`} aria-label="Activity content">
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} aria-labelledby="activity-score-summary-title"><div className={styles.radarRegion}><ActivityScoreOverview dimensions={radarDimensions} score={score} average={averages.effort} coverage={scoreCoverage} breakdown={scoreBreakdown} persistedScore={persistedScore} /></div></section>
-          {latestExercise && <section className={`${styles.section} ${styles.featuredActivity} health-observatory-panel`} aria-labelledby="activity-featured-heading"><header className={styles.sectionHeader}><h2 id="activity-featured-heading">Recent activity</h2><span>{activityDateLabel(latestExercise.date, currentDate)}</span></header><div className={styles.featuredActivityBody}><div className={styles.featuredActivityIdentity}><strong>{exerciseTypeLabel(latestExercise.type)}</strong><span>{latestExercise.name}</span></div><dl className={styles.featuredActivityMetrics}><div><dt>Duration</dt><dd>{number(latestExercise.durationMinutes, "min")}</dd></div><div><dt>Calories</dt><dd>{number(latestExercise.calories, "kcal")}</dd></div>{measured(latestExercise.distanceKm) && <div><dt>Distance</dt><dd>{decimal(latestExercise.distanceKm, 2)} km</dd></div>}{paceOrSpeed(latestExercise) && <div><dt>Pace / speed</dt><dd>{paceOrSpeed(latestExercise)}</dd></div>}<div><dt>Avg HR</dt><dd>{number(latestExercise.averageHeartRate, "bpm")}</dd></div><div><dt>Zone minutes</dt><dd>{number(latestExercise.zoneMinutes, "min")}</dd></div></dl></div></section>}
+          <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />
           <section className={`${styles.section} health-observatory-panel`} aria-labelledby="activity-readings-heading"><header className={styles.sectionHeader}><h2 id="activity-readings-heading">Benchmarks</h2><span>{latest.metric_date}</span></header><dl className={styles.readingsGrid}><div><dt>Weekly load</dt><dd>{number(latest.weekly_load)}</dd><small>30-day avg · {formatAverage(averages.weeklyLoad, "number")}</small></div><div><dt>Acute / chronic load ratio</dt><dd>{measured(latest.acute_chronic_load_ratio) ? `${decimal(latest.acute_chronic_load_ratio, 2)}×` : "—"}</dd><small>30-day avg · {decimal(averages.acuteChronicLoadRatio, 2)}×</small></div><div><dt>Consistency · 28d</dt><dd>{regularity.consistencyScore === null ? "—" : `${regularity.consistencyScore}%`}</dd><small>{regularity.observedDays} observed days</small></div><div><dt>Active days · 28d</dt><dd>{regularity.activeDayRate === null ? "—" : `${regularity.activeDayRate}%`}</dd><small>{regularity.activeDays} active days</small></div></dl></section>
           <section className={`${styles.section} health-observatory-panel`} aria-labelledby="activity-trends-heading"><header className={styles.sectionHeader}><h2 id="activity-trends-heading">Trends</h2><span>30 days</span></header><div className={styles.trendGrid}><MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" compact animateCurrent animationFormat="number" /><MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" compact animateCurrent animationFormat="number" /><MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" compact animateCurrent animationFormat="number" /><MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" compact animateCurrent animationFormat="number" /><MetricTrendCard label="Weekly load" points={points(activityDays, "weekly_load")} direction="context_only" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" compact animateCurrent animationFormat="number" /><MetricTrendCard label="Activity consistency" points={points(activityDays, "activity_consistency_28d")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" compact animateCurrent animationFormat="number" /></div></section>
           <section className={`${styles.section} health-observatory-panel`} aria-labelledby="activity-zones-heading"><header className={styles.sectionHeader}><h2 id="activity-zones-heading">Heart-rate zones</h2><span>{number(latest.zone_minutes, "min")}</span></header><ZoneDistribution zones={[{ label: "Light", minutes: latest.light_zone_minutes, tone: "light" }, { label: "Moderate", minutes: latest.moderate_zone_minutes, tone: "moderate" }, { label: "Vigorous", minutes: latest.vigorous_zone_minutes, tone: "vigorous" }, { label: "Peak", minutes: latest.peak_zone_minutes, tone: "peak" }]} /></section>
-          <ActivityHistory exercises={data.exercises} />
-        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">Aucune mesure quotidienne récente</h2><p>Aucun jour mesuré sur les 30 derniers jours. Les séances plus anciennes restent accessibles ci-dessous.</p><p><a href="/settings">Vérifier la connexion Google Health</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} />}</>}
+        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No recent daily measurement</h2><p>No measured day was found over the last 30 days. Older workouts remain available below.</p><p><a href="/settings">Check Google Health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />}</>}
       </section>
     </HealthPageShell>
   </div>;

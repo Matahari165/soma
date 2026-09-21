@@ -102,6 +102,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-headi
 .radar-point { fill:#fff; }
 .radar-label { fill:#bdbdbd; font-size:15px; }
 .radar-number { fill:#fff; font-size:22px; }
+.radar-source { fill:#fff; font-size:11px; }
 .observatory-radar figcaption { color:#999; font-size:10px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-card--personal-lab,.journal-period,.journal-number--stepper,.journal-choice--binary,.journal-field) { background:transparent!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field { min-height:46px; }
@@ -112,6 +113,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous button:hover { color:#fff; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :focus-visible { outline:2px solid #ddd; outline-offset:3px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button[aria-current="date"] { background:#1b1b1b; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip__days { border-bottom:0!important; }
 @supports(animation-timeline:scroll()) {
  html[data-lab-theme="observatory"] .arrival-heading { animation:observatory-heading-recede linear both; animation-timeline:scroll(root); animation-range:0px 600px; }
 }
@@ -122,20 +124,16 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
  html[data-lab-theme="observatory"] :is(.arrival-backdrop__image--panorama,.arrival-backdrop__image--crepuscule) { object-position:38% 28%; }
  html[data-lab-theme="observatory"] .arrival-backdrop__tone { background:linear-gradient(90deg,rgba(5,5,5,.2),rgba(5,5,5,.76) 72%,#050505); }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { grid-template-columns:minmax(0,1fr)!important; min-height:0!important; }
- html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(360px,calc(100vw - 16px))!important; min-height:min(360px,calc(100vw - 16px))!important; margin-top:0; margin-bottom:0; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(410px,106vw)!important; min-height:min(410px,106vw)!important; margin-top:-4px; margin-bottom:0; }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { margin:0 0 16px; }
- .observatory-radar { transform:translateY(-24px)!important; }
- .observatory-radar svg { transform:scale(.92); transform-origin:center; }
+ .observatory-radar { transform:translateY(-18px)!important; }
+ .observatory-radar svg { width:100%; margin-left:0; transform:none; transform-origin:center; }
 }
 @media(prefers-reduced-motion:reduce) { .arrival-title-line > span,html[data-lab-theme="observatory"] .arrival-heading,html[data-lab-theme="observatory"] .arrival-backdrop__image { animation:none!important; } html[data-lab-theme="observatory"] .arrival-backdrop { transform:none!important; opacity:1!important; } }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary button.is-selected { background:#1c1c1c!important; color:#fff; border-radius:4px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper input { font-size:16px; font-weight:400; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper > span { font-family:var(--font-soma-mono),monospace; font-size:13px; }
-.radar-grid { stroke-dasharray:1100; stroke-dashoffset:0; animation:observatory-axis-draw 1100ms cubic-bezier(.16,1,.3,1) both; }
-.radar-grid:nth-child(2) { animation-delay:60ms; }
-.radar-grid:nth-child(3) { animation-delay:120ms; }
-@keyframes observatory-axis-draw { from { stroke-dashoffset:1100; opacity:.15; } to { stroke-dashoffset:0; opacity:1; } }
-@media(prefers-reduced-motion:reduce) { .radar-grid { animation:none; } }
+.radar-grid { stroke-dasharray:none; stroke-dashoffset:0; animation:none; }
 /* Single radar edition — common proportions for all daily controls. */
 html[data-lab-theme="observatory"] .lab-global-nav {
  inset:8px 0 auto;
@@ -152,18 +150,28 @@ html[data-lab-theme="observatory"] .journal-save-status[data-draft="true"] { dis
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__header h2 { font:400 clamp(30px,3vw,40px)/1.2 Georgia,serif!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-period__header h3,.journal-period__header h3 button) { font-size:20px!important; font-weight:400!important; text-transform:none; letter-spacing:0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-sections :is(button,input,span,label,strong) { font-weight:400!important; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary,.journal-number--stepper,.journal-clock) { width:168px!important; min-width:168px; height:36px!important; min-height:36px!important; padding:0!important; box-sizing:border-box; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary button { min-height:36px!important; height:36px; padding:4px 12px; font-size:14px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary,.journal-number--stepper,.journal-clock) { width:168px!important; min-width:168px; height:36px!important; min-height:36px!important; padding:2px!important; box-sizing:border-box; border:1px solid #292929!important; border-radius:4px; background:#0b0b0b!important; color:#eee; font:400 13px/1 var(--font-soma-mono),monospace; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary { display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary button { min-height:30px!important; height:30px; padding:0 8px; border-radius:2px; color:#aaa; font:400 13px/1 var(--font-soma-ui),sans-serif; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper { display:grid; grid-template-columns:32px minmax(0,1fr) 32px; align-items:center; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper > button { width:32px; min-height:36px!important; padding:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper > button { width:32px; min-height:30px!important; height:30px; padding:0; border-radius:2px; color:#aaa; font:400 16px/1 var(--font-soma-ui),sans-serif; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value { display:flex; justify-content:center; align-items:baseline; gap:5px; min-width:0; padding:0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value input { width:3ch!important; min-width:3ch; flex:0 0 auto; text-align:right; padding:0!important; font:400 14px var(--font-soma-mono),monospace; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value > span { color:#eee!important; font:400 14px var(--font-soma-mono),monospace; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock { display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock input { width:48px!important; min-height:36px!important; height:36px; background:transparent; font-weight:400; text-align:center; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:2px; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock input { width:100%!important; min-width:0; min-height:30px!important; height:30px; padding:0 6px!important; background:transparent; color:#eee; font:400 13px/1 var(--font-soma-mono),monospace; text-align:center; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field > :is(input[type="time"],select) { width:168px!important; min-width:168px; height:36px!important; min-height:36px!important; box-sizing:border-box; padding:0 10px!important; border:1px solid #292929!important; border-radius:4px; background:#0b0b0b!important; color:#eee; font:400 13px/1 var(--font-soma-mono),monospace; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-header-validate { min-height:32px; padding-inline:8px; border:1px solid #292929!important; background:transparent!important; color:#aaa!important; font-size:12px; font-weight:400; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-header-validate:hover:not(:disabled) { border-color:#3a3a3a!important; background:#0c0c0c!important; color:#eee!important; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-header-validate:focus-visible { outline:2px solid var(--lab-signal); outline-offset:2px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-button--validate,.journal-card__actions > .primary-button) { min-height:36px; padding:8px 18px; background:#181818; color:#eee; font-weight:400; border-radius:4px; }
 @media(max-width:700px) { html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field { gap:8px; } }
+@media(max-width:700px) {
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary,.journal-number--stepper,.journal-clock),
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field > :is(input[type="time"],select) { width:min(168px,48vw)!important; min-width:0; height:44px!important; min-height:44px!important; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary button,.journal-number--stepper > button,.journal-clock input) { height:38px; min-height:38px!important; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-header-validate { min-height:44px; }
+}
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value input { field-sizing:content; width:auto!important; min-width:1ch; max-width:6ch; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card__actions { margin-left:auto; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-button--validate,.journal-card__actions > .primary-button) { width:168px; }
@@ -171,24 +179,37 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.primary-b
 
 html[data-lab-theme="observatory"] .lab-global-nav { inset:8px 0 auto; }
 html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content { padding-top:82px; }
-html[data-lab-theme="observatory"] :is(.radar-label,.radar-number) { font-weight:400; }
+html[data-lab-theme="observatory"] :is(.radar-label,.radar-number,.radar-source) { font-weight:400; }
 html[data-lab-theme="observatory"] .radar-label { font-size:18px!important; }
 html[data-lab-theme="observatory"] .radar-number { font-size:16px!important; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card__actions { justify-content:flex-end; width:100%; }
 
 @media(max-width:700px) {
- html[data-lab-theme="observatory"] .radar-label { font-size:28px!important; }
- html[data-lab-theme="observatory"] .radar-number { font-size:24px!important; }
- html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-88px); }
- html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(88px); }
+ html[data-lab-theme="observatory"] .radar-label { font-size:22px!important; }
+ html[data-lab-theme="observatory"] .radar-number { font-size:18px!important; }
+ html[data-lab-theme="observatory"] .radar-source { font-size:18px!important; }
+ html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-120px); }
+ html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(120px); }
 }
 
 /* Le maillage reste discret, avec un appui lisible sur la moitié gauche. */
-.radar-grid-left { fill:none; stroke:#3d3d3d; stroke-width:1; stroke-linecap:round; stroke-linejoin:round; animation:observatory-axis-draw 1100ms cubic-bezier(.16,1,.3,1) both; }
+.radar-grid-left { fill:none; stroke:#3d3d3d; stroke-width:1; stroke-linecap:round; stroke-linejoin:round; animation:none; }
 .radar-grid-left--outer { stroke:#777; }
-@media(prefers-reduced-motion:reduce) { .radar-grid-left { animation:none; } }
 
-/* Stitch 12-column layout: Daily Protocol (7 cols) on left, Meals (5 cols) on right. */
+/* Le cadre est présent dès le départ. Les données avancent comme une lecture :
+   point de départ, segment, point suivant, puis segment suivant. */
+.radar-value { stroke:none; fill:#ffffff12; opacity:0; animation:radar-fill-reveal 3900ms cubic-bezier(.22,.61,.36,1) 260ms both; }
+.radar-value-segment { fill:none; stroke:#eee; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; animation:radar-trace-draw 760ms cubic-bezier(.22,.61,.36,1) calc(360ms + var(--radar-segment-index,0) * 900ms) both; }
+.radar-point { transform-box:fill-box; transform-origin:center; opacity:0; animation:radar-point-reveal 320ms cubic-bezier(.22,.61,.36,1) calc(1040ms + (var(--radar-point-index,0) - 1) * 900ms) both; }
+.radar-point[data-radar-point-index="0"] { animation-delay:120ms; }
+@keyframes radar-trace-draw { to { stroke-dashoffset:0; } }
+@keyframes radar-fill-reveal { 0% { opacity:0; } 24% { opacity:.05; } 48% { opacity:.18; } 72% { opacity:.45; } 100% { opacity:1; } }
+@keyframes radar-point-reveal { from { opacity:0; transform:scale(.82); } 70% { opacity:1; transform:scale(1.035); } to { opacity:1; transform:scale(1); } }
+@media(prefers-reduced-motion:reduce) {
+ .radar-value,.radar-value-segment,.radar-point { animation:none!important; opacity:1; stroke-dashoffset:0; transform:none; }
+}
+
+/* Stitch 12-column layout: Meals lead on the left, Daily Protocol follows on the right. */
 @media (min-width: 1024px) {
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench {
   display: grid !important;
@@ -201,12 +222,12 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column {
   grid-column: span 7 / span 7 !important;
-  order: 1 !important;
+  order: 2 !important;
   min-width: 0 !important;
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column {
   grid-column: span 5 / span 5 !important;
-  order: 2 !important;
+  order: 1 !important;
   min-width: 0 !important;
  }
 }
@@ -219,14 +240,37 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column {
   grid-column: 1 / -1 !important;
-  order: 1 !important;
+  order: 2 !important;
   min-width: 0 !important;
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column {
   grid-column: 1 / -1 !important;
-  order: 2 !important;
+  order: 1 !important;
   min-width: 0 !important;
  }
+}
+
+/* Responsive journal controls and an explicit three-day mobile window. */
+.personal-lab-day-strip__desktop { display:flex; align-items:center; justify-content:space-between; gap:2px; width:100%; min-width:0; }
+.personal-lab-day-strip__desktop .personal-lab-day-strip__day { min-width:0; flex:1 1 0; }
+.personal-lab-day-strip__mobile { display:none; }
+@media(max-width:700px) {
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__desktop { display:none!important; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:stretch; width:100%; gap:4px; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile-days { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); min-width:0; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile .personal-lab-day-strip__day { min-width:0!important; width:100%; padding-inline:2px; overflow:hidden; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile .personal-lab-day-strip__day span:not(.sr-only) { overflow:hidden; max-width:100%; text-overflow:ellipsis; white-space:nowrap; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile .personal-lab-day-strip__label { font-size:0; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile .personal-lab-day-strip__label::after { content:attr(data-mobile-label); font-size:11px; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__arrow { display:grid!important; min-width:44px!important; width:44px!important; min-height:44px; place-items:center; padding:0!important; border:0; background:transparent; color:#aaa; font-size:22px; }
+ html[data-lab-theme="observatory"] .personal-lab-day-strip__arrow:disabled { opacity:.22; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field { min-width:0; gap:8px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field > .shrink-0 { width:144px; min-width:144px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary,.journal-number--stepper,.journal-clock),
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-field > :is(input[type="time"],select) { width:144px!important; min-width:144px; height:48px!important; min-height:48px!important; font-size:13px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper { grid-template-columns:40px minmax(0,1fr) 40px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.journal-choice--binary button,.journal-number--stepper > button,.journal-clock input) { min-height:44px!important; height:44px!important; padding-inline:4px; font-size:13px; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value :is(input,span) { font-size:13px!important; }
 }
 
 /* Observatory refinement: let the navigation dissolve into the immersive hero. */
@@ -315,7 +359,22 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock input::placeholder { color:#888; opacity:1; }
 
 @media(max-width:700px) {
-  html[data-lab-theme="observatory"] .lab-global-nav { padding-inline:18px; }
+  html[data-lab-theme="observatory"] .lab-global-nav {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:0 4px;
+    min-height:104px;
+    padding:16px 8px 0;
+    overflow:visible;
+    background:linear-gradient(to bottom,#050505 0%,rgba(5,5,5,.97) 72%,rgba(5,5,5,0) 100%);
+  }
+  html[data-lab-theme="observatory"] .lab-global-nav a { min-width:0; min-height:44px; justify-content:center; margin:0; padding:0 2px; font-size:11px; text-align:center; }
+  html[data-lab-theme="observatory"] .lab-global-nav a:first-child,
+  html[data-lab-theme="observatory"] .lab-global-nav__settings { margin:0; padding-left:2px; border-left:0; }
+  html[data-lab-theme="observatory"] body.local-preview .app-shell:has(.lab-continuous) .main-content,
+  html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content,
+  html[data-lab-theme="observatory"] .app-shell:has(.lab-continuous) .main-content { padding-top:104px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-intro { margin-top:52px; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip__days { overflow-x:auto; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button { flex-basis:96px; }
 }
@@ -613,6 +672,129 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline {
     animation: none;
   }
+}
+
+/* Final iPhone composition: a single quiet navigation rail, an earlier hero,
+   direct radar labels outside the plot, and one compact journal heading row. */
+@media(max-width:700px) {
+  html[data-lab-theme="observatory"] .lab-global-nav {
+    display:flex;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    gap:10px;
+    min-height:52px;
+    padding:4px 10px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    background:linear-gradient(to bottom,#050505 0%,rgba(5,5,5,.97) 82%,rgba(5,5,5,0) 100%);
+  }
+  html[data-lab-theme="observatory"] .lab-global-nav::-webkit-scrollbar { display:none; }
+  html[data-lab-theme="observatory"] .lab-global-nav a {
+    flex:0 0 auto;
+    min-width:0;
+    min-height:44px;
+    justify-content:center;
+    margin:0;
+    padding:0;
+    font-size:11px;
+    text-align:center;
+  }
+  html[data-lab-theme="observatory"] .lab-global-nav a:first-child,
+  html[data-lab-theme="observatory"] .lab-global-nav__settings { margin:0; padding-left:0; border-left:0; }
+  html[data-lab-theme="observatory"] body.local-preview .app-shell:has(.lab-continuous) .main-content,
+  html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content,
+  html[data-lab-theme="observatory"] .app-shell:has(.lab-continuous) .main-content { padding-top:52px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-intro { margin-top:0; }
+
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition {
+    display:flex!important;
+    flex-direction:column;
+    align-items:stretch;
+    gap:0!important;
+    padding-inline:20px!important;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading { width:100%; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 {
+    width:100%;
+    margin:0 0 16px!important;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress {
+    width:100%;
+    max-width:none;
+    margin:0;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art {
+    width:100%!important;
+    height:min(430px,110vw)!important;
+    min-height:min(430px,110vw)!important;
+    margin:28px 0 0!important;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .observatory-radar { transform:none!important; }
+
+  html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-100px); }
+  html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(100px); }
+
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-workspace-header__row {
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-workspace-header__row .workspace-panel-title {
+    font-size:28px!important;
+    line-height:34px!important;
+    white-space:nowrap;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(#journal-title,#meal-journal-title) {
+    font-size:28px!important;
+    line-height:34px!important;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-workspace-header__actions {
+    flex:0 0 auto;
+    gap:4px;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-workspace-header__actions .journal-header-validate {
+    min-width:88px;
+    padding-inline:8px;
+    font-size:12px;
+  }
+}
+
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary {
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:0!important;
+  padding:2px!important;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary > button {
+  display:grid!important;
+  width:100%!important;
+  min-width:0!important;
+  place-items:center!important;
+  padding-inline:0!important;
+  text-align:center!important;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper {
+  display:grid!important;
+  grid-template-columns:38px minmax(0,1fr) 38px!important;
+  gap:0!important;
+  padding:2px!important;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number--stepper > button {
+  width:38px!important;
+  min-width:38px!important;
+  padding:0!important;
+  place-self:center!important;
+}
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-number__value {
+  display:flex!important;
+  min-width:0;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  text-align:center;
 }
 
 @media(max-width:700px) {

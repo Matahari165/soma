@@ -177,21 +177,6 @@ export function LabWorldWorkspace({
     window.addEventListener("lab-theme-change", change);
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
-  useEffect(() => {
-    const elements = root.current?.querySelectorAll<HTMLElement>(".lab-live-metrics .personal-lab-metric, .journal-period, .meal-journal-lab article");
-    if (!elements || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const element = entry.target as HTMLElement;
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { observer.unobserve(element); return; }
-      // Révélation calme : 220 ms max, déplacement 4 px, sans rotation.
-      element.animate([{ opacity: .7, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" });
-      element.querySelectorAll(".metric-trace-line").forEach(line => line.animate([{ strokeDasharray: "500", strokeDashoffset: "40" }, { strokeDasharray: "500", strokeDashoffset: "0" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }));
-      observer.unobserve(element);
-    }), { threshold: .08 });
-    elements.forEach(element => observer.observe(element));
-    return () => observer.disconnect();
-  }, [theme]);
   return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
     <div className="lab-intro">
       {theme === "observatory" && <ArrivalBackdrop variant={radarPresentation.backdrop} />}

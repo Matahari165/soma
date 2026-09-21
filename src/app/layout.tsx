@@ -3,7 +3,6 @@ import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
-import { ObservatoryPageMotion } from "@/components/lab/observatory-page-motion";
 import { LabGlobalNavigation } from "@/components/lab/lab-global-navigation";
 import { SkipLink } from "@/components/skip-link";
 import { getCurrentUser } from "@/lib/auth";
@@ -88,7 +87,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className={[localPreview && "local-preview", observatoryMode && "observatory-mode"].filter(Boolean).join(" ") || undefined}>
         <SkipLink />
         {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo data · Nothing is transmitted or saved</span></div>}
-        {observatoryMode && <><LabGlobalNavigation /><ObservatoryPageMotion /></>}
+        {observatoryMode && <LabGlobalNavigation />}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
     </html>

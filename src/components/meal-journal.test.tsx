@@ -1066,7 +1066,7 @@ describe("apiMealToRecord", () => {
     }} />);
 
     expect(html).toContain("Nutrition Log");
-    expect(html).toContain('<p class="text-xs text-content-secondary font-mono mt-1">450 / 3,000 kcal</p>');
+    expect(html).not.toContain("450 / 3,000 kcal");
     expect(html).not.toContain("logged ·");
     expect(html).not.toContain("pending</p>");
     expect(html).not.toContain("labMealDeleteRow");

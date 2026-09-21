@@ -33,7 +33,7 @@ vi.mock("./nutrition-targets", () => ({
   loadNutritionTargetsStateForUser: () => Promise.resolve(null),
 }));
 
-import { getActivityAnalytics, getRecoveryAnalytics, getSleepAnalytics, heartRateWindowForCivilDate } from "./health-analytics";
+import { exerciseSummaryFromRecord, getActivityAnalytics, getRecoveryAnalytics, getSleepAnalytics, heartRateWindowForCivilDate } from "./health-analytics";
 
 function resultFor(query: QueryCall): QueryResult {
   if (testState.errorTables.has(query.table)) return { data: null, error: { message: "temporary failure" } };
@@ -155,6 +155,20 @@ describe("health analytics first-screen loading", () => {
     expect(analytics.exercises).toHaveLength(501);
     expect(queriesFor("health_records").filter((query) => query.range).map((query) => query.range)).toEqual([[0, 499], [500, 999]]);
     expect(queriesFor("health_records").some((query) => query.filters.some((filter) => filter.value === "heart-rate"))).toBe(false);
+  });
+
+  it("preserves measured maximum heart rate and leaves it unavailable when absent", () => {
+    const fromWhoop = exerciseSummaryFromRecord({
+      source_record_id: "whoop-1",
+      civil_date: "2026-09-10",
+      start_time: null,
+      end_time: null,
+      payload: { exercise: { exerciseType: "RUNNING", maximumHeartRate: 184, metricsSummary: { averageHeartRateBeatsPerMinute: 151 } } },
+    });
+    const absent = exerciseSummaryFromRecord({ source_record_id: "run-2", civil_date: "2026-09-10", start_time: null, end_time: null, payload: { exercise: { exerciseType: "RUNNING" } } });
+
+    expect(fromWhoop.maximumHeartRate).toBe(184);
+    expect(absent.maximumHeartRate).toBeNull();
   });
 
   it("keeps sleep's latest detail read and 30-day recommendation inputs intact", async () => {

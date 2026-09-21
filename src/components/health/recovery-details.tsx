@@ -11,7 +11,6 @@ import { MetricTrendCard } from "./metric-trend-card";
 import type { RecoveryRadarDimension } from "./recovery-radar";
 import { RecoveryRadar } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
-import { RecoveryScrollReveal } from "./recovery-scroll-reveal";
 import styles from "./recovery-redesign.module.css";
 
 type TrendKind = "hrv_daily" | "hrv_nightly" | "resting_heart_rate" | "respiratory_rate";
@@ -202,9 +201,9 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const detailTitleId = "recovery-radar-detail-title";
   const detailOpen = selectedAxis !== null;
   const dimensions: RecoveryRadarDimension[] = [
-    { key: "hrv", label: "Nightly HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")} /100`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Nightly heart rate variability compared to your personal baseline.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
-    { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")} /100`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
-    { key: "sleep", label: "Sleep", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")} /100`, averageLabel: averages.recovery === null ? undefined : `30-day avg · ${Math.round(averages.recovery)} /100`, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreRole: "Score component · 30%", scoreFormula: "Soma Sleep score", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
+    { key: "hrv", label: "Nightly HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Nightly heart rate variability compared to your personal baseline.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")}%`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "sleep", label: "Sleep", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")}%`, averageLabel: averages.recovery === null ? undefined : `30-day avg · ${Math.round(averages.recovery)} /100`, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreRole: "Score component · 30%", scoreFormula: "Soma Sleep score", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
   ];
   const selectedDimension = dimensions.find((dimension) => dimension.key === selectedAxis) ?? null;
   useEffect(() => {
@@ -241,7 +240,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery)} out of 100.</span>}
     >
       <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-recovery-scroll-reveal-root="true">
-        <RecoveryScrollReveal />
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
             <div className={styles.radarRegion}>

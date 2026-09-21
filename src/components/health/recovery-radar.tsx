@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type KeyboardEvent } from "react";
+import { useId, useRef, type CSSProperties, type KeyboardEvent } from "react";
 
 import styles from "./recovery-radar.module.css";
 
@@ -38,8 +38,8 @@ const VIEWBOX_WIDTH = 420;
 const VIEWBOX_HEIGHT = 420;
 const CENTER_X = VIEWBOX_WIDTH / 2;
 const CENTER_Y = VIEWBOX_HEIGHT / 2;
-const RADIUS = 150;
-const LABEL_RADIUS = RADIUS + 38;
+const RADIUS = 132;
+const LABEL_RADIUS = RADIUS + 34;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 const LABEL_LINE_HEIGHT = 16;
 
@@ -84,8 +84,7 @@ function wrapLabel(label: string, maxCharacters = 20) {
 function readableDimension(dimension: RecoveryRadarDimension) {
   const value = dimension.valueLabel?.trim() ?? (isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible");
   const weight = formatWeight(dimension.weight);
-  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
-  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}${source}`;
+  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
 }
 
 function pointFor(index: number, count: number, distance: number): [number, number] {
@@ -133,6 +132,10 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
     if (!isMeasured(dimension.score)) return null;
     const ratio = Math.min(1, Math.max(0, dimension.score / 100));
     return pointFor(index, Math.max(dimensions.length, 1), RADIUS * ratio);
+  });
+  const valueSegments = measuredPoints.flatMap((point, index) => {
+    const next = measuredPoints[(index + 1) % dimensions.length];
+    return point && next ? [{ from: point, to: next }] : [];
   });
 
   function focusAxis(index: number) {
@@ -206,11 +209,15 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
                 points={pointString(measuredPoints.filter((point): point is [number, number] => point !== null))}
               />
             )}
+            {valueSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.valueSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />)}
             {measuredPoints.map((point, index) => point && (
               <circle
                 key={dimensions[index]?.key ?? index}
                 className={selectedId === dimensions[index]?.key ? `${styles.valuePoint} ${styles.valuePointActive}` : styles.valuePoint}
                 data-testid="recovery-radar-point"
+                data-radar-point=""
+                data-radar-point-index={index}
+                style={{ "--radar-point-index": index } as CSSProperties}
                 cx={point[0]}
                 cy={point[1]}
                 r={selectedId === dimensions[index]?.key ? 6 : 5}
@@ -224,11 +231,9 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
           const lines = wrapLabel(dimension.label);
           const startY = labelY - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
           const valueY = startY + lines.length * LABEL_LINE_HEIGHT + 8;
-          const sourceY = valueY + LABEL_LINE_HEIGHT;
           const anchor = axisAnchor(index, Math.max(dimensions.length, 1));
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.key;
-          const sourceLabel = dimension.sourceLabel?.trim() || null;
           const displayValue = dimension.valueLabel?.trim() ?? formatScore(dimension.score);
           return (
             <g
@@ -271,11 +276,6 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
                   {displayValue}
                 </text>
               </g>
-              {sourceLabel ? (
-                <text className={styles.axisValue} x={labelX} y={sourceY} textAnchor={anchor}>
-                  {sourceLabel}
-                </text>
-              ) : null}
             </g>
           );
         })}

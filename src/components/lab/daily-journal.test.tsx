@@ -87,18 +87,17 @@ describe("journal motion states", () => {
     expect(html).not.toContain('aria-label="Confirm displayed value for Vacation"');
   });
 
-  it("marks an automatic value as recorded and identifies its origin", () => {
-    const bedtime = variables.find((variable) => variable.name === "Bedtime");
+  it("keeps historical sleep-start entries out of the journal", () => {
+    const bedtime: JournalVariable = { id: "00000000-0000-4000-8000-999999999999", name: "Bedtime", variableType: "time", unit: null, options: [], position: 78, isActive: true, emoji: "🌘", defaultValue: null, dayPeriod: "evening", captureMode: "automatic", automaticMetricId: "bedtime", trackingCadence: "daily" };
     const html = renderToStaticMarkup(createElement(DailyJournal, {
-      variables,
-      entries: bedtime ? [{ variableId: bedtime.id, entryDate: todayDate, value: "22:40", source: "automatic" }] : [],
+      variables: [...variables, bedtime],
+      entries: [{ variableId: bedtime.id, entryDate: todayDate, value: "22:40", source: "automatic" }],
       days: [],
       todayDate,
     }));
 
-    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Automatic detection"');
-    expect(html).toContain('aria-label="Bedtime: Recorded, automatic detection"');
-    expect(html).not.toContain('aria-label="Confirm displayed value for Bedtime"');
+    expect(html).not.toContain('aria-label="Bedtime: Recorded, automatic detection"');
+    expect(html).not.toContain('>Bedtime<');
   });
 
   it("shows the achievement percentage without changing the field state", () => {
@@ -197,7 +196,7 @@ describe("journal motion states", () => {
   it("places Personal Lab validation in the Daily Protocol ribbon header", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
-    const actionsStart = html.indexOf('class="flex items-center gap-3"');
+    const actionsStart = html.indexOf('journal-workspace-header__actions');
     const actionsEnd = html.indexOf('class="w-full h-1.5', actionsStart);
 
     expect(html).toContain("Daily Protocol");
@@ -378,8 +377,11 @@ describe("journal motion states", () => {
     }));
 
     expect(html).toContain("text-sm font-medium text-content-primary truncate");
-    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium");
-    expect(html).toContain("text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated");
+    expect(html).toContain("journal-header-validate");
+    expect(html).toContain("text-content-secondary hover:text-content-primary");
+    expect(html).toContain('aria-label="Edit protocol"');
+    expect(html).toContain("text-content-secondary border border-hairline");
+    expect(html).not.toContain("Edit protocol</button>");
   });
 
   it("renders date strip without pulsing green dot for selected date", () => {
@@ -391,6 +393,6 @@ describe("journal motion states", () => {
     }));
 
     expect(html).not.toContain("animate-pulse");
-    expect(html).toContain("bg-surface-elevated");
+    expect(html).toContain("is-selected personal-lab-day-strip__day");
   });
 });

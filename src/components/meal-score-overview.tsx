@@ -87,6 +87,22 @@ function componentFor(daily: MealBalanceScore | null, key: MealBalanceComponentK
   return daily?.components.find((component) => component.key === key) ?? null;
 }
 
+function trendPointStyle(index: number, count: number, score: number): CSSProperties {
+  const x = count <= 1 ? 50 : index / (count - 1) * 100;
+  const y = Math.min(Math.max(score, 0), 100);
+  return { left: `${x}%`, bottom: `${y}%` };
+}
+
+function trendSegments(trend: readonly MealScoreTrendPoint[]) {
+  if (trend.length < 2) return [];
+  return trend.slice(0, -1).flatMap((point, index) => {
+    const next = trend[index + 1];
+    if (point.score === null || next.score === null || !Number.isFinite(point.score) || !Number.isFinite(next.score)) return [];
+    const denominator = trend.length - 1;
+    return [{ x1: index / denominator * 100, y1: 100 - Math.min(Math.max(point.score, 0), 100), x2: (index + 1) / denominator * 100, y2: 100 - Math.min(Math.max(next.score, 0), 100) }];
+  });
+}
+
 function scoreBarStyle(score: number | null): CSSProperties | undefined {
   if (score === null || !Number.isFinite(score)) return undefined;
   const scale = score === 0 ? 0.02 : Math.min(Math.max(score, 0), 100) / 100;
@@ -157,6 +173,12 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     focusAxis(next);
   }
 
+  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100));
+  const radarSegments = measuredPoints.flatMap((point, index) => {
+    const next = measuredPoints[(index + 1) % measuredPoints.length];
+    return point && next ? [{ from: point, to: next }] : [];
+  });
+
   return <figure className={styles.balanceRadar}>
     <svg viewBox="0 0 420 420" role="group" aria-labelledby="meal-balance-radar-title meal-balance-radar-description">
       <title id="meal-balance-radar-title">Dietary dimensions profile</title>
@@ -188,16 +210,17 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
         >
           <line className={styles.radarAxis} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
           <line className={styles.radarAxisHit} x1="210" y1="210" x2={edge[0]} y2={edge[1]} aria-hidden="true" />
-          {point ? <circle className={styles.radarPoint} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
+          {point ? <circle className={styles.radarPoint} data-radar-point="" data-radar-point-index={index} style={{ "--radar-point-index": index } as CSSProperties} cx={point[0]} cy={point[1]} r="5" aria-hidden="true" /> : null}
           <circle className={styles.radarLabelHit} cx={x} cy={y} r="30" aria-hidden="true" />
           <circle className={styles.radarFocusRing} cx={x} cy={y} r="26" aria-hidden="true" />
           <text className={styles.radarLabel} x={x} y={y} textAnchor={anchor} aria-hidden="true">
             {lines.map((line, lineIndex) => <tspan x={x} dy={lineIndex === 0 ? firstDy : 13} key={line}>{line}</tspan>)}
-            <tspan className={styles.radarLabelValue} x={x} dy="16">{formatScore(axis.score)}</tspan>
+            <tspan className={styles.radarLabelValue} x={x} dy="16">{axis.score === null ? "—" : `${formatScore(axis.score)}%`}</tspan>
           </text>
         </g>;
       })}
       {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
+      {radarSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.radarSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
     </svg>
     <figcaption className={styles.srOnly}>Interactive chart. The five axes are keyboard-accessible buttons.</figcaption>
   </figure>;
@@ -323,7 +346,6 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
             <div><dt>Status</dt><dd>{daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "—"}</dd></div>
             <div><dt>Confidence</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
           </dl>
-          <p className={styles.scoreNote}>Score calculated from logged meals. “Skipped” is an explicit log, not a zero meal.</p>
         </article>
       </div>
 
@@ -339,10 +361,15 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
             {observedTrend.length ? <figure className={styles.chartFigure}>
               <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
                 <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
-                <div className={styles.barChart} style={{ "--point-count": trend.length } as CSSProperties}>{trend.map((point) => <div className={styles.barColumn} key={point.date}>{point.score === null ? null : <span className={styles.bar} style={scoreBarStyle(point.score)} aria-hidden="true" />}</div>)}</div>
+                <div className={styles.lineChart} data-testid="meal-score-line-chart">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    {trendSegments(trend).map((segment, index) => <line data-testid="meal-score-line-segment" key={index} {...segment} />)}
+                  </svg>
+                  {trend.map((point, index) => point.score === null || !Number.isFinite(point.score) ? null : <span className={styles.linePoint} data-testid="meal-score-line-point" key={point.date} style={trendPointStyle(index, trend.length, point.score)} aria-hidden="true" />)}
+                </div>
               </div>
               <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
-              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a bar and are not counted as a zero score.</p>
+              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a point and are not counted as a zero score.</p>
             </figure> : <p className={styles.emptyInline}>No score history available.</p>}
           </section>
         </div>

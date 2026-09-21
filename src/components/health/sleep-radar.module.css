@@ -86,15 +86,18 @@
 .dataLayer {
   transform-box: fill-box;
   transform-origin: center;
-  animation: radarReveal 220ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .valueArea {
   fill: var(--radar-data-surface);
-  stroke: var(--radar-data);
+  stroke: none;
   stroke-width: 1.75;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  fill-opacity: 0;
+  animation: radarFill 3900ms cubic-bezier(.22,.61,.36,1) 260ms both;
 }
 
 .valueLine {
@@ -102,6 +105,9 @@
   stroke: var(--radar-data);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: radarTrace 760ms cubic-bezier(.22,.61,.36,1) calc(360ms + var(--radar-segment-index,0) * 900ms) both;
 }
 
 .point {
@@ -109,7 +115,12 @@
   stroke: var(--lab-canvas, #050505);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: radarPoint 320ms cubic-bezier(.22,.61,.36,1) calc(1040ms + (var(--radar-point-index,0) - 1) * 900ms) both;
 }
+.point[data-radar-point-index="0"] { animation-delay:120ms; }
 
 .pointActive {
   fill: var(--radar-signal);
@@ -117,10 +128,9 @@
   stroke-width: 2;
 }
 
-@keyframes radarReveal {
-  from { opacity: 0; transform: scale(.98); }
-  to { opacity: 1; transform: scale(1); }
-}
+@keyframes radarTrace { to { stroke-dashoffset:0; } }
+@keyframes radarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
+@keyframes radarPoint { from { opacity:0; transform:scale(.82); } 70% { opacity:1; transform:scale(1.035); } to { opacity:1; transform:scale(1); } }
 
 .labelGroup {
   pointer-events: none;
@@ -248,5 +258,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dataLayer { animation: none; }
+  .valueArea, .valueLine, .point { animation: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; transform: none; }
 }

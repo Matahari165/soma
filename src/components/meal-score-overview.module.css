@@ -64,7 +64,7 @@
   display: grid;
   grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
   align-items: center;
-  gap: 48px;
+  gap: 64px;
   padding: 0 0 32px;
   border-bottom: 1px solid var(--score-rule-strong);
 }
@@ -96,8 +96,14 @@
 .radarAxisButton:focus-visible .radarFocusRing { opacity: 1; }
 .radarLabelHit { fill: transparent; pointer-events: all; }
 .radarFocusRing { fill: none; stroke: var(--score-text); stroke-dasharray: 3 3; stroke-width: 1.5; opacity: 0; pointer-events: none; }
-.radarValue { fill: color-mix(in srgb, var(--score-text) 8%, transparent); stroke: var(--score-text); stroke-linejoin: round; stroke-width: 1.75; pointer-events: none; }
-.radarPoint { fill: var(--score-text); stroke: var(--lab-canvas, #050505); stroke-width: 1.5; pointer-events: none; }
+.radarValue { fill:color-mix(in srgb,var(--score-text) 8%,transparent); stroke:none; pointer-events:none; fill-opacity:0; animation:scoreRadarFill 3900ms cubic-bezier(.22,.61,.36,1) 260ms both; }
+.radarSegment { fill:none; stroke:var(--score-text); stroke-width:1.75; stroke-linecap:round; pointer-events:none; stroke-dasharray:1; stroke-dashoffset:1; animation:scoreRadarTrace 760ms cubic-bezier(.22,.61,.36,1) calc(360ms + var(--radar-segment-index,0) * 900ms) both; }
+.radarPoint { fill:var(--score-text); stroke:var(--lab-canvas,#050505); stroke-width:1.5; pointer-events:none; transform-box:fill-box; transform-origin:center; opacity:0; animation:scoreRadarPoint 320ms cubic-bezier(.22,.61,.36,1) calc(1040ms + (var(--radar-point-index,0) - 1) * 900ms) both; }
+.radarPoint[data-radar-point-index="0"] { animation-delay:120ms; }
+@keyframes scoreRadarTrace { to { stroke-dashoffset:0; } }
+@keyframes scoreRadarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
+@keyframes scoreRadarPoint { from { opacity:0; transform:scale(.82); } 70% { opacity:1; transform:scale(1.035); } to { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { .radarValue,.radarSegment,.radarPoint { animation:none; stroke-dashoffset:0; fill-opacity:1; opacity:1; transform:none; } }
 .radarLabel { fill: var(--score-muted); font: 400 13px/1.2 var(--font-soma-ui), sans-serif; pointer-events: none; }
 .radarLabelValue { fill: var(--score-text); font-family: var(--font-soma-mono), monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
 
@@ -179,9 +185,10 @@
 .chartFigure { margin: 16px 0 0; }
 .chart { display: grid; min-width: 0; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; height: 176px; border-bottom: 1px solid var(--score-rule-strong); }
 .chartScale { display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 8px; line-height: 1; text-align: right; }
-.barChart { display: grid; min-width: 0; grid-template-columns: repeat(var(--point-count, 1), minmax(0, 1fr)); align-items: end; gap: clamp(2px, .6vw, 8px); padding: 8px 2px 0; }
-.barColumn { display: flex; min-width: 0; height: 160px; align-items: end; justify-content: center; }
-.bar { display: block; width: min(100%, 20px); height: 100%; min-height: 3px; border-radius: 2px 2px 0 0; background: var(--score-positive); transform: scaleY(var(--bar-scale, 1)); transform-origin: bottom; transition: transform var(--score-motion) var(--score-ease); }
+.lineChart { position: relative; min-width: 0; height: 160px; margin: 8px 4px 0; }
+.lineChart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.lineChart line { stroke: var(--score-positive); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.linePoint { position: absolute; width: 7px; height: 7px; border: 1.5px solid var(--score-canvas); border-radius: 50%; background: var(--score-positive); transform: translate(-50%, 50%); }
 .chartCaption { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .emptyInline { margin: 16px 0 0; color: var(--score-muted); font-size: var(--lab-type-ui); }
 

@@ -17,8 +17,8 @@ it("draws a calm 100% reference triangle behind the measured 68/83/75 shape", ()
   expect((html.match(/data-testid="recovery-radar-grid"/g) ?? []).length).toBe(4);
   expect((html.match(/data-testid="recovery-radar-axis"/g) ?? []).length).toBe(3);
   expect(html).toContain('data-radar-reference="100" data-grid-ratio="1"');
-  expect(html).toContain('points="210.00,60.00 339.90,285.00 80.10,285.00"');
-  expect(html).toContain('data-testid="recovery-radar-value" points="210.00,108.00 317.82,272.25 112.57,266.25"');
+  expect(html).toContain('points="210.00,78.00 324.32,276.00 95.68,276.00"');
+  expect(html).toContain('data-testid="recovery-radar-value" points="210.00,120.24 304.88,264.78 124.26,259.50"');
   expect((html.match(/data-testid="recovery-radar-label"/g) ?? []).length).toBe(3);
   expect(html).toContain(">Sommeil<");
   expect(html).toContain(">75<");
@@ -57,4 +57,9 @@ it("does not invent a radar structure when fewer than three dimensions are suppl
   expect((html.match(/data-testid="recovery-radar-axis"/g) ?? []).length).toBe(0);
   expect((html.match(/data-testid="recovery-radar-label"/g) ?? []).length).toBe(2);
   expect(html).not.toContain('data-testid="recovery-radar-value"');
+});
+
+it("keeps the source for the opened detail instead of the radar label", () => {
+  const html = renderToStaticMarkup(<RecoveryRadar dimensions={[{ ...dimensions[0], sourceLabel: "Google Health" }]} interactive onSelect={() => undefined} />);
+  expect(html).not.toContain("Google Health");
 });

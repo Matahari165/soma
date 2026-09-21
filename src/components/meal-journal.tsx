@@ -1101,7 +1101,6 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     return true;
   };
 
-  const priorityHintId = `meal-${slot}-priority`;
   // A legacy `review` response means the existing confirmation request is
   // still pending. Only the persisted confirmed status gets completion UI.
   const completed = Boolean(meal?.analysis && !meal.error && status === "confirmed");
@@ -1116,12 +1115,13 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
     onConfirm();
   }, [meal?.analysis, meal?.error, meal?.id, onConfirm, status]);
 
-  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-describedby={priority ? priorityHintId : undefined} aria-busy={saving || processingFiles}>
+  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
-      <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3>{priority && <span id={priorityHintId} className={styles.mealPriority}>Current</span>}</div>
+      <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact ? <div className={styles.labHeaderActions}>
         {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{visibleStatus}</span> : null}
         {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls mutationBusy={mutationBusy} onConfirm={onConfirm} retryable={Boolean(meal.error)} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
+        {!skipped && status === "draft" ? <button className={styles.mealHeaderSkip} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skip</button> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && !skipped && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
         {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
@@ -1135,7 +1135,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
       <div className={compactEmptyState ? styles.emptyMealActions : styles.actionsRow}>
         {compactEmptyState ? <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled || skipped} compact single /> : <PhotoInput slot={slot} onFiles={handleFiles} disabled={processingFiles || disabled || skipped} />}
         {labCompact && <button className={styles.analyzeButton} type="button" aria-label={`Analyze ${mealLabelWithArticle(slot)}`} aria-describedby={hasEvidence ? undefined : analyzeHintId} disabled={!hasEvidence || processingFiles || mutationBusy || disabled || skipped} onClick={onAnalyze}><span>Analyze meal</span><ArrowRight size={17} aria-hidden="true" /></button>}
-        {!skipped && <button className={styles.emptyNoteButton} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skipped</button>}
+        {!skipped && !labCompact && <button className={styles.emptyNoteButton} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skipped</button>}
         {!hasEvidence && <p id={analyzeHintId} className={styles.photoRequired}>Add a photo or describe your meal to start analysis.</p>}
       </div>
     </div> : null}
@@ -1206,7 +1206,7 @@ function MealPageHeader({ totals, targets, mealsVariant = false, targetsExpanded
 
   if (mealsVariant) {
     return <header className={`${styles.pageHeader} ${styles.mealsPageHeader}`}>
-      <h1 id="meal-journal-title">Meals</h1>
+      <h1 id="meal-journal-title">Nutrition</h1>
       <div className={styles.headerMetrics} role="group" tabIndex={0} aria-label="Daily nutrition summary">
         <MealHeaderMetric label="Calories" value={totals?.calories ?? null} unit="kcal" target={targets.caloriesKcal.likely} />
         <MealHeaderMetric label="Protein" value={totals?.protein ?? null} unit="g" target={targets.proteinG.likely} />
@@ -1219,7 +1219,7 @@ function MealPageHeader({ totals, targets, mealsVariant = false, targetsExpanded
   }
 
   return <header className={styles.pageHeader}>
-    <div><h1 id="meal-journal-title">Meals</h1></div>
+    <div><h1 id="meal-journal-title">Nutrition</h1></div>
     <div className={styles.dayProgress} aria-label={`Calories: ${calories ?? "unavailable"} of ${calorieTarget} kcal. Protein: ${protein ?? "unavailable"} of ${proteinTarget} grams.`}>
       <ScoreRing kind="recovery" label="% calories" score={calorieProgressValue} decorative animate />
     </div>
@@ -1228,22 +1228,16 @@ function MealPageHeader({ totals, targets, mealsVariant = false, targetsExpanded
 
 function MealHomeHeader() {
   return <header className={styles.homeHeader}>
-    <div><span className={styles.eyebrow}>Daily journal</span><h2 id="meal-journal-title">Meals</h2></div>
+    <div><span className={styles.eyebrow}>Daily journal</span><h2 id="meal-journal-title">Nutrition</h2></div>
   </header>;
 }
 
 function MealLabHeader({
-  onAddMeal,
-  addDisabled,
-  hideAddMealButton = false,
   onToggleTargets,
   targetsExpanded = false,
   calories = null,
   targetCalories = 2400,
 }: {
-  onAddMeal: () => void;
-  addDisabled: boolean;
-  hideAddMealButton?: boolean;
   onToggleTargets?: () => void;
   targetsExpanded?: boolean;
   calories?: number | null;
@@ -1252,41 +1246,22 @@ function MealLabHeader({
   const calVal = calories ?? 0;
   const targetVal = targetCalories ?? 2400;
   const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
-  const formattedCalories = new Intl.NumberFormat("en-US").format(calVal);
-  const formattedTarget = new Intl.NumberFormat("en-US").format(targetVal);
-
   return (
     <header className="pb-4 border-b border-hairline space-y-2.5">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <h2 id="meal-journal-title" className="font-serif text-2xl tracking-normal text-content-primary font-normal">Nutrition Log</h2>
-          <p className="text-xs text-content-secondary font-mono mt-1">{formattedCalories} / {formattedTarget} kcal</p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div><h2 id="meal-journal-title" className="workspace-panel-title font-serif text-content-primary font-normal">Nutrition Log</h2></div>
         <div className="flex items-center gap-2">
           {onToggleTargets && (
             <button
               type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 interactive-press active:scale-[0.97]"
+              className="inline-flex min-h-9 min-w-9 items-center justify-center p-2 text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 interactive-press active:scale-[0.97]"
               aria-label="Edit daily targets"
+              title="Edit daily targets"
               aria-expanded={targetsExpanded}
               aria-controls="meal-target-editor"
               onClick={onToggleTargets}
             >
               <Pencil size={13} aria-hidden="true" />
-              <span>Targets</span>
-            </button>
-          )}
-          {!hideAddMealButton && (
-            <button
-              type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-all duration-150 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed interactive-press active:scale-[0.97]"
-              aria-label="Add a meal"
-              title="Add a meal"
-              disabled={addDisabled}
-              onClick={onAddMeal}
-            >
-              <Plus size={13} aria-hidden="true" />
-              <span>Add meal</span>
             </button>
           )}
         </div>
@@ -1298,7 +1273,7 @@ function MealLabHeader({
   );
 }
 
-export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, hideAddMealButton = false, allowTargetEditing, designVariant = "v1" }: Props) {
+export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, designVariant = "v1" }: Props) {
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -2131,9 +2106,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     ? <MealHomeHeader />
     : variant === "lab"
     ? <MealLabHeader
-        onAddMeal={openAvailableMeal}
-        addDisabled={!availableMealSlot || navigationDisabled}
-        hideAddMealButton={hideAddMealButton || readOnly}
         onToggleTargets={targetEditingEnabled ? () => setTargetsExpanded((expanded) => !expanded) : undefined}
         targetsExpanded={targetsExpanded}
         calories={labCalories}
@@ -2217,7 +2189,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}>{
           variant === "lab" ? (
             <>
-              {priority && <p id={`meal-${slot}-priority`} className={styles.mealPriorityNotice}>Current</p>}
               <LabMealCard
                 meal={meal}
                 slot={slot}

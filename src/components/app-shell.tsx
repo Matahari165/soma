@@ -21,7 +21,7 @@ import type { SomaUser } from "@/lib/auth";
 const navigation = [
   { label: "Personal Lab", href: "/", icon: LayoutDashboard },
   { label: "Analysis", href: "/analysis", icon: ChartNoAxesCombined },
-  { label: "Meals", href: "/meals", icon: Utensils },
+  { label: "Nutrition", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
   { label: "Recovery", href: "/recovery", icon: HeartPulse },
   { label: "Activity", href: "/activity", icon: Activity },
@@ -122,7 +122,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <main key={pathname} className="main-content animate-surface-enter">{children}</main>
+      <main key={pathname} className="main-content">{children}</main>
     </div>
   );
 }
