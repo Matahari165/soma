@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "private, no-store" };
 const conversationIdSchema = z.uuid();
-const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic"]);
+const supportedTypes = new Set(["image/jpeg", "image/png"]);
 const maxFiles = 4;
 const maxFileBytes = 15 * 1024 * 1024;
 const maxTotalBytes = 40 * 1024 * 1024;
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
   if (!files.length || files.length > maxFiles) return NextResponse.json({ error: "invalid_attachment_count", message: `Ajoute entre 1 et ${maxFiles} photos.` }, { status: 400, headers: noStore });
   if (files.some((file) => !supportedTypes.has(file.type) || file.size < 1 || file.size > maxFileBytes) || totalBytes > maxTotalBytes) {
-    return NextResponse.json({ error: "invalid_attachment", message: "Utilise des images JPEG, PNG, WebP ou HEIC de 15 Mo maximum chacune." }, { status: 400, headers: noStore });
+    return NextResponse.json({ error: "invalid_attachment", message: "Utilise des images JPEG ou PNG de 15 Mo maximum chacune." }, { status: 400, headers: noStore });
   }
 
   const stored: Array<{ row: Awaited<ReturnType<typeof createAssistantAttachment>>; objectPath: string }> = [];
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
           userId: user.id,
           conversationId: conversation.id,
           objectPath,
-          mediaType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/heic",
+          mediaType: file.type as "image/jpeg" | "image/png",
           byteSize: file.size,
           sha256: createHash("sha256").update(Buffer.from(data)).digest("hex"),
           purpose: "context",

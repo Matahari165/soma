@@ -10,7 +10,7 @@ import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
 
-export const SOMA_ASSISTANT_MODEL = "grok-4.6";
+export const SOMA_ASSISTANT_MODEL = "grok-4.7";
 
 const qualitySettings: Record<AssistantQuality, {
   maxOutputTokens: number;

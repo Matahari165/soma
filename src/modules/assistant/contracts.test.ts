@@ -28,12 +28,12 @@ describe("assistant persistence contracts", () => {
 
   it("accepts only bounded image metadata with matching extensions", () => {
     const metadata = {
-      objectPath: "assistant/user-1/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002.webp",
-      mediaType: "image/webp", byteSize: 1024, sha256: "a".repeat(64), purpose: "context",
+      objectPath: "assistant/user-1/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002.png",
+      mediaType: "image/png", byteSize: 1024, sha256: "a".repeat(64), purpose: "context",
     };
-    expect(assistantAttachmentMetadataSchema.parse(metadata)).toMatchObject({ mediaType: "image/webp" });
-    expect(() => assistantAttachmentMetadataSchema.parse({ ...metadata, mediaType: "image/png" })).toThrow();
+    expect(assistantAttachmentMetadataSchema.parse(metadata)).toMatchObject({ mediaType: "image/png" });
+    expect(() => assistantAttachmentMetadataSchema.parse({ ...metadata, mediaType: "image/jpeg" })).toThrow();
     expect(() => assistantAttachmentMetadataSchema.parse({ ...metadata, byteSize: 15_728_641 })).toThrow();
-    expect(() => assistantAttachmentMetadataSchema.parse({ ...metadata, objectPath: "assistant/user-1/../secret.webp" })).toThrow();
+    expect(() => assistantAttachmentMetadataSchema.parse({ ...metadata, objectPath: "assistant/user-1/../secret.png" })).toThrow();
   });
 });

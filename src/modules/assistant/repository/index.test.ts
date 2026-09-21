@@ -17,15 +17,15 @@ vi.mock("./database", () => ({
 const userId = "user-1";
 const conversationId = "00000000-0000-4000-8000-000000000001";
 const attachmentId = "00000000-0000-4000-8000-000000000002";
-const objectPath = `assistant/${userId}/${conversationId}/${attachmentId}.webp`;
+const objectPath = `assistant/${userId}/${conversationId}/${attachmentId}.png`;
 
 describe("assistant attachment repository", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("rejects paths outside the exact user and conversation before persistence", async () => {
     await expect(createAssistantAttachment({
-      userId, conversationId, objectPath: `assistant/other/${conversationId}/${attachmentId}.webp`,
-      mediaType: "image/webp", byteSize: 100, sha256: "a".repeat(64), purpose: "context",
+      userId, conversationId, objectPath: `assistant/other/${conversationId}/${attachmentId}.png`,
+      mediaType: "image/png", byteSize: 100, sha256: "a".repeat(64), purpose: "context",
     })).rejects.toThrow(/does not match its owner/);
     expect(assistantDatabaseRequest).not.toHaveBeenCalled();
   });
@@ -33,7 +33,7 @@ describe("assistant attachment repository", () => {
   it("derives the metadata id from the validated object path", async () => {
     vi.mocked(assistantDatabaseRequest).mockResolvedValue([{ id: attachmentId }]);
     await createAssistantAttachment({
-      userId, conversationId, objectPath, mediaType: "image/webp", byteSize: 100,
+      userId, conversationId, objectPath, mediaType: "image/png", byteSize: 100,
       sha256: "a".repeat(64), purpose: "meal",
     });
     expect(assistantDatabaseRequest).toHaveBeenCalledWith("assistant_attachments", expect.objectContaining({
@@ -43,7 +43,7 @@ describe("assistant attachment repository", () => {
   });
 
   it("scopes every metadata operation by user and conversation where applicable", async () => {
-    vi.mocked(assistantDatabaseRequest).mockResolvedValue([{ id: attachmentId }]);
+    vi.mocked(assistantDatabaseRequest).mockResolvedValue([{ id: attachmentId, conversation_id: conversationId, message_id: null }]);
     await listAssistantAttachments(userId, conversationId);
     await findAssistantAttachment(userId, attachmentId);
     await attachAssistantAttachmentToMessage(userId, conversationId, attachmentId, "00000000-0000-4000-8000-000000000003");
@@ -52,7 +52,8 @@ describe("assistant attachment repository", () => {
     const paths = vi.mocked(assistantDatabaseRequest).mock.calls.map(([path]) => path);
     expect(paths[0]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}`);
     expect(paths[1]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
-    expect(paths[2]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}&id=eq.${attachmentId}`);
-    expect(paths[3]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
+    expect(paths[2]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
+    expect(paths[3]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}&id=eq.${attachmentId}&message_id=is.null`);
+    expect(paths[4]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
   });
 });

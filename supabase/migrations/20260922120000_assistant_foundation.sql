@@ -188,7 +188,7 @@ create table public.assistant_attachments (
   conversation_id uuid not null,
   message_id uuid,
   object_path text not null,
-  media_type text not null check (media_type in ('image/jpeg', 'image/png', 'image/webp', 'image/heic')),
+  media_type text not null check (media_type in ('image/jpeg', 'image/png')),
   byte_size bigint not null check (byte_size between 1 and 15728640),
   sha256 text not null check (sha256 ~ '^[0-9a-f]{64}$'),
   purpose text not null default 'context' check (purpose in ('meal', 'context')),

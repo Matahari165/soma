@@ -20,7 +20,7 @@ type RunRow = {
 };
 type AttachmentRow = {
   id: string; user_id: string; conversation_id: string; message_id: string | null; object_path: string;
-  media_type: "image/jpeg" | "image/png" | "image/webp" | "image/heic"; byte_size: number; sha256: string;
+  media_type: "image/jpeg" | "image/png"; byte_size: number; sha256: string;
   purpose: "meal" | "context"; status: "available" | "processed" | "failed" | "deleted"; created_at: string;
 };
 
@@ -160,8 +160,13 @@ export async function findAssistantAttachment(userId: string, attachmentId: stri
 }
 
 export async function attachAssistantAttachmentToMessage(userId: string, conversationId: string, attachmentId: string, messageId: string) {
+  const existing = await findAssistantAttachment(userId, attachmentId);
+  if (existing?.conversation_id !== conversationId || (existing.message_id !== null && existing.message_id !== messageId)) {
+    throw new Error("Assistant attachment is already linked to another message.");
+  }
+  if (existing.message_id === messageId) return existing;
   const rows = await assistantDatabaseRequest<AttachmentRow[]>(
-    `assistant_attachments?user_id=eq.${assistantFilter(userId)}&conversation_id=eq.${assistantFilter(conversationId)}&id=eq.${assistantFilter(attachmentId)}`,
+    `assistant_attachments?user_id=eq.${assistantFilter(userId)}&conversation_id=eq.${assistantFilter(conversationId)}&id=eq.${assistantFilter(attachmentId)}&message_id=is.null`,
     { method: "PATCH", prefer: "return=representation", body: { message_id: messageId } },
   );
   return one(rows, "Assistant attachment update");

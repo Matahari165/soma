@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h2>Why Soma uses it</h2>
         <p>To display your personal lab, maintain your meal and assistant history, calculate your personal wellness trends and correlations, and perform features you explicitly trigger.</p>
         <h2>AI processing</h2>
-        <p>Soma transmits only the conversation and bounded health context relevant to your request to xAI. Meal-analysis photos are removed after confirmation according to the meal retention policy. Photos attached to an assistant conversation remain private in Soma storage until you delete them, the conversation, or your account. OAuth tokens and secrets are never transmitted. xAI API requests use <code>store: false</code>.</p>
+        <p>Soma transmits only the conversation, bounded health context, and photos you explicitly attach to the current request to xAI. It does not resend historical conversation photos automatically and does not use external web search. Meal-analysis photos are removed after confirmation according to the meal retention policy. Photos attached to an assistant conversation remain private in Soma storage until you delete them, the conversation, or your account. OAuth tokens and secrets are never transmitted. xAI API requests use <code>store: false</code>.</p>
         <h2>Retention and control</h2>
         <p>Soma retains your journal, meal and assistant records until you choose to delete them or remove your account. You can export your data, delete individual conversations or meals, disconnect Google Health, or permanently erase your account anytime in Settings.</p>
         <h2>Important notice</h2>

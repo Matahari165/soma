@@ -9,9 +9,9 @@ export const assistantTextPartSchema = z.object({ type: z.literal("text"), text:
 export const assistantAttachmentPartSchema = z.object({
   type: z.literal("attachment"),
   attachmentId: z.uuid(),
-  mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic"]),
+  mediaType: z.enum(["image/jpeg", "image/png"]),
 });
-export const assistantAttachmentMediaTypeSchema = z.enum(["image/jpeg", "image/png", "image/webp", "image/heic"]);
+export const assistantAttachmentMediaTypeSchema = z.enum(["image/jpeg", "image/png"]);
 export const assistantAttachmentPurposeSchema = z.enum(["meal", "context"]);
 export const assistantAttachmentMetadataSchema = z.object({
   objectPath: z.string().min(1).max(1_024).refine((value) => !value.includes("..") && !value.includes("\\"), "Invalid assistant attachment path."),
@@ -22,7 +22,7 @@ export const assistantAttachmentMetadataSchema = z.object({
 }).superRefine((value, context) => {
   const extension = value.objectPath.split(".").at(-1)?.toLowerCase();
   const allowedExtensions: Record<z.infer<typeof assistantAttachmentMediaTypeSchema>, string[]> = {
-    "image/jpeg": ["jpg", "jpeg"], "image/png": ["png"], "image/webp": ["webp"], "image/heic": ["heic"],
+    "image/jpeg": ["jpg", "jpeg"], "image/png": ["png"],
   };
   if (!extension || !allowedExtensions[value.mediaType].includes(extension)) {
     context.addIssue({ code: "custom", message: "Attachment extension does not match its media type.", path: ["objectPath"] });

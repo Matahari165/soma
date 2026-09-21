@@ -244,7 +244,8 @@ export function AssistantWorkspace() {
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
-    const supported = Array.from(files).filter((file) => ["image/jpeg", "image/png", "image/webp", "image/heic"].includes(file.type));
+    const supported = Array.from(files).filter((file) => ["image/jpeg", "image/png"].includes(file.type));
+    if (supported.length !== files.length) setError("Grok accepte actuellement les photos JPEG et PNG uniquement.");
     setPhotos((current) => [
       ...current,
       ...supported.slice(0, Math.max(0, 4 - current.length)).map((file) => ({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file) })),
@@ -285,16 +286,13 @@ export function AssistantWorkspace() {
 
   async function sendMessage(event?: FormEvent, overrideText?: string) {
     event?.preventDefault();
-    const cleanText = (overrideText ?? text).trim();
+    const cleanText = (overrideText ?? text).trim() || (photos.length ? "Analyse cette photo." : "");
     if ((!cleanText && !photos.length) || sending) return;
 
     setSending(true);
     setError(null);
     setNotConfigured(false);
     try {
-      if (photos.length) {
-        throw new Error("L’analyse de photos par Grok sera activée après ton autorisation explicite pour leur envoi à xAI.");
-      }
       const conversationId = await ensureConversation();
       const attachmentIds = await uploadPhotos(conversationId);
       const payload = await readJson(await fetch("/api/assistant/chat", {
@@ -411,7 +409,7 @@ export function AssistantWorkspace() {
               disabled={sending || notConfigured}
             />
             <div className={styles.composerActions}>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
               <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || photos.length >= 4 || notConfigured} aria-label="Joindre des photos"><Paperclip size={18} aria-hidden="true" /></button>
               <span className={styles.hint}>Entrée pour envoyer · Maj + Entrée pour une ligne</span>
               <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><Send size={18} aria-hidden="true" /></button>

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import { AssistantResponseError, respondToAssistant } from "./respond";
 
@@ -32,10 +33,11 @@ function setup() {
     findMessage: vi.fn(async (): Promise<ReturnType<typeof message> | null> => null),
     findConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
     createConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
-    appendMessage: vi.fn(async (input: { role: string }) => {
+    appendMessage: vi.fn(async (input: { role: string; parts: Array<Record<string, unknown>> }) => {
       calls.push(`append:${input.role}`);
-      return input.role === "user" ? user : assistant;
+      return input.role === "user" ? { ...user, parts: input.parts } : assistant;
     }),
+    attachAttachmentToMessage: vi.fn(async () => ({ id: "55555555-5555-4555-8555-555555555555" })),
     createRun: vi.fn(async () => {
       calls.push("run:create");
       return { id: ids.run };
@@ -46,6 +48,8 @@ function setup() {
     }),
     updateConversation: vi.fn(async () => ({ id: ids.conversation })),
     listMessages: vi.fn(async () => [user]),
+    findAttachment: vi.fn(async () => null),
+    loadAttachment: vi.fn(async () => null),
   };
   const generate = vi.fn(async () => {
     calls.push("generate");
@@ -101,17 +105,40 @@ describe("respondToAssistant", () => {
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
   });
 
-  it("refuses attachments until sending private photos to xAI is explicitly authorized", async () => {
+  it("sends only an owned current JPEG attachment to Grok", async () => {
     const state = setup();
-    const promise = respondToAssistant("user-1", {
+    state.repository.findAttachment.mockResolvedValueOnce({
+      id: "55555555-5555-4555-8555-555555555555", user_id: "user-1", conversation_id: ids.conversation,
+      message_id: null, object_path: "assistant/user-1/11111111-1111-4111-8111-111111111111/55555555-5555-4555-8555-555555555555.jpg",
+      media_type: "image/jpeg", byte_size: 3, sha256: createHash("sha256").update(new Uint8Array([1, 2, 3])).digest("hex"), purpose: "context", status: "available",
+      created_at: "2026-09-21T12:00:00.000Z",
+    } as never);
+    state.repository.loadAttachment.mockResolvedValueOnce({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer } as never);
+
+    await respondToAssistant("user-1", {
       requestId: "request-123",
       text: "Analyse cette photo",
       conversationId: ids.conversation,
       attachmentIds: ["55555555-5555-4555-8555-555555555555"],
     }, { apiKey: "test-key", dependencies: state as never });
 
-    await expect(promise).rejects.toBeInstanceOf(AssistantResponseError);
-    await expect(promise).rejects.toMatchObject({ code: "assistant_attachment_consent_required", status: 400 });
+    expect(state.repository.attachAttachmentToMessage).toHaveBeenCalledWith("user-1", ids.conversation, "55555555-5555-4555-8555-555555555555", ids.userMessage);
+    const generateCalls = state.generate.mock.calls as unknown as Array<[{ messages: Array<unknown> }]>;
+    const generated = generateCalls[0]?.[0].messages.at(-1);
+    expect(generated).toMatchObject({ role: "user", content: [{ type: "text", text: "Analyse cette photo" }, { type: "file", mediaType: "image/jpeg" }] });
+    expect((generated as { content: Array<{ data?: Uint8Array }> }).content[1]?.data).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it("rejects an attachment that belongs to another conversation", async () => {
+    const state = setup();
+    state.repository.findAttachment.mockResolvedValueOnce({
+      id: "55555555-5555-4555-8555-555555555555", conversation_id: "66666666-6666-4666-8666-666666666666",
+      media_type: "image/jpeg", byte_size: 3, status: "available",
+    } as never);
+    await expect(respondToAssistant("user-1", {
+      requestId: "request-123", text: "Analyse cette photo", conversationId: ids.conversation,
+      attachmentIds: ["55555555-5555-4555-8555-555555555555"],
+    }, { apiKey: "test-key", dependencies: state as never })).rejects.toBeInstanceOf(AssistantResponseError);
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
   });
 });

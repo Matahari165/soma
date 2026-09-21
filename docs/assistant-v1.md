@@ -23,14 +23,14 @@ benchmarks must be available when the user asks to see them.
 - A dedicated conversation page immediately before `Analyse` in navigation.
 - Conversation only: no unsolicited opening brief, background alert or push
   notification.
-- Text input is active. Private photo upload and deletion are implemented, but
-  transmission to xAI remains disabled until a specific external-processing
-  consent is recorded.
+- Text input and private JPEG/PNG photo input are active. Only photos explicitly
+  attached to the current message are transmitted to xAI; historical photos are
+  not resent automatically.
 - Responses render safe headings, lists and emphasis. Native charts and tables
   remain outside this conversation-only V1.
-- Web search remains disabled until a specific consent covers health-derived
-  queries sent to an external search provider. When enabled later, the UI must
-  display `Recherche web utilisée` and retain an internal audit trail.
+- Web search is intentionally disabled in V1. Grok answers from its model
+  knowledge and Soma's canonical data tools; no health-derived search query is
+  sent to an external search service.
 
 ## Goals and plans
 
@@ -77,7 +77,8 @@ For meal recording, an omitted date means today in the user's timezone. An
 omitted meal slot must be asked; it is never inferred from the current time. A
 question about a meal does not record it. An explicit text instruction such as
 `Enregistre une omelette pour le déjeuner` records it and exposes an undo
-action. Photo-based recording is consent-gated as described above.
+action. Photo-based recording uses only a photo explicitly attached to the
+current message.
 
 ## Data contract
 
@@ -107,8 +108,8 @@ sub-agents. Model selection is deterministic and quality-adaptive:
 - `deep`: longitudinal analysis, plan creation and explicit `analyse en
   profondeur` requests.
 
-Model identifiers live in server configuration and are validated against the
-provider catalogue. Step, token, duration and cost budgets are finite. The
+The assistant uses the explicit public xAI model identifier `grok-4.7`.
+Step, token, duration and cost budgets are finite. The
 user ID is derived from the authenticated session and is never accepted from
 the model or request body.
 
