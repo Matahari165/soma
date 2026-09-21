@@ -32,6 +32,7 @@ import "./lab-final-index.css";
 import "./observatory-geometry.css";
 import "./observatory-deep.css";
 import "./observatory-pages.css";
+import "./motion-system.css";
 
 const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
