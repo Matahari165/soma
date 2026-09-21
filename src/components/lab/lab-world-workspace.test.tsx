@@ -66,7 +66,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain("8h 00");
     expect(html).toMatch(/2[\s\u202f]200 kcal/);
     expect(html).toContain('class="radar-value"');
-    expect(html).toContain('aria-label="Previous day"');
+    expect(html).not.toContain('aria-label="Previous day"');
   });
 
   it("publishes daily protocol before meals in the shared capture source order", () => {
@@ -75,12 +75,12 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html.indexOf('id="daily-journal"')).toBeLessThan(html.indexOf('data-purpose="nutrition-journal"'));
   });
 
-  it("can hide the homepage add-meal control without changing the shared journal default", () => {
+  it("keeps the homepage add-meal control out of both shared journal paths", () => {
     const homepageHtml = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} hideAddMealButton />);
     const defaultHtml = renderToStaticMarkup(<PersonalLabJournalWorkspace data={mockJournal} />);
 
     expect(homepageHtml).not.toContain('aria-label="Add a meal"');
-    expect(defaultHtml).toContain('aria-label="Add a meal"');
+    expect(defaultHtml).not.toContain('aria-label="Add a meal"');
   });
 
   it("renders previous day's date and star graph when a past day is selected", () => {
@@ -100,7 +100,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain('class="radar-value"');
   });
 
-  it("renders previous day controls in the arrival header", () => {
+  it("keeps date navigation in the shared day strip instead of the arrival header", () => {
     const html = renderToStaticMarkup(
       <LabWorldWorkspace
         overview={mockOverview}
@@ -109,9 +109,10 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain('aria-label="Day navigation"');
-    expect(html).toContain('aria-label="Previous day"');
-    expect(html).toContain('aria-label="Next day"');
+    expect(html).not.toContain('aria-label="Day navigation"');
+    expect(html).not.toContain('aria-label="Previous day"');
+    expect(html).not.toContain('aria-label="Next day"');
+    expect(html).toContain('aria-label="Available days"');
   });
 
   it("renders the personalized arrival message and marked activity note", () => {

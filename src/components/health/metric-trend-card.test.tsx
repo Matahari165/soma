@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { MetricTrendCard } from "./metric-trend-card";
+import { aggregateBarPoints } from "./health-charts";
 
 describe("MetricTrendCard", () => {
   it("makes overview cards directly navigable without exposing secondary variability copy", () => {
@@ -104,5 +105,40 @@ describe("MetricTrendCard", () => {
     expect(percentageMarkup).toContain("avg 91.1%");
     expect(percentageMarkup).not.toContain("avg 91.1 %");
     expect(rateMarkup).toContain("avg 1.1/h");
+  });
+
+  it("uses vertical bars for compact activity charts while keeping coverage accessible", () => {
+    const markup = renderToStaticMarkup(createElement(MetricTrendCard, {
+      label: "Zone minutes",
+      points: [
+        { date: "2026-09-08", value: 0 },
+        { date: "2026-09-09", value: null },
+        { date: "2026-09-10", value: 24 },
+      ],
+      unit: "min",
+      direction: "higher_is_better",
+      compact: true,
+      chartType: "bar",
+      valueFormat: "number",
+    }));
+
+    expect(markup).toContain("health-bar-chart");
+    expect(markup.match(/class="health-chart-bar/g)?.length).toBe(2);
+    expect(markup).not.toContain("n=2");
+    expect(markup).not.toContain("<footer");
+    expect(markup).toContain("2 measured days");
+    expect(markup).toContain("Coverage: 2/3 measured days");
+  });
+
+  it("aggregates weekly bars without converting missing or zero values", () => {
+    expect(aggregateBarPoints([
+      { date: "2026-09-07", value: 10 },
+      { date: "2026-09-08", value: 0 },
+      { date: "2026-09-14", value: null },
+      { date: "2026-09-15", value: 20 },
+    ], "week")).toEqual([
+      { date: "2026-09-07", value: 5 },
+      { date: "2026-09-14", value: 20 },
+    ]);
   });
 });

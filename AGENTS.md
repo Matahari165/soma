@@ -24,6 +24,7 @@
 - Après un merge confirmé, supprime la branche locale et distante seulement si elle ne contient plus de travail unique, n’a pas de worktree actif et n’est pas douteuse. Ne supprime jamais une branche non fusionnée ou en cours ; les commits déjà dans `main` restent conservés.
 - Après chaque opération GitHub, vérifie séparément la branche distante, le commit de `main`, la CI et l’état final du dépôt. Si une vérification manque, dis-le clairement.
 - N’exécute pas `pnpm install`, `pnpm verify` ou un build Next pendant qu’un serveur `next dev` utilise le même checkout. Pour la vérification complète, utilise `CI=true pnpm verify`.
+- Un serveur local est une ressource temporaire : lance-le seulement lorsqu’une vérification en navigateur l’exige, puis arrête-le dès qu’il n’est plus utile. Si une nouvelle vérification devient nécessaire, relance-le plutôt que de le laisser consommer inutilement la mémoire de la machine.
 
 ## Hébergement et Déploiement — VERCEL EXCLUSIF (JAMAIS CLOUDFLARE)
 

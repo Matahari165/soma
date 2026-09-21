@@ -281,7 +281,7 @@ function QuantityStepper({
 
   return (
     <div
-      className="flex items-center gap-1.5 font-mono text-xs stitch-stepper"
+      className="flex items-center gap-1.5 font-mono text-xs stitch-stepper journal-number--stepper"
       role="group"
       aria-label={journalVariableLabel(variable)}
     >
@@ -305,7 +305,7 @@ function QuantityStepper({
       >
         <Minus size={13} className="lucide lucide-minus" aria-hidden="true" />
       </button>
-      <div className="stitch-stepper__value">
+      <div className="stitch-stepper__value journal-number__value">
         <input
           disabled={disabled}
           id={inputId}
@@ -701,7 +701,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       </div>
     </>;
     return (
-      <div className="py-3.5 flex items-center justify-between gap-4 group" data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
+      <div className={`journal-field-row py-3.5 flex items-center justify-between gap-4 group${confirmed ? " journal-field-row--confirmed" : ""}`} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
         if (canConfirm && !(event.target as HTMLElement).closest("button, a, input, select, textarea")) confirmValue();
       }}>
         {canConfirm || editMode && onEdit ? <button type="button" className="space-y-1.5 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label={canConfirm ? confirmationLabel : `Edit ${journalVariableLabel(variable)}`} onClick={canConfirm ? confirmValue : onEdit}>{heading}</button> : <div className="space-y-1.5 flex-1 min-w-0">{heading}</div>}
@@ -1088,14 +1088,13 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       }}>{managerOpen ? "Done" : <><PencilLine size={14} aria-hidden="true" />Edit habits</>}</button>;
 
       const headerElement = isPersonalLab ? (
-        <div className="pb-4 border-b border-hairline space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div className="journal-workspace-header pb-4 space-y-2.5">
+          <div className="journal-workspace-header__row flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
-              <h1 className="font-serif text-2xl tracking-normal text-content-primary font-normal" id="journal-title">Daily Protocol</h1>
-              <p className="text-xs text-content-secondary font-mono mt-1">{completionCount} of {activeVariables.length} logged · Adherence {adherenceRate}%</p>
+              <h1 className="workspace-panel-title font-serif text-content-primary font-normal" id="journal-title">Daily Protocol</h1>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline-light bg-surface-card hover:bg-surface-elevated rounded transition-all duration-150 interactive-press active:scale-[0.97]" type="button" aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
+            <div className="journal-workspace-header__actions flex items-center gap-3">
+              <button className="inline-flex min-h-9 min-w-9 items-center justify-center p-2 text-content-secondary border border-hairline hover:border-hairline-light hover:text-content-primary bg-transparent hover:bg-surface-elevated rounded transition-all duration-150 interactive-press active:scale-[0.97]" type="button" aria-label={managerOpen ? "Done editing protocol" : "Edit protocol"} title={managerOpen ? "Done editing protocol" : "Edit protocol"} aria-expanded={managerOpen} aria-controls="journal-manager" onClick={() => {
                 if (managerOpen) {
                   setManagerOpen(false);
                   managerTriggerRef.current?.focus();
@@ -1103,9 +1102,9 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
                   setManagerOpen(true);
                 }
               }} ref={managerTriggerRef}>
-                {managerOpen ? "Done editing" : "Edit protocol"}
+                <PencilLine size={14} aria-hidden="true" />
               </button>
-              <button className={`px-3 py-1 text-xs font-sans rounded transition-all duration-150 interactive-press active:scale-[0.97] ${validating ? "border border-hairline bg-surface-elevated text-content-tertiary cursor-not-allowed" : "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium"}`} type="button" onClick={() => void validate()} disabled={validating}>
+              <button className={`journal-header-validate inline-flex min-h-9 items-center justify-center px-2.5 py-1 text-xs font-sans rounded transition-colors duration-150 ${validating ? "text-content-tertiary cursor-not-allowed" : "text-content-secondary hover:text-content-primary"}`} type="button" onClick={() => void validate()} disabled={validating}>
                 {validating ? 'Validating…' : 'Validate day'}
               </button>
             </div>

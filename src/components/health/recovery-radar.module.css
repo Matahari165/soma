@@ -52,23 +52,29 @@
 .dataLayer {
   transform-box: fill-box;
   transform-origin: center;
-  animation: recoveryRadarReveal 220ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .valueShape {
   fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
-  stroke: var(--lab-text-primary, #f1f1f1);
-  stroke-width: 1.75;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+  stroke: none;
+  fill-opacity: 0;
+  animation: recoveryRadarFill 600ms cubic-bezier(.22,1,.36,1) 100ms both;
 }
+.valueSegment { fill:none; stroke:var(--lab-text-primary,#f1f1f1); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:recoveryRadarTrace 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
 
 .valuePoint {
   fill: var(--lab-text-primary, #f1f1f1);
   stroke: var(--lab-canvas, #050505);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: recoveryRadarPoint 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both;
 }
+@keyframes recoveryRadarTrace { to { stroke-dashoffset:0; } }
+@keyframes recoveryRadarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
+@keyframes recoveryRadarPoint { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 
 .valuePointActive {
   fill: var(--radar-signal);
@@ -187,7 +193,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dataLayer {
-    animation: none;
-  }
+  .valueShape, .valueSegment, .valuePoint { animation: none; stroke-dashoffset: 0; fill-opacity: 1; opacity: 1; transform: none; }
 }

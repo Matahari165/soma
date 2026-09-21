@@ -92,7 +92,7 @@
 .page .heroScene {
   display: grid;
   grid-template-columns: minmax(0, 420px) minmax(300px, 1fr);
-  gap: 48px;
+  gap: 64px;
   align-items: start;
   padding: 0;
   transform: translateY(calc(-1 * var(--recovery-hero-lift)));
@@ -276,6 +276,33 @@
   font-variant-numeric: tabular-nums;
 }
 
+.scoreSummary :global(.recovery-score-control) {
+  position: relative;
+  margin-top: 20px;
+}
+
+.scoreSummary :global(.health-score-trigger) {
+  display: block;
+  width: fit-content;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.scoreSummary :global(.health-score-trigger):focus-visible {
+  outline: 2px solid var(--recovery-accent);
+  outline-offset: 6px;
+}
+
+.scoreSummary :global(.health-score-trigger) .summaryValue {
+  margin-top: 0;
+}
+
 .summaryValue strong {
   font-size: clamp(64px, 7vw, 96px);
   font-weight: 400;
@@ -334,40 +361,6 @@
   text-align: right;
 }
 
-.summaryAction {
-  position: relative;
-  margin-top: 18px;
-}
-
-.summaryAction :global(.health-score-trigger) {
-  display: inline-flex;
-  width: auto;
-  min-width: 44px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid var(--recovery-rule-strong);
-  border-radius: var(--lab-radius-sm, 4px);
-  background: transparent;
-  color: var(--recovery-muted);
-  font-family: var(--font-soma-ui), system-ui, sans-serif;
-  font-size: 12px;
-}
-
-.summaryAction :global(.health-score-trigger)::after {
-  content: "Voir le calcul";
-}
-
-.summaryAction :global(.health-score-trigger:hover) {
-  border-color: var(--recovery-accent);
-  background: var(--lab-surface-subtle, #0c0c0c);
-  color: var(--recovery-text);
-}
-
-.summaryAction :global(.score-ring) {
-  display: none;
-}
 
 /* The inline score explanation is supplied by the score-control lot. Keep
    the global hook here so its panel can open as a composition rather than a
@@ -380,9 +373,9 @@
   overflow: hidden;
   opacity: 0;
   clip-path: inset(0 0 100% 0);
-  transition: grid-template-rows 640ms cubic-bezier(.16, 1, .3, 1),
-    opacity 420ms ease-out,
-    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+  transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1),
+    opacity 280ms ease-out,
+    clip-path 360ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .page :global(.recovery-score-inline__inner) > * {
@@ -408,9 +401,9 @@
   overflow: hidden;
   opacity: 0;
   clip-path: inset(0 0 100% 0);
-  transition: grid-template-rows 640ms cubic-bezier(.16, 1, .3, 1),
-    opacity 420ms ease-out,
-    clip-path 640ms cubic-bezier(.16, 1, .3, 1);
+  transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1),
+    opacity 280ms ease-out,
+    clip-path 360ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .page :global(.recovery-score-inline[aria-hidden]) > :global(.recovery-score-inline__inner) {
@@ -433,25 +426,25 @@
   overflow: visible;
 }
 
-.summaryAction :global(.recovery-score-inline[aria-hidden]) {
+.scoreSummary :global(.recovery-score-inline[aria-hidden]) {
   width: min(100%, 360px);
   text-align: left;
 }
 
-.summaryAction :global(.recovery-score-inline[aria-hidden][data-open="true"]) {
+.scoreSummary :global(.recovery-score-inline[aria-hidden][data-open="true"]) {
   margin-top: 16px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) {
+.scoreSummary :global(.recovery-score-inline__inner) {
   color: var(--recovery-text);
 }
 
-.summaryAction :global(.recovery-score-inline__inner) header {
+.scoreSummary :global(.recovery-score-inline__inner) header {
   display: block;
   margin: 0 0 12px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) header strong {
+.scoreSummary :global(.recovery-score-inline__inner) header strong {
   color: var(--recovery-text);
   font-family: var(--font-soma-ui), system-ui, sans-serif;
   font-size: 16px;
@@ -459,20 +452,20 @@
   line-height: 24px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) p {
+.scoreSummary :global(.recovery-score-inline__inner) p {
   margin: 0 0 16px;
   color: var(--recovery-muted);
   font-size: 13px;
   line-height: 20px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) dl {
+.scoreSummary :global(.recovery-score-inline__inner) dl {
   display: grid;
   gap: 8px;
   margin: 0;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) dl > div {
+.scoreSummary :global(.recovery-score-inline__inner) dl > div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: baseline;
@@ -480,26 +473,26 @@
   padding: 4px 0;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) dt {
+.scoreSummary :global(.recovery-score-inline__inner) dt {
   color: var(--recovery-muted);
   font-size: 12px;
   line-height: 16px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) dd,
-.summaryAction :global(.recovery-score-inline__inner) small {
+.scoreSummary :global(.recovery-score-inline__inner) dd,
+.scoreSummary :global(.recovery-score-inline__inner) small {
   font-family: var(--font-soma-mono), ui-monospace, monospace;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   line-height: 16px;
 }
 
-.summaryAction :global(.recovery-score-inline__inner) dd {
+.scoreSummary :global(.recovery-score-inline__inner) dd {
   margin: 0;
   color: var(--recovery-text);
 }
 
-.summaryAction :global(.recovery-score-inline__inner) small {
+.scoreSummary :global(.recovery-score-inline__inner) small {
   color: var(--recovery-muted);
 }
 

@@ -542,6 +542,7 @@ export function LabMealCard({
               <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-surface-subtle text-signal-neg border border-hairline">Error</span>
             </div>
+            {!isSkipped && onMarkSkipped && <button type="button" className="min-h-11 min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors" disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
           </div>
           {photoStrip}
           <div className="space-y-1.5" role="alert">
@@ -549,18 +550,7 @@ export function LabMealCard({
             <p className="text-xs text-content-secondary font-sans">{visibleAnalysisError(meal?.error)}</p>
           </div>
           <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2">
-              {!isSkipped && onMarkSkipped && (
-                <button
-                  type="button"
-                  className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
-                  disabled={disabled || mutationBusy}
-                  onClick={onMarkSkipped}
-                >
-                  Skip
-                </button>
-              )}
-            </div>
+            <div />
             <button
               type="button"
               className={
@@ -693,6 +683,7 @@ export function LabMealCard({
             <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
             <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
           </div>
+          {!isSkipped && onMarkSkipped && <button type="button" className="min-h-11 min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors" disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
         </div>
         {photoStrip}
         <div className="relative">
@@ -736,15 +727,6 @@ export function LabMealCard({
             </button>
           </div>
           <div className="flex items-center gap-3">
-            {!isSkipped && onMarkSkipped && (
-              <button
-                type="button"
-                className="text-xs font-sans text-content-secondary hover:text-content-primary transition-colors active:scale-[0.98] transition-transform duration-150"
-                onClick={onMarkSkipped}
-              >
-                Skip
-              </button>
-            )}
             <button
               type="button"
               className={

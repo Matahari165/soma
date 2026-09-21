@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-
-import { ScoreRing } from "@/components/dashboard/score-ring";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 function driverValue(value: number | null) {
   return value === null ? "Unavailable" : Math.round(value).toLocaleString("en-US");
 }
 
-export function RecoveryScorePopover({ score, hrv, restingHeartRate, sleep }: { score: number | null; hrv: number | null; restingHeartRate: number | null; sleep: number | null }) {
+export function RecoveryScorePopover({ hrv, restingHeartRate, sleep, children }: { hrv: number | null; restingHeartRate: number | null; sleep: number | null; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const titleId = `${panelId}-title`;
@@ -34,7 +32,7 @@ export function RecoveryScorePopover({ score, hrv, restingHeartRate, sleep }: { 
 
   return <div className="recovery-score-control">
     <button ref={triggerRef} type="button" className="health-score-trigger" aria-expanded={open} aria-controls={panelId} onClick={() => open ? closePanel() : setOpen(true)}>
-      <ScoreRing kind="recovery" label="Score" score={score} animate decorative />
+      {children}
       <span className="sr-only">{open ? "Close" : "Open"} recovery score calculation</span>
     </button>
     <div id={panelId} className="recovery-score-inline" data-open={open ? "true" : "false"} aria-hidden={!open} inert={!open} aria-labelledby={titleId}>

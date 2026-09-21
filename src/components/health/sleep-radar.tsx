@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent } from "react";
+import { useId, useRef, type CSSProperties, type KeyboardEvent } from "react";
 
 import styles from "./sleep-radar.module.css";
 
@@ -6,7 +6,7 @@ const VIEWBOX_WIDTH = 420;
 const VIEWBOX_HEIGHT = 420;
 const CENTER_X = VIEWBOX_WIDTH / 2;
 const CENTER_Y = VIEWBOX_HEIGHT / 2;
-const RADIUS = 150;
+const RADIUS = 132;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 
 /**
@@ -77,7 +77,7 @@ function labelPosition(index: number, count: number) {
   const angle = angleFor(index, count);
   const cosine = Math.cos(angle);
   const sine = Math.sin(angle);
-  const labelRadius = RADIUS + 38;
+  const labelRadius = RADIUS + 34;
   const textAnchor: "start" | "middle" | "end" = cosine > 0.28 ? "start" : cosine < -0.28 ? "end" : "middle";
   const dy = sine > 0.35 ? "0" : sine < -0.35 ? "0" : "0.35em";
   const valueDy = sine > 0.35 ? "1.55em" : "1.4em";
@@ -194,6 +194,10 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
     : null);
   const completePoints = plottedPoints.filter((point): point is Point => point !== null);
   const allPointsMeasured = completePoints.length === plottedPoints.length;
+  const valueSegments = plottedPoints.flatMap((point, index) => {
+    const next = plottedPoints[(index + 1) % count];
+    return point && next ? [{ from: point, to: next }] : [];
+  });
 
   return (
     <figure className={rootClassName} aria-labelledby={titleId} aria-describedby={captionSummary ? descriptionId : undefined}>
@@ -239,10 +243,10 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
 
         <g className={styles.dataLayer}>
           {count >= 3 && allPointsMeasured && <polygon className={styles.valueArea} points={pointsAttribute(completePoints)} aria-hidden="true" />}
-          {count === 2 && allPointsMeasured && <line className={styles.valueLine} x1={completePoints[0][0]} y1={completePoints[0][1]} x2={completePoints[1][0]} y2={completePoints[1][1]} aria-hidden="true" />}
+          {valueSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.valueLine} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
 
           {plottedPoints.map((point, index) => point && (
-            <circle key={`point-${dimensions[index].id}-${index}`} className={selectedId === dimensions[index].id ? `${styles.point} ${styles.pointActive}` : styles.point} cx={point[0]} cy={point[1]} r={selectedId === dimensions[index].id ? 6 : 5} aria-hidden="true">
+            <circle key={`point-${dimensions[index].id}-${index}`} className={selectedId === dimensions[index].id ? `${styles.point} ${styles.pointActive}` : styles.point} data-radar-point="" data-radar-point-index={index} style={{ "--radar-point-index": index } as CSSProperties} cx={point[0]} cy={point[1]} r={selectedId === dimensions[index].id ? 6 : 5} aria-hidden="true">
               <title>{readableDimension(dimensions[index])}</title>
             </circle>
           ))}
