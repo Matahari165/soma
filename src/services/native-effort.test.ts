@@ -46,13 +46,21 @@ describe("native Effort payload", () => {
     expect(payload.coverage.byMetric.steps).toBeCloseTo(1 / 30);
   });
 
-  it("keeps only exercises inside the displayed period", () => {
+  it("keeps imported exercises older than the displayed trend period", () => {
     const data = analytics([day({ steps: 2_000 })]);
     data.exercises = [
       { id: "recent", date: "2026-09-18", name: "Récent", type: "RUNNING", durationMinutes: 30, activeMinutes: 28, calories: 300, distanceKm: 5, averageHeartRate: 145, zoneMinutes: 20, averageSpeedKph: 10, averagePaceSecondsPerKm: 360, elevationGainMeters: 20, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
       { id: "old", date: "2026-08-01", name: "Ancien", type: "RUNNING", durationMinutes: 30, activeMinutes: 28, calories: 300, distanceKm: 5, averageHeartRate: 145, zoneMinutes: 20, averageSpeedKph: 10, averagePaceSecondsPerKm: 360, elevationGainMeters: 20, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
     ];
 
-    expect(nativeEffortPayload(data).exercises.map((exercise) => exercise.id)).toEqual(["recent"]);
+    expect(nativeEffortPayload(data).exercises.map((exercise) => exercise.id)).toEqual(["recent", "old"]);
+  });
+
+  it("shows exercise history even without a measured daily effort score", () => {
+    const data = analytics([]);
+    data.exercises = [{ id: "run", date: "2026-08-01", name: "Run", type: "RUNNING", durationMinutes: 0, activeMinutes: null, calories: null, distanceKm: 0, averageHeartRate: null, zoneMinutes: null, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null }];
+    const payload = nativeEffortPayload(data);
+    expect(payload.latest).toBeNull();
+    expect(payload.exercises[0]).toMatchObject({ durationMinutes: 0, distanceKm: 0, calories: null, provenance: "google_health" });
   });
 });

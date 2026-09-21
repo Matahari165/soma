@@ -716,11 +716,15 @@ function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
 function statusLabel(meal: MealRecord | null) {
   if (!meal) return "";
   if (meal.entryState === "skipped") return "Skipped";
+  if (meal.status === "error" || meal.error) return "Needs retry";
   if (meal.status === "confirmed") return "Confirmed";
+  // Older API responses used `review` after analysis. The new flow confirms
+  // successful analyses automatically, so keep that legacy response from
+  // exposing a second review step while the backend rolls forward.
+  if (meal.status === "review" && meal.analysis && !meal.error) return "Finalisation…";
   if (meal.status === "accepted") return "Analysis queued";
   if (meal.status === "analyzing") return "Analyzing…";
   if (meal.status === "review") return "Ready for review";
-  if (meal.status === "error") return "Needs retry";
   const hasPhotos = meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available");
   const hasText = Boolean(meal.note.trim());
   if (hasPhotos && hasText) return "Ready to analyze";
@@ -883,16 +887,15 @@ export function MealCorrectionPanel({ meal, onCorrection, onCancel }: { meal: Me
   </div>;
 }
 
-function MealCompletionControls({ status, mutationBusy, onEdit, onConfirm }: {
-  status: "review" | "confirmed";
-  saving: boolean;
+function MealCompletionControls({ mutationBusy, onEdit, onConfirm, retryable }: {
   mutationBusy: boolean;
   onEdit: () => void;
   onConfirm: () => void;
+  retryable: boolean;
 }) {
   return <div className={styles.mealCompletionControls}>
     <div className={styles.reviewActions}>
-      {status === "review" && <button className={styles.confirmButton} type="button" disabled={mutationBusy} onClick={onConfirm}>Confirm result</button>}
+      {retryable && <button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onConfirm}>Retry confirmation</button>}
       <button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onEdit}>Edit</button>
     </div>
   </div>;
@@ -1043,6 +1046,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   const [correctionMode, setCorrectionMode] = useState(false);
   const [ratingSaveState, setRatingSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [analysisChoice, setAnalysisChoice] = useState<{ status: string; open: boolean } | null>(null);
+  const autoConfirmMealRef = useRef<string | null>(null);
   const analysisOpen = analysisChoice?.status === status ? analysisChoice.open : status === "review";
   const setAnalysisOpen = (next: boolean | ((previous: boolean) => boolean)) => setAnalysisChoice({ status, open: typeof next === "function" ? next(analysisOpen) : next });
   const [entryStarted, setEntryStarted] = useState(false);
@@ -1098,16 +1102,30 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   };
 
   const priorityHintId = `meal-${slot}-priority`;
-  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${meal?.status === "confirmed" ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-describedby={priority ? priorityHintId : undefined} aria-busy={saving || processingFiles}>
+  // A legacy `review` response means the existing confirmation request is
+  // still pending. Only the persisted confirmed status gets completion UI.
+  const completed = Boolean(meal?.analysis && !meal.error && status === "confirmed");
+
+  useEffect(() => {
+    if (status !== "review" || !meal?.analysis || meal.error) {
+      if (status !== "review") autoConfirmMealRef.current = null;
+      return;
+    }
+    if (autoConfirmMealRef.current === meal.id) return;
+    autoConfirmMealRef.current = meal.id;
+    onConfirm();
+  }, [meal?.analysis, meal?.error, meal?.id, onConfirm, status]);
+
+  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-describedby={priority ? priorityHintId : undefined} aria-busy={saving || processingFiles}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3>{priority && <span id={priorityHintId} className={styles.mealPriority}>Current</span>}</div>
       {labCompact ? <div className={styles.labHeaderActions}>
-        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.status}>{visibleStatus}</span> : null}
-        {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onConfirm={onConfirm} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
+        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{visibleStatus}</span> : null}
+        {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls mutationBusy={mutationBusy} onConfirm={onConfirm} retryable={Boolean(meal.error)} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && !skipped && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
-        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.status ?? "empty"}>{meal?.status === "confirmed" && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
-      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.status ?? "empty"}>{meal?.status === "confirmed" && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
+        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
+      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status"><span>Skipped · this slot is excluded from the score.</span><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onMarkRecorded}>Log this meal</button></div>}
     {unavailable && <div className={styles.skippedState} role="status">Slot skipped in journal.</div>}
@@ -1158,7 +1176,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
         {!labCompact && <>
           <MealAnalysisDisclosure meal={meal} status={status} correctionMode={correctionMode} ratingSaveState={ratingSaveState} onRating={handleRating} onCorrection={(correction) => { setCorrectionMode(false); onCorrection(correction); }} onCancel={() => setCorrectionMode(false)} />
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
-          <MealCompletionControls status={status} saving={saving} mutationBusy={mutationBusy} onConfirm={onConfirm} onEdit={() => setCorrectionMode(true)} />
+          <MealCompletionControls mutationBusy={mutationBusy} onConfirm={onConfirm} retryable={Boolean(meal.error)} onEdit={() => setCorrectionMode(true)} />
         </>}
         {labCompact && confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
       </>}
@@ -2189,7 +2207,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
           const priority = currentMealSlot === slot && !disabledSlots.includes(slot) && meal?.entryState !== "skipped";
-          return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} priority={priority} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onPhotoComment={(photoId, comment) => setPhotoComment(slot, photoId, comment)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onConfirm={() => { if (meal) void saveMeal(meal, "confirmed"); }} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
+          return <div id={`meal-${slot}`} className={priority ? styles.prioritySlot : undefined} key={`${selectedDate}-${slot}`}><MealCard meal={meal} slot={slot} priority={priority} compactEmpty mealsCompact openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onPhotoComment={(photoId, comment) => setPhotoComment(slot, photoId, comment)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onConfirm={() => { if (meal) void saveMeal(meal, "confirmed", { queued: true, announce: false }); }} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} /></div>;
         })}</div>
       </section>
       <div className={styles.mealsSecondary}>{children}</div>
@@ -2216,7 +2234,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
                 onPhotoComment={(photoId, comment) => setPhotoComment(slot, photoId, comment)}
                 onAnalyze={() => void analyzeMeal(slot)}
                 onCancelAnalysis={() => cancelAnalysis(slot)}
-                onConfirm={() => { if (meal) void saveMeal(meal, "confirmed"); }}
+                onConfirm={() => { if (meal) void saveMeal(meal, "confirmed", { queued: true, announce: false }); }}
                 onCorrection={(correction) => void analyzeMeal(slot, correction)}
                 onNote={(note) => setNote(slot, note)}
                 onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
@@ -2226,7 +2244,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
               />
             </>
           ) : (
-            <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onConfirm={() => { if (meal) void saveMeal(meal, "confirmed"); }} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
+            <MealCard meal={meal} slot={slot} priority={priority} compactEmpty={variant !== "page"} labCompact={false} openRequest={entryRequest?.slot === slot ? entryRequest.sequence : undefined} disabled={disabledSlots.includes(slot)} saving={savingSlot === slot} processingFiles={processingFiles} mutationBusy={slotBusy(slot)} confirmError={confirmError[slot]} onFiles={(files) => addFiles(slot, files)} onRemovePhoto={(photoId) => removePhoto(slot, photoId)} onDeleteMeal={() => removeMeal(slot)} onOrigin={(photoId, origin) => void setPhotoOrigin(slot, photoId, origin)} onAnalyze={() => void analyzeMeal(slot)} onCancelAnalysis={() => cancelAnalysis(slot)} onConfirm={() => { if (meal) void saveMeal(meal, "confirmed", { queued: true, announce: false }); }} onCorrection={(correction) => void analyzeMeal(slot, correction)} onRating={(key, value) => setRating(slot, key, value)} onRetry={() => void analyzeMeal(slot)} onNote={(note) => setNote(slot, note)} onMarkSkipped={() => void changeEntryState(slot, "skipped")} onMarkRecorded={() => void changeEntryState(slot, "recorded")} />
           )
         }</div>;
       })}</div>}

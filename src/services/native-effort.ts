@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analytics";
-import { getNativeActivityAnalytics } from "@/services/health-analytics";
+import { allImportedExercises, getNativeActivityAnalytics } from "@/services/health-analytics";
 
 const RAW_KEYS = ["steps", "exercise_minutes", "active_energy_kcal", "zone_minutes"] as const;
 
@@ -95,14 +95,11 @@ export function nativeEffortPayload(data: HealthAnalytics) {
         zoneMinutes: day?.zone_minutes ?? null,
       };
     }) : [],
-    exercises: latest
-      ? data.exercises
-          .filter((exercise) => exercise.date >= addDays(latest.metric_date, -29) && exercise.date <= latest.metric_date)
-          .map((exercise) => ({ ...exercise, provenance: "google_health" as const }))
-      : [],
+    exercises: data.exercises.map((exercise) => ({ ...exercise, provenance: "google_health" as const })),
   };
 }
 
 export async function getNativeEffort(userId: string) {
-  return nativeEffortPayload(await getNativeActivityAnalytics(userId));
+  const [analytics, exercises] = await Promise.all([getNativeActivityAnalytics(userId), allImportedExercises(userId)]);
+  return nativeEffortPayload({ ...analytics, exercises });
 }

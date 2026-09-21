@@ -168,6 +168,17 @@ private struct EmptyTokenStore: TokenStore {
     ])
 }
 
+@Test func archivedHabitKeepsItsRecordedHistoryWithoutDailyPrompt() throws {
+    let json = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"archived","name":"Course","variableType":"boolean","unit":null,"options":[],"position":10,"isActive":false,"emoji":"—","defaultValue":null,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"archived","entryDate":"2026-09-19","value":false}],"day":null},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
+    let day = try JSONDecoder().decode(NativeDayResponse.self, from: Data(json.utf8))
+    let draft = JournalDraft(day: day)
+
+    #expect(draft.state(for: "archived") == .recorded)
+    #expect(draft.values["archived"] == .bool(false))
+    #expect(draft.completedCount(for: day.variables) == 0)
+    #expect(draft.entries(for: day.variables).isEmpty)
+}
+
 @Test func journalDraftRetainsNewerEditsWhenAnOlderSnapshotArrives() throws {
     let initialJSON = #"{"date":"2026-09-19","timezone":"Europe/Zurich","journal":{"variables":[{"id":"focus","name":"Concentration","variableType":"number","unit":null,"options":[],"position":10,"isActive":true,"emoji":"🧠","defaultValue":0,"dayPeriod":"day","captureMode":"manual","automaticMetricId":null,"trackingCadence":"daily"}],"entries":[{"variableId":"focus","entryDate":"2026-09-19","value":1}],"day":{"entryDate":"2026-09-19","status":"draft","validatedAt":null,"omittedVariableIds":[]}},"meals":{"breakfast":null,"lunch":null,"dinner":null,"snack":null}}"#
     let olderResponseJSON = initialJSON.replacingOccurrences(of: "\"value\":1", with: "\"value\":0")
@@ -296,12 +307,74 @@ private struct EmptyTokenStore: TokenStore {
     #expect(decoded[1].comment == nil)
 }
 
-@Test func analysisResultMustBeConfirmedExplicitly() throws {
+@Test func legacyConfirmationStageRemainsDecodableForMigration() throws {
     var draft = MealDraft(mealDate: "2026-09-19", mealType: .dinner, note: "Repas synthétique")
     draft.stage = .awaitingConfirmation
     let decoded = try JSONDecoder().decode(MealDraft.self, from: JSONEncoder().encode(draft))
     #expect(decoded.stage == .awaitingConfirmation)
     #expect(decoded.entryState == .recorded)
+}
+
+@Test func completedAnalysisIsAutomaticallyConfirmed() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let response = MealAnalysisResponse(
+        analysis: MealAnalysisRecord(id: "analysis-completed", mealId: "meal-1", status: "completed", provider: "stub", model: "stub", result: nil, error: nil, errorCode: nil, analysisRequestId: "analysis-request", sourceRevision: nil, sourceFingerprint: nil, sourcePhotoIds: [], createdAt: "2026-09-19T10:00:00Z", completedAt: "2026-09-19T10:00:01Z"),
+        meal: nil, fresh: true, queued: false, requestId: "analysis-request"
+    )
+    let api = MealSubmissionStub(request: response)
+    let draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, note: "Repas")
+
+    let result = try await MealSubmissionCoordinator(api: api, store: store, pollTimeout: .milliseconds(50)).submit(draft)
+
+    #expect(result.stage == .confirmed)
+    let updates = await api.recordedUpdates()
+    #expect(updates.count == 1)
+    #expect(updates.first?.status == .confirmed)
+    #expect(updates.first?.analysisRequestId == "analysis-request")
+}
+
+@Test func confirmationFailureDoesNotMarkMealConfirmed() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = try MealDraftStore(directory: directory)
+    let response = MealAnalysisResponse(
+        analysis: MealAnalysisRecord(id: "analysis-completed", mealId: "meal-1", status: "completed", provider: "stub", model: "stub", result: nil, error: nil, errorCode: nil, analysisRequestId: "analysis-request", sourceRevision: nil, sourceFingerprint: nil, sourcePhotoIds: [], createdAt: "2026-09-19T10:00:00Z", completedAt: "2026-09-19T10:00:01Z"),
+        meal: nil, fresh: true, queued: false, requestId: "analysis-request"
+    )
+    let api = MealSubmissionStub(request: response, failUpdates: true)
+    let draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, note: "Repas")
+
+    let result = try await MealSubmissionCoordinator(api: api, store: store, pollTimeout: .milliseconds(50)).submit(draft)
+
+    #expect(result.stage == .failed)
+    #expect(result.stage != .confirmed)
+    #expect(result.lastError != nil)
+}
+
+@Test func legacyConfirmationStagesResumeThroughAutomaticConfirmation() async throws {
+    let response = MealAnalysisResponse(
+        analysis: MealAnalysisRecord(id: "analysis-completed", mealId: "meal-1", status: "completed", provider: "stub", model: "stub", result: nil, error: nil, errorCode: nil, analysisRequestId: "analysis-request", sourceRevision: nil, sourceFingerprint: nil, sourcePhotoIds: [], createdAt: "2026-09-19T10:00:00Z", completedAt: "2026-09-19T10:00:01Z"),
+        meal: nil, fresh: false, queued: false, requestId: "analysis-request"
+    )
+
+    for legacyStage in [MealDraftStage.awaitingConfirmation, .completed] {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try MealDraftStore(directory: directory)
+        let api = MealSubmissionStub(status: response)
+        var draft = MealDraft(mealDate: "2026-09-19", mealType: .lunch, note: "Repas")
+        draft.remoteMealId = "meal-1"
+        draft.stage = legacyStage
+        draft.activeAnalysisRequestId = "analysis-request"
+
+        let result = try await MealSubmissionCoordinator(api: api, store: store, pollTimeout: .milliseconds(50)).submit(draft)
+
+        #expect(result.stage == .confirmed)
+        let updates = await api.recordedUpdates()
+        #expect(updates.first?.status == .confirmed)
+    }
 }
 
 @Test func transientMealDraftStagesAreResumableAfterRestore() {
@@ -395,20 +468,42 @@ private struct EmptyTokenStore: TokenStore {
 
 private actor MealSubmissionStub: MealSubmissionAPI {
     let statusResponse: MealAnalysisResponse?
+    let requestResponse: MealAnalysisResponse?
     let statusDelay: Duration?
+    let failUpdates: Bool
+    private var updates: [MealUpdateRequest] = []
 
-    init(status: MealAnalysisResponse? = nil, statusDelay: Duration? = nil) {
+    init(status: MealAnalysisResponse? = nil, request: MealAnalysisResponse? = nil, statusDelay: Duration? = nil, failUpdates: Bool = false) {
         self.statusResponse = status
+        self.requestResponse = request
         self.statusDelay = statusDelay
+        self.failUpdates = failUpdates
     }
 
-    func createMeal(from draft: MealDraft) async throws -> MealMutationResponse { fatalError("not used") }
-    func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse { fatalError("not used") }
+    func createMeal(from draft: MealDraft) async throws -> MealMutationResponse {
+        MealMutationResponse(meal: syntheticMeal(id: "meal-1"), created: true)
+    }
+
+    func updateMeal(id: String, body: MealUpdateRequest) async throws -> MealMutationResponse {
+        if failUpdates { throw StubError.confirmationFailed }
+        updates.append(body)
+        return MealMutationResponse(meal: syntheticMeal(id: id, status: body.status ?? .draft), created: false)
+    }
     func uploadMealPhotos(mealID: String, photos: [MealDraftPhoto], idempotencyKey: String) async throws -> MealPhotosResponse { fatalError("not used") }
-    func requestMealAnalysis(mealID: String, idempotencyKey: String, force: Bool) async throws -> MealAnalysisResponse { fatalError("not used") }
+    func requestMealAnalysis(mealID: String, idempotencyKey: String, force: Bool) async throws -> MealAnalysisResponse {
+        requestResponse ?? statusResponse ?? MealAnalysisResponse(analysis: nil, meal: nil, fresh: false, queued: true, requestId: idempotencyKey)
+    }
 
     func mealAnalysisStatus(mealID: String, requestID: String?) async throws -> MealAnalysisResponse {
         if let statusDelay { try await Task.sleep(for: statusDelay) }
         return statusResponse ?? MealAnalysisResponse(analysis: nil, meal: nil, fresh: false, queued: true, requestId: requestID)
     }
+
+    func recordedUpdates() -> [MealUpdateRequest] { updates }
+
+    private func syntheticMeal(id: String, status: MealStatus = .draft) -> Meal {
+        Meal(id: id, mealDate: "2026-09-19", mealType: .lunch, note: "Repas", status: status, entryState: .recorded, mouthWarmthIntensity: nil, stomachOverfullIntensity: nil, createdAt: "2026-09-19T10:00:00Z", updatedAt: "2026-09-19T10:00:01Z", photos: [], analysis: nil, lastSuccessfulAnalysis: nil)
+    }
+
+    private enum StubError: Error, Sendable { case confirmationFailed }
 }

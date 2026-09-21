@@ -495,7 +495,34 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?:
     const bpm = findNumber(record.payload, ["beatsPerMinute"]);
     return bpm === null || !record.measured_at || (latestRecoveryDate && civilDateIn(record.measured_at, timezone) !== latestRecoveryDate) ? [] : [{ measuredAt: record.measured_at, bpm }];
   }).reverse();
-  const exerciseSummaries = (exercises ?? []).map((record): ExerciseSummary => {
+  const exerciseSummaries = (exercises ?? []).map(exerciseSummaryFromRecord);
+  const targetMinutes = Number(sleepPreferences?.base_target_minutes);
+  const sleepRecommendation = scope === "sleep"
+    ? sleepRecommendationFor({
+      days: orderedMetrics,
+      timezone,
+      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 510,
+      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
+      windDownMinutes: Number(sleepPreferences?.wind_down_minutes) || 30,
+    })
+    : null;
+  return {
+    timezone,
+    importedAt: connection?.last_synced_at ?? null,
+    days: orderedMetrics,
+    scores: [...((scores ?? []) as ScoreDay[])].reverse(),
+    sleepRecommendation,
+    latestSleepStages,
+    heartRateSamples,
+    exercises: exerciseSummaries,
+    effortTargets,
+    effortTargetSource,
+  };
+}
+
+type ExerciseRecord = { source_record_id: string; civil_date: string | null; start_time: string | null; end_time: string | null; payload: unknown };
+
+export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSummary {
     const exercise = findObject(record.payload, "exercise") ?? {};
     const metricsSummary = isObject(exercise.metricsSummary) ? exercise.metricsSummary : {};
     const duration = record.start_time && record.end_time ? (Date.parse(record.end_time) - Date.parse(record.start_time)) / 60_000 : null;
@@ -522,35 +549,34 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?:
       verticalOscillationMillimeters: findNumber(metricsSummary, ["avgVerticalOscillationMillimeters"]),
       verticalRatio: findNumber(metricsSummary, ["avgVerticalRatio"]),
     };
-  });
-  const targetMinutes = Number(sleepPreferences?.base_target_minutes);
-  const sleepRecommendation = scope === "sleep"
-    ? sleepRecommendationFor({
-      days: orderedMetrics,
-      timezone,
-      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 510,
-      wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
-      windDownMinutes: Number(sleepPreferences?.wind_down_minutes) || 30,
-    })
-    : null;
-  return {
-    timezone,
-    importedAt: connection?.last_synced_at ?? null,
-    days: orderedMetrics,
-    scores: [...((scores ?? []) as ScoreDay[])].reverse(),
-    sleepRecommendation,
-    latestSleepStages,
-    heartRateSamples,
-    exercises: exerciseSummaries,
-    effortTargets,
-    effortTargetSource,
-  };
+}
+
+export async function allImportedExercises(userId: string): Promise<ExerciseSummary[]> {
+  const admin = createCloudflareAdminClient();
+  const pageSize = 500;
+  const records: ExerciseSummary[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await admin.from("health_records")
+      .select("source_record_id,civil_date,start_time,end_time,payload")
+      .eq("user_id", userId).eq("data_type", "exercise")
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Exercise history could not be loaded.");
+    const page = (data ?? []).map(exerciseSummaryFromRecord);
+    records.push(...page);
+    if (page.length < pageSize) return records;
+  }
 }
 
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
 export function getSleepAnalyticsForUser(user: SomaUser) { return loadHealthAnalytics("sleep", user.id); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
-export function getActivityAnalytics() { return loadHealthAnalytics("activity"); }
+export async function getActivityAnalytics() {
+  const analytics = await loadHealthAnalytics("activity");
+  if (isLocalPreviewMode()) return analytics;
+  const user = await getCurrentUser();
+  return user ? { ...analytics, exercises: await allImportedExercises(user.id) } : analytics;
+}
 export function getNativeActivityAnalytics(userId: string) { return loadHealthAnalytics("activity", userId); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }

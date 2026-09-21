@@ -54,6 +54,8 @@
 	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Soma lit les mesures Santé que vous choisissez afin de préparer leur import et d'en afficher la provenance.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Soma utilise l’appareil photo pour ajouter une photo à votre repas.</string>
 	<key>SomaSupabasePublishableKey</key>
 	<string>$(SOMA_SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>SomaSupabaseURL</key>
