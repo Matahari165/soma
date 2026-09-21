@@ -313,7 +313,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           <div className={styles.secondaryTrendGrid}>
             <MetricTrendCard label="Fragmentation" points={points(data.days, "sleep_fragmentation")} unit="/h" direction="lower_is_better" compact animateCurrent animationFormat="decimal" />
             <MetricTrendCard label="Deep + REM sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" compact animateCurrent animationFormat="duration" />
-            <MetricTrendCard label="Bedtime" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
+            <MetricTrendCard label="Bedtime · night ending on this date" points={bedtimePoints(data.days, data.timezone)} direction="context_only" format={formatClockMinutes} valueFormat="clock" compact />
           </div>
         </section>
         <section className={`${styles.lastNightSection} health-observatory-panel`} aria-labelledby="sleep-stages-heading">

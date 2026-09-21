@@ -367,8 +367,28 @@
   .trendGrid { grid-template-columns: 1fr; gap: 24px; }
   .featuredActivityMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .exerciseDetailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-  .activityHistoryRow { grid-template-columns: 1fr; gap: 12px; }
-  .activityHistoryMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activityHistoryRow {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 24px 0;
+    border-bottom: 0;
+  }
+  .activityHistoryRow + .activityHistoryRow { border-top: 1px solid color-mix(in srgb, var(--effort-text) 18%, transparent); }
+  .activityHistoryIdentity {
+    gap: 5px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--effort-text) 10%, transparent);
+  }
+  .activityHistoryIdentity strong { font-size: 17px; line-height: 23px; }
+  .activityHistoryIdentity span { line-height: 19px; }
+  .activityHistoryMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+  }
+  .activityHistoryMetrics dt { line-height: 18px; }
+  .activityHistoryMetrics dd { margin-top: 5px; line-height: 21px; }
+  .activityAverageRow { margin-block: 8px; padding-inline: 12px; border: 1px solid color-mix(in srgb, var(--effort-text) 18%, transparent); }
+  .activityAverageRow + .activityHistoryRow { border-top: 0; }
   .sectionHeader { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 

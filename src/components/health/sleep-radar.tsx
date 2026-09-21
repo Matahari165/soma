@@ -99,8 +99,7 @@ function readableDimension(dimension: SleepRadarDimension) {
       ? `${dimension.label} : mesurée à 0`
       : `${dimension.label} : mesure disponible`;
   const comparison = comparisonPresentation(dimension);
-  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
-  return comparison ? `${description}. ${comparison.label}${source}` : `${description}${source}`;
+  return comparison ? `${description}. ${comparison.label}` : description;
 }
 
 function comparisonPresentation(dimension: SleepRadarDimension) {
@@ -259,7 +258,6 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
           const displayValue = valueLabel || (!hasNormalizedValue(dimension) ? "—" : null);
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.id;
-          const sourceLabel = dimension.sourceLabel?.trim() || null;
           return (
             <g
               aria-controls={interactiveAxis ? detailId : undefined}
@@ -285,9 +283,6 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
                     {displayValue}
                     {comparison && <tspan className={`${styles.comparison} ${comparison.className}`} dx={displayValue ? 5 : 0}>{comparison.arrow}</tspan>}
                   </text>
-                ) : null}
-                {sourceLabel ? (
-                  <text className={styles.valueLabel} x={position.x} y={position.y} dy="2.6em" textAnchor={position.textAnchor}>{sourceLabel}</text>
                 ) : null}
               </g>
             </g>

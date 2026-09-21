@@ -26,8 +26,34 @@
   opacity: 1;
 }
 
+.lineChart :global([data-chart-trace]) {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: somaChartTrace 820ms cubic-bezier(.16, 1, .3, 1) 160ms both;
+}
+
+.lineChart :global([data-chart-area]) {
+  opacity: 0;
+  animation: somaChartArea 900ms cubic-bezier(.16, 1, .3, 1) 280ms both;
+}
+
+@keyframes somaChartTrace {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes somaChartArea {
+  to { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lineChart {
     scroll-behavior: auto;
+  }
+
+  .lineChart :global([data-chart-trace]),
+  .lineChart :global([data-chart-area]) {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
   }
 }

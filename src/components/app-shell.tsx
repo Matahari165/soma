@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { SomaLogo, SomaSymbol } from "@/components/soma-logo";
+import { PageMotionController } from "@/components/page-motion-controller";
 import type { SomaUser } from "@/lib/auth";
 
 const navigation = [
@@ -122,7 +123,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <main key={pathname} className="main-content">{children}</main>
+      <main key={pathname} className="main-content"><PageMotionController />{children}</main>
     </div>
   );
 }

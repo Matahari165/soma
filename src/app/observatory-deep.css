@@ -80,7 +80,7 @@ html[data-lab-theme="observatory"] .arrival-backdrop__tone { position:absolute; 
 html[data-lab-theme="observatory"] .arrival-backdrop__fade { position:absolute; inset:0; background:linear-gradient(to bottom,#050505 0%,transparent 12%,transparent 62%,rgba(5,5,5,.78) 84%,#050505 100%); }
 html[data-lab-theme="observatory"] .lab-intro > .lab-arrival { position:relative; z-index:1; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { min-height:500px!important; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important; }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(500px,42vw)!important; min-height:min(500px,42vw)!important; margin-top:0; margin-bottom:0; }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { height:min(500px,42vw)!important; min-height:min(500px,42vw)!important; margin-top:0; margin-bottom:0; padding-top:16px; box-sizing:border-box; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 { font-size:clamp(44px,5vw,72px); line-height:1.06; margin:0 0 20px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading--personalized h1 { max-width:20ch; }
 .arrival-date-nav { position:relative; display:flex; align-items:center; gap:8px; width:max-content; }
@@ -115,6 +115,10 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous button:hover {
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous :focus-visible { outline:2px solid #ddd; outline-offset:3px; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button[aria-current="date"] { background:#1b1b1b; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip__days { border-bottom:0!important; }
+@supports(animation-timeline:scroll()) {
+ html[data-lab-theme="observatory"] .arrival-heading { animation:observatory-heading-recede linear both; animation-timeline:scroll(root); animation-range:0px 600px; }
+}
+@keyframes observatory-heading-recede { to { transform:translateY(-45px); opacity:.2; } }
 @media(max-width:700px) {
  html[data-lab-theme="observatory"] .arrival-backdrop__image--disco { left:-34%; bottom:12%; height:74%; max-width:none; opacity:.72; }
  html[data-lab-theme="observatory"] .arrival-backdrop__image--vertical { left:0; top:-2%; width:82vw; height:70%; opacity:.72; }
@@ -192,21 +196,19 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 /* Le maillage reste discret, avec un appui lisible sur la moitié gauche. */
 .radar-grid-left { fill:none; stroke:#3d3d3d; stroke-width:1; stroke-linecap:round; stroke-linejoin:round; animation:none; }
 .radar-grid-left--outer { stroke:#777; }
-
 /* Le cadre est présent dès le départ. Les données avancent comme une lecture :
    point de départ, segment, point suivant, puis segment suivant. */
-.radar-value { stroke:none; fill:#ffffff12; opacity:0; animation:radar-fill-reveal 1700ms cubic-bezier(.16,1,.3,1) 180ms both; }
-.radar-value-segment { fill:none; stroke:#eee; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; animation:radar-trace-draw 460ms cubic-bezier(.16,1,.3,1) calc(220ms + var(--radar-segment-index,0) * 390ms) both; }
-.radar-point { transform-box:fill-box; transform-origin:center; opacity:0; animation:radar-point-reveal 260ms cubic-bezier(.16,1,.3,1) calc(570ms + (var(--radar-point-index,0) - 1) * 390ms) both; }
-.radar-point[data-radar-point-index="0"] { animation-delay:100ms; }
+.radar-value { stroke:none; fill:#ffffff12; opacity:0; animation:radar-fill-reveal 600ms cubic-bezier(.22,1,.36,1) 100ms both; }
+.radar-value-segment { fill:none; stroke:#eee; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; animation:radar-trace-draw 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
+.radar-point { transform-box:fill-box; transform-origin:center; opacity:0; animation:radar-point-reveal 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both; }
 @keyframes radar-trace-draw { to { stroke-dashoffset:0; } }
 @keyframes radar-fill-reveal { 0% { opacity:0; } 24% { opacity:.05; } 48% { opacity:.18; } 72% { opacity:.45; } 100% { opacity:1; } }
-@keyframes radar-point-reveal { from { opacity:0; transform:scale(.86); } to { opacity:1; transform:scale(1); } }
+@keyframes radar-point-reveal { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 @media(prefers-reduced-motion:reduce) {
  .radar-value,.radar-value-segment,.radar-point { animation:none!important; opacity:1; stroke-dashoffset:0; transform:none; }
 }
 
-/* Stitch 12-column layout: Daily Protocol (7 cols) on left, Meals (5 cols) on right. */
+/* Desktop preserves the established Journal-left reading order; mobile prioritizes Meals. */
 @media (min-width: 1024px) {
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench {
   display: grid !important;
@@ -237,12 +239,12 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column {
   grid-column: 1 / -1 !important;
-  order: 1 !important;
+  order: 2 !important;
   min-width: 0 !important;
  }
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column {
   grid-column: 1 / -1 !important;
-  order: 2 !important;
+  order: 1 !important;
   min-width: 0 !important;
  }
 }
@@ -252,6 +254,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 .personal-lab-day-strip__desktop .personal-lab-day-strip__day { min-width:0; flex:1 1 0; }
 .personal-lab-day-strip__mobile { display:none; }
 @media(max-width:700px) {
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art { padding-top:0; }
  html[data-lab-theme="observatory"] .personal-lab-day-strip__desktop { display:none!important; }
  html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:stretch; width:100%; gap:4px; }
  html[data-lab-theme="observatory"] .personal-lab-day-strip__mobile-days { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); min-width:0; }

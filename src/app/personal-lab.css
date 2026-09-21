@@ -164,8 +164,8 @@ body:has(.app-shell--personal-lab) .preview-banner { left: var(--lab-sidebar-wid
   .personal-lab-meal-column { grid-column: span 5 / span 5 !important; order: 2 !important; }
 }
 @media (max-width: 1023px) {
-  .personal-lab-journal-column { grid-column: 1 / -1 !important; order: 1 !important; }
-  .personal-lab-meal-column { grid-column: 1 / -1 !important; order: 2 !important; }
+  .personal-lab-journal-column { grid-column: 1 / -1 !important; order: 2 !important; }
+  .personal-lab-meal-column { grid-column: 1 / -1 !important; order: 1 !important; }
 }
 
 .personal-lab-journal-column .journal-card--personal-lab { position: static; padding: 0; border: 0; background: transparent; }

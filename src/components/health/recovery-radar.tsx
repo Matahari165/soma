@@ -84,8 +84,7 @@ function wrapLabel(label: string, maxCharacters = 20) {
 function readableDimension(dimension: RecoveryRadarDimension) {
   const value = dimension.valueLabel?.trim() ?? (isMeasured(dimension.score) ? `${formatNumber(dimension.score)} sur 100` : "indisponible");
   const weight = formatWeight(dimension.weight);
-  const source = dimension.sourceLabel?.trim() ? ` Source : ${dimension.sourceLabel.trim()}` : "";
-  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}${source}`;
+  return `${dimension.label || "Dimension"} : ${value}${weight === null ? "" : `. Pondération ${weight}`}`;
 }
 
 function pointFor(index: number, count: number, distance: number): [number, number] {
@@ -232,11 +231,9 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
           const lines = wrapLabel(dimension.label);
           const startY = labelY - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
           const valueY = startY + lines.length * LABEL_LINE_HEIGHT + 8;
-          const sourceY = valueY + LABEL_LINE_HEIGHT;
           const anchor = axisAnchor(index, Math.max(dimensions.length, 1));
           const interactiveAxis = interactive && Boolean(onSelect);
           const selected = selectedId === dimension.key;
-          const sourceLabel = dimension.sourceLabel?.trim() || null;
           const displayValue = dimension.valueLabel?.trim() ?? formatScore(dimension.score);
           return (
             <g
@@ -279,11 +276,6 @@ export function RecoveryRadar({ dimensions, title = "Dimensions de récupératio
                   {displayValue}
                 </text>
               </g>
-              {sourceLabel ? (
-                <text className={styles.axisValue} x={labelX} y={sourceY} textAnchor={anchor}>
-                  {sourceLabel}
-                </text>
-              ) : null}
             </g>
           );
         })}

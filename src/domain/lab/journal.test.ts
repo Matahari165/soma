@@ -144,7 +144,6 @@ describe("journal values", () => {
       "Strength training",
       "Dinner end time",
       "Bedtime before 11 PM",
-      "Bedtime",
       "Magnesium",
       "Breathing exercise",
       "Reading for 20 minutes",
@@ -152,7 +151,7 @@ describe("journal values", () => {
     ]);
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.unit).toBe("mg");
     expect(defaultJournalVariables.find((item) => item.name === "Caffeine")?.dayPeriod).toBe("day");
-    expect(defaultJournalVariables.map((item) => String(item.name))).toContain("Bedtime");
+    expect(defaultJournalVariables.map((item) => String(item.name))).not.toContain("Bedtime");
     expect(journalVariableSuggestions.map((item) => item.name)).toContain("Late meal");
   });
 
@@ -174,7 +173,7 @@ describe("journal values", () => {
     expect(journalAutomaticDefaultMatches(
       { name: "Detected sleep start", automaticMetricId: null },
       { name: "Bedtime", automaticMetricId: "bedtime" },
-    )).toBe(true);
+    )).toBe(false);
   });
 
   it("groups starter fields in chronological day periods", () => {

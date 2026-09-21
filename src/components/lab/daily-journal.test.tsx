@@ -87,18 +87,17 @@ describe("journal motion states", () => {
     expect(html).not.toContain('aria-label="Confirm displayed value for Vacation"');
   });
 
-  it("marks an automatic value as recorded and identifies its origin", () => {
-    const bedtime = variables.find((variable) => variable.name === "Bedtime");
+  it("keeps historical sleep-start entries out of the journal", () => {
+    const bedtime: JournalVariable = { id: "00000000-0000-4000-8000-999999999999", name: "Bedtime", variableType: "time", unit: null, options: [], position: 78, isActive: true, emoji: "🌘", defaultValue: null, dayPeriod: "evening", captureMode: "automatic", automaticMetricId: "bedtime", trackingCadence: "daily" };
     const html = renderToStaticMarkup(createElement(DailyJournal, {
-      variables,
-      entries: bedtime ? [{ variableId: bedtime.id, entryDate: todayDate, value: "22:40", source: "automatic" }] : [],
+      variables: [...variables, bedtime],
+      entries: [{ variableId: bedtime.id, entryDate: todayDate, value: "22:40", source: "automatic" }],
       days: [],
       todayDate,
     }));
 
-    expect(html).toContain('class="journal-field__automatic-indicator" role="img" aria-label="Automatic detection"');
-    expect(html).toContain('aria-label="Bedtime: Recorded, automatic detection"');
-    expect(html).not.toContain('aria-label="Confirm displayed value for Bedtime"');
+    expect(html).not.toContain('aria-label="Bedtime: Recorded, automatic detection"');
+    expect(html).not.toContain('>Bedtime<');
   });
 
   it("shows the achievement percentage without changing the field state", () => {

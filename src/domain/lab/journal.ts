@@ -14,7 +14,7 @@ export const ADDED_SUGAR_GOAL_G = 0;
 export const ADDED_SUGAR_GOAL_TOLERANCE_G = 4;
 export const LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID = "light_breakfast" as const;
 
-export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", "bedtime", ADDED_SUGAR_AUTOMATIC_METRIC_ID, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID] as const;
+export const journalAutomaticMetricIds = ["run_day", "bedtime_before_23", ADDED_SUGAR_AUTOMATIC_METRIC_ID, LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID] as const;
 export type JournalAutomaticMetricId = (typeof journalAutomaticMetricIds)[number];
 
 export type JournalAutomaticSource = {
@@ -30,7 +30,6 @@ export type JournalAutomaticSource = {
 export const journalAutomaticSources: readonly JournalAutomaticSource[] = [
   { id: "run_day", label: "Running detected", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "day", defaultTrackingCadence: "weekly" },
   { id: "bedtime_before_23", label: "Bedtime before 11 PM", source: "Google Health", variableType: "boolean", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
-  { id: "bedtime", label: "Detected sleep start", source: "Google Health", variableType: "time", unit: null, dayPeriod: "evening", defaultTrackingCadence: "daily" },
   { id: ADDED_SUGAR_AUTOMATIC_METRIC_ID, label: "Meal added sugars", source: "Soma meals", variableType: "number", unit: "g", dayPeriod: "day", defaultTrackingCadence: "daily" },
   { id: LIGHT_BREAKFAST_AUTOMATIC_METRIC_ID, label: "Light breakfast", source: "Soma meals", variableType: "boolean", unit: null, dayPeriod: "morning", defaultTrackingCadence: "daily" },
 ] as const;
@@ -81,6 +80,11 @@ export function normalizedJournalVariableName(name: string) {
 export function isAddedSugarVariable(variable: Pick<JournalVariable, "name" | "automaticMetricId">) {
   const name = normalizedJournalVariableName(variable.name);
   return variable.automaticMetricId === ADDED_SUGAR_AUTOMATIC_METRIC_ID || name === "added sugar" || name === "sucres ajoutes";
+}
+
+/** Historical sleep-start entries remain stored, but sleep start is no longer a journal field. */
+export function isRetiredBedtimeJournalVariable(variable: Pick<JournalVariable, "automaticMetricId">) {
+  return variable.automaticMetricId === "bedtime";
 }
 
 export function journalAutomaticDefaultMatches(variable: Pick<JournalVariable, "name" | "automaticMetricId">, definition: Pick<JournalVariable, "name" | "automaticMetricId">) {
@@ -352,7 +356,6 @@ export const defaultJournalVariables: ReadonlyArray<DefaultJournalVariable> = [
   { name: "Strength training", emoji: "🏋️", variableType: "boolean", unit: null, options: [], position: 65, dayPeriod: "day", defaultValue: false },
   { name: "Dinner end time", emoji: "🍽️", variableType: "time", unit: null, options: [], position: 70, dayPeriod: "evening", defaultValue: null },
   { name: "Bedtime before 11 PM", emoji: "🌙", variableType: "boolean", unit: null, options: [], position: 75, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime_before_23", trackingCadence: "daily" },
-  { name: "Bedtime", emoji: "🌘", variableType: "time", unit: null, options: [], position: 78, dayPeriod: "evening", defaultValue: null, captureMode: "automatic", automaticMetricId: "bedtime", trackingCadence: "daily" },
   { name: "Magnesium", emoji: "💊", variableType: "number", unit: "mg", options: [], position: 80, dayPeriod: "morning", defaultValue: 0 },
   { name: "Breathing exercise", emoji: "🌬️", variableType: "boolean", unit: null, options: [], position: 90, dayPeriod: "evening", defaultValue: false },
   { name: "Reading for 20 minutes", emoji: "📖", variableType: "boolean", unit: null, options: [], position: 100, dayPeriod: "evening", defaultValue: false },
