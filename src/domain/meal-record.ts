@@ -22,6 +22,7 @@ export type MealPhoto = {
   url: string;
   filename?: string;
   origin: MealOrigin | null;
+  comment?: string | null;
   storageStatus?: "available" | "purge_pending" | "purged";
   purgedAt?: string | null;
 };
@@ -303,6 +304,7 @@ export function apiMealToRecord(value: unknown): MealRecord {
         url: typeof rawPhoto.url === "string" ? rawPhoto.url : "",
         filename: typeof rawPhoto.filename === "string" ? rawPhoto.filename : undefined,
         origin: isMealOrigin(rawPhoto.origin) ? rawPhoto.origin : null,
+        comment: typeof rawPhoto.comment === "string" ? rawPhoto.comment.slice(0, 240) : null,
         storageStatus: rawPhoto.storageStatus === "purged" || rawPhoto.storageStatus === "purge_pending" ? rawPhoto.storageStatus : "available",
         purgedAt: typeof rawPhoto.purgedAt === "string" ? rawPhoto.purgedAt : null,
       }];
