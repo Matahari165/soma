@@ -21,9 +21,6 @@ const publicPaths = [
 ];
 
 const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
-const nativeAuthPrefix = "/api/native/v1/auth/";
-const nativeGoogleBridgePath = "/api/native/v2/auth/bridge";
-
 export function requestBodyLimitForPath(pathname: string) {
   if (pathname === "/api/assistant/attachments") return 4 * 1024 * 1024 + 256 * 1024;
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
@@ -60,8 +57,6 @@ export async function middleware(request: NextRequest) {
     return response;
   };
   const publicMachineRoute = publicMachinePaths.some((path) => request.nextUrl.pathname.startsWith(path));
-  const publicNativeAuthRoute = request.nextUrl.pathname.startsWith(nativeAuthPrefix)
-    || request.nextUrl.pathname === nativeGoogleBridgePath;
   const bearerRequest = /^Bearer [A-Za-z0-9_-]{32,}$/.test(request.headers.get("authorization") ?? "");
   const unsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
   if (unsafeMethod) {
@@ -69,7 +64,7 @@ export async function middleware(request: NextRequest) {
     const requestLimit = requestBodyLimitForPath(request.nextUrl.pathname);
     if (contentLength > requestLimit) return secureResponse(NextResponse.json({ error: "Request is too large." }, { status: 413 }));
   }
-  if (unsafeMethod && !publicMachineRoute && !publicNativeAuthRoute && !bearerRequest) {
+  if (unsafeMethod && !publicMachineRoute && !bearerRequest) {
     const origin = request.headers.get("origin");
     const requestHost = request.headers.get("host");
     const allowedOrigins = new Set([request.nextUrl.origin, new URL(request.url).origin, new URL(process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin).origin]);
@@ -81,8 +76,7 @@ export async function middleware(request: NextRequest) {
   const response = createResponse();
   const isPublicPath = request.nextUrl.pathname === "/"
     || publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
-    || publicAuthPaths.includes(request.nextUrl.pathname)
-    || publicNativeAuthRoute;
+    || publicAuthPaths.includes(request.nextUrl.pathname);
 
   if (isLocalPreviewMode()) {
     if (request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
