@@ -163,13 +163,6 @@ function scoreText(value: number | null) {
   return value === null || !Number.isFinite(value) ? "—" : Math.round(value).toLocaleString("en-US");
 }
 
-const freshnessLabels = {
-  current: "Current",
-  partial: "Partial",
-  stale: "Stale",
-  missing: "Unavailable",
-} as const;
-
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const latest = data.days.findLast(hasRecoveryMeasurement);
@@ -226,9 +219,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     setSelectedAxis(null);
     if (id) window.requestAnimationFrame(() => radarButtonRefs.current[id as string]?.focus());
   }
-  const recoveryScoreAction = latest ? <RecoveryScorePopover score={score} hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")} /> : undefined;
-  const freshnessLabel = freshnessLabels[freshness.state];
-
   return <div className={styles.page}>
     <HealthPageShell
       kind="recovery"
@@ -268,14 +258,13 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
               <span className={styles.summaryKicker}>{recoveryDateLabel(latest.metric_date, currentDate)}</span>
               <h2 id="recovery-score-summary-title">Recovery score</h2>
-              <div className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong>{scoreText(score)}</strong><span>/100</span></div>
+              <RecoveryScorePopover hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")}>
+                <span className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong>{scoreText(score)}</strong><span>/100</span></span>
+              </RecoveryScorePopover>
               <div className={`${styles.summaryRail} metric-tone--${heroScoreTone}`} aria-hidden="true"><span style={{ width: score === null ? "0%" : `${Math.min(100, Math.max(0, score))}%` }} /></div>
               <dl className={styles.summaryFacts}>
-                <div><dt>State</dt><dd>{freshnessLabel}</dd></div>
-                <div><dt>Coverage</dt><dd>{Math.round(coverage * 100)}%</dd></div>
                 <div><dt>30-day avg</dt><dd>{scoreText(averages.recovery)}<span>/100</span></dd></div>
               </dl>
-              {recoveryScoreAction ? <div className={styles.summaryAction}>{recoveryScoreAction}</div> : null}
             </aside>
           </section>
 

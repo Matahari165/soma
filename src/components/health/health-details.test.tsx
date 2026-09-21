@@ -140,6 +140,9 @@ describe("health route states", () => {
     expect(readable).toContain("Running");
     expect(readable).toContain("Pace");
     expect(readable).toContain("Max HR");
+    expect(readable).not.toContain("Heart-rate zones");
+    expect(readable).toContain("Last synced");
+    expect(readable).not.toContain("Provenance");
     expect(readable).not.toContain("Recent activity");
     expect(readable).not.toContain("Active time");
 

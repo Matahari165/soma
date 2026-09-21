@@ -4,6 +4,28 @@
   border-radius: var(--lab-radius-xs);
 }
 
+.barChart {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.barChart:focus-visible {
+  outline: 2px solid var(--lab-brand);
+  outline-offset: 4px;
+  border-radius: var(--lab-radius-xs);
+}
+
+.barChart :global(.health-chart-bar) {
+  fill: var(--domain-color, var(--lab-brand));
+  opacity: .7;
+  vector-effect: non-scaling-stroke;
+}
+
+.barChart :global(.health-chart-bar--latest) {
+  opacity: 1;
+}
+
 .lineChart :global([data-chart-trace]) {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;

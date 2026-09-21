@@ -116,7 +116,6 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
   return <section className={`${styles.section} health-observatory-panel`} aria-labelledby="activity-sessions-heading">
     <header className={styles.sectionHeader}>
       <h2 id="activity-sessions-heading">Workout history</h2>
-      <span>{displayed.length} {filtersWereUsed ? "workout" : "recent workout"}{displayed.length === 1 ? "" : "s"}</span>
     </header>
     <div className={styles.activityFilterGroups}>
       <div className={styles.activityFilters} role="group" aria-label="Filter workouts by activity">
@@ -133,7 +132,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
     </div>
     {displayed.length ? <>
       <div className={`${styles.activityHistoryRow} ${styles.activityAverageRow}`} role="group" aria-label="Average for displayed workouts">
-        <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : `${displayed.length} most recent`}</span></div>
+        <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>
           <div><dt>Distance</dt><dd>{metric(averages.distanceKm, "km", 2)}</dd></div>
           <div><dt>Pace</dt><dd>{paceValue(averages.averagePaceSecondsPerKm)}</dd></div>

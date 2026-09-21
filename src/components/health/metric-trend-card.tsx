@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { filterCalendarWindow, summarizeTrend, type MetricPoint, type TrendDirection } from "@/domain/metrics/trends";
 
-import { LineTrendChart, type ChartValueFormat } from "./health-charts";
+import { BarTrendChart, LineTrendChart, type BarAggregation, type ChartValueFormat } from "./health-charts";
 import { AnimatedMetricReading, type AnimatedValueFormat } from "./animated-value";
 import { MetricReading } from "./metric-reading";
 
@@ -14,7 +14,7 @@ function formatCompactAverage(value: number, format: (value: number) => string, 
   return `${formatted}${unit === "%" || unit?.startsWith("/") ? unit : unit ? ` ${unit}` : ""}`;
 }
 
-export function MetricTrendCard({ label, points, unit, direction, format = defaultFormat, target, href, displayDays = 30, animateCurrent = false, animationFormat = "decimal", compact = false, valueFormat }: {
+export function MetricTrendCard({ label, points, unit, direction, format = defaultFormat, target, href, displayDays = 30, animateCurrent = false, animationFormat = "decimal", compact = false, valueFormat, chartType = "line", barAggregation = "day" }: {
   label: string;
   points: MetricPoint[];
   unit?: string;
@@ -29,6 +29,9 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   compact?: boolean;
   /** Serializable chart formatter used across the Server/Client boundary. */
   valueFormat?: ChartValueFormat;
+  /** Compact activity views can use vertical bars while the other routes keep their lines. */
+  chartType?: "line" | "bar";
+  barAggregation?: BarAggregation;
 }) {
   const trend = summarizeTrend(points, direction);
   const chartPoints = filterCalendarWindow(points, displayDays);
@@ -55,20 +58,25 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   if (compact) {
     const coverage = chartPoints.length ? Math.round((completeCount / chartPoints.length) * 100) : 0;
     const accessibleSummary = `${label}. Current value: ${current === null ? "unavailable" : `${format(current)}${unit ? ` ${unit}` : ""}`}. ${displayDays}-day average: ${compactAverage === null ? "unavailable" : `${format(compactAverage)}${unit ? ` ${unit}` : ""}`} (${compactAverageValues.length} measured days). Coverage: ${completeCount}/${chartPoints.length} measured days · ${coverage}%.`;
+    const chart = chartType === "bar"
+      ? <BarTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} aggregation={barAggregation} />
+      : <LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} />;
     const compactContent = <>
-      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)} · n=${compactAverageValues.length}`}</small></header>
-      <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} /></div>
+      <header><div><span>{label}</span>{currentContent}</div><small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)}`}</small></header>
+      <div className="chart-frame">{chart}</div>
       <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
-      <footer><span>{completeCount}/{chartPoints.length} measured days · ${coverage}% coverage</span></footer>
     </>;
     return href
       ? <Link className="metric-trend-card metric-trend-card--link" href={href} aria-label={`Open details. ${accessibleSummary}`}>{compactContent}</Link>
       : <article className="metric-trend-card" aria-label={accessibleSummary}>{compactContent}</article>;
   }
   const variability = trend.variability30d === null ? "unavailable" : format(trend.variability30d);
+  const cardChart = chartType === "bar"
+    ? <BarTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} aggregation={barAggregation} />
+    : <LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} />;
   const cardContent = <>
     <header><div><span>{label}</span>{animateCurrent ? <AnimatedMetricReading value={current} unit={current === null ? undefined : unit} format={animationFormat} /> : <MetricReading value={current === null ? "—" : format(current)} unit={current === null ? undefined : unit} />}</div><span className={`metric-direction metric-direction--${favorable}`}><Icon size={15} aria-hidden="true" />{delta === null ? "Baseline pending" : `${delta > 0 ? "+" : ""}${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(Math.abs(delta))}% vs 7d`}</span></header>
-    <div className="chart-frame"><LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} /></div>
+    <div className="chart-frame">{cardChart}</div>
     <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     <div className="baseline-row">{trend.comparisons.map((item) => <span key={item.days}><small>avg {item.days}d · {item.sampleSize}/{item.days}</small><strong>{item.average === null ? "—" : format(item.average)}</strong></span>)}</div>
     <footer><span>Last measured&nbsp;{formatDate(trend.currentDate ?? undefined)} · {completeCount} measured days</span>{href && <ArrowUpRight className="metric-card-cue" size={17} aria-hidden="true" />}</footer>

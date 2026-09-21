@@ -237,6 +237,8 @@
 .summaryFacts dd { margin: 4px 0 0; color: var(--effort-text); font: 400 18px/24px var(--font-soma-mono), ui-monospace, monospace; }
 
 .section { padding: 32px 0; border-top: 1px solid var(--effort-rule) !important; }
+.heroScene + .section,
+.section + .section { margin-top: 24px; }
 .sectionHeader { margin-bottom: 20px; }
 .sectionHeader h2 { margin: 0; color: var(--effort-text); font: 400 22px/28px Georgia, "Times New Roman", serif; }
 .sectionHeader > span { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-mono), ui-monospace, monospace; white-space: nowrap; }
@@ -251,8 +253,8 @@
 .featuredActivityMetrics dt { color: var(--effort-muted); font: 500 12px/16px var(--font-soma-mono), ui-monospace, monospace; }
 .featuredActivityMetrics dd { margin: 5px 0 0; color: var(--effort-text); overflow-wrap: anywhere; font: 400 13px/18px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 
-.readingsGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; }
-.readingsGrid > div { min-width: 0; }
+.readingsGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; text-align: center; }
+.readingsGrid > div { display: grid; min-width: 0; justify-items: center; align-content: start; }
 .readingsGrid dt,
 .readingsGrid small { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .readingsGrid dd { margin: 5px 0 2px; color: var(--effort-text); font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -338,6 +340,8 @@
   .scoreButton > strong { font-size: 64px; line-height: 1; }
   .radarStage[data-detail-open="true"] { grid-template-columns: minmax(0, 1fr) minmax(250px, .8fr); gap: 16px; }
   .section { padding: 24px 0; }
+  .heroScene + .section,
+  .section + .section { margin-top: 16px; }
   .featuredActivity { padding-block: 24px; }
   .featuredActivityBody { grid-template-columns: 1fr; gap: 20px; }
   .featuredActivityMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }

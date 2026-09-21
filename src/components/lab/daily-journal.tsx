@@ -702,7 +702,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
       </div>
     </>;
     return (
-      <div className="py-3.5 flex items-center justify-between gap-4 group" data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
+      <div className={`journal-field-row py-3.5 flex items-center justify-between gap-4 group${confirmed ? " journal-field-row--confirmed" : ""}`} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
         if (canConfirm && !(event.target as HTMLElement).closest("button, a, input, select, textarea")) confirmValue();
       }}>
         {canConfirm || editMode && onEdit ? <button type="button" className="space-y-1.5 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label={canConfirm ? confirmationLabel : `Edit ${journalVariableLabel(variable)}`} onClick={canConfirm ? confirmValue : onEdit}>{heading}</button> : <div className="space-y-1.5 flex-1 min-w-0">{heading}</div>}
@@ -1089,7 +1089,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       }}>{managerOpen ? "Done" : <><PencilLine size={14} aria-hidden="true" />Edit habits</>}</button>;
 
       const headerElement = isPersonalLab ? (
-        <div className="journal-workspace-header pb-4 border-b border-hairline space-y-2.5">
+        <div className="journal-workspace-header pb-4 space-y-2.5">
           <div className="journal-workspace-header__row flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <h1 className="workspace-panel-title font-serif text-content-primary font-normal" id="journal-title">Daily Protocol</h1>
