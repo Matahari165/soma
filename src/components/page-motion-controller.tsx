@@ -12,9 +12,13 @@ const MOTION_TARGETS = [
   ".settings-page > header",
   ".settings-layout > *",
   "#main-page-content > header",
+  ".lab-intro .arrival-heading",
+  ".lab-intro .arrival-art",
   ".strongest-effects",
   ".personal-lab-day-strip",
   ".personal-lab-workspace > *",
+  ".journal-card--personal-lab",
+  ".meal-journal-lab",
 ].join(",");
 
 /**

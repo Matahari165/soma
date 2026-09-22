@@ -15,7 +15,9 @@
 @keyframes lab-final-art { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 .lab-continuous :is(button,a,input,textarea):focus-visible { outline:2px solid var(--lab-brand); outline-offset:3px; }
 @media(max-width:700px) {
- .lab-global-nav { gap:20px; padding-inline:18px; }
+ .lab-global-nav { gap:22px; padding-inline:16px; overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+ .lab-global-nav::-webkit-scrollbar { display:none; }
+ .lab-global-nav a { flex-shrink:0; white-space:nowrap; font-size:17px; min-height:44px; }
  .lab-global-nav a:first-child { margin-right:0; }
  .lab-global-nav__settings { margin-left:0; border-left:0; padding-left:0; }
  .lab-rail-controls { flex-wrap:wrap; }

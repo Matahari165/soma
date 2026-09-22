@@ -1248,7 +1248,7 @@ function MealLabHeader({
   const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
   return (
     <header className="pb-4 border-b border-hairline space-y-2.5">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3">
         <div><h2 id="meal-journal-title" className="workspace-panel-title font-serif text-content-primary font-normal">Nutrition Log</h2></div>
         <div className="flex items-center gap-2">
           {onToggleTargets && (
