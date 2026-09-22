@@ -6,6 +6,7 @@ import {
   ChartNoAxesCombined,
   HeartPulse,
   LayoutDashboard,
+  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -21,6 +22,7 @@ import type { SomaUser } from "@/lib/auth";
 
 const navigation = [
   { label: "Personal Lab", href: "/", icon: LayoutDashboard },
+  { label: "Soma", href: "/assistant", icon: MessageCircle },
   { label: "Analysis", href: "/analysis", icon: ChartNoAxesCombined },
   { label: "Nutrition", href: "/meals", icon: Utensils },
   { label: "Sleep", href: "/sleep", icon: BedDouble },
@@ -37,12 +39,12 @@ export function AppShell({ children, user, localPreview = false }: { children: R
   const displayName = user?.displayName ?? "Soma User";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
   const isPersonalLab = pathname === "/";
-  const isStitchWorkspace = ["/analysis", "/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
+  const isStitchWorkspace = ["/assistant", "/analysis", "/meals", "/sleep", "/recovery", "/activity"].some((route) => pathname.startsWith(route)) || isPersonalLab;
   const activeNavigation = navigation;
   const activeMobileNavigation = navigation.filter(({ href }) => href !== "/");
 
   if (
-    ((pathname === "/" || pathname.startsWith("/analysis") || pathname.startsWith("/meals")) && !user) ||
+    ((pathname === "/" || pathname.startsWith("/assistant") || pathname.startsWith("/analysis") || pathname.startsWith("/meals")) && !user) ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/onboarding") ||
@@ -123,7 +125,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <main key={pathname} className="main-content"><PageMotionController />{children}</main>
+      <main key={pathname} className="main-content">{pathname.startsWith("/assistant") ? null : <PageMotionController />}{children}</main>
     </div>
   );
 }

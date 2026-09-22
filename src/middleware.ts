@@ -25,6 +25,7 @@ const nativeAuthPrefix = "/api/native/v1/auth/";
 const nativeGoogleBridgePath = "/api/native/v2/auth/bridge";
 
 export function requestBodyLimitForPath(pathname: string) {
+  if (pathname === "/api/assistant/attachments") return 4 * 1024 * 1024 + 256 * 1024;
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
     ? MAX_MEAL_MULTIPART_BYTES
     : 64 * 1024;

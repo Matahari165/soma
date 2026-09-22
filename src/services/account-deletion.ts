@@ -24,16 +24,22 @@ export async function deleteAccountData(userId: string, confirmation: unknown): 
 
   const admin = createCloudflareAdminClient();
   await admin.from("audit_events").insert({ user_id: userId, event_type: "account_deletion_requested", resource_type: "account" });
-  const [{ data: archiveRows, error: archiveError }, { data: mealPhotoRows, error: mealPhotoError }] = await Promise.all([
+  const [
+    { data: archiveRows, error: archiveError },
+    { data: mealPhotoRows, error: mealPhotoError },
+    { data: assistantAttachmentRows, error: assistantAttachmentError },
+  ] = await Promise.all([
     admin.from("health_record_archives").select("object_path").eq("user_id", userId),
     admin.from("meal_photos").select("object_path").eq("user_id", userId),
+    admin.from("assistant_attachments").select("object_path").eq("user_id", userId),
   ]);
-  if (archiveError || mealPhotoError) return { ok: false, error: "Account files could not be listed.", status: 500 };
+  if (archiveError || mealPhotoError || assistantAttachmentError) return { ok: false, error: "Account files could not be listed.", status: 500 };
 
   try {
     await Promise.all([
       ...(archiveRows ?? []).map((row) => deleteR2Object(String(row.object_path))),
       ...(mealPhotoRows ?? []).map((row) => deleteR2Object(String(row.object_path))),
+      ...(assistantAttachmentRows ?? []).map((row) => deleteR2Object(String(row.object_path))),
       deleteLabMatrixCache(userId),
     ]);
   } catch {
