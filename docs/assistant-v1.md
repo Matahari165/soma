@@ -23,7 +23,9 @@ benchmarks must be available when the user asks to see them.
 - A dedicated conversation page immediately before `Analyse` in navigation.
 - Conversation only: no unsolicited opening brief, background alert or push
   notification.
-- Text input and private JPEG/PNG photo input are active. Only photos explicitly
+- Text and private JPEG/PNG/WebP/HEIC photo input are active, up to 4 MB in one
+  upload. WebP and HEIC are normalized server-side to a format accepted by
+  Grok. Only photos explicitly
   attached to the current message are transmitted to xAI; historical photos are
   not resent automatically.
 - Responses render safe headings, lists and emphasis. Native charts and tables

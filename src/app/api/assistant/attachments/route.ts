@@ -10,16 +10,16 @@ import {
   deleteAssistantAttachmentMetadata,
   findAssistantConversation,
 } from "@/modules/assistant/repository";
+import { assistantUploadMimeType, normalizeAssistantImage } from "@/modules/assistant/image-normalization";
 import { MealMultipartError, parseMealMultipart } from "@/services/meal-multipart";
 
 export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "private, no-store" };
 const conversationIdSchema = z.uuid();
-const supportedTypes = new Set(["image/jpeg", "image/png"]);
 const maxFiles = 4;
-const maxFileBytes = 15 * 1024 * 1024;
-const maxTotalBytes = 40 * 1024 * 1024;
+const maxFileBytes = 4 * 1024 * 1024;
+const maxTotalBytes = 4 * 1024 * 1024;
 
 function publicAttachment(row: Awaited<ReturnType<typeof createAssistantAttachment>>) {
   return {
@@ -57,25 +57,28 @@ export async function POST(request: Request) {
   const files = form.getAll("files").filter((value): value is File => typeof File !== "undefined" && value instanceof File);
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
   if (!files.length || files.length > maxFiles) return NextResponse.json({ error: "invalid_attachment_count", message: `Ajoute entre 1 et ${maxFiles} photos.` }, { status: 400, headers: noStore });
-  if (files.some((file) => !supportedTypes.has(file.type) || file.size < 1 || file.size > maxFileBytes) || totalBytes > maxTotalBytes) {
-    return NextResponse.json({ error: "invalid_attachment", message: "Utilise des images JPEG ou PNG de 15 Mo maximum chacune." }, { status: 400, headers: noStore });
+  if (files.some((file) => !assistantUploadMimeType(file) || file.size < 1 || file.size > maxFileBytes) || totalBytes > maxTotalBytes) {
+    return NextResponse.json({ error: "invalid_attachment", message: "Utilise des images JPEG, PNG, WebP ou HEIC pour un total maximal de 4 Mo." }, { status: 400, headers: noStore });
   }
 
   const stored: Array<{ row: Awaited<ReturnType<typeof createAssistantAttachment>>; objectPath: string }> = [];
   try {
     for (const file of files) {
       const attachmentId = crypto.randomUUID();
-      const data = await file.arrayBuffer();
-      const objectPath = assistantAttachmentObjectPath({ userId: user.id, conversationId: conversation.id, attachmentId, mimeType: file.type });
-      await putR2AssistantAttachment(objectPath, data, file.type);
+      const inputMimeType = assistantUploadMimeType(file);
+      if (!inputMimeType) throw new Error("Unsupported assistant image type.");
+      const normalized = await normalizeAssistantImage(Buffer.from(await file.arrayBuffer()), inputMimeType);
+      if (normalized.data.byteLength > maxFileBytes) throw new Error("Normalized assistant image is too large.");
+      const objectPath = assistantAttachmentObjectPath({ userId: user.id, conversationId: conversation.id, attachmentId, mimeType: normalized.mediaType });
+      await putR2AssistantAttachment(objectPath, normalized.data.buffer.slice(normalized.data.byteOffset, normalized.data.byteOffset + normalized.data.byteLength), normalized.mediaType);
       try {
         const row = await createAssistantAttachment({
           userId: user.id,
           conversationId: conversation.id,
           objectPath,
-          mediaType: file.type as "image/jpeg" | "image/png",
-          byteSize: file.size,
-          sha256: createHash("sha256").update(Buffer.from(data)).digest("hex"),
+          mediaType: normalized.mediaType,
+          byteSize: normalized.data.byteLength,
+          sha256: createHash("sha256").update(normalized.data).digest("hex"),
           purpose: "context",
         });
         stored.push({ row, objectPath });

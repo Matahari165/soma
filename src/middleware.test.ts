@@ -74,6 +74,10 @@ describe("unauthenticated auth routes", () => {
 });
 
 describe("requestBodyLimitForPath", () => {
+  it("allows assistant photo uploads within the Vercel request limit", () => {
+    expect(requestBodyLimitForPath("/api/assistant/attachments")).toBe(4 * 1024 * 1024 + 256 * 1024);
+  });
+
   it("allows the bounded multipart meal photo route", () => {
     expect(requestBodyLimitForPath("/api/meals/meal-id/photos")).toBe(41 * 1024 * 1024);
     expect(requestBodyLimitForPath("/api/meals/analyze")).toBe(41 * 1024 * 1024);

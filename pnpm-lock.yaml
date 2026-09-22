@@ -38,6 +38,9 @@ importers:
       server-only:
         specifier: 0.0.1
         version: 0.0.1
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@24.13.3)
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -8119,7 +8122,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.3
       '@img/sharp-win32-x64': 0.35.3
       '@types/node': 24.13.3
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:
