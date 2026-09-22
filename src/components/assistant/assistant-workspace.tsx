@@ -1,6 +1,6 @@
 "use client";
 
-import { Image as ImageIcon, Menu, Paperclip, Plus, Send, Trash2, X } from "lucide-react";
+import { Check, Image as ImageIcon, Menu, Paperclip, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
@@ -142,17 +142,58 @@ function AssistantText({ text }: { text: string }) {
   return <>{blocks}</>;
 }
 
-function MessageBody({ message }: { message: Message }) {
+function ProgressiveAssistantText({ text }: { text: string }) {
+  const [visibleLength, setVisibleLength] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const frame = window.requestAnimationFrame(() => setVisibleLength(text.length));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    let interval: number | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      setVisibleLength(0);
+      const step = Math.max(3, Math.ceil(text.length / 120));
+      interval = window.setInterval(() => {
+        setVisibleLength((current) => {
+          const next = Math.min(text.length, current + step);
+          if (next === text.length && interval) window.clearInterval(interval);
+          return next;
+        });
+      }, 24);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (interval) window.clearInterval(interval);
+    };
+  }, [text]);
+
+  return (
+    <>
+      <span className={styles.srOnly}>{text}</span>
+      <div className={styles.progressiveContent} aria-hidden="true"><AssistantText text={text.slice(0, visibleLength)} /></div>
+      {visibleLength < text.length && <span className={styles.responseCaret} aria-hidden="true" />}
+    </>
+  );
+}
+
+function MessageBody({ message, progressive = false }: { message: Message; progressive?: boolean }) {
   return <>
     {message.parts.map((part, index) => {
       if (part.type === "text") return message.role === "assistant"
-        ? <AssistantText key={`${message.id}-text-${index}`} text={part.text} />
+        ? progressive
+          ? <ProgressiveAssistantText key={`${message.id}-text-${index}`} text={part.text} />
+          : <AssistantText key={`${message.id}-text-${index}`} text={part.text} />
         : <p key={`${message.id}-text-${index}`}>{part.text}</p>;
       if (part.type === "data-summary") return <AnalysisSummary key={`${message.id}-data-${index}`} part={part} />;
       if (part.type === "attachment") return <span className={styles.attachmentNote} key={`${message.id}-attachment-${index}`}><ImageIcon size={15} aria-hidden="true" /> Photo jointe</span>;
       return <span className={styles.actionState} key={`${message.id}-action-${index}`}>{part.state === "proposed" ? "Confirmation requise" : "Action enregistrée"}</span>;
     })}
   </>;
+}
+
+function messageText(message: Message) {
+  return message.parts.filter((part): part is TextPart => part.type === "text").map((part) => part.text).join("\n\n");
 }
 
 export function AssistantWorkspace() {
@@ -168,6 +209,8 @@ export function AssistantWorkspace() {
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -194,10 +237,18 @@ export function AssistantWorkspace() {
       .finally(() => { if (!controller.signal.aborted) setLoadingList(false); });
     return () => controller.abort();
   }, []);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [messages, sending]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({
+      block: "end",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [messages, sending]);
   async function openConversation(id: string) {
     if (id === activeId && messages.length) return;
     setActiveId(id);
+    setEditingMessageId(null);
+    setProgressiveMessageId(null);
+    setText("");
     setLoadingConversation(true);
     setError(null);
     setHistoryOpen(false);
@@ -215,8 +266,15 @@ export function AssistantWorkspace() {
   function startConversation() {
     setActiveId(null);
     setMessages([]);
+    setText("");
+    setProgressiveMessageId(null);
+    setPhotos((current) => {
+      current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      return [];
+    });
     setError(null);
     setHistoryOpen(false);
+    setEditingMessageId(null);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
@@ -275,11 +333,11 @@ export function AssistantWorkspace() {
     return id;
   }
 
-  async function uploadPhotos(conversationId: string): Promise<string[]> {
-    if (!photos.length) return [] as string[];
+  async function uploadPhotos(conversationId: string, pendingPhotos: PendingPhoto[]): Promise<string[]> {
+    if (!pendingPhotos.length) return [] as string[];
     const form = new FormData();
     form.set("conversationId", conversationId);
-    photos.forEach((photo) => form.append("files", photo.file));
+    pendingPhotos.forEach((photo) => form.append("files", photo.file));
     const payload = await readJson(await fetch("/api/assistant/attachments", { method: "POST", body: form }));
     if (!Array.isArray(payload?.attachments)) throw new Error("Les photos n’ont pas pu être jointes.");
     return payload.attachments.map((attachment: { id?: unknown }) => attachment.id).filter((id: unknown): id is string => typeof id === "string");
@@ -290,21 +348,45 @@ export function AssistantWorkspace() {
     const cleanText = (overrideText ?? text).trim() || (photos.length ? "Analyse cette photo." : "");
     if ((!cleanText && !photos.length) || sending) return;
 
+    const submittedPhotos = photos;
+    const editedMessageId = editingMessageId;
+    const editedMessage = editedMessageId ? messages.find((message) => message.id === editedMessageId) : null;
+    const previousMessages = messages;
+    const optimisticId = `optimistic-${crypto.randomUUID()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      conversationId: activeId ?? undefined,
+      sequence: editedMessage?.sequence ?? ((messages.at(-1)?.sequence ?? 0) + 1),
+      role: "user",
+      parts: [
+        { type: "text", text: cleanText },
+        ...submittedPhotos.map(() => ({ type: "attachment", attachmentId: crypto.randomUUID(), mediaType: "image/jpeg" } satisfies AttachmentPart)),
+      ],
+      status: "pending",
+    };
+
+    setMessages((current) => editedMessage
+      ? [...current.filter((message) => message.sequence < editedMessage.sequence), optimisticMessage]
+      : [...current, optimisticMessage]);
+    setText("");
+    setPhotos([]);
+    setEditingMessageId(null);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setSending(true);
     setError(null);
     setNotConfigured(false);
     try {
       const conversationId = await ensureConversation();
-      const attachmentIds = await uploadPhotos(conversationId);
+      const attachmentIds = await uploadPhotos(conversationId, submittedPhotos);
       const payload = await readJson(await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, requestId: crypto.randomUUID(), text: cleanText, message: cleanText, ...(attachmentIds.length ? { attachmentIds } : {}) }),
+        body: JSON.stringify({ conversationId, requestId: crypto.randomUUID(), text: cleanText, message: cleanText, ...(attachmentIds.length ? { attachmentIds } : {}), ...(editedMessageId ? { editMessageId: editedMessageId } : {}) }),
       }));
       const localUserMessage: Message = {
         id: crypto.randomUUID(),
         conversationId,
-        sequence: messages.at(-1)?.sequence ? messages.at(-1)!.sequence + 1 : 1,
+        sequence: editedMessage?.sequence ?? (messages.at(-1)?.sequence ? messages.at(-1)!.sequence + 1 : 1),
         role: "user",
         parts: [
           ...(cleanText ? [{ type: "text", text: cleanText } satisfies TextPart] : []),
@@ -312,19 +394,62 @@ export function AssistantWorkspace() {
         ],
         status: "completed",
       };
-      const nextMessages = [payload?.userMessage ?? localUserMessage, payload?.assistantMessage ?? payload?.message].filter(Boolean) as Message[];
-      setMessages((current) => [...current, ...nextMessages]);
-      setText("");
-      setPhotos((current) => { current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl)); return []; });
-      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      const persistedUser = payload?.userMessage ?? localUserMessage;
+      const assistantMessage = payload?.assistantMessage ?? payload?.message;
+      if (editedMessageId && typeof payload?.conversationId === "string") {
+        setActiveId(payload.conversationId);
+        setMessages([
+          ...previousMessages.filter((message) => editedMessage && message.sequence < editedMessage.sequence),
+          persistedUser,
+          assistantMessage,
+        ].filter(Boolean) as Message[]);
+        try {
+          const forkPayload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(payload.conversationId)}`, { cache: "no-store" }));
+          if (Array.isArray(forkPayload?.messages)) setMessages(forkPayload.messages);
+        } catch {
+          // The edited response is already persisted. Keep the complete local fork instead of inviting a duplicate retry.
+        }
+      } else {
+        setMessages((current) => [...current.filter((message) => message.id !== optimisticId), persistedUser, assistantMessage].filter(Boolean) as Message[]);
+      }
+      if (assistantMessage?.id) setProgressiveMessageId(assistantMessage.id);
+      submittedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
       await loadConversations();
     } catch (sendError) {
+      setMessages(previousMessages);
+      setText(cleanText);
+      setPhotos(submittedPhotos);
+      setEditingMessageId(editedMessageId);
+      requestAnimationFrame(resizeComposer);
       const code = sendError && typeof sendError === "object" && "code" in sendError ? sendError.code : null;
       setNotConfigured(code === "assistant_not_configured");
       setError(sendError instanceof Error ? sendError.message : "Le message n’a pas pu être envoyé.");
     } finally {
       setSending(false);
     }
+  }
+
+  function editMessage(message: Message) {
+    const value = messageText(message);
+    if (!value || sending) return;
+    setPhotos((current) => {
+      current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      return [];
+    });
+    setEditingMessageId(message.id);
+    setText(value);
+    setError(null);
+    requestAnimationFrame(() => {
+      resizeComposer();
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(value.length, value.length);
+    });
+  }
+
+  function cancelEditing() {
+    setEditingMessageId(null);
+    setText("");
+    requestAnimationFrame(resizeComposer);
   }
 
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -376,9 +501,10 @@ export function AssistantWorkspace() {
           ) : (
             <ol className={styles.messages}>
               {messages.filter((message) => message.role !== "tool").map((message) => (
-                <li key={message.id} className={message.role === "user" ? styles.userMessage : styles.assistantMessage}>
+                <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
                   <span className={styles.speaker}>{message.role === "user" ? "Vous" : "Soma"}</span>
-                  <div className={styles.messageBody}><MessageBody message={message} /></div>
+                  <div className={styles.messageBody}><MessageBody message={message} progressive={message.id === progressiveMessageId} /></div>
+                  {message.role === "user" && message.status !== "pending" && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
               ))}
@@ -391,6 +517,7 @@ export function AssistantWorkspace() {
         <div className={styles.composerRegion}>
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
           <form className={styles.composer} onSubmit={(event) => void sendMessage(event)}>
+            {editingMessageId && <div className={styles.editingNotice}><span><Pencil size={14} aria-hidden="true" /> Modification du message</span><button type="button" onClick={cancelEditing} aria-label="Annuler la modification"><X size={15} aria-hidden="true" /></button></div>}
             {photos.length > 0 && <ul className={styles.photoList} aria-label="Photos à joindre">{photos.map((photo) => (
               <li key={photo.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- local object URL selected by the user */}
@@ -411,9 +538,9 @@ export function AssistantWorkspace() {
             />
             <div className={styles.composerActions}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || photos.length >= 4 || notConfigured} aria-label="Joindre des photos"><Paperclip size={18} aria-hidden="true" /></button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={editingMessageId ? "Les photos ne peuvent pas être modifiées" : "Joindre des photos"}><Paperclip size={18} aria-hidden="true" /></button>
               <span className={styles.hint}>Entrée pour envoyer · Maj + Entrée pour une ligne</span>
-              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><Send size={18} aria-hidden="true" /></button>
+              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || (!text.trim() && !photos.length)} aria-label={editingMessageId ? "Enregistrer la modification" : "Envoyer le message"}>{editingMessageId ? <Check size={18} aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}</button>
             </div>
           </form>
         </div>

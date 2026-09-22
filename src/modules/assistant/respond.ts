@@ -19,6 +19,7 @@ import {
   findAssistantAttachment,
   findAssistantMessage,
   findAssistantRunByRequestId,
+  forkAssistantConversationAtMessage,
   listAssistantMessages,
   updateAssistantConversation,
   updateAssistantRun,
@@ -29,6 +30,11 @@ const requestSchema = z.object({
   requestId: z.string().trim().min(8).max(200),
   text: z.string().trim().min(1).max(50_000),
   attachmentIds: z.array(z.uuid()).max(4).default([]),
+  editMessageId: z.uuid().optional(),
+}).superRefine((input, context) => {
+  if (input.editMessageId && !input.conversationId) {
+    context.addIssue({ code: "custom", path: ["conversationId"], message: "Une conversation est requise pour modifier un message." });
+  }
 });
 
 export class AssistantResponseError extends Error {
@@ -53,6 +59,7 @@ type Dependencies = {
     findAttachment: typeof findAssistantAttachment;
     findMessage: typeof findAssistantMessage;
     findRunByRequestId: typeof findAssistantRunByRequestId;
+    forkConversationAtMessage: typeof forkAssistantConversationAtMessage;
     listMessages: typeof listAssistantMessages;
     updateConversation: typeof updateAssistantConversation;
     updateRun: typeof updateAssistantRun;
@@ -71,6 +78,7 @@ const dependencies: Dependencies = {
     findAttachment: findAssistantAttachment,
     findMessage: findAssistantMessage,
     findRunByRequestId: findAssistantRunByRequestId,
+    forkConversationAtMessage: forkAssistantConversationAtMessage,
     listMessages: listAssistantMessages,
     updateConversation: updateAssistantConversation,
     updateRun: updateAssistantRun,
@@ -183,7 +191,7 @@ export async function respondToAssistant(
       ]);
       if (userMessage && output) {
         const persistedAttachmentIds = attachmentIdsFromParts(userMessage.parts);
-        if (existingRun.conversation_id !== input.conversationId
+        if ((!input.editMessageId && existingRun.conversation_id !== input.conversationId)
           || textFromParts(userMessage.parts) !== input.text
           || persistedAttachmentIds.length !== input.attachmentIds.length
           || persistedAttachmentIds.some((id, index) => id !== input.attachmentIds[index])) {
@@ -204,9 +212,11 @@ export async function respondToAssistant(
     throw new AssistantResponseError("assistant_request_failed", 409, "Cette clé d’idempotence correspond à une demande déjà terminée en erreur.");
   }
 
-  const conversation = input.conversationId
-    ? await deps.repository.findConversation(userId, input.conversationId)
-    : await deps.repository.createConversation(userId);
+  const conversation = input.editMessageId && input.conversationId
+    ? await deps.repository.forkConversationAtMessage({ userId, conversationId: input.conversationId, messageId: input.editMessageId })
+    : input.conversationId
+      ? await deps.repository.findConversation(userId, input.conversationId)
+      : await deps.repository.createConversation(userId);
   if (!conversation) throw new AssistantResponseError("conversation_not_found", 404, "Conversation introuvable.");
 
   if (new Set(input.attachmentIds).size !== input.attachmentIds.length) {

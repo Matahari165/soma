@@ -112,6 +112,35 @@ export async function findAssistantMessage(userId: string, messageId: string) {
   return rows[0] ?? null;
 }
 
+export async function forkAssistantConversationAtMessage(input: {
+  userId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const [source, target] = await Promise.all([
+    findAssistantConversation(input.userId, input.conversationId),
+    findAssistantMessage(input.userId, input.messageId),
+  ]);
+  if (!source || !target || target.conversation_id !== source.id || target.role !== "user") return null;
+
+  const fork = await createAssistantConversation(input.userId, target.sequence === 1 ? null : source.title);
+  const history = await listAssistantMessages(input.userId, source.id);
+  for (const message of history) {
+    if (message.sequence >= target.sequence) break;
+    if (message.role !== "user" && message.role !== "assistant") continue;
+    const reusableParts = message.parts.filter((part) => part.type === "text" || part.type === "data-summary" || part.type === "attachment");
+    if (!reusableParts.length) continue;
+    await appendAssistantMessage({
+      userId: input.userId,
+      conversationId: fork.id,
+      role: message.role,
+      parts: reusableParts,
+      status: "completed",
+    });
+  }
+  return fork;
+}
+
 function attachmentIdFromPath(userId: string, conversationId: string, objectPath: string) {
   if (userId.includes("/") || conversationId.includes("/")) throw new Error("Invalid assistant attachment owner.");
   const prefix = `assistant/${userId}/${conversationId}/`;

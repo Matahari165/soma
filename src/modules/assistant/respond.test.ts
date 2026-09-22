@@ -8,6 +8,8 @@ const ids = {
   userMessage: "22222222-2222-4222-8222-222222222222",
   assistantMessage: "33333333-3333-4333-8333-333333333333",
   run: "44444444-4444-4444-8444-444444444444",
+  forkConversation: "77777777-7777-4777-8777-777777777777",
+  editedMessage: "88888888-8888-4888-8888-888888888888",
 };
 
 function message(input: { id: string; role: "user" | "assistant"; text: string; sequence: number }) {
@@ -33,9 +35,12 @@ function setup() {
     findMessage: vi.fn(async (): Promise<ReturnType<typeof message> | null> => null),
     findConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
     createConversation: vi.fn(async () => ({ id: ids.conversation, title: null, summary: null, summary_through_sequence: 0 })),
-    appendMessage: vi.fn(async (input: { role: string; parts: Array<Record<string, unknown>> }) => {
+    forkConversationAtMessage: vi.fn(async () => ({ id: ids.forkConversation, title: null, summary: null, summary_through_sequence: 0 })),
+    appendMessage: vi.fn(async (input: { conversationId: string; role: string; parts: Array<Record<string, unknown>> }) => {
       calls.push(`append:${input.role}`);
-      return input.role === "user" ? { ...user, parts: input.parts } : assistant;
+      return input.role === "user"
+        ? { ...user, conversation_id: input.conversationId, parts: input.parts }
+        : { ...assistant, conversation_id: input.conversationId };
     }),
     attachAttachmentToMessage: vi.fn(async () => ({ id: "55555555-5555-4555-8555-555555555555" })),
     createRun: vi.fn(async () => {
@@ -105,6 +110,27 @@ describe("respondToAssistant", () => {
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
   });
 
+  it("replays an edited request from its fork without mistaking the source conversation for a conflict", async () => {
+    const state = setup();
+    state.repository.findRunByRequestId.mockResolvedValueOnce({
+      id: ids.run, status: "completed", output_message_id: ids.assistantMessage, triggering_message_id: ids.userMessage,
+      conversation_id: ids.forkConversation,
+    } as never);
+    state.repository.findMessage
+      .mockResolvedValueOnce({ ...state.user, conversation_id: ids.forkConversation })
+      .mockResolvedValueOnce({ ...state.assistant, conversation_id: ids.forkConversation });
+
+    const result = await respondToAssistant("user-1", {
+      requestId: "request-edit-123",
+      text: "Analyse ma semaine",
+      conversationId: ids.conversation,
+      editMessageId: ids.editedMessage,
+    }, { apiKey: "test-key", dependencies: state as never });
+
+    expect(result).toMatchObject({ replayed: true, conversationId: ids.forkConversation });
+    expect(state.createAgent).not.toHaveBeenCalled();
+  });
+
   it("sends only an owned current JPEG attachment to Grok", async () => {
     const state = setup();
     state.repository.findAttachment.mockResolvedValueOnce({
@@ -140,5 +166,37 @@ describe("respondToAssistant", () => {
       attachmentIds: ["55555555-5555-4555-8555-555555555555"],
     }, { apiKey: "test-key", dependencies: state as never })).rejects.toBeInstanceOf(AssistantResponseError);
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it("forks the conversation before regenerating from an edited user message", async () => {
+    const state = setup();
+
+    const result = await respondToAssistant("user-1", {
+      requestId: "request-edit-123",
+      text: "Je veux gagner 4 kg de masse musculaire en quatre mois.",
+      conversationId: ids.conversation,
+      editMessageId: ids.editedMessage,
+    }, { apiKey: "test-key", dependencies: state as never });
+
+    expect(state.repository.forkConversationAtMessage).toHaveBeenCalledWith({
+      userId: "user-1",
+      conversationId: ids.conversation,
+      messageId: ids.editedMessage,
+    });
+    expect(state.repository.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: ids.forkConversation,
+      role: "user",
+    }));
+    expect(result.conversationId).toBe(ids.forkConversation);
+  });
+
+  it("rejects an edit without its source conversation", async () => {
+    const state = setup();
+    await expect(respondToAssistant("user-1", {
+      requestId: "request-edit-123",
+      text: "Objectif corrigé",
+      editMessageId: ids.editedMessage,
+    }, { apiKey: "test-key", dependencies: state as never })).rejects.toThrow(/conversation est requise/i);
+    expect(state.repository.forkConversationAtMessage).not.toHaveBeenCalled();
   });
 });
