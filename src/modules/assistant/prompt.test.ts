@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+
+import { SOMA_ASSISTANT_INSTRUCTIONS, SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
+
+describe("Soma assistant coaching prompt", () => {
+  it("requires professional reformulation and active objective clarification", () => {
+    expect(SOMA_ASSISTANT_PROMPT_VERSION).toBe("soma-assistant-v1.2");
+    expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("Ne reprends pas mécaniquement les mots");
+    expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("résultat observable");
+    expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("Pose une seule question décisive à la fois");
+    expect(SOMA_ASSISTANT_INSTRUCTIONS).toContain("langage de coaching professionnel");
+  });
+});
