@@ -361,6 +361,12 @@ export function LabMealCard({
     { key: "fat", label: "Fat", value: fatValue, unit: "g" },
     { key: "addedSugar", label: "Added sugar", value: sugarValue, unit: "g" },
   ];
+  const compactNutrients = [
+    { key: "protein", label: "P", name: "Protein", value: protValue },
+    { key: "carbohydrates", label: "C", name: "Carbohydrates", value: carbsValue },
+    { key: "addedSugar", label: "S", name: "Added sugar", value: sugarValue },
+    { key: "fat", label: "F", name: "Fat", value: fatValue },
+  ];
 
   // Hidden file inputs
   const fileInputs = (
@@ -640,14 +646,16 @@ export function LabMealCard({
             </p>
           )}
           {confirmRetryAction}
-          <div className="pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono">
+          <div className={`pt-2 border-t border-hairline flex items-center justify-between text-xs font-mono ${styles.personalLabNutritionRow}`}>
             <span className="text-content-primary font-medium">{calValue !== null ? `${Math.round(calValue)} kcal` : "— kcal"}</span>
-            <div className="flex items-center gap-3 text-content-secondary">
-              <span>{protValue !== null ? `${Math.round(protValue)}g P` : "—g P"}</span>
-              <span>{carbsValue !== null ? `${Math.round(carbsValue)}g C` : "—g C"}</span>
-              <span className="text-content-secondary">{sugarValue !== null ? `${Math.round(sugarValue)}g S` : "0g S"}</span>
-              <span>{fatValue !== null ? `${Math.round(fatValue)}g F` : "—g F"}</span>
-            </div>
+            <dl className={styles.personalLabNutrients}>
+              {compactNutrients.map(({ key, label, name, value }) => (
+                <div key={key} className={styles.personalLabNutrient}>
+                  <dt aria-label={name}>{label}</dt>
+                  <dd>{value !== null ? `${Math.round(value)}g` : "—"}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
           <div className="sr-only">
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />

@@ -177,6 +177,9 @@ describe("MealJournal", () => {
     expect(html).toContain("Carbohydrates: 120 g");
     expect(html).toContain("Fat: 16 g");
     expect(html).toContain("Added sugar: 5 g");
+    expect(html).toContain('aria-label="Protein">P</dt><dd>10g</dd>');
+    expect(html).toContain('aria-label="Carbohydrates">C</dt><dd>120g</dd>');
+    expect(html).toContain('aria-label="Added sugar">S</dt><dd>5g</dd>');
     expect(html).toContain(">Modifier</button>");
     expect(html).toContain(">Snack</h3>");
     expect(html).toContain('aria-label="Analyze Lunch"');
@@ -184,6 +187,10 @@ describe("MealJournal", () => {
     expect(html).toContain('aria-label="Choose photos for Lunch"');
     expect(html).toContain('aria-label="Choose photos for Snack"');
     expect(html).toContain('aria-label="Choose photos for Dinner"');
+    const lunchGalleryInput = html.match(/<input[^>]*aria-label="Choose photos for Lunch"[^>]*>/)?.[0];
+    expect(lunchGalleryInput).toContain('accept="image/*"');
+    expect(lunchGalleryInput).toContain('multiple=""');
+    expect(lunchGalleryInput).not.toContain('capture=');
     expect(html).not.toContain("Ajouter une photo pour");
     expect(html.match(/>Camera<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
