@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
-import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, selectSummaryRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
+import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, selectSummaryRelations, summaryRelationKey, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
@@ -485,40 +485,55 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
 
 const strongestEffectPeriods: AnalysisPeriod[] = [15, 30, 90, "all"];
 
-type RankedEffect = { index: number; note: string };
-
 function EffectsSummary({ relations, period, requireTemporalStability }: { relations: MatrixRelation[]; period: AnalysisPeriod; requireTemporalStability: boolean }) {
-  const [rankedResult, setRankedResult] = useState<{ key: string; ranked: RankedEffect[] } | null>(null);
-  const relationKey = relations.map((relation) => `${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`).join("|");
+  const [rankedResult, setRankedResult] = useState<{ key: string; ranked: string[] } | null>(null);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  const relationKey = relations.map((relation) => JSON.stringify([summaryRelationKey(relation), relation.effect, relation.sampleSize, relation.stable])).join("|");
   const requestKey = `${period}:${requireTemporalStability}:${relationKey}`;
   const ranked = rankedResult?.key === requestKey ? rankedResult.ranked : null;
 
-  useEffect(() => {
-    if (!relations.length) return;
-    const controller = new AbortController();
-    void fetch("/api/lab/effects-summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ period, requireTemporalStability }),
-      cache: "no-store",
-      signal: controller.signal,
-    }).then(async (response) => {
-      if (!response.ok) return;
-      const result = await response.json() as { ranked?: RankedEffect[] };
-      if (Array.isArray(result.ranked)) setRankedResult({ key: requestKey, ranked: result.ranked });
-    }).catch(() => {});
-    return () => controller.abort();
-  // relationKey changes only when the displayed evidence changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, requireTemporalStability, relationKey, requestKey]);
+  useEffect(() => () => controllerRef.current?.abort(), [requestKey]);
 
-  const entries = ranked?.map(({ index, note }) => ({ relation: relations[index], note })).filter((entry) => entry.relation) ?? relations.slice(0, 3).map((relation) => ({ relation, note: "" }));
+  async function generateSummary() {
+    if (!relations.length || ranked || loadingKey === requestKey) return;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setLoadingKey(requestKey);
+    setErrorKey(null);
+    try {
+      const response = await fetch("/api/lab/effects-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period, requireTemporalStability }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Summary unavailable");
+      const result = await response.json() as { ranked?: unknown };
+      const knownKeys = new Set(relations.map(summaryRelationKey));
+      if (!Array.isArray(result.ranked) || !result.ranked.length || !result.ranked.every((key) => typeof key === "string" && knownKeys.has(key))) throw new Error("Invalid summary selection");
+      setRankedResult({ key: requestKey, ranked: result.ranked });
+    } catch {
+      if (!controller.signal.aborted) setErrorKey(requestKey);
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
+      setLoadingKey((current) => current === requestKey ? null : current);
+    }
+  }
+
+  const byKey = new Map(relations.map((relation) => [summaryRelationKey(relation), relation]));
+  const entries = ranked?.map((key) => byKey.get(key)).filter((relation): relation is MatrixRelation => Boolean(relation)) ?? relations.slice(0, 3);
   return <section className="effects-summary" aria-labelledby="effects-summary-title">
-    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Lecture par GPT-6 Luna" : "Associations mesurées"}</span></div>
-    {entries.length ? <ol>{entries.map(({ relation, note }) => <li key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
+    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Sélection par GPT-6 Luna" : "Associations mesurées"}</span></div>
+    {entries.length ? <ol>{entries.map((relation) => <li key={summaryRelationKey(relation)}>
       <span className="effects-summary__arrow" aria-hidden="true">→</span>
-      <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small>{note && <em>{note}</em>}</p>
+      <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small></p>
     </li>)}</ol> : <p className="effects-summary__empty">Aucune relation assez solide pour un récapitulatif sur cette période.</p>}
+    {entries.length > 0 && !ranked ? <div className="effects-summary__action"><button type="button" onClick={() => void generateSummary()} disabled={loadingKey === requestKey}>{loadingKey === requestKey ? "Sélection en cours…" : "Générer le résumé IA"}</button><span>Envoie une sélection d’associations à OpenAI pour les classer.</span></div> : null}
+    {errorKey === requestKey && !ranked ? <p className="effects-summary__error" role="status">Résumé IA indisponible. Les associations mesurées restent affichées.</p> : null}
     <p className="effects-summary__footnote">Ces liens sont des associations observées, pas des causes démontrées.</p>
   </section>;
 }

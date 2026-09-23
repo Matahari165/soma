@@ -66,6 +66,11 @@ export type MatrixRelation = {
   practicallyMeaningful: boolean; practicalThreshold: number; practicalRatio: number;
   featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
 };
+
+/** Stable identity across a fresh server calculation and the displayed snapshot. */
+export function summaryRelationKey(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "lagDays" | "grain" | "timeScale" | "modelType" | "comparisonLabel">): string {
+  return JSON.stringify([relation.predictorId, relation.outcomeId, relation.lagDays, relation.grain, relation.timeScale, relation.modelType, relation.comparisonLabel]);
+}
 export type MatrixRelationOptions = {
   grain?: "day" | "week";
   timeScale?: "acute" | "chronic";
