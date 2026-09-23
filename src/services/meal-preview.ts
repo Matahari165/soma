@@ -291,11 +291,15 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean; corre
   // The preview has no nutrition model. Only user-supplied numeric corrections
   // may change its illustrative totals; it must not invent an estimate.
   const correction = input.correction ?? "";
-  const direction = /\b(?:retir\w*|enlev\w*|sans|moins)\b/i.test(correction) ? -1 : 1;
+  const actions = [...correction.matchAll(/\b(retir\w*|enlev\w*|sans|moins|ajout\w*|plus)\b/gi)];
+  const directionAt = (index: number) => {
+    const action = actions.findLast((match) => (match.index ?? 0) < index)?.[0] ?? "";
+    return /^(?:retir|enlev|sans|moins)/i.test(action) ? -1 : 1;
+  };
   const caloriesInput = correction.match(/(\d+(?:[,.]\d+)?)\s*kcal\b/i);
   const proteinInput = correction.match(/(\d+(?:[,.]\d+)?)\s*g\s*(?:de\s*)?prot[ée]ines?\b/i);
-  const caloriesDelta = caloriesInput ? direction * Number(caloriesInput[1].replace(",", ".")) : 0;
-  const proteinDelta = proteinInput ? direction * Number(proteinInput[1].replace(",", ".")) : 0;
+  const caloriesDelta = caloriesInput ? directionAt(caloriesInput.index ?? 0) * Number(caloriesInput[1].replace(",", ".")) : 0;
+  const proteinDelta = proteinInput ? directionAt(proteinInput.index ?? 0) * Number(proteinInput[1].replace(",", ".")) : 0;
   const priorCalories = input.previous?.totals.calories ?? previewRange(450, 600, 800);
   const priorProtein = input.previous?.totals.proteinGrams ?? previewRange(18, 28, 40);
   const calories = previewRange(Math.max(0, priorCalories.low + caloriesDelta), Math.max(0, priorCalories.likely + caloriesDelta), Math.max(0, priorCalories.high + caloriesDelta));
@@ -311,10 +315,10 @@ function previewAnalysis(input: { note: string | null; hasPhotos: boolean; corre
       ? "photos sélectionnées"
       : "description saisie";
   return {
-    summary: correction ? `Correction locale : ${correction}` : `Analyse locale de prévisualisation basée sur les ${sourceLabel}.`,
+    summary: correction ? "Aperçu local mis à jour après votre correction." : `Analyse locale de prévisualisation basée sur les ${sourceLabel}.`,
     dishType: null,
-    calorieAnalysis: correction ? "Aperçu local : seuls les chiffres fournis dans la correction sont appliqués, sans nouvelle estimation nutritionnelle." : null,
-    foods: [{ name: (correction || describedMeal || "Repas photographié").slice(0, 120), preparation: null, portion: null, estimatedGrams: null, calories, proteinGrams, carbohydrateGrams, fatGrams, fiberGrams, sugarGrams, addedSugarGrams, confidence: "low", observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown", confidence: { portion: "low", qualityProperties: "low", sugarExposure: "low", novaGroup: "low" } } }],
+    calorieAnalysis: null,
+    foods: [{ name: (describedMeal || "Repas photographié").slice(0, 120), preparation: null, portion: null, estimatedGrams: null, calories, proteinGrams, carbohydrateGrams, fatGrams, fiberGrams, sugarGrams, addedSugarGrams, confidence: "low", observation: { portion: "unknown", qualityProperties: "unknown", sugarExposure: "unknown", novaGroup: "unknown", confidence: { portion: "low", qualityProperties: "low", sugarExposure: "low", novaGroup: "low" } } }],
     totals: { calories, proteinGrams, carbohydrateGrams, fatGrams, fiberGrams, sugarGrams, addedSugarGrams },
     confidence: "low",
     uncertainties: [],
@@ -330,8 +334,7 @@ export function analyzePreviewMeal(userId: string, mealId: string, options?: { c
   const correction = options?.correction?.trim() ?? "";
   if (!availablePhotos.length && !note && !correction) throw new Error("Add a photo or a description before analysing a meal.");
   const now = new Date().toISOString();
-  const effectiveNote = correction ? (note ? `${note} (Ajout: ${correction})` : correction) : note;
-  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note: effectiveNote, hasPhotos: availablePhotos.length > 0, correction, previous: correction ? meal.analysis?.result : null }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
+  const analysis: MealAnalysisRecord = { id: crypto.randomUUID(), mealId, status: "completed", provider: "preview", model: "preview-v1", result: previewAnalysis({ note, hasPhotos: availablePhotos.length > 0, correction, previous: correction ? meal.analysis?.result : null }), error: null, sourcePhotoIds: availablePhotos.map((photo) => photo.id), createdAt: now, completedAt: now };
   meal.analysis = analysis;
   // A completed analysis still requires an explicit user confirmation.
   meal.status = "draft";

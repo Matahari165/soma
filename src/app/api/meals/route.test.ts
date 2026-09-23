@@ -83,8 +83,9 @@ describe("meal API local preview flow", () => {
     expect(after.status).toBe("confirmed");
     expect(after.analysis.result.totals.calories.likely).toBe(740);
     expect(after.analysis.result.totals.proteinGrams.likely).toBe(40);
-    expect(after.analysis.result.foods[0].name).toContain(correction);
-    expect(after.analysis.result.summary).toContain(correction);
+    expect(after.analysis.result.foods[0].name).not.toContain(correction);
+    expect(after.analysis.result.summary).not.toContain(correction);
+    expect(after.analysis.result.calorieAnalysis).toBeNull();
 
     const listed = await listMeals(new Request(`https://soma.example/api/meals?from=${date}&to=${date}`));
     const dayMeal = (await listed.json()).meals.find((meal: { id: string }) => meal.id === initial.id);

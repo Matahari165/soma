@@ -144,7 +144,7 @@ export function AnalysisDetails({
     const name = normalizeText(ingredient.name);
     return Boolean(name) && normalizedSummary.includes(name);
   }).length;
-  const usefulSummary = summary && (ingredients.length === 0 || (normalizedSummary !== normalizeText(meal.note) && repeatedIngredients < 2)) ? summary : null;
+  const usefulSummary = summary && normalizedSummary !== normalizeText(meal.note) && repeatedIngredients === 0 ? summary : null;
   const photoEvidenceDeleted = meal.photos.some((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url);
 
   return (

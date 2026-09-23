@@ -357,6 +357,9 @@ describe("LabMealCard nutrition chart", () => {
     const withContext = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, analysis: { ...meal.analysis!, summary: "La cuisson à l’huile reste incertaine." } }} open detailsId="context-detail" variant="v1" hideToggle onToggle={() => undefined} />);
     expect(withContext).toContain("La cuisson à l’huile reste incertaine.");
 
+    const withOneRepeatedIngredient = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, analysis: { ...meal.analysis!, summary: "Poulet grillé à midi." } }} open detailsId="repeat-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withOneRepeatedIngredient).not.toContain("Poulet grillé à midi.");
+
     const withAvailablePhoto = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, photos: [{ id: "photo-1", url: "blob:photo-1", origin: "homemade" }] }} open detailsId="photo-detail" variant="v1" hideToggle onToggle={() => undefined} />);
     expect(withAvailablePhoto).not.toContain("Photo analysée puis supprimée");
   });
