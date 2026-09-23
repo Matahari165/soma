@@ -10,6 +10,7 @@ import { createGetPlanDetailsTool } from "./tools/get-plan-details";
 import { createGetStrongestEffectsTool } from "./tools/get-strongest-effects";
 import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
+import { createManageNutritionTargetsTool } from "./tools/manage-nutrition-targets";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
 
 export const SOMA_ASSISTANT_PROVIDER = "openai";
@@ -53,6 +54,7 @@ export function createSomaAssistantAgent(input: {
       querySomaData: createQuerySomaDataTool(input),
       manageUserContext: createManageUserContextTool(input),
       manageMeal: createManageMealTool(input),
+      manageNutritionTargets: createManageNutritionTargetsTool(input),
     },
     stopWhen: isStepCount(settings.maxSteps),
     maxOutputTokens: settings.maxOutputTokens,

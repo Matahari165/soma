@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from "node:util";
 
 import { assistantAttachmentMetadataSchema, assistantGoalInputSchema, assistantGoalRevisionSchema, assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema, assistantMessagePartSchema, type AssistantMessagePart, type AssistantQuality } from "../contracts";
 import { assistantDatabaseRequest, assistantFilter } from "./database";
+import { stableIdentity } from "@/lib/cloudflare/db";
 
 type ConversationRow = {
   id: string; user_id: string; title: string | null; status: "active" | "archived";
@@ -277,7 +278,7 @@ type AssistantActionRow = {
   user_id: string;
   conversation_id: string;
   run_id: string | null;
-  action_type: "meal.create";
+  action_type: "meal.create" | "nutrition_targets.update";
   state: "proposed" | "confirmed" | "executing" | "executed" | "undoing" | "undone" | "failed" | "expired";
   payload: Record<string, unknown>;
   inverse_payload: Record<string, unknown> | null;
@@ -300,6 +301,45 @@ export async function findAssistantAction(userId: string, actionId: string) {
     `assistant_actions?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(actionId)}&select=*&limit=1`,
   );
   return rows[0] ?? null;
+}
+
+export async function loadPendingNutritionTargetActions(userId: string) {
+  return assistantDatabaseRequest<AssistantActionRow[]>(
+    `assistant_actions?user_id=eq.${assistantFilter(userId)}&action_type=eq.nutrition_targets.update&state=eq.proposed&select=*&order=created_at.desc,id.desc&limit=5`,
+  );
+}
+
+export async function proposeNutritionTargetAction(input: {
+  userId: string;
+  conversationId: string;
+  runId: string;
+  idempotencyKey: string;
+  payload: Record<string, unknown>;
+}) {
+  const existing = await findAssistantActionByIdempotencyKey(input.userId, input.idempotencyKey);
+  if (existing) return existing;
+  const rows = await assistantDatabaseRequest<AssistantActionRow[]>("assistant_actions", {
+    method: "POST", prefer: "return=representation",
+    body: {
+      id: crypto.randomUUID(), user_id: input.userId, conversation_id: input.conversationId,
+      run_id: input.runId, action_type: "nutrition_targets.update", state: "proposed",
+      payload: input.payload, idempotency_key: input.idempotencyKey,
+      target_type: "nutrition_targets", target_id: input.userId,
+    },
+  });
+  return one(rows, "Assistant nutrition target proposal");
+}
+
+export async function confirmNutritionTargetAction(userId: string, actionId: string, confirmationMessageId: string) {
+  return assistantDatabaseRequest<{ actionId: string; saved: boolean; targets: unknown; replayed: boolean }>(
+    "rpc/confirm_assistant_nutrition_targets",
+    { method: "POST", body: {
+      p_user_id: userId,
+      p_action_id: actionId,
+      p_confirmation_message_id: confirmationMessageId,
+      p_row_key: stableIdentity("nutrition_targets", { user_id: userId }, "user_id"),
+    } },
+  );
 }
 
 export async function recordExecutedAssistantMealAction(input: {
