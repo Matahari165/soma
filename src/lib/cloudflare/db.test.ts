@@ -133,7 +133,10 @@ describe("Supabase storage pagination", () => {
   it("reads the transactional matrix revision when the migration is installed", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify([{ revision: "98aa82da-8599-407e-9259-6bffb9f1a928" }]), { status: 200 }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return new Response(JSON.stringify([{ revision: "98aa82da-8599-407e-9259-6bffb9f1a928" }]), { status: 200 });
+    });
     process.env.SUPABASE_URL = "https://supabase.test";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
     vi.stubGlobal("fetch", fetchMock);
