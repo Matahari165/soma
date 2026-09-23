@@ -391,7 +391,7 @@ export function LabMealCard({
   if (isSkipped) {
     if (designVariant === "v1") {
       return (
-        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
+        <article className={`rounded border border-hairline bg-surface-card/60 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
@@ -467,19 +467,15 @@ export function LabMealCard({
   if (isAnalyzing) {
     if (designVariant === "v1") {
       return (
-        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
+        <article className={`rounded border border-hairline bg-surface-card/60 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" />
               <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
             </div>
             <span className="text-xs font-mono text-content-secondary">
               {analysisProgress?.phase || "Analyse en cours…"}
             </span>
           </div>
-          {analysisProgress?.dishType && (
-            <div className="text-xs font-sans text-content-primary font-medium">{analysisProgress.dishType}</div>
-          )}
           {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {analysisProgress.foods.map((food, idx) => (
@@ -535,7 +531,7 @@ export function LabMealCard({
   if (status === "error") {
     if (designVariant === "v1") {
       return (
-        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
+        <article className={`rounded border border-hairline bg-surface-card/60 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -619,7 +615,7 @@ export function LabMealCard({
   if (designVariant === "v1") {
     if (isFilled) {
       return (
-        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 animate-fade-in transition-opacity duration-300 ${styles.personalLabType}`} data-purpose={`meal-${slot}`}>
+        <article className={`rounded border border-hairline bg-surface-card/60 animate-fade-in transition-opacity duration-300 ${styles.personalLabType}`} data-purpose={`meal-${slot}`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -637,10 +633,9 @@ export function LabMealCard({
             </div>
           </div>
           {photoStrip}
-          <p className="text-xs text-content-secondary leading-relaxed font-sans">{getSummaryText(meal)}</p>
           {confirmAction}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
-            <p className="text-xs text-content-tertiary font-mono">
+            <p className={`text-xs text-content-tertiary font-mono ${styles.personalLabIngredients}`}>
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
             </p>
           )}
@@ -676,11 +671,10 @@ export function LabMealCard({
     }
 
     return (
-      <article className={`p-4 rounded border border-hairline-light bg-surface-subtle space-y-3 relative ${styles.personalLabType}`} data-purpose={`meal-${slot}-pending`}>
+      <article className={`rounded border border-hairline-light bg-surface-subtle relative ${styles.personalLabType}`} data-purpose={`meal-${slot}-pending`}>
         {fileInputs}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-signal-warn animate-pulse" />
             <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
           </div>
           {!isSkipped && onMarkSkipped && <button type="button" className="min-h-11 min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors" disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
@@ -689,9 +683,9 @@ export function LabMealCard({
         <div className="relative">
           <textarea
             id={inputId}
-            className="w-full bg-obsidian border border-hairline rounded p-3 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:border-hairline-light resize-none font-sans"
-            rows={3}
-            placeholder="Describe meal or ingredients... (e.g. grass-fed ribeye 250g, roasted sweet potatoes, leafy greens with balsamic vinaigrette)"
+            className="w-full bg-obsidian border border-hairline rounded text-xs text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-hairline-light font-sans"
+            rows={2}
+            placeholder="Describe this meal or its ingredients…"
             value={noteText}
             disabled={disabled || processingFiles || mutationBusy}
             onChange={(e) => onNote(e.target.value)}

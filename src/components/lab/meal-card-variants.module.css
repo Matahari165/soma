@@ -1389,6 +1389,37 @@
   transform: scale(0.98);
   transition: transform 150ms ease;
 }
+.personalLabType {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.personalLabType > div:first-of-type {
+  align-items: flex-start;
+}
+
+.personalLabType textarea {
+  min-height: 64px;
+  height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.personalLabType textarea::placeholder {
+  color: var(--lab-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.personalLabIngredients {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .personalLabType h3 {
   font-family: var(--font-soma-mono), "SF Mono", ui-monospace, monospace;
   font-size: 12px;
@@ -1405,4 +1436,14 @@
   line-height: 13px;
   letter-spacing: normal;
   text-transform: none;
+}
+
+.personalLabType button[aria-label^="Take photo"],
+.personalLabType button[aria-label^="Choose photos"] {
+  padding-inline: 6px;
+}
+
+.personalLabType button[aria-label^="Analyze"] {
+  padding-inline: 8px;
+  white-space: nowrap;
 }

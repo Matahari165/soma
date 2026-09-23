@@ -143,7 +143,7 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain('aria-label="Modifier Dinner"');
     expect(html).toContain("px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
     expect(html).toContain("text-xs font-mono");
-    expect(html).toContain("text-xs text-content-secondary leading-relaxed font-sans");
+    expect(html).not.toContain("Poulet et légumes rôtis</p>");
   });
 
   it("applies high-contrast buttons and harmonized typography on a pending meal card with canAnalyze", () => {
