@@ -190,7 +190,6 @@
 .emptyMealPrompt {
   display: flex;
   min-height: 70px;
-  align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 10px 14px;
@@ -799,7 +798,6 @@
 .labRoot .mealList { display: grid; gap: 0; border-top: 0; }
 .labRoot .mealCard { min-height: 0; padding: 16px 0; border: 0; border-bottom: 1px solid var(--lab-border); border-radius: 0; background: transparent; box-shadow: none; }
 .labRoot .mealList > div:last-child .mealCard { border-bottom: 0; }
-.labRoot .mealCardConfirmed { border: 0; border-bottom: 1px solid var(--lab-border); border-radius: 0; background: transparent; box-shadow: none; }
 .labRoot .mealCardEmpty { min-height: 112px; }
 .labRoot .mealHeader { min-height: 42px; padding: 8px 0; border-bottom: 1px solid var(--lab-border); }
 .labRoot .mealTitle { gap: 8px; }
@@ -1449,7 +1447,7 @@
   .mealsJournalPanel .mealCardEmpty { min-height: 124px; }
   .mealsJournalPanel .draftMeal .actionsRow { grid-template-columns: 1fr; }
   .mealsJournalPanel .draftMeal .photoInput { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mealsMealDetails { grid-template-columns: 1fr; gap: 8px; }
+  .mealsMealDetails { grid-template-columns: 1fr; }
 }
 
 /* Recorded meals stay borderless like every other journal row: separation comes
@@ -1600,19 +1598,15 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 0;
-    gap: 12px 20px;
     overflow: visible;
     padding: 0;
     scroll-snap-type: none;
   }
   .mealsPageRoot .headerMetric {
     min-width: 132px;
-    min-height: 60px;
     flex: 1 0 132px;
-    padding: 8px 12px;
     scroll-snap-align: start;
   }
-  .mealsPageRoot .headerMetric > strong { font-size: 16px; line-height: 22px; }
 }
 
 @media (max-width: 390px) {
@@ -1931,14 +1925,7 @@
   }
 
   :global(.meals-page) .mealsPageRoot .headerMetrics {
-    min-height: 64px;
     overflow-x: auto;
-    gap: 16px;
-  }
-
-  :global(.meals-page) .mealsPageRoot .headerMetric {
-    min-height: 64px;
-    flex: 0 0 124px;
   }
 
   :global(.meals-page) .mealsPageRoot .historyNavigation,
@@ -2106,13 +2093,6 @@
 :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle { display: block; }
 :global(html[data-lab-theme="observatory"]) .labRoot .photoInputSingle .captureButtonCompact {
   width: 100%;
-  min-height: 64px;
-  border: 0;
-  border-radius: 0;
-  background: #c7d7d9;
-  color: #0c1112;
-  font-size: 12px;
-  font-weight: 650;
 }
 :global(html[data-lab-theme="observatory"]) .labRoot .labMealDetails > div { display: grid; min-width: 0; gap: 3px; }
 :global(html[data-lab-theme="observatory"]) .labRoot .labMealDetails span,
@@ -2811,10 +2791,6 @@
    whether its capture surface is empty or its analysis is already filled. */
 :global(html[data-lab-theme]) .labRoot .mealCard .mealHeader {
   box-sizing: border-box;
-  height: 44px;
-  min-height: 44px;
-  align-items: center;
-  padding: 8px 0;
 }
 
 :global(html[data-lab-theme]) .labRoot .mealCard .mealTitle {
@@ -2903,7 +2879,6 @@
 
 :global(html[data-lab-theme]) .labRoot > .mealList {
   display: grid;
-  gap: 0;
   margin: 0;
 }
 
@@ -3154,11 +3129,6 @@
     line-height: 25px;
   }
 
-  :global(html[data-lab-theme]) .labRoot .labMealNutrition {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px 8px;
-  }
-
   :global(html[data-lab-theme]) .labRoot .labMealNutrition [data-metric="calories"] {
     grid-column: 1 / -1;
   }
@@ -3218,13 +3188,6 @@
 /* Mobile safety contract: long French labels must shrink inside the capture
    rail instead of pushing the photo action outside the viewport. */
 @media (max-width: 700px) {
-  :global(html[data-lab-theme]) .labRoot .mealCardEmpty .emptyMealActions {
-    width: 100%;
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-    gap: 8px;
-  }
-
   :global(html[data-lab-theme]) .labRoot .mealCardEmpty :is(
     .photoInputSingle,
     .captureButtonCompact,
