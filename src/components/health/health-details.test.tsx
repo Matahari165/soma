@@ -253,15 +253,15 @@ describe("health route states", () => {
     expect(markup).not.toContain("Durée de sommeil");
     expect(markup).not.toContain("Charge du jour");
     expect(markup).not.toContain("Énergie métabolique");
-    expect(markup).toContain("Heart rate variability");
     expect(markup).toContain("Nightly HRV");
     expect(markup).toContain("Respiratory rate");
+    expect(markup).not.toContain("Heart rate variability");
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain('id="recovery-radar-detail"');
     expect(markup).toContain('data-open="false"');
   });
 
-  it("shows the measured sample count for partial recovery averages", () => {
+  it("keeps partial recovery averages without a sample-count suffix", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
       data: analytics({
         days: [day({ hrv_ms: 54, resting_heart_rate: null, respiratory_rate: null, sleep_minutes: 480 })],
@@ -269,8 +269,10 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("30-day avg · 54 ms · n=1");
-    expect(markup).toContain("30-day avg · — · n=0");
+    expect(markup).toContain("30-day avg · 54 ms");
+    expect(markup).toContain("30-day avg · —");
+    expect(markup).not.toContain("n=1");
+    expect(markup).not.toContain("n=0");
   });
 
   it("does not render a sample-based heart-rate trend on recovery", () => {
@@ -283,6 +285,16 @@ describe("health route states", () => {
     }));
 
     expect(markup).not.toContain(">Fréquence cardiaque</span>");
+  });
+
+  it("uses the shared bar-chart treatment once per distinct recovery signal", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, { data: buildPreviewAnalytics() }));
+
+    expect(markup).toContain(">Graphiques</h2>");
+    expect(markup.match(/health-bar-chart/g)?.length).toBe(3);
+    expect(markup.match(/health-chart-average-label/g)?.length).toBe(3);
+    expect(markup).not.toContain("Heart rate variability");
+    expect(markup).not.toContain("metric-trend-card__average");
   });
 
   it("provides visible weighted recovery drivers in the local analytics preview", () => {

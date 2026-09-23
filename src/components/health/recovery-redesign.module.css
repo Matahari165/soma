@@ -290,6 +290,21 @@
   margin-inline-start: clamp(24px, 4vw, 48px);
 }
 
+.scoreSummary :global(.health-score-trigger):hover {
+  background: transparent;
+}
+
+.scoreSummary :global(.health-score-trigger) .summaryValue strong {
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.scoreSummary :global(.health-score-trigger):hover .summaryValue strong,
+.scoreSummary :global(.health-score-trigger):focus-visible .summaryValue strong,
+.scoreSummary :global(.health-score-trigger)[aria-expanded="true"] .summaryValue strong {
+  transform: scale(1.035);
+}
+
 .scoreSummary :global(.health-score-trigger):focus-visible {
   outline: 2px solid var(--recovery-accent);
   outline-offset: 6px;
@@ -671,7 +686,7 @@
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
   height: 120px;
-  padding-right: 24px;
+  padding-right: 88px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
@@ -686,10 +701,43 @@
   line-height: 16px;
 }
 
-/* The card header already carries the useful 30-day reference. Hiding the
-   plot extrema keeps that evidence from colliding with the end date. */
 .trendGrid :global(.metric-trend-card) :global(.health-chart-range) {
-  display: none;
+  right: 0;
+  width: 76px;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.health-chart-average) {
+  stroke: var(--lab-info);
+  stroke-dasharray: 4 5;
+  stroke-width: 1.5;
+  opacity: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.health-chart-average-label) {
+  position: absolute;
+  right: 0;
+  display: block;
+  width: 76px;
+  color: var(--lab-info);
+  font: 500 11px/14px var(--font-soma-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.trendGrid :global(.metric-trend-card) :global(.health-chart-average-label)::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  margin-right: 4px;
+  border-top: 1.5px dashed currentColor;
+  vertical-align: 3px;
+}
+
+.trendGrid :global(.metric-trend-card) :global(.chart-axis) {
+  padding-inline-start: calc((100% - 88px) * .04);
+  padding-inline-end: calc(88px + (100% - 88px) * .04);
 }
 
 .supporting {
@@ -1015,6 +1063,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .scoreSummary :global(.health-score-trigger) .summaryValue strong {
+    transition: none;
+  }
+
   .page :global(.recovery-score-inline__inner) {
     grid-template-rows: 1fr;
     grid-auto-rows: 1fr;

@@ -13,19 +13,17 @@ import { RecoveryRadar } from "./recovery-radar";
 import { RecoveryScorePopover } from "./recovery-score-popover";
 import styles from "./recovery-redesign.module.css";
 
-type TrendKind = "hrv_daily" | "hrv_nightly" | "resting_heart_rate" | "respiratory_rate";
+type TrendKind = "hrv_nightly" | "resting_heart_rate" | "respiratory_rate";
 type ZoneKey = "light_zone_minutes" | "moderate_zone_minutes" | "vigorous_zone_minutes" | "peak_zone_minutes";
 type ZoneTone = "light" | "moderate" | "vigorous" | "peak";
 
 const trendLabels: Record<TrendKind, { label: string; unit: string; direction: "higher" | "lower" | "context" }> = {
-  hrv_daily: { label: "Heart rate variability", unit: "ms", direction: "higher" },
   hrv_nightly: { label: "Nightly HRV", unit: "ms", direction: "higher" },
   resting_heart_rate: { label: "Resting heart rate", unit: "bpm", direction: "lower" },
   respiratory_rate: { label: "Respiratory rate", unit: "rpm", direction: "context" },
 };
 
 const metricKeys: Record<TrendKind, keyof HealthMetricDay> = {
-  hrv_daily: "hrv_ms",
   hrv_nightly: "hrv_ms",
   resting_heart_rate: "resting_heart_rate",
   respiratory_rate: "respiratory_rate",
@@ -44,7 +42,7 @@ const directionMap: Record<string, "higher_is_better" | "lower_is_better" | "con
   context: "context_only",
 };
 
-const visibleTrendKeys: TrendKind[] = ["hrv_daily", "hrv_nightly", "resting_heart_rate", "respiratory_rate"];
+const visibleTrendKeys: TrendKind[] = ["hrv_nightly", "resting_heart_rate", "respiratory_rate"];
 
 function points(days: HealthMetricDay[], key: TrendKind) {
   return days.map((day) => {
@@ -259,20 +257,20 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
           </section>
 
           <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="latest-signals-heading">
-            <header className={styles.sectionHeader}><h2 id="latest-signals-heading">Recent signals</h2><span>{formatCivilDate(latest.metric_date)}</span></header>
+            <header className={styles.sectionHeader}><h2 id="latest-signals-heading">Recent signals</h2></header>
             <div className={styles.signalRows}>
               {[
                 { label: "Nightly HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
                 { label: "Resting heart rate", value: latest.resting_heart_rate, average: signalAverages.restingHeartRate, unit: "bpm", decimals: 0 },
                 { label: "Respiratory rate", value: latest.respiratory_rate, average: signalAverages.respiratoryRate, unit: "rpm", decimals: 1 },
-              ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>30-day avg · {signal.average.value === null ? "—" : `${formatAverage(signal.average.value, "decimal", signal.decimals)} ${signal.unit}`} · n={signal.average.measuredDays}</em></div></div>)}
+              ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>30-day avg · {signal.average.value === null ? "—" : `${formatAverage(signal.average.value, "decimal", signal.decimals)} ${signal.unit}`}</em></div></div>)}
             </div>
           </section>
 
           <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-trends-heading">
-            <header className={styles.sectionHeader}><h2 id="recovery-trends-heading">Trends</h2><span>30 days</span></header>
+            <header className={styles.sectionHeader}><h2 id="recovery-trends-heading">Graphiques</h2><span>30 days</span></header>
             <div className={styles.trendGrid}>
-              {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} animateCurrent compact />)}
+              {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} format={(value) => value.toFixed(1)} valueFormat="decimal" chartType="bar" compact averageInChart animateCurrent animationFormat="decimal" />)}
             </div>
           </section>
 
