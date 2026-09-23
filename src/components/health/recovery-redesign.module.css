@@ -246,14 +246,6 @@
   padding-left: clamp(0px, 2vw, 24px);
 }
 
-.summaryKicker {
-  display: block;
-  margin: 0;
-  color: var(--recovery-muted);
-  font-size: 13px;
-  line-height: 18px;
-}
-
 .scoreSummary h2,
 .sectionHeader h2,
 .empty h2 {
@@ -278,6 +270,7 @@
 
 .scoreSummary :global(.recovery-score-control) {
   position: relative;
+  justify-items: start;
   margin-top: 20px;
 }
 
@@ -292,6 +285,9 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+  /* Keep the value visually offset from the shared left rail without
+     centering it in the whole score column. */
+  margin-inline-start: clamp(24px, 4vw, 48px);
 }
 
 .scoreSummary :global(.health-score-trigger):focus-visible {
@@ -520,6 +516,14 @@
   padding-top: var(--recovery-panel-padding);
 }
 
+.page > :global(.health-detail-page--recovery) > .content > .trendsSection {
+  padding-block: 32px;
+}
+
+.page > :global(.health-detail-page--recovery) > .content > .trendsSection + .section {
+  padding-top: 32px;
+}
+
 .sectionHeader {
   display: flex;
   min-width: 0;
@@ -608,10 +612,6 @@
 .signalRow em {
   flex-basis: 100%;
   font-family: var(--font-soma-mono), ui-monospace, monospace;
-}
-
-.trendsSection {
-  padding-bottom: 0;
 }
 
 .page .trendGrid {

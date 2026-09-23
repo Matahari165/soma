@@ -104,14 +104,6 @@ function formatCivilDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(civilDate(value)).replace(".", "");
 }
 
-function recoveryDateLabel(metricDate: string, currentDate: string) {
-  if (metricDate === currentDate) return "Today";
-  const yesterday = new Date(`${currentDate}T12:00:00.000Z`);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  if (metricDate === yesterday.toISOString().slice(0, 10)) return "Yesterday";
-  return formatCivilDate(metricDate);
-}
-
 function zoneDotClassName(tone: ZoneTone) {
   if (tone === "light") return styles.zoneDot;
   return `${styles.zoneDot} ${styles[`zoneDot--${tone}`]}`;
@@ -164,7 +156,6 @@ function scoreText(value: number | null) {
 }
 
 export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
-  const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const latest = data.days.findLast(hasRecoveryMeasurement);
   const recoveryScore = data.scores.findLast((item) => item.kind === "recovery" && item.score_date === latest?.metric_date);
   const score = recoveryScore?.score ?? null;
@@ -256,7 +247,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
               </aside>
             </div>
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
-              <span className={styles.summaryKicker}>{recoveryDateLabel(latest.metric_date, currentDate)}</span>
               <h2 id="recovery-score-summary-title">Recovery score</h2>
               <RecoveryScorePopover hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")}>
                 <span className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong>{scoreText(score)}</strong><span>/100</span></span>
