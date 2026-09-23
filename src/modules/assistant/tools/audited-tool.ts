@@ -13,6 +13,15 @@ function resultManifest(value: unknown) {
   return { resultType: Array.isArray(value) ? "array" : "object" };
 }
 
+async function completeAuditBestEffort(input: Parameters<typeof completeAssistantToolCall>[0]) {
+  try {
+    await completeAssistantToolCall(input);
+  } catch {
+    // A repeated status update is safe; never let an audit outage reverse a committed action.
+    await completeAssistantToolCall(input).catch(() => undefined);
+  }
+}
+
 export async function executeAuditedAssistantTool<T>(input: {
   context: AuditedToolContext;
   toolName: string;
@@ -31,18 +40,11 @@ export async function executeAuditedAssistantTool<T>(input: {
     operationClass: input.operationClass,
   });
 
+  let result: T;
   try {
-    const result = await input.execute();
-    await completeAssistantToolCall({
-      userId: input.context.userId,
-      toolCallId: call.id,
-      status: "completed",
-      resultManifest: resultManifest(result),
-      durationMs: Date.now() - startedAt,
-    });
-    return result;
+    result = await input.execute();
   } catch (error) {
-    await completeAssistantToolCall({
+    await completeAuditBestEffort({
       userId: input.context.userId,
       toolCallId: call.id,
       status: "failed",
@@ -51,4 +53,14 @@ export async function executeAuditedAssistantTool<T>(input: {
     });
     throw error;
   }
+  // An audit update can fail after the business write committed. Never turn that success
+  // into a false tool failure that would prompt a duplicate user action.
+  await completeAuditBestEffort({
+    userId: input.context.userId,
+    toolCallId: call.id,
+    status: "completed",
+    resultManifest: resultManifest(result),
+    durationMs: Date.now() - startedAt,
+  });
+  return result;
 }

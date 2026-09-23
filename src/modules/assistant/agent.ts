@@ -17,7 +17,7 @@ const qualitySettings: Record<AssistantQuality, {
   maxSteps: number;
   reasoningEffort: XaiLanguageModelResponsesOptions["reasoningEffort"];
 }> = {
-  fast: { maxOutputTokens: 1_200, maxSteps: 4, reasoningEffort: "low" },
+  fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "low" },
   balanced: { maxOutputTokens: 2_400, maxSteps: 6, reasoningEffort: "medium" },
   deep: { maxOutputTokens: 4_000, maxSteps: 8, reasoningEffort: "high" },
 };
