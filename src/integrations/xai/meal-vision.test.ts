@@ -351,6 +351,45 @@ describe("xAI meal vision contract", () => {
     expect(result.foods[0]?.calories).toBeNull();
   });
 
+  it("selects a complete meal object inside a parseable response wrapper", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const meal = structuredAnalysis();
+    const wrapped = { summary: null, totals: null, uncertainties: null, analysis: meal };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify({ output_text: JSON.stringify(wrapped) }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.summary).toBe(meal.summary);
+    expect(result.totals.calories).toEqual(meal.totals.calories);
+  });
+
+  it("selects the valid final object when a Responses payload contains two JSON fragments", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const meal = structuredAnalysis();
+    const preliminary = { summary: null, totals: null, uncertainties: null };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      output_text: JSON.stringify(preliminary),
+      output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(meal) }] }],
+    }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.summary).toBe(meal.summary);
+  });
+
+  it("does not substitute a nested previous analysis for a missing final meal", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const wrapped = { summary: null, totals: null, uncertainties: null, previousAnalysis: structuredAnalysis() };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify({ output_text: JSON.stringify(wrapped) }), { status: 200 }));
+
+    await expect(createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" })).rejects.toMatchObject({ code: "response_schema_error" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("sends a text-only request without images for a free description", async () => {
     process.env.XAI_API_KEY = "test-key";
     const range = { low: 150, likely: 190, high: 230 };

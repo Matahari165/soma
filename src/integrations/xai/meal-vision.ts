@@ -400,30 +400,30 @@ function responseDiagnostics(result: unknown) {
 
 function balancedJsonCandidates(text: string) {
   const candidates: string[] = [];
-  for (let start = 0; start < text.length; start += 1) {
-    if (text[start] !== "{") continue;
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    for (let index = start; index < text.length; index += 1) {
-      const character = text[index];
-      if (inString) {
-        if (escaped) escaped = false;
-        else if (character === "\\") escaped = true;
-        else if (character === '"') inString = false;
-        continue;
-      }
-      if (character === '"') {
-        inString = true;
-        continue;
-      }
-      if (character === "{") depth += 1;
-      if (character === "}") {
-        depth -= 1;
-        if (depth === 0) {
-          candidates.push(text.slice(start, index + 1));
-          break;
-        }
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"' && depth > 0) {
+      inString = true;
+      continue;
+    }
+    if (character === "{") {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (character === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(text.slice(start, index + 1));
+        start = -1;
       }
     }
   }
@@ -744,13 +744,44 @@ function structuredJson(text: string, sourcePhotoIds?: readonly string[]) {
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1]?.trim();
   const candidates = [fenced, trimmed, ...balancedJsonCandidates(trimmed)].filter((candidate, index, all): candidate is string => Boolean(candidate) && all.indexOf(candidate) === index);
   let lastError: unknown;
+  let firstParsed: unknown;
+  let foundParsed = false;
   for (const candidate of candidates) {
     try {
-      return normalizeStructuredAnalysis(JSON.parse(candidate) as unknown, sourcePhotoIds);
+      const normalized = normalizeStructuredAnalysis(JSON.parse(candidate) as unknown, sourcePhotoIds);
+      if (!foundParsed) {
+        firstParsed = normalized;
+        foundParsed = true;
+      }
+      // A Responses payload may contain more than one JSON fragment. Select
+      // the first complete meal contract instead of the first parseable object.
+      try {
+        validateMealAnalysis(normalized, { sourcePhotoIds });
+        return normalized;
+      } catch {
+        // Some compatible providers add one named envelope around the final
+        // result. Never search arbitrary nested objects (for example a prior
+        // analysis) for a plausible meal.
+        if (normalized && typeof normalized === "object" && !Array.isArray(normalized)) {
+          const wrapper = normalized as Record<string, unknown>;
+          for (const key of ["analysis", "mealAnalysis", "result"]) {
+            const inner = wrapper[key];
+            if (!inner || typeof inner !== "object" || Array.isArray(inner)) continue;
+            const unwrapped = normalizeStructuredAnalysis(inner, sourcePhotoIds);
+            try {
+              validateMealAnalysis(unwrapped, { sourcePhotoIds });
+              return unwrapped;
+            } catch {
+              // Keep the outer schema error.
+            }
+          }
+        }
+      }
     } catch (error) {
       lastError = error;
     }
   }
+  if (foundParsed) return firstParsed;
   throw new MealVisionError("response_parse_error", "La réponse du provider n’est pas un JSON valide.", { cause: lastError });
 }
 
@@ -767,6 +798,22 @@ function safeSchemaDiagnostics(error: unknown): SafeSchemaDiagnostic[] {
     }).join(".") || "$",
     code: issue.code,
   }));
+}
+
+function safeRootShape(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { root: Array.isArray(value) ? "array" : typeof value };
+  const fields = value as Record<string, unknown>;
+  const type = (field: string) => Array.isArray(fields[field]) ? "array" : fields[field] === null ? "null" : typeof fields[field];
+  return {
+    root: "object",
+    summary: type("summary"),
+    foods: type("foods"),
+    totals: type("totals"),
+    uncertainties: type("uncertainties"),
+    analysis: type("analysis"),
+    mealAnalysis: type("mealAnalysis"),
+    result: type("result"),
+  };
 }
 
 function schemaRetryPrompt(sourcePhotoIds: readonly string[] | undefined, diagnostics: SafeSchemaDiagnostic[]) {
@@ -1144,6 +1191,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
             durationMs,
             code: "response_schema_error",
             schemaIssues: diagnostics,
+            rootShape: safeRootShape(parsed),
           });
           if (responseStatus !== "incomplete" && attempt < maxSchemaAttempts) {
             lastError = error;
