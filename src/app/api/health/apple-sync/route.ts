@@ -103,11 +103,11 @@ export async function POST(request: Request) {
     resting_heart_rate: item.restingHeartRate ?? null,
     respiratory_rate: item.respiratoryRate ?? null,
     steps: item.steps ?? null,
-    active_energy: item.activeCalories ?? null,
+    active_energy_kcal: item.activeCalories ?? null,
     oxygen_saturation: item.oxygenSaturation ?? null,
     bedtime: item.bedtime ?? null,
     wake_time: item.wakeTime ?? null,
-    data_quality: { primaryWearable: "Apple Watch", source: "apple_health" },
+    data_quality: { primaryWearable: "Apple Watch", source: "apple_health", importedAt: now },
     updated_at: now,
   }));
 
@@ -121,18 +121,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-
-  // 4. Update provider_connections
-  await admin.from("provider_connections").upsert(
-    {
-      user_id: userId,
-      provider: "apple_health",
-      status: "connected",
-      last_synced_at: now,
-      updated_at: now,
-    },
-    { onConflict: "user_id,provider" },
-  );
 
   return NextResponse.json({
     ok: true,

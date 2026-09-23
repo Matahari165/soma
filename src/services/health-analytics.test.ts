@@ -144,6 +144,25 @@ describe("health analytics first-screen loading", () => {
     });
   });
 
+  it("preserves Apple provenance and sync time when no provider connection row exists", async () => {
+    testState.metrics = [{
+      metric_date: "2026-09-10",
+      sleep_minutes: 480,
+      hrv_ms: 52,
+      source_freshness: {},
+      data_quality: { source: "apple_health", primaryWearable: "Apple Watch", importedAt: "2026-09-10T08:00:00.000Z" },
+    }];
+
+    const analytics = await getRecoveryAnalytics();
+
+    expect(analytics.days[0]?.data_quality).toMatchObject({ source: "apple_health", primaryWearable: "Apple Watch" });
+    expect(analytics.importedAt).toBe("2026-09-10T08:00:00.000Z");
+  });
+
+  it("returns no civil heart-rate window for an invalid date", () => {
+    expect(heartRateWindowForCivilDate("not-a-date", "Europe/Paris")).toBeNull();
+  });
+
   it("keeps daily metrics bounded but loads the complete exercise history", async () => {
     testState.exercises = Array.from({ length: 501 }, (_, index) => ({ source_record_id: `exercise-${index}`, civil_date: "2026-09-10", start_time: null, end_time: null, payload: { exercise: { exerciseType: "RUNNING" } } }));
     const analytics = await getActivityAnalytics();

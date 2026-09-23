@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
-import { averageLast30MeasuredWithCount, formatAverage, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30MeasuredWithCount, formatAverage, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { HealthPageShell } from "./health-page-shell";
 import { MetricTrendCard } from "./metric-trend-card";
 import type { RecoveryRadarDimension } from "./recovery-radar";
@@ -174,6 +174,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     ? Math.min(1, Math.max(0, driverCoverage))
     : latest ? measuredCoverage([latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes]) : 0;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
+  const sourceLabel = healthSourceLabel(latest);
   const heroScoreTone = metricTone(score, averages.recovery, "higher_is_better");
   const weeklyZones = averageWeeklyZoneMinutes(data.days, latest?.metric_date);
   const [selectedAxis, setSelectedAxis] = useState<string | null>(null);
@@ -183,8 +184,8 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const detailTitleId = "recovery-radar-detail-title";
   const detailOpen = selectedAxis !== null;
   const dimensions: RecoveryRadarDimension[] = [
-    { key: "hrv", label: "HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Daily heart rate variability reported by Google Health, compared to your personal baseline. The source does not specify whether it was measured during sleep.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
-    { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")}%`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "hrv", label: "HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Daily heart rate variability reported by health source, compared to your personal baseline. The source does not specify whether it was measured during sleep.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel },
+    { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")}%`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel },
     { key: "sleep", label: "Sleep", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")}%`, averageLabel: averages.recovery === null ? undefined : `30-day avg · ${Math.round(averages.recovery)} /100`, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreRole: "Score component · 30%", scoreFormula: "Soma Sleep score", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
   ];
   const selectedDimension = dimensions.find((dimension) => dimension.key === selectedAxis) ?? null;
@@ -278,7 +279,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             <header className={styles.sectionHeader}><h2 id="weekly-zones-heading">Heart-rate zones</h2><div className={styles.sectionHeaderMeta}><span className={styles.supporting}>Daily average · measured days only</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div></header>
             <WeeklyZoneChart summary={weeklyZones} />
           </section>
-        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">No recovery data</h2><p>0 measured days over the last 30 days. Import your signals from Google Health, then return here.</p><p><a className={styles.emptyAction} href="/settings">Check Google Health connection</a></p></div></section>}
+        </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">No recovery data</h2><p>0 measured days over the last 30 days. Import your signals from a connected health source, then return here.</p><p><a className={styles.emptyAction} href="/settings">Check your health connection</a></p></div></section>}
       </section>
     </HealthPageShell>
   </div>;
