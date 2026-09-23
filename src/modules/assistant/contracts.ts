@@ -70,6 +70,7 @@ export const assistantGoalValueSchema = z.object({
 });
 export const assistantGoalInputSchema = z.object({
   label: z.string().trim().min(1).max(500),
+  status: z.enum(["active", "paused", "completed", "cancelled"]).default("active"),
   domain: z.enum(["nutrition", "sleep", "recovery", "effort", "cross_domain", "other"]).nullable().default(null),
   baseline: assistantGoalValueSchema.nullable().default(null), target: assistantGoalValueSchema.nullable().default(null),
   horizon: z.object({ targetDate: z.iso.date().nullable().default(null), description: z.string().trim().min(1).max(300).nullable().default(null) }).nullable().default(null),
@@ -79,9 +80,32 @@ export const assistantGoalInputSchema = z.object({
 });
 export const assistantGoalSetInputSchema = z.object({
   primaryDirection: z.string().trim().min(1).max(240),
+  primaryGoalType: z.enum(["build_muscle", "improve_endurance", "improve_cardio", "general_fitness", "maintain_health", "other"]).nullable().default(null),
   secondaryDirections: z.array(z.string().trim().min(1).max(240)).max(10).default([]),
   goals: z.array(assistantGoalInputSchema).max(100).default([]),
 });
+
+export const assistantGoalRevisionSchema = z.object({
+  primaryDirection: assistantGoalSetInputSchema.shape.primaryDirection.optional(),
+  primaryGoalType: z.enum(["build_muscle", "improve_endurance", "improve_cardio", "general_fitness", "maintain_health", "other"]).nullable().optional(),
+  secondaryDirections: z.array(z.string().trim().min(1).max(240)).max(10).optional(),
+  goalUpdates: z.array(z.object({
+    goalId: z.uuid(),
+    changes: z.object({
+      label: z.string().trim().min(1).max(500).optional(),
+      status: z.enum(["active", "paused", "completed", "cancelled"]).optional(),
+      domain: z.enum(["nutrition", "sleep", "recovery", "effort", "cross_domain", "other"]).nullable().optional(),
+      baseline: assistantGoalValueSchema.nullable().optional(),
+      target: assistantGoalValueSchema.nullable().optional(),
+      horizon: z.object({ targetDate: z.iso.date().nullable().default(null), description: z.string().trim().min(1).max(300).nullable().default(null) }).nullable().optional(),
+      cadence: z.record(z.string(), z.unknown()).nullable().optional(),
+      constraints: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
+      successCriteria: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
+    }).refine((changes) => Object.keys(changes).length > 0, "A goal update cannot be empty."),
+  })).max(100).default([]),
+  addGoals: z.array(assistantGoalInputSchema).max(100).default([]),
+  removeGoalIds: z.array(z.uuid()).max(100).default([]),
+}).refine((value) => value.primaryDirection !== undefined || value.primaryGoalType !== undefined || value.secondaryDirections !== undefined || value.goalUpdates.length > 0 || value.addGoals.length > 0 || value.removeGoalIds.length > 0, "At least one goal change is required.");
 
 export const assistantPlanSectionSchema = z.object({
   domain: z.enum(["overview", "running", "strength", "nutrition", "sleep", "recovery", "other"]),

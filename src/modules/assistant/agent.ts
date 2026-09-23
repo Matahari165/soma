@@ -6,8 +6,11 @@ import { isStepCount, ToolLoopAgent, type ModelMessage } from "ai";
 import type { AssistantQuality } from "./contracts";
 import { SOMA_ASSISTANT_INSTRUCTIONS } from "./prompt";
 import { createGetUserContextTool } from "./tools/get-user-context";
+import { createGetPlanDetailsTool } from "./tools/get-plan-details";
+import { createGetStrongestEffectsTool } from "./tools/get-strongest-effects";
 import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
+import { createManageNutritionTargetsTool } from "./tools/manage-nutrition-targets";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
 
 export const SOMA_ASSISTANT_PROVIDER = "openai";
@@ -19,8 +22,8 @@ const qualitySettings: Record<AssistantQuality, {
   reasoningEffort: OpenAILanguageModelResponsesOptions["reasoningEffort"];
 }> = {
   fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "low" },
-  balanced: { maxOutputTokens: 2_400, maxSteps: 6, reasoningEffort: "medium" },
-  deep: { maxOutputTokens: 4_000, maxSteps: 8, reasoningEffort: "high" },
+  balanced: { maxOutputTokens: 2_400, maxSteps: 10, reasoningEffort: "medium" },
+  deep: { maxOutputTokens: 4_000, maxSteps: 14, reasoningEffort: "high" },
 };
 
 export type SomaAssistantAgent = {
@@ -28,6 +31,7 @@ export type SomaAssistantAgent = {
     text: string;
     finishReason: string;
     totalUsage: unknown;
+    steps?: ReadonlyArray<{ readonly toolResults: ReadonlyArray<{ readonly toolName: string; readonly input: unknown; readonly output: unknown }> }>;
   }>;
 };
 
@@ -45,9 +49,12 @@ export function createSomaAssistantAgent(input: {
     instructions: SOMA_ASSISTANT_INSTRUCTIONS,
     tools: {
       getUserContext: createGetUserContextTool(input),
+      getPlanDetails: createGetPlanDetailsTool(input),
+      getStrongestEffects: createGetStrongestEffectsTool(input),
       querySomaData: createQuerySomaDataTool(input),
       manageUserContext: createManageUserContextTool(input),
       manageMeal: createManageMealTool(input),
+      manageNutritionTargets: createManageNutritionTargetsTool(input),
     },
     stopWhen: isStepCount(settings.maxSteps),
     maxOutputTokens: settings.maxOutputTokens,

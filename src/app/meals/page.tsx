@@ -27,6 +27,7 @@ import { listPreviewMeals, loadPreviewConfirmedMealRecords } from "@/services/me
 import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes";
 import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadDailyNutritionTargetsForUser } from "@/services/nutrition-targets";
+import { loadActiveGoal } from "@/services/active-goals";
 import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
 import styles from "./meals-page.module.css";
@@ -112,9 +113,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
     loadSafely(() => loadDailyNutritionTargetsForUser(user.id, requestedDate)),
     loadSafely(async () => {
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;
-      const result = await createCloudflareAdminClient().from("health_goals").select("goal_type").eq("user_id", user.id).eq("priority", 1).is("ended_on", null).maybeSingle();
-      if (result.error) throw new Error("The nutrition goal could not be loaded.");
-      return result.data?.goal_type;
+      return (await loadActiveGoal(user.id)).type;
     }),
     loadSafely(() => listSupplementDefinitions(user.id)),
     loadSafely(() => listSupplementEntries(user.id, { from: requestedDate, to: requestedDate })),
@@ -130,8 +129,8 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const targets = targetsResult.ok ? targetsResult.value.targets : DEFAULT_NUTRITION_TARGETS;
   const effectiveTargets = targetsResult.ok ? targetsResult.value.effectiveTargets : targets;
   const statesByDate = mealResult.ok ? slotStatesByDate(mealResult.value) : undefined;
-  const balanceOverview = nutritionResult.ok
-    ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.ok ? goalResult.value : null), slotStatesByDate: statesByDate })
+  const balanceOverview = nutritionResult.ok && goalResult.ok
+    ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.value), slotStatesByDate: statesByDate })
     : null;
   const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
   const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];

@@ -7,6 +7,12 @@ import {
   deleteAssistantAttachmentMetadata,
   findAssistantAttachment,
   listAssistantAttachments,
+  loadActiveAssistantPlan,
+  loadActiveAssistantPlans,
+  loadConfirmedAssistantMemories,
+  loadPendingAssistantChanges,
+  proposeAssistantGoalRevision,
+  proposeAssistantPlanVersion,
   saveAssistantGoalSet,
 } from "./index";
 
@@ -59,6 +65,118 @@ describe("assistant attachment repository", () => {
   });
 });
 
+describe("assistant goal revisions", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("changes one goal while preserving the other goals and the confirmed set", async () => {
+    const goalOneId = "00000000-0000-4000-8000-000000000011";
+    const goalTwoId = "00000000-0000-4000-8000-000000000012";
+    const savedSetId = "00000000-0000-4000-8000-000000000013";
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path, request) => {
+      if (path.startsWith("assistant_goal_sets?") && path.includes("status=eq.confirmed")) return [{ id: attachmentId, primary_direction: "Développer la force", primary_goal_type: "build_muscle", secondary_directions: ["Courir"] }] as never;
+      if (path.startsWith("assistant_goals?")) return [
+        { id: goalOneId, label: "Soulever 80 kg", domain: "effort", baseline: null, target: { value: 80, unit: "kg", note: null }, horizon: null, cadence: null, constraints: [], success_criteria: [] },
+        { id: goalTwoId, label: "Courir 20 km", domain: "effort", baseline: null, target: { value: 20, unit: "km", note: null }, horizon: null, cadence: null, constraints: [], success_criteria: [] },
+      ] as never;
+      if (path === "assistant_goal_sets" && request?.method === "POST") return [{ id: savedSetId, status: "draft" }] as never;
+      if (path === "assistant_goals" && request?.method === "POST") return undefined as never;
+      return [] as never;
+    });
+    await proposeAssistantGoalRevision(userId, conversationId, {
+      goalUpdates: [{ goalId: goalTwoId, changes: { target: { value: 15, unit: "km", note: null } } }],
+    });
+    const setInsert = vi.mocked(assistantDatabaseRequest).mock.calls.find(([path]) => path === "assistant_goal_sets");
+    const goalInsert = vi.mocked(assistantDatabaseRequest).mock.calls.find(([path]) => path === "assistant_goals");
+    expect(setInsert?.[1]?.body).toMatchObject({ supersedes_goal_set_id: attachmentId, primary_direction: "Développer la force", primary_goal_type: "build_muscle" });
+    expect(goalInsert?.[1]?.body).toMatchObject([{ label: "Soulever 80 kg", target: { value: 80 } }, { label: "Courir 20 km", target: { value: 15 } }]);
+  });
+});
+
+describe("plans follow the confirmed objective", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const plan = {
+    title: "Progression course", objectiveSummary: "Courir avec régularité",
+    phases: [], detailedThrough: "2026-10-01", reviewOn: "2026-10-02",
+    sections: [{ domain: "running", title: "Séances", content: [{ title: "Sortie facile", description: "Progression graduelle" }] }],
+  };
+
+  it("links a new plan to the current goal even when the model omits its id", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path, request) => {
+      if (path.startsWith("assistant_goal_sets?")) return [{ id: attachmentId, primary_direction: "Améliorer la course", secondary_directions: [] }] as never;
+      if (path.startsWith("assistant_goals?")) return [] as never;
+      if (path === "assistant_plans") return [{ id: conversationId }] as never;
+      if (path.startsWith("assistant_plan_versions?")) return [] as never;
+      if (path === "assistant_plan_versions") return [{ id: crypto.randomUUID(), version: 1, status: "proposed" }] as never;
+      throw new Error(`Unexpected database path: ${path} ${request?.method ?? "GET"}`);
+    });
+    await proposeAssistantPlanVersion({ userId, goalSetId: null, sourceMessageId: conversationId, body: plan });
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls.find(([path]) => path === "assistant_plans")?.[1]?.body).toMatchObject({ goal_set_id: attachmentId });
+  });
+
+  it("rejects a plan explicitly linked to an old goal", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_goal_sets?")) return [{ id: attachmentId, primary_direction: "Améliorer la course", secondary_directions: [] }] as never;
+      if (path.startsWith("assistant_goals?")) return [] as never;
+      throw new Error(`Unexpected database path: ${path}`);
+    });
+    await expect(proposeAssistantPlanVersion({ userId, goalSetId: conversationId, sourceMessageId: conversationId, body: plan })).rejects.toThrow(/outdated goal/);
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls.some(([path]) => path === "assistant_plans")).toBe(false);
+  });
+});
+
+describe("assistant context retrieval", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("filters confirmed memories by their validity dates in the user's calendar day", async () => {
+    vi.mocked(assistantDatabaseRequest).mockResolvedValue([]);
+    await loadConfirmedAssistantMemories(userId, "2026-09-23");
+    const path = vi.mocked(assistantDatabaseRequest).mock.calls[0][0];
+    expect(path).toContain(`user_id=eq.${userId}&status=eq.confirmed`);
+    expect(path).toContain("or(valid_from.is.null,valid_from.lte.2026-09-23)");
+    expect(path).toContain("or(valid_until.is.null,valid_until.gte.2026-09-23)");
+    expect(path).toContain("limit=101");
+  });
+
+  it("loads each active plan's confirmed version without crossing users", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_plans?")) return [{ id: attachmentId, goal_set_id: null, updated_at: "2026-09-23T10:00:00Z" }] as never;
+      if (path.startsWith("assistant_plan_versions?")) return [{ id: conversationId, version: 2, body: { title: "Plan" }, confirmed_at: "2026-09-23T10:00:00Z" }] as never;
+      throw new Error(`Unexpected database path: ${path}`);
+    });
+    const result = await loadActiveAssistantPlans(userId);
+    expect(result.complete).toBe(true);
+    expect(result.activePlans[0].confirmedVersion).toMatchObject({ version: 2 });
+    for (const [path] of vi.mocked(assistantDatabaseRequest).mock.calls) expect(path).toContain(`user_id=eq.${userId}`);
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls[1][0]).toContain(`status=eq.confirmed`);
+  });
+
+  it("does not read a version when the active plan is not owned by this user", async () => {
+    vi.mocked(assistantDatabaseRequest).mockResolvedValue([]);
+    await expect(loadActiveAssistantPlan(userId, attachmentId)).resolves.toBeNull();
+    expect(assistantDatabaseRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("flags an overfull active-plan inventory instead of silently presenting it as complete", async () => {
+    const plans = Array.from({ length: 11 }, (_, index) => ({ id: `plan-${index}`, goal_set_id: null, updated_at: "2026-09-23T10:00:00Z" }));
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => (path.startsWith("assistant_plans?") ? plans : []) as never);
+    const result = await loadActiveAssistantPlans(userId);
+    expect(result).toMatchObject({ complete: false });
+    expect(result.activePlans).toHaveLength(10);
+  });
+
+  it("recovers the concrete goals attached to a pending draft for natural confirmation", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_goal_sets?")) return [{ id: attachmentId, primary_direction: "Force", secondary_directions: ["Course"], updated_at: "2026-09-23T10:00:00Z" }] as never;
+      if (path.startsWith("assistant_goals?")) return [{ position: 0, label: "Courir 30 km", domain: "effort", baseline: null, target: null }] as never;
+      return [] as never;
+    });
+    const result = await loadPendingAssistantChanges(userId);
+    expect(result.goalSets[0]).toMatchObject({ primary_direction: "Force", goals: [{ label: "Courir 30 km" }] });
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls.find(([path]) => path.startsWith("assistant_goals?"))?.[0]).toContain(`user_id=eq.${userId}&goal_set_id=eq.${attachmentId}`);
+  });
+});
+
 describe("assistant goal save", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -85,8 +203,8 @@ describe("assistant goal save", () => {
         if (!storedGoals.length) storedGoals = request.body as Array<Record<string, unknown>>;
         return undefined as never;
       }
-      if (path.startsWith("assistant_goals?")) return storedGoals.map(({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria }) =>
-        ({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria })) as never;
+      if (path.startsWith("assistant_goals?")) return storedGoals.map(({ position, label, status, domain, baseline, target, horizon, cadence, constraints, success_criteria }) =>
+        ({ position, label, status, domain, baseline, target, horizon, cadence, constraints, success_criteria })) as never;
       if (path === "rpc/confirm_assistant_goal_set") {
         if (options.failConfirmation) throw new Error("confirmation unavailable");
         storedSet = { ...storedSet, status: "confirmed", confirmed_by_message_id: confirmationMessageId };

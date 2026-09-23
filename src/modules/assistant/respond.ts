@@ -9,6 +9,7 @@ import { getR2AssistantAttachment } from "@/lib/r2";
 
 import { createSomaAssistantAgent, SOMA_ASSISTANT_MODEL, SOMA_ASSISTANT_PROVIDER, type SomaAssistantAgent } from "./agent";
 import { classifyAssistantQuality } from "./policy";
+import { dataSummaryFromSteps } from "./evidence-summary";
 import { SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
 import {
   appendAssistantMessage,
@@ -322,11 +323,12 @@ export async function respondToAssistant(
     const result = await agent.generate({ messages: history, timeout: 90_000 });
     const text = result.text.trim();
     if (!text) throw new Error("The assistant returned an empty response.");
+    const dataSummary = dataSummaryFromSteps(result.steps);
     const assistantMessage = await deps.repository.appendMessage({
       userId,
       conversationId: conversation.id,
       role: "assistant",
-      parts: [{ type: "text", text }],
+      parts: [{ type: "text", text }, ...(dataSummary ? [dataSummary] : [])],
       parentMessageId: userMessage.id,
     });
     await deps.repository.updateRun(userId, run.id, {
