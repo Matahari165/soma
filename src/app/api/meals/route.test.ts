@@ -59,6 +59,40 @@ describe("meal API local preview flow", () => {
     expect((await listed.json()).meals[0]).toMatchObject({ id: meal.id, status: "confirmed", mouthWarmthIntensity: 3, stomachOverfullIntensity: 0, photos: [{ origin: "prepared" }] });
   });
 
+  it("persists corrected description, calories and protein through the meal API", async () => {
+    process.env.SOMA_LOCAL_PREVIEW = "true";
+    const date = "2026-09-05";
+    const created = await createMeal(new Request("https://soma.example/api/meals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mealDate: date, mealType: "lunch", note: "Riz et légumes, salade, yaourt et fruits, avec une longue description de démonstration des portions et de la préparation du repas complet." }) }));
+    const { meal: initial } = await created.json() as { meal: { id: string } };
+    const path = `https://soma.example/api/meals/${initial.id}`;
+    const context = { params: Promise.resolve({ id: initial.id }) };
+    const analyze = (body: object) => analyzeMeal(new Request(`${path}/analyze`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), context);
+    const confirm = () => patchMeal(new Request(path, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "confirmed" }) }), context);
+    const read = async () => (await (await getMeal(new Request(path), context)).json()).meal;
+
+    expect((await analyze({})).status).toBe(200);
+    expect((await confirm()).status).toBe(200);
+    const before = await read();
+    expect(before.analysis.result.totals.calories.likely).toBe(600);
+    expect(before.analysis.result.totals.proteinGrams.likely).toBe(28);
+
+    const correction = "Ajoute deux œufs : 140 kcal et 12 g de protéines";
+    expect((await analyze({ force: true, correction })).status).toBe(200);
+    expect((await confirm()).status).toBe(200);
+    const after = await read();
+    expect(after.status).toBe("confirmed");
+    expect(after.analysis.result.totals.calories.likely).toBe(740);
+    expect(after.analysis.result.totals.proteinGrams.likely).toBe(40);
+    expect(after.analysis.result.foods[0].name).not.toContain(correction);
+    expect(after.analysis.result.summary).not.toContain(correction);
+    expect(after.analysis.result.calorieAnalysis).toBeNull();
+
+    const listed = await listMeals(new Request(`https://soma.example/api/meals?from=${date}&to=${date}`));
+    const dayMeal = (await listed.json()).meals.find((meal: { id: string }) => meal.id === initial.id);
+    expect(dayMeal.analysis.result.totals.calories.likely).toBe(740);
+    expect(dayMeal.analysis.result.totals.proteinGrams.likely).toBe(40);
+  });
+
   it("keeps the existing date/slot multipart client contract working", async () => {
     process.env.SOMA_LOCAL_PREVIEW = "true";
     const form = new FormData();

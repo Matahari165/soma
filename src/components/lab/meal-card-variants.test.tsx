@@ -52,7 +52,6 @@ describe("LabMealCard nutrition chart", () => {
       onAnalyze={() => undefined}
       onCancelAnalysis={() => undefined}
       onNote={() => undefined}
-      onEdit={() => undefined}
     />);
 
     expect(html).toContain('class="_metricChart_');
@@ -104,7 +103,7 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).not.toContain("Analyze meal");
   });
 
-  it("renders a Modifier button on an analyzed meal", () => {
+  it("renders one disclosure control on an analyzed meal", () => {
     const meal: MealRecord = {
       id: "meal-dinner-analyzed",
       date: "2026-08-31",
@@ -140,10 +139,11 @@ describe("LabMealCard nutrition chart", () => {
       onCorrection={() => undefined}
     />);
 
-    expect(html).toContain("Modifier");
-    expect(html).toContain('aria-label="Modifier Dinner"');
+    expect(html).toContain('aria-label="Déplier Dinner"');
+    expect(html).toContain('aria-controls="meal-dinner-analysis-details"');
+    expect(html).not.toContain("Modifier le repas");
+    expect(html).not.toContain("Analysis details");
     expect(html).toContain('aria-label="Added sugar">S</dt><dd>0g</dd>');
-    expect(html).toContain("px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
     expect(html).toContain("text-xs font-mono");
     expect(html).not.toContain("Poulet et légumes rôtis</p>");
   });
@@ -248,7 +248,7 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain("Dinner");
   });
 
-  it("removes the recording time while retaining the meal date context and Modifier button", () => {
+  it("removes the recording time while retaining the meal disclosure", () => {
     const meal: MealRecord = {
       id: "meal-breakfast-confirmed",
       date: "2026-08-31",
@@ -281,15 +281,13 @@ describe("LabMealCard nutrition chart", () => {
       onAnalyze={() => undefined}
       onCancelAnalysis={() => undefined}
       onNote={() => undefined}
-      onEdit={() => undefined}
     />);
 
     expect(html).not.toContain("Confirmed");
-    expect(html).toContain("Modifier");
+    expect(html).toContain('aria-label="Déplier Breakfast"');
     expect(html).not.toContain("08:30");
     expect(html).not.toContain("08:15");
     expect(html).toContain("animate-fade-in");
-    expect(html).toContain("active:scale-[0.98]");
   });
 
   it("renders Delete meal button in expanded AnalysisDetails when onDeleteMeal is provided", () => {
@@ -336,6 +334,34 @@ describe("LabMealCard nutrition chart", () => {
     expect(openHtml).toContain("text-signal-neg");
     expect(openHtml).toContain("transition-all duration-300 ease-out");
     expect(openHtml).toContain("active:scale-[0.98]");
+  });
+
+  it("keeps the home meal detail focused on portions without repeating the meal description", () => {
+    const meal: MealRecord = {
+      id: "meal-lunch-compact", date: "2026-08-31", slot: "lunch", note: "Poulet et riz au déjeuner", photos: [],
+      analysis: {
+        ingredients: [{ id: "food-1", name: "Poulet", portion: "140 g" }, { id: "food-2", name: "Riz", portion: "180 g" }],
+        summary: "Poulet et riz au déjeuner", calorieAnalysis: "Environ 600 kcal, repas modéré.",
+        calories: { low: 500, likely: 600, high: 700 }, proteinGrams: { low: 30, likely: 40, high: 50 },
+      },
+      mouthHeat: null, stomachLoad: null, status: "confirmed",
+    };
+    const html = renderToStaticMarkup(<AnalysisDetails meal={meal} open detailsId="compact-detail" variant="v1" hideToggle onToggle={() => undefined} onDeleteMeal={() => undefined} />);
+    expect(html).toContain("Composition");
+    expect(html).toContain("140 g");
+    expect(html).toContain("180 g");
+    expect(html).not.toContain("Poulet et riz au déjeuner");
+    expect(html).not.toContain("Environ 600 kcal");
+    expect(html).toContain("Supprimer le repas");
+
+    const withContext = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, analysis: { ...meal.analysis!, summary: "La cuisson à l’huile reste incertaine." } }} open detailsId="context-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withContext).toContain("La cuisson à l’huile reste incertaine.");
+
+    const withOneRepeatedIngredient = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, analysis: { ...meal.analysis!, summary: "Poulet grillé à midi." } }} open detailsId="repeat-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withOneRepeatedIngredient).not.toContain("Poulet grillé à midi.");
+
+    const withAvailablePhoto = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, photos: [{ id: "photo-1", url: "blob:photo-1", origin: "homemade" }] }} open detailsId="photo-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withAvailablePhoto).not.toContain("Photo analysée puis supprimée");
   });
 
   it("sanitizes raw 'Fetch is aborted' error and renders a user-friendly timeout message", () => {
