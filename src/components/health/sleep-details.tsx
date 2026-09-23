@@ -85,10 +85,6 @@ function formatPercent(value: number | null) {
   return value === null || !Number.isFinite(value) ? "—" : `${Math.round(value)}%`;
 }
 
-function formatMinutesOnly(value: number | null) {
-  return value === null || !Number.isFinite(value) ? "—" : `${Math.round(value)} min`;
-}
-
 function normalizedRange(value: number | null | undefined, lower: number, upper: number) {
   if (!measured(value) || upper <= lower) return null;
   return Math.min(1, Math.max(0, (value - lower) / (upper - lower)));
@@ -127,16 +123,6 @@ function comparisonLabel(value: number | null, format: (value: number | null) =>
 
 function averageValueLabel(value: number | null, format: (value: number | null) => string) {
   return measured(value) ? format(value) : undefined;
-}
-
-/**
- * Keep the axis visible when latency is unavailable so the missing state is
- * explicit. If the imported window contains only measured zeros, the axis is
- * omitted because it carries no useful variation.
- */
-export function shouldDisplayLatencyRadar(values: Array<number | null | undefined>) {
-  const measuredValues = values.filter(measured);
-  return measuredValues.length === 0 || measuredValues.some((value) => value > 0);
 }
 
 function normalizedDriver(value: unknown) {
@@ -188,13 +174,11 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const averageSleep = latest ? averageLast30Measured(data.days, "sleep_minutes", latest.metric_date) : null;
   const averageRegularity = latest ? averageLast30Measured(data.days, "sleep_regularity", latest.metric_date) : null;
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
-  const averageLatency = latest ? averageLast30Measured(data.days, "sleep_latency_minutes", latest.metric_date) : null;
   const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
   const recentDays = data.days.slice(-30);
   const durationRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_minutes), SLEEP_RADAR_DURATION_UPPER_MINUTES, 5 * 60);
   const efficiencyRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_efficiency), SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT, 80);
   const regularityRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_regularity), SLEEP_RADAR_REGULARITY_UPPER_PERCENT, 60);
-  const showLatencyRadar = shouldDisplayLatencyRadar(recentDays.map((day) => day.sleep_latency_minutes));
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: latest ? measuredCoverage([latest.sleep_minutes, latest.sleep_efficiency, latest.sleep_regularity]) : 0 });
   const radarDimensions: SleepRadarDisplayDimension[] = latest ? [
     {
@@ -251,20 +235,6 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparisonTone: metricTone(latest.sleep_regularity, averageRegularity, "higher_is_better"),
       sourceLabel: "Google Health",
     },
-    ...(showLatencyRadar ? [{
-        id: "latency",
-        label: "Latency",
-        normalizedValue: invertedObservedRatio(latest.sleep_latency_minutes, recentDays.map((day) => day.sleep_latency_minutes)),
-        valueLabel: formatMinutesOnly(latest.sleep_latency_minutes),
-        averageLabel: averageValueLabel(averageLatency, formatMinutesOnly),
-        definition: "Observed time between going to bed and falling asleep.",
-        readingDirection: "Shorter = better",
-        scoreRole: "Context metric · excluded from Sleep score",
-        comparison: comparison(latest.sleep_latency_minutes, averageLatency),
-        comparisonLabel: comparisonLabel(averageLatency, formatMinutesOnly),
-        comparisonTone: metricTone(latest.sleep_latency_minutes, averageLatency, "lower_is_better"),
-        sourceLabel: "Google Health",
-      }] : []),
     {
       id: "debt",
       label: "Debt",

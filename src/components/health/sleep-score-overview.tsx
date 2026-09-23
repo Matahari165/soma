@@ -47,10 +47,6 @@ function formatContribution(value: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(value);
 }
 
-function formatNormalized(value: number | null | undefined) {
-  return measured(value) ? formatScore(value * 100) : "—";
-}
-
 function scoreDescription(score: number | null) {
   return score === null ? "Sleep score unavailable" : `Sleep score ${formatScore(score)} out of 100`;
 }
@@ -77,16 +73,9 @@ function ScoreBreakdownDetail({ breakdown }: { breakdown: SleepScoreBreakdown | 
   return <>
     <dl className={styles.sleepBreakdownList}>
       {breakdown.components.map((component) => <div className={styles.sleepBreakdownRow} key={component.id}>
-        <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
-        <dd>
-          <span><small>Source</small><strong>{component.sourceValueLabel}</strong></span>
-          <span><small>Normalized</small><strong>{formatNormalized(component.normalizedValue)}<em>/100</em></strong></span>
-          <span><small>Contribution</small><strong>{formatContribution(component.contribution)}<em> pts</em></strong></span>
-        </dd>
-        <dd className={styles.sleepBreakdownFormula}>
-          <span><small>Formula</small><strong>{component.formula}</strong></span>
-          <span><small>Normalization</small><strong>{component.normalization}</strong></span>
-        </dd>
+        <dt>{component.label}</dt>
+        <dd>{component.sourceValueLabel}</dd>
+        <small>{component.weight}%</small>
       </div>)}
     </dl>
   </>;

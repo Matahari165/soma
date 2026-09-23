@@ -7,7 +7,7 @@ import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } fro
 
 import { ActivityDetails, effortComponentDefinitions, normalizeEffortContextValue, normalizeEffortTargetValue } from "./activity-details";
 import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
-import { shouldDisplayLatencyRadar, SleepDetails } from "./sleep-details";
+import { SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
 import { HealthHeroScore } from "./health-page-shell";
 
@@ -122,12 +122,6 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
-  it("does not give an all-zero latency source a misleading radar axis", () => {
-    expect(shouldDisplayLatencyRadar([null, 0, 0])).toBe(false);
-    expect(shouldDisplayLatencyRadar([null, 0, 12])).toBe(true);
-    expect(shouldDisplayLatencyRadar([null, null])).toBe(true);
-  });
-
   it("keeps the effort targets aligned between the radar and its detail", () => {
     const preview = buildPreviewAnalytics();
     const markup = renderToStaticMarkup(createElement(ActivityDetails, {
@@ -192,7 +186,7 @@ describe("health route states", () => {
     expect(markup).not.toContain("Profil du sommeil");
     expect(markup).toContain("Sleep radar");
     expect(markup).toContain("Duration");
-    expect(markup).toContain("Latency");
+    expect(markup).not.toContain("Latency");
     expect(markup).toContain("Sleep score");
     expect(markup).toContain("/100");
     expect(markup).toContain('aria-expanded="false"');
@@ -222,7 +216,7 @@ describe("health route states", () => {
     }));
 
     expect(markup).not.toContain("Benchmark unavailable");
-    expect(markup).toContain("Duration, Regularity, Latency, Debt");
+    expect(markup).toContain("Duration, Regularity, Debt");
     expect(markup).toContain("90");
     expect(markup).not.toContain("health-hero-score-card");
   });

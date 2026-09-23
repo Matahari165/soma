@@ -237,46 +237,39 @@
 .sleepBreakdownList {
   display: grid;
   gap: 0;
-  margin: 16px 0 0;
+  margin: 20px 0 0;
 }
 
 .sleepBreakdownRow {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) minmax(0, 2fr) auto;
+  align-items: baseline;
+  gap: 12px;
   min-width: 0;
   padding: 12px 0;
   border-top: 1px solid var(--sleep-border);
 }
 
 .sleepBreakdownRow dt {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
   color: var(--sleep-primary);
   font: 400 13px/1.35 var(--font-soma-ui), system-ui, sans-serif;
 }
 
-.sleepBreakdownRow dt small,
-.sleepBreakdownRow dd small,
+.sleepBreakdownRow > small,
 .sleepDimensionMetrics dt {
   color: var(--sleep-secondary);
   font: 500 11px/1.35 var(--lab-data-font), monospace;
 }
 
 .sleepBreakdownRow dd {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(76px, .7fr));
-  gap: 12px;
-  margin: 8px 0 0;
-}
-
-.sleepBreakdownRow dd > span {
-  display: grid;
   min-width: 0;
-  gap: 3px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--sleep-primary);
+  font: 400 12px/1.35 var(--lab-data-font), monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-.sleepBreakdownRow dd strong,
-.sleepBreakdownRow dd em,
 .sleepDimensionMetrics dd {
   overflow-wrap: anywhere;
   color: var(--sleep-primary);
@@ -285,29 +278,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sleepBreakdownRow dd em { color: var(--sleep-secondary); }
-
-.sleepBreakdownFormula {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  margin-top: 8px;
-}
-
-.sleepBreakdownFormula > span,
 .sleepScoreAxisMetrics > div {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.sleepBreakdownFormula small,
 .sleepScoreAxisMetrics dt {
   color: var(--sleep-secondary);
   font: 500 11px/1.35 var(--lab-data-font), monospace;
 }
 
-.sleepBreakdownFormula strong,
 .sleepScoreAxisMetrics dd {
   overflow-wrap: anywhere;
   color: var(--sleep-primary);
@@ -504,8 +485,9 @@
   .sleepRadarStage[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
   .sleepDetailPanel { max-height: 0; padding: 0; border: 0; transform: translateY(8px); }
   .sleepDetailPanel[data-open="true"] { max-width: none; max-height: 40rem; padding: 16px 0 0; border-top: 1px solid var(--sleep-border); transform: translateY(0); }
-  .sleepBreakdownRow dd { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .sleepBreakdownFormula,
+  .sleepBreakdownRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .sleepBreakdownRow dd { grid-column: 1 / -1; grid-row: 2; }
+  .sleepBreakdownRow > small { grid-column: 2; grid-row: 1; }
   .sleepScoreAxisMetrics { grid-template-columns: 1fr; }
   .sleepScoreAxisMetrics > div:last-child { grid-column: auto; }
   .sleepDimensionMetrics { gap: 14px 16px; }

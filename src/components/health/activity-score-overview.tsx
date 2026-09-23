@@ -65,7 +65,6 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
   const missing = breakdown.components.filter((component) => component.normalizedValue === null).map((component) => component.label);
   const scoreMismatch = measured(persistedScore) && measured(breakdown.score) && persistedScore !== breakdown.score;
   return <>
-    <p className={styles.detailNote}>Soma calculation · {breakdown.algorithmVersion}</p>
     {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · v3 recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
@@ -156,8 +155,8 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
       <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-score-inline" aria-expanded={scoreOpen} aria-label={`${scoreLabel(score)}. ${scoreOpen ? "Close" : "View"} score breakdown.`} onClick={() => selectDetail("score")}>
         <span id="activity-score-summary-title" className={styles.scoreLabel}>Activity score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
       </button>
-      <div className={styles.scoreInline} id="activity-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} aria-labelledby="activity-score-inline-heading">
-        <div className={styles.scoreInlineInner}><h3 id="activity-score-inline-heading">Activity calculation</h3><BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /></div>
+      <div className={styles.scoreInline} id="activity-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Activity score details">
+        <div className={styles.scoreInlineInner}><BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /></div>
       </div>
       <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>
       <dl className={styles.summaryFacts}><div><dt>Coverage</dt><dd>{coverage === null ? "—" : `${Math.round(coverage * 100)}%`}</dd></div><div><dt>Components</dt><dd>{breakdown ? `${breakdown.components.filter((component) => component.normalizedValue !== null).length}/4` : "—"}</dd></div></dl>
