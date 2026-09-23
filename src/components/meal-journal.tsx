@@ -1089,9 +1089,7 @@ function MealCard({ meal, slot, saving, processingFiles, mutationBusy, disabled 
   useEffect(() => {
     if (!openRequest || inactive) return;
     const frame = requestAnimationFrame(() => {
-      document.getElementById(`meal-${slot}-note`)?.focus({ preventScroll: true });
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      document.getElementById(`meal-${slot}`)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      document.getElementById(`meal-${slot}-note`)?.focus();
     });
     return () => cancelAnimationFrame(frame);
   }, [inactive, openRequest, slot]);
