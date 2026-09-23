@@ -2,7 +2,7 @@ import "server-only";
 
 import { deleteR2Object, getR2JsonObject, putR2JsonObject } from "@/lib/r2";
 
-export const LAB_MATRIX_CACHE_VERSION = "matrix-v16";
+export const LAB_MATRIX_CACHE_VERSION = "matrix-v17";
 const LAB_MATRIX_PERIOD_KEYS = ["15", "30", "90", "all"] as const;
 
 export function labMatrixCacheObjectKey(userId: string, periodKey: string) {

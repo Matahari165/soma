@@ -48,10 +48,7 @@ export async function GET(request: Request) {
       try {
         await syncGoogleCalendar(user.id);
       } catch (error) {
-        console.error("[google-calendar] initial background sync failed", {
-          userId: user.id,
-          error: error instanceof Error ? error.message : "Unknown error.",
-        });
+        console.error("[google-calendar] initial background sync failed", { reason: error instanceof Error ? error.name : "unknown" });
       }
     });
     return clearCookies(NextResponse.redirect(new URL("/?calendar=connected", url.origin)));

@@ -286,7 +286,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     try {
       await releaseCloudflareLock(claimLockKey, job.user_id);
     } catch {
-      console.error("[google-health-sync] claim lock could not be released", { jobId: job.id });
+      console.error("[google-health-sync] claim lock could not be released");
     }
   }
   if (!rawClaimedJob) return { completed: false, progress: job.progress ?? 0, skipped: true, analyticsRefreshed: false, analytics: null };
@@ -318,7 +318,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
         started_at: null,
       }).eq("id", claimedJob.id).eq("status", "running").eq("attempts", claimedState.attempts).select("id").maybeSingle();
       if (migrationResult.error || !migrationResult.data) throw new Error("Google Health sync could not be moved to the bounded data set.");
-      console.info("[google-health-sync] migrated job to bounded data set", { jobId: claimedJob.id, dataTypeCount: dataTypes.length });
+      console.info("[google-health-sync] migrated job to bounded data set");
       return { completed: false, progress: 0, skipped: true, migrated: true, analyticsRefreshed: false, analytics: null };
     }
 
@@ -339,7 +339,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       if (freshnessError) throw new Error("Google Health sync freshness could not be stored.");
       const { error: completionError } = await admin.from("sync_jobs").update({ status: "completed", progress: 100, completed_at: completedAt }).eq("id", claimedJob.id);
       if (completionError) throw new Error("Google Health sync completion could not be stored.");
-      console.info("[google-health-sync] completed pending analytics", { jobId: claimedJob.id, analyticsRequest, analytics });
+      console.info("[google-health-sync] completed pending analytics");
       return { completed: true, progress: 100, analyticsRefreshed: refreshAnalytics, analytics, analyticsRequest };
     }
 
@@ -397,7 +397,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
         started_at: null,
       }).eq("id", claimedJob.id);
       if (phaseError) throw new Error("Google Health materialization state could not be stored.");
-      console.info("[google-health-sync] data import completed; analytics queued", { jobId: claimedJob.id });
+      console.info("[google-health-sync] data import completed; analytics queued");
       return { completed: false, progress: 99, materializing: true, analyticsRefreshed: false, analytics: null };
     }
     const progress = completed ? 100 : calculateProgress(nextTypeIndex, dataTypes.length, new Date(nextCursor.windowStart ?? start), start, end);
@@ -424,16 +424,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     }).eq("id", claimedJob.id);
     if (progressError) throw new Error("Google Health sync progress could not be stored.");
 
-    console.info("[google-health-sync] batch processed", {
-      jobId: claimedJob.id,
-      dataType,
-      importedRecords: records.length,
-      deletedRecords,
-      progress,
-      completed,
-      analyticsRefreshed,
-      analytics,
-    });
+    console.info("[google-health-sync] batch processed", { progress, completed });
     return { completed, progress, imported: records.length, deleted: deletedRecords, dataType, analyticsRefreshed, analytics };
   } catch (error) {
     const classification = classifyGoogleHealthSyncError(error);
@@ -443,9 +434,8 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
       const dataType = dataTypes[typeIndex];
       if (dataType) {
         const { error: stageCleanupError } = await admin.from("google_health_reconciliation_stage").delete().eq("job_id", claimedJob.id).eq("data_type", dataType);
-        if (stageCleanupError) console.error("[google-health-sync] denied data type staging cleanup failed", { jobId: claimedJob.id, dataType });
+        if (stageCleanupError) console.error("[google-health-sync] denied data type staging cleanup failed");
         const nextTypeIndex = typeIndex + 1;
-        const message = error instanceof Error ? error.message : "Google Health denied this data type.";
         const { error: skipError } = await admin.from("sync_jobs").update({
           status: "queued",
           cursor: {
@@ -463,7 +453,7 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
         if (skipError) throw new Error("Denied Google Health data type could not be skipped.");
         const { error: connectionError } = await admin.from("provider_connections").update({ status: "connected", last_error_code: classification.code }).eq("id", claimedJob.connection_id);
         if (connectionError) throw new Error("Google Health connection state could not be updated.");
-        console.warn("[google-health-sync] data type skipped after permission denial", { jobId: claimedJob.id, dataType, error: message });
+        console.warn("[google-health-sync] data type skipped after permission denial", { code: classification.code });
         return { completed: false, progress: Math.min(99, Math.floor((nextTypeIndex / dataTypes.length) * 100)), skippedDataType: dataType, analyticsRefreshed: false, analytics: null };
       }
     }
@@ -482,13 +472,9 @@ export async function processGoogleHealthSyncJob(jobId: string, options: { refre
     }).eq("id", claimedJob.connection_id);
     if (terminal) {
       const { error: stageCleanupError } = await admin.from("google_health_reconciliation_stage").delete().eq("job_id", claimedJob.id);
-      if (stageCleanupError) console.error("[google-health-sync] terminal staging cleanup failed", { jobId: claimedJob.id });
+      if (stageCleanupError) console.error("[google-health-sync] terminal staging cleanup failed");
     }
-    console.error("[google-health-sync] batch failed", {
-      jobId: claimedJob.id,
-      error: message,
-      terminal,
-    });
+    console.error("[google-health-sync] batch failed", { code: classification.code, terminal });
     throw error;
   }
 }
@@ -523,7 +509,7 @@ export async function drainGoogleHealthSyncJob(
     try {
       await releaseCloudflareLock(connectionLockKey, lockOwner);
     } catch {
-      console.error("[google-health-sync] connection lock could not be released", { jobId, connectionId: rawJob.connection_id });
+      console.error("[google-health-sync] connection lock could not be released");
     }
   }
 

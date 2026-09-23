@@ -9,6 +9,8 @@ import { legacyAnalysisToStructured, mealToApi, mealToLegacyApi } from "@/servic
 import { createPreviewMeal, listPreviewMeals } from "@/services/meal-preview";
 import { createMeal, listMeals, MealServiceError, updateMealRecord } from "@/services/meals";
 
+import { mealListRange, shiftDate } from "./meal-list-range";
+
 const listQuerySchema = z.object({
   date: z.iso.date().optional(),
   from: z.iso.date().optional(),
@@ -35,16 +37,17 @@ export async function GET(request: Request) {
   if (!parsed.success || (parsed.data.from && parsed.data.to && parsed.data.from > parsed.data.to)) {
     return NextResponse.json({ error: "The meal date range is invalid." }, { status: 400 });
   }
-  const range = parsed.data.date ? { from: parsed.data.date, to: parsed.data.date } : { from: parsed.data.from, to: parsed.data.to };
+  const range = mealListRange(parsed.data);
+  if (!range) return NextResponse.json({ error: "Select a meal history window of at most 90 days." }, { status: 400 });
   if (isLocalPreviewMode()) {
     const meals = listPreviewMeals(user.id, range);
     if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })), preview: true });
-    return NextResponse.json({ meals: meals.map(mealToApi), preview: true });
+    return NextResponse.json({ meals: meals.map(mealToApi), nextTo: shiftDate(range.from, -1), preview: true });
   }
   try {
     const meals = await listMeals(user.id, range);
     if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })) }, { headers: { "Cache-Control": "private, no-store" } });
-    return NextResponse.json({ meals: meals.map(mealToApi) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ meals: meals.map(mealToApi), nextTo: shiftDate(range.from, -1) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return serviceError(error);
   }

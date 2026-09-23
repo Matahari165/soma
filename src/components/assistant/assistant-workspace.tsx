@@ -489,7 +489,7 @@ export function AssistantWorkspace() {
       </aside>
 
       <section className={styles.conversation} aria-label="Conversation avec Soma">
-        <div className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} aria-live="polite" aria-busy={loadingConversation || sending}>
+        <div className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Transcript de la conversation" aria-live="polite" aria-relevant="additions" aria-busy={loadingConversation || sending}>
           {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty ? (
             <div className={styles.welcome}>
               <span className={styles.welcomeLabel}>Calibration initiale</span>

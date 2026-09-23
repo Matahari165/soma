@@ -253,7 +253,7 @@ export async function GET(request: Request) {
     automatic = await queueAutomaticJobs();
     await queueWebhookJobs();
   } catch (error) {
-    console.error("[api/cron/sync] sync queue failed", { error: error instanceof Error ? error.message : "Unknown queue error." });
+    console.error("[api/cron/sync] sync queue failed", { reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ error: "Google Health sync could not be scheduled." }, { status: 500 });
   }
   const admin = createCloudflareAdminClient();
@@ -307,7 +307,7 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json({ automatic, processed: [], calendar: await syncGoogleCalendar(calendarConnection.user_id) });
   } catch (error) {
-    console.error("[api/cron/sync] calendar update failed", { userId: calendarConnection.user_id, error: error instanceof Error ? error.message : "Unknown error." });
+    console.error("[api/cron/sync] calendar update failed", { reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ automatic, processed: [], calendar: { error: true } });
   }
 }

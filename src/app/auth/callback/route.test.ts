@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cookies } from "next/headers";
-
 import { createSession, hasCompletedOnboarding, upsertGoogleUser } from "@/lib/cloudflare/session";
 
 import { GET } from "./route";
@@ -41,12 +40,10 @@ beforeEach(() => {
     .mockResolvedValueOnce(new Response(JSON.stringify({ sub: "google-subject", email: "user@example.com", name: "User" }), { status: 200 })));
 });
 
-describe("Google OAuth callback", () => {
+describe("Google OAuth Web callback", () => {
   it("sends a returning user to the requested application page", async () => {
     vi.mocked(hasCompletedOnboarding).mockResolvedValue(true);
-
     const response = await GET(new Request("https://preview.soma.example/auth/callback?code=code&state=expected-state"));
-
     expect(response.headers.get("location")).toBe("https://soma.example/lab");
     const tokenRequest = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
     expect(new URLSearchParams(String(tokenRequest.body)).get("redirect_uri")).toBe("https://soma.example/auth/callback");
@@ -55,9 +52,7 @@ describe("Google OAuth callback", () => {
 
   it("sends a new user to onboarding", async () => {
     vi.mocked(hasCompletedOnboarding).mockResolvedValue(false);
-
     const response = await GET(new Request("https://soma.example/auth/callback?code=code&state=expected-state"));
-
     expect(response.headers.get("location")).toBe("https://soma.example/onboarding");
   });
 
@@ -71,25 +66,22 @@ describe("Google OAuth callback", () => {
       delete: deleteCookie,
     } as never);
     vi.mocked(hasCompletedOnboarding).mockResolvedValue(true);
-
     const response = await GET(new Request("https://soma.example/auth/callback?code=code&state=expected-state"));
-
     expect(response.headers.get("location")).toBe("https://soma.example/");
   });
 
-  it("rejects an invalid state without contacting Google", async () => {
+  it("rejects an unrelated OAuth state without clearing a valid transaction", async () => {
     const response = await GET(new Request("https://soma.example/auth/callback?code=code&state=wrong-state"));
-
     expect(new URL(response.headers.get("location") as string).searchParams.get("error")).toBe("oauth_state");
     expect(deleteCookie).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("clears the web transaction when Google reports an error", async () => {
+  it("clears the web transaction on provider cancellation without contacting Google", async () => {
     const response = await GET(new Request("https://soma.example/auth/callback?error=access_denied&state=expected-state"));
-
     expect(new URL(response.headers.get("location") as string).searchParams.get("error")).toBe("cancelled");
     expect(deleteCookie).toHaveBeenCalledTimes(3);
     expect(fetch).not.toHaveBeenCalled();
+    expect(deleteCookie).toHaveBeenCalledWith("soma_oauth_state");
   });
 });

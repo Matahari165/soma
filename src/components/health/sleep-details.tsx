@@ -7,7 +7,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 import styles from "./sleep-redesign.module.css";
 import { HealthPageShell } from "./health-page-shell";
 import { SleepStageDistribution } from "./health-charts";
-import { averageLast30Measured, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatDurationMinutes, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 import { SleepScoreOverview, type SleepScoreBreakdown, type SleepScoreComponent } from "./sleep-score-overview";
 import type { SleepRadarDimension } from "./sleep-radar";
@@ -48,7 +48,6 @@ function restorativeSleepPoints(days: HealthMetricDay[]) {
 function hasSleepMeasurement(day: HealthMetricDay) {
   return [
     day.sleep_minutes,
-    day.sleep_need_minutes,
     day.sleep_efficiency,
     day.sleep_regularity,
     day.sleep_latency_minutes,
@@ -167,6 +166,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
   const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
   const recentDays = data.days.slice(-30);
+  const sourceLabel = healthSourceLabel(latest);
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: latest ? measuredCoverage([latest.sleep_minutes, latest.sleep_efficiency, latest.sleep_regularity]) : 0 });
   const radarDimensions: SleepRadarDisplayDimension[] = latest ? [
     {
@@ -186,7 +186,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_minutes, averageSleep),
       comparisonLabel: comparisonLabel(averageSleep, formatDurationMinutes),
       comparisonTone: metricTone(latest.sleep_minutes, averageSleep, "higher_is_better"),
-      sourceLabel: "Google Health",
+      sourceLabel,
     },
     {
       id: "efficiency",
@@ -205,7 +205,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_efficiency, averageEfficiency),
       comparisonLabel: comparisonLabel(averageEfficiency, formatPercent),
       comparisonTone: metricTone(latest.sleep_efficiency, averageEfficiency, "higher_is_better"),
-      sourceLabel: "Google Health",
+      sourceLabel,
     },
     {
       id: "regularity",
@@ -224,7 +224,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
       comparison: comparison(latest.sleep_regularity, averageRegularity),
       comparisonLabel: comparisonLabel(averageRegularity, formatPercent),
       comparisonTone: metricTone(latest.sleep_regularity, averageRegularity, "higher_is_better"),
-      sourceLabel: "Google Health",
+      sourceLabel,
     },
     {
       id: "debt",
@@ -268,7 +268,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Stage distribution</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
           <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>
-      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from Google Health, then return here.</p><p><a href="/settings">Check Google Health connection</a></p></div></section>}
+      </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from a connected health source, then return here.</p><p><a href="/settings">Check your health connection</a></p></div></section>}
     </section>
   </HealthPageShell></div>;
 }

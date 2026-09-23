@@ -85,8 +85,7 @@ export async function findCredentialsByEmail(rawEmail: string): Promise<Credenti
     const admin = createCloudflareAdminClient();
     const result = await admin.from("soma_credentials").select("*").eq("email", email).maybeSingle();
     if (result.error) {
-      // If table does not exist or error, fallback to null
-      return null;
+      throw new Error("Credential storage unavailable.");
     }
     return (result.data as CredentialsRecord) ?? null;
   }
@@ -98,7 +97,7 @@ export async function findCredentialsByEmail(rawEmail: string): Promise<Credenti
     ).bind(email).first<CredentialsRecord>();
     return row ?? null;
   } catch {
-    return null;
+    throw new Error("Credential storage unavailable.");
   }
 }
 

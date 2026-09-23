@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = fileURLToPath(new URL("../", import.meta.url));
-const proxySource = readFileSync(`${sourceRoot}/middleware.ts`, "utf8");
+const proxySource = readFileSync(`${sourceRoot}/proxy.ts`, "utf8");
 const vercelConfig = readFileSync(`${sourceRoot}/../vercel.json`, "utf8");
 
 function applicationSources(directory: string): string[] {

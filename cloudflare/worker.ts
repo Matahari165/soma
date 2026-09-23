@@ -31,11 +31,11 @@ const worker = {
       }
 
       const jobParam = url.searchParams.get("job");
-      let jobsToRun: CronJobName[] = ["meal-analysis", "sync"];
-      if (jobParam === "meal-analysis" || jobParam === "sync" || jobParam === "archive-health") {
+      let jobsToRun: CronJobName[] = ["meal-analysis", "sync", "account-deletion"];
+      if (jobParam === "meal-analysis" || jobParam === "sync" || jobParam === "archive-health" || jobParam === "account-deletion") {
         jobsToRun = [jobParam];
       } else if (jobParam === "all") {
-        jobsToRun = ["meal-analysis", "sync", "archive-health"];
+        jobsToRun = ["meal-analysis", "sync", "archive-health", "account-deletion"];
       }
 
       const outcome = await runCronPipeline(jobsToRun, env);
@@ -49,7 +49,7 @@ const worker = {
   },
 
   async scheduled(controller: ScheduledControllerLike, env: WorkerEnv): Promise<void> {
-    const jobs: CronJobName[] = ["meal-analysis", "sync"];
+    const jobs: CronJobName[] = ["meal-analysis", "sync", "account-deletion"];
     if (isArchiveHealthSlot(controller.scheduledTime)) {
       jobs.push("archive-health");
     }

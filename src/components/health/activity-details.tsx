@@ -10,13 +10,13 @@ import { ActivityBenchmarks } from "./activity-benchmarks";
 import { ActivityHistory } from "./activity-history";
 import type { ActivityRadarDimension } from "./activity-radar";
 import { HealthPageShell } from "./health-page-shell";
-import { averageLast30Measured, formatAverage, latestSourceMeasuredAt, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, formatAverage, healthSourceLabel, latestSourceMeasuredAt, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
 import styles from "./activity-redesign.module.css";
 
 type EffortComponentId = "zoneMinutes" | "exerciseMinutes" | "activeEnergyKcal" | "steps";
 type NumericHealthMetricKey = {
-  [Key in keyof HealthMetricDay]: HealthMetricDay[Key] extends number | null ? Key : never
+  [Key in keyof HealthMetricDay]-?: NonNullable<HealthMetricDay[Key]> extends number ? Key : never
 }[keyof HealthMetricDay];
 type EffortComponentDefinition = { id: EffortComponentId; label: string; target: number; targetLabel: string; weight: number; unit: string; key: NumericHealthMetricKey; formula: string };
 
@@ -133,6 +133,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const regularity = activityRegularity(activityDays.slice(-28).map((day) => ({ steps: day.steps, activeZoneMinutes: day.zone_minutes, activeMinutes: day.active_minutes, effortScore: effortScores.findLast((item) => item.score_date === day.metric_date)?.score ?? null })));
   const scoreCoverage = score === null ? null : scoreBreakdown?.coverage ?? null;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: scoreCoverage ?? 0 });
+  const sourceLabel = healthSourceLabel(latest);
   const radarDimensions: ActivityRadarDimension[] = latest ? [...effortComponents.map((component) => {
     const value = latest[component.key] as number | null;
     const average = component.id === "steps" ? averages.steps : component.id === "zoneMinutes" ? averages.zoneMinutes : component.id === "exerciseMinutes" ? averages.exerciseMinutes : averages.activeCalories;
@@ -141,7 +142,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
       id: component.id, label: component.label, normalizedValue: breakdown?.normalizedValue ?? null, valueLabel: formatComponentValue(value, component.unit), averageLabel: comparisonLabel(average, component.unit),
       definition: component.id === "zoneMinutes" ? "Cumulative time in measured intensity zones." : component.id === "exerciseMinutes" ? "Exercise duration recorded by health source." : component.id === "activeEnergyKcal" ? "Active energy estimated by health source." : "Number of steps recorded during the day.",
       readingDirection: "Higher = more load achieved", scoreRole: `Activity score component · ${component.weight}%`, scoreWeight: component.weight, scoreFormula: component.formula, scoreNormalization: "diminishing returns, then weighting", scoreContribution: breakdown?.contribution ?? null, comparison: comparison(value, average), comparisonLabel: comparisonLabel(average, component.unit), comparisonTone: metricTone(value, average, "higher_is_better"),
-      sourceLabel: "Google Health",
+      sourceLabel,
     };
   }), {
     id: "weeklyLoad",
@@ -171,7 +172,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
             { id: "active-days", label: "Active days · 28d", value: regularity.activeDayRate === null ? "—" : `${regularity.activeDayRate}%`, explanation: "Nombre de jours actifs divisé par le nombre de jours observés sur les 28 derniers jours. Un jour est actif avec au moins 7 500 pas, 20 minutes en zone active ou 30 minutes d’activité. Les jours sans mesure sont exclus." },
           ]} /></section>
           <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} aria-labelledby="activity-trends-heading"><header className={styles.sectionHeader}><h2 id="activity-trends-heading">Graphiques</h2><span>30 days</span></header><div className={styles.trendGrid}><MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Weekly load" points={points(activityDays, "weekly_load")} direction="context_only" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" barAggregation="week" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Activity consistency" points={points(activityDays, "activity_consistency_28d")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /></div></section>
-        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No recent daily measurement</h2><p>No measured day was found over the last 30 days. Older workouts remain available below.</p><p><a href="/settings">Check Google Health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />}</>}
+        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No recent daily measurement</h2><p>No measured day was found over the last 30 days. Older workouts remain available below.</p><p><a href="/settings">Check your health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />}</>}
       </section>
     </HealthPageShell>
   </div>;

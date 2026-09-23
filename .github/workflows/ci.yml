@@ -23,3 +23,28 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+
+  migration-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: createdb -h localhost -U postgres soma_migration_smoke
+        env:
+          PGPASSWORD: smoke
+      - run: bash scripts/verify-critical-migrations.sh
+        env:
+          SOMA_MIGRATION_SMOKE_DATABASE_URL: postgresql://postgres:smoke@localhost:5432/soma_migration_smoke

@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
 import MealJournal from "./meal-journal";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+
 const date = "2026-08-31";
 
 afterEach(() => {
@@ -40,6 +42,27 @@ describe("MealJournal note focus", () => {
     expect(nextInputElement).toBe(inputElement);
     expect(document.activeElement).toBe(inputElement);
     expect(nextInputElement?.value).toBe("P");
+
+    await act(async () => root.unmount());
+  });
+
+  it("synchronizes the selected date when a route passes a new date", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ targets: DEFAULT_NUTRITION_TARGETS })));
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const firstDate = "2026-08-30";
+    const nextDate = "2026-08-31";
+
+    await act(async () => {
+      root.render(<MealJournal variant="meals" date={firstDate} today={nextDate} initialData={{ date: firstDate, meals: {} }} />);
+    });
+    expect(container.querySelector<HTMLInputElement>("#meal-date-picker")?.value).toBe(firstDate);
+
+    await act(async () => {
+      root.render(<MealJournal variant="meals" date={nextDate} today={nextDate} initialData={{ date: nextDate, meals: {} }} />);
+    });
+    expect(container.querySelector<HTMLInputElement>("#meal-date-picker")?.value).toBe(nextDate);
 
     await act(async () => root.unmount());
   });
