@@ -1003,10 +1003,11 @@ describe("apiMealToRecord", () => {
       ingredients: [{
         id: "food-1",
         sourceId: "food-1",
-        name: "Jus",
+        name: "Boisson alcoolisée",
         portion: "250 ml",
         estimatedGrams: null,
-        countedInTotals: true,
+        countedInTotals: false,
+        alcoholic: true,
         novaGroup: 4,
         sugarExposure: { concentrated: true, liquid: true },
         qualityProperties: [],
@@ -1017,7 +1018,7 @@ describe("apiMealToRecord", () => {
       proteinGrams: { low: null, high: null },
     });
 
-    expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+    expect(payload.foods[0]).toMatchObject({ id: "food-1", alcoholic: true, countedInTotals: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 
   it("renders lab meal card in V1 with ingredients, nutrition bars, and no repeated dish label", () => {

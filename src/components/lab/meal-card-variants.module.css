@@ -1095,6 +1095,51 @@
   margin: 0;
 }
 
+.compactAnalysisDetails {
+  gap: 10px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--lab-border, #292929);
+  background: transparent;
+}
+
+.analysisDetailsHeading {
+  margin: 0;
+  color: var(--lab-text-primary, #f1f1f1);
+  font: 500 12px/1.4 var(--font-soma-ui), sans-serif;
+}
+
+.compactAnalysisDetails ul {
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compactAnalysisDetails li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.analysisIngredientPortion {
+  flex: 0 0 auto;
+  color: var(--lab-text-secondary, #aaaaaa);
+  font: 400 12px/1.5 var(--lab-data-font, var(--font-soma-mono)), monospace;
+  white-space: nowrap;
+}
+
+.analysisDetailsSummary {
+  color: var(--lab-text-primary, #f1f1f1);
+  overflow-wrap: anywhere;
+}
+
+.analysisDetailsEvidence {
+  color: var(--lab-text-secondary, #aaaaaa);
+  font-size: 12px;
+}
+
 .analysisDetailsNote {
   display: grid;
   gap: 3px;

@@ -336,6 +336,31 @@ describe("LabMealCard nutrition chart", () => {
     expect(openHtml).toContain("active:scale-[0.98]");
   });
 
+  it("keeps the home meal detail focused on portions without repeating the meal description", () => {
+    const meal: MealRecord = {
+      id: "meal-lunch-compact", date: "2026-08-31", slot: "lunch", note: "Poulet et riz au déjeuner", photos: [],
+      analysis: {
+        ingredients: [{ id: "food-1", name: "Poulet", portion: "140 g" }, { id: "food-2", name: "Riz", portion: "180 g" }],
+        summary: "Poulet et riz au déjeuner", calorieAnalysis: "Environ 600 kcal, repas modéré.",
+        calories: { low: 500, likely: 600, high: 700 }, proteinGrams: { low: 30, likely: 40, high: 50 },
+      },
+      mouthHeat: null, stomachLoad: null, status: "confirmed",
+    };
+    const html = renderToStaticMarkup(<AnalysisDetails meal={meal} open detailsId="compact-detail" variant="v1" hideToggle onToggle={() => undefined} onDeleteMeal={() => undefined} />);
+    expect(html).toContain("Composition");
+    expect(html).toContain("140 g");
+    expect(html).toContain("180 g");
+    expect(html).not.toContain("Poulet et riz au déjeuner");
+    expect(html).not.toContain("Environ 600 kcal");
+    expect(html).toContain("Supprimer le repas");
+
+    const withContext = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, analysis: { ...meal.analysis!, summary: "La cuisson à l’huile reste incertaine." } }} open detailsId="context-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withContext).toContain("La cuisson à l’huile reste incertaine.");
+
+    const withAvailablePhoto = renderToStaticMarkup(<AnalysisDetails meal={{ ...meal, photos: [{ id: "photo-1", url: "blob:photo-1", origin: "homemade" }] }} open detailsId="photo-detail" variant="v1" hideToggle onToggle={() => undefined} />);
+    expect(withAvailablePhoto).not.toContain("Photo analysée puis supprimée");
+  });
+
   it("sanitizes raw 'Fetch is aborted' error and renders a user-friendly timeout message", () => {
     const meal: MealRecord = {
       id: "meal-error-test",

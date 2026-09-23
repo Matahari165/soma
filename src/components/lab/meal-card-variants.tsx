@@ -136,6 +136,16 @@ export function AnalysisDetails({
     : variant === "v2"
       ? styles.v2DetailsToggle
       : styles.v3DetailsToggle;
+  const ingredients = meal.analysis?.ingredients ?? [];
+  const summary = meal.analysis?.summary?.trim() ?? "";
+  const normalizeText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normalizedSummary = normalizeText(summary);
+  const repeatedIngredients = ingredients.filter((ingredient) => {
+    const name = normalizeText(ingredient.name);
+    return Boolean(name) && normalizedSummary.includes(name);
+  }).length;
+  const usefulSummary = summary && (ingredients.length === 0 || (normalizedSummary !== normalizeText(meal.note) && repeatedIngredients < 2)) ? summary : null;
+  const photoEvidenceDeleted = meal.photos.some((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url);
 
   return (
     <div className={`${styles.analysisDetails} transition-all duration-300 ease-out`}>
@@ -151,22 +161,27 @@ export function AnalysisDetails({
       </button>}
 
       {open && (
-        <div id={detailsId} className={`${styles.analysisDetailsPanel} transition-all duration-300 ease-out animate-fade-in`}>
-          {meal.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
+        <div id={detailsId} className={`${styles.analysisDetailsPanel} ${hideToggle ? styles.compactAnalysisDetails : ""} transition-all duration-300 ease-out animate-fade-in`}>
+          {hideToggle && ingredients.length > 0 && <h4 className={styles.analysisDetailsHeading}>Composition</h4>}
+          {ingredients.length > 0 && (
             <ul>
-              {meal.analysis.ingredients.map((ing, idx) => (
+              {ingredients.map((ing, idx) => (
                 <li key={ing.id || idx}>
-                  {ing.portion ? `${ing.portion} ` : ""}{ing.name}
+                  {hideToggle ? <><span>{ing.name}</span>{ing.portion && <span className={styles.analysisIngredientPortion}>{ing.portion}</span>}</> : <>{ing.portion ? `${ing.portion} ` : ""}{ing.name}</>}
                 </li>
               ))}
             </ul>
           )}
-          {meal.note && <p className={styles.analysisDetailsNote}><strong>Day note</strong>{meal.note}</p>}
-          {meal.analysis?.summary && <p className={styles.analysisDetailsNote}><strong>Analysis</strong>{meal.analysis.summary}</p>}
-          {((meal.status === "confirmed" && meal.photos.length > 0) || meal.photos.some((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url)) && (
-            <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>
-          )}
-          {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+          {hideToggle ? <>
+            {usefulSummary && <p className={styles.analysisDetailsSummary}>{usefulSummary}</p>}
+            {!ingredients.length && !usefulSummary && meal.note && <p className={styles.analysisDetailsSummary}>{meal.note}</p>}
+            {photoEvidenceDeleted && <p className={styles.analysisDetailsEvidence}>Photo analysée puis supprimée.</p>}
+          </> : <>
+            {meal.note && <p className={styles.analysisDetailsNote}><strong>Day note</strong>{meal.note}</p>}
+            {summary && <p className={styles.analysisDetailsNote}><strong>Analysis</strong>{summary}</p>}
+            {photoEvidenceDeleted && <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>}
+            {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+          </>}
           {extra}
           {onDeleteMeal && (
             <div className="pt-3 mt-3 border-t border-hairline flex justify-end">
@@ -177,7 +192,7 @@ export function AnalysisDetails({
                 onClick={onDeleteMeal}
               >
                 <Trash2 size={13} aria-hidden="true" />
-                <span>Delete meal</span>
+                <span>{hideToggle ? "Supprimer le repas" : "Delete meal"}</span>
               </button>
             </div>
           )}

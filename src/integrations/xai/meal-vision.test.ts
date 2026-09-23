@@ -78,10 +78,23 @@ describe("xAI meal vision contract", () => {
       expect(prompt).toContain("bonbons");
       expect(prompt).toContain("whole_food");
     }
+    for (const prompt of [textPrompt, imagePrompt]) {
+      expect(prompt).toContain("summary est obligatoire");
+      expect(prompt).toContain("160 caractères maximum");
+      expect(prompt).toContain("calorieAnalysis doit être null");
+      expect(prompt).not.toContain("appréciation sobre (léger, modéré, copieux)");
+    }
     expect(imagePrompt).toContain("éléments différents");
     expect(imagePrompt).toContain("angles différents");
     expect(imagePrompt).toContain("evidencePhotoIds");
     expect(imagePrompt).toContain("null signifie indisponible");
+  });
+
+  it("asks for a complete concise summary after a correction without changing the JSON contract", () => {
+    const prompt = makeTextPrompt({ mealType: "lunch", mealDate: "2026-09-12", note: "Poulet et riz", correction: "Ajouter deux œufs" });
+    expect(prompt).toContain("Réécris summary pour décrire le repas complet après correction");
+    expect(prompt).toContain("Garde calorieAnalysis à null");
+    expect(mealAnalysisJsonSchema().required).toContain("calorieAnalysis");
   });
 
   it("rejects a photo evidence alias that was not supplied with the request", async () => {
@@ -185,6 +198,7 @@ describe("xAI meal vision contract", () => {
     expect(body.instructions).toContain("bonbons");
     expect(body.instructions).toContain("whole_food");
     expect(body.input[0]?.content[0]?.text).toContain("Riz, légumes et poulet");
+    expect(body.input[0]?.content[0]?.text).toContain("calorieAnalysis doit être null");
   });
 
   it("sends the note and all photos in one structured vision request", async () => {

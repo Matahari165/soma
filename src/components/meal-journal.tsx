@@ -644,6 +644,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       parentId: ingredient.parentId ?? null,
       course: ingredient.course ?? null,
       countedInTotals: ingredient.countedInTotals,
+      alcoholic: ingredient.alcoholic,
       foodGroups: ingredient.foodGroups,
       varietyKey: ingredient.varietyKey ?? null,
       evidence: ingredient.evidence,
