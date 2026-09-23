@@ -44,10 +44,6 @@ function formatScore(value: number | null | undefined) {
   return measured(value) ? Math.round(value).toLocaleString("en-US") : "—";
 }
 
-function formatNormalized(value: number | null) {
-  return measured(value) ? `${Math.round(value * 100)} /100` : "—";
-}
-
 function formatContribution(value: number | null) {
   return measured(value) ? `${value.toFixed(1).replace(".0", "")} pts` : "—";
 }
@@ -69,12 +65,11 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
         <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
-        <dd><span><small>Measured</small><strong>{component.sourceValueLabel}</strong></span><span><small>Target</small><strong>{component.targetLabel}</strong></span><span><small>Visual gauge</small><strong>{formatNormalized(component.normalizedValue)}</strong></span><span><small>Sub-score</small><strong>{formatNormalized(component.scoreNormalizedValue ?? component.normalizedValue)}</strong></span><span><small>Contribution</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
-        <dd className={styles.breakdownFormula}><span>{component.formula}</span><span>{component.normalization}</span></dd>
+        <dd><span><small>Mesuré</small><strong>{component.sourceValueLabel}</strong></span><span><small>Repère</small><strong>{component.targetLabel}</strong></span><span><small>Points</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
       </div>)}
     </dl>
-    {missing.length > 0 && <p className={styles.detailFootnote}>Unavailable: {missing.join(", ")}. Observed weights are renormalized.</p>}
-    {breakdown.coverage < 1 && missing.length === 0 && <p className={styles.detailFootnote}>Score coverage: {Math.round(breakdown.coverage * 100)}%. Observed weights are renormalized.</p>}
+    {missing.length > 0 && <p className={styles.detailFootnote}>Données absentes : {missing.join(", ")}. Le score utilise les mesures disponibles.</p>}
+    {breakdown.coverage < 1 && missing.length === 0 && <p className={styles.detailFootnote}>Couverture du score : {Math.round(breakdown.coverage * 100)} %.</p>}
   </>;
 }
 
