@@ -635,7 +635,6 @@ export function LabMealCard({
             </div>
           </div>
           {photoStrip}
-          {confirmAction}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
             <p className={`text-xs text-content-tertiary font-mono ${styles.personalLabIngredients}`}>
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
