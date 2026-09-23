@@ -13,8 +13,11 @@ import { SleepScoreOverview, type SleepScoreBreakdown, type SleepScoreComponent 
 import type { SleepRadarDimension } from "./sleep-radar";
 
 const SLEEP_RADAR_DURATION_UPPER_MINUTES = 8 * 60 + 30;
+const SLEEP_RADAR_DURATION_LOWER_MINUTES = 5 * 60;
 const SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT = 100;
+const SLEEP_RADAR_EFFICIENCY_LOWER_PERCENT = 70;
 const SLEEP_RADAR_REGULARITY_UPPER_PERCENT = 100;
+const SLEEP_RADAR_REGULARITY_LOWER_PERCENT = 50;
 
 type RadarComparison = "up" | "down" | "equal" | null;
 type SleepRadarDisplayDimension = SleepRadarDimension & {
@@ -88,18 +91,6 @@ function formatPercent(value: number | null) {
 function normalizedRange(value: number | null | undefined, lower: number, upper: number) {
   if (!measured(value) || upper <= lower) return null;
   return Math.min(1, Math.max(0, (value - lower) / (upper - lower)));
-}
-
-/**
- * Radar-only display domain. The score keeps its own exact normalization; this
- * range makes ordinary nights readable without turning a rare zero into the
- * lower bound for every other night.
- */
-function adaptiveRadarLower(values: Array<number | null | undefined>, upper: number, defaultLower: number) {
-  const finitePositive = values.filter((value): value is number => measured(value) && value > 0 && value < upper).sort((a, b) => a - b);
-  if (!finitePositive.length) return defaultLower;
-  const percentileIndex = Math.floor((finitePositive.length - 1) * 0.1);
-  return Math.max(0, Math.min(defaultLower, finitePositive[percentileIndex]));
 }
 
 function invertedObservedRatio(value: number | null | undefined, values: Array<number | null>) {
@@ -176,17 +167,15 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   const averageEfficiency = latest ? averageLast30Measured(data.days, "sleep_efficiency", latest.metric_date) : null;
   const averageDebt = latest ? averageLast30Measured(data.days, "cumulative_sleep_debt_minutes", latest.metric_date) : null;
   const recentDays = data.days.slice(-30);
-  const durationRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_minutes), SLEEP_RADAR_DURATION_UPPER_MINUTES, 5 * 60);
-  const efficiencyRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_efficiency), SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT, 80);
-  const regularityRadarLower = adaptiveRadarLower(recentDays.map((day) => day.sleep_regularity), SLEEP_RADAR_REGULARITY_UPPER_PERCENT, 60);
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage: latest ? measuredCoverage([latest.sleep_minutes, latest.sleep_efficiency, latest.sleep_regularity]) : 0 });
   const radarDimensions: SleepRadarDisplayDimension[] = latest ? [
     {
       id: "duration",
       label: "Duration",
-      normalizedValue: normalizedRange(latest.sleep_minutes, durationRadarLower, SLEEP_RADAR_DURATION_UPPER_MINUTES),
+      normalizedValue: normalizedRange(latest.sleep_minutes, SLEEP_RADAR_DURATION_LOWER_MINUTES, SLEEP_RADAR_DURATION_UPPER_MINUTES),
       valueLabel: formatDurationMinutes(latest.sleep_minutes),
       averageLabel: averageValueLabel(averageSleep, formatDurationMinutes),
+      chartRangeLabel: "5 h – 8 h 30 min",
       definition: "Measured sleep duration compared to estimated need for this night.",
       readingDirection: "Closer to estimated need = better",
       scoreRole: "Sleep score component · 70%",
@@ -202,9 +191,10 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     {
       id: "efficiency",
       label: "Efficiency",
-      normalizedValue: normalizedRange(latest.sleep_efficiency, efficiencyRadarLower, SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT),
+      normalizedValue: normalizedRange(latest.sleep_efficiency, SLEEP_RADAR_EFFICIENCY_LOWER_PERCENT, SLEEP_RADAR_EFFICIENCY_UPPER_PERCENT),
       valueLabel: formatPercent(latest.sleep_efficiency),
       averageLabel: averageValueLabel(averageEfficiency, formatPercent),
+      chartRangeLabel: "70 % – 100 %",
       definition: "Proportion of time in bed spent asleep, provided by health source.",
       readingDirection: "Higher = better",
       scoreRole: "Sleep score component · 10%",
@@ -220,9 +210,10 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
     {
       id: "regularity",
       label: "Regularity",
-      normalizedValue: normalizedRange(latest.sleep_regularity, regularityRadarLower, SLEEP_RADAR_REGULARITY_UPPER_PERCENT),
+      normalizedValue: normalizedRange(latest.sleep_regularity, SLEEP_RADAR_REGULARITY_LOWER_PERCENT, SLEEP_RADAR_REGULARITY_UPPER_PERCENT),
       valueLabel: formatPercent(latest.sleep_regularity),
       averageLabel: averageValueLabel(averageRegularity, formatPercent),
+      chartRangeLabel: "50 % – 100 %",
       definition: "Consistency of sleep schedule relative to observed rhythm.",
       readingDirection: "Higher = better",
       scoreRole: "Sleep score component · 20%",

@@ -55,7 +55,7 @@ private struct RecoveryContent: View {
                 Text("Signaux récents")
                     .font(.title2)
                     .accessibilityAddTraits(.isHeader)
-                RecoverySignalReferenceView(title: "VFC nocturne", signal: response.signals.hrv, higherIsBetter: true)
+                RecoverySignalReferenceView(title: "VFC quotidienne", signal: response.signals.hrv, higherIsBetter: true)
                 Divider().overlay(SomaTheme.rule)
                 RecoverySignalReferenceView(title: "Fréquence cardiaque au repos", signal: response.signals.restingHeartRate, higherIsBetter: false)
             }

@@ -28,7 +28,7 @@ function recoveryReason(input: {
 }) {
   if (input.score !== null) return null;
   if (!input.latest) return "Aucune mesure de récupération n’a encore été importée.";
-  if (!finite(input.latest.hrv_ms)) return "La VFC nocturne est absente pour cette date.";
+  if (!finite(input.latest.hrv_ms)) return "La VFC quotidienne est absente pour cette date.";
   if (!finite(input.latest.resting_heart_rate)) return "La fréquence cardiaque au repos est absente pour cette date.";
   if (input.hrvHistory < 8) return "Il faut au moins 7 mesures historiques de VFC pour établir votre référence personnelle.";
   if (input.restingHeartRateHistory < 8) return "Il faut au moins 7 mesures historiques de fréquence cardiaque au repos pour établir votre référence personnelle.";

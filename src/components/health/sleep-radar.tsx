@@ -10,8 +10,8 @@ const RADIUS = 132;
 const GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 
 /**
- * A sleep dimension is already normalized by the caller: 0 is a measured
- * zero, 1 is the outer reference, and null means unavailable or unmeasured.
+ * A sleep dimension is already normalized by the caller: 0 is the inner
+ * reference, 1 is the outer reference, and null means unavailable or unmeasured.
  * `valueLabel` is intentionally caller-provided so the chart never invents a
  * unit or a domain value from the normalized position.
  */
@@ -21,6 +21,7 @@ export type SleepRadarDimension = {
   normalizedValue: number | null;
   valueLabel?: string;
   averageLabel?: string;
+  chartRangeLabel?: string;
   definition?: string;
   readingDirection?: string;
   scoreRole?: string;

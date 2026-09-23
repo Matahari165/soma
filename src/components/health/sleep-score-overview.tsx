@@ -88,10 +88,12 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
     <dl className={styles.sleepDimensionMetrics}>
       <div><dt>Current value</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
       <div><dt>30-day avg</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
+      {dimension.chartRangeLabel && <div><dt>Radar scale</dt><dd>{dimension.chartRangeLabel}</dd></div>}
       <div><dt>Reading</dt><dd>{dimension.readingDirection || "—"}</dd></div>
       <div className={styles.sleepDimensionRole}><dt>Role</dt><dd>{dimension.scoreRole || "Context metric · excluded from Sleep score"}</dd></div>
       <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
+    {dimension.chartRangeLabel && <p className={styles.sleepDetailSummary}>The center is the lower bound; the outer edge is the upper bound. This scale changes the shape, not the score.</p>}
     {(dimension.scoreFormula || dimension.scoreNormalization || dimension.scoreWeight !== undefined) && <dl className={styles.sleepScoreAxisMetrics}>
       <div><dt>Formula</dt><dd>{dimension.scoreFormula || "—"}</dd></div>
       <div><dt>Normalization</dt><dd>{dimension.scoreNormalization || "—"}</dd></div>
