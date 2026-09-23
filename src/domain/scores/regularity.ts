@@ -1,5 +1,8 @@
 function circularDifference(first: number, second: number) {
-  return Math.abs(((first - second + 720) % 1440) - 720);
+  // JavaScript keeps the sign of the dividend for `%`. Normalize the
+  // remainder before measuring a difference across midnight.
+  const normalized = ((first - second + 720) % 1440 + 1440) % 1440;
+  return Math.abs(normalized - 720);
 }
 
 export function sleepRegularityScore(

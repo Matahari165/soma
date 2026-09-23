@@ -197,4 +197,18 @@ describe("Personal Lab progressive stream", () => {
       vi.unstubAllEnvs();
     }
   }, 15_000);
+
+  it("can omit the analysis stream when only the first screen is needed", async () => {
+    vi.stubEnv("SOMA_LOCAL_PREVIEW", "true");
+    try {
+      const stream = createPersonalLabStream({ id: "preview-user", email: null, displayName: "Jérémy" }, { includeAnalysis: false });
+
+      expect(stream.analysis).toBeNull();
+      const [overview, journal] = await Promise.all([stream.overview, stream.journal]);
+      expect(overview.today).toHaveProperty("sleepMinutes");
+      expect(journal.todayDate).toBe(overview.todayDate);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

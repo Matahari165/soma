@@ -20,13 +20,7 @@ export async function GET() {
   ]);
   const failed = results.find((result) => result.error);
   if (failed?.error) {
-    console.error("[api/profile] load failed", {
-      userId: user.id,
-      code: failed.error.code,
-      message: failed.error.message,
-      details: failed.error.details,
-      hint: failed.error.hint,
-    });
+    console.error("[api/profile] load failed", { code: failed.error.code });
     return NextResponse.json({ error: "Your profile could not be loaded." }, { status: 500 });
   }
   const [{ data: profile }, { data: sleep }, { data: goal }] = results;

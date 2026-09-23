@@ -30,6 +30,14 @@ describe("score engines", () => {
     ])).toBeGreaterThan(90);
   });
 
+  it("keeps a current post-midnight bedtime close to a pre-midnight reference", () => {
+    expect(sleepRegularityScore([
+      { bedtimeMinutes: 23 * 60 + 45, wakeMinutes: 420 },
+      { bedtimeMinutes: 23 * 60 + 45, wakeMinutes: 420 },
+      { bedtimeMinutes: 15, wakeMinutes: 420 },
+    ])).toBe(88);
+  });
+
   it("uses regularity when it can still protect the sleep target", () => {
     const result = recommendBedtime({ wakeTime: "07:00", sleepNeedMinutes: 450, recentEfficiencyPercent: 100, regularBedtimeMinutes: 22 * 60, windDownMinutes: 30 });
     expect(Math.abs(result.bedtimeMinutes - 23 * 60)).toBeLessThanOrEqual(45);

@@ -106,7 +106,7 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
         .maybeSingle();
 
       if (sessionResult.error) {
-        console.error("[session] soma_sessions lookup error:", sessionResult.error);
+        console.error("[session] soma_sessions lookup failed");
         return null;
       }
       if (!sessionResult.data || new Date(sessionResult.data.expires_at).getTime() <= Date.now()) {
@@ -121,7 +121,7 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
         .maybeSingle();
 
       if (userResult.error) {
-        console.error("[session] soma_users lookup error:", userResult.error);
+        console.error("[session] soma_users lookup failed");
         return null;
       }
       if (!userResult.data) return null;
@@ -131,8 +131,8 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
         email: typeof userResult.data.email === "string" ? userResult.data.email : null,
         displayName: typeof userResult.data.display_name === "string" ? userResult.data.display_name : "Soma user",
       };
-    } catch (err) {
-      console.error("[session] getSessionUser failed:", err);
+    } catch {
+      console.error("[session] getSessionUser failed");
       return null;
     }
   }

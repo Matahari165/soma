@@ -41,11 +41,24 @@ describe("wellness calculations", () => {
     expect(result[1].cumulativeDebtMinutes).toBe(30);
   });
 
+  it("keeps an unmeasured sleep window unavailable while counting a measured zero", () => {
+    expect(calculateSleepDebt([
+      { date: "2026-08-01", targetMinutes: 480, actualMinutes: null },
+      { date: "2026-08-02", targetMinutes: 480, actualMinutes: null },
+    ]).map((day) => day.cumulativeDebtMinutes)).toEqual([null, null]);
+
+    expect(calculateSleepDebt([
+      { date: "2026-08-01", targetMinutes: 480, actualMinutes: 0 },
+    ])[0]).toMatchObject({ dailyDebtMinutes: 480, cumulativeDebtMinutes: 480 });
+  });
+
   it("uses the approved active-day definition", () => {
     expect(isActiveDay({ steps: 7_500, activeZoneMinutes: 0, activeMinutes: 0 })).toBe(true);
     expect(isActiveDay({ steps: 2_000, activeZoneMinutes: 20, activeMinutes: 0 })).toBe(true);
     expect(isActiveDay({ steps: 2_000, activeZoneMinutes: 0, activeMinutes: 30 })).toBe(true);
     expect(isActiveDay({ steps: 7_499, activeZoneMinutes: 19, activeMinutes: 29 })).toBe(false);
+    expect(isActiveDay({ steps: null, activeZoneMinutes: null, activeMinutes: null })).toBeNull();
+    expect(isActiveDay({ steps: 0, activeZoneMinutes: 0, activeMinutes: 0 })).toBe(false);
   });
 
   it("calculates active and inactive days without treating missing days as inactive", () => {

@@ -2,7 +2,7 @@
   "name": "soma",
   "version": "0.1.0",
   "private": true,
-  "description": "Personal health intelligence platform & biometric lab correlating wearable physiological data with daily nutrition and habits to reveal the determinants of restorative sleep.",
+  "description": "Personal web app for health, sleep, activity, nutrition, and observational analysis.",
   "keywords": [
     "health-tech",
     "biometrics",

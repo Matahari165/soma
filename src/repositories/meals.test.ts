@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({
   deleteR2: vi.fn(),
   responses: [] as unknown[],
   tables: [] as string[],
+  operations: [] as string[],
+  updates: [] as unknown[],
   selectors: [] as Array<{ table: string; columns: string }>,
   filters: [] as Array<{ table: string; field: string; values: unknown }>,
 }));
@@ -62,6 +64,8 @@ describe("meal photo deletion", () => {
   beforeEach(() => {
     state.responses = [];
     state.tables = [];
+    state.operations = [];
+    state.updates = [];
     state.selectors = [];
     state.filters = [];
     state.deleteR2.mockReset();
@@ -83,7 +87,15 @@ describe("meal photo deletion", () => {
           },
           order: () => query,
           maybeSingle: () => query,
-          delete: () => query,
+          update: (values: unknown) => {
+            state.operations.push("update");
+            state.updates.push(values);
+            return query;
+          },
+          delete: () => {
+            state.operations.push("delete");
+            return query;
+          },
           upsert: () => query,
           then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(response).then(resolve, reject),
         };
@@ -126,13 +138,30 @@ describe("meal photo deletion", () => {
     expect(state.tables).toEqual(["meals"]);
   });
 
-  it("restores metadata when R2 deletion fails so the operation can be retried", async () => {
+  it("keeps metadata pending when R2 deletion fails so the operation can be retried", async () => {
     const photo = { id: "photo-1", user_id: "user-1", meal_id: "meal-1", object_path: "meal-photos/user/meal/photo.jpg", mime_type: "image/jpeg", bytes: 10, origin: "homemade", created_at: "2026-08-31T10:00:00.000Z" };
-    state.responses.push({ data: photo, error: null }, { data: [], error: null }, { data: photo, error: null });
+    state.responses.push({ data: photo, error: null }, { data: photo, error: null });
     state.deleteR2.mockRejectedValue(new Error("R2 unavailable"));
     const { deletePhoto } = await import("./meals");
     await expect(deletePhoto("user-1", "meal-1", "photo-1")).rejects.toThrow("retry");
-    expect(state.tables).toEqual(["meal_photos", "meal_photos", "meal_photos"]);
+    expect(state.tables).toEqual(["meal_photos", "meal_photos"]);
+    expect(state.operations).toEqual(["update"]);
+    expect(state.updates).toEqual([{ storage_status: "purge_pending", purged_at: null }]);
+  });
+
+  it("deletes the R2 object before removing its metadata", async () => {
+    const photo = { id: "photo-1", user_id: "user-1", meal_id: "meal-1", object_path: "meal-photos/user/meal/photo.jpg", mime_type: "image/jpeg", bytes: 10, origin: "homemade", created_at: "2026-08-31T10:00:00.000Z" };
+    state.responses.push({ data: photo, error: null }, { data: photo, error: null }, { data: photo, error: null }, { data: [], error: null });
+    state.deleteR2.mockImplementation(async () => { state.operations.push("r2-delete"); });
+    const { deletePhoto } = await import("./meals");
+
+    await expect(deletePhoto("user-1", "meal-1", "photo-1")).resolves.toBe(true);
+
+    expect(state.operations).toEqual(["update", "r2-delete", "update", "delete"]);
+    expect(state.updates).toEqual([
+      { storage_status: "purge_pending", purged_at: null },
+      expect.objectContaining({ storage_status: "purged" }),
+    ]);
   });
 
   it("preserves a stored null feeling instead of falling back to the meal row", async () => {

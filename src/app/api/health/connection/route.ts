@@ -17,13 +17,7 @@ export async function GET() {
     .select("provider,status,scopes,last_synced_at,last_lab_synced_at,last_error_code,metadata,created_at")
     .eq("user_id", user.id).eq("provider", "google_health").maybeSingle();
   if (error) {
-    console.error("[api/health/connection] load failed", {
-      userId: user.id,
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-    });
+    console.error("[api/health/connection] load failed", { code: error.code });
     return NextResponse.json({ error: "Connection status could not be loaded." }, { status: 500 });
   }
   return NextResponse.json({
@@ -47,6 +41,6 @@ export async function DELETE() {
   const { error } = await admin.from("provider_connections").delete().eq("user_id", user.id).eq("provider", "google_health");
   if (error) return NextResponse.json({ error: "Google Health could not be disconnected." }, { status: 500 });
   const { error: auditError } = await admin.from("audit_events").insert({ user_id: user.id, event_type: "google_health_disconnected", resource_type: "provider_connection" });
-  if (auditError) console.error("[api/health/connection] disconnect audit could not be stored", { userId: user.id });
+  if (auditError) console.error("[api/health/connection] disconnect audit could not be stored");
   return NextResponse.json({ ok: true });
 }

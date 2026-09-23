@@ -13,7 +13,7 @@ export async function POST() {
   try {
     return NextResponse.json(await syncGoogleCalendar(user.id));
   } catch (error) {
-    console.error("[api/calendar/sync] update failed", { userId: user.id, error: error instanceof Error ? error.message : "Unknown error." });
+    console.error("[api/calendar/sync] update failed", { reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ error: "Google Calendar could not be updated." }, { status: 502 });
   }
 }

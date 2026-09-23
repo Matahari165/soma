@@ -4,7 +4,8 @@ const processNextMealAnalysis = vi.hoisted(() => vi.fn());
 const requeueRetryableMealAnalyses = vi.hoisted(() => vi.fn());
 const purgeExpiredFailedAnalysisPhotos = vi.hoisted(() => vi.fn());
 const reconcileMealPhotoPurges = vi.hoisted(() => vi.fn());
-vi.mock("@/services/meals", () => ({ processNextMealAnalysis, requeueRetryableMealAnalyses, purgeExpiredFailedAnalysisPhotos, reconcileMealPhotoPurges }));
+const reconcileAbandonedMealPhotoUploads = vi.hoisted(() => vi.fn());
+vi.mock("@/services/meals", () => ({ processNextMealAnalysis, requeueRetryableMealAnalyses, purgeExpiredFailedAnalysisPhotos, reconcileMealPhotoPurges, reconcileAbandonedMealPhotoUploads }));
 
 import { GET } from "./route";
 
@@ -16,6 +17,7 @@ describe("meal analysis worker route", () => {
     requeueRetryableMealAnalyses.mockResolvedValue(0);
     purgeExpiredFailedAnalysisPhotos.mockResolvedValue(0);
     reconcileMealPhotoPurges.mockResolvedValue({ attempted: 0, purged: 0 });
+    reconcileAbandonedMealPhotoUploads.mockResolvedValue({ attempted: 0, cleared: 0 });
   });
 
   it("requires the machine cron secret", async () => {

@@ -500,7 +500,7 @@ export function AssistantWorkspace() {
       </aside>
 
       <section className={styles.conversation} aria-label="Conversation avec Soma">
-        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} aria-live="polite" aria-busy={loadingConversation || sending} onScroll={(event) => {
+        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Transcript de la conversation" aria-live="polite" aria-relevant="additions" aria-busy={loadingConversation || sending} onScroll={(event) => {
           const element = event.currentTarget;
           followConversationRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
         }}>

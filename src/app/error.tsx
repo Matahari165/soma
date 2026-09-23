@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 export default function AppError({ error, reset, retry }: { error: Error & { digest?: string }; reset?: () => void; retry?: () => void }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    console.error("Soma route error", { digest: error.digest ?? null });
+    console.error("Soma route error");
   }, [error]);
   useEffect(() => {
     titleRef.current?.focus();

@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
 import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+
 const date = "2026-08-31";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -264,6 +266,16 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation date={date} today={date} historyDays={6} initialData={{ date, meals: {} }} />);
 
     expect(html.match(/aria-pressed=/g)).toHaveLength(7);
+  });
+
+  it("keeps unavailable lab calories distinct from an explicit zero", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(calorieProgressForDisplay(null, 3000)).toBeNull();
+    expect(html).toContain('role="img"');
+    expect(html).toContain('data-state="unavailable"');
+    expect(html).toContain('aria-label="Calorie target progress: Calories unavailable"');
+    expect(html).not.toContain('aria-valuenow="0"');
   });
 
   it("renders the four empty meal slots with photo actions", () => {
