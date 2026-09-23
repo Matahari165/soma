@@ -2,8 +2,6 @@ import "server-only";
 
 import {
   analyzeMealInput,
-  analyzeMealInputStream,
-  type GrokStreamProgressEvent,
   MEAL_ANALYSIS_PROMPT_VERSION,
   MEAL_ANALYSIS_SCHEMA_VERSION,
   type MealVisionInput,
@@ -60,27 +58,6 @@ export async function analyzeMealInputWithFallback(
   const primary = options.provider ?? getConfiguredMealAnalysisProvider();
   const primaryConfiguration = { provider: primary.name, model: primary.model };
   const analysed = await analyzeMealInput(input, primary, { requestId: options.requestId });
-  return {
-    ...analysed,
-    provenance: pipelineProvenance({
-      primary: primaryConfiguration,
-      final: { provider: analysed.provider, model: analysed.model },
-      validation: analysed.validation,
-      fallback: { configured: false, attempted: false, used: false, provider: null, model: null },
-    }),
-  };
-}
-
-export type { GrokStreamProgressEvent };
-
-export async function analyzeMealInputStreamWithFallback(
-  input: MealVisionInput,
-  options: { provider?: MealVisionProvider; requestId?: string } = {},
-  onProgress?: (event: GrokStreamProgressEvent) => void,
-) {
-  const primary = options.provider ?? getConfiguredMealAnalysisProvider();
-  const primaryConfiguration = { provider: primary.name, model: primary.model };
-  const analysed = await analyzeMealInputStream(input, primary, { requestId: options.requestId }, onProgress);
   return {
     ...analysed,
     provenance: pipelineProvenance({
