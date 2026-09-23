@@ -109,4 +109,22 @@ begin
 end;
 $$;
 
+-- A malformed proposal must never write a null target.
+insert into public.assistant_actions
+  (id, user_id, conversation_id, action_type, state, payload, idempotency_key)
+values ('00000000-0000-4000-8000-000000000306', 'synthetic-nutrition-smoke',
+  '00000000-0000-4000-8000-000000000301', 'nutrition_targets.update', 'proposed',
+  '{"persisted":true}'::jsonb, 'synthetic-nutrition-null');
+
+do $$
+begin
+  begin
+    perform public.confirm_assistant_nutrition_targets('synthetic-nutrition-smoke',
+      '00000000-0000-4000-8000-000000000306', '00000000-0000-4000-8000-000000000302', 'synthetic-nutrition-key');
+    raise exception 'Missing after target was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+end;
+$$;
+
 rollback;

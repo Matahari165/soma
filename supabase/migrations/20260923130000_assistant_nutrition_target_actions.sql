@@ -38,7 +38,7 @@ begin
   if not found then raise exception 'Nutrition proposal not found' using errcode = 'P0002'; end if;
 
   v_after := v_action.payload->'after';
-  if jsonb_typeof(v_after) <> 'object' then
+  if jsonb_typeof(v_after) is distinct from 'object' then
     raise exception 'Invalid nutrition proposal' using errcode = '22023';
   end if;
   select * into v_row from public.soma_rows
