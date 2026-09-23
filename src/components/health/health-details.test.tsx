@@ -7,7 +7,7 @@ import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } fro
 
 import { ActivityDetails, effortComponentDefinitions, normalizeEffortContextValue, normalizeEffortTargetValue } from "./activity-details";
 import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
-import { SleepDetails } from "./sleep-details";
+import { shouldDisplayLatencyRadar, SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
 import { HealthHeroScore } from "./health-page-shell";
 
@@ -122,6 +122,12 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
+  it("does not give an all-zero latency source a misleading radar axis", () => {
+    expect(shouldDisplayLatencyRadar([null, 0, 0])).toBe(false);
+    expect(shouldDisplayLatencyRadar([null, 0, 12])).toBe(true);
+    expect(shouldDisplayLatencyRadar([null, null])).toBe(true);
+  });
+
   it("keeps the effort targets aligned between the radar and its detail", () => {
     const preview = buildPreviewAnalytics();
     const markup = renderToStaticMarkup(createElement(ActivityDetails, {
@@ -195,8 +201,8 @@ describe("health route states", () => {
     expect(markup).not.toContain("Autres mesures");
     expect(markup).not.toContain("<details");
     expect(markup).not.toContain("<summary");
-    expect(markup.indexOf("Sleep score")).toBeLessThan(markup.indexOf("Next night"));
-    expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
+    expect(markup).not.toContain("Next night");
+    expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(5);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
     expect(markup).toContain("Deep + REM sleep");
@@ -215,7 +221,7 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Benchmark unavailable");
+    expect(markup).not.toContain("Benchmark unavailable");
     expect(markup).toContain("Duration, Regularity, Latency, Debt");
     expect(markup).toContain("90");
     expect(markup).not.toContain("health-hero-score-card");
