@@ -10,6 +10,7 @@ import {
   loadActiveAssistantPlan,
   loadActiveAssistantPlans,
   loadConfirmedAssistantMemories,
+  loadPendingAssistantChanges,
   saveAssistantGoalSet,
 } from "./index";
 
@@ -100,6 +101,17 @@ describe("assistant context retrieval", () => {
     const result = await loadActiveAssistantPlans(userId);
     expect(result).toMatchObject({ complete: false });
     expect(result.activePlans).toHaveLength(10);
+  });
+
+  it("recovers the concrete goals attached to a pending draft for natural confirmation", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_goal_sets?")) return [{ id: attachmentId, primary_direction: "Force", secondary_directions: ["Course"], updated_at: "2026-09-23T10:00:00Z" }] as never;
+      if (path.startsWith("assistant_goals?")) return [{ position: 0, label: "Courir 30 km", domain: "effort", baseline: null, target: null }] as never;
+      return [] as never;
+    });
+    const result = await loadPendingAssistantChanges(userId);
+    expect(result.goalSets[0]).toMatchObject({ primary_direction: "Force", goals: [{ label: "Courir 30 km" }] });
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls.find(([path]) => path.startsWith("assistant_goals?"))?.[0]).toContain(`user_id=eq.${userId}&goal_set_id=eq.${attachmentId}`);
   });
 });
 

@@ -99,6 +99,27 @@ describe("respondToAssistant", () => {
     }));
   });
 
+  it("persists a structured data summary only when a canonical query was actually used", async () => {
+    const state = setup();
+    state.generate.mockResolvedValueOnce({
+      text: "La tendance est stable.", finishReason: "stop", totalUsage: {},
+      steps: [{ toolResults: [{ toolName: "querySomaData", input: { dataset: "scores", kinds: ["sleep"] }, output: {
+        manifest: { dataset: "scores", requestedPeriod: { from: "2026-09-01", to: "2026-09-07" },
+          coveredPeriod: { from: "2026-09-01", to: "2026-09-07" }, timezone: "Europe/Zurich",
+          totalItems: 7, returnedItems: 7, hasMore: false, nextCursor: null, complete: true,
+          generatedAt: "2026-09-23T10:00:00.000Z" },
+      } }] }],
+    } as never);
+    await respondToAssistant("user-1", { requestId: "request-summary-123", text: "Analyse mon sommeil", conversationId: ids.conversation }, { apiKey: "test-key", dependencies: state as never });
+    expect(state.repository.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      role: "assistant",
+      parts: [
+        { type: "text", text: "La tendance est stable." },
+        { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-01", to: "2026-09-07" }, itemCount: 7, domains: ["sleep"] },
+      ],
+    }));
+  });
+
   it("replays a completed idempotent request without calling GPT-6 Luna", async () => {
     const state = setup();
     state.repository.findRunByRequestId.mockResolvedValueOnce({

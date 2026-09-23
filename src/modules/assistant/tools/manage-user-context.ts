@@ -42,13 +42,16 @@ function normalizeConfirmation(value: string) {
 
 export function assertAssistantConfirmation(userText: string, quote: string) {
   const normalizedText = normalizeConfirmation(userText);
-  if (!normalizedText.includes(normalizeConfirmation(quote))) {
+  const normalizedQuote = normalizeConfirmation(quote);
+  if (!normalizedQuote || !normalizedText.includes(normalizedQuote)) {
     throw new Error("La confirmation doit citer exactement une partie du message utilisateur actuel.");
   }
-  const statement = normalizedText.replace(/[,;:]/gu, " ").replace(/[.!]+$/u, "").replace(/\s+/gu, " ").trim()
-    .replace(/^(?:oui|ok)\s+(?=\S)/u, "");
-  const approval = /^(?:oui|ok|d'accord|c'est bon|ca marche|ca me va|valide|vas-y|parfait|je (?:valide|confirme|approuve)|(?:enregistre|sauvegarde|garde))(?: (?:l'objectif|mon objectif|les objectifs|mes objectifs|ces objectifs|ce cadre|le plan|ce plan|la proposition|cette proposition|la version|cette version|cette memoire|ce souvenir|cela|ca))?(?: ne change rien)?$/u;
-  if (!approval.test(statement)) {
+  // The model interprets natural intent. This guard only blocks obvious non-consent;
+  // it must never force the user to repeat one exact command word.
+  const explicitApproval = /\b(?:oui|ok|d'accord|c'est bon|ca marche|ca me va|parfait|vas-y|valide|validons|confirme|approuve|enregistre|enregistrer|sauvegarde|sauvegarder|garde|garder|finalise|finaliser)\b/u.test(normalizedText);
+  const refusal = /\b(?:je ne (?:valide|confirme|veux)(?: pas)?|je refuse|n'enregistre pas|ne pas (?:enregistrer|sauvegarder|garder)|ne (?:l'|les |le |la )?(?:enregistre|sauvegarde|garde) pas|pas encore|plus tard|attends|attendez|reessaie|a relire|a revoir|on verra|pour l'instant|provisoirement|a condition|d'abord|avant de|mais|si|sauf)\b/u.test(normalizedText);
+  const directQuestionRequest = /\b(?:peux-tu|tu peux|est-ce que tu peux)\b.{0,100}\b(?:enregistrer|sauvegarder|garder|valider)\b/u.test(normalizedText);
+  if (!explicitApproval || refusal || (normalizedText.endsWith("?") && !directQuestionRequest)) {
     throw new Error("Une confirmation explicite et sans correction est nécessaire avant cet enregistrement.");
   }
 }
@@ -60,7 +63,7 @@ export function createManageUserContextTool(context: {
   triggeringUserText: string;
 }) {
   return tool({
-    description: "Propose ou confirme une mémoire, un cadre d’objectifs ou une version de plan. Pour enregistrer un cadre d’objectifs que l’utilisateur vient de valider, utilise save_goal_set en un seul appel avec le cadre complet et une citation exacte de sa confirmation. Une confirmation doit être explicite et sans correction.",
+    description: "Propose ou confirme une mémoire, un cadre d’objectifs ou une version de plan. Comprends les confirmations en langage naturel : « c’est bon, tu peux enregistrer » suffit. Une correction, un refus ou une simple question sur le cadre ne vaut pas confirmation ; une demande explicite de sauvegarder, même formulée comme une question, le peut. Ne demande jamais une formule exacte. Pour un cadre déjà proposé et inchangé, confirme son identifiant ; sinon save_goal_set peut enregistrer directement le cadre explicitement approuvé, même si ses métriques facultatives sont inconnues.",
     inputSchema,
     execute: async (input, options) => {
       const confirming = input.operation.startsWith("confirm_") || input.operation === "save_goal_set";

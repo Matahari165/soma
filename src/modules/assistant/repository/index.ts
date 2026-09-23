@@ -383,17 +383,25 @@ export async function loadActiveAssistantPlan(userId: string, planId: string) {
 }
 
 export async function loadPendingAssistantChanges(userId: string) {
-  const [memories, goalSets, planVersions] = await Promise.all([
+  const [memories, draftGoalSets, planVersions] = await Promise.all([
     assistantDatabaseRequest<Array<Record<string, unknown>>>(
       `assistant_memories?user_id=eq.${assistantFilter(userId)}&status=eq.proposed&select=id,kind,content,structured_value,sensitivity,valid_from,valid_until&order=updated_at.desc&limit=20`,
     ),
     assistantDatabaseRequest<Array<Record<string, unknown>>>(
-      `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.draft&select=id,primary_direction,secondary_directions&order=updated_at.desc&limit=5`,
+      `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.draft&select=id,primary_direction,secondary_directions,updated_at&order=updated_at.desc&limit=5`,
     ),
     assistantDatabaseRequest<Array<Record<string, unknown>>>(
       `assistant_plan_versions?user_id=eq.${assistantFilter(userId)}&status=eq.proposed&select=id,plan_id,version,body,based_on_version&order=created_at.desc&limit=5`,
     ),
   ]);
+  const goalSets = await Promise.all(draftGoalSets.map(async (goalSet) => {
+    const id = goalSet.id;
+    if (typeof id !== "string") throw new Error("Assistant draft goal set is invalid.");
+    const goals = await assistantDatabaseRequest<Array<Record<string, unknown>>>(
+      `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${assistantFilter(id)}&select=position,label,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
+    );
+    return { ...goalSet, goals };
+  }));
   return { memories, goalSets, planVersions };
 }
 
