@@ -1396,6 +1396,40 @@
   padding: 8px 12px;
 }
 
+.mealDisclosureButton {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin: -8px -8px -8px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lab-text-secondary, #aaaaaa);
+  cursor: pointer;
+}
+
+.mealDisclosureButton:hover { color: var(--lab-text-primary, #f1f1f1); }
+.mealDisclosureButton:focus-visible { outline: 2px solid var(--lab-brand, #eeeeee); outline-offset: 2px; }
+.mealDisclosureButton svg { transition: transform 180ms cubic-bezier(.2, .8, .2, 1); }
+.mealDisclosureOpen { transform: rotate(180deg); }
+
+.expandedActions { margin-top: 4px; }
+.expandedEditButton {
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--lab-text-primary, #f1f1f1);
+  cursor: pointer;
+}
+.expandedEditButton:hover { text-decoration: underline; text-underline-offset: 3px; }
+.expandedEditButton:focus-visible { outline: 2px solid var(--lab-brand, #eeeeee); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .mealDisclosureButton svg { transition: none; }
+}
+
 .personalLabType > div:first-of-type {
   align-items: center;
   min-height: 28px;
@@ -1407,7 +1441,7 @@
   height: 36px;
   padding: 8px 10px;
   resize: none;
-  transition: height 420ms cubic-bezier(.2, .8, .2, 1);
+  transition: border-color 180ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .personalLabType textarea:focus,

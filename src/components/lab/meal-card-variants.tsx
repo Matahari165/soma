@@ -118,6 +118,8 @@ export function AnalysisDetails({
   onToggle,
   onDeleteMeal,
   mutationBusy,
+  hideToggle = false,
+  extra,
 }: {
   meal: MealRecord;
   open: boolean;
@@ -126,6 +128,8 @@ export function AnalysisDetails({
   onToggle: () => void;
   onDeleteMeal?: () => void;
   mutationBusy?: boolean;
+  hideToggle?: boolean;
+  extra?: React.ReactNode;
 }) {
   const toggleClass = variant === "v1"
     ? styles.v1DetailsToggle
@@ -135,7 +139,7 @@ export function AnalysisDetails({
 
   return (
     <div className={`${styles.analysisDetails} transition-all duration-300 ease-out`}>
-      <button
+      {!hideToggle && <button
         type="button"
         className={`${toggleClass} active:scale-[0.98] transition-transform duration-150`}
         onClick={onToggle}
@@ -144,7 +148,7 @@ export function AnalysisDetails({
       >
         {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
         <span>Analysis details</span>
-      </button>
+      </button>}
 
       {open && (
         <div id={detailsId} className={`${styles.analysisDetailsPanel} transition-all duration-300 ease-out animate-fade-in`}>
@@ -158,10 +162,12 @@ export function AnalysisDetails({
             </ul>
           )}
           {meal.note && <p className={styles.analysisDetailsNote}><strong>Day note</strong>{meal.note}</p>}
+          {meal.analysis?.summary && <p className={styles.analysisDetailsNote}><strong>Analysis</strong>{meal.analysis.summary}</p>}
           {((meal.status === "confirmed" && meal.photos.length > 0) || meal.photos.some((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url)) && (
             <p className={styles.analysisDetailsNote}><strong>Photo evidence</strong>Photo analyzed then deleted.</p>
           )}
           {meal.analysis?.calorieAnalysis && <p>{meal.analysis.calorieAnalysis}</p>}
+          {extra}
           {onDeleteMeal && (
             <div className="pt-3 mt-3 border-t border-hairline flex justify-end">
               <button
@@ -199,7 +205,6 @@ export interface LabMealCardProps {
   onNote: (note: string) => void;
   onCorrection?: (correction: string) => void;
   onConfirm?: () => void;
-  onEdit?: () => void;
   onMarkSkipped?: () => void;
   onMarkRecorded?: () => void;
   onDeleteMeal?: () => void;
@@ -224,7 +229,6 @@ export function LabMealCard({
   onNote,
   onCorrection,
   onConfirm,
-  onEdit,
   onMarkSkipped,
   onMarkRecorded,
   onDeleteMeal,
@@ -237,6 +241,7 @@ export function LabMealCard({
   const [correctionText, setCorrectionText] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const autoConfirmMealRef = useRef<string | null>(null);
+  const submittedAnalysisRef = useRef<MealRecord["analysis"] | null>(null);
 
   const slotLabel = SLOT_LABELS[slot];
   const headingId = `meal-${slot}-title`;
@@ -270,6 +275,14 @@ export function LabMealCard({
     onConfirm?.();
   }, [meal?.analysis, meal?.error, meal?.id, onConfirm, status]);
 
+  useEffect(() => {
+    if (submittedAnalysisRef.current && meal?.analysis && meal.analysis !== submittedAnalysisRef.current && !meal.error) {
+      submittedAnalysisRef.current = null;
+      setIsCorrectionOpen(false);
+      setCorrectionText("");
+    }
+  }, [meal?.analysis, meal?.error]);
+
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []).filter((f) => f.type.startsWith("image/"));
     if (files.length > 0) {
@@ -284,14 +297,12 @@ export function LabMealCard({
       if (!next) setCorrectionText("");
       return next;
     });
-    onEdit?.();
   };
 
   const handleCorrectionSubmit = () => {
     const text = correctionText.trim();
     if (!text) return;
-    setIsCorrectionOpen(false);
-    setCorrectionText("");
+    submittedAnalysisRef.current = meal?.analysis ?? null;
     if (onCorrection) {
       onCorrection(text);
     } else {
@@ -623,16 +634,9 @@ export function LabMealCard({
             <div className="flex items-center gap-2">
               <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
-                onClick={handleToggleCorrection}
-                aria-label={`Modifier ${slotLabel}`}
-              >
-                Modifier
-              </button>
-            </div>
+            <button type="button" className={styles.mealDisclosureButton} onClick={() => setShowDetails((open) => !open)} aria-label={`${showDetails ? "Replier" : "Déplier"} ${slotLabel}`} aria-expanded={showDetails} aria-controls={detailsId}>
+              <ChevronDown size={18} strokeWidth={1.75} aria-hidden="true" className={showDetails ? styles.mealDisclosureOpen : undefined} />
+            </button>
           </div>
           {photoStrip}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
@@ -655,7 +659,6 @@ export function LabMealCard({
           <div className="sr-only">
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
           </div>
-          {isCorrectionOpen && correctionForm}
           {meal?.analysis && (
             <AnalysisDetails
               meal={meal}
@@ -663,6 +666,11 @@ export function LabMealCard({
               detailsId={detailsId}
               variant="v1"
               onToggle={() => setShowDetails((open) => !open)}
+              hideToggle
+              extra={<div className={styles.expandedActions}>
+                {!isCorrectionOpen && <button type="button" className={styles.expandedEditButton} disabled={disabled || mutationBusy || saving || isAnalyzing} onClick={handleToggleCorrection}>Modifier le repas</button>}
+                {isCorrectionOpen && correctionForm}
+              </div>}
               onDeleteMeal={disabled ? undefined : onDeleteMeal}
               mutationBusy={mutationBusy}
             />

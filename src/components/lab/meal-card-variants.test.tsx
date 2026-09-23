@@ -52,7 +52,6 @@ describe("LabMealCard nutrition chart", () => {
       onAnalyze={() => undefined}
       onCancelAnalysis={() => undefined}
       onNote={() => undefined}
-      onEdit={() => undefined}
     />);
 
     expect(html).toContain('class="_metricChart_');
@@ -104,7 +103,7 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).not.toContain("Analyze meal");
   });
 
-  it("renders a Modifier button on an analyzed meal", () => {
+  it("renders one disclosure control on an analyzed meal", () => {
     const meal: MealRecord = {
       id: "meal-dinner-analyzed",
       date: "2026-08-31",
@@ -140,10 +139,11 @@ describe("LabMealCard nutrition chart", () => {
       onCorrection={() => undefined}
     />);
 
-    expect(html).toContain("Modifier");
-    expect(html).toContain('aria-label="Modifier Dinner"');
+    expect(html).toContain('aria-label="Déplier Dinner"');
+    expect(html).toContain('aria-controls="meal-dinner-analysis-details"');
+    expect(html).not.toContain("Modifier le repas");
+    expect(html).not.toContain("Analysis details");
     expect(html).toContain('aria-label="Added sugar">S</dt><dd>0g</dd>');
-    expect(html).toContain("px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
     expect(html).toContain("text-xs font-mono");
     expect(html).not.toContain("Poulet et légumes rôtis</p>");
   });
@@ -248,7 +248,7 @@ describe("LabMealCard nutrition chart", () => {
     expect(html).toContain("Dinner");
   });
 
-  it("removes the recording time while retaining the meal date context and Modifier button", () => {
+  it("removes the recording time while retaining the meal disclosure", () => {
     const meal: MealRecord = {
       id: "meal-breakfast-confirmed",
       date: "2026-08-31",
@@ -281,15 +281,13 @@ describe("LabMealCard nutrition chart", () => {
       onAnalyze={() => undefined}
       onCancelAnalysis={() => undefined}
       onNote={() => undefined}
-      onEdit={() => undefined}
     />);
 
     expect(html).not.toContain("Confirmed");
-    expect(html).toContain("Modifier");
+    expect(html).toContain('aria-label="Déplier Breakfast"');
     expect(html).not.toContain("08:30");
     expect(html).not.toContain("08:15");
     expect(html).toContain("animate-fade-in");
-    expect(html).toContain("active:scale-[0.98]");
   });
 
   it("renders Delete meal button in expanded AnalysisDetails when onDeleteMeal is provided", () => {
