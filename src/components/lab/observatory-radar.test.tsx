@@ -90,7 +90,7 @@ it("uses the personal calorie target received from the meal journal", async () =
 
 it("uses the approved fixed local presentation without exposing controls", () => {
   expect(OBSERVATORY_RADAR_PRESENTATION).toEqual({
-      size: 290,
+      size: 220,
     shiftY: -24,
     shiftX: -24,
     backdrop: "mont-nuages-user",

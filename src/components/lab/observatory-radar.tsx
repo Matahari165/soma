@@ -229,7 +229,10 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
 }
 
 export const OBSERVATORY_RADAR_PRESENTATION = {
-  size: 290,
+  // Keep the outer labels inside the 660 × 560 viewBox. The previous
+  // presentation radius placed the top and bottom values outside the SVG,
+  // where the arrival composition could clip them at some viewport heights.
+  size: 220,
   shiftY: -24,
   shiftX: -24,
   backdrop: "mont-nuages-user",
