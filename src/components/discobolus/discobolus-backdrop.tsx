@@ -139,6 +139,8 @@ export function DiscobolusBackdrop({
         <div className={styles.statueWrapper}>
           {showPhoto && photoSrc && (
             <div className={styles.statuePhotoLayer}>
+              {/* This decorative layer relies on the existing CSS image geometry; Next Image would alter it. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoSrc}
                 srcSet="/images/discobolus/discobolus-left-monumental.png 2x, /images/discobolus/discobolus-left-monumental.png 1x"
