@@ -40,6 +40,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const averageEffortScore = nullable(data.averageEffortScore);
   const averageCaloriesKcal = nullable(data.averageCaloriesKcal);
   const caloriesRef = useRef<number|null>(nullable(data.caloriesKcal));
+  const animateInitialTrace = useRef(nullable(data.caloriesKcal) !== null);
   const [calories,setCalories] = useState<number|null>(nullable(data.caloriesKcal));
   const calorieTargetRef = useRef<number|null>(nullable(data.calorieTarget));
   const [calorieTarget,setCalorieTarget] = useState<number|null>(nullable(data.calorieTarget));
@@ -129,7 +130,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     else setInternalSelected(null);
     if (id) window.requestAnimationFrame(() => buttonRefs.current[id]?.focus());
   }
-  return <figure className="observatory-radar" aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
+  return <figure className={`observatory-radar${animateInitialTrace.current ? "" : " observatory-radar--deferred-calories"}`} aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
     <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
         <polygon className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />

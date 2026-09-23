@@ -1440,6 +1440,13 @@
   gap: 8px;
   padding: 8px 12px;
 }
+.analysisWarning {
+  margin: 0;
+  color: var(--lab-text-secondary, #aaa);
+  font-family: var(--font-soma-ui), sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
 
 .mealDisclosureButton {
   display: inline-flex;

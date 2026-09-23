@@ -440,10 +440,6 @@ export function LabMealCard({
               </button>
             )}
           </div>
-          <div className="text-xs text-content-secondary font-sans" role="status" aria-live="polite">
-            <strong className="text-content-primary font-medium mr-1.5">Skipped</strong>
-            <span>This slot is excluded from meal totals.</span>
-          </div>
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
         </article>
       );
@@ -458,10 +454,6 @@ export function LabMealCard({
           </div>
         </div>
         <div className={styles.skippedState} role="status" aria-live="polite">
-          <div className={styles.skippedCopy}>
-            <strong>Skipped</strong>
-            <span>This slot is excluded from meal totals.</span>
-          </div>
           {onMarkRecorded && <button type="button" className={styles.restoreButton} disabled={disabled || mutationBusy} onClick={onMarkRecorded}>Log this meal</button>}
         </div>
         {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}

@@ -202,6 +202,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 .radar-value { stroke:none; fill:#ffffff12; opacity:0; animation:radar-fill-reveal 600ms cubic-bezier(.22,1,.36,1) 100ms both; }
 .radar-value-segment { fill:none; stroke:#eee; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; animation:radar-trace-draw 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
 .radar-point { transform-box:fill-box; transform-origin:center; opacity:0; animation:radar-point-reveal 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both; }
+.observatory-radar--deferred-calories :is(.radar-value,.radar-value-segment,.radar-point) { animation:none; opacity:1; stroke-dashoffset:0; transform:none; }
 @keyframes radar-trace-draw { to { stroke-dashoffset:0; } }
 @keyframes radar-fill-reveal { 0% { opacity:0; } 24% { opacity:.05; } 48% { opacity:.18; } 72% { opacity:.45; } 100% { opacity:1; } }
 @keyframes radar-point-reveal { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
@@ -659,8 +660,13 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(238, 238, 238, .16);
 }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline__actions .journal-variable-remove { margin-inline-start: auto; color: var(--lab-error, #e2b2aa); }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button) {
   min-height: 36px;
   border: 0 !important;
