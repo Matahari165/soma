@@ -934,6 +934,8 @@ type StructuredRequest = {
   requestId?: string;
   reasoningEffort?: string;
   maxAttempts?: number;
+  /** Extra call reserved for a complete JSON response that fails semantic validation. */
+  schemaRepairAttempts?: number;
   /** Abort a provider request instead of holding a worker lease forever. */
   timeoutMs?: number;
 };
@@ -950,7 +952,8 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   let retryWithLargerBudget = false;
   let schemaRetryInstructions: string | null = null;
   const maxAttempts = request.maxAttempts ?? MAX_PROVIDER_ATTEMPTS;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  const maxSchemaAttempts = maxAttempts + (request.schemaRepairAttempts ?? 0);
+  for (let attempt = 1; attempt <= maxSchemaAttempts; attempt += 1) {
     // A truncated structured response cannot be repaired by sending the same
     // request again. Give only a retry explicitly marked as token-truncated a
     // larger completion budget while keeping network/rate-limit retries lean.
@@ -1142,7 +1145,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
             code: "response_schema_error",
             schemaIssues: diagnostics,
           });
-          if (responseStatus !== "incomplete" && attempt < maxAttempts) {
+          if (responseStatus !== "incomplete" && attempt < maxSchemaAttempts) {
             lastError = error;
             schemaRetryInstructions = schemaRetryPrompt(request.sourcePhotoIds, diagnostics);
             await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));

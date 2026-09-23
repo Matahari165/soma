@@ -329,6 +329,28 @@ describe("xAI meal vision contract", () => {
     await expect(createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] })).rejects.toThrow("invalid structured meal analysis");
   });
 
+  it("repairs one semantically invalid text-only dinner response without inventing nutrition", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const valid = structuredAnalysis();
+    const unknownNutrition = {
+      ...valid,
+      foods: [{ ...valid.foods[0], calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: null, addedSugarGrams: null }],
+      totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: null, addedSugarGrams: null },
+    };
+    const invalid = { ...unknownNutrition, confidence: "certain" };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(invalid) }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(unknownNutrition) }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repair = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    expect(repair.input[0]?.content[0]?.text).toContain("confidence/invalid_value");
+    expect(result.totals.calories).toBeNull();
+    expect(result.foods[0]?.calories).toBeNull();
+  });
+
   it("sends a text-only request without images for a free description", async () => {
     process.env.XAI_API_KEY = "test-key";
     const range = { low: 150, likely: 190, high: 230 };
