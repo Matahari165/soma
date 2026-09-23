@@ -18,7 +18,7 @@ type ZoneKey = "light_zone_minutes" | "moderate_zone_minutes" | "vigorous_zone_m
 type ZoneTone = "light" | "moderate" | "vigorous" | "peak";
 
 const trendLabels: Record<TrendKind, { label: string; unit: string; direction: "higher" | "lower" | "context" }> = {
-  hrv_daily: { label: "Daily HRV", unit: "ms", direction: "higher" },
+  hrv_daily: { label: "HRV", unit: "ms", direction: "higher" },
   resting_heart_rate: { label: "Resting heart rate", unit: "bpm", direction: "lower" },
   respiratory_rate: { label: "Respiratory rate", unit: "rpm", direction: "context" },
 };
@@ -183,7 +183,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
   const detailTitleId = "recovery-radar-detail-title";
   const detailOpen = selectedAxis !== null;
   const dimensions: RecoveryRadarDimension[] = [
-    { key: "hrv", label: "Daily HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Daily heart rate variability reported by Google Health, compared to your personal baseline. The source does not specify whether it was measured during sleep.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
+    { key: "hrv", label: "HRV", score: scoreDriver(drivers, "hrv"), weight: 40, valueLabel: scoreDriver(drivers, "hrv") === null ? undefined : `${scoreDriver(drivers, "hrv")}%`, averageLabel: averages.hrv === null ? undefined : `30-day avg · ${Math.round(averages.hrv)} ms · n=${signalAverages.hrv.measuredDays}`, definition: "Daily heart rate variability reported by Google Health, compared to your personal baseline. The source does not specify whether it was measured during sleep.", readingDirection: "Higher = better", scoreRole: "Score component · 40%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
     { key: "restingHeartRate", label: "Resting heart rate", score: scoreDriver(drivers, "restingHeartRate"), weight: 30, valueLabel: scoreDriver(drivers, "restingHeartRate") === null ? undefined : `${scoreDriver(drivers, "restingHeartRate")}%`, averageLabel: averages.restingHeartRate === null ? undefined : `30-day avg · ${Math.round(averages.restingHeartRate)} bpm · n=${signalAverages.restingHeartRate.measuredDays}`, definition: "Resting heart rate compared to your personal baseline.", readingDirection: "Lower = better", scoreRole: "Score component · 30%", scoreFormula: "deviation from personal baseline", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Google Health" },
     { key: "sleep", label: "Sleep", score: scoreDriver(drivers, "sleep"), weight: 30, valueLabel: scoreDriver(drivers, "sleep") === null ? undefined : `${scoreDriver(drivers, "sleep")}%`, averageLabel: averages.recovery === null ? undefined : `30-day avg · ${Math.round(averages.recovery)} /100`, definition: "Sleep score included as a recovery component.", readingDirection: "Higher = better", scoreRole: "Score component · 30%", scoreFormula: "Soma Sleep score", scoreNormalization: "0–100", scoreContribution: null, sourceLabel: "Soma" },
   ];
@@ -260,7 +260,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             <header className={styles.sectionHeader}><h2 id="latest-signals-heading">Recent signals</h2></header>
             <div className={styles.signalRows}>
               {[
-                { label: "Daily HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
+                { label: "HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
                 { label: "Resting heart rate", value: latest.resting_heart_rate, average: signalAverages.restingHeartRate, unit: "bpm", decimals: 0 },
                 { label: "Respiratory rate", value: latest.respiratory_rate, average: signalAverages.respiratoryRate, unit: "rpm", decimals: 1 },
               ].map((signal) => <div className={styles.signalRow} key={signal.label}><span>{signal.label}</span><div><strong>{formatValue(signal.value, signal.decimals)}</strong>{signal.value === null ? null : <small>{signal.unit}</small>}<em>30-day avg · {signal.average.value === null ? "—" : `${formatAverage(signal.average.value, "decimal", signal.decimals)} ${signal.unit}`}</em></div></div>)}

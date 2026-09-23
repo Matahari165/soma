@@ -253,7 +253,8 @@ describe("health route states", () => {
     expect(markup).not.toContain("Durée de sommeil");
     expect(markup).not.toContain("Charge du jour");
     expect(markup).not.toContain("Énergie métabolique");
-    expect(markup).toContain("Daily HRV");
+    expect(markup).toContain("HRV");
+    expect(markup).not.toContain("Daily HRV");
     expect(markup).not.toContain("Nightly HRV");
     expect(markup).toContain("Respiratory rate");
     expect(markup).not.toContain("Heart rate variability");
