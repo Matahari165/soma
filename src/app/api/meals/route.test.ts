@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { POST as createMeal, GET as listMeals, PUT as saveMeal } from "./route";
+import { POST as createMeal, GET as listMeals, PUT as saveMeal, mealListRange } from "./route";
 import { GET as getMeal, PATCH as patchMeal } from "./[id]/route";
 import { POST as uploadPhotos } from "./[id]/photos/route";
 import { POST as analyzeMeal } from "./[id]/analyze/route";
@@ -10,6 +10,12 @@ import { POST as legacyAnalyzeMeal } from "./analyze/route";
 describe("meal API local preview flow", () => {
   afterEach(() => {
     delete process.env.SOMA_LOCAL_PREVIEW;
+  });
+
+  it("bounds the default meal history and accepts successive date windows", () => {
+    expect(mealListRange({}, new Date("2026-09-23T23:30:00Z"))).toEqual({ from: "2026-06-27", to: "2026-09-24" });
+    expect(mealListRange({ from: "2026-01-01", to: "2026-06-01" })).toBeNull();
+    expect(mealListRange({ from: "2026-03-01", to: "2026-03-30" })).toEqual({ from: "2026-03-01", to: "2026-03-30" });
   });
 
   it("creates a skipped entry without a note, nutrition or AI analysis", async () => {

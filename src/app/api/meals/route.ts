@@ -15,6 +15,25 @@ const listQuerySchema = z.object({
   to: z.iso.date().optional(),
 });
 
+const MAX_MEAL_HISTORY_DAYS = 90;
+
+function shiftDate(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+export function mealListRange(query: { date?: string; from?: string; to?: string }, now = new Date()) {
+  if (query.date) return { from: query.date, to: query.date };
+  // Include the next UTC date so today's meal remains visible in time zones
+  // ahead of UTC. Older history is requested in successive date windows.
+  const to = query.to ?? shiftDate(now.toISOString().slice(0, 10), 1);
+  const from = query.from ?? shiftDate(to, -(MAX_MEAL_HISTORY_DAYS - 1));
+  const span = Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) + 1;
+  if (span < 1 || span > MAX_MEAL_HISTORY_DAYS) return null;
+  return { from, to };
+}
+
 function serviceError(error: unknown) {
   if (!(error instanceof MealServiceError)) return NextResponse.json({ error: "Meals are temporarily unavailable." }, { status: 500 });
   const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
@@ -35,16 +54,17 @@ export async function GET(request: Request) {
   if (!parsed.success || (parsed.data.from && parsed.data.to && parsed.data.from > parsed.data.to)) {
     return NextResponse.json({ error: "The meal date range is invalid." }, { status: 400 });
   }
-  const range = parsed.data.date ? { from: parsed.data.date, to: parsed.data.date } : { from: parsed.data.from, to: parsed.data.to };
+  const range = mealListRange(parsed.data);
+  if (!range) return NextResponse.json({ error: "Select a meal history window of at most 90 days." }, { status: 400 });
   if (isLocalPreviewMode()) {
     const meals = listPreviewMeals(user.id, range);
     if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })), preview: true });
-    return NextResponse.json({ meals: meals.map(mealToApi), preview: true });
+    return NextResponse.json({ meals: meals.map(mealToApi), nextTo: shiftDate(range.from, -1), preview: true });
   }
   try {
     const meals = await listMeals(user.id, range);
     if (parsed.data.date) return NextResponse.json({ date: parsed.data.date, meals: Object.fromEntries(["breakfast", "lunch", "dinner", "snack"].map((slot) => { const meal = meals.find((candidate) => candidate.mealType === slot); return [slot, meal ? mealToLegacyApi(meal) : null]; })) }, { headers: { "Cache-Control": "private, no-store" } });
-    return NextResponse.json({ meals: meals.map(mealToApi) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ meals: meals.map(mealToApi), nextTo: shiftDate(range.from, -1) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return serviceError(error);
   }
