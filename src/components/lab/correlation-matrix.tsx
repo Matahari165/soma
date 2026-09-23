@@ -514,12 +514,11 @@ function EffectsSummary({ relations, period, requireTemporalStability }: { relat
 
   const entries = ranked?.map(({ index, note }) => ({ relation: relations[index], note })).filter((entry) => entry.relation) ?? relations.slice(0, 3).map((relation) => ({ relation, note: "" }));
   return <section className="effects-summary" aria-labelledby="effects-summary-title">
-    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Lecture par GPT-6 Luna" : "Associations mesurées"}</span></div>
+    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2></div>
     {entries.length ? <ol>{entries.map(({ relation, note }) => <li key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
       <span className="effects-summary__arrow" aria-hidden="true">→</span>
       <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small>{note && <em>{note}</em>}</p>
     </li>)}</ol> : <p className="effects-summary__empty">Aucune relation assez solide pour un récapitulatif sur cette période.</p>}
-    <p className="effects-summary__footnote">Ces liens sont des associations observées, pas des causes démontrées.</p>
   </section>;
 }
 

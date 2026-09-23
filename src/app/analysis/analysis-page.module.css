@@ -38,8 +38,6 @@
 
 .page :global(.effects-summary__heading) { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 .page :global(.effects-summary__heading h2) { margin: 0; color: var(--lab-text-primary); font: 400 22px/1.2 Georgia, "Times New Roman", serif; }
-.page :global(.effects-summary__heading > span),
-.page :global(.effects-summary__footnote) { color: var(--lab-text-secondary); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
 .page :global(.effects-summary ol) { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .page :global(.effects-summary li) { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; }
 .page :global(.effects-summary__arrow) { color: var(--lab-signal); font: 400 18px/24px var(--font-soma-ui), system-ui, sans-serif; }
@@ -50,7 +48,37 @@
 .page :global(.effects-summary li em) { margin-inline-start: 8px; color: var(--lab-text-secondary); font: 400 12px/20px var(--font-soma-ui), system-ui, sans-serif; }
 .page :global(.effects-summary li em) { display: block; margin-inline-start: 0; font-style: normal; }
 .page :global(.effects-summary__empty),
-.page :global(.effects-summary__footnote) { margin: 0; }
+.page :global(.effects-summary__empty) { margin: 0; }
+
+/* Analysis follows the same quiet widget hierarchy as Activity and Recovery:
+   a Georgia section title, then compact UI labels and measured data. */
+.page :global(.strongest-effects > header) {
+  min-height: 0;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--lab-border);
+  background: transparent;
+}
+.page :global(.strongest-effects > header h2),
+.page :global(.strongest-effects > header h3) {
+  margin: 0;
+  color: var(--lab-text-primary);
+  font: 400 22px/28px Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+}
+.page :global(.strongest-effects__group > h4),
+.page :global(.strongest-effects__influence-header strong),
+.page :global(.strongest-effects__comparison-header strong),
+.page :global(.strongest-effects__outcome strong) {
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+}
+.page :global(.strongest-effects__plot) { isolation: isolate; }
+.page :global(.strongest-effects__plot::before) {
+  z-index: 0;
+  height: 1px;
+  background: var(--lab-border-strong);
+  opacity: 1;
+  transform: translateY(-50%);
+}
 
 .page :global(.temporal-stability-toggle) { width: auto; min-width: 0; min-height: 44px; gap: 7px; padding: 0 4px; border: 0; background: transparent; color: var(--lab-text-secondary); }
 .page :global(.temporal-stability-toggle:hover) { background: transparent; color: var(--lab-text-primary); }
@@ -76,7 +104,7 @@
   }
 
   .page :global(.effects-summary) { gap: 12px; margin-bottom: 28px; padding-bottom: 22px; }
-  .page :global(.effects-summary__heading) { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .page :global(.effects-summary__heading) { align-items: flex-start; }
   .page :global(.strongest-effects__group + .strongest-effects__group) { margin-top: 28px; }
   .page :global(.strongest-effects__influence + .strongest-effects__influence) { margin-top: 18px; }
 }
