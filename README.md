@@ -32,7 +32,7 @@ Modern health and sleep applications often suffer from two systemic engineering 
 **Soma** was architected to solve both challenges:
 - **Strict Analytical Determinism**: 100% of physiological scores (Sleep Quality, Recovery Index, Cardiovascular Strain, Macronutrient Balance) and correlation metrics are computed deterministically in hardened TypeScript algorithms with zero LLM dependence.
 - **$N=1$ Longitudinal Observatory**: Evaluates within-person changes across multi-horizon temporal windows (7d, 15d, 30d, 90d, all-time) using Spearman rank correlation, Benjamini–Hochberg False Discovery Rate (FDR) corrections, non-linear dose-response detection, and chronological stability guards.
-- **Resilient Asynchronous Vision Pipeline**: Employs an optimistic-locking persistent worker with multi-model consensus (xAI Grok 4.3 primary with OpenAI GPT-5.6 Sol fallback) for automated nutritional breakdown, backed by an ephemeral zero-retention storage policy.
+- **Resilient Asynchronous Vision Pipeline**: Employs an optimistic-locking persistent worker with GPT-6 Luna for automated nutritional breakdown, bounded retries, structured validation, and post-analysis photo purging.
 
 > *Disclaimer: Soma is a personal analytical laboratory and self-observation platform, not a certified medical device. It analyzes observational associations without claiming clinical etiology.*
 
@@ -63,8 +63,7 @@ flowchart TD
 
     subgraph Vision["4. Durable Multimodal Vision Pipeline"]
         WQ["Persistent Task Queue<br/>Optimistic Locks & Lease Heartbeats"]
-        GROK["Primary Model<br/>xAI Grok 4.3 Vision"]
-        GPT["Validator & Fallback<br/>OpenAI GPT-5.6 Sol"]
+        GPT["OpenAI GPT-6 Luna<br/>Structured Meal Analysis"]
         PURGE["Post-Analysis Purge Worker<br/>Automated R2 TTL Cleanup"]
     end
 
@@ -83,9 +82,7 @@ flowchart TD
     CORR --> SE
 
     R2 --> WQ
-    WQ --> GROK
-    GROK -.->|"Validation / Fallback"| GPT
-    GROK -->|"Structured Nutritional Taxonomy"| PG
+    WQ --> GPT
     GPT -->|"Structured Nutritional Taxonomy"| PG
     PURGE -->|"Purge Ephemeral Photo"| R2
 
@@ -115,7 +112,7 @@ Rather than relying on generic averages, Soma models the user as an independent,
 Accurate dietary tracking requires robust handling of unstandardized user inputs and third-party API latency:
 - **Resilient Asynchronous Task Worker**: Decouples image submission from synchronous HTTP request lifecycles. Jobs are enqueued with optimistic row locking (`locked_at`, lease tokens) and heartbeat renewals, ensuring execution completes safely within serverless budget windows (`maxDuration = 60s`).
 - **Crash Recovery & Reconciliation**: Background cron reconcilers (`requeueRetryableMealAnalyses`) automatically recover orphaned or abandoned jobs if an execution container crashes.
-- **Dual-Model Consensus & Failover**: Primary vision inference runs on **xAI Grok 4.3** with automated failover and consistency validation powered by **OpenAI GPT-5.6 Sol**.
+- **Bounded GPT-6 Luna Inference**: One OpenAI Responses call runs per durable job attempt. Transient failures are retried by the persisted worker; malformed structured outputs are rejected rather than recorded as meals.
 - **Structured Macro Taxonomy**: Ingested meal photos are normalized against comprehensive nutritional taxonomies (calories, protein, fats, net carbs, fiber, micronutrients, processing level, and timing).
 
 ### 4. Zero-Leak Privacy Architecture
@@ -143,7 +140,7 @@ Soma includes a zero-friction evaluation mode for code review, demonstration, an
 | **Styling** | Tailwind CSS | `4.3.3` | Modern CSS engine, zero-runtime overhead, responsive biometric dashboards. |
 | **Database** | Supabase | PostgreSQL 16 + RLS | Relational integrity, temporal queries, strict row-level multi-tenant policies. |
 | **Blob Storage** | Cloudflare R2 | S3-Compatible SDK (`@aws-sdk/client-s3`) | High-speed global object storage, zero egress fees, ephemeral retention pipelines. |
-| **Vision & AI** | xAI Grok / OpenAI | Grok 4.3 + GPT-5.6 Sol | High-fidelity multimodal visual breakdown with cross-provider validation fallback. |
+| **Vision & AI** | OpenAI Responses | GPT-6 Luna | Meal analysis, Soma chat, and descriptive Analyse summaries. |
 | **Testing** | Vitest | `4.1.10` | Blazing-fast native ESM test runner powering **790+ passing unit & integration tests**. |
 | **Linting** | ESLint | `^9.0.0` (Flat Config) | Enforces strict code hygiene, modular import boundaries, and architectural invariants. |
 | **Deployment** | Vercel | Production Node 24 | Automated Git continuous deployment, edge middleware, isolated serverless workers. |
@@ -187,7 +184,7 @@ For full live operation with third-party providers:
 2. Apply the SQL files in `supabase/migrations/` with the Supabase CLI or SQL Editor. `pnpm db:migrate:supabase` migrates D1 data; it does not apply schema migrations.
 3. Add your Google OAuth credentials (`GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`) and token encryption key (`TOKEN_ENCRYPTION_KEY`). The historical `GOOGLE_HEALTH_*` pair remains a fallback.
 4. Add Cloudflare R2 credentials (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`) for media processing.
-5. Set AI provider keys (`XAI_API_KEY`, `OPENAI_API_KEY`).
+5. Set `OPENAI_API_KEY` for the Soma assistant, Analyse summaries, and meal analysis. `XAI_API_KEY` is only relevant to historical/legacy integrations.
 
 ---
 
@@ -239,9 +236,9 @@ CI=true pnpm verify
 │   │   └── scores/               # Deterministic scoring engines (Sleep, Recovery, Meals)
 │   ├── integrations/             # External SDK clients & adapters
 │   │   ├── google-health/        # Health data synchronization & normalization
-│   │   ├── meal-analysis/        # Multi-model provider chain (Grok 4.3 + GPT-5.6)
+│   │   ├── meal-analysis/        # Durable GPT-6 Luna provider path
 │   │   ├── openai/               # OpenAI SDK bindings & structured vision schemas
-│   │   └── xai/                  # xAI SDK bindings & Grok vision integration
+│   │   └── xai/                  # Legacy xAI adapters and shared meal contract
 │   ├── lib/                      # Cryptographic utilities, env validation, caches
 │   ├── repositories/             # Data access layer (Supabase, in-memory preview)
 │   └── services/                 # Background workers, retry schedulers, purge daemons

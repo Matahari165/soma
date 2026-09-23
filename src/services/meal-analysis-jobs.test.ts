@@ -167,7 +167,58 @@ describe("durable meal analysis jobs", () => {
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
-    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", allowFallback: false });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3" });
+  });
+
+  it("retries a response-schema failure with Luna and a validation hint", async () => {
+    const candidate = {
+      id: queuedAnalysis.id,
+      user_id: "user-1",
+      meal_id: mealId,
+      status: "queued",
+      provider: "xai",
+      model: "grok-4.6",
+      source_photo_ids: [],
+      source_note: "Riz et légumes",
+      source_meal_date: meal.mealDate,
+      source_meal_type: meal.mealType,
+      source_correction: null,
+      attempts: 0,
+      analysis_request_id: "analysis-request-schema-retry",
+      created_at: "2026-09-14T10:01:00.000Z",
+    };
+    state.listQueuedMealAnalyses.mockResolvedValueOnce([candidate]);
+    state.analyzeMealInputWithFallback.mockRejectedValueOnce(new MealVisionError("response_schema_error", "schema mismatch", { retryable: true }));
+
+    const firstAttempt = await processNextMealAnalysis();
+
+    expect(firstAttempt).toMatchObject({ processed: true, analysis: { status: "failed" } });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledTimes(1);
+
+    state.listFailedMealAnalyses.mockResolvedValueOnce([{
+      ...candidate,
+      status: "failed",
+      attempts: 1,
+      error_code: "response_schema_error",
+      retry_after_at: new Date(Date.now() - 1_000).toISOString(),
+      completed_at: new Date().toISOString(),
+    }]);
+    state.listQueuedMealAnalyses.mockResolvedValueOnce([{
+      ...candidate,
+      attempts: 1,
+      error_code: "response_schema_error",
+    }]);
+    state.analyzeMealInputWithFallback.mockResolvedValueOnce({ provider: "openai", model: "gpt-6-luna", result: canonicalResult });
+
+    const secondAttempt = await processNextMealAnalysis();
+
+    expect(secondAttempt).toMatchObject({ processed: true, analysis: { status: "completed" } });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledTimes(2);
+    expect(state.analyzeMealInputWithFallback).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ retryHint: expect.stringContaining("semantic validation") }),
+      { requestId: "analysis-request-schema-retry" },
+    );
   });
 
   it("processes the freshly enqueued job instead of an older FIFO job", async () => {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 
 import { AssistantResponseError, respondToAssistant } from "./respond";
+import { SOMA_ASSISTANT_MODEL, SOMA_ASSISTANT_PROVIDER } from "./agent";
 
 const ids = {
   conversation: "11111111-1111-4111-8111-111111111111",
@@ -67,7 +68,7 @@ function setup() {
 describe("respondToAssistant", () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it("fails clearly before persistence when xAI is not configured", async () => {
+  it("fails clearly before persistence when OpenAI is not configured", async () => {
     const state = setup();
     await expect(respondToAssistant("user-1", {
       requestId: "request-123", text: "Bonjour", conversationId: ids.conversation,
@@ -77,22 +78,28 @@ describe("respondToAssistant", () => {
     expect(state.repository.appendMessage).not.toHaveBeenCalled();
   });
 
-  it("persists the user and run before Grok, then the answer and completed run", async () => {
+  it("persists the user and run before GPT-6 Luna, then the answer and completed run", async () => {
     const state = setup();
     const result = await respondToAssistant("user-1", {
       requestId: "request-123", text: "Analyse ma semaine", conversationId: ids.conversation,
     }, { apiKey: "test-key", dependencies: state as never });
 
-    expect(result).toMatchObject({ conversationId: ids.conversation, replayed: false, assistantMessage: { id: ids.assistantMessage }, userMessage: { id: ids.userMessage }, run: { status: "completed" } });
+    expect(result).toMatchObject({ conversationId: ids.conversation, replayed: false, assistantMessage: { id: ids.assistantMessage }, userMessage: { id: ids.userMessage }, run: { status: "completed", provider: SOMA_ASSISTANT_PROVIDER, model: SOMA_ASSISTANT_MODEL } });
     expect(state.calls).toEqual([
       "append:user", "run:create", "run:running", "generate", "append:assistant", "run:completed",
     ]);
+    expect(state.repository.createRun).toHaveBeenCalledWith(expect.objectContaining({ model: SOMA_ASSISTANT_MODEL }));
+    expect(state.repository.updateRun).toHaveBeenCalledWith(
+      "user-1",
+      ids.run,
+      expect.objectContaining({ status: "running", provider: SOMA_ASSISTANT_PROVIDER }),
+    );
     expect(state.generate).toHaveBeenCalledWith(expect.objectContaining({
       messages: [{ role: "user", content: "Analyse ma semaine" }],
     }));
   });
 
-  it("replays a completed idempotent request without calling Grok", async () => {
+  it("replays a completed idempotent request without calling GPT-6 Luna", async () => {
     const state = setup();
     state.repository.findRunByRequestId.mockResolvedValueOnce({
       id: ids.run, status: "completed", output_message_id: ids.assistantMessage, triggering_message_id: ids.userMessage, conversation_id: ids.conversation,
@@ -131,7 +138,7 @@ describe("respondToAssistant", () => {
     expect(state.createAgent).not.toHaveBeenCalled();
   });
 
-  it("sends only an owned current JPEG attachment to Grok", async () => {
+  it("sends only an owned current JPEG attachment to GPT-6 Luna", async () => {
     const state = setup();
     state.repository.findAttachment.mockResolvedValueOnce({
       id: "55555555-5555-4555-8555-555555555555", user_id: "user-1", conversation_id: ids.conversation,

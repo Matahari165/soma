@@ -17,7 +17,7 @@ export default async function AnalysisPage() {
   return <Suspense fallback={<LoadingSurface eyebrow="Analysis" title="Loading analysis" label="Loading analysis" />}>
     <main id="main-page-content" className={styles.page} lang="en">
       <header className={styles.header}><h1>Analysis</h1></header>
-      <StrongestEffectsPanel />
+      <StrongestEffectsPanel showSummary />
     </main>
   </Suspense>;
 }

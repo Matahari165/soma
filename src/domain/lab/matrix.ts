@@ -66,6 +66,11 @@ export type MatrixRelation = {
   practicallyMeaningful: boolean; practicalThreshold: number; practicalRatio: number;
   featureEligible: boolean; exclusionReasons: string[]; excluded: boolean;
 };
+
+/** Stable identity across a fresh server calculation and the displayed snapshot. */
+export function summaryRelationKey(relation: Pick<MatrixRelation, "predictorId" | "outcomeId" | "lagDays" | "grain" | "timeScale" | "modelType" | "comparisonLabel">): string {
+  return JSON.stringify([relation.predictorId, relation.outcomeId, relation.lagDays, relation.grain, relation.timeScale, relation.modelType, relation.comparisonLabel]);
+}
 export type MatrixRelationOptions = {
   grain?: "day" | "week";
   timeScale?: "acute" | "chronic";
@@ -546,6 +551,24 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
       : nextDay;
   });
   return selected.sort(stronger).slice(0, limit);
+}
+
+/** Keep the strongest result, then show different outcomes when the evidence allows it. */
+export function selectSummaryRelations(relations: MatrixRelation[], options: PersonalLabRelationDisplayOptions = {}) {
+  const candidates = selectMeaningfulRelations(relations, 24, options);
+  const selected = candidates.slice(0, 1);
+  const outcomes = new Set(selected.map((relation) => relation.outcomeId));
+  for (const relation of candidates.slice(1)) {
+    if (selected.length === 4) break;
+    if (outcomes.has(relation.outcomeId)) continue;
+    selected.push(relation);
+    outcomes.add(relation.outcomeId);
+  }
+  for (const relation of candidates.slice(1)) {
+    if (selected.length === 4) break;
+    if (!selected.includes(relation)) selected.push(relation);
+  }
+  return selected;
 }
 
 export function adjustMatrixRelations(relations: MatrixRelation[]) {

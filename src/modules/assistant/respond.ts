@@ -7,7 +7,7 @@ import type { ModelMessage } from "ai";
 
 import { getR2AssistantAttachment } from "@/lib/r2";
 
-import { createSomaAssistantAgent, SOMA_ASSISTANT_MODEL, type SomaAssistantAgent } from "./agent";
+import { createSomaAssistantAgent, SOMA_ASSISTANT_MODEL, SOMA_ASSISTANT_PROVIDER, type SomaAssistantAgent } from "./agent";
 import { classifyAssistantQuality } from "./policy";
 import { SOMA_ASSISTANT_PROMPT_VERSION } from "./prompt";
 import {
@@ -176,7 +176,7 @@ export async function respondToAssistant(
   rawInput: unknown,
   options: { apiKey?: string; dependencies?: Dependencies } = {},
 ) {
-  const apiKey = options.apiKey ?? process.env.XAI_API_KEY;
+  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
   if (!apiKey?.trim()) {
     throw new AssistantResponseError("assistant_not_configured", 503, "L’assistant Soma n’est pas configuré.");
   }
@@ -290,7 +290,7 @@ export async function respondToAssistant(
   }
   await deps.repository.updateRun(userId, run.id, {
     status: "running",
-    provider: "xai",
+    provider: SOMA_ASSISTANT_PROVIDER,
     started_at: new Date().toISOString(),
   });
 
@@ -341,7 +341,7 @@ export async function respondToAssistant(
       conversationId: conversation.id,
       userMessage: publicMessage(userMessage),
       assistantMessage: publicMessage(assistantMessage),
-      run: publicRun({ ...run, status: "completed", provider: "xai", model: SOMA_ASSISTANT_MODEL }),
+      run: publicRun({ ...run, status: "completed", provider: SOMA_ASSISTANT_PROVIDER, model: SOMA_ASSISTANT_MODEL }),
       replayed: false,
     };
   } catch (error) {

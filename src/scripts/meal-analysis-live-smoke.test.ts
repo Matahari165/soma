@@ -36,6 +36,12 @@ const cases: Array<{ name: string; mealType: MealType; note: string | null; imag
     imageIds: ["combined-1"],
   },
   {
+    name: "two-photos",
+    mealType: "dinner",
+    note: "Deux vues du même repas.",
+    imageIds: ["two-1", "two-2"],
+  },
+  {
     name: "multiple-photos",
     mealType: "breakfast",
     note: "Yaourt nature, banane, flocons d'avoine et quelques noix répartis sur les photos.",

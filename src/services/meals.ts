@@ -306,7 +306,9 @@ export async function requeueRetryableMealAnalyses(now = Date.now()) {
       await updateMealAnalysis(String(row.user_id), String(row.id), {
         status: "queued",
         error: null,
-        error_code: null,
+        // Keep only the coarse failure category as input to the next provider
+        // attempt. The worker clears it again when it claims the queued job.
+        error_code: row.error_code === "response_schema_error" ? "response_schema_error" : null,
         heartbeat_at: null,
         lease_token: null,
         completed_at: null,
@@ -833,10 +835,13 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
       mealDate: candidate.source_meal_date ?? meal.mealDate,
       note: note || null,
       images,
+      ...(candidate.error_code === "response_schema_error" && Number(candidate.attempts ?? 0) > 0
+        ? { retryHint: "The previous response failed semantic validation. Check photo references, observation/value agreement, parent-child counting, nutrition ranges and allowed enums before returning JSON." }
+        : {}),
       ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
       ...(candidate.source_previous_analysis ? { previousAnalysis: candidate.source_previous_analysis } : {}),
       ...(recipeReferences.length ? { recipeReferences } : {}),
-    }, { requestId, allowFallback: false }));
+    }, { requestId }));
     let canonicalResult;
     try {
       canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));

@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
-import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
+import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, selectSummaryRelations, summaryRelationKey, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
@@ -485,7 +485,60 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
 
 const strongestEffectPeriods: AnalysisPeriod[] = [15, 30, 90, "all"];
 
-export function StrongestEffectsPanel() {
+function EffectsSummary({ relations, period, requireTemporalStability }: { relations: MatrixRelation[]; period: AnalysisPeriod; requireTemporalStability: boolean }) {
+  const [rankedResult, setRankedResult] = useState<{ key: string; ranked: string[] } | null>(null);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  const relationKey = relations.map((relation) => JSON.stringify([summaryRelationKey(relation), relation.effect, relation.sampleSize, relation.stable])).join("|");
+  const requestKey = `${period}:${requireTemporalStability}:${relationKey}`;
+  const ranked = rankedResult?.key === requestKey ? rankedResult.ranked : null;
+
+  useEffect(() => () => controllerRef.current?.abort(), [requestKey]);
+
+  async function generateSummary() {
+    if (!relations.length || ranked || loadingKey === requestKey) return;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setLoadingKey(requestKey);
+    setErrorKey(null);
+    try {
+      const response = await fetch("/api/lab/effects-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period, requireTemporalStability }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Summary unavailable");
+      const result = await response.json() as { ranked?: unknown };
+      const knownKeys = new Set(relations.map(summaryRelationKey));
+      if (!Array.isArray(result.ranked) || !result.ranked.length || !result.ranked.every((key) => typeof key === "string" && knownKeys.has(key))) throw new Error("Invalid summary selection");
+      setRankedResult({ key: requestKey, ranked: result.ranked });
+    } catch {
+      if (!controller.signal.aborted) setErrorKey(requestKey);
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
+      setLoadingKey((current) => current === requestKey ? null : current);
+    }
+  }
+
+  const byKey = new Map(relations.map((relation) => [summaryRelationKey(relation), relation]));
+  const entries = ranked?.map((key) => byKey.get(key)).filter((relation): relation is MatrixRelation => Boolean(relation)) ?? relations.slice(0, 3);
+  return <section className="effects-summary" aria-labelledby="effects-summary-title">
+    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Sélection par GPT-6 Luna" : "Associations mesurées"}</span></div>
+    {entries.length ? <ol>{entries.map((relation) => <li key={summaryRelationKey(relation)}>
+      <span className="effects-summary__arrow" aria-hidden="true">→</span>
+      <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small></p>
+    </li>)}</ol> : <p className="effects-summary__empty">Aucune relation assez solide pour un récapitulatif sur cette période.</p>}
+    {entries.length > 0 && !ranked ? <div className="effects-summary__action"><button type="button" onClick={() => void generateSummary()} disabled={loadingKey === requestKey}>{loadingKey === requestKey ? "Sélection en cours…" : "Générer le résumé IA"}</button><span>Envoie une sélection d’associations à OpenAI pour les classer.</span></div> : null}
+    {errorKey === requestKey && !ranked ? <p className="effects-summary__error" role="status">Résumé IA indisponible. Les associations mesurées restent affichées.</p> : null}
+    <p className="effects-summary__footnote">Ces liens sont des associations observées, pas des causes démontrées.</p>
+  </section>;
+}
+
+export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: boolean } = {}) {
   const [period, setPeriod] = useState<AnalysisPeriod>(90);
   const [rowsByPeriod, setRowsByPeriod] = useState<Partial<Record<AnalysisPeriod, PersonalLabSnapshot["matrix"]["rows"]>>>({});
   const [outcomes, setOutcomes] = useState<PersonalLabSnapshot["matrix"]["outcomes"]>([]);
@@ -539,6 +592,7 @@ export function StrongestEffectsPanel() {
 
   const rows = rowsByPeriod[period] ?? [];
   const relations = rows.flatMap((row) => row.relations);
+  const summaryRelations = showSummary ? selectSummaryRelations(relations, { requireTemporalStability }) : [];
   const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Période d’analyse">
     {strongestEffectPeriods.map((value) => <button type="button" aria-label={`Afficher les relations sur ${value === "all" ? "toute la période" : `${value} jours`}`} aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodDisplayLabel(value)}</button>)}
   </div>;
@@ -564,6 +618,7 @@ export function StrongestEffectsPanel() {
   </section>;
 
   return <div className="strongest-effects-panel lab-entry__section" aria-busy={loadingPeriod !== null}>
+    {showSummary && <EffectsSummary relations={summaryRelations} period={period} requireTemporalStability={requireTemporalStability} />}
     <StrongestEffects
       relations={relations}
       outcomes={outcomes}
