@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { PublicHome } from "@/components/public-home";
 import { getCurrentUser } from "@/lib/auth";
 
-export const metadata: Metadata = { title: { absolute: "Sign in — Soma" } };
+export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 const authErrors: Record<string, string> = {
   configuration: "Authentication is not configured in this environment.",

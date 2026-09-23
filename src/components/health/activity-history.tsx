@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ExerciseSummary } from "@/services/health-analytics";
 
@@ -98,10 +98,15 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
   const [periodOpen, setPeriodOpen] = useState(false);
   const [filtersWereUsed, setFiltersWereUsed] = useState(false);
   const periodPickerRef = useRef<HTMLDivElement>(null);
+  const periodTriggerRef = useRef<HTMLButtonElement>(null);
   const visible = exercises.filter((exercise) => exerciseMatchesFilter(exercise.type, filter) && exerciseIsInPeriod(exercise.date, referenceDate, period));
   const displayed = displayedActivities(visible, filtersWereUsed);
   const averages = useMemo(() => activityAverages(displayed), [displayed]);
   const periodLabel = periods.find((item) => item.days === period)?.label ?? "Period";
+  const closePeriod = useCallback(() => {
+    setPeriodOpen(false);
+    requestAnimationFrame(() => periodTriggerRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (!periodOpen) return;
@@ -109,7 +114,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
       if (!periodPickerRef.current?.contains(event.target as Node)) setPeriodOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPeriodOpen(false);
+      if (event.key === "Escape") { event.preventDefault(); closePeriod(); }
     };
     document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeOnEscape);
@@ -117,7 +122,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
       document.removeEventListener("pointerdown", closeOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [periodOpen]);
+  }, [periodOpen, closePeriod]);
 
   return <section className={`${styles.section} health-observatory-panel`} aria-labelledby="activity-sessions-heading">
     <header className={styles.sectionHeader}>
@@ -128,10 +133,10 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
       {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => { setFilter(item.id); setFiltersWereUsed(true); }}>{item.label}</button>)}
       </div>
       <div className={styles.periodPicker} ref={periodPickerRef}>
-        <button className={styles.periodTrigger} type="button" aria-expanded={periodOpen} aria-controls="activity-period-options" onClick={() => setPeriodOpen((open) => !open)}><SlidersHorizontal size={15} aria-hidden="true" /><span>Period · {periodLabel}</span><ChevronDown size={14} aria-hidden="true" /></button>
-        <div className={styles.periodPanel} data-open={periodOpen ? "true" : "false"} id="activity-period-options">
+        <button ref={periodTriggerRef} className={styles.periodTrigger} type="button" aria-expanded={periodOpen} aria-controls="activity-period-options" onClick={() => setPeriodOpen((open) => !open)}><SlidersHorizontal size={15} aria-hidden="true" /><span>Period · {periodLabel}</span><ChevronDown size={14} aria-hidden="true" /></button>
+        <div className={styles.periodPanel} data-open={periodOpen ? "true" : "false"} id="activity-period-options" aria-hidden={!periodOpen} inert={!periodOpen}>
           <div className={styles.periodOptions} role="group" aria-label="Filter workouts by period">
-            {periods.map((item) => <button key={item.days} type="button" aria-pressed={period === item.days} onClick={() => { setPeriod(item.days); setFiltersWereUsed(true); setPeriodOpen(false); }}>{item.label}</button>)}
+            {periods.map((item) => <button key={item.days} type="button" aria-pressed={period === item.days} onClick={() => { setPeriod(item.days); setFiltersWereUsed(true); closePeriod(); }}>{item.label}</button>)}
           </div>
         </div>
       </div>

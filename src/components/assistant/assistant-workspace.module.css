@@ -101,6 +101,10 @@
 
 .loadingState { display: grid; width: 200px; grid-template-columns: repeat(3, 5px) 1fr; align-items: center; gap: 5px; margin: 96px auto; color: var(--lab-text-secondary); }
 .loadingState p { grid-column: 1 / -1; margin: 8px 0 0; font-size: 13px; }
+.loadFailure { width:min(620px,calc(100% - 32px)); margin:96px auto; text-align:center; }
+.loadFailure h2 { margin:0 0 12px; font:400 28px/1.15 Georgia,"Times New Roman",serif; }
+.loadFailure p { color:var(--lab-text-secondary); font-size:14px; }
+.loadFailure button { min-height:44px; margin-top:12px; padding:0 16px; border:1px solid var(--lab-border-strong); border-radius:4px; background:var(--lab-surface-selected); color:var(--lab-text-primary); }
 .loadingState span, .thinking span { width: 5px; height: 5px; border-radius: 50%; background: var(--lab-text-secondary); animation: quietDot 1.1s ease-in-out infinite alternate; }
 .loadingState span:nth-child(2), .thinking span:nth-child(2) { animation-delay: 120ms; }
 .loadingState span:nth-child(3), .thinking span:nth-child(3) { animation-delay: 240ms; }
@@ -140,12 +144,12 @@
   .mobileToolbar { display: grid; height: 52px; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--lab-border); background: var(--lab-surface); }
   .mobileToolbar span { text-align: center; font: 400 18px/1.2 Georgia, "Times New Roman", serif; }
   .mobileToolbar button { min-width: 44px; min-height: 44px; }
-  .history { position: fixed; inset: 0 auto 0 0; z-index: 20; width: min(320px, 88vw); padding: 24px 16px; transform: translateX(-102%); transition: transform 180ms cubic-bezier(.2,.8,.2,1); }
-  .historyOpen { transform: translateX(0); }
+  .history { position: fixed; inset: 0 auto 0 0; z-index: 71; width: min(320px, 88vw); padding: 24px 16px; visibility:hidden; transform: translateX(-102%); transition: transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s linear 180ms; }
+  .historyOpen { visibility:visible; transform: translateX(0); transition-delay:0s; }
   .historyHeader { justify-content: flex-end; }
   .deleteConversation { min-width: 44px; min-height: 44px; opacity: 1; }
   .closeHistory { display: inline-grid; min-width: 44px; min-height: 44px; }
-  .scrim { position: fixed; inset: 0; z-index: 19; display: block; width: 100%; border: 0; background: rgba(0,0,0,.72); }
+  .scrim { position: fixed; inset: 0; z-index: 70; display: block; width: 100%; border: 0; background: rgba(0,0,0,.72); }
   .conversation { height: calc(100dvh - 108px); }
   .welcome { width: calc(100% - 32px); padding-bottom: 6vh; }
   .welcome h2 { font-size: 32px; }

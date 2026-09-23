@@ -62,7 +62,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain("Saturday, September 12");
+    expect(html).toContain("samedi 12 septembre");
     expect(html).toContain("8h 00");
     expect(html).toMatch(/2[\s\u202f]200 kcal/);
     expect(html).toContain('class="radar-value"');
@@ -93,7 +93,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
       />
     );
 
-    expect(html).toContain("Friday, September 11");
+    expect(html).toContain("vendredi 11 septembre");
     expect(html).toContain("8h 40");
     expect(html).toContain("88");
     expect(html).toMatch(/2[\s\u202f]400 kcal/);
@@ -112,7 +112,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).not.toContain('aria-label="Day navigation"');
     expect(html).not.toContain('aria-label="Previous day"');
     expect(html).not.toContain('aria-label="Next day"');
-    expect(html).toContain('aria-label="Available days"');
+    expect(html).toContain('aria-label="Jours disponibles"');
   });
 
   it("renders the personalized arrival message and marked activity note", () => {

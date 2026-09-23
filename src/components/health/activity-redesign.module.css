@@ -338,7 +338,7 @@
 .periodPanel { position: absolute; z-index: 8; top: calc(100% + 8px); right: 0; width: min(280px, calc(100vw - 32px)); overflow: hidden; padding: 0 8px; border: 1px solid transparent; border-radius: 4px; background: var(--lab-canvas, #050505); opacity: 0; visibility: hidden; transform: translateY(-8px); clip-path: inset(0 0 100% 0); transition: opacity 240ms cubic-bezier(.16, 1, .3, 1), transform 240ms cubic-bezier(.16, 1, .3, 1), clip-path 300ms cubic-bezier(.16, 1, .3, 1), visibility 0s linear 300ms, border-color 240ms ease; }
 .periodPanel[data-open="true"] { padding-block: 8px; border-color: var(--effort-rule); opacity: 1; visibility: visible; transform: translateY(0); clip-path: inset(0); transition-delay: 0s; }
 .periodOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.periodOptions button { min-height: 40px; padding: 7px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--effort-muted); text-align: left; font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
+.periodOptions button { min-height: 44px; padding: 7px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--effort-muted); text-align: left; font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; cursor: pointer; }
 .periodOptions button:hover,
 .periodOptions button[aria-pressed="true"] { background: var(--lab-surface-selected, #222); color: var(--effort-text); }
 .periodOptions button:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: -2px; }

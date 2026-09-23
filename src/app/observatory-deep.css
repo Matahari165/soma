@@ -704,30 +704,26 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
 @media(max-width:700px) {
   html[data-lab-theme="observatory"] .lab-global-nav {
     display:flex;
-    flex-wrap:nowrap;
-    justify-content:flex-start;
-    gap:18px;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
     min-height:52px;
     padding:4px 16px;
-    overflow-x:auto;
-    overflow-y:hidden;
-    scrollbar-width:none;
+    overflow:visible;
     background:linear-gradient(to bottom,#050505 0%,rgba(5,5,5,.97) 82%,rgba(5,5,5,0) 100%);
   }
-  html[data-lab-theme="observatory"] .lab-global-nav::-webkit-scrollbar { display:none; }
-  html[data-lab-theme="observatory"] .lab-global-nav a {
-    flex:0 0 auto;
-    min-width:0;
+  html[data-lab-theme="observatory"] .lab-global-nav > a:first-child {
     min-height:44px;
-    justify-content:center;
     margin:0;
     padding:0;
-    font-size:17px;
+    font-size:15px;
     white-space:nowrap;
-    text-align:center;
   }
-  html[data-lab-theme="observatory"] .lab-global-nav a:first-child,
-  html[data-lab-theme="observatory"] .lab-global-nav__settings { margin:0; padding-left:0; border-left:0; }
+  html[data-lab-theme="observatory"] .lab-global-nav > a:not(:first-child) { display:none; }
+  html[data-lab-theme="observatory"] .lab-global-nav__mobile-select { position:relative; display:flex; min-width:0; height:44px; align-items:center; }
+  html[data-lab-theme="observatory"] .lab-global-nav__mobile-select select { width:100%; min-height:44px; padding:0 24px 0 12px; appearance:none; border:0; border-radius:4px; background:transparent; color:var(--lab-text-primary); font:500 15px/1.2 var(--font-soma-ui),system-ui,sans-serif; text-align:right; color-scheme:dark; cursor:pointer; }
+  html[data-lab-theme="observatory"] .lab-global-nav__mobile-select select:focus-visible { outline:2px solid var(--lab-brand); outline-offset:2px; }
+  html[data-lab-theme="observatory"] .lab-global-nav__mobile-select svg { position:absolute; right:0; pointer-events:none; color:var(--lab-text-secondary); }
   html[data-lab-theme="observatory"] body.local-preview .app-shell:has(.lab-continuous) .main-content,
   html[data-lab-theme="observatory"] body.local-preview .app-shell .main-content,
   html[data-lab-theme="observatory"] .app-shell:has(.lab-continuous) .main-content { padding-top:52px; }

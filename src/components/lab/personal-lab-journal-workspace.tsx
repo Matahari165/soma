@@ -30,7 +30,7 @@ function addDays(date: string, days: number) {
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
+  return new Intl.DateTimeFormat("fr-CH", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${date}T12:00:00`));
 }
 
 export function PersonalLabDateStrip({
@@ -63,8 +63,8 @@ export function PersonalLabDateStrip({
     const isCompleted = completedDates.has(date);
     const progress = progressByDate?.[date];
     const progressLabel = progress ? `${progress.count}/${progress.total}` : null;
-    const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
-    const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
+    const monthDay = new Intl.DateTimeFormat("fr-CH", { day: "2-digit", month: "2-digit" }).format(new Date(`${date}T12:00:00`));
+    const weekday = new Intl.DateTimeFormat("fr-CH", { weekday: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
     return (
       <button
         key={date}
@@ -75,7 +75,7 @@ export function PersonalLabDateStrip({
         className={`${isSelected ? "is-selected" : ""} personal-lab-day-strip__day flex flex-col items-center justify-center py-1.5 px-2 rounded transition-all duration-150 relative interactive-press active:scale-[0.96]`}
       >
         <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-content-secondary">
-          <span className={`${isSelected ? "text-content-primary " : ""}personal-lab-day-strip__label`} data-mobile-label={isToday ? "Today" : weekday}>{isToday ? `Today, ${monthDay}` : weekday}</span>
+          <span className={`${isSelected ? "text-content-primary " : ""}personal-lab-day-strip__label`} data-mobile-label={isToday ? "Auj." : weekday}>{isToday ? `Auj. ${monthDay}` : weekday}</span>
           {!isSelected && <span className={isCompleted ? "text-sage text-[10px]" : "text-content-tertiary text-[10px]"} aria-hidden="true">{isCompleted ? "✓" : "•"}</span>}
         </div>
         {progressLabel && <span className={`${isSelected ? "text-sage-muted" : "text-content-tertiary"} text-[10px] font-mono mt-0.5`}>{progressLabel}</span>}
@@ -85,15 +85,15 @@ export function PersonalLabDateStrip({
   }
 
   return (
-    <section className="w-full bg-surface-card/40 personal-lab-day-strip overflow-hidden" data-purpose="timeline-selector" aria-label="Shared day between meals and journal">
+    <section className="w-full bg-surface-card/40 personal-lab-day-strip overflow-hidden" data-purpose="timeline-selector" aria-label="Jour commun aux repas et au journal">
       <div className="max-w-[1360px] mx-auto px-4 sm:px-6 py-3 w-full min-w-0">
-        <div className="personal-lab-day-strip__desktop personal-lab-day-strip__days" role="group" aria-label="Available days">
+        <div className="personal-lab-day-strip__desktop personal-lab-day-strip__days" role="group" aria-label="Jours disponibles">
           {dates.map(renderDate)}
         </div>
-        <div className="personal-lab-day-strip__mobile" role="group" aria-label="Available days">
-          <button type="button" className="personal-lab-day-strip__arrow" aria-label="Show previous days" disabled={disabled || mobileWindowStart === 0} onClick={() => setMobileStart(Math.max(0, mobileWindowStart - 3))}>‹</button>
+        <div className="personal-lab-day-strip__mobile" role="group" aria-label="Jours disponibles">
+          <button type="button" className="personal-lab-day-strip__arrow" aria-label="Afficher les jours précédents" disabled={disabled || mobileWindowStart === 0} onClick={() => setMobileStart(Math.max(0, mobileWindowStart - 3))}>‹</button>
           <div className="personal-lab-day-strip__mobile-days">{dates.slice(mobileWindowStart, mobileWindowStart + 3).map(renderDate)}</div>
-          <button type="button" className="personal-lab-day-strip__arrow" aria-label="Show next days" disabled={disabled || mobileWindowStart >= dates.length - 3} onClick={() => setMobileStart(Math.min(Math.max(0, dates.length - 3), mobileWindowStart + 3))}>›</button>
+          <button type="button" className="personal-lab-day-strip__arrow" aria-label="Afficher les jours suivants" disabled={disabled || mobileWindowStart >= dates.length - 3} onClick={() => setMobileStart(Math.min(Math.max(0, dates.length - 3), mobileWindowStart + 3))}>›</button>
         </div>
       </div>
     </section>

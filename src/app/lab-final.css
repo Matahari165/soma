@@ -37,6 +37,7 @@ html[data-lab-theme] body.local-preview .app-shell .main-content { margin-left:0
  text-underline-offset:4px;
 }
 .lab-global-nav__settings { margin-left:auto; border-left:1px solid var(--lab-border); padding-left:24px; }
+.lab-global-nav__mobile-select { display:none; }
 
 html[data-lab-theme="index"] .lab-global-nav a { font-family:var(--font-soma-mono),monospace; text-transform:uppercase; font-size:11px; }
 html[data-lab-theme="index"] .lab-global-nav { border-bottom:1px solid var(--lab-border); }
