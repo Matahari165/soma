@@ -350,10 +350,36 @@ export async function markAssistantActionUndone(userId: string, actionId: string
   return one(rows, "Assistant action undo");
 }
 
-export async function loadConfirmedAssistantMemories(userId: string) {
+export async function loadConfirmedAssistantMemories(userId: string, today: string) {
   return assistantDatabaseRequest<Array<{ id: string; kind: string; content: string; structured_value: unknown; sensitivity: string; valid_from: string | null; valid_until: string | null }>>(
-    `assistant_memories?user_id=eq.${assistantFilter(userId)}&status=eq.confirmed&select=id,kind,content,structured_value,sensitivity,valid_from,valid_until&order=updated_at.desc&limit=100`,
+    `assistant_memories?user_id=eq.${assistantFilter(userId)}&status=eq.confirmed&and=(or(valid_from.is.null,valid_from.lte.${today}),or(valid_until.is.null,valid_until.gte.${today}))&select=id,kind,content,structured_value,sensitivity,valid_from,valid_until&order=updated_at.desc&limit=101`,
   );
+}
+
+export async function loadActiveAssistantPlans(userId: string) {
+  const plans = await assistantDatabaseRequest<Array<{ id: string; goal_set_id: string | null; updated_at: string }>>(
+    `assistant_plans?user_id=eq.${assistantFilter(userId)}&status=eq.active&select=id,goal_set_id,updated_at&order=updated_at.desc&limit=11`,
+  );
+  const complete = plans.length <= 10;
+  const activePlans = await Promise.all(plans.slice(0, 10).map(async (plan) => {
+    const versions = await assistantDatabaseRequest<Array<{ id: string; version: number; body: unknown; confirmed_at: string }>>(
+      `assistant_plan_versions?user_id=eq.${assistantFilter(userId)}&plan_id=eq.${assistantFilter(plan.id)}&status=eq.confirmed&select=id,version,body,confirmed_at&limit=1`,
+    );
+    return { ...plan, confirmedVersion: versions[0] ?? null };
+  }));
+  return { activePlans, complete };
+}
+
+export async function loadActiveAssistantPlan(userId: string, planId: string) {
+  const plans = await assistantDatabaseRequest<Array<{ id: string; goal_set_id: string | null; updated_at: string }>>(
+    `assistant_plans?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(planId)}&status=eq.active&select=id,goal_set_id,updated_at&limit=1`,
+  );
+  const plan = plans[0];
+  if (!plan) return null;
+  const versions = await assistantDatabaseRequest<Array<{ id: string; version: number; body: unknown; confirmed_at: string }>>(
+    `assistant_plan_versions?user_id=eq.${assistantFilter(userId)}&plan_id=eq.${assistantFilter(planId)}&status=eq.confirmed&select=id,version,body,confirmed_at&limit=1`,
+  );
+  return { ...plan, confirmedVersion: versions[0] ?? null };
 }
 
 export async function loadPendingAssistantChanges(userId: string) {

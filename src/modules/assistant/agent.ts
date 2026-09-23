@@ -6,6 +6,7 @@ import { isStepCount, ToolLoopAgent, type ModelMessage } from "ai";
 import type { AssistantQuality } from "./contracts";
 import { SOMA_ASSISTANT_INSTRUCTIONS } from "./prompt";
 import { createGetUserContextTool } from "./tools/get-user-context";
+import { createGetPlanDetailsTool } from "./tools/get-plan-details";
 import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
@@ -45,6 +46,7 @@ export function createSomaAssistantAgent(input: {
     instructions: SOMA_ASSISTANT_INSTRUCTIONS,
     tools: {
       getUserContext: createGetUserContextTool(input),
+      getPlanDetails: createGetPlanDetailsTool(input),
       querySomaData: createQuerySomaDataTool(input),
       manageUserContext: createManageUserContextTool(input),
       manageMeal: createManageMealTool(input),

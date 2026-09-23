@@ -7,6 +7,9 @@ import {
   deleteAssistantAttachmentMetadata,
   findAssistantAttachment,
   listAssistantAttachments,
+  loadActiveAssistantPlan,
+  loadActiveAssistantPlans,
+  loadConfirmedAssistantMemories,
   saveAssistantGoalSet,
 } from "./index";
 
@@ -56,6 +59,47 @@ describe("assistant attachment repository", () => {
     expect(paths[2]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
     expect(paths[3]).toContain(`user_id=eq.${userId}&conversation_id=eq.${conversationId}&id=eq.${attachmentId}&message_id=is.null`);
     expect(paths[4]).toContain(`user_id=eq.${userId}&id=eq.${attachmentId}`);
+  });
+});
+
+describe("assistant context retrieval", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("filters confirmed memories by their validity dates in the user's calendar day", async () => {
+    vi.mocked(assistantDatabaseRequest).mockResolvedValue([]);
+    await loadConfirmedAssistantMemories(userId, "2026-09-23");
+    const path = vi.mocked(assistantDatabaseRequest).mock.calls[0][0];
+    expect(path).toContain(`user_id=eq.${userId}&status=eq.confirmed`);
+    expect(path).toContain("or(valid_from.is.null,valid_from.lte.2026-09-23)");
+    expect(path).toContain("or(valid_until.is.null,valid_until.gte.2026-09-23)");
+    expect(path).toContain("limit=101");
+  });
+
+  it("loads each active plan's confirmed version without crossing users", async () => {
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => {
+      if (path.startsWith("assistant_plans?")) return [{ id: attachmentId, goal_set_id: null, updated_at: "2026-09-23T10:00:00Z" }] as never;
+      if (path.startsWith("assistant_plan_versions?")) return [{ id: conversationId, version: 2, body: { title: "Plan" }, confirmed_at: "2026-09-23T10:00:00Z" }] as never;
+      throw new Error(`Unexpected database path: ${path}`);
+    });
+    const result = await loadActiveAssistantPlans(userId);
+    expect(result.complete).toBe(true);
+    expect(result.activePlans[0].confirmedVersion).toMatchObject({ version: 2 });
+    for (const [path] of vi.mocked(assistantDatabaseRequest).mock.calls) expect(path).toContain(`user_id=eq.${userId}`);
+    expect(vi.mocked(assistantDatabaseRequest).mock.calls[1][0]).toContain(`status=eq.confirmed`);
+  });
+
+  it("does not read a version when the active plan is not owned by this user", async () => {
+    vi.mocked(assistantDatabaseRequest).mockResolvedValue([]);
+    await expect(loadActiveAssistantPlan(userId, attachmentId)).resolves.toBeNull();
+    expect(assistantDatabaseRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("flags an overfull active-plan inventory instead of silently presenting it as complete", async () => {
+    const plans = Array.from({ length: 11 }, (_, index) => ({ id: `plan-${index}`, goal_set_id: null, updated_at: "2026-09-23T10:00:00Z" }));
+    vi.mocked(assistantDatabaseRequest).mockImplementation(async (path) => (path.startsWith("assistant_plans?") ? plans : []) as never);
+    const result = await loadActiveAssistantPlans(userId);
+    expect(result).toMatchObject({ complete: false });
+    expect(result.activePlans).toHaveLength(10);
   });
 });
 
