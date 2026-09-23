@@ -1,6 +1,6 @@
 import "server-only";
 
-import { xai, type XaiLanguageModelResponsesOptions } from "@ai-sdk/xai";
+import { openai, type OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
 import { isStepCount, ToolLoopAgent, type ModelMessage } from "ai";
 
 import type { AssistantQuality } from "./contracts";
@@ -10,12 +10,13 @@ import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createQuerySomaDataTool } from "./tools/query-soma-data";
 
-export const SOMA_ASSISTANT_MODEL = "grok-4.7";
+export const SOMA_ASSISTANT_PROVIDER = "openai";
+export const SOMA_ASSISTANT_MODEL = "gpt-6-luna";
 
 const qualitySettings: Record<AssistantQuality, {
   maxOutputTokens: number;
   maxSteps: number;
-  reasoningEffort: XaiLanguageModelResponsesOptions["reasoningEffort"];
+  reasoningEffort: OpenAILanguageModelResponsesOptions["reasoningEffort"];
 }> = {
   fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "low" },
   balanced: { maxOutputTokens: 2_400, maxSteps: 6, reasoningEffort: "medium" },
@@ -40,7 +41,7 @@ export function createSomaAssistantAgent(input: {
 }): SomaAssistantAgent {
   const settings = qualitySettings[input.quality];
   return new ToolLoopAgent({
-    model: xai.responses(SOMA_ASSISTANT_MODEL),
+    model: openai.responses(SOMA_ASSISTANT_MODEL),
     instructions: SOMA_ASSISTANT_INSTRUCTIONS,
     tools: {
       getUserContext: createGetUserContextTool(input),
@@ -51,10 +52,10 @@ export function createSomaAssistantAgent(input: {
     stopWhen: isStepCount(settings.maxSteps),
     maxOutputTokens: settings.maxOutputTokens,
     providerOptions: {
-      xai: {
+      openai: {
         reasoningEffort: settings.reasoningEffort,
         store: false,
-      } satisfies XaiLanguageModelResponsesOptions,
+      } satisfies OpenAILanguageModelResponsesOptions,
     },
   });
 }
