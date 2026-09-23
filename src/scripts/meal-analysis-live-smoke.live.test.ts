@@ -21,12 +21,26 @@ async function fixtureImage(id: string): Promise<MealVisionImage> {
   };
 }
 
-const cases: Array<{ name: string; mealType: MealType; note: string | null; imageIds: string[] }> = [
+const cases: Array<{ name: string; mealType: MealType; note: string | null; imageIds: string[]; expectsNutrition?: boolean }> = [
   {
     name: "text-only",
     mealType: "lunch",
     note: "Une assiette de riz, poulet grillé, brocoli et un filet d'huile d'olive.",
     imageIds: [],
+  },
+  {
+    name: "text-only-specified",
+    mealType: "dinner",
+    note: "250 g de blanc de poulet cuit, 150 g de riz cuit, 200 g de courgette poêlée avec 10 g d'huile d'olive et 100 g de raisins.",
+    imageIds: [],
+    expectsNutrition: true,
+  },
+  {
+    name: "text-only-ambiguous",
+    mealType: "dinner",
+    note: "Poulet et courgette cuits à la poêle avec un peu de crème, accompagnés de raisins.",
+    imageIds: [],
+    expectsNutrition: true,
   },
   { name: "photo-only", mealType: "snack", note: null, imageIds: ["photo-only-1"] },
   {
@@ -69,8 +83,20 @@ describe.skipIf(!live).sequential("meal analysis provider live smoke", () => {
         provider: analysed.provider,
         model: analysed.model,
         foodCount: result.foods.length,
+        nutritionAvailable: {
+          calories: result.totals.calories !== null,
+          protein: result.totals.proteinGrams !== null,
+          fiber: result.totals.fiberGrams !== null,
+          sugar: result.totals.sugarGrams !== null,
+        },
       });
       expect(result.foods.length).toBeGreaterThan(0);
+      if (fixture.expectsNutrition) {
+        expect(result.totals.calories?.likely).toBeGreaterThan(0);
+        expect(result.totals.proteinGrams?.likely).toBeGreaterThan(0);
+        expect(result.totals.fiberGrams?.likely).toBeGreaterThan(0);
+        expect(result.totals.sugarGrams?.likely).toBeGreaterThan(0);
+      }
     }, 4 * 60_000);
   }
 });

@@ -88,6 +88,8 @@ describe("xAI meal vision contract", () => {
     expect(imagePrompt).toContain("angles différents");
     expect(imagePrompt).toContain("evidencePhotoIds");
     expect(imagePrompt).toContain("null signifie indisponible");
+    expect(textPrompt).toContain("hypothèse explicite de portion ordinaire");
+    expect(textPrompt).toContain("quantity, portion et estimatedGrams à null");
   });
 
   it("asks for a complete concise summary after a correction without changing the JSON contract", () => {
@@ -189,8 +191,9 @@ describe("xAI meal vision contract", () => {
 
     await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Riz, légumes et poulet" });
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; prompt_cache_key: string; instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; prompt_cache_key: string; max_output_tokens: number; instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
     expect(body.model).toBe("gpt-6-luna");
+    expect(body.max_output_tokens).toBe(6_000);
     expect(body.prompt_cache_key.length).toBeLessThanOrEqual(64);
     expect(body.instructions).toContain("sugarGrams");
     expect(body.instructions).toContain("addedSugarGrams");
@@ -327,6 +330,67 @@ describe("xAI meal vision contract", () => {
     process.env.XAI_API_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ summary: "bad", foods: [], totals: {}, confidence: "medium", uncertainties: [] }) }] }] }), { status: 200 }));
     await expect(createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] })).rejects.toThrow("invalid structured meal analysis");
+  });
+
+  it("repairs one semantically invalid text-only dinner response without inventing nutrition", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const valid = structuredAnalysis();
+    const unknownNutrition = {
+      ...valid,
+      foods: [{ ...valid.foods[0], calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: null, addedSugarGrams: null }],
+      totals: { calories: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, sugarGrams: null, addedSugarGrams: null },
+    };
+    const invalid = { ...unknownNutrition, confidence: "certain" };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(invalid) }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(unknownNutrition) }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repair = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    expect(repair.input[0]?.content[0]?.text).toContain("confidence/invalid_value");
+    expect(result.totals.calories).toBeNull();
+    expect(result.foods[0]?.calories).toBeNull();
+  });
+
+  it("selects a complete meal object inside a parseable response wrapper", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const meal = structuredAnalysis();
+    const wrapped = { summary: null, totals: null, uncertainties: null, analysis: meal };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify({ output_text: JSON.stringify(wrapped) }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.summary).toBe(meal.summary);
+    expect(result.totals.calories).toEqual(meal.totals.calories);
+  });
+
+  it("selects the valid final object when a Responses payload contains two JSON fragments", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const meal = structuredAnalysis();
+    const preliminary = { summary: null, totals: null, uncertainties: null };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      output_text: JSON.stringify(preliminary),
+      output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(meal) }] }],
+    }), { status: 200 }));
+
+    const result = await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.summary).toBe(meal.summary);
+  });
+
+  it("does not substitute a nested previous analysis for a missing final meal", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const wrapped = { summary: null, totals: null, uncertainties: null, previousAnalysis: structuredAnalysis() };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify({ output_text: JSON.stringify(wrapped) }), { status: 200 }));
+
+    await expect(createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "dinner", mealDate: "2026-08-31", note: "Riz et légumes" })).rejects.toMatchObject({ code: "response_schema_error" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("sends a text-only request without images for a free description", async () => {

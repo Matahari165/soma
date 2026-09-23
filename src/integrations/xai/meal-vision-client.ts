@@ -14,6 +14,7 @@ import {
   normalizeStructuredAnalysis,
   responseDiagnostics,
   responseText,
+  safeRootShape,
   safeSchemaDiagnostics,
   schemaRetryPrompt,
   structuredJson,
@@ -85,6 +86,8 @@ export type StructuredRequest = {
   requestId?: string;
   reasoningEffort?: string;
   maxAttempts?: number;
+  /** One extra call for a complete response that fails the meal schema. */
+  schemaRepairAttempts?: number;
   /** Abort a provider request instead of holding a worker lease forever. */
   timeoutMs?: number;
 };
@@ -101,7 +104,8 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   let retryWithLargerBudget = false;
   let schemaRetryInstructions: string | null = null;
   const maxAttempts = request.maxAttempts ?? MAX_PROVIDER_ATTEMPTS;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  const maxSchemaAttempts = maxAttempts + (request.schemaRepairAttempts ?? 0);
+  for (let attempt = 1; attempt <= maxSchemaAttempts; attempt += 1) {
     // A truncated structured response cannot be repaired by sending the same
     // request again. Give only a retry explicitly marked as token-truncated a
     // larger completion budget while keeping network/rate-limit retries lean.
@@ -273,14 +277,15 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
             durationMs,
             code: "response_schema_error",
             schemaIssues: diagnostics,
+            rootShape: safeRootShape(parsed),
           });
-          if (responseStatus !== "incomplete" && attempt < maxAttempts) {
+          if (responseStatus !== "incomplete" && attempt < maxSchemaAttempts) {
             lastError = error;
             schemaRetryInstructions = schemaRetryPrompt(request.sourcePhotoIds, diagnostics);
             await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
             continue;
           }
-          if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
+          if (responseStatus !== "incomplete" || attempt >= maxSchemaAttempts) {
             throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
           }
         }

@@ -138,6 +138,8 @@ export function AnalysisDetails({
       : styles.v3DetailsToggle;
   const ingredients = meal.analysis?.ingredients ?? [];
   const summary = meal.analysis?.summary?.trim() ?? "";
+  const fiberValue = nutritionValue(meal.analysis?.fiberGrams);
+  const totalSugarValue = nutritionValue(meal.analysis?.sugarGrams);
   const normalizeText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const normalizedSummary = normalizeText(summary);
   const repeatedIngredients = ingredients.filter((ingredient) => {
@@ -172,6 +174,10 @@ export function AnalysisDetails({
               ))}
             </ul>
           )}
+          {hideToggle && <dl className={styles.analysisSupplementalMetrics}>
+            <div><dt>Fibres</dt><dd>{fiberValue === null ? "—" : `${formatMetricNumber(fiberValue)} g`}</dd></div>
+            <div><dt>Sucres totaux</dt><dd>{totalSugarValue === null ? "—" : `${formatMetricNumber(totalSugarValue)} g`}</dd></div>
+          </dl>}
           {hideToggle ? <>
             {usefulSummary && <p className={styles.analysisDetailsSummary}>{usefulSummary}</p>}
             {!ingredients.length && !usefulSummary && meal.note && <p className={styles.analysisDetailsSummary}>{meal.note}</p>}
@@ -211,7 +217,7 @@ export interface LabMealCardProps {
   disabled?: boolean;
   designVariant?: MealDesignVariant;
   targets?: NutritionTargets;
-  analysisProgress?: { phase?: string; dishType?: string; foods: string[] } | null;
+  analysisProgress?: { stage?: "connecting" | "preparing" | "queued" | "analyzing"; phase?: string; dishType?: string; foods: string[] } | null;
   onFiles: (files: File[]) => void | Promise<void>;
   onRemovePhoto: (photoId: string) => void;
   onPhotoComment?: (photoId: string, comment: string) => void;
@@ -224,6 +230,36 @@ export interface LabMealCardProps {
   onMarkRecorded?: () => void;
   onDeleteMeal?: () => void;
   confirmError?: string | null;
+}
+
+function MealAnalysisScreen({ slot, stage, onCancel }: {
+  slot: MealSlot;
+  stage: "connecting" | "preparing" | "queued" | "analyzing";
+  onCancel: () => void;
+}) {
+  const currentStep = stage === "connecting" || stage === "preparing" ? 0 : 1;
+  const message = {
+    connecting: ["Connexion au service", "Envoi de la demande d’analyse."],
+    preparing: ["Préparation des photos", "Les images du repas sont envoyées."],
+    queued: ["Analyse en attente", "La demande est reçue et attend son traitement."],
+    analyzing: ["Analyse en cours", "Le repas est examiné. Le résultat apparaîtra ici."],
+  }[stage];
+
+  return <article className={styles.analysisScreen} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
+    <div className={styles.analysisScreenTop}>
+      <h3 id={`meal-${slot}-title`}>{SLOT_LABELS[slot]}</h3>
+      <span>Analyse du repas</span>
+    </div>
+    <div className={styles.analysisScreenBody}>
+      <div className={styles.analysisSignal} aria-hidden="true"><span /></div>
+      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{message[0]}</p>
+      <p className={styles.analysisScreenCopy}>{message[1]}</p>
+      <ol className={styles.analysisSteps} aria-label="Progression de l’analyse">
+        {["Connexion", "Analyse", "Résultat"].map((label, index) => <li key={label} data-state={index < currentStep ? "done" : index === currentStep ? "current" : "pending"} aria-current={index === currentStep ? "step" : undefined}>{label}</li>)}
+      </ol>
+    </div>
+    <button type="button" className={styles.analysisCancel} onClick={onCancel}>Annuler l’analyse</button>
+  </article>;
 }
 
 export function LabMealCard({
@@ -380,6 +416,9 @@ export function LabMealCard({
   const carbsValue = nutritionValue(analysis?.carbohydratesGrams);
   const fatValue = nutritionValue(analysis?.fatGrams);
   const sugarValue = nutritionValue(analysis?.addedSugarGrams);
+  const fiberValue = nutritionValue(analysis?.fiberGrams);
+  const totalSugarValue = nutritionValue(analysis?.sugarGrams);
+  const nutritionUnavailable = Boolean(analysis) && [calValue, protValue, carbsValue, fatValue, sugarValue, fiberValue, totalSugarValue].every((value) => value === null);
   const metrics: MealMetric[] = [
     { key: "calories", label: "Calories", value: calValue, unit: "kcal" },
     { key: "protein", label: "Protein", value: protValue, unit: "g" },
@@ -440,10 +479,6 @@ export function LabMealCard({
               </button>
             )}
           </div>
-          <div className="text-xs text-content-secondary font-sans" role="status" aria-live="polite">
-            <strong className="text-content-primary font-medium mr-1.5">Skipped</strong>
-            <span>This slot is excluded from meal totals.</span>
-          </div>
           {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
         </article>
       );
@@ -458,10 +493,6 @@ export function LabMealCard({
           </div>
         </div>
         <div className={styles.skippedState} role="status" aria-live="polite">
-          <div className={styles.skippedCopy}>
-            <strong>Skipped</strong>
-            <span>This slot is excluded from meal totals.</span>
-          </div>
           {onMarkRecorded && <button type="button" className={styles.restoreButton} disabled={disabled || mutationBusy} onClick={onMarkRecorded}>Log this meal</button>}
         </div>
         {confirmError && <p className={styles.confirmError} role="alert">{confirmError}</p>}
@@ -493,67 +524,7 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
-    if (designVariant === "v1") {
-      return (
-        <article className={`rounded border border-hairline bg-surface-card/60 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
-            </div>
-            <span className="text-xs font-mono text-content-secondary">
-              {analysisProgress?.phase || "Analyse en cours…"}
-            </span>
-          </div>
-          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {analysisProgress.foods.map((food, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded text-xs font-mono bg-surface-subtle text-content-secondary border border-hairline">{food}</span>
-              ))}
-            </div>
-          )}
-          <div className="flex justify-end pt-1">
-            <button
-              type="button"
-              className="px-2.5 py-1 text-xs font-sans text-content-secondary hover:text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors active:scale-[0.98] transition-transform duration-150"
-              onClick={onCancelAnalysis}
-            >
-              Annuler
-            </button>
-          </div>
-        </article>
-      );
-    }
-
-    return (
-      <article className={styles.cardRoot} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy}>
-        <div className={styles.headerRow}>
-          <div className={styles.titleArea}>
-            <h3 id={headingId} className={styles.slotHeading}>{slotLabel}</h3>
-          </div>
-        </div>
-        <div className={styles.analyzingState} role="status">
-          <div className={styles.analyzingHeader}>
-            <span className={styles.progressTrace} aria-hidden="true" />
-            <span className={styles.progressPhase}>{analysisProgress?.phase || "Analyse en cours…"}</span>
-          </div>
-          {analysisProgress?.dishType && (
-            <div className={styles.dishBadge}>{analysisProgress.dishType}</div>
-          )}
-          {analysisProgress?.foods && analysisProgress.foods.length > 0 && (
-            <div className={styles.foodChipsList}>
-              {analysisProgress.foods.map((food, idx) => (
-                <span key={idx} className={styles.foodChip}>{food}</span>
-              ))}
-            </div>
-          )}
-          <div className={styles.analyzingActions}>
-            <button type="button" className={styles.cancelButton} onClick={onCancelAnalysis}>
-              Annuler
-            </button>
-          </div>
-        </div>
-      </article>
-    );
+    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} onCancel={onCancelAnalysis} />;
   }
 
   if (status === "error") {
@@ -674,6 +645,7 @@ export function LabMealCard({
           <div className="sr-only">
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
           </div>
+          {nutritionUnavailable && <p className={styles.analysisWarning}>Le résultat ne contient pas d’estimation nutritionnelle. Précise les quantités, puis mets à jour le repas.</p>}
           {meal?.analysis && (
             <AnalysisDetails
               meal={meal}

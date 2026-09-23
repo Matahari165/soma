@@ -503,11 +503,6 @@
   padding: 16px 0;
 }
 
-:global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) + :global(.metric-trend-card) {
-  padding-left: 24px;
-  border-top: 1px solid var(--health-rule);
-}
-
 :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) :global(header) { align-items: baseline; }
 :global(html[data-lab-theme="observatory"]) .observatory :global(.metric-trend-card) :global(header span) {
   color: var(--health-muted);

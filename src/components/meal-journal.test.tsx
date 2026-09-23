@@ -469,6 +469,7 @@ describe("MealJournal", () => {
 
   it("waits for a queued correction before showing the recalculated meal", async () => {
     const createdIds: string[] = [];
+    const progressStages: string[] = [];
     const statusHeaders: Array<HeadersInit | undefined> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
@@ -480,8 +481,9 @@ describe("MealJournal", () => {
       }
       return Response.json({ meal: { id: "server-meal" } });
     }));
-    const result = await defaultAnalyze({ date, slot: "lunch", files: [], meal: { id: "meal-local", date, slot: "lunch", note: "Riz", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" } }, { onMealCreated: (id) => createdIds.push(id) });
+    const result = await defaultAnalyze({ date, slot: "lunch", files: [], meal: { id: "meal-local", date, slot: "lunch", note: "Riz", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" } }, { onMealCreated: (id) => createdIds.push(id), onProgress: (progress) => progressStages.push(progress.stage ?? "unknown") });
     expect(createdIds).toEqual(["server-meal"]);
+    expect(progressStages).toEqual(["connecting", "queued"]);
     expect(result.status).toBe("confirmed");
     expect(result.analysis?.calories?.likely).toBe(740);
     expect(statusHeaders).toHaveLength(1);

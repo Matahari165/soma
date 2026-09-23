@@ -26,12 +26,11 @@ import {
   editableJournalDayPeriods,
 } from "./daily-journal-shared";
 
-function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, defaultValue, captureMode, automaticMetricId, trackingCadence, busy, autoFocus = false, onNameChange, onTypeChange, onUnitChange, onOptionsChange, onEmojiChange, onDayPeriodChange, onDefaultValueChange, onCaptureModeChange, onAutomaticMetricChange, onTrackingCadenceChange, onSave, onCancel }: {
+function VariableEditor({ variableType, name, unit, options, dayPeriod, defaultValue, captureMode, automaticMetricId, trackingCadence, busy, autoFocus = false, onNameChange, onTypeChange, onUnitChange, onOptionsChange, onDayPeriodChange, onDefaultValueChange, onCaptureModeChange, onAutomaticMetricChange, onTrackingCadenceChange, onSave, onCancel }: {
   variableType: JournalVariableType;
   name: string;
   unit: string;
   options: string;
-  emoji: string;
   dayPeriod: JournalDayPeriod;
   defaultValue: string;
   captureMode: JournalCaptureMode;
@@ -43,7 +42,6 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
   onTypeChange: (value: JournalVariableType) => void;
   onUnitChange: (value: string) => void;
   onOptionsChange: (value: string) => void;
-  onEmojiChange: (value: string) => void;
   onDayPeriodChange: (value: JournalDayPeriod) => void;
   onDefaultValueChange: (value: string) => void;
   onCaptureModeChange: (value: JournalCaptureMode) => void;
@@ -57,7 +55,6 @@ function VariableEditor({ variableType, name, unit, options, emoji, dayPeriod, d
       <span>Name</span>
       <input autoFocus={autoFocus} aria-label="Metric name" value={name} onChange={(event) => onNameChange(event.target.value)} />
     </label>
-    <label><span>Emoji</span><input aria-label="Metric emoji" maxLength={8} value={emoji} onChange={(event) => onEmojiChange(event.target.value)} /></label>
     <label><span>Type</span><select disabled={captureMode === "automatic" && automaticMetricId !== null} aria-label="Metric type" value={variableType} onChange={(event) => onTypeChange(event.target.value as JournalVariableType)}>{Object.entries(typeLabels).filter(([value]) => ["boolean", "number", "count", "time", "scale", variableType].includes(value)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
     <label><span>Capture</span><select aria-label="Metric source" value={captureMode} onChange={(event) => onCaptureModeChange(event.target.value as JournalCaptureMode)}><option value="manual">Manual</option><option value="automatic">Automatic</option></select></label>
     {captureMode === "automatic" && <label><span>Health signal</span><select aria-label="Automatic health signal" value={automaticMetricId ?? ""} onChange={(event) => onAutomaticMetricChange(event.target.value || null)}><option value="">Choose a signal</option>{journalAutomaticSources.map((source) => <option value={source.id} key={source.id}>{source.label}</option>)}</select></label>}
@@ -186,14 +183,14 @@ export function VariableManager({ variables, open, managerRef, children }: { var
     if (!open || editingId !== variable.id) return null;
     const editorId = `journal-variable-edit-${variable.id}`;
     return <div className="journal-variable-inline" id={editorId} aria-label={`Settings for ${journalVariableLabel(variable)}`}>
-      <VariableEditor variableType={editVariableType} name={editName} unit={editUnit} options={editOptions} emoji={editEmoji} dayPeriod={editDayPeriod} defaultValue={editDefaultValue} captureMode={editCaptureMode} automaticMetricId={editAutomaticMetricId} trackingCadence={editTrackingCadence} busy={busyId === variable.id} autoFocus onNameChange={setEditName} onTypeChange={(value) => { setEditVariableType(value); setEditDefaultValue(value === "boolean" ? "false" : value === "time" || value === "scale" ? "" : "0"); }} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onEmojiChange={setEditEmoji} onDayPeriodChange={setEditDayPeriod} onDefaultValueChange={setEditDefaultValue} onCaptureModeChange={(value) => { setEditCaptureMode(value); if (value === "manual") setEditAutomaticMetricId(null); }} onAutomaticMetricChange={(value) => { setEditAutomaticMetricId(value); const source = journalAutomaticSource(value); if (source) { setEditVariableType(source.variableType); setEditDayPeriod(source.dayPeriod); setEditTrackingCadence(source.defaultTrackingCadence); setEditDefaultValue(""); } }} onTrackingCadenceChange={setEditTrackingCadence} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} />
-      <div className="journal-variable-inline__actions" aria-label={`Actions for ${journalVariableLabel(variable)}`}>
-        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} earlier`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑</button>
-        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} later`} disabled={busyId === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓</button>
+      <VariableEditor variableType={editVariableType} name={editName} unit={editUnit} options={editOptions} dayPeriod={editDayPeriod} defaultValue={editDefaultValue} captureMode={editCaptureMode} automaticMetricId={editAutomaticMetricId} trackingCadence={editTrackingCadence} busy={busyId === variable.id} autoFocus onNameChange={setEditName} onTypeChange={(value) => { setEditVariableType(value); setEditDefaultValue(value === "boolean" ? "false" : value === "time" || value === "scale" ? "" : "0"); }} onUnitChange={setEditUnit} onOptionsChange={setEditOptions} onDayPeriodChange={setEditDayPeriod} onDefaultValueChange={setEditDefaultValue} onCaptureModeChange={(value) => { setEditCaptureMode(value); if (value === "manual") setEditAutomaticMetricId(null); }} onAutomaticMetricChange={(value) => { setEditAutomaticMetricId(value); const source = journalAutomaticSource(value); if (source) { setEditVariableType(source.variableType); setEditDayPeriod(source.dayPeriod); setEditTrackingCadence(source.defaultTrackingCadence); setEditDefaultValue(""); } }} onTrackingCadenceChange={setEditTrackingCadence} onSave={() => void saveEdit(variable)} onCancel={() => setEditingId(null)} />
+      <div className="journal-variable-inline__actions" role="group" aria-label={`Order and removal for ${journalVariableLabel(variable)}`}>
+        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} earlier`} disabled={busyId === variable.id || activeVariables[0]?.id === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: Math.max(0, variable.position - 15) }, variable.id)}>↑ Earlier</button>
+        <button type="button" aria-label={`Move ${journalVariableLabel(variable)} later`} disabled={busyId === variable.id || activeVariables.at(-1)?.id === variable.id} onClick={() => void request("PATCH", { id: variable.id, position: variable.position + 15 }, variable.id)}>↓ Later</button>
         {pendingRemoveId === variable.id ? <span role="group" aria-label={`Confirm removal of ${journalVariableLabel(variable)}`}>
-          <button type="button" disabled={busyId === variable.id} onClick={() => void confirmRemove(variable)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Confirm removal</button>
+          <button className="journal-variable-remove" type="button" disabled={busyId === variable.id} onClick={() => void confirmRemove(variable)}>{busyId === variable.id ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : null}Remove habit</button>
           <button type="button" onClick={() => setPendingRemoveId(null)}>Cancel</button>
-        </span> : <button type="button" disabled={busyId === variable.id} onClick={() => { setLastRemoved(null); setPendingRemoveId(variable.id); }}>Remove</button>}
+        </span> : <button className="journal-variable-remove" type="button" disabled={busyId === variable.id} onClick={() => { setLastRemoved(null); setPendingRemoveId(variable.id); }}>Remove habit</button>}
       </div>
     </div>;
   }
@@ -217,7 +214,6 @@ export function VariableManager({ variables, open, managerRef, children }: { var
     {creating && <div className="journal-new-variable">
         <div className="journal-new-variable__heading"><h4>Add a tracked variable</h4><p>Leave it blank on days you don&apos;t want to log: absence remains absence.</p></div>
         <label><span>Name</span><input placeholder="e.g. Alcohol, Vacation, Deep work" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-        <label><span>Emoji</span><input aria-label="Emoji" maxLength={8} value={draft.emoji} onChange={(event) => setDraft((current) => ({ ...current, emoji: event.target.value }))} /></label>
         <label><span>Capture</span><select aria-label="Metric source" value={draft.captureMode} onChange={(event) => {
           const captureMode = event.target.value as JournalCaptureMode;
           setDraft((current) => ({ ...current, captureMode, automaticMetricId: captureMode === "manual" ? null : current.automaticMetricId, defaultValue: captureMode === "automatic" ? "" : current.defaultValue }));

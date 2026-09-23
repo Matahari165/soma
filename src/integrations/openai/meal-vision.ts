@@ -39,6 +39,7 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number; 
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        schemaRepairAttempts: 1,
         timeoutMs: options.timeoutMs,
       });
     },
@@ -51,11 +52,12 @@ export function createOpenAiMealVisionProvider(options: { maxAttempts?: number; 
         instructions: MEAL_TEXT_PROVIDER_INSTRUCTIONS,
         promptText: makeTextPrompt(input),
         imageContents: [],
-        maxOutputTokens: 3_000,
+        maxOutputTokens: 6_000,
         sourcePhotoIds: [],
         reasoningEffort,
         requestId: input.requestId,
         maxAttempts: options.maxAttempts,
+        schemaRepairAttempts: 1,
         timeoutMs: options.timeoutMs,
       });
     },

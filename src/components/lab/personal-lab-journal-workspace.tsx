@@ -7,7 +7,6 @@ import { DailyJournal } from "./daily-journal";
 import { breakfastIsExplicitlySkipped } from "./meal-quick-capture";
 import MealJournal from "../meal-journal";
 import type { MealDesignVariant } from "./meal-card-variants";
-import MealSupplements from "../meal-supplements";
 import styles from "./personal-lab-journal-workspace.module.css";
 
 const designVariants: ReadonlyArray<{ id: MealDesignVariant; label: string }> = [
@@ -256,7 +255,6 @@ export function PersonalLabJournalWorkspace({
       </div>
       <div key={`journal-${activeDate}`} className={`personal-lab-journal-column ${styles.stitchProtocolColumn} lg:col-span-7 lg:order-1 space-y-9 animate-date-fade`} id="daily-journal" data-purpose="daily-protocol-journal">
         <DailyJournal presentation="personal-lab" variables={data.journal.variables} entries={data.journal.entries} days={data.journal.days} achievements={data.journal.achievements} todayDate={data.todayDate} selectedDate={activeDate} onDateChange={onDateChange} showDateNavigation={false} availableDates={dates} onTodayBreakfastValidation={setBreakfastDisabled} activeEffectsByVariable={activeEffectsByVariable} statusTreatment={designVariant} onCompletionChange={handleCompletionChange} />
-        <MealSupplements date={activeDate} initialDefinitions={data.supplements.definitions} initialEntries={data.supplements.entries} initialError={data.supplements.error} compact />
       </div>
     </div>
   </div>;

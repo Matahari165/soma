@@ -379,7 +379,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           const body = await defaultLoadAnalysisStatus(meal.id);
           if (cancelled || !body.meal) return;
           const next = normalizeMeal(apiMealToRecord(body.meal), selectedDate, slot);
-          if (next.status === "accepted" || next.status === "analyzing") setAnalysisProgress((current) => ({ ...current, [slot]: { phase: next.status === "accepted" ? "En attente de l’analyse…" : "Analyse du repas en cours…", foods: [] } }));
+          if (next.status === "accepted" || next.status === "analyzing") setAnalysisProgress((current) => ({ ...current, [slot]: { stage: next.status === "accepted" ? "queued" : "analyzing", phase: next.status === "accepted" ? "En attente de l’analyse…" : "Analyse du repas en cours…", foods: [] } }));
           setData((current) => current ? { ...current, meals: { ...current.meals, [slot]: next } } : current);
         } catch {
           // A temporary reconnect failure must not turn a durable job into a
@@ -911,7 +911,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     setAnalyzingSlots((previous) => previous.includes(slot) ? previous : [...previous, slot]);
     cancelledAnalysisIds.current.delete(meal.id);
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
-    setAnalysisProgress((prev) => ({ ...prev, [slot]: { phase: "Connexion…", foods: [] } }));
+    setAnalysisProgress((prev) => ({ ...prev, [slot]: { stage: "connecting", phase: "Connexion…", foods: [] } }));
     try {
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));

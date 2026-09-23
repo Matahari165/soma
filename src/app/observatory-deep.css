@@ -202,6 +202,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
 .radar-value { stroke:none; fill:#ffffff12; opacity:0; animation:radar-fill-reveal 600ms cubic-bezier(.22,1,.36,1) 100ms both; }
 .radar-value-segment { fill:none; stroke:#eee; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:1; animation:radar-trace-draw 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
 .radar-point { transform-box:fill-box; transform-origin:center; opacity:0; animation:radar-point-reveal 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both; }
+.observatory-radar--trace-settled :is(.radar-value,.radar-value-segment,.radar-point) { animation:none; opacity:1; stroke-dashoffset:0; transform:none; }
 @keyframes radar-trace-draw { to { stroke-dashoffset:0; } }
 @keyframes radar-fill-reveal { 0% { opacity:0; } 24% { opacity:.05; } 48% { opacity:.18; } 72% { opacity:.45; } 100% { opacity:1; } }
 @keyframes radar-point-reveal { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
@@ -633,7 +634,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   outline: 2px solid #eee;
   outline-offset: 3px;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline {
   display: grid;
   gap: 10px;
   margin: -2px 0 8px;
@@ -641,13 +642,13 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   border-bottom: 1px solid rgba(238, 238, 238, .14);
   animation: journal-inline-editor-enter 180ms cubic-bezier(.2, .8, .2, 1) both;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline .journal-variable-edit {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline .journal-variable-edit {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
   padding: 12px 0 0;
   border: 0;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(input, select) {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline :is(input, select) {
   min-height: 36px;
   padding: 7px 0;
   border: 0;
@@ -656,12 +657,17 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   background: transparent;
   color: #eee;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline__actions {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(238, 238, 238, .16);
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button) {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline__actions .journal-variable-remove { margin-inline-start: auto; color: var(--lab-error, #e2b2aa); }
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button) {
   min-height: 36px;
   border: 0 !important;
   border-bottom: 1px solid rgba(238, 238, 238, .22) !important;
@@ -669,9 +675,14 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   background: transparent;
   color: #aaa;
 }
-html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button):is(:hover, :focus-visible) {
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button):is(:hover, :focus-visible) {
   background: #151515;
   color: #f1f1f1;
+}
+@media (max-width: 700px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline { padding-inline-start: 0; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline .journal-variable-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-journal-column .journal-variable-inline :is(.journal-variable-edit button, .journal-variable-inline__actions button) { min-height: 44px; }
 }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card--personal-lab :is(.journal-field, .journal-field--confirmed, .journal-field--skipped, .journal-period--complete, .journal-period--complete .journal-field, .journal-period--complete .journal-period__header) {
   background: transparent !important;

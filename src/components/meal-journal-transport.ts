@@ -19,6 +19,7 @@ import {
 import { recordAnalysisToApi } from "./meal-journal-logic";
 
 export type MealAnalysisProgress = {
+  stage?: "connecting" | "preparing" | "queued" | "analyzing";
   phase?: string;
   dishType?: string;
   foods: string[];
@@ -97,6 +98,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     ));
   }
   if (files.length > 0) {
+    options.onProgress?.({ stage: "preparing", phase: "Envoi des photos…", foods: [] });
     const uploadFiles = uploadEntries.map((entry) => entry.file);
     const origins = uploadEntries.map((entry) => entry.photo.origin ?? "unknown");
     if (uploadFiles.length !== files.length) throw new Error("Selected photos no longer match the meal.");
@@ -113,6 +115,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       options.onPhotosUploaded?.([{ localPhotoId: entry.photo.id, photo: uploadedBody.photos[0] }]);
     }
   }
+  options.onProgress?.({ stage: "connecting", phase: "Connexion à l’analyse…", foods: [] });
   const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, {
     method: "POST",
     headers: {
@@ -131,7 +134,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
   if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let currentProgress: MealAnalysisProgress = { phase: "Connexion…", foods: [] as string[], dishType: undefined };
+    let currentProgress: MealAnalysisProgress = { stage: "connecting", phase: "Connexion…", foods: [] as string[], dishType: undefined };
     let buffer = "";
 
     try {
@@ -160,7 +163,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
                   "validating": "Validation des données…",
                   "finalizing": "Enregistrement…"
                 };
-                currentProgress = { ...currentProgress, phase: phasesMap[data.phase] || "Analyse en cours…" };
+                currentProgress = { ...currentProgress, stage: "analyzing", phase: phasesMap[data.phase] || "Analyse en cours…" };
                 options.onProgress?.(currentProgress);
               } else if (currentEvent === "dish_detected") {
                 currentProgress = { ...currentProgress, dishType: data.dishType, phase: `Plat : ${data.dishType}` };
@@ -210,7 +213,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
 
   const body = await readJson(response);
   if (response.status === 202 || body?.queued) {
-    options.onProgress?.({ phase: "Analyse en cours…", foods: [] });
+    options.onProgress?.({ stage: "queued", phase: "En attente de l’analyse…", foods: [] });
     for (let attempt = 0; attempt < 45; attempt += 1) {
       if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2_000));
       const statusResponse = await fetchMealWithTimeout(
@@ -221,6 +224,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       );
       const statusBody = await readJson(statusResponse);
       if (statusBody?.analysis?.status === "failed") throw new Error(statusBody.analysis.error || "L’analyse du repas a échoué.");
+      if (statusBody?.analysis?.status === "running") options.onProgress?.({ stage: "analyzing", phase: "Analyse du repas en cours…", foods: [] });
       if (statusBody?.analysis?.status === "completed" && statusBody.meal) return apiMealToRecord(statusBody.meal);
     }
     throw new Error("L’analyse se poursuit. Réessaie dans un instant pour voir le résultat enregistré.");
