@@ -45,9 +45,10 @@ export function assertAssistantConfirmation(userText: string, quote: string) {
   if (!normalizedText.includes(normalizeConfirmation(quote))) {
     throw new Error("La confirmation doit citer exactement une partie du message utilisateur actuel.");
   }
-  if (/\b(?:pas|non|attends|corrige|correction|mais|reessaie)\b/u.test(normalizedText)
-    || /\bne\s+(?:valide|confirme|veux)\b/u.test(normalizedText)
-    || !/\b(?:oui|ok|valide|valider|confirme|confirmer|approuve|enregistre|enregistrer|sauvegarde|sauvegarder|garde|d'accord|ca me va|c'est bon|ca marche|vas-y)\b/u.test(normalizedText)) {
+  const beginsWithApproval = /^(?:oui\b|ok\b|d'accord\b|c'est bon\b|ca marche\b|ca me va\b|vas-y\b|valide\b|je (?:valide|confirme|approuve)\b|(?:enregistre|sauvegarde|garde)\b)/u.test(normalizedText);
+  const changesOrConditions = /\b(?:pas|non|mais|si|sauf|condition|reserve|refuse|attends|corrige|correction|reessaie|relire|plutot|avant|erreur|modifie|modifier|change|changer)\b/u
+    .test(normalizedText.replace(/\bne change rien\b/gu, ""));
+  if (!beginsWithApproval || changesOrConditions || /\bne\s+(?:valide|confirme|veux)\b/u.test(normalizedText)) {
     throw new Error("Une confirmation explicite et sans correction est nécessaire avant cet enregistrement.");
   }
 }

@@ -16,5 +16,9 @@ describe("assistant goal confirmation", () => {
     expect(() => assertAssistantConfirmation("Je ne valide pas", "valide")).toThrow(/confirmation explicite/);
     expect(() => assertAssistantConfirmation("Je ne valide", "valide")).toThrow(/confirmation explicite/);
     expect(() => assertAssistantConfirmation("Réessaie l'enregistrement", "Réessaie")).toThrow(/confirmation explicite/);
+    expect(() => assertAssistantConfirmation("Je refuse de confirmer", "confirmer")).toThrow(/confirmation explicite/);
+    expect(() => assertAssistantConfirmation("Le brouillon contient « je confirme », à relire", "je confirme")).toThrow(/confirmation explicite/);
+    expect(() => assertAssistantConfirmation("Je valide à condition que la date change", "Je valide")).toThrow(/confirmation explicite/);
+    expect(() => assertAssistantConfirmation("Oui, modifie d'abord mon objectif", "Oui")).toThrow(/confirmation explicite/);
   });
 });
