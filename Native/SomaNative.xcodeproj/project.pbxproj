@@ -92,6 +92,10 @@
 		960661874553A56D0D829517 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42CA9D77DB2222DF4BE9806 /* LoginView.swift */; };
 		99DB573D099599B98B3E02DD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */; };
 		9A45C4C96A58A0102C2AC632 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */; };
+		A00000000000000000000001 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
+		A00000000000000000000002 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
+		A00000000000000000000003 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
+		A00000000000000000000004 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
 		A31D7C857949F6F495168DEE /* JournalManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57CF2671C23F101824648A28 /* JournalManagerView.swift */; };
 		A4E7AD902E4B9241CEB1E3CB /* StrongestEffectsContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3649F189F37F73B851A496E /* StrongestEffectsContent.swift */; };
 		A9372F3AC900B674865D7285 /* ChartProvenanceLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8901DBFBD8C53504DBFC2089 /* ChartProvenanceLabel.swift */; };
@@ -149,10 +153,6 @@
 		F7AC5A39C0317D31BE45B6E6 /* ChartUnavailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4106E0679D38A84DBD108C11 /* ChartUnavailableView.swift */; };
 		FA39D8FA4EADC51EEDC5F7A8 /* AccountDeletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22538519D9BDC92B61625BBA /* AccountDeletionView.swift */; };
 		FE2E6979B2363290DB1B9F10 /* JournalVariableEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C9EE4851DC2732A71F5CA7 /* JournalVariableEditorView.swift */; };
-		A00000000000000000000001 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
-		A00000000000000000000002 /* SchibstedGrotesk.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* SchibstedGrotesk.ttf */; };
-		A00000000000000000000003 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
-		A00000000000000000000004 /* AzeretMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AzeretMono.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -186,7 +186,7 @@
 		59E3F86652658B0F26CCDF88 /* MetricTrendContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricTrendContent.swift; sourceTree = "<group>"; };
 		7846A9D4BCA708BBDD1BA6B3 /* SettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSection.swift; sourceTree = "<group>"; };
 		7FC15DF6F3FAF1821181A4A4 /* RecoveryMetadataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryMetadataView.swift; sourceTree = "<group>"; };
-		8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Soma-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8220D7C7F80C6EC7643C7AA1 /* Soma.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Soma.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		82CB5C0043159BF548CCC05F /* HealthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthViewModel.swift; sourceTree = "<group>"; };
 		83CD7BCACDDEB77308BEC82E /* ContentStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentStateView.swift; sourceTree = "<group>"; };
 		865BC095569DD0093A5C42C5 /* AnalysisRelationDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRelationDetail.swift; sourceTree = "<group>"; };
@@ -199,7 +199,9 @@
 		9CC1C2EFC68FE08E8C6D93A2 /* SleepHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepHistoryView.swift; sourceTree = "<group>"; };
 		9D1F8B0535BCF0ADEFFBF1BA /* SleepSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepSummaryView.swift; sourceTree = "<group>"; };
 		9DC023D4ED12BDAC99527D1A /* SleepFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepFormatting.swift; sourceTree = "<group>"; };
-		A0029706B80FF4C1637F9B92 /* Soma-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Soma-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000005 /* SchibstedGrotesk.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SchibstedGrotesk.ttf; sourceTree = "<group>"; };
+		A00000000000000000000006 /* AzeretMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AzeretMono.ttf; sourceTree = "<group>"; };
+		A0029706B80FF4C1637F9B92 /* Soma-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; name = "Soma-iOS.app"; path = Soma.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3BCF6AD62D2362453BA537D /* RemoteMealPhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMealPhotosView.swift; sourceTree = "<group>"; };
 		A9579222E401A8B593A9A8E4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		AC16BC06BDBBFE0DBA11B74D /* AnalysisEffectsChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisEffectsChart.swift; sourceTree = "<group>"; };
@@ -220,7 +222,7 @@
 		DECC157E6A7A69C9DF17B301 /* NativeChartLibraryPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeChartLibraryPreview.swift; sourceTree = "<group>"; };
 		DECC157E6A7A69C9DF17B302 /* PreviewNutrition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewNutrition.swift; sourceTree = "<group>"; };
 		DFBBF4424741EA3A44C381AA /* AnalysisRelationList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRelationList.swift; sourceTree = "<group>"; };
-		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SomaCore; path = SomaCore; sourceTree = SOURCE_ROOT; };
+		DFC7328DB8D4C51258D4B12C /* SomaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = SomaCore; sourceTree = SOURCE_ROOT; };
 		E0B34DD0E83D07C6BDC87A82 /* StrongestEffectsBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongestEffectsBlock.swift; sourceTree = "<group>"; };
 		E604D0BDFCCE0474DF5FFF91 /* JournalFieldRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalFieldRow.swift; sourceTree = "<group>"; };
 		E62E510865DE03B9B255053E /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -229,8 +231,6 @@
 		F42CA9D77DB2222DF4BE9806 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F453133F3A2F05F3E407AA85 /* Soma-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Soma-macOS.entitlements"; sourceTree = "<group>"; };
 		F5D9F740A2879BAC745CFBB4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		A00000000000000000000005 /* SchibstedGrotesk.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SchibstedGrotesk.ttf; sourceTree = "<group>"; };
-		A00000000000000000000006 /* AzeretMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AzeretMono.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -453,7 +453,7 @@
 			isa = PBXGroup;
 			children = (
 				A0029706B80FF4C1637F9B92 /* Soma-iOS.app */,
-				8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */,
+				8220D7C7F80C6EC7643C7AA1 /* Soma.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -480,7 +480,7 @@
 				03B43476EA2FB893683ECF38 /* Supabase */,
 			);
 			productName = "Soma-macOS";
-			productReference = 8220D7C7F80C6EC7643C7AA1 /* Soma-macOS.app */;
+			productReference = 8220D7C7F80C6EC7643C7AA1 /* Soma.app */;
 			productType = "com.apple.product-type.application";
 		};
 		E7358F49446692D93B8E93F1 /* Soma-iOS */ = {
@@ -515,7 +515,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					E158CB8F4490457800DE2E10 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					E7358F49446692D93B8E93F1 = {
@@ -730,6 +729,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SomaApp/Soma-macOS.entitlements";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4J7BXN697F;
 				INFOPLIST_FILE = "SomaApp/Info-macOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -765,6 +765,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SomaApp/Soma-macOS.entitlements";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4J7BXN697F;
 				INFOPLIST_FILE = "SomaApp/Info-macOS.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
