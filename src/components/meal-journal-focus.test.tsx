@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
 import MealJournal from "./meal-journal";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+
 const date = "2026-08-31";
 
 afterEach(() => {

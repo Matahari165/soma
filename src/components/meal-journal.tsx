@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import {
   AlertCircle,
   ArrowRight,
@@ -1279,6 +1281,7 @@ function MealLabHeader({
 }
 
 export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, designVariant = "v1" }: Props) {
+  const router = useRouter();
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
   const initialDate = requestedDate > today ? today : requestedDate;
@@ -1383,6 +1386,17 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     if (navigationDisabled) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDate) || nextDate > today) return;
     if (nextDate === selectedDate) return;
+    // The read-only nutrition page calculates every panel from the route date.
+    // Let Next render the whole page again instead of changing only the journal.
+    if (readOnly && variant === "lab" && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (nextDate === today) url.searchParams.delete("date");
+      else url.searchParams.set("date", nextDate);
+      const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+      if (options.push === false) router.replace(nextUrl);
+      else router.push(nextUrl);
+      return;
+    }
     loadRequestId.current += 1;
     // Les URL blob des photos locales restent valides : les brouillons sont
     // remis en mémoire et restaurés au retour sur le jour.
@@ -1405,7 +1419,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       else window.history.pushState(window.history.state, "", nextUrl);
       window.dispatchEvent(new CustomEvent(MEAL_DATE_EVENT, { detail: { date: nextDate } }));
     }
-  }, [navigationDisabled, onDateChange, selectedDate, selectedDateProp, stashLocalDrafts, today]);
+  }, [navigationDisabled, onDateChange, readOnly, router, selectedDate, selectedDateProp, stashLocalDrafts, today, variant]);
 
   const selectDate = useCallback((nextDate: string) => {
     goToDate(nextDate);

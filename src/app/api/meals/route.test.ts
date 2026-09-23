@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { POST as createMeal, GET as listMeals, PUT as saveMeal, mealListRange } from "./route";
+import { POST as createMeal, GET as listMeals, PUT as saveMeal } from "./route";
+import { mealListRange } from "./meal-list-range";
 import { GET as getMeal, PATCH as patchMeal } from "./[id]/route";
 import { POST as uploadPhotos } from "./[id]/photos/route";
 import { POST as analyzeMeal } from "./[id]/analyze/route";
