@@ -9,6 +9,7 @@ import {
   confirmAssistantGoalSet,
   confirmAssistantMemory,
   confirmAssistantPlanVersion,
+  loadConfirmedGoalContext,
   loadPendingAssistantChanges,
   proposeAssistantGoalSet,
   proposeAssistantGoalRevision,
@@ -115,6 +116,9 @@ export function createManageUserContextTool(context: {
               if (!matching || typeof matching.id !== "string") throw new Error("Le cadre proposé a changé. Présente la nouvelle version avant de l'enregistrer.");
               const confirmed = await confirmAssistantGoalSet(context.userId, matching.id, context.triggeringMessageId);
               return { id: matching.id, saved: confirmed?.status === "confirmed", active: confirmed?.status === "confirmed", replayed: false };
+            }
+            if (await loadConfirmedGoalContext(context.userId)) {
+              throw new Error("Un cadre est déjà confirmé. Propose une révision ciblée pour conserver les autres objectifs.");
             }
             return saveAssistantGoalSet(context.userId, context.triggeringMessageId, input.goalSet);
           }

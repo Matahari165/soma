@@ -42,6 +42,9 @@ begin
 
   select id into v_current_id from public.assistant_goal_sets
     where user_id = p_user_id and status = 'confirmed';
+  if v_current_id is not null and v_goal_set.supersedes_goal_set_id is null then
+    raise exception 'A confirmed goal set must be revised, not replaced' using errcode = '40001';
+  end if;
   if v_goal_set.supersedes_goal_set_id is not null
      and v_goal_set.supersedes_goal_set_id is distinct from v_current_id then
     raise exception 'Goal revision is stale' using errcode = '40001';

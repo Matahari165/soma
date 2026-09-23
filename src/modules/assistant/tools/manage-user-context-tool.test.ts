@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { confirmAssistantGoalSet, loadPendingAssistantChanges, saveAssistantGoalSet } from "../repository";
+import { confirmAssistantGoalSet, loadConfirmedGoalContext, loadPendingAssistantChanges, saveAssistantGoalSet } from "../repository";
 import { createManageUserContextTool } from "./manage-user-context";
 
 vi.mock("../repository", () => ({
   confirmAssistantGoalSet: vi.fn(), confirmAssistantMemory: vi.fn(), confirmAssistantPlanVersion: vi.fn(),
   proposeAssistantGoalSet: vi.fn(), proposeAssistantMemory: vi.fn(), proposeAssistantPlanVersion: vi.fn(),
-  loadPendingAssistantChanges: vi.fn(),
+  loadConfirmedGoalContext: vi.fn(), loadPendingAssistantChanges: vi.fn(),
   saveAssistantGoalSet: vi.fn(),
 }));
 vi.mock("./audited-tool", () => ({ executeAuditedAssistantTool: async ({ execute }: { execute: () => Promise<unknown> }) => execute() }));
@@ -17,7 +17,7 @@ const goalSetId = "00000000-0000-4000-8000-000000000002";
 const goalSet = { primaryDirection: "Développer la force", primaryGoalType: "build_muscle" as const, secondaryDirections: ["Améliorer l'endurance"], goals: [] };
 const options = { toolCallId: "call-1", messages: [], abortSignal: undefined } as never;
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => { vi.clearAllMocks(); vi.mocked(loadConfirmedGoalContext).mockReset(); });
 
 describe("natural goal confirmation tool", () => {
   it("saves known directions without demanding optional metrics when the user naturally authorizes it", async () => {
@@ -58,5 +58,13 @@ describe("natural goal confirmation tool", () => {
     await expect(tool.execute!({ operation: "save_goal_set", confirmationQuote: "enregistre", goalSet }, options)).rejects.toThrow(/cadre proposé a changé/);
     expect(saveAssistantGoalSet).not.toHaveBeenCalled();
     expect(confirmAssistantGoalSet).not.toHaveBeenCalled();
+  });
+
+  it("does not replace a confirmed set with an incomplete direct save", async () => {
+    vi.mocked(loadPendingAssistantChanges).mockResolvedValue({ memories: [], goalSets: [], planVersions: [] });
+    vi.mocked(loadConfirmedGoalContext).mockResolvedValue({ goalSet: { id: goalSetId, primary_direction: "Développer la force", primary_goal_type: "build_muscle", secondary_directions: [] }, goals: [] });
+    const tool = createManageUserContextTool({ userId, runId: "run-1", triggeringMessageId: messageId, triggeringUserText: "Oui, enregistre" });
+    await expect(tool.execute!({ operation: "save_goal_set", confirmationQuote: "enregistre", goalSet }, options)).rejects.toThrow(/révision ciblée/);
+    expect(saveAssistantGoalSet).not.toHaveBeenCalled();
   });
 });

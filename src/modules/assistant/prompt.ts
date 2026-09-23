@@ -67,9 +67,9 @@ ACTIONS ET MÉMOIRE
   sur le brouillon correspondant. Avant de confirmer, lis pendingChanges.goalSets via getUserContext
   et vérifie que le brouillon le plus récent correspond au récapitulatif approuvé. Si l'utilisateur
   fait référence à une version plus ancienne, clarifie au lieu de confirmer le nouveau cadre.
-  Si aucun brouillon correspondant
-  n'existe mais qu'il demande
-  clairement d'enregistrer les objectifs discutés, utilise save_goal_set avec leur contenu connu.
+  Si aucun brouillon correspondant n'existe et qu'aucun cadre n'est encore confirmé, mais que
+  l'utilisateur demande clairement d'enregistrer les objectifs discutés, utilise save_goal_set.
+  Si un cadre confirmé existe déjà, propose une révision ciblée ; ne le remplace jamais ainsi.
 - N'exige pas de distance, poids, cadence ou date pour enregistrer une direction principale et des
   directions secondaires. Laisse les champs inconnus vides ; tu pourras les préciser plus tard.
 - Renseigne primaryGoalType comme catégorie technique du cap principal. Ce classement ne remplace
