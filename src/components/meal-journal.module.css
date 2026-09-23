@@ -4099,6 +4099,29 @@
 
 .historyNavigationWithArrows { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: stretch; }
 
+@media (max-width: 700px) {
+  :global(.meals-page) .labRoot .weekStrip {
+    display: flex;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  :global(.meals-page) .labRoot .weekStrip .weekDay,
+  :global(.meals-page) .labRoot .weekStrip .weekDaySelected {
+    flex: 0 0 96px;
+    min-width: 96px;
+    min-height: 52px;
+    padding-inline: 8px;
+  }
+
+  :global(.meals-page) .labRoot .weekStrip .weekDay > :is(span, small),
+  :global(.meals-page) .labRoot .weekStrip .weekDaySelected > :is(span, small) {
+    white-space: nowrap;
+  }
+}
+
 .historyArrow {
   display: grid;
   min-width: 44px;
