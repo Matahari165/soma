@@ -37,7 +37,7 @@ function formatDurationMs(value: number | null) {
   return `${minutes} min`;
 }
 
-export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null }) {
+export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null, highlightLatest = true }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null; highlightLatest?: boolean }) {
   const titleId = useId();
   const descriptionId = useId();
   const [activePoint, setActivePoint] = useState<{ date: string; value: number } | null>(null);
@@ -76,10 +76,10 @@ export function BarTrendChart({ points, label, target, unit, valueFormat = "deci
       const bottom = y(Math.min(point.value, 0));
       const height = Math.max(1, Math.abs(bottom - top));
       const isLatest = point.date === available.at(-1)?.date && point.value === available.at(-1)?.value;
-      return <rect key={`${point.date}-${index}`} x={x(index)} y={Math.min(top, bottom)} width={barWidth} height={height} rx="1" className={isLatest ? "health-chart-bar health-chart-bar--latest" : "health-chart-bar"} onPointerEnter={() => setActivePoint({ date: point.date, value: point.value as number })} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint({ date: point.date, value: point.value as number })}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></rect>;
+      return <rect key={`${point.date}-${index}`} x={x(index)} y={Math.min(top, bottom)} width={barWidth} height={height} rx="1" className={isLatest && highlightLatest ? "health-chart-bar health-chart-bar--latest" : "health-chart-bar"} onPointerEnter={() => setActivePoint({ date: point.date, value: point.value as number })} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint({ date: point.date, value: point.value as number })}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></rect>;
     })}
     {measuredAverage !== null && <line x1="8" y1={y(measuredAverage)} x2="292" y2={y(measuredAverage)} className="health-chart-average"><title>{`Moyenne des périodes mesurées : ${formatChartValue(measuredAverage, unit, valueFormat)}`}</title></line>}
-  </svg><span id={titleId} className="sr-only">{label} : tendance en barres sur {available.length} périodes mesurées</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas dessinées. Utilisez les flèches gauche et droite pour parcourir les barres.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{activePoint && (() => {
+  </svg><span id={titleId} className="sr-only">{label} : tendance en barres sur {available.length} périodes mesurées</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas dessinées. Utilisez les flèches gauche et droite pour parcourir les barres.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{measuredAverage !== null && <span className="health-chart-average-label" aria-hidden="true" style={{ top: `${Math.max(26, Math.min(72, y(measuredAverage) / 104 * 100))}%` }}>{formatChartValue(measuredAverage, unit, valueFormat)}</span>}{activePoint && (() => {
     const activeIndex = available.findIndex((point) => point.date === activePoint.date && point.value === activePoint.value);
     const alignRight = activeIndex >= 0 && activeIndex > available.length / 2;
     return <output className="health-chart-tooltip" aria-live="polite" style={{ left: alignRight ? "auto" : 8, right: alignRight ? 8 : "auto", maxWidth: "calc(100% - 16px)", whiteSpace: "normal", overflowWrap: "anywhere" }}>{new Date(`${activePoint.date}T12:00:00`).toLocaleDateString("fr-FR", { month: "short", day: "numeric" })} · {formatChartValue(activePoint.value, unit, valueFormat)}</output>;

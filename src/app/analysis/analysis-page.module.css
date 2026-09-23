@@ -75,7 +75,7 @@
 .page :global(.strongest-effects__plot::before) {
   z-index: 0;
   height: 1px;
-  background: var(--lab-border-strong);
+  background: color-mix(in srgb, var(--lab-text-secondary) 55%, transparent);
   opacity: 1;
   transform: translateY(-50%);
 }

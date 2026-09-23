@@ -33,7 +33,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
   /** Compact activity views can use vertical bars while the other routes keep their lines. */
   chartType?: "line" | "bar";
   barAggregation?: BarAggregation;
-  /** Activity: place the measured average on the plot and identify the latest reading. */
+  /** Activity: place the measured average on the plot and in its right-hand scale. */
   averageInChart?: boolean;
 }) {
   const trend = summarizeTrend(points, direction);
@@ -67,13 +67,12 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
       ? `${label}. Moyenne du graphique : ${displayedAverage === null ? "indisponible" : formatCompactAverage(displayedAverage, format, unit)}. ${displayedValues.length} ${barAggregation === "week" ? "semaines mesurées" : "jours mesurés"}.`
       : `${label}. Current value: ${current === null ? "unavailable" : `${format(current)}${unit ? ` ${unit}` : ""}`}. ${displayDays}-day average: ${compactAverage === null ? "unavailable" : `${format(compactAverage)}${unit ? ` ${unit}` : ""}`} (${compactAverageValues.length} measured days). Coverage: ${completeCount}/${chartPoints.length} measured days · ${coverage}%.`;
     const chart = chartType === "bar"
-      ? <BarTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} aggregation={barAggregation} average={averageInChart ? displayedAverage : null} />
+      ? <BarTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} aggregation={barAggregation} average={averageInChart ? displayedAverage : null} highlightLatest={!averageInChart} />
       : <LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} />;
     const compactContent = <>
       <header><div><span>{label}</span>{!averageInChart && currentContent}</div>{!averageInChart && <small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)}`}</small>}</header>
       <div className="chart-frame">{chart}</div>
       <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
-      {averageInChart && <div className="metric-trend-card__average-legend"><span className="metric-trend-card__average-rule" aria-hidden="true" />Moyenne du graphique · {displayedAverage === null ? "—" : formatCompactAverage(displayedAverage, format, unit)}<small>({displayedValues.length} {barAggregation === "week" ? "semaines mesurées" : "jours mesurés"})</small></div>}
     </>;
     return href
       ? <Link className="metric-trend-card metric-trend-card--link" href={href} aria-label={`Open details. ${accessibleSummary}`}>{compactContent}</Link>
