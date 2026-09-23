@@ -258,7 +258,7 @@ export function MealQuickCapture({ todayDate, variables, entries, days, breakfas
     const normalizationStartedAt = Date.now();
     try {
       const prepared = await normalizeMealImage(file);
-      console.info("[meal-analysis] stage", { stage: "normalization", photoCount: 1, durationMs: Date.now() - normalizationStartedAt });
+      console.info("[meal-analysis] stage", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
       const accepted = await createMealAndAnalyze(todayDate, slot, { file: prepared, origin, note: slotStates[slot].note });
       analysisStartedAt.current.delete(accepted.mealId);
       setSlotStates((current) => ({ ...current, [slot]: { ...current[slot], state: accepted.status === "running" ? "analyzing" : "accepted", mealId: accepted.mealId, file: null, origin: null, message: accepted.status === "running" ? "Analyse en cours" : "Analyse acceptée", photoCount: current[slot].photoCount + 1, filled: true } }));

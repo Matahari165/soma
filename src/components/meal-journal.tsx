@@ -1328,7 +1328,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         const batch = await Promise.all(incoming.slice(index, index + 2).map((file) => normalizeMealImage(file)));
         prepared.push(...batch);
       }
-      console.info("[meal-analysis] stage", { stage: "normalization", photoCount: prepared.length, durationMs: Date.now() - normalizationStartedAt });
+      console.info("[meal-analysis] stage", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
     } catch (error) {
       console.warn("[meal-analysis] stage failed", { stage: "normalization", durationMs: Date.now() - normalizationStartedAt });
       setFileError(error instanceof Error ? error.message : "This photo could not be prepared. Please retake it in JPEG or PNG format.");

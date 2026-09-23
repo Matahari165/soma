@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   try {
     response = NextResponse.redirect(buildGoogleHealthAuthorizationUrl(state, challenge, new URL(request.url).origin));
   } catch (error) {
-    console.error("Google Health OAuth configuration is invalid.", error instanceof Error ? error.message : "Unknown configuration error.");
+    console.error("Google Health OAuth configuration is invalid.", { reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.redirect(new URL(`/settings?health=unavailable&source=${source}`, request.url));
   }
   const secure = new URL(request.url).protocol === "https:";

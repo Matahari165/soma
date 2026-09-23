@@ -153,7 +153,6 @@ async function requestMeal(
     clearTimer();
     const classified = classifyMealClientError(error, options.operation, options.requestId);
     console.warn("[meal-analysis] client request failed", {
-      requestId: options.requestId,
       operation: options.operation,
       code: classified.code,
       reason: errorName(error),

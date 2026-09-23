@@ -40,7 +40,7 @@ function errorResponse(error: unknown, requestId: string) {
     const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
     return NextResponse.json({ error: error.message, code: error.diagnosticCode ?? error.code, requestId }, { status, headers });
   }
-  console.error("[meal-analysis] legacy route failed outside service taxonomy", { requestId, stage: "legacy_route", reason: error instanceof Error ? error.name : "unknown" });
+  console.error("[meal-analysis] legacy route failed outside service taxonomy", { stage: "legacy_route", reason: error instanceof Error ? error.name : "unknown" });
   return NextResponse.json({ error: "L’analyse du repas a échoué. Réessaie.", code: "UNKNOWN_ANALYSIS_ERROR", requestId }, { status: 503, headers });
 }
 
@@ -120,7 +120,6 @@ export async function POST(request: Request) {
           await processNextMealAnalysis({ userId: user.id, analysisId: result.analysis.id });
         } catch (error) {
           console.error("[meal-analysis] legacy immediate background worker failed", {
-            requestId: analysisRequestId,
             stage: "legacy_immediate_worker",
             reason: error instanceof Error ? error.name : "unknown",
           });

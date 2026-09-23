@@ -217,15 +217,10 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
   const days = aggregateHealthRecords(wearableWindow.records, timezone)
     .filter((day) => day.metric_date >= analysisStart);
-  console.info("[health-analysis] source records loaded", {
-    recordCount: wearableWindow.records.length,
-    dayCount: days.length,
-    dataTypes: [...new Set(wearableWindow.records.map((record) => record.data_type))].sort(),
-    wearableWindowStart: wearableWindow.startDate,
-  });
+  console.info("[health-analysis] source records loaded");
   if (!days.length) {
     await deleteStaleDerivedRows(userId, analysisStart, sourceCoverageDates);
-    console.warn("[health-analysis] no dated health records available", { analysisStart });
+    console.warn("[health-analysis] no dated health records available");
     return { days: 0, scores: 0, insights: 0 };
   }
 
@@ -376,7 +371,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   ], { onConflict: "user_id,kind,brief_date" });
   if (briefError) throw new Error("Health summaries could not be stored.");
   const result = { days: metricRows.length, scores: scoreRows.length, insights: insights.length };
-  console.info("[health-analysis] recompute completed", result);
+  console.info("[health-analysis] recompute completed");
   return result;
 }
 

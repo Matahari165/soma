@@ -21,13 +21,12 @@ function jsonWithRequestId(body: unknown, init: ResponseInit, requestId: string)
   return NextResponse.json(body, { ...init, headers });
 }
 
-function startQueuedMealAnalysis(userId: string, analysisId: string, requestId: string) {
+function startQueuedMealAnalysis(userId: string, analysisId: string) {
   after(async () => {
     try {
       await processNextMealAnalysis({ userId, analysisId });
     } catch (error) {
       console.error("[meal-analysis] immediate background worker failed", {
-        requestId,
         stage: "immediate_worker",
         reason: error instanceof Error ? error.name : "unknown",
       });
@@ -82,7 +81,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             // second provider execution, so closing the tab cannot cancel or
             // duplicate the analysis.
             const queued = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
-            if (queued.queued) startQueuedMealAnalysis(user.id, queued.analysis.id, requestId);
+            if (queued.queued) startQueuedMealAnalysis(user.id, queued.analysis.id);
             sendEvent("phase", { phase: queued.analysis.status });
             for (let attempt = 0; attempt < 25 && !request.signal.aborted; attempt += 1) {
               const meal = await findMeal(user.id, id);
@@ -135,7 +134,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   try {
     const result = await enqueueMealAnalysis(user.id, id, { ...analysisOptions, analysisRequestId: requestId });
-    if (result.queued) startQueuedMealAnalysis(user.id, result.analysis.id, requestId);
+    if (result.queued) startQueuedMealAnalysis(user.id, result.analysis.id);
     const meal = await findMeal(user.id, id);
     if (!meal) return jsonWithRequestId({ error: "The meal could not be reloaded.", code: "STORAGE_ERROR", requestId }, { status: 503 }, requestId);
     return jsonWithRequestId({ analysis: result.analysis, fresh: result.fresh, queued: result.queued, meal: mealToApi(meal), requestId }, { status: result.queued ? 202 : 200 }, requestId);
@@ -144,7 +143,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const status = error.code === "not_found" ? 404 : error.code === "invalid" ? 400 : error.code === "conflict" ? 409 : 503;
       return jsonWithRequestId({ error: error.message, code: error.diagnosticCode ?? error.code, requestId }, { status }, requestId);
     }
-    console.error("[meal-analysis] route failed outside service taxonomy", { requestId, stage: "route", reason: error instanceof Error ? error.name : "unknown" });
+    console.error("[meal-analysis] route failed outside service taxonomy", { stage: "route", reason: error instanceof Error ? error.name : "unknown" });
     return jsonWithRequestId({ error: "L’analyse du repas n’est pas disponible pour le moment.", code: "UNKNOWN_ANALYSIS_ERROR", requestId }, { status: 503 }, requestId);
   }
 }

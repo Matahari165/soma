@@ -375,26 +375,16 @@ function responseText(result: unknown) {
 
 function responseDiagnostics(result: unknown) {
   if (!result || typeof result !== "object") return {};
-  const response = result as { id?: unknown; status?: unknown; incomplete_details?: unknown; usage?: unknown; output?: unknown };
-  const incompleteDetails = response.incomplete_details && typeof response.incomplete_details === "object"
-    ? response.incomplete_details as { reason?: unknown }
-    : null;
+  const response = result as { usage?: unknown };
   const usage = response.usage && typeof response.usage === "object"
     ? response.usage as { output_tokens?: unknown; output_tokens_details?: unknown }
     : null;
   const outputDetails = usage?.output_tokens_details && typeof usage.output_tokens_details === "object"
     ? usage.output_tokens_details as { reasoning_tokens?: unknown }
     : null;
-  const outputTypes = Array.isArray(response.output)
-    ? response.output.map((item) => item && typeof item === "object" ? (item as { type?: unknown }).type : null).filter((type): type is string => typeof type === "string").slice(0, 8)
-    : undefined;
   return {
-    responseId: typeof response.id === "string" ? response.id : undefined,
-    responseStatus: typeof response.status === "string" ? response.status : undefined,
-    incompleteReason: typeof incompleteDetails?.reason === "string" ? incompleteDetails.reason : undefined,
     outputTokens: typeof usage?.output_tokens === "number" ? usage.output_tokens : undefined,
     reasoningTokens: typeof outputDetails?.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : undefined,
-    outputTypes,
   };
 }
 
@@ -969,7 +959,6 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         },
       },
     };
-    const payloadBytes = JSON.stringify(payload).length;
     const startedAt = Date.now();
     let response: Response;
     const timeoutMs = providerTimeoutMs(imageCount === 0 ? TEXT_PROVIDER_TIMEOUT_MS : DEFAULT_PROVIDER_TIMEOUT_MS, request.timeoutMs);
@@ -987,13 +976,10 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
       const code: MealVisionErrorCode = timeout ? "provider_timeout" : "provider_unavailable";
       const classified = new MealVisionError(code, providerMessage(request.provider, code), { cause: error, provider: request.provider, requestId: request.requestId, retryable: true });
       console.error("[meal-analysis] provider request failed", {
-        requestId: request.requestId,
         provider: request.provider,
         model: request.model,
         stage: "provider_request",
         attempt,
-        imageCount,
-        payloadBytes,
         durationMs: Date.now() - startedAt,
         code,
         reason: error instanceof Error ? error.name : "unknown",
@@ -1027,13 +1013,10 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         retryAfterMs: retryAfterMs(response),
       });
       console.error("[meal-analysis] provider returned an error", {
-        requestId: request.requestId,
         provider: request.provider,
         model: request.model,
         stage: "provider_response",
         attempt,
-        imageCount,
-        payloadBytes,
         durationMs,
         status: response.status,
         code,
@@ -1054,13 +1037,10 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
       const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
       const code = timeout ? "provider_timeout" : "response_parse_error";
       console.error("[meal-analysis] provider response could not be decoded", {
-        requestId: request.requestId,
         provider: request.provider,
         model: request.model,
         stage: "response_decode",
         attempt,
-        imageCount,
-        payloadBytes,
         durationMs,
         code,
         reason: error instanceof Error ? error.name : "unknown",
@@ -1092,13 +1072,10 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
       } catch (error) {
         if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
           console.error("[meal-analysis] provider content was not parseable JSON", {
-            requestId: request.requestId,
             provider: request.provider,
             model: request.model,
             stage: "response_parse",
             attempt,
-            imageCount,
-            payloadBytes,
             durationMs,
             code: "response_parse_error",
             reason: error instanceof Error ? error.name : "unknown",
@@ -1112,26 +1089,20 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
         try {
           const result = validateMealAnalysis(parsed, { sourcePhotoIds: request.sourcePhotoIds });
           console.info("[meal-analysis] provider succeeded", {
-            requestId: request.requestId,
             provider: request.provider,
             model: request.model,
             stage: "provider_success",
             attempt,
-            imageCount,
-            payloadBytes,
             durationMs,
           });
           return result;
         } catch (error) {
           const diagnostics = safeSchemaDiagnostics(error);
           console.error("[meal-analysis] provider content failed schema validation", {
-            requestId: request.requestId,
             provider: request.provider,
             model: request.model,
             stage: "response_schema",
             attempt,
-            imageCount,
-            payloadBytes,
             durationMs,
             code: "response_schema_error",
             schemaIssues: diagnostics,
@@ -1152,15 +1123,12 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     if (responseStatus === "incomplete") {
       const outputLimitReached = incompleteReason === "max_output_tokens" || incompleteReason === "max_tokens";
       console.error("[meal-analysis] provider returned an incomplete response", {
-        requestId: request.requestId,
         provider: request.provider,
         model: request.model,
         stage: "response_incomplete",
         attempt,
-        imageCount,
-        payloadBytes,
         durationMs,
-        reason: typeof incompleteReason === "string" ? incompleteReason : "unknown",
+        reason: outputLimitReached ? "output_limit" : "other",
         retryMaxOutputTokens: maxOutputTokens,
         ...responseDiagnostics(body),
         code: "provider_empty_response",
@@ -1176,13 +1144,10 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     }
     if (!text) {
       console.error("[meal-analysis] provider returned no structured content", {
-        requestId: request.requestId,
         provider: request.provider,
         model: request.model,
         stage: "response_empty",
         attempt,
-        imageCount,
-        payloadBytes,
         durationMs,
         ...responseDiagnostics(body),
         code: "provider_empty_response",

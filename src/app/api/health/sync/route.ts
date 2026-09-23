@@ -55,10 +55,7 @@ function continueHealthSync(job: Pick<OpenJob, "id" | "sync_trigger">) {
         refreshAnalytics: shouldRefreshAnalyticsForTrigger(job.sync_trigger ?? "manual"),
       });
     } catch (error) {
-      console.error("[api/health/sync] manual background update failed", {
-        jobId: job.id,
-        error: error instanceof Error ? error.message : "Unknown sync error.",
-      });
+      console.error("[api/health/sync] manual background update failed", { reason: error instanceof Error ? error.name : "unknown" });
     }
   });
 }
