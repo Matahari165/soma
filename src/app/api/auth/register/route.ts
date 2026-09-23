@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createCredentialsUser, validateEmail, validatePassword } from "@/lib/auth-credentials";
+import { allowAuthAttempt, AUTH_RETRY_AFTER_SECONDS } from "@/lib/auth-rate-limit";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -29,29 +30,26 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await createCredentialsUser({
+    if (!(await allowAuthAttempt(request, email))) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, {
+        status: 429,
+        headers: { "Retry-After": String(AUTH_RETRY_AFTER_SECONDS) },
+      });
+    }
+    await createCredentialsUser({
       email,
       password,
       displayName: typeof displayName === "string" ? displayName : undefined,
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-        },
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ ok: true }, { status: 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Account registration failed.";
     const isConflict = message.toLowerCase().includes("already exists");
+    if (isConflict) return NextResponse.json({ ok: true }, { status: 202 });
     return NextResponse.json(
-      { error: isConflict ? message : "Account creation is temporarily unavailable. Please try again later." },
-      { status: isConflict ? 409 : 500 },
+      { error: "Account creation is temporarily unavailable. Please try again later." },
+      { status: 500 },
     );
   }
 }

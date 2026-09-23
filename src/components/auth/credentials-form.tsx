@@ -42,7 +42,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         // SaaS transition: show clear feedback, switch to login tab, prefill email
         setMode("login");
         setPassword("");
-        setSuccessMessage("Account created successfully. Please enter your password to sign in.");
+        setSuccessMessage("If the address can be used, you can now sign in with your password.");
         setLoading(false);
         return;
       }

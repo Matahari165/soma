@@ -293,6 +293,40 @@ export async function claimCloudflareLock(lockKey: string, userId: string, ttlMs
   return Number(result.meta?.changes ?? 0) > 0;
 }
 
+/** Atomically counts attempts in a shared, expiring window on either runtime. */
+export async function consumeAuthAttempt(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const now = Date.now();
+  if (hasSupabaseRuntime()) {
+    const count = await supabaseRequest<number>("rpc/consume_soma_auth_attempt", {
+      method: "POST",
+      body: JSON.stringify({ p_key: key, p_now_ms: now, p_window_ms: windowMs }),
+    });
+    return count <= limit;
+  }
+
+  const db = cloudflareDb();
+  if (Math.random() < 0.01) {
+    await db.prepare("DELETE FROM soma_rows WHERE table_name = 'auth_attempts' AND CAST(json_extract(json_data, '$.expires_at_ms') AS INTEGER) < ?")
+      .bind(now - 86_400_000).run();
+  }
+  const row = JSON.stringify({ attempts: 1, expires_at_ms: now + windowMs });
+  const result = await db.prepare(`
+    INSERT INTO soma_rows (table_name, row_key, user_id, json_data, created_at, updated_at)
+    VALUES ('auth_attempts', ?, NULL, ?, ?, ?)
+    ON CONFLICT(table_name, row_key) DO UPDATE SET
+      json_data = CASE
+        WHEN CAST(json_extract(soma_rows.json_data, '$.expires_at_ms') AS INTEGER) <= ? THEN excluded.json_data
+        ELSE json_set(soma_rows.json_data, '$.attempts', CAST(json_extract(soma_rows.json_data, '$.attempts') AS INTEGER) + 1)
+      END,
+      updated_at = excluded.updated_at
+  `).bind(key, row, new Date(now).toISOString(), new Date(now).toISOString(), now).run();
+  if (!result.success) throw new Error(result.error ?? "Auth limit storage failed.");
+  const stored = await db.prepare("SELECT CAST(json_extract(json_data, '$.attempts') AS INTEGER) AS attempts FROM soma_rows WHERE table_name = 'auth_attempts' AND row_key = ?")
+    .bind(key).first<{ attempts: number }>();
+  if (!stored) throw new Error("Auth limit storage failed.");
+  return stored.attempts <= limit;
+}
+
 export async function releaseCloudflareLock(lockKey: string, userId: string) {
   if (hasSupabaseRuntime()) {
     const result = await createCloudflareAdminClient().from("operation_locks").delete().eq("id", lockKey).eq("user_id", userId);
