@@ -1,4 +1,4 @@
-export type CronJobName = "meal-analysis" | "sync" | "archive-health";
+export type CronJobName = "meal-analysis" | "sync" | "archive-health" | "account-deletion";
 
 export type CronPipelineEnv = {
   SOMA_CRON_TARGET_URL?: string;
@@ -12,6 +12,7 @@ export const CRON_ENDPOINTS: Record<CronJobName, string> = {
   "meal-analysis": "/api/cron/meal-analysis",
   sync: "/api/cron/sync",
   "archive-health": "/api/cron/archive-health",
+  "account-deletion": "/api/cron/account-deletion",
 };
 
 export type JobExecutionResult = {
