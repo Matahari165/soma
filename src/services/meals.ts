@@ -8,18 +8,18 @@ import {
   validateMealAnalysis,
   type CreateMealInput,
   type Meal,
-  type MealAnalysis,
   type MealAnalysisCorrection,
   type MealFeeling,
   type MealOrigin,
   type MealPhotoMime,
   type UpdateMealInput,
 } from "@/domain/meals";
-import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
+import type { ConfirmedMealRecord } from "@/domain/lab/meals";
 import { isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
 import { analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider } from "@/integrations/meal-analysis/provider-chain";
 import * as cloudflareDb from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
+import { confirmedMealRecordFor } from "@/services/meal-analysis-records";
 import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
 import {
   deleteMeal as deleteMealRecord,
@@ -119,11 +119,6 @@ export async function loadMealPhotoForAnalysis(objectPath: string, timeoutMs = 6
     if (timer) clearTimeout(timer);
   }
 }
-
-type ConfirmedMealFoodWithSugar = NonNullable<ConfirmedMealRecord["foods"]>[number] & {
-  sugarG?: NutritionEstimate | null;
-  addedSugarG?: NutritionEstimate | null;
-};
 
 async function claimMealLease(lockKey: string, userId: string, ttlMs: number) {
   if (typeof claimCloudflareLockWithToken === "function") {
@@ -1092,39 +1087,6 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
   }
 }
 
-function nutritionEstimate(value: { low: number; likely: number; high: number } | null | undefined): NutritionEstimate | null {
-  if (!value || !Number.isFinite(value.low) || !Number.isFinite(value.likely) || !Number.isFinite(value.high) || value.low < 0 || value.low > value.likely || value.likely > value.high) return null;
-  return { low: value.low, likely: value.likely, high: value.high };
-}
-
-function confirmedMealFood(food: MealAnalysis["foods"][number]): ConfirmedMealFoodWithSugar {
-  return {
-    id: food.id,
-    name: food.name,
-    kind: food.kind,
-    parentId: food.parentId,
-    portion: food.portion ?? null,
-    estimatedGrams: food.estimatedGrams ?? null,
-    quantity: food.quantity ?? null,
-    sugarG: nutritionEstimate(food.sugarGrams),
-    addedSugarG: nutritionEstimate(food.addedSugarGrams),
-    varietyKey: food.varietyKey ?? null,
-    foodGroups: food.foodGroups,
-    alcoholic: food.alcoholic,
-    novaGroup: food.novaGroup,
-    sugarExposure: food.sugarExposure,
-    qualityProperties: food.qualityProperties,
-    observation: food.observation,
-    countedInTotals: food.countedInTotals,
-    confidence: food.confidence,
-  };
-}
-
-function mealOrigin(meal: Meal): ConfirmedMealRecord["origin"] {
-  const origins = new Set(meal.photos.map((photo) => photo.origin));
-  return origins.size === 0 ? "unknown" : origins.size === 1 ? [...origins][0] : "mixed";
-}
-
 /**
  * Adapter consumed by Personal Lab. Every confirmed meal remains an
  * observation; an unavailable analysis contributes nulls, never zeros.
@@ -1132,34 +1094,8 @@ function mealOrigin(meal: Meal): ConfirmedMealRecord["origin"] {
 export async function loadConfirmedMealRecords(userId: string, options: { from?: string; to?: string } = {}): Promise<ConfirmedMealRecord[]> {
   const meals = await listMeals(userId, { ...options, preferLatestCompletedAnalysis: true });
   return meals.flatMap((meal) => {
-    if (meal.status !== "confirmed") return [];
-    const analysis = meal.analysis?.status === "completed" && meal.analysis.result
-      ? meal.analysis
-      : meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result
-        ? meal.lastSuccessfulAnalysis
-        : null;
-    const result = analysis?.result ?? null;
-    const totals = result?.totals;
-    return [{
-      id: meal.id,
-      mealDate: meal.mealDate,
-      mealType: meal.mealType,
-      status: "confirmed" as const,
-      entryState: meal.entryState,
-      origin: mealOrigin(meal),
-      caloriesKcal: nutritionEstimate(totals?.calories),
-      proteinG: nutritionEstimate(totals?.proteinGrams),
-      carbsG: nutritionEstimate(totals?.carbohydrateGrams),
-      fatG: nutritionEstimate(totals?.fatGrams),
-      fiberG: nutritionEstimate(totals?.fiberGrams),
-      sugarG: nutritionEstimate(totals?.sugarGrams),
-      addedSugarG: nutritionEstimate(totals?.addedSugarGrams),
-      foods: result?.foods.map(confirmedMealFood),
-      analysisConfidence: result?.confidence,
-      mouthHeat: meal.mouthWarmthIntensity,
-      stomachOverfullness: meal.stomachOverfullIntensity,
-      photoIds: meal.photos.map((photo) => photo.id),
-    } satisfies ConfirmedMealRecord];
+    const record = confirmedMealRecordFor(meal);
+    return record ? [record] : [];
   });
 }
 
