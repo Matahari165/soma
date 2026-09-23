@@ -25,6 +25,8 @@ describe("xAI meal vision contract", () => {
     delete process.env.XAI_MEAL_VISION_MODEL;
     delete process.env.XAI_MEAL_VALIDATOR_MODEL;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_MEAL_ANALYSIS_MODEL;
+    delete process.env.OPENAI_MEAL_ANALYSIS_REASONING_EFFORT;
     delete process.env.OPENAI_MEAL_VALIDATOR_MODEL;
     delete process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT;
   });
@@ -142,6 +144,10 @@ describe("xAI meal vision contract", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    const initialBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { prompt_cache_key: string };
+    expect(initialBody.prompt_cache_key.length).toBeLessThanOrEqual(64);
+    expect((retryBody as typeof retryBody & { prompt_cache_key: string }).prompt_cache_key.length).toBeLessThanOrEqual(64);
+    expect((retryBody as typeof retryBody & { prompt_cache_key: string }).prompt_cache_key).not.toBe(initialBody.prompt_cache_key);
     const retryPrompt = retryBody.input[0]?.content[0]?.text ?? "";
     expect(retryPrompt).toContain("foods.0.evidencePhotoIds.0/custom");
     expect(retryPrompt).toContain("photo-1");
@@ -170,7 +176,9 @@ describe("xAI meal vision contract", () => {
 
     await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Riz, légumes et poulet" });
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; prompt_cache_key: string; instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
+    expect(body.model).toBe("gpt-6-luna");
+    expect(body.prompt_cache_key.length).toBeLessThanOrEqual(64);
     expect(body.instructions).toContain("sugarGrams");
     expect(body.instructions).toContain("addedSugarGrams");
     expect(body.instructions).toContain("NOVA");
@@ -433,7 +441,7 @@ describe("xAI meal vision contract", () => {
       note: "Bol de riz avec légumes",
       correction: "La portion de riz était plus petite que prévu.",
       images: [{ id: "photo-1", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
-    });
+    }, createXaiMealVisionProvider());
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const primaryBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; input: Array<{ content: Array<{ text?: string; detail?: string }> }> };
@@ -463,7 +471,7 @@ describe("xAI meal vision contract", () => {
       mealDate: "2026-08-31",
       note: "Bol de riz avec légumes",
       images: Array.from({ length: 4 }, (_, index) => ({ id: `photo-${index + 1}`, mimeType: "image/jpeg", origin: "homemade" as const, data: new Uint8Array([index + 1]).buffer })),
-    });
+    }, createXaiMealVisionProvider());
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.x.ai/v1/responses");
@@ -514,7 +522,7 @@ describe("xAI meal vision contract", () => {
     process.env.XAI_API_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(structuredAnalysis()) }), { status: 200 }));
 
-    await analyzeMealInput({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] });
+    await analyzeMealInput({ mealType: "dinner", mealDate: "2026-08-31", note: null, images: [{ id: "photo-1", mimeType: "image/png", origin: "prepared", data: new Uint8Array([1]).buffer }] }, createXaiMealVisionProvider());
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

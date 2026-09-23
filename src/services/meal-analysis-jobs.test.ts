@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
+import { MealVisionError } from "@/integrations/xai/meal-vision";
 
 const state = vi.hoisted(() => ({
   findMeal: vi.fn(),
@@ -16,7 +16,6 @@ const state = vi.hoisted(() => ({
   listMealPhotoRowsForReconciliation: vi.fn(),
   findRelevantMealRecipeReferences: vi.fn(),
   analyzeMealInputWithFallback: vi.fn(),
-  getDurableMealAnalysisRetryProvider: vi.fn<() => MealVisionProvider | null>(() => null),
   claimCloudflareLock: vi.fn(),
   claimCloudflareLockWithToken: vi.fn(),
   refreshCloudflareLockWithToken: vi.fn(),
@@ -50,7 +49,6 @@ vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObj
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 vi.mock("@/integrations/meal-analysis/provider-chain", () => ({
   analyzeMealInputWithFallback: state.analyzeMealInputWithFallback,
-  getDurableMealAnalysisRetryProvider: state.getDurableMealAnalysisRetryProvider,
   getConfiguredMealAnalysisProvider: vi.fn(() => ({ name: "xai", model: "grok-4.6" })),
 }));
 
@@ -169,10 +167,10 @@ describe("durable meal analysis jobs", () => {
     expect(result).toMatchObject({ processed: true, analysis: { status: "completed" } });
     expect(state.updateMealAnalysis).toHaveBeenNthCalledWith(1, "user-1", queuedAnalysis.id, expect.objectContaining({ status: "running", attempts: 2, lease_token: "lease-token" }), "queued");
     expect(state.updateMealAnalysis).toHaveBeenLastCalledWith("user-1", queuedAnalysis.id, expect.objectContaining({ status: "completed", result: canonicalResult, lease_token: null }), "running", "lease-token");
-    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3", allowFallback: false });
+    expect(state.analyzeMealInputWithFallback).toHaveBeenCalledWith(expect.objectContaining({ mealType: "lunch", mealDate: "2026-09-14", note: "Riz et légumes", images: [] }), { requestId: "analysis-request-3" });
   });
 
-  it("uses the configured alternate provider on a response-schema retry", async () => {
+  it("retries a response-schema failure with Luna and a validation hint", async () => {
     const candidate = {
       id: queuedAnalysis.id,
       user_id: "user-1",
@@ -189,7 +187,6 @@ describe("durable meal analysis jobs", () => {
       analysis_request_id: "analysis-request-schema-retry",
       created_at: "2026-09-14T10:01:00.000Z",
     };
-    const alternateProvider = { name: "openai", model: "gpt-5.6-sol", analyze: vi.fn() } as unknown as MealVisionProvider;
     state.listQueuedMealAnalyses.mockResolvedValueOnce([candidate]);
     state.analyzeMealInputWithFallback.mockRejectedValueOnce(new MealVisionError("response_schema_error", "schema mismatch", { retryable: true }));
 
@@ -197,9 +194,7 @@ describe("durable meal analysis jobs", () => {
 
     expect(firstAttempt).toMatchObject({ processed: true, analysis: { status: "failed" } });
     expect(state.analyzeMealInputWithFallback).toHaveBeenCalledTimes(1);
-    expect(state.getDurableMealAnalysisRetryProvider).toHaveBeenLastCalledWith(0);
 
-    state.getDurableMealAnalysisRetryProvider.mockReturnValue(alternateProvider);
     state.listFailedMealAnalyses.mockResolvedValueOnce([{
       ...candidate,
       status: "failed",
@@ -213,17 +208,16 @@ describe("durable meal analysis jobs", () => {
       attempts: 1,
       error_code: "response_schema_error",
     }]);
-    state.analyzeMealInputWithFallback.mockResolvedValueOnce({ provider: "openai", model: "gpt-5.6-sol", result: canonicalResult });
+    state.analyzeMealInputWithFallback.mockResolvedValueOnce({ provider: "openai", model: "gpt-6-luna", result: canonicalResult });
 
     const secondAttempt = await processNextMealAnalysis();
 
     expect(secondAttempt).toMatchObject({ processed: true, analysis: { status: "completed" } });
-    expect(state.getDurableMealAnalysisRetryProvider).toHaveBeenLastCalledWith(1);
     expect(state.analyzeMealInputWithFallback).toHaveBeenCalledTimes(2);
     expect(state.analyzeMealInputWithFallback).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ retryHint: expect.stringContaining("semantic validation") }),
-      expect.objectContaining({ provider: alternateProvider, allowFallback: false, requestId: "analysis-request-schema-retry" }),
+      { requestId: "analysis-request-schema-retry" },
     );
   });
 

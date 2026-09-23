@@ -229,7 +229,6 @@ const state = vi.hoisted(() => {
       return { provider: "xai", model: "grok-4.6", result: canonicalResult(providerInputs.length > 1 ? "Correction appliquée." : undefined) };
     }),
     getConfiguredMealAnalysisProvider: vi.fn(() => ({ name: "xai", model: "grok-4.6" })),
-    getDurableMealAnalysisRetryProvider: vi.fn(() => undefined),
   };
 });
 
@@ -271,7 +270,6 @@ vi.mock("@/integrations/meal-analysis/provider-chain", () => ({
   analyzeMealInputWithFallback: state.analyzeMealInputWithFallback,
   analyzeMealInputStreamWithFallback: vi.fn(),
   getConfiguredMealAnalysisProvider: state.getConfiguredMealAnalysisProvider,
-  getDurableMealAnalysisRetryProvider: state.getDurableMealAnalysisRetryProvider,
 }));
 
 import { GET, POST } from "./route";

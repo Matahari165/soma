@@ -18,7 +18,7 @@ import {
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
 import { isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
-import { analyzeMealInputStreamWithFallback, analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider, getDurableMealAnalysisRetryProvider } from "@/integrations/meal-analysis/provider-chain";
+import { analyzeMealInputStreamWithFallback, analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider } from "@/integrations/meal-analysis/provider-chain";
 import * as cloudflareDb from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
@@ -830,7 +830,6 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
         return [];
       }),
     ]);
-    const retryProvider = getDurableMealAnalysisRetryProvider(Number(candidate.attempts ?? 0));
     const analysed = await timedMealStage("providers", { mealId: candidate.meal_id, requestId }, () => analyzeMealInputWithFallback({
       mealType: candidate.source_meal_type ?? meal.mealType,
       mealDate: candidate.source_meal_date ?? meal.mealDate,
@@ -842,7 +841,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
       ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
       ...(candidate.source_previous_analysis ? { previousAnalysis: candidate.source_previous_analysis } : {}),
       ...(recipeReferences.length ? { recipeReferences } : {}),
-    }, { requestId, allowFallback: false, ...(retryProvider ? { provider: retryProvider } : {}) }));
+    }, { requestId }));
     let canonicalResult;
     try {
       canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));

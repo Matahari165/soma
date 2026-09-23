@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { MealRecipeReference } from "@/domain/meal-recipes";
 import {
   validateMealAnalysis,
@@ -133,6 +135,15 @@ function providerTimeoutMs(fallback: number, requested?: number) {
 /** Bump these identifiers whenever the provider contract changes. */
 export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v5";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
+
+/** A stable, versioned cache identifier that stays under OpenAI's 64-character limit. */
+function mealPromptCacheKey(provider: string, model: string, attempt: number, stream = false) {
+  const fingerprint = createHash("sha256")
+    .update([MEAL_ANALYSIS_PROMPT_VERSION, MEAL_ANALYSIS_SCHEMA_VERSION, provider, model, attempt, stream].join(":"))
+    .digest("hex")
+    .slice(0, 24);
+  return `soma-meal-${fingerprint}`;
+}
 
 type VisionImageDetail = "low" | "high" | "auto";
 
@@ -941,9 +952,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const payload = {
       model: request.model,
       store: false,
-      prompt_cache_key: attempt === 1
-        ? `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}`
-        : `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}-retry-${attempt}`,
+      prompt_cache_key: mealPromptCacheKey(request.provider, request.model, attempt),
       reasoning: { effort: request.reasoningEffort || (request.provider === "xai" && request.model.startsWith("grok-4.3") ? "none" : "low") },
       max_output_tokens: maxOutputTokens,
       instructions: request.instructions,
@@ -1238,7 +1247,7 @@ async function requestGrokAnalysisStream(
     model: request.model,
     stream: true,
     store: false,
-    prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-xai-${request.model}-stream`,
+    prompt_cache_key: mealPromptCacheKey("xai", request.model, 1, true),
     reasoning: { effort: request.reasoningEffort || (request.model.startsWith("grok-4.3") ? "none" : "low") },
     max_output_tokens: request.maxOutputTokens,
     instructions: request.instructions,
@@ -1417,10 +1426,6 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number; tim
   };
 }
 
-export function getMealVisionProvider(): MealVisionProvider {
-  return createXaiMealVisionProvider();
-}
-
 function validateProviderResult(value: MealAnalysis, sourcePhotoIds: readonly string[], provider: MealVisionProvider) {
   try {
     const sanitized = normalizeStructuredAnalysis(value, sourcePhotoIds) as MealAnalysis;
@@ -1436,12 +1441,12 @@ function validateProviderResult(value: MealAnalysis, sourcePhotoIds: readonly st
   }
 }
 
-export async function analyzeMealImages(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
+export async function analyzeMealImages(input: MealVisionInput, provider: MealVisionProvider) {
   const result = await provider.analyze(input);
   return { result, provider: provider.name, model: provider.model };
 }
 
-export async function analyzeMealText(input: MealVisionTextInput, provider: MealVisionProvider = getMealVisionProvider()) {
+export async function analyzeMealText(input: MealVisionTextInput, provider: MealVisionProvider) {
   if (!provider.analyzeText) throw new Error("This meal analysis provider does not support text-only analysis.");
   const result = await provider.analyzeText(input);
   return { result, provider: provider.name, model: provider.model };
@@ -1451,7 +1456,7 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
  * Dispatches one meal analysis according to the available evidence using a single
  * configured vision or text-analysis model without any secondary validator.
  */
-export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { requestId?: string } = {}) {
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider, options: { requestId?: string } = {}) {
   const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
   const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primaryResponse = input.images.length > 0
@@ -1486,7 +1491,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
 
 export async function analyzeMealInputStream(
   input: MealVisionInput,
-  provider: MealVisionProvider = getMealVisionProvider(),
+  provider: MealVisionProvider,
   options: { requestId?: string } = {},
   onProgress?: (event: GrokStreamProgressEvent) => void,
 ) {
