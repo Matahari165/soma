@@ -34,7 +34,7 @@ export function assistantPolicyFor(input: PolicyInput): AssistantPolicy {
   return {
     quality,
     model: configuredModel(quality),
-    maxSteps: quality === "fast" ? 4 : quality === "balanced" ? 6 : 8,
+    maxSteps: quality === "fast" ? 6 : quality === "balanced" ? 6 : 8,
     maxOutputTokens: quality === "fast" ? 1_200 : quality === "balanced" ? 2_400 : 4_000,
     allowWebSearch: Boolean(input.explicitlyRequestsWeb),
   };
