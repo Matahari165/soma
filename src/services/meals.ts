@@ -18,7 +18,7 @@ import {
 } from "@/domain/meals";
 import type { ConfirmedMealRecord, NutritionEstimate } from "@/domain/lab/meals";
 import { isXaiVisionMimeType, MealVisionError, type MealVisionProvider } from "@/integrations/xai/meal-vision";
-import { analyzeMealInputStreamWithFallback, analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider } from "@/integrations/meal-analysis/provider-chain";
+import { analyzeMealInputStreamWithFallback, analyzeMealInputWithFallback, getConfiguredMealAnalysisProvider, getDurableMealAnalysisRetryProvider } from "@/integrations/meal-analysis/provider-chain";
 import * as cloudflareDb from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
 import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
@@ -306,7 +306,9 @@ export async function requeueRetryableMealAnalyses(now = Date.now()) {
       await updateMealAnalysis(String(row.user_id), String(row.id), {
         status: "queued",
         error: null,
-        error_code: null,
+        // Keep only the coarse failure category as input to the next provider
+        // attempt. The worker clears it again when it claims the queued job.
+        error_code: row.error_code === "response_schema_error" ? "response_schema_error" : null,
         heartbeat_at: null,
         lease_token: null,
         completed_at: null,
@@ -828,15 +830,19 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
         return [];
       }),
     ]);
+    const retryProvider = getDurableMealAnalysisRetryProvider(Number(candidate.attempts ?? 0));
     const analysed = await timedMealStage("providers", { mealId: candidate.meal_id, requestId }, () => analyzeMealInputWithFallback({
       mealType: candidate.source_meal_type ?? meal.mealType,
       mealDate: candidate.source_meal_date ?? meal.mealDate,
       note: note || null,
       images,
+      ...(candidate.error_code === "response_schema_error" && Number(candidate.attempts ?? 0) > 0
+        ? { retryHint: "The previous response failed semantic validation. Check photo references, observation/value agreement, parent-child counting, nutrition ranges and allowed enums before returning JSON." }
+        : {}),
       ...(candidate.source_correction ? { correction: candidate.source_correction } : {}),
       ...(candidate.source_previous_analysis ? { previousAnalysis: candidate.source_previous_analysis } : {}),
       ...(recipeReferences.length ? { recipeReferences } : {}),
-    }, { requestId, allowFallback: false }));
+    }, { requestId, allowFallback: false, ...(retryProvider ? { provider: retryProvider } : {}) }));
     let canonicalResult;
     try {
       canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));

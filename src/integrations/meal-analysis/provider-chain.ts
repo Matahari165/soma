@@ -55,6 +55,23 @@ export function getConfiguredMealAnalysisProvider(): MealVisionProvider {
     : createXaiMealVisionProvider({ maxAttempts: 1 });
 }
 
+/**
+ * A durable retry runs in a new 60-second Function invocation. Alternate the
+ * provider on the second attempt instead of making two 52-second calls in one
+ * invocation. The third attempt returns to the configured primary provider.
+ */
+export function getDurableMealAnalysisRetryProvider(previousAttempts: number): MealVisionProvider | null {
+  if (!Number.isInteger(previousAttempts) || previousAttempts < 1 || previousAttempts % 2 === 0) return null;
+  if (process.env.MEAL_ANALYSIS_ENABLE_FALLBACK === "false") return null;
+  if (configuredProviderName() === "xai" && process.env.OPENAI_API_KEY) {
+    return createOpenAiMealVisionProvider({ maxAttempts: 1 });
+  }
+  if (configuredProviderName() === "openai" && process.env.XAI_API_KEY) {
+    return createXaiMealVisionProvider({ maxAttempts: 1 });
+  }
+  return null;
+}
+
 function fallbackProvider(primary: MealVisionProvider) {
   if (process.env.MEAL_ANALYSIS_ENABLE_FALLBACK === "false") return null;
   // A single fallback attempt recovers from a transient primary outage while

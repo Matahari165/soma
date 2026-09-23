@@ -82,9 +82,10 @@ describe("xAI meal vision contract", () => {
     expect(imagePrompt).toContain("null signifie indisponible");
   });
 
-  it("rejects a photo evidence id that was not supplied with the request", async () => {
+  it("rejects a photo evidence alias that was not supplied with the request", async () => {
     process.env.XAI_API_KEY = "test-key";
     const invalid = structuredAnalysis("photo");
+    invalid.foods[0]!.evidencePhotoIds = ["photo-2"];
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(invalid) }), { status: 200 }));
 
     await expect(createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({
@@ -93,6 +94,74 @@ describe("xAI meal vision contract", () => {
       note: null,
       images: [{ id: "photo-other", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
     })).rejects.toMatchObject({ code: "response_schema_error" });
+  });
+
+  it("uses positional photo aliases in the prompt and remaps them to source IDs", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const sourcePhotoIds = [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+    ];
+    const aliased = structuredAnalysis("photo");
+    aliased.foods[0]!.evidencePhotoIds = ["photo-1", "photo-2"];
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(aliased) }), { status: 200 }));
+
+    const result = await createXaiMealVisionProvider({ maxAttempts: 1 }).analyze({
+      mealType: "lunch",
+      mealDate: "2026-08-31",
+      note: null,
+      images: sourcePhotoIds.map((id, index) => ({ id, mimeType: "image/jpeg", origin: "homemade" as const, data: new Uint8Array([index + 1]).buffer })),
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    const prompt = body.input[0]?.content[0]?.text ?? "";
+    expect(prompt).toContain("photo-1");
+    expect(prompt).toContain("photo-2");
+    expect(prompt).not.toContain(sourcePhotoIds[0]!);
+    expect(prompt).not.toContain(sourcePhotoIds[1]!);
+    expect(result.foods[0]?.evidencePhotoIds).toEqual(sourcePhotoIds);
+  });
+
+  it("retries a schema failure once with safe path/code guidance", async () => {
+    process.env.XAI_API_KEY = "test-key";
+    const sourcePhotoId = "33333333-3333-4333-8333-333333333333";
+    const invalid = structuredAnalysis("photo");
+    invalid.foods[0]!.evidencePhotoIds = ["invented-photo"];
+    const valid = structuredAnalysis("photo");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(invalid) }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(valid) }), { status: 200 }));
+
+    await createXaiMealVisionProvider().analyze({
+      mealType: "dinner",
+      mealDate: "2026-08-31",
+      note: null,
+      images: [{ id: sourcePhotoId, mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { input: Array<{ content: Array<{ text?: string }> }> };
+    const retryPrompt = retryBody.input[0]?.content[0]?.text ?? "";
+    expect(retryPrompt).toContain("foods.0.evidencePhotoIds.0/custom");
+    expect(retryPrompt).toContain("photo-1");
+    expect(retryPrompt).not.toContain(sourcePhotoId);
+    expect(consoleError.mock.calls.map(([entry]) => JSON.stringify(entry)).join("\n")).not.toContain(sourcePhotoId);
+  });
+
+  it("adds an internal retry hint to both photo and text prompts", () => {
+    const retryHint = "Check photo aliases and observation/value agreement.";
+    const photoPrompt = makePrompt({
+      mealType: "lunch",
+      mealDate: "2026-09-12",
+      note: null,
+      retryHint,
+      images: [{ id: "source-id", mimeType: "image/jpeg", origin: "homemade", data: new Uint8Array([1]).buffer }],
+    });
+    const textPrompt = makeTextPrompt({ mealType: "lunch", mealDate: "2026-09-12", note: "Un plat", retryHint });
+
+    expect(photoPrompt).toContain(retryHint);
+    expect(textPrompt).toContain(retryHint);
   });
 
   it("propagates the same sugar, NOVA and variety contract through OpenAI", async () => {
