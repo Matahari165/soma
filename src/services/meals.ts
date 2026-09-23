@@ -395,50 +395,50 @@ export async function createMeal(userId: string, input: CreateMealInput) {
     }
   }
   try {
-  const slotMeal = await findMealForSlot(userId, input.mealDate, input.mealType);
-  if (slotMeal) {
-    const existing = await findMeal(userId, slotMeal.id);
-    if (existing) return { meal: existing, created: false };
-  }
-  if (input.idempotencyKey) {
-    const existingId = await findMealByIdempotencyKey(userId, input.idempotencyKey);
-    if (existingId) {
-      const existing = await findMeal(userId, existingId);
+    const slotMeal = await findMealForSlot(userId, input.mealDate, input.mealType);
+    if (slotMeal) {
+      const existing = await findMeal(userId, slotMeal.id);
       if (existing) return { meal: existing, created: false };
     }
-  }
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const row = await insertMeal({
-    id,
-    user_id: userId,
-    meal_date: input.mealDate,
-    meal_type: input.mealType,
-    note: input.note ?? null,
-    status: input.status ?? "draft",
-    idempotency_key: input.idempotencyKey ?? null,
-    mouth_warmth_intensity: normalizeMealFeeling(input.mouthWarmthIntensity),
-    stomach_overfull_intensity: normalizeMealFeeling(input.stomachOverfullIntensity),
-    created_at: now,
-    updated_at: now,
-  });
-  const persisted = await findMealForSlot(userId, input.mealDate, input.mealType);
-  if (!persisted) throw new MealServiceError("unavailable", "The meal was saved but could not be located.");
-  if (persisted.id !== row.id) {
-    const concurrentMeal = await findMeal(userId, persisted.id);
-    if (concurrentMeal) return { meal: concurrentMeal, created: false };
-    throw new MealServiceError("unavailable", "The meal slot was saved but could not be reloaded.");
-  }
-  const hasFeelings = input.mouthWarmthIntensity !== undefined || input.stomachOverfullIntensity !== undefined;
-  if (hasFeelings) {
-    await upsertMealFeelings(userId, id, {
-      mouthWarmthIntensity: normalizeMealFeeling(input.mouthWarmthIntensity),
-      stomachOverfullIntensity: normalizeMealFeeling(input.stomachOverfullIntensity),
+    if (input.idempotencyKey) {
+      const existingId = await findMealByIdempotencyKey(userId, input.idempotencyKey);
+      if (existingId) {
+        const existing = await findMeal(userId, existingId);
+        if (existing) return { meal: existing, created: false };
+      }
+    }
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const row = await insertMeal({
+      id,
+      user_id: userId,
+      meal_date: input.mealDate,
+      meal_type: input.mealType,
+      note: input.note ?? null,
+      status: input.status ?? "draft",
+      idempotency_key: input.idempotencyKey ?? null,
+      mouth_warmth_intensity: normalizeMealFeeling(input.mouthWarmthIntensity),
+      stomach_overfull_intensity: normalizeMealFeeling(input.stomachOverfullIntensity),
+      created_at: now,
+      updated_at: now,
     });
-  }
-  const meal = await findMeal(userId, row.id);
-  if (!meal) throw new MealServiceError("unavailable", "The meal was saved but could not be reloaded.");
-  return { meal, created: true };
+    const persisted = await findMealForSlot(userId, input.mealDate, input.mealType);
+    if (!persisted) throw new MealServiceError("unavailable", "The meal was saved but could not be located.");
+    if (persisted.id !== row.id) {
+      const concurrentMeal = await findMeal(userId, persisted.id);
+      if (concurrentMeal) return { meal: concurrentMeal, created: false };
+      throw new MealServiceError("unavailable", "The meal slot was saved but could not be reloaded.");
+    }
+    const hasFeelings = input.mouthWarmthIntensity !== undefined || input.stomachOverfullIntensity !== undefined;
+    if (hasFeelings) {
+      await upsertMealFeelings(userId, id, {
+        mouthWarmthIntensity: normalizeMealFeeling(input.mouthWarmthIntensity),
+        stomachOverfullIntensity: normalizeMealFeeling(input.stomachOverfullIntensity),
+      });
+    }
+    const meal = await findMeal(userId, row.id);
+    if (!meal) throw new MealServiceError("unavailable", "The meal was saved but could not be reloaded.");
+    return { meal, created: true };
   } finally {
     if (idempotencyLock && lockClaimed) {
       try {
