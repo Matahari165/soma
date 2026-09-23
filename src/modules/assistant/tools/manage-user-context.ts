@@ -45,10 +45,10 @@ export function assertAssistantConfirmation(userText: string, quote: string) {
   if (!normalizedText.includes(normalizeConfirmation(quote))) {
     throw new Error("La confirmation doit citer exactement une partie du message utilisateur actuel.");
   }
-  const beginsWithApproval = /^(?:oui\b|ok\b|d'accord\b|c'est bon\b|ca marche\b|ca me va\b|vas-y\b|valide\b|je (?:valide|confirme|approuve)\b|(?:enregistre|sauvegarde|garde)\b)/u.test(normalizedText);
-  const changesOrConditions = /\b(?:pas|non|mais|si|sauf|condition|reserve|refuse|attends|corrige|correction|reessaie|relire|plutot|avant|erreur|modifie|modifier|change|changer)\b/u
-    .test(normalizedText.replace(/\bne change rien\b/gu, ""));
-  if (!beginsWithApproval || changesOrConditions || /\bne\s+(?:valide|confirme|veux)\b/u.test(normalizedText)) {
+  const statement = normalizedText.replace(/[,;:]/gu, " ").replace(/[.!]+$/u, "").replace(/\s+/gu, " ").trim()
+    .replace(/^(?:oui|ok)\s+(?=\S)/u, "");
+  const approval = /^(?:oui|ok|d'accord|c'est bon|ca marche|ca me va|valide|vas-y|parfait|je (?:valide|confirme|approuve)|(?:enregistre|sauvegarde|garde))(?: (?:l'objectif|mon objectif|les objectifs|mes objectifs|ces objectifs|ce cadre|le plan|ce plan|la proposition|cette proposition|la version|cette version|cette memoire|ce souvenir|cela|ca))?(?: ne change rien)?$/u;
+  if (!approval.test(statement)) {
     throw new Error("Une confirmation explicite et sans correction est nécessaire avant cet enregistrement.");
   }
 }
