@@ -266,6 +266,16 @@ describe("MealJournal", () => {
     expect(html.match(/aria-pressed=/g)).toHaveLength(7);
   });
 
+  it("keeps unavailable lab calories distinct from an explicit zero", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(calorieProgressForDisplay(null, 3000)).toBeNull();
+    expect(html).toContain('role="img"');
+    expect(html).toContain('data-state="unavailable"');
+    expect(html).toContain('aria-label="Calorie target progress: Calories unavailable"');
+    expect(html).not.toContain('aria-valuenow="0"');
+  });
+
   it("renders the four empty meal slots with photo actions", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{ date, meals: {} }} />);
 

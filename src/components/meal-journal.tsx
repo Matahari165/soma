@@ -1243,9 +1243,8 @@ function MealLabHeader({
   calories?: number | null;
   targetCalories?: number | null;
 }) {
-  const calVal = calories ?? 0;
   const targetVal = targetCalories ?? 2400;
-  const calPct = targetVal > 0 ? Math.min(100, Math.round((calVal / targetVal) * 100)) : 0;
+  const calPct = calorieProgressForDisplay(calories ?? null, targetVal);
   return (
     <header className="pb-4 border-b border-hairline space-y-2.5">
       <div className="flex flex-row items-center justify-between gap-3">
@@ -1266,8 +1265,14 @@ function MealLabHeader({
           )}
         </div>
       </div>
-      <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
-        <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${calPct}%` }} />
+      <div
+        className={`w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border ${calPct === null ? "border-dashed border-hairline opacity-70" : "border-hairline"}`}
+        {...(calPct === null
+          ? { role: "img", "aria-label": "Calorie target progress: Calories unavailable" }
+          : { role: "progressbar", "aria-label": "Calorie target progress", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": calPct, "aria-valuetext": `${calPct}% of calorie target` })}
+        data-state={calPct === null ? "unavailable" : "available"}
+      >
+        {calPct !== null && <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${calPct}%` }} />}
       </div>
     </header>
   );
@@ -1331,6 +1336,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const effectiveTargetsRef = useRef(initialEffectiveTargets ?? initialTargets ?? DEFAULT_NUTRITION_TARGETS);
   const effortTargetContextRef = useRef<EffortTargetContext>(initialEffortTargetContext ?? { effortScore: null, effortCoverage: null, averageEffortScore: null });
   const targetStateDateRef = useRef(initialTargets ? initialDate : null);
+  const initialDateRef = useRef(initialDate);
   const loadRequestId = useRef(0);
   // Les mutations sont suivies par créneau : une analyse sur un repas ne bloque
   // ni les autres créneaux ni la navigation entre les jours.
@@ -1422,13 +1428,29 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   }, [api, mergeCachedDrafts, selectedDate]);
 
   useEffect(() => {
+    if (selectedDateProp === undefined && initialDateRef.current !== initialDate) {
+      initialDateRef.current = initialDate;
+      loadRequestId.current += 1;
+      const current = dataRef.current;
+      if (current) stashLocalDrafts(current.date, current.meals);
+      setInternalSelectedDate(initialDate);
+      setData(initialData ? normalizeData(initialData, initialDate) : null);
+      setLoadState(initialData ? "ready" : "loading");
+      setLoadError(null);
+      setFileError(null);
+      setConfirmError({});
+      setStatusMessage(null);
+      setPendingDelete(null);
+      return;
+    }
+    initialDateRef.current = initialDate;
     if (initialData && selectedDate === initialDate) {
       setData(normalizeData(initialData, selectedDate));
       setLoadState("ready");
       return;
     }
     void load();
-  }, [initialData, initialDate, load, selectedDate]);
+  }, [initialData, initialDate, load, selectedDate, selectedDateProp, stashLocalDrafts]);
 
   // The POST only accepts the job. Polling this small status endpoint lets a
   // resumed tab reconcile the durable result without repeating the XAI call.
@@ -2099,7 +2121,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   };
 
   const readyData = data ?? emptyData(selectedDate);
-  const labCalories = currentDayTotal?.calories ?? 0;
+  const labCalories = currentDayTotal?.calories ?? null;
   const labTargetCalories = effectiveTargets?.caloriesKcal?.likely ?? targets?.caloriesKcal?.likely ?? 2400;
 
   const pageHeader = variant === "home"

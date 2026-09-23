@@ -125,7 +125,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
         </nav>
       </header>
 
-      <main key={pathname} className="main-content">{pathname.startsWith("/assistant") ? null : <PageMotionController />}{children}</main>
+      <div key={pathname} className="main-content">{pathname.startsWith("/assistant") ? null : <PageMotionController />}{children}</div>
     </div>
   );
 }
