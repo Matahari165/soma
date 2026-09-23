@@ -46,6 +46,11 @@ function metric(value: number | null, unit: string, digits = 0) {
     : "Unavailable";
 }
 
+function sessionDuration(minutes: number | null) {
+  if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return "Unavailable";
+  return `${Math.round(minutes)} min`;
+}
+
 function pace(exercise: ExerciseSummary) {
   const seconds = exercise.averagePaceSecondsPerKm;
   if (seconds === null || !Number.isFinite(seconds) || seconds <= 0) return "Unavailable";
@@ -60,6 +65,7 @@ function average(values: Array<number | null | undefined>) {
 export function activityAverages(exercises: ExerciseSummary[]) {
   return {
     distanceKm: average(exercises.map((exercise) => exercise.distanceKm)),
+    durationMinutes: average(exercises.map((exercise) => exercise.durationMinutes).filter((value) => value === null || value >= 0)),
     averagePaceSecondsPerKm: average(exercises.map((exercise) => exercise.averagePaceSecondsPerKm)),
     averageHeartRate: average(exercises.map((exercise) => exercise.averageHeartRate)),
     maximumHeartRate: average(exercises.map((exercise) => exercise.maximumHeartRate)),
@@ -135,6 +141,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
         <div className={styles.activityHistoryIdentity}><strong>Average</strong><span>{filtersWereUsed ? `${periodLabel} · current filters` : displayed.length}</span></div>
         <dl className={styles.activityHistoryMetrics}>
           <div><dt>Distance</dt><dd>{metric(averages.distanceKm, "km", 2)}</dd></div>
+          <div><dt>Duration</dt><dd>{sessionDuration(averages.durationMinutes)}</dd></div>
           <div><dt>Pace</dt><dd>{paceValue(averages.averagePaceSecondsPerKm)}</dd></div>
           <div><dt>Avg HR</dt><dd>{metric(averages.averageHeartRate, "bpm")}</dd></div>
           <div><dt>Max HR</dt><dd>{metric(averages.maximumHeartRate, "bpm")}</dd></div>
@@ -149,6 +156,7 @@ export function ActivityHistory({ exercises, referenceDate }: { exercises: Exerc
         </div>
         <dl className={styles.activityHistoryMetrics}>
           <div><dt>Distance</dt><dd>{metric(exercise.distanceKm, "km", 2)}</dd></div>
+          <div><dt>Duration</dt><dd>{sessionDuration(exercise.durationMinutes)}</dd></div>
           <div><dt>Pace</dt><dd>{pace(exercise)}</dd></div>
           <div><dt>Avg HR</dt><dd>{metric(exercise.averageHeartRate, "bpm")}</dd></div>
           <div><dt>Max HR</dt><dd>{metric(exercise.maximumHeartRate ?? null, "bpm")}</dd></div>

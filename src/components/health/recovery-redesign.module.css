@@ -533,8 +533,10 @@
 }
 
 .page > :global(.health-detail-page--recovery) > .content > .trendsSection {
-  padding-block: 32px;
+  padding-block: 48px 24px;
 }
+
+.page .trendsSection { gap: 4px; }
 
 .page > :global(.health-detail-page--recovery) > .content > .trendsSection + .section {
   padding-top: 32px;
@@ -637,6 +639,12 @@
   row-gap: 48px;
 }
 
+.trendGrid :global(.metric-trend-card):last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  width: calc((100% - 32px) / 2);
+  justify-self: center;
+}
+
 .trendGrid :global(.metric-trend-card) {
   display: flex;
   min-width: 0;
@@ -651,7 +659,11 @@
 
 .trendGrid :global(.metric-trend-card) :global(header) {
   align-items: baseline;
+  justify-content: center;
+  text-align: center;
 }
+
+.trendGrid :global(.metric-trend-card) :global(header > div) { justify-items: center; }
 
 .trendGrid :global(.metric-trend-card) :global(header span) {
   color: var(--recovery-text);
@@ -1033,6 +1045,11 @@
   .page .trendGrid {
     grid-template-columns: 1fr;
     row-gap: 48px;
+  }
+
+  .trendGrid :global(.metric-trend-card):last-child:nth-child(odd) {
+    grid-column: auto;
+    width: 100%;
   }
 
   .trendGrid :global(.metric-trend-card) {

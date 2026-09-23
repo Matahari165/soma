@@ -43,7 +43,9 @@
 
 .redesign {
   display: grid;
+  width: min(100%, 1180px);
   min-width: 0;
+  margin-inline: auto;
   gap: 48px;
 }
 
@@ -120,7 +122,6 @@
 .scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 34rem); opacity: 0; visibility: hidden; transform: translateY(-4px); transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1), opacity 300ms ease, transform 360ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 360ms; }
 .scoreInline[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; transform: translateY(0); transition-delay: 0s; }
 .scoreInlineInner { min-height: 0; overflow: hidden; }
-.scoreInlineInner > h3 { margin: 20px 0 12px; color: var(--sleep-primary); font: 400 18px/24px Georgia, "Times New Roman", serif; }
 
 .scoreValue small {
   color: var(--sleep-secondary);
@@ -227,14 +228,11 @@
   border-color: var(--lab-border-strong, #3a3a3a);
 }
 
-.sleepDetailNote,
 .sleepDetailUnavailable p,
 .sleepDetailSummary {
   color: var(--sleep-secondary);
   font: 400 12px/1.5 var(--font-soma-ui), system-ui, sans-serif;
 }
-
-.sleepDetailNote { margin: 20px 0 0; }
 
 .sleepBreakdownList {
   display: grid;
@@ -402,6 +400,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) {
+  margin-bottom: 8px;
+}
+
 .distributionPanel {
   min-width: 0;
   width: 100%;
@@ -511,6 +513,11 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
+  }
+  .root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) {
+    align-items: baseline;
+    flex-direction: row;
+    gap: 12px;
   }
 }
 

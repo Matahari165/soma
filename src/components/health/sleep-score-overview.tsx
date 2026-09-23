@@ -75,7 +75,6 @@ function ScoreBreakdownDetail({ breakdown }: { breakdown: SleepScoreBreakdown | 
   }
 
   return <>
-    <p className={styles.sleepDetailNote}>Soma calculation · {breakdown.algorithmVersion}</p>
     <dl className={styles.sleepBreakdownList}>
       {breakdown.components.map((component) => <div className={styles.sleepBreakdownRow} key={component.id}>
         <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
@@ -210,8 +209,8 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown }: Sl
         <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
         <p className={styles.scoreAverage}>30-day avg · <strong>{formatScore(average)}</strong><span> /100</span></p>
       </button>
-      <div className={styles.scoreInline} id="sleep-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} aria-labelledby="sleep-score-inline-heading">
-        <div className={styles.scoreInlineInner}><h3 id="sleep-score-inline-heading">Sleep calculation</h3><ScoreBreakdownDetail breakdown={breakdown} /></div>
+      <div className={styles.scoreInline} id="sleep-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Sleep score details">
+        <div className={styles.scoreInlineInner}><ScoreBreakdownDetail breakdown={breakdown} /></div>
       </div>
     </div>
   </div>;

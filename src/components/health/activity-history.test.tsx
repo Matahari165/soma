@@ -25,10 +25,10 @@ describe("activity history filters", () => {
   it("averages each available measure independently without turning missing data into zero", () => {
     const base = { id: "a", date: "2026-09-21", name: "Run", type: "RUNNING", durationMinutes: null, activeMinutes: null, zoneMinutes: null, averageSpeedKph: null, elevationGainMeters: null, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null };
     const result = activityAverages([
-      { ...base, distanceKm: 0, calories: 400, averageHeartRate: 140, maximumHeartRate: 170, averagePaceSecondsPerKm: 360 },
-      { ...base, id: "b", distanceKm: null, calories: 600, averageHeartRate: null, maximumHeartRate: 180, averagePaceSecondsPerKm: 420 },
+      { ...base, durationMinutes: 0, distanceKm: 0, calories: 400, averageHeartRate: 140, maximumHeartRate: 170, averagePaceSecondsPerKm: 360 },
+      { ...base, id: "b", durationMinutes: null, distanceKm: null, calories: 600, averageHeartRate: null, maximumHeartRate: 180, averagePaceSecondsPerKm: 420 },
     ]);
-    expect(result).toEqual({ distanceKm: 0, calories: 500, averageHeartRate: 140, maximumHeartRate: 175, averagePaceSecondsPerKm: 390 });
+    expect(result).toEqual({ distanceKm: 0, durationMinutes: 0, calories: 500, averageHeartRate: 140, maximumHeartRate: 175, averagePaceSecondsPerKm: 390 });
   });
 
   it("shows only the first three recent workouts until a filter is used", () => {
