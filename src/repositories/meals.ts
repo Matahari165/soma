@@ -341,16 +341,37 @@ export async function deletePhoto(userId: string, mealId: string, photoId: strin
   const photo = await admin.from("meal_photos").select("*").eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId).maybeSingle();
   if (photo.error) throw new Error("The meal photo could not be checked.");
   if (!photo.data) return false;
-  const deleted = await admin.from("meal_photos").delete().eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId);
-  if (deleted.error) throw new Error("The meal photo metadata could not be deleted.");
   const photoRow = photo.data as PhotoRow;
+
+  // Keep the metadata until the binary is gone. If the request is interrupted
+  // between these steps, the cron reconciler still has the object path needed
+  // to finish the deletion. The previous order deleted metadata first, which
+  // could leave an R2 object with no row to discover later.
+  const pending = await admin.from("meal_photos")
+    .update({ storage_status: "purge_pending", purged_at: null })
+    .eq("user_id", userId)
+    .eq("meal_id", mealId)
+    .eq("id", photoId)
+    .select("id")
+    .maybeSingle();
+  if (pending.error || !pending.data) throw new Error("The meal photo deletion could not be prepared; retry the operation.");
   try {
-    if (photoRow.storage_status !== "purged") await deleteR2MealPhotoObject(String(photoRow.object_path));
+    await deleteR2MealPhotoObject(String(photoRow.object_path));
   } catch {
-    const restored = await admin.from("meal_photos").upsert(photo.data as PhotoRow).then((result) => result);
-    if (restored.error) throw new Error("The meal photo could not be deleted or preserved for retry.");
     throw new Error("The meal photo could not be deleted; retry the operation.");
   }
+
+  const purged = await admin.from("meal_photos")
+    .update({ storage_status: "purged", purged_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("meal_id", mealId)
+    .eq("id", photoId)
+    .select("id")
+    .maybeSingle();
+  if (purged.error || !purged.data) throw new Error("The meal photo deletion could not be finalized; retry the operation.");
+
+  const deleted = await admin.from("meal_photos").delete().eq("user_id", userId).eq("meal_id", mealId).eq("id", photoId);
+  if (deleted.error) throw new Error("The meal photo metadata could not be deleted; retry the operation.");
   return true;
 }
 
