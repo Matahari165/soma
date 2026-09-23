@@ -39,14 +39,13 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const averageRecoveryScore = nullable(data.averageRecoveryScore);
   const averageEffortScore = nullable(data.averageEffortScore);
   const averageCaloriesKcal = nullable(data.averageCaloriesKcal);
-  const [initialCalories] = useState(() => nullable(data.caloriesKcal));
   const caloriesRef = useRef<number|null>(nullable(data.caloriesKcal));
   const traceReadyRef = useRef(nullable(data.caloriesKcal) !== null);
   const [eventReady, setEventReady] = useState(false);
   const [traceSettledState, setTraceSettled] = useState(false);
-  const traceReady = eventReady || nullable(data.caloriesKcal) !== null;
-  const traceSettled = traceSettledState || (traceReady && nullable(data.caloriesKcal) !== initialCalories);
   const [calories,setCalories] = useState<number|null>(nullable(data.caloriesKcal));
+  const traceReady = eventReady || calories !== null;
+  const traceSettled = traceSettledState;
   const calorieTargetRef = useRef<number|null>(nullable(data.calorieTarget));
   const [calorieTarget,setCalorieTarget] = useState<number|null>(nullable(data.calorieTarget));
   useEffect(()=>{

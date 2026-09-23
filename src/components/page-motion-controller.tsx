@@ -15,10 +15,6 @@ const MOTION_TARGETS = [
   ".lab-intro .arrival-heading",
   ".lab-intro .arrival-art",
   ".strongest-effects",
-  ".personal-lab-day-strip",
-  ".personal-lab-workspace > *",
-  ".journal-card--personal-lab",
-  ".meal-journal-lab",
 ].join(",");
 
 /**

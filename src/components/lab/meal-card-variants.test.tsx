@@ -95,7 +95,7 @@ describe("LabMealCard nutrition chart", () => {
     />);
 
     expect(html).toContain("Skipped");
-    expect(html).toContain("This slot is excluded from meal totals.");
+    expect(html).not.toContain("This slot is excluded from meal totals.");
     expect(html).toContain("Log this meal");
     expect(html).not.toContain("<textarea");
     expect(html).not.toContain("Camera");
