@@ -1135,7 +1135,6 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
                 onConfirm={() => { if (meal) void saveMeal(meal, "confirmed", { queued: true, announce: false }); }}
                 onCorrection={(correction) => void analyzeMeal(slot, correction)}
                 onNote={(note) => setNote(slot, note)}
-                onEdit={() => setNote(slot, meal?.note?.trim() || meal?.analysis?.dishType || "")}
                 onMarkSkipped={() => void changeEntryState(slot, "skipped")}
                 onMarkRecorded={() => void changeEntryState(slot, "recorded")}
                 onDeleteMeal={!disabledSlots.includes(slot) ? () => removeMeal(slot) : undefined}
