@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from "react";
 
 import {
   MEAL_BALANCE_COMPONENT_ORDER,
   MEAL_BALANCE_COMPONENT_WEIGHTS,
+  MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS,
   type MealBalanceComponentKey,
   type MealBalanceScore,
   type MealBalanceSubcomponent,
@@ -292,6 +293,9 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
       : `${formatDate(point.date, true)}: score ${formatScore(point.score)} out of 100${point.status === "limited" ? `, confidence ${formatPercent(point.confidence)}` : ""}`).join(". ")
     : "No days available for this trend.";
   const [selectedKey, setSelectedKey] = useState<MealBalanceComponentKey | null>(null);
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const scoreDetailId = useId();
+  const scoreButtonRef = useRef<HTMLButtonElement>(null);
   const radarButtonRefs = useRef<Partial<Record<MealBalanceComponentKey, SVGGElement | null>>>({});
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const selectedDimension = selectedKey ? axisData(daily).find((axis) => axis.keyName === selectedKey) ?? null : null;
@@ -324,7 +328,20 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [closeDimension, selectedKey]);
 
+  useEffect(() => {
+    if (!scoreOpen) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setScoreOpen(false);
+      scoreButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [scoreOpen]);
+
   function toggleDimension(key: MealBalanceComponentKey) {
+    setScoreOpen(false);
     if (selectedKey === key) closeDimension();
     else setSelectedKey(key);
   }
@@ -340,7 +357,17 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
         </div>
         <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
           <div className={styles.panelHeading}><h3 id="meal-score-daily-title">{isToday ? "Today" : formatDate(date ?? "", true)}</h3></div>
-          <strong className={styles.dailyScore} aria-label={scoreDescription(dailyScore)}>{formatScore(dailyScore)}<span>/100</span></strong>
+          <button ref={scoreButtonRef} type="button" className={styles.dailyScoreTrigger} aria-label={`${scoreDescription(dailyScore)}. ${scoreOpen ? "Close" : "View"} score calculation.`} aria-controls={scoreDetailId} aria-expanded={scoreOpen} onClick={() => { setSelectedKey(null); setScoreOpen((open) => !open); }}><strong className={styles.dailyScore}>{formatScore(dailyScore)}<span>/100</span></strong></button>
+          <div className={styles.scoreInline} id={scoreDetailId} data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen}>
+            <div className={styles.scoreInlineInner}>
+              <h4>Nutrition calculation</h4>
+              <p>Soma combines five weighted dimensions. Confidence slightly adjusts the result.</p>
+              <dl>{DIMENSION_KEYS.map((key) => {
+                const component = componentFor(daily, key);
+                return <div key={key}><dt>{DIMENSION_LABELS[key]}</dt><dd>{formatScore(component?.adjustedScore)} /100</dd><small>{Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])}%</small></div>;
+              })}</dl>
+            </div>
+          </div>
           <div className={styles.scoreRail} aria-hidden="true">{dailyScore === null ? null : <span style={{ width: `${Math.min(Math.max(dailyScore, 0), 100)}%` }} />}</div>
           <dl className={styles.scoreMetaList}>
             <div><dt>Status</dt><dd>{daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "—"}</dd></div>

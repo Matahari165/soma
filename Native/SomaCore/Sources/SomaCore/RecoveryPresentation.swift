@@ -9,7 +9,7 @@ public struct RecoveryPresentation: Equatable, Sendable {
         let components = [
             MetricComponentPresentation(
                 id: "hrv",
-                label: "VFC nocturne",
+                label: "HRV",
                 rawValueLabel: Self.valueLabel(response.signals.hrv.current, unit: response.signals.hrv.unit),
                 normalizedValue: response.score.components.hrv.value,
                 targetLabel: Self.referenceLabel(response.signals.hrv),
@@ -60,7 +60,7 @@ public struct RecoveryPresentation: Equatable, Sendable {
         }
 
         hrvTrend = Self.trend(
-            title: "VFC nocturne",
+            title: "HRV",
             unit: response.signals.hrv.unit,
             points: response.trends.hrv,
             periodDays: response.periodDays,

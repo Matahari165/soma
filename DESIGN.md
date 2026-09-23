@@ -314,7 +314,7 @@ Règle fondamentale : **même squelette, mêmes tokens, mêmes contrats d’inte
 |---|---|---|---|---|
 | Alimentation | Score du jour avec couverture et confiance | 7 dimensions nutritionnelles | Journal des repas et état de couverture | Historique du score, familles alimentaires, nutrition |
 | Sommeil | Score Sommeil, parfois indisponible | Durée, efficacité, régularité, latence, dette | Horaires, besoin estimé, temps éveillé | Phases, tendances sur 30 jours |
-| Récupération | Score de récupération avec référence personnelle | VFC nocturne, FC au repos, sommeil | VFC, FC au repos, fréquence respiratoire | Tendances, zones cardiaques |
+| Récupération | Score de récupération avec référence personnelle | HRV, FC au repos, sommeil | HRV, FC au repos, fréquence respiratoire | Tendances, zones cardiaques |
 | Effort | Score d’effort avec couverture | 4 composantes du score + charge hebdomadaire contextuelle | Charge, ratio, régularité, jours actifs | Tendances, zones, séances récentes |
 
 La production a été vérifiée sur les quatre routes, avec ouverture des détails de score et de plusieurs axes des radars. Elle montre notamment que l’ordre actuel varie : Alimentation place l’historique et le journal avant certaines preuves, Sommeil mélange timing et radar, Récupération place le radar avant le résumé du score, et Effort place le résumé avant le radar. **L’ordre canonique ci-dessous remplace ces variations.**
@@ -434,7 +434,7 @@ Contrats métier observés en production :
 
 - **Alimentation** : Variété, Qualité alimentaire, Sucre ajouté, Exposition liquide/concentrée, Ultra-transformation, Couverture nutritionnelle et Énergie. Les poids effectifs peuvent dépendre de l’observation et de la confiance ; ils doivent être affichés tels que calculés, pas remplacés par des poids fixes fictifs.
 - **Sommeil** : Durée `70 %`, Efficacité `10 %`, Régularité `20 %`. Latence et dette peuvent être des axes explicatifs ; leur rôle doit être explicite s’ils ne composent pas le score.
-- **Récupération** : VFC nocturne `40 %`, FC au repos `30 %`, Score sommeil `30 %`, comparés à la référence personnelle.
+- **Récupération** : HRV `40 %`, FC au repos `30 %`, Score sommeil `30 %`, comparés à la référence personnelle.
 - **Effort** : Minutes en zone `50 %`, Durée d’exercice `25 %`, Calories actives `15 %`, Pas `10 %`. La charge hebdomadaire est un repère contextuel et ne doit pas être présentée comme une composante supplémentaire sans décision produit.
 
 ### 19.9 Résumé du score principal
@@ -456,7 +456,7 @@ La section conserve la même géométrie, même si son contenu métier change. E
 |---|---|
 | Alimentation | Journal des repas, couverture du jour, statut de complétude et, si utile, confiance de l’observation |
 | Sommeil | Heure de coucher, heure de réveil, sommeil visé, temps éveillé et moyenne de référence |
-| Récupération | VFC nocturne, FC au repos, fréquence respiratoire et date de mesure |
+| Récupération | HRV, FC au repos, fréquence respiratoire et date de mesure |
 | Effort | Charge hebdomadaire, ratio récent/habituel, régularité sur 28 jours et jours actifs |
 
 Les cartes d’indicateurs ne sont pas des blocs décoratifs. Elles restent sans fond et sans ombre par défaut ; la hiérarchie vient de l’alignement, de la typographie et de l’espace. Un indicateur absent affiche `—` et son état ; un indicateur mesuré à zéro affiche `0`.
@@ -481,7 +481,7 @@ Familles de graphiques autorisées :
 
 - **Alimentation** : évolution du score, familles alimentaires et évolution nutritionnelle ; barres uniquement lorsque la comparaison de quantités ou d’occurrences le justifie.
 - **Sommeil** : durée, efficacité, régularité, fragmentation, sommeil profond/paradoxal et horaire du coucher ; phases détaillées dans une visualisation dédiée.
-- **Récupération** : VFC nocturne, FC au repos, fréquence respiratoire et zones cardiaques ; barres pour une distribution de temps, lignes pour une tendance.
+- **Récupération** : HRV, FC au repos, fréquence respiratoire et zones cardiaques ; barres pour une distribution de temps, lignes pour une tendance.
 - **Effort** : minutes en zone, durée d’exercice, calories actives, pas, charge hebdomadaire et régularité ; zones en barres, métriques temporelles en lignes.
 
 Un radar ne remplace pas une tendance. Une barre ne remplace pas une comparaison temporelle. Le choix du graphique doit suivre la question, l’unité et la qualité de la donnée, tout en utilisant le composant visuel partagé.

@@ -147,6 +147,26 @@
 
 .dailyPanel { min-width: 0; padding: 20px 0 20px 24px; border-left: 1px solid var(--score-rule); }
 .dailyScore { display: flex; align-items: baseline; gap: 5px; margin-top: 12px; color: var(--score-text); font-family: var(--font-soma-mono, ui-monospace, monospace); font-size: var(--score-display-size); font-weight: 400; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.dailyScoreTrigger { display: block; width: fit-content; min-width: 44px; min-height: 44px; margin-top: 12px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+:global(html[data-lab-theme="observatory"]) .root .dailyPanel .dailyScoreTrigger:is(:hover, :active):not(:disabled),
+:global(html[data-lab-theme="observatory"]) .root .dailyPanel .dailyScoreTrigger[aria-expanded="true"] { background: transparent; }
+.dailyScoreTrigger .dailyScore { margin-top: 0; transform-origin: left center; transition: transform 420ms cubic-bezier(.16, 1, .3, 1); }
+.dailyScoreTrigger:hover .dailyScore,
+.dailyScoreTrigger:focus-visible .dailyScore,
+.dailyScoreTrigger[aria-expanded="true"] .dailyScore { transform: scale(1.035); }
+.dailyScoreTrigger:focus-visible { outline: 2px solid var(--score-text); outline-offset: 6px; }
+.scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 360px); overflow: hidden; opacity: 0; clip-path: inset(0 0 100% 0); transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1), opacity 280ms ease-out, clip-path 360ms cubic-bezier(.22, 1, .36, 1); }
+.scoreInline[data-open="true"] { grid-template-rows: 1fr; margin-top: 16px; overflow: visible; opacity: 1; clip-path: inset(0); }
+.scoreInlineInner { min-height: 0; overflow: hidden; }
+.scoreInline[data-open="true"] .scoreInlineInner { overflow: visible; }
+.scoreInline h4 { margin: 0 0 12px; color: var(--score-text); font: 500 16px/24px var(--font-soma-ui), system-ui, sans-serif; }
+.scoreInline p { margin: 0 0 16px; color: var(--score-muted); font: 400 13px/20px var(--font-soma-ui), system-ui, sans-serif; }
+.scoreInline dl { display: grid; gap: 8px; margin: 0; }
+.scoreInline dl > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 12px; padding: 4px 0; }
+.scoreInline dt { color: var(--score-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.scoreInline dd, .scoreInline small { margin: 0; font: 400 11px/16px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.scoreInline dd { color: var(--score-text); }
+.scoreInline small { color: var(--score-muted); }
 .dailyScore span, .rollingScore span { color: var(--score-muted); font: inherit; font-size: var(--lab-type-ui); letter-spacing: -.02em; }
 .scoreRail { height: 2px; margin-top: 24px; border: 0; border-radius: 2px; background: var(--score-rule); }
 .scoreRail span { display: block; height: 100%; min-width: 2px; background: var(--score-positive); }
@@ -219,6 +239,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dailyScoreTrigger:hover .dailyScore,
+  .dailyScoreTrigger:focus-visible .dailyScore,
+  .dailyScoreTrigger[aria-expanded="true"] .dailyScore { transform: none; }
+  .dailyScoreTrigger .dailyScore,
+  .scoreInline,
   .radarStage,
   .balanceRadar,
   .dimensionDetailShell,

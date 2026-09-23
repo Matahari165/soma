@@ -65,7 +65,6 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
   const missing = breakdown.components.filter((component) => component.normalizedValue === null).map((component) => component.label);
   const scoreMismatch = measured(persistedScore) && measured(breakdown.score) && persistedScore !== breakdown.score;
   return <>
-    <p className={styles.detailNote}>Soma calculation · {breakdown.algorithmVersion}</p>
     {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · v3 recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
@@ -107,7 +106,7 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
     : null;
 
   useEffect(() => {
-    if (selectedDetail) headingRef.current?.focus({ preventScroll: true });
+    if (selectedDetail && selectedDetail !== "score") headingRef.current?.focus({ preventScroll: true });
   }, [selectedDetail]);
 
   useEffect(() => {
@@ -141,21 +140,24 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
     else setSelectedDetail(detail);
   }
 
-  const detailOpen = selectedDetail !== null;
+  const detailOpen = selectedDetail !== null && selectedDetail !== "score";
+  const scoreOpen = selectedDetail === "score";
   return <div className={styles.scoreOverview} data-detail-open={detailOpen}>
     <div className={styles.radarStage} data-detail-open={detailOpen}>
       <ActivityRadar dimensions={dimensions} title="Activity radar" detailId="activity-detail-panel" interactive selectedId={selectedDetail === "score" ? null : selectedDetail} onSelect={(id) => selectDetail(id)} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
       <aside className={styles.detailPanel} data-open={detailOpen} id="activity-detail-panel" aria-hidden={!detailOpen} aria-labelledby="activity-detail-heading" inert={!detailOpen}>
-        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDetail === "score" ? "Activity score" : selectedDimension?.label ?? "Activity details"}</h3><DetailCloseButton label={selectedDetail === "score" ? "activity score" : selectedDimension?.label ?? "activity"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
-        {selectedDetail === "score" ? <BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /> : <DimensionDetail dimension={selectedDimension} />}
+        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDimension?.label ?? "Activity details"}</h3><DetailCloseButton label={selectedDimension?.label ?? "activity"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
+        <DimensionDetail dimension={selectedDimension} />
       </aside>
     </div>
 
     <aside className={styles.scoreSummary} aria-labelledby="activity-score-summary-title">
-      <span className={styles.summaryKicker}>Today</span>
-      <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-detail-panel" aria-expanded={selectedDetail === "score"} aria-label={`${scoreLabel(score)}. View score breakdown.`} onClick={() => selectDetail("score")}>
+      <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-score-inline" aria-expanded={scoreOpen} aria-label={`${scoreLabel(score)}. ${scoreOpen ? "Close" : "View"} score breakdown.`} onClick={() => selectDetail("score")}>
         <span id="activity-score-summary-title" className={styles.scoreLabel}>Activity score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
       </button>
+      <div className={styles.scoreInline} id="activity-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Activity score details">
+        <div className={styles.scoreInlineInner}><BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /></div>
+      </div>
       <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>
       <dl className={styles.summaryFacts}><div><dt>Coverage</dt><dd>{coverage === null ? "—" : `${Math.round(coverage * 100)}%`}</dd></div><div><dt>Components</dt><dd>{breakdown ? `${breakdown.components.filter((component) => component.normalizedValue !== null).length}/4` : "—"}</dd></div></dl>
     </aside>

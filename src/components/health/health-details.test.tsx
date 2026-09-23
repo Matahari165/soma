@@ -186,7 +186,7 @@ describe("health route states", () => {
     expect(markup).not.toContain("Profil du sommeil");
     expect(markup).toContain("Sleep radar");
     expect(markup).toContain("Duration");
-    expect(markup).toContain("Latency");
+    expect(markup).not.toContain("Latency");
     expect(markup).toContain("Sleep score");
     expect(markup).toContain("/100");
     expect(markup).toContain('aria-expanded="false"');
@@ -195,8 +195,8 @@ describe("health route states", () => {
     expect(markup).not.toContain("Autres mesures");
     expect(markup).not.toContain("<details");
     expect(markup).not.toContain("<summary");
-    expect(markup.indexOf("Sleep score")).toBeLessThan(markup.indexOf("Next night"));
-    expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(6);
+    expect(markup).not.toContain("Next night");
+    expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(5);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Dette de sommeil');
     expect(markup).toContain("Deep + REM sleep");
@@ -215,8 +215,8 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("Benchmark unavailable");
-    expect(markup).toContain("Duration, Regularity, Latency, Debt");
+    expect(markup).not.toContain("Benchmark unavailable");
+    expect(markup).toContain("Duration, Regularity, Debt");
     expect(markup).toContain("90");
     expect(markup).not.toContain("health-hero-score-card");
   });
@@ -253,15 +253,17 @@ describe("health route states", () => {
     expect(markup).not.toContain("Durée de sommeil");
     expect(markup).not.toContain("Charge du jour");
     expect(markup).not.toContain("Énergie métabolique");
-    expect(markup).toContain("Heart rate variability");
-    expect(markup).toContain("Nightly HRV");
+    expect(markup).toContain("HRV");
+    expect(markup).not.toContain("Daily HRV");
+    expect(markup).not.toContain("Nightly HRV");
     expect(markup).toContain("Respiratory rate");
+    expect(markup).not.toContain("Heart rate variability");
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain('id="recovery-radar-detail"');
     expect(markup).toContain('data-open="false"');
   });
 
-  it("shows the measured sample count for partial recovery averages", () => {
+  it("keeps partial recovery averages without a sample-count suffix", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, {
       data: analytics({
         days: [day({ hrv_ms: 54, resting_heart_rate: null, respiratory_rate: null, sleep_minutes: 480 })],
@@ -269,8 +271,10 @@ describe("health route states", () => {
       }),
     }));
 
-    expect(markup).toContain("30-day avg · 54 ms · n=1");
-    expect(markup).toContain("30-day avg · — · n=0");
+    expect(markup).toContain("30-day avg · 54 ms");
+    expect(markup).toContain("30-day avg · —");
+    expect(markup).not.toContain("n=1");
+    expect(markup).not.toContain("n=0");
   });
 
   it("does not render a sample-based heart-rate trend on recovery", () => {
@@ -283,6 +287,16 @@ describe("health route states", () => {
     }));
 
     expect(markup).not.toContain(">Fréquence cardiaque</span>");
+  });
+
+  it("uses the shared bar-chart treatment once per distinct recovery signal", () => {
+    const markup = renderToStaticMarkup(createElement(RecoveryDetails, { data: buildPreviewAnalytics() }));
+
+    expect(markup).toContain(">Graphiques</h2>");
+    expect(markup.match(/health-bar-chart/g)?.length).toBe(3);
+    expect(markup.match(/health-chart-average-label/g)?.length).toBe(3);
+    expect(markup).not.toContain("Heart rate variability");
+    expect(markup).not.toContain("metric-trend-card__average");
   });
 
   it("provides visible weighted recovery drivers in the local analytics preview", () => {

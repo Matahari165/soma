@@ -43,7 +43,9 @@
 
 .redesign {
   display: grid;
+  width: min(100%, 1180px);
   min-width: 0;
+  margin-inline: auto;
   gap: 48px;
 }
 
@@ -83,7 +85,8 @@
 }
 
 .scorePanel:hover .scoreValue,
-.scorePanel[data-detail-selected="true"] .scoreValue { color: var(--lab-brand, #eeeeee); }
+.scorePanel:focus-visible .scoreValue,
+.scorePanel[data-detail-selected="true"] .scoreValue { transform: scale(1.035); }
 
 /* The observatory shell adds a filled hover state to buttons globally. The score
    remains a borderless reading surface, including while its detail is open. */
@@ -105,14 +108,20 @@
 
 .scoreValue {
   display: flex;
-  min-width: 0;
+  width: fit-content;
   align-items: baseline;
   gap: 8px;
   color: var(--sleep-primary);
   font: 400 clamp(64px, 7vw, 96px)/1 var(--lab-data-font), monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(.16, 1, .3, 1);
 }
+
+.scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 34rem); opacity: 0; visibility: hidden; transform: translateY(-4px); transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1), opacity 300ms ease, transform 360ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 360ms; }
+.scoreInline[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; transform: translateY(0); transition-delay: 0s; }
+.scoreInlineInner { min-height: 0; overflow: hidden; }
 
 .scoreValue small {
   color: var(--sleep-secondary);
@@ -219,58 +228,48 @@
   border-color: var(--lab-border-strong, #3a3a3a);
 }
 
-.sleepDetailNote,
 .sleepDetailUnavailable p,
 .sleepDetailSummary {
   color: var(--sleep-secondary);
   font: 400 12px/1.5 var(--font-soma-ui), system-ui, sans-serif;
 }
 
-.sleepDetailNote { margin: 20px 0 0; }
-
 .sleepBreakdownList {
   display: grid;
   gap: 0;
-  margin: 16px 0 0;
+  margin: 20px 0 0;
 }
 
 .sleepBreakdownRow {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) minmax(0, 2fr) auto;
+  align-items: baseline;
+  gap: 12px;
   min-width: 0;
   padding: 12px 0;
   border-top: 1px solid var(--sleep-border);
 }
 
 .sleepBreakdownRow dt {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
   color: var(--sleep-primary);
   font: 400 13px/1.35 var(--font-soma-ui), system-ui, sans-serif;
 }
 
-.sleepBreakdownRow dt small,
-.sleepBreakdownRow dd small,
+.sleepBreakdownRow > small,
 .sleepDimensionMetrics dt {
   color: var(--sleep-secondary);
   font: 500 11px/1.35 var(--lab-data-font), monospace;
 }
 
 .sleepBreakdownRow dd {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(76px, .7fr));
-  gap: 12px;
-  margin: 8px 0 0;
-}
-
-.sleepBreakdownRow dd > span {
-  display: grid;
   min-width: 0;
-  gap: 3px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--sleep-primary);
+  font: 400 12px/1.35 var(--lab-data-font), monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-.sleepBreakdownRow dd strong,
-.sleepBreakdownRow dd em,
 .sleepDimensionMetrics dd {
   overflow-wrap: anywhere;
   color: var(--sleep-primary);
@@ -279,29 +278,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sleepBreakdownRow dd em { color: var(--sleep-secondary); }
-
-.sleepBreakdownFormula {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  margin-top: 8px;
-}
-
-.sleepBreakdownFormula > span,
 .sleepScoreAxisMetrics > div {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.sleepBreakdownFormula small,
 .sleepScoreAxisMetrics dt {
   color: var(--sleep-secondary);
   font: 500 11px/1.35 var(--lab-data-font), monospace;
 }
 
-.sleepBreakdownFormula strong,
 .sleepScoreAxisMetrics dd {
   overflow-wrap: anywhere;
   color: var(--sleep-primary);
@@ -360,41 +347,11 @@
 
 .sleepDetailUnavailable p { margin: 8px 0 0; }
 
-.nextNight { min-width: 0; }
-
-.nextNight h2,
 .root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) h2 {
   margin: 0;
   color: var(--sleep-primary);
   font: 400 22px/28px Georgia, "Times New Roman", serif;
   letter-spacing: -.015em;
-}
-
-.nextNightGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
-  margin: 20px 0 0;
-}
-
-.nextNightGrid > div { min-width: 0; }
-
-.nextNightGrid dt {
-  color: var(--sleep-secondary);
-  font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-}
-
-.nextNightGrid dd {
-  margin: 4px 0 0;
-  color: var(--sleep-primary);
-  font: 400 20px/26px var(--lab-data-font), monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.unavailableNote {
-  margin: 16px 0 0;
-  color: var(--sleep-secondary);
-  font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif;
 }
 
 .lastNightSection,
@@ -424,6 +381,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) {
+  margin-bottom: 8px;
+}
+
 .distributionPanel {
   min-width: 0;
   width: 100%;
@@ -451,18 +412,15 @@
   font-weight: 400;
 }
 
-.trendGrid,
-.secondaryTrendGrid {
+.trendGrid {
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 32px;
 }
 
-.trendGrid :global(.metric-trend-card),
-.secondaryTrendGrid :global(.metric-trend-card) {
+.trendGrid :global(.metric-trend-card) {
   min-width: 0;
-  min-height: 224px;
   padding: 0;
   border: 0 !important;
   border-radius: 0;
@@ -470,54 +428,14 @@
   box-shadow: none;
 }
 
-.trendGrid :global(.metric-trend-card) :global(header),
-.secondaryTrendGrid :global(.metric-trend-card) :global(header) {
-  align-items: start;
-  gap: 12px;
-}
-
-.trendGrid :global(.metric-trend-card) :global(header) > div > span,
-.secondaryTrendGrid :global(.metric-trend-card) :global(header) > div > span {
-  color: var(--sleep-primary);
-  font: 400 15px/22px var(--font-soma-ui), system-ui, sans-serif;
-}
-
-.trendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading),
-.secondaryTrendGrid :global(.metric-trend-card) :global(header) :global(.metric-reading) {
-  color: var(--sleep-secondary);
-  font: 400 13px/18px var(--lab-data-font), monospace !important;
-}
-
-.trendGrid :global(.metric-trend-card__average),
-.secondaryTrendGrid :global(.metric-trend-card__average) {
-  color: var(--sleep-secondary);
-  font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif;
-  text-align: right;
-}
-
-.trendGrid :global(.metric-trend-card__average) strong,
-.secondaryTrendGrid :global(.metric-trend-card__average) strong {
-  color: inherit;
-  font: 400 12px/16px var(--lab-data-font), monospace;
-}
-
-.trendGrid :global(.metric-trend-card) :global(.chart-frame),
-.secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 120px;
-  margin-top: 20px;
-}
-
-/* Trend metadata is available to assistive technology; visual rules stay out. */
-.trendGrid :global(.health-chart-range),
-.trendGrid :global(.metric-direction),
-.trendGrid :global(.baseline-row),
-.trendGrid :global(footer),
-.secondaryTrendGrid :global(.health-chart-range),
-.secondaryTrendGrid :global(.metric-direction),
-.secondaryTrendGrid :global(.baseline-row),
-.secondaryTrendGrid :global(footer) { display: none; }
-
-.secondaryTrendGrid { margin-top: 32px; }
+.trendGrid :global(.metric-trend-card) :global(header) { justify-content: center; text-align: center; }
+.trendGrid :global(.metric-trend-card) :global(header > div) { justify-items: center; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { padding-right: 88px; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-chart-average) { stroke: var(--lab-info); stroke-dasharray: 4 5; stroke-width: 1.5; opacity: 1; vector-effect: non-scaling-stroke; }
+.trendGrid :global(.health-chart-range) { right: 0; width: 76px; }
+.trendGrid :global(.health-chart-average-label) { position: absolute; right: 0; display: block; width: 76px; color: var(--lab-info); font: 500 11px/14px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateY(-50%); }
+.trendGrid :global(.health-chart-average-label)::before { content: ""; display: inline-block; width: 9px; margin-right: 4px; border-top: 1.5px dashed currentColor; vertical-align: 3px; }
+.trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 88px) * .04); padding-inline-end: calc(88px + (100% - 88px) * .04); }
 
 .empty {
   display: flex;
@@ -545,8 +463,7 @@
   .root :global(.health-detail-page--sleep) { padding-inline: 32px; }
   .sleepScoreOverview { grid-template-columns: minmax(0, 420px) minmax(280px, 1fr); gap: 32px; }
   .sleepRadarStage[data-detail-open="true"] { grid-template-columns: minmax(0, 1fr) minmax(260px, .82fr); gap: 24px; }
-  .trendGrid,
-  .secondaryTrendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -555,8 +472,7 @@
   .scoreColumn { padding-left: 0; border-left: 0; gap: 32px; }
   .sleepScoreOverview { grid-template-columns: 1fr; gap: 24px; }
   .scoreColumn > .scorePanel { padding: 0 0 24px; border-top: 1px solid var(--sleep-border); }
-  .trendGrid,
-  .secondaryTrendGrid { grid-template-columns: 1fr; gap: 24px; }
+  .trendGrid { grid-template-columns: 1fr; gap: 24px; }
   .distributionPanel :global(.stage-legend) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -569,21 +485,22 @@
   .sleepRadarStage[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
   .sleepDetailPanel { max-height: 0; padding: 0; border: 0; transform: translateY(8px); }
   .sleepDetailPanel[data-open="true"] { max-width: none; max-height: 40rem; padding: 16px 0 0; border-top: 1px solid var(--sleep-border); transform: translateY(0); }
-  .sleepBreakdownRow dd { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .sleepBreakdownFormula,
+  .sleepBreakdownRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .sleepBreakdownRow dd { grid-column: 1 / -1; grid-row: 2; }
+  .sleepBreakdownRow > small { grid-column: 2; grid-row: 1; }
   .sleepScoreAxisMetrics { grid-template-columns: 1fr; }
   .sleepScoreAxisMetrics > div:last-child { grid-column: auto; }
   .sleepDimensionMetrics { gap: 14px 16px; }
-  .nextNightGrid { gap: 16px 20px; }
   .root :global(.health-detail-page--sleep) :global(.health-observatory-panel-header) {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
   }
-  .trendGrid :global(.metric-trend-card),
-  .secondaryTrendGrid :global(.metric-trend-card) { min-height: 208px; }
-  .trendGrid :global(.metric-trend-card) :global(.chart-frame),
-  .secondaryTrendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 112px; }
+  .root :global(.health-detail-page--sleep) .trendsSection :global(.health-observatory-panel-header) {
+    align-items: baseline;
+    flex-direction: row;
+    gap: 12px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -9,7 +9,7 @@ struct RecoveryFactorsView: View {
             Text("Composantes du calcul")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
-            factor("VFC nocturne", component: response.score.components.hrv)
+            factor("HRV", component: response.score.components.hrv)
             factor("Fréquence cardiaque au repos", component: response.score.components.restingHeartRate)
             factor("Sommeil", component: response.score.components.sleep)
         }

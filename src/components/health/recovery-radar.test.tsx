@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { RecoveryRadar } from "./recovery-radar";
 
 const dimensions = [
-  { key: "hrv", label: "VFC nocturne", score: 68, weight: 40 },
+  { key: "hrv", label: "HRV", score: 68, weight: 40 },
   { key: "restingHeartRate", label: "FC au repos", score: 83, weight: 30 },
   { key: "sleep", label: "Sommeil", score: 75, weight: 30 },
 ] as const;
@@ -22,7 +22,7 @@ it("draws a calm 100% reference triangle behind the measured 68/83/75 shape", ()
   expect((html.match(/data-testid="recovery-radar-label"/g) ?? []).length).toBe(3);
   expect(html).toContain(">Sommeil<");
   expect(html).toContain(">75<");
-  expect(html).toContain("VFC nocturne");
+  expect(html).toContain("HRV");
 });
 
 it("keeps a missing score unavailable instead of plotting it at zero", () => {
@@ -46,7 +46,7 @@ it("exposes a complete textual description and keyboard focus", () => {
   expect(html).toContain('role="img"');
   expect(html).toContain("Graphique radar de récupération");
   expect(html).toContain("Pondération 40");
-  expect(html).toContain("VFC nocturne : 68 sur 100");
+  expect(html).toContain("HRV : 68 sur 100");
   expect(html).toContain("tabindex=\"0\"");
 });
 

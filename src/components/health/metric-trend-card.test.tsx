@@ -130,6 +130,28 @@ describe("MetricTrendCard", () => {
     expect(markup).toContain("Coverage: 2/3 measured days");
   });
 
+  it("labels the activity average beside the plot without highlighting the last bar", () => {
+    const markup = renderToStaticMarkup(createElement(MetricTrendCard, {
+      label: "Active calories",
+      points: [
+        { date: "2026-09-08", value: 400 },
+        { date: "2026-09-09", value: 500 },
+        { date: "2026-09-10", value: 600 },
+      ],
+      unit: "kcal",
+      direction: "higher_is_better",
+      compact: true,
+      chartType: "bar",
+      valueFormat: "number",
+      averageInChart: true,
+    }));
+
+    expect(markup).toContain("health-chart-average-label");
+    expect(markup).toContain("500 kcal");
+    expect(markup).not.toContain("health-chart-bar--latest");
+    expect(markup).not.toContain("metric-trend-card__average-legend");
+  });
+
   it("aggregates weekly bars without converting missing or zero values", () => {
     expect(aggregateBarPoints([
       { date: "2026-09-07", value: 10 },
