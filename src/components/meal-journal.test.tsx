@@ -170,12 +170,16 @@ describe("MealJournal", () => {
       },
     }} />);
 
-    expect(html).toContain("Croissant &amp; Café");
+    expect(html).toContain(">Croissant</p>");
+    expect(html).not.toContain("Croissant &amp; Café");
     expect(html).toContain("Calories: 650 kcal");
     expect(html).toContain("Protein: 10 g");
     expect(html).toContain("Carbohydrates: 120 g");
     expect(html).toContain("Fat: 16 g");
     expect(html).toContain("Added sugar: 5 g");
+    expect(html).toContain('aria-label="Protein">P</dt><dd>10g</dd>');
+    expect(html).toContain('aria-label="Carbohydrates">C</dt><dd>120g</dd>');
+    expect(html).toContain('aria-label="Added sugar">S</dt><dd>5g</dd>');
     expect(html).toContain(">Modifier</button>");
     expect(html).toContain(">Snack</h3>");
     expect(html).toContain('aria-label="Analyze Lunch"');
@@ -183,6 +187,10 @@ describe("MealJournal", () => {
     expect(html).toContain('aria-label="Choose photos for Lunch"');
     expect(html).toContain('aria-label="Choose photos for Snack"');
     expect(html).toContain('aria-label="Choose photos for Dinner"');
+    const lunchGalleryInput = html.match(/<input[^>]*aria-label="Choose photos for Lunch"[^>]*>/)?.[0];
+    expect(lunchGalleryInput).toContain('accept="image/*"');
+    expect(lunchGalleryInput).toContain('multiple=""');
+    expect(lunchGalleryInput).not.toContain('capture=');
     expect(html).not.toContain("Ajouter une photo pour");
     expect(html.match(/>Camera<\/button>/g)).toHaveLength(3);
     expect(html.match(/>Photos<\/button>/g)).toHaveLength(3);
@@ -1002,7 +1010,7 @@ describe("apiMealToRecord", () => {
     expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 
-  it("renders lab meal card in V1 with a concise preview, nutrition bars, and no confirm button", () => {
+  it("renders lab meal card in V1 with ingredients, nutrition bars, and no repeated dish label", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation={false} date={date} today={date} initialData={{
       date,
       meals: {
@@ -1032,7 +1040,7 @@ describe("apiMealToRecord", () => {
     }} />);
 
     expect(html).toContain("Œufs · Fines herbes");
-    expect(html).toContain(">Omelette aux fines herbes</p>");
+    expect(html).not.toContain(">Omelette aux fines herbes</p>");
     expect(html).not.toContain("Daily note");
     expect(html).not.toContain("mon petit déjeuner");
     expect(html).toContain("250");

@@ -692,7 +692,7 @@ function JournalFieldRow({ variable, value, draftKey, confirmed, skipped, dayVal
     const heading = <>
       <div className="flex items-center gap-2">
         {confirmed ? <CircleCheck size={15} aria-hidden="true" /> : skipped ? <CircleMinus size={15} aria-hidden="true" /> : <CircleDashed size={15} aria-hidden="true" />}
-        <span className="text-sm font-medium text-content-primary truncate">{variable.name}</span>
+        <span className="journal-habit-name text-content-primary truncate">{variable.name}</span>
       </div>
       <div className="flex items-center gap-2.5">
         <span className="text-xs font-mono text-content-secondary">{adherencePct}% · {windowDays}d</span>

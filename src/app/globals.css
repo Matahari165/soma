@@ -674,6 +674,15 @@ svg.spin {
   contain-intrinsic-size: auto 600px;
 }
 
+.journal-field-row .journal-habit-name {
+  font-family: var(--font-soma-mono), "SF Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   svg.spin { animation: none; }

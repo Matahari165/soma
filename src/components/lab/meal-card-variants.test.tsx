@@ -12,6 +12,7 @@ describe("LabMealCard nutrition chart", () => {
     const review = renderToStaticMarkup(<LabMealCard {...props} />);
     expect(review).not.toContain("Valider le repas");
     expect(review).not.toContain("Confirm result");
+    expect(review).toContain('aria-label="Added sugar">S</dt><dd>—</dd>');
     const failedConfirmation = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, error: "Confirmation indisponible" }} onConfirm={() => undefined} />);
     expect(failedConfirmation).toContain("Retry confirmation");
     const draft = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, analysis: null, status: "draft" }} />);
@@ -141,9 +142,10 @@ describe("LabMealCard nutrition chart", () => {
 
     expect(html).toContain("Modifier");
     expect(html).toContain('aria-label="Modifier Dinner"');
+    expect(html).toContain('aria-label="Added sugar">S</dt><dd>0g</dd>');
     expect(html).toContain("px-2.5 py-1 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
     expect(html).toContain("text-xs font-mono");
-    expect(html).toContain("text-xs text-content-secondary leading-relaxed font-sans");
+    expect(html).not.toContain("Poulet et légumes rôtis</p>");
   });
 
   it("applies high-contrast buttons and harmonized typography on a pending meal card with canAnalyze", () => {
