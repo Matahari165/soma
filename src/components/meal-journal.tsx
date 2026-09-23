@@ -64,6 +64,7 @@ import styles from "./meal-journal.module.css";
 export { apiMealToRecord, MEAL_SLOTS, visibleAnalysisError };
 export type { MealEntryState } from "@/domain/meals";
 export type MealAnalysisProgress = {
+  stage?: "connecting" | "preparing" | "queued" | "analyzing";
   phase?: string;
   dishType?: string;
   foods: string[];
@@ -425,6 +426,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
     ));
   }
   if (files.length > 0) {
+    options.onProgress?.({ stage: "preparing", phase: "Envoi des photos…", foods: [] });
     const uploadFiles = uploadEntries.map((entry) => entry.file);
     const origins = uploadEntries.map((entry) => entry.photo.origin ?? "unknown");
     if (uploadFiles.length !== files.length) throw new Error("Selected photos no longer match the meal.");
@@ -441,6 +443,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       options.onPhotosUploaded?.([{ localPhotoId: entry.photo.id, photo: uploadedBody.photos[0] }]);
     }
   }
+  options.onProgress?.({ stage: "connecting", phase: "Connexion à l’analyse…", foods: [] });
   const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, {
     method: "POST",
     headers: {
@@ -538,7 +541,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
 
   const body = await readJson(response);
   if (response.status === 202 || body?.queued) {
-    options.onProgress?.({ phase: "Analyse en cours…", foods: [] });
+    options.onProgress?.({ stage: "queued", phase: "En attente de l’analyse…", foods: [] });
     for (let attempt = 0; attempt < 45; attempt += 1) {
       if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2_000));
       const statusResponse = await fetchMealWithTimeout(
@@ -549,6 +552,7 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
       );
       const statusBody = await readJson(statusResponse);
       if (statusBody?.analysis?.status === "failed") throw new Error(statusBody.analysis.error || "L’analyse du repas a échoué.");
+      if (statusBody?.analysis?.status === "running") options.onProgress?.({ stage: "analyzing", phase: "Analyse du repas en cours…", foods: [] });
       if (statusBody?.analysis?.status === "completed" && statusBody.meal) return apiMealToRecord(statusBody.meal);
     }
     throw new Error("L’analyse se poursuit. Réessaie dans un instant pour voir le résultat enregistré.");
@@ -1467,7 +1471,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
           const body = await readJson(response) as { meal?: unknown };
           if (cancelled || !body.meal) return;
           const next = normalizeMeal(apiMealToRecord(body.meal), selectedDate, slot);
-          if (next.status === "accepted" || next.status === "analyzing") setAnalysisProgress((current) => ({ ...current, [slot]: { phase: next.status === "accepted" ? "En attente de l’analyse…" : "Analyse du repas en cours…", foods: [] } }));
+          if (next.status === "accepted" || next.status === "analyzing") setAnalysisProgress((current) => ({ ...current, [slot]: { stage: next.status === "accepted" ? "queued" : "analyzing", phase: next.status === "accepted" ? "En attente de l’analyse…" : "Analyse du repas en cours…", foods: [] } }));
           setData((current) => current ? { ...current, meals: { ...current.meals, [slot]: next } } : current);
         } catch {
           // A temporary reconnect failure must not turn a durable job into a
@@ -1999,7 +2003,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     setAnalyzingSlots((previous) => previous.includes(slot) ? previous : [...previous, slot]);
     cancelledAnalysisIds.current.delete(meal.id);
     updateMeal(slot, (current) => ({ ...current, status: "accepted", error: null }));
-    setAnalysisProgress((prev) => ({ ...prev, [slot]: { phase: "Connexion…", foods: [] } }));
+    setAnalysisProgress((prev) => ({ ...prev, [slot]: { stage: "connecting", phase: "Connexion…", foods: [] } }));
     try {
       const reconcileUploadedPhotos = (pairs: Array<{ localPhotoId: string; photo: MealPhoto }>) => {
         const uploadedByLocalId = new Map(pairs.map((pair) => [pair.localPhotoId, pair.photo]));

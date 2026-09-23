@@ -6,6 +6,29 @@ import type { MealRecord } from "@/domain/meal-record";
 import { AnalysisDetails, LabMealCard } from "./meal-card-variants";
 
 describe("LabMealCard nutrition chart", () => {
+  it("replaces the draft with one truthful analysis screen and updates its server stage", () => {
+    const meal: MealRecord = { id: "meal-dinner", date: "2026-09-23", slot: "dinner", note: "Example dinner", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "accepted" };
+    const props = { meal, slot: "dinner" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined };
+    const connecting = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "connecting", foods: [] }} />);
+    expect(connecting).toContain("Connexion au service");
+    expect(connecting).toContain('aria-current="step"');
+    expect(connecting).not.toContain("Example dinner");
+    const analyzing = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "analyzing" }} analysisProgress={{ stage: "analyzing", foods: [] }} />);
+    expect(analyzing).toContain("Le repas est examiné");
+    expect(analyzing).toContain("Annuler l’analyse");
+    expect(analyzing).not.toContain("Example dinner");
+  });
+
+  it("explains a completed analysis without nutrition and exposes fiber and total sugar in details", () => {
+    const unavailable = { low: null, likely: null, high: null };
+    const meal: MealRecord = { id: "meal-dinner", date: "2026-09-23", slot: "dinner", note: "Example dinner", photos: [], analysis: { ingredients: [], summary: "Meal described", calories: unavailable, proteinGrams: unavailable }, mouthHeat: null, stomachLoad: null, status: "confirmed" };
+    const props = { meal, slot: "dinner" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined };
+    expect(renderToStaticMarkup(<LabMealCard {...props} />)).toContain("Le résultat ne contient pas d’estimation nutritionnelle");
+    const details = renderToStaticMarkup(<AnalysisDetails meal={meal} open detailsId="dinner-details" variant="v1" onToggle={() => undefined} hideToggle />);
+    expect(details).toContain("Fibres");
+    expect(details).toContain("Sucres totaux");
+  });
+
   it("shows the analyzed meal immediately and keeps a comment for each draft photo", () => {
     const meal: MealRecord = { id: "meal-lunch", date: "2026-08-31", slot: "lunch", note: "Riz", photos: [{ id: "photo-one", url: "blob:one", origin: "homemade", comment: "Sauce à part" }], analysis: { ingredients: [], calories: { low: 200, likely: 250, high: 300 }, proteinGrams: { low: 5, likely: 8, high: 12 } }, mouthHeat: null, stomachLoad: null, status: "review" };
     const props = { meal, slot: "lunch" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined, onPhotoComment: () => undefined };

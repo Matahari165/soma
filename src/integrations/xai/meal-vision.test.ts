@@ -88,6 +88,8 @@ describe("xAI meal vision contract", () => {
     expect(imagePrompt).toContain("angles différents");
     expect(imagePrompt).toContain("evidencePhotoIds");
     expect(imagePrompt).toContain("null signifie indisponible");
+    expect(textPrompt).toContain("hypothèse explicite de portion ordinaire");
+    expect(textPrompt).toContain("quantity, portion et estimatedGrams à null");
   });
 
   it("asks for a complete concise summary after a correction without changing the JSON contract", () => {
@@ -189,8 +191,9 @@ describe("xAI meal vision contract", () => {
 
     await createOpenAiMealVisionProvider({ maxAttempts: 1 }).analyzeText!({ mealType: "lunch", mealDate: "2026-08-31", note: "Riz, légumes et poulet" });
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; prompt_cache_key: string; instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { model: string; prompt_cache_key: string; max_output_tokens: number; instructions: string; input: Array<{ content: Array<{ text?: string }> }> };
     expect(body.model).toBe("gpt-6-luna");
+    expect(body.max_output_tokens).toBe(6_000);
     expect(body.prompt_cache_key.length).toBeLessThanOrEqual(64);
     expect(body.instructions).toContain("sugarGrams");
     expect(body.instructions).toContain("addedSugarGrams");
