@@ -142,24 +142,25 @@ function AssistantText({ text }: { text: string }) {
   return <>{blocks}</>;
 }
 
-function ProgressiveAssistantText({ text }: { text: string }) {
+function ProgressiveAssistantText({ text, onReveal }: { text: string; onReveal: () => void }) {
   const [visibleLength, setVisibleLength] = useState(0);
+  const onRevealRef = useRef(onReveal);
+  useEffect(() => { onRevealRef.current = onReveal; }, [onReveal]);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!text || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const frame = window.requestAnimationFrame(() => setVisibleLength(text.length));
       return () => window.cancelAnimationFrame(frame);
     }
     let interval: number | undefined;
     const frame = window.requestAnimationFrame(() => {
       setVisibleLength(0);
-      const step = Math.max(3, Math.ceil(text.length / 120));
+      const step = Math.max(6, Math.ceil(text.length / 35));
+      let revealed = 0;
       interval = window.setInterval(() => {
-        setVisibleLength((current) => {
-          const next = Math.min(text.length, current + step);
-          if (next === text.length && interval) window.clearInterval(interval);
-          return next;
-        });
+        revealed = Math.min(text.length, revealed + step);
+        setVisibleLength(revealed);
+        if (revealed === text.length && interval) window.clearInterval(interval);
       }, 24);
     });
     return () => {
@@ -167,6 +168,8 @@ function ProgressiveAssistantText({ text }: { text: string }) {
       if (interval) window.clearInterval(interval);
     };
   }, [text]);
+
+  useEffect(() => { onRevealRef.current(); }, [visibleLength]);
 
   return (
     <>
@@ -177,12 +180,12 @@ function ProgressiveAssistantText({ text }: { text: string }) {
   );
 }
 
-function MessageBody({ message, progressive = false }: { message: Message; progressive?: boolean }) {
+function MessageBody({ message, progressive = false, onReveal }: { message: Message; progressive?: boolean; onReveal: () => void }) {
   return <>
     {message.parts.map((part, index) => {
       if (part.type === "text") return message.role === "assistant"
         ? progressive
-          ? <ProgressiveAssistantText key={`${message.id}-text-${index}`} text={part.text} />
+          ? <ProgressiveAssistantText key={`${message.id}-text-${index}`} text={part.text} onReveal={onReveal} />
           : <AssistantText key={`${message.id}-text-${index}`} text={part.text} />
         : <p key={`${message.id}-text-${index}`}>{part.text}</p>;
       if (part.type === "data-summary") return <AnalysisSummary key={`${message.id}-data-${index}`} part={part} />;
@@ -213,7 +216,14 @@ export function AssistantWorkspace() {
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const followConversationRef = useRef(true);
+
+  const scrollToLatest = useCallback(() => {
+    const transcript = transcriptRef.current;
+    if (!transcript || !followConversationRef.current) return;
+    transcript.scrollTop = transcript.scrollHeight;
+  }, []);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -238,11 +248,9 @@ export function AssistantWorkspace() {
     return () => controller.abort();
   }, []);
   useEffect(() => {
-    endRef.current?.scrollIntoView({
-      block: "end",
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    });
-  }, [messages, sending]);
+    const frame = window.requestAnimationFrame(scrollToLatest);
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, sending, scrollToLatest]);
   async function openConversation(id: string) {
     if (id === activeId && messages.length) return;
     setActiveId(id);
@@ -252,6 +260,7 @@ export function AssistantWorkspace() {
     setLoadingConversation(true);
     setError(null);
     setHistoryOpen(false);
+    followConversationRef.current = true;
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" }));
       setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
@@ -275,6 +284,7 @@ export function AssistantWorkspace() {
     setError(null);
     setHistoryOpen(false);
     setEditingMessageId(null);
+    followConversationRef.current = true;
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
@@ -347,6 +357,7 @@ export function AssistantWorkspace() {
     event?.preventDefault();
     const cleanText = (overrideText ?? text).trim() || (photos.length ? "Analyse cette photo." : "");
     if ((!cleanText && !photos.length) || sending) return;
+    followConversationRef.current = true;
 
     const submittedPhotos = photos;
     const editedMessageId = editingMessageId;
@@ -489,7 +500,10 @@ export function AssistantWorkspace() {
       </aside>
 
       <section className={styles.conversation} aria-label="Conversation avec Soma">
-        <div className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} aria-live="polite" aria-busy={loadingConversation || sending}>
+        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} aria-live="polite" aria-busy={loadingConversation || sending} onScroll={(event) => {
+          const element = event.currentTarget;
+          followConversationRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+        }}>
           {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty ? (
             <div className={styles.welcome}>
               <span className={styles.welcomeLabel}>Calibration initiale</span>
@@ -502,7 +516,7 @@ export function AssistantWorkspace() {
               {messages.filter((message) => message.role !== "tool").map((message) => (
                 <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
                   <span className={styles.speaker}>{message.role === "user" ? "Vous" : "Soma"}</span>
-                  <div className={styles.messageBody}><MessageBody message={message} progressive={message.id === progressiveMessageId} /></div>
+                  <div className={styles.messageBody}><MessageBody message={message} progressive={message.id === progressiveMessageId} onReveal={scrollToLatest} /></div>
                   {message.role === "user" && message.status !== "pending" && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
@@ -510,7 +524,6 @@ export function AssistantWorkspace() {
               {sending && <li className={styles.assistantMessage}><span className={styles.speaker}>Soma</span><div className={styles.thinking} role="status" aria-label="Soma analyse votre demande"><span /><span /><span /></div></li>}
             </ol>
           )}
-          <div ref={endRef} />
         </div>
 
         <div className={styles.composerRegion}>
