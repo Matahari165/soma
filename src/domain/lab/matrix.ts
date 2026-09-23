@@ -548,6 +548,24 @@ export function selectMeaningfulRelations(relations: MatrixRelation[], limit = 8
   return selected.sort(stronger).slice(0, limit);
 }
 
+/** Keep the strongest result, then show different outcomes when the evidence allows it. */
+export function selectSummaryRelations(relations: MatrixRelation[], options: PersonalLabRelationDisplayOptions = {}) {
+  const candidates = selectMeaningfulRelations(relations, 24, options);
+  const selected = candidates.slice(0, 1);
+  const outcomes = new Set(selected.map((relation) => relation.outcomeId));
+  for (const relation of candidates.slice(1)) {
+    if (selected.length === 4) break;
+    if (outcomes.has(relation.outcomeId)) continue;
+    selected.push(relation);
+    outcomes.add(relation.outcomeId);
+  }
+  for (const relation of candidates.slice(1)) {
+    if (selected.length === 4) break;
+    if (!selected.includes(relation)) selected.push(relation);
+  }
+  return selected;
+}
+
 export function adjustMatrixRelations(relations: MatrixRelation[]) {
   const calculable = relations.map((relation, index) => ({ relation, index }))
     .filter(({ relation }) => !relation.excluded && relation.coefficient !== null)
