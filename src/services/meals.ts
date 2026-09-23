@@ -24,6 +24,8 @@ import { findRelevantMealRecipeReferences } from "@/services/meal-recipes";
 import {
   deleteMeal as deleteMealRecord,
   deletePhoto,
+  createMealPhotoUploadJob,
+  deleteMealPhotoUploadJob,
   findLatestMealAnalysis,
   findMealAnalysisByRequestId,
   findActiveMealAnalysis,
@@ -40,6 +42,7 @@ import {
   listQueuedMealAnalyses,
   listFailedMealAnalyses,
   listMealPhotoRowsForReconciliation,
+  listStaleMealPhotoUploadJobs,
   listMeals,
   updateMeal,
   updateMealAnalysis,
@@ -289,6 +292,24 @@ export async function reconcileMealPhotoPurges(limit = 100) {
     }
   }
   return { attempted, purged };
+}
+
+/** Only cleanup keys recorded before upload and still without a photo row after two hours. */
+export async function reconcileAbandonedMealPhotoUploads(limit = 100) {
+  const before = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
+  const jobs = await listStaleMealPhotoUploadJobs(before, limit);
+  let cleared = 0;
+  for (const job of jobs) {
+    try {
+      const photo = await findMealPhoto(job.user_id, job.meal_id, job.photo_id);
+      if (!photo) await deleteR2MealPhotoObject(job.object_path);
+      await deleteMealPhotoUploadJob(job.user_id, job.id);
+      cleared += 1;
+    } catch {
+      // Leave the durable key for the next cron run.
+    }
+  }
+  return { attempted: jobs.length, cleared };
 }
 
 /** Requeue transient failures while their source photos are still available. */
@@ -553,19 +574,19 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
     const storedPhotoCount = meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available").length;
     if (storedPhotoCount + files.length > MAX_MEAL_PHOTOS) throw new MealServiceError("invalid", `A meal can contain at most ${MAX_MEAL_PHOTOS} photos.`);
 
-    const stored: string[] = [];
-    const insertedIds: string[] = [];
+    const uploadJobs: Array<{ id: string; photoId: string; objectPath: string }> = [];
     try {
       const photos = [];
       for (let index = 0; index < files.length; index += 2) {
         const batch = files.slice(index, index + 2);
-        const uploaded = await Promise.all(batch.map(async (file) => {
+        const uploaded = await Promise.allSettled(batch.map(async (file) => {
           const id = file.id ?? crypto.randomUUID();
           const objectPath = mealPhotoObjectPath(userId, mealId, id, file.mimeType);
+          const jobId = crypto.randomUUID();
+          await createMealPhotoUploadJob({ id: jobId, user_id: userId, meal_id: mealId, photo_id: id, object_path: objectPath, created_at: new Date().toISOString() });
+          uploadJobs.push({ id: jobId, photoId: id, objectPath });
           await timedMealStage("photo_upload", { mealId }, () => putR2MealPhotoObject(objectPath, file.data, file.mimeType));
-          stored.push(objectPath);
-          insertedIds.push(id);
-          return insertPhoto({
+          const photo = await insertPhoto({
             id,
             user_id: userId,
             meal_id: mealId,
@@ -580,20 +601,32 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
             storage_status: "available",
             purged_at: null,
           });
+          return photo;
         }));
-        photos.push(...await Promise.all(uploaded));
+        const failed = uploaded.find((result) => result.status === "rejected");
+        if (failed?.status === "rejected") throw failed.reason;
+        photos.push(...uploaded.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
       }
       if (meal.status === "confirmed") await updateMeal(userId, mealId, { status: "draft" });
+      await Promise.all(uploadJobs.map((job) => deleteMealPhotoUploadJob(userId, job.id).catch(() => {
+        // A stale job with a valid photo row is safe for the reconciler to clear.
+      })));
       return photos;
     } catch (error) {
-      // Metadata and R2 are kept together as far as possible. A failed D1 write
-      // must not leave an inaccessible private photo behind.
-      await Promise.all(stored.map((path) => deleteR2MealPhotoObject(path).catch((cleanupError) => {
-        console.error("[meal-analysis] orphaned photo cleanup failed", { mealId, stage: "photo_r2_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
-      })));
-      await Promise.all(insertedIds.map((id) => deletePhoto(userId, mealId, id).catch((cleanupError) => {
-        console.error("[meal-analysis] photo metadata cleanup failed", { mealId, photoId: id, stage: "photo_d1_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
-      })));
+      // Keep the durable job until both metadata and R2 cleanup have succeeded.
+      await Promise.all(uploadJobs.map(async (job) => {
+        try {
+          const photo = await findMealPhoto(userId, mealId, job.photoId);
+          if (photo) {
+            if (photo.objectPath !== job.objectPath) throw new Error("Photo object path changed during cleanup.");
+            await deletePhoto(userId, mealId, job.photoId);
+          }
+          await deleteR2MealPhotoObject(job.objectPath);
+          await deleteMealPhotoUploadJob(userId, job.id);
+        } catch (cleanupError) {
+          console.error("[meal-analysis] orphaned photo cleanup deferred", { mealId, stage: "photo_r2_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
+        }
+      }));
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", "The meal photos could not be saved.");
     }

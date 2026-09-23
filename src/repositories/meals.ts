@@ -45,6 +45,14 @@ type PhotoRow = Row & {
   storage_status?: MealPhoto["storageStatus"];
   purged_at?: string | null;
 };
+export type MealPhotoUploadJob = {
+  id: string;
+  user_id: string;
+  meal_id: string;
+  photo_id: string;
+  object_path: string;
+  created_at: string;
+};
 type AnalysisRow = Row & {
   id: string;
   user_id: string;
@@ -311,6 +319,24 @@ export async function insertPhoto(row: PhotoRow) {
   const { data, error } = await createCloudflareAdminClient().from("meal_photos").insert(row).select("*").single();
   if (error || !data) throw new Error("The meal photo metadata could not be saved.");
   return photoFromRow(data as PhotoRow);
+}
+
+/** Persist the object key before upload so an interrupted write remains discoverable. */
+export async function createMealPhotoUploadJob(job: MealPhotoUploadJob) {
+  const result = await createCloudflareAdminClient().from("meal_photo_upload_jobs").insert(job);
+  if (result.error) throw new Error("The photo upload could not be prepared.");
+}
+
+export async function deleteMealPhotoUploadJob(userId: string, jobId: string) {
+  const result = await createCloudflareAdminClient().from("meal_photo_upload_jobs").delete().eq("user_id", userId).eq("id", jobId);
+  if (result.error) throw new Error("The photo upload record could not be cleared.");
+}
+
+export async function listStaleMealPhotoUploadJobs(before: string, limit = 100) {
+  const result = await createCloudflareAdminClient().from("meal_photo_upload_jobs").select("id,user_id,meal_id,photo_id,object_path,created_at")
+    .lt("created_at", before).order("created_at", { ascending: true }).limit(Math.max(1, Math.floor(limit)));
+  if (result.error) throw new Error("Abandoned photo uploads could not be listed.");
+  return (result.data ?? []) as MealPhotoUploadJob[];
 }
 
 export async function updatePhotoOrigin(userId: string, mealId: string, photoId: string, origin: MealOrigin) {

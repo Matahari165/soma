@@ -64,12 +64,13 @@ async function linkedAuthUserIds(userId: string): Promise<string[]> {
 
 async function listAccountObjects(userId: string): Promise<ObjectManifest> {
   const admin = createCloudflareAdminClient();
-  const [archives, photos, attachments] = await Promise.all([
+  const [archives, photos, attachments, uploads] = await Promise.all([
     admin.from("health_record_archives").select("object_path,storage_backend,storage_bucket").eq("user_id", userId),
     admin.from("meal_photos").select("object_path").eq("user_id", userId),
     admin.from("assistant_attachments").select("object_path").eq("user_id", userId),
+    admin.from("meal_photo_upload_jobs").select("object_path").eq("user_id", userId),
   ]);
-  if (archives.error || photos.error || attachments.error) throw new Error("Account files could not be listed.");
+  if (archives.error || photos.error || attachments.error || uploads.error) throw new Error("Account files could not be listed.");
   const authUserIds = hasSupabaseRuntime() ? await linkedAuthUserIds(userId) : [];
   const physicalArchives = hasSupabaseRuntime()
     ? (await Promise.all(authUserIds.map((id) => physicalAccountRows<ArchivePath>("health_record_archives", id, "object_path,storage_backend,storage_bucket")))).flat()
@@ -87,6 +88,7 @@ async function listAccountObjects(userId: string): Promise<ObjectManifest> {
   const r2Paths = [
     ...allArchives.filter((row) => !hasSupabaseRuntime() || row.storage_backend === "r2").map((row) => row.object_path),
     ...(photos.data ?? []).map((row) => row.object_path),
+    ...(uploads.data ?? []).map((row) => row.object_path),
     ...(attachments.data ?? []).map((row) => row.object_path),
     ...physicalAttachments.map((row) => row.object_path),
     ...labMatrixCacheObjectKeys(userId),
