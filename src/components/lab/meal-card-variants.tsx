@@ -677,14 +677,14 @@ export function LabMealCard({
           <div className="flex items-center gap-2">
             <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
           </div>
-          {!isSkipped && onMarkSkipped && <button type="button" className="min-h-11 min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors" disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
+          {!isSkipped && onMarkSkipped && <button type="button" className={`${styles.personalLabSkip} min-w-11 px-2 text-xs font-sans text-content-secondary hover:text-content-primary transition-colors`} disabled={disabled || mutationBusy} onClick={onMarkSkipped}>Skip</button>}
         </div>
         {photoStrip}
         <div className="relative">
           <textarea
             id={inputId}
             className="w-full bg-obsidian border border-hairline rounded text-xs text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-hairline-light font-sans"
-            rows={2}
+            rows={1}
             placeholder="Describe this meal or its ingredients…"
             value={noteText}
             disabled={disabled || processingFiles || mutationBusy}

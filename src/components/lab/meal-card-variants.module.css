@@ -1397,14 +1397,22 @@
 }
 
 .personalLabType > div:first-of-type {
-  align-items: flex-start;
+  align-items: center;
+  min-height: 28px;
+  position: relative;
 }
 
 .personalLabType textarea {
-  min-height: 64px;
-  height: 64px;
+  min-height: 36px;
+  height: 36px;
   padding: 8px 10px;
-  resize: vertical;
+  resize: none;
+  transition: height 420ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.personalLabType textarea:focus,
+.personalLabType textarea:not(:placeholder-shown) {
+  height: 112px;
 }
 
 .personalLabType textarea::placeholder {
@@ -1446,4 +1454,18 @@
 .personalLabType button[aria-label^="Analyze"] {
   padding-inline: 8px;
   white-space: nowrap;
+}
+
+.personalLabSkip {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  min-height: 44px;
+  transform: translateY(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personalLabType textarea {
+    transition: none;
+  }
 }
