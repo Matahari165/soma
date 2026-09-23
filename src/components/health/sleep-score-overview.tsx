@@ -22,18 +22,11 @@ export type SleepScoreBreakdown = {
   components: readonly SleepScoreComponent[];
 };
 
-export type SleepScoreSupplement = {
-  title: string;
-  rows: readonly { label: string; value: string }[];
-  note?: string;
-};
-
 type SleepScoreOverviewProps = {
   dimensions: readonly SleepRadarDimension[];
   score: number | null;
   average: number | null;
   breakdown: SleepScoreBreakdown | null;
-  scoreSupplement?: SleepScoreSupplement;
 };
 
 type SelectedDetail = "score" | string;
@@ -120,7 +113,7 @@ function DimensionDetail({ dimension }: { dimension: SleepRadarDimension | null 
   </>;
 }
 
-export function SleepScoreOverview({ dimensions, score, average, breakdown, scoreSupplement }: SleepScoreOverviewProps) {
+export function SleepScoreOverview({ dimensions, score, average, breakdown }: SleepScoreOverviewProps) {
   const [selectedDetail, setSelectedDetail] = useState<SelectedDetail | null>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -129,11 +122,12 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
   const selectedDimension = selectedDetail && selectedDetail !== "score"
     ? dimensions.find((dimension) => dimension.id === selectedDetail) ?? null
     : null;
-  const detailOpen = selectedDetail !== null;
+  const detailOpen = selectedDetail !== null && selectedDetail !== "score";
+  const scoreOpen = selectedDetail === "score";
 
   useEffect(() => {
-    if (selectedDetail) detailHeadingRef.current?.focus({ preventScroll: true });
-  }, [selectedDetail]);
+    if (detailOpen) detailHeadingRef.current?.focus({ preventScroll: true });
+  }, [detailOpen]);
 
   useEffect(() => {
     if (!selectedDetail) return;
@@ -194,20 +188,20 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         inert={!detailOpen}
       >
         <div className={styles.sleepDetailHeader}>
-          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDetail === "score" ? "Sleep score" : selectedDimension?.label ?? "Sleep details"}</h3>
-          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDetail === "score" ? "Sleep score" : selectedDimension?.label ?? "sleep"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
+          <h3 id={DETAIL_TITLE_ID} ref={detailHeadingRef} tabIndex={-1}>{selectedDimension?.label ?? "Sleep details"}</h3>
+          <DetailCloseButton closeButtonRef={detailCloseButtonRef} label={selectedDimension?.label ?? "sleep"} onClose={closeDetail} tabIndex={detailOpen ? 0 : -1} />
         </div>
-        {selectedDetail === "score" ? <ScoreBreakdownDetail breakdown={breakdown} /> : selectedDetail ? <DimensionDetail dimension={selectedDimension} /> : null}
+        {detailOpen ? <DimensionDetail dimension={selectedDimension} /> : null}
       </aside>
     </div>
 
     <div className={styles.scoreColumn}>
       <button
-        aria-controls={DETAIL_ID}
-        aria-expanded={selectedDetail === "score"}
-        aria-label={`${scoreDescription(score)}. View score breakdown.`}
+        aria-controls="sleep-score-inline"
+        aria-expanded={scoreOpen}
+        aria-label={`${scoreDescription(score)}. ${scoreOpen ? "Close" : "View"} score breakdown.`}
         className={styles.scorePanel}
-        data-detail-selected={selectedDetail === "score"}
+        data-detail-selected={scoreOpen}
         onClick={selectScore}
         ref={scoreButtonRef}
         type="button"
@@ -216,13 +210,9 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown, scor
         <strong className={styles.scoreValue}>{formatScore(score)}<small>/100</small></strong>
         <p className={styles.scoreAverage}>30-day avg · <strong>{formatScore(average)}</strong><span> /100</span></p>
       </button>
-      {scoreSupplement && <div className={styles.nextNight}>
-        <h2>{scoreSupplement.title}</h2>
-        <dl className={styles.nextNightGrid}>
-          {scoreSupplement.rows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
-        </dl>
-        {scoreSupplement.note && <p className={styles.unavailableNote}>{scoreSupplement.note}</p>}
-      </div>}
+      <div className={styles.scoreInline} id="sleep-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} aria-labelledby="sleep-score-inline-heading">
+        <div className={styles.scoreInlineInner}><h3 id="sleep-score-inline-heading">Sleep calculation</h3><ScoreBreakdownDetail breakdown={breakdown} /></div>
+      </div>
     </div>
   </div>;
 }

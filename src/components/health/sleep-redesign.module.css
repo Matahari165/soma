@@ -83,7 +83,8 @@
 }
 
 .scorePanel:hover .scoreValue,
-.scorePanel[data-detail-selected="true"] .scoreValue { color: var(--lab-brand, #eeeeee); }
+.scorePanel:focus-visible .scoreValue,
+.scorePanel[data-detail-selected="true"] .scoreValue { transform: scale(1.035); }
 
 /* The observatory shell adds a filled hover state to buttons globally. The score
    remains a borderless reading surface, including while its detail is open. */
@@ -105,14 +106,21 @@
 
 .scoreValue {
   display: flex;
-  min-width: 0;
+  width: fit-content;
   align-items: baseline;
   gap: 8px;
   color: var(--sleep-primary);
   font: 400 clamp(64px, 7vw, 96px)/1 var(--lab-data-font), monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(.16, 1, .3, 1);
 }
+
+.scoreInline { display: grid; grid-template-rows: 0fr; width: min(100%, 34rem); opacity: 0; visibility: hidden; transform: translateY(-4px); transition: grid-template-rows 360ms cubic-bezier(.22, 1, .36, 1), opacity 300ms ease, transform 360ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 360ms; }
+.scoreInline[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; transform: translateY(0); transition-delay: 0s; }
+.scoreInlineInner { min-height: 0; overflow: hidden; }
+.scoreInlineInner > h3 { margin: 20px 0 12px; color: var(--sleep-primary); font: 400 18px/24px Georgia, "Times New Roman", serif; }
 
 .scoreValue small {
   color: var(--sleep-secondary);

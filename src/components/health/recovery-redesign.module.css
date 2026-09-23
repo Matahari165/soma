@@ -290,7 +290,8 @@
   margin-inline-start: clamp(24px, 4vw, 48px);
 }
 
-.scoreSummary :global(.health-score-trigger):hover {
+:global(html[data-lab-theme="observatory"]) .page .scoreSummary :global(.health-score-trigger):is(:hover, :active):not(:disabled),
+:global(html[data-lab-theme="observatory"]) .page .scoreSummary :global(.health-score-trigger)[aria-expanded="true"] {
   background: transparent;
 }
 
@@ -684,7 +685,7 @@
   margin-top: 12px;
 }
 
-.trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
+:global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) {
   height: 120px;
   padding-right: 88px;
 }
@@ -706,7 +707,7 @@
   width: 76px;
 }
 
-.trendGrid :global(.metric-trend-card) :global(.health-chart-average) {
+:global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-chart-average) {
   stroke: var(--lab-info);
   stroke-dasharray: 4 5;
   stroke-width: 1.5;
