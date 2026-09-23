@@ -53,6 +53,7 @@ describe("MealNutritionTrends", () => {
     expect(html).not.toContain("1/7 jours mesurés");
     expect(html).toContain("1 jour mesuré sur 7");
     expect(html).toMatch(/class="[^"]*barMissing[^"]*"/);
-    expect(html).toMatch(/class="[^"]*bar[^"]*" style="--bar-scale:0\.04"/);
+    expect(html).toMatch(/class="[^"]*barZero[^"]*"/);
+    expect(html).not.toContain("--bar-scale:0.04");
   });
 });

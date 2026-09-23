@@ -232,6 +232,13 @@
   transition: transform var(--normal) var(--ease);
 }
 
+.barZero {
+  display: block;
+  width: min(100%, 22px);
+  height: 2px;
+  background: var(--metric-color);
+}
+
 .axis {
   display: flex;
   align-items: center;
@@ -442,6 +449,7 @@
   transition: transform var(--normal) var(--ease);
 }
 .root:global(.meals-page-trends) .barMissing { display: block; height: 8px; background: var(--lab-control-track); }
+.root:global(.meals-page-trends) .barZero { width: min(100%, 12px); }
 .root:global(.meals-page-trends) .axis { color: var(--lab-text-secondary); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: var(--lab-type-label); line-height: 16px; }
 .root:global(.meals-page-trends) .emptyState { min-height: 112px; border-color: var(--lab-border); border-radius: var(--lab-radius-sm); color: var(--lab-text-secondary); font-family: var(--font-soma-ui), system-ui, sans-serif; font-size: 12px; }
 

@@ -100,6 +100,10 @@ export function matrixCellState(relations: MatrixRelation[], displayed: MatrixRe
   return "no-signal";
 }
 
+export function strongestEffectsEmptyState(relations: MatrixRelation[]): Exclude<MatrixCellState, null> {
+  return relations.length ? matrixCellState(relations, []) ?? "no-signal" : "collecting";
+}
+
 function cellProgress(relations: MatrixRelation[]) {
   const eligible = relations.filter((relation) => !relation.excluded);
   const closest = [...eligible].sort((first, second) => (first.minimumDaysRemaining ?? 0) - (second.minimumDaysRemaining ?? 0))[0];
@@ -337,6 +341,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
   standalone?: boolean;
 }) {
   const meaningful = useMemo(() => selectMeaningfulRelations(relations, relations.length, { requireTemporalStability }), [relations, requireTemporalStability]);
+  const emptyState = strongestEffectsEmptyState(relations);
   const meaningfulGroups = useMemo(() => {
     const groups = new Map<string, { group: string; predictorId: string; predictorLabel: string; relations: MatrixRelation[] }>();
     for (const relation of meaningful) {
@@ -414,11 +419,8 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
     </header>
     {!meaningful.length ? (
       <div className="strongest-effects__empty-maturity" role="status">
-        <h4>Statistical maturity in progress</h4>
-        <p>Soma evaluates within-person associations with HAC standard errors once at least 10 observations have been validated.</p>
-        <div className="strongest-effects__maturity-callout">
-          <span>Continue recording your daily journal entries and meals to uncover your strongest personal effects.</span>
-        </div>
+        <h4>{emptyState === "collecting" ? "Collecte en cours" : emptyState === "excluded" ? "Aucune comparaison applicable" : "Aucune association fiable"}</h4>
+        <p>{emptyState === "collecting" ? "Soma attend assez de jours comparables pour calculer les associations." : emptyState === "excluded" ? "Les mesures disponibles ne permettent pas de comparer ces facteurs sur cette période." : "Les données calculables n’ont pas montré de relation assez solide avec le filtre actuel."}</p>
       </div>
     ) : meaningfulGroups.map(([group, influences]) => {
       const groupId = group.replaceAll(" ", "-").toLowerCase();

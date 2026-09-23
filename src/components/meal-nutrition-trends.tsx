@@ -85,12 +85,9 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
       <div className={styles.barChart} style={{ "--point-count": points.length } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${coverageLabel}.`}>
         {points.map((point) => {
           const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
-          // Animate the painted bar with a compositor-friendly transform.
-          // The minimum scale keeps an explicit zero visible without changing
-          // the meaning of null, which is still rendered as a missing day.
-          const barStyle = { "--bar-scale": String(Math.max(0.04, height / 100)) } as CSSProperties & { "--bar-scale": string };
+          const barStyle = { "--bar-scale": String(height / 100) } as CSSProperties & { "--bar-scale": string };
           return <div className={styles.barColumn} key={point.date}>
-            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : <span className={styles.bar} style={barStyle} aria-hidden="true" />}
+            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : point.value === 0 ? <span className={styles.barZero} aria-hidden="true" /> : <span className={styles.bar} style={barStyle} aria-hidden="true" />}
           </div>;
         })}
       </div>

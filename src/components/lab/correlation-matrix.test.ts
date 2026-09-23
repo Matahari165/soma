@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysUntilFirstResult, defaultAnalysisPeriod, formatComparisonLabel, formatDuration, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel, publishedRelationsForPair } from "./correlation-matrix";
+import { daysUntilFirstResult, defaultAnalysisPeriod, formatComparisonLabel, formatDuration, groupOutcomeThemes, influenceExplanation, matrixCellEffectText, matrixCellState, matrixScrollBehavior, matrixTimingLabel, periodLabel, publishedRelationsForPair, strongestEffectsEmptyState } from "./correlation-matrix";
 import { calculateMatrixRelation, type MatrixRelation, type MatrixSeries } from "@/domain/lab/matrix";
 
 describe("relationship matrix motion helpers", () => {
@@ -105,6 +105,9 @@ describe("relationship matrix motion helpers", () => {
     expect(matrixCellState([base], [])).toBe("no-signal");
     expect(matrixCellState([{ ...base, excluded: true }], [])).toBe("excluded");
     expect(matrixCellState([base], [base])).toBeNull();
+    expect(strongestEffectsEmptyState([])).toBe("collecting");
+    expect(strongestEffectsEmptyState([base])).toBe("no-signal");
+    expect(strongestEffectsEmptyState([{ ...base, excluded: true }])).toBe("excluded");
   });
 
   it("explains the indicator definition and provenance", () => {

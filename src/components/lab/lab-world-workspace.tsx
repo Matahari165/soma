@@ -76,7 +76,7 @@ export function LabWorldWorkspace({
   personalization?: LabArrivalPersonalization;
 }) {
   const theme = useLabTheme();
-  const root = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
 
   const todayDate = overview?.todayDate ?? journal?.todayDate;
   const availableDates = useMemo(() => {
@@ -177,7 +177,7 @@ export function LabWorldWorkspace({
     window.addEventListener("lab-theme-change", change);
     return () => window.removeEventListener("lab-theme-change", change);
   }, []);
-  return <div ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
+  return <main ref={root} id="main-page-content" className="lab-experience lab-continuous" data-continuous-theme={theme}>
     <div className="lab-intro">
       {theme === "observatory" && <ArrivalBackdrop variant={radarPresentation.backdrop} />}
       <LabArrival
@@ -195,5 +195,5 @@ export function LabWorldWorkspace({
       <section id="world-capture" className="lab-world__capture" aria-label="Journal et repas">{activeCapture}</section>
       {effects ? <section className="lab-world__effects" aria-label="Associations personnelles">{effects}</section> : null}
     </div>
-  </div>;
+  </main>;
 }

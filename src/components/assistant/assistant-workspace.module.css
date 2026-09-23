@@ -112,7 +112,7 @@
 .composer textarea::placeholder { color: var(--lab-text-secondary); opacity: .8; }
 .editingNotice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -2px -2px 10px; padding: 0 2px 9px; border-bottom: 1px solid var(--lab-border); color: var(--lab-text-secondary); font-size: 12px; }
 .editingNotice > span { display: inline-flex; align-items: center; gap: 7px; }
-.editingNotice button { display: inline-grid; min-width: 32px; min-height: 32px; place-items: center; border: 0; border-radius: var(--lab-radius-sm); background: transparent; color: var(--lab-text-secondary); }
+.editingNotice button { display: inline-grid; min-width: 44px; min-height: 44px; place-items: center; border: 0; border-radius: var(--lab-radius-sm); background: transparent; color: var(--lab-text-secondary); }
 .editingNotice button:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
 .composerActions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .attachButton { min-width: 36px; min-height: 36px; }
@@ -122,7 +122,7 @@
 .photoList { display: flex; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
 .photoList li { position: relative; width: 64px; height: 64px; }
 .photoList img { width: 100%; height: 100%; border-radius: var(--lab-radius-xs); object-fit: cover; }
-.photoList button { position: absolute; top: -7px; right: -7px; min-width: 26px; min-height: 26px; border: 1px solid var(--lab-border-strong); border-radius: 50%; background: var(--lab-surface-selected); }
+.photoList button { position: absolute; top: -7px; right: -7px; min-width: 44px; min-height: 44px; border: 1px solid var(--lab-border-strong); border-radius: 50%; background: var(--lab-surface-selected); }
 .error { display: grid; width: min(760px, 100%); grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0 auto 8px; padding: 10px 12px; border-top: 1px solid var(--lab-error); background: color-mix(in srgb, var(--lab-error) 8%, var(--lab-canvas)); color: var(--lab-error); font-size: 13px; }
 .error strong { font-weight: 500; }
 .error span { color: var(--lab-text-secondary); }
@@ -140,8 +140,8 @@
   .mobileToolbar { display: grid; height: 52px; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--lab-border); background: var(--lab-surface); }
   .mobileToolbar span { text-align: center; font: 400 18px/1.2 Georgia, "Times New Roman", serif; }
   .mobileToolbar button { min-width: 44px; min-height: 44px; }
-  .history { position: fixed; inset: 0 auto 0 0; z-index: 20; width: min(320px, 88vw); padding: 24px 16px; transform: translateX(-102%); transition: transform 180ms cubic-bezier(.2,.8,.2,1); }
-  .historyOpen { transform: translateX(0); }
+  .history { position: fixed; inset: 0 auto 0 0; z-index: 20; width: min(320px, 88vw); padding: 24px 16px; visibility: hidden; transform: translateX(-102%); transition: transform 180ms cubic-bezier(.2,.8,.2,1), visibility 0s linear 180ms; }
+  .historyOpen { visibility: visible; transform: translateX(0); transition: transform 180ms cubic-bezier(.2,.8,.2,1); }
   .historyHeader { justify-content: flex-end; }
   .deleteConversation { min-width: 44px; min-height: 44px; opacity: 1; }
   .closeHistory { display: inline-grid; min-width: 44px; min-height: 44px; }
