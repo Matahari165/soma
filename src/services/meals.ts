@@ -89,12 +89,20 @@ const RETRYABLE_ANALYSIS_CODES = new Set([
   "unknown_analysis_error",
 ]);
 
-async function timedMealStage<T>(stage: string, context: { mealId?: string; requestId?: string }, operation: () => Promise<T>) {
+function logMeal(level: "info" | "warn" | "error", stage: string, error?: unknown, durationMs?: number) {
+  console[level]("[meal-analysis]", {
+    stage,
+    ...(durationMs === undefined ? {} : { durationMs }),
+    ...(error === undefined ? {} : { reason: error instanceof Error ? error.name : "unknown" }),
+  });
+}
+
+async function timedMealStage<T>(stage: string, operation: () => Promise<T>) {
   const startedAt = Date.now();
   try {
     return await operation();
   } finally {
-    console.info("[meal-analysis] stage", { ...context, stage, durationMs: Date.now() - startedAt });
+    logMeal("info", stage, undefined, Date.now() - startedAt);
   }
 }
 
@@ -145,7 +153,7 @@ async function setPhotoStorageState(userId: string, mealId: string, photoId: str
     const updated = await updatePhotoStorage(userId, mealId, photoId, { storageStatus, purgedAt });
     if (!updated) throw photoPurgeError();
   } catch (error) {
-    console.error("[meal-analysis] photo storage state update failed", { mealId, photoId, storageStatus, stage: "photo_storage", reason: error instanceof Error ? error.name : "unknown" });
+    logMeal("error", "photo_storage", error);
     throw photoPurgeError();
   }
 }
@@ -200,7 +208,7 @@ async function purgeMealPhoto(userId: string, mealId: string, photo: Meal["photo
     // The successful pending write remains the durable recovery marker. The
     // binary may or may not have been removed when the final D1 write failed,
     // so retries must reconcile from this state rather than guess.
-    console.error("[meal-analysis] photo purge did not finish", { mealId, photoId: photo.id, stage: "photo_purge", reason: error instanceof Error ? error.name : "unknown" });
+    logMeal("error", "photo_purge", error);
     throw photoPurgeError();
   }
 }
@@ -230,7 +238,7 @@ export async function finalizeMealAnalysis(userId: string, mealId: string, analy
   // The next explicit analysis will use the new source snapshot.
   const sourceFingerprint = analysis.source_fingerprint ?? analysis.sourceFingerprint ?? null;
   if (sourceFingerprint && sourceFingerprint !== currentFingerprint) {
-    console.warn("[meal-analysis] source changed before finalization", { mealId, stage: "finalize_source_changed" });
+    logMeal("warn", "finalize_source_changed");
     // Do not let a late result become the newest successful analysis for a
     // meal whose note/photos changed while the provider was running. Keeping
     // the row as failed lets the previous successful result remain selectable
@@ -243,7 +251,7 @@ export async function finalizeMealAnalysis(userId: string, mealId: string, analy
         completed_at: new Date().toISOString(),
         retry_after_at: null,
       }, "completed").catch((error) => {
-        console.warn("[meal-analysis] stale result could not be retired", { mealId, analysisId: analysis.id, stage: "finalize_source_changed_retire", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("warn", "finalize_source_changed_retire", error);
       });
     }
     return meal;
@@ -255,11 +263,11 @@ export async function finalizeMealAnalysis(userId: string, mealId: string, analy
   const photosToPurge = meal.photos.filter((photo) => (photo.storageStatus ?? "available") !== "purged");
   await Promise.all(photosToPurge.map(async (photo) => {
     try {
-      await timedMealStage("photo_purge", { mealId }, () => purgeMealPhoto(userId, mealId, photo));
+      await timedMealStage("photo_purge", () => purgeMealPhoto(userId, mealId, photo));
     } catch (error) {
       // Confirmation must never depend on the availability of R2. The pending
       // D1 state is enough for the scheduled reconciler to retry safely.
-      console.warn("[meal-analysis] photo purge deferred", { mealId, photoId: photo.id, stage: "photo_purge_deferred", reason: error instanceof Error ? error.name : "unknown" });
+      logMeal("warn", "photo_purge_deferred", error);
     }
   }));
   return findMeal(userId, mealId);
@@ -281,10 +289,10 @@ export async function reconcileMealPhotoPurges(limit = 100) {
     if (!photo) continue;
     attempted += 1;
     try {
-      await timedMealStage("photo_purge_retry", { mealId: meal.id }, () => purgeMealPhoto(String(row.user_id), String(row.meal_id), photo));
+      await timedMealStage("photo_purge_retry", () => purgeMealPhoto(String(row.user_id), String(row.meal_id), photo));
       purged += 1;
     } catch (error) {
-      console.warn("[meal-analysis] photo purge retry deferred", { mealId: meal.id, photoId: photo.id, stage: "photo_purge_retry_deferred", reason: error instanceof Error ? error.name : "unknown" });
+      logMeal("warn", "photo_purge_retry_deferred", error);
     }
   }
   return { attempted, purged };
@@ -332,7 +340,7 @@ export async function requeueRetryableMealAnalyses(now = Date.now()) {
       }, "failed");
       requeued += 1;
     } catch (error) {
-      console.warn("[meal-analysis] failed analysis could not be requeued", { analysisId: row.id, stage: "retry_requeue", reason: error instanceof Error ? error.name : "unknown" });
+      logMeal("warn", "retry_requeue", error);
     }
   }
   return requeued;
@@ -351,10 +359,10 @@ export async function purgeExpiredFailedAnalysisPhotos(now = Date.now()) {
     const sourceIds = new Set(rowPhotoIds(row));
     for (const photo of meal.photos.filter((candidate) => (candidate.storageStatus ?? "available") !== "purged" && (sourceIds.size === 0 || sourceIds.has(candidate.id)))) {
       try {
-        await timedMealStage("photo_purge_failed_ttl", { mealId: meal.id }, () => purgeMealPhoto(userId, meal.id, photo));
+        await timedMealStage("photo_purge_failed_ttl", () => purgeMealPhoto(userId, meal.id, photo));
         purged += 1;
       } catch (error) {
-        console.warn("[meal-analysis] expired failed photo purge deferred", { mealId: meal.id, photoId: photo.id, stage: "photo_purge_failed_ttl_deferred", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("warn", "photo_purge_failed_ttl_deferred", error);
       }
     }
   }
@@ -436,7 +444,7 @@ export async function createMeal(userId: string, input: CreateMealInput) {
       try {
         await releaseCloudflareLock(idempotencyLock, userId);
       } catch (error) {
-        console.error("[meal-analysis] meal creation lock release failed", { stage: "meal_create_lock_release", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("error", "meal_create_lock_release", error);
       }
     }
   }
@@ -581,7 +589,7 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
           const jobId = crypto.randomUUID();
           await createMealPhotoUploadJob({ id: jobId, user_id: userId, meal_id: mealId, photo_id: id, object_path: objectPath, created_at: new Date().toISOString() });
           uploadJobs.push({ id: jobId, photoId: id, objectPath });
-          await timedMealStage("photo_upload", { mealId }, () => putR2MealPhotoObject(objectPath, file.data, file.mimeType));
+          await timedMealStage("photo_upload", () => putR2MealPhotoObject(objectPath, file.data, file.mimeType));
           const photo = await insertPhoto({
             id,
             user_id: userId,
@@ -620,14 +628,14 @@ export async function addMealPhotos(userId: string, mealId: string, files: Array
           await deleteR2MealPhotoObject(job.objectPath);
           await deleteMealPhotoUploadJob(userId, job.id);
         } catch (cleanupError) {
-          console.error("[meal-analysis] orphaned photo cleanup deferred", { mealId, stage: "photo_r2_cleanup", reason: cleanupError instanceof Error ? cleanupError.name : "unknown" });
+          logMeal("error", "photo_r2_cleanup", cleanupError);
         }
       }));
       if (error instanceof MealServiceError) throw error;
       throw new MealServiceError("unavailable", "The meal photos could not be saved.");
     }
   } finally {
-    await releaseMealLease(uploadLock, userId, lease.token).catch((error) => console.error("[meal-analysis] photo lock release failed", { mealId, stage: "photo_lock_release", reason: error instanceof Error ? error.name : "unknown" }));
+    await releaseMealLease(uploadLock, userId, lease.token).catch((error) => logMeal("error", "photo_lock_release", error));
   }
 }
 
@@ -701,7 +709,7 @@ export async function enqueueMealAnalysis(userId: string, mealId: string, option
     return await enqueueMealAnalysisLocked(userId, mealId, options);
   } finally {
     await releaseMealLease(enqueueLockKey, userId, enqueueLease.token).catch((error) => {
-      console.warn("[meal-analysis] enqueue lease release failed", { requestId: options.analysisRequestId, stage: "enqueue_lease_release", reason: error instanceof Error ? error.name : "unknown" });
+      logMeal("warn", "enqueue_lease_release", error);
     });
   }
 }
@@ -778,7 +786,7 @@ async function enqueueMealAnalysisLocked(userId: string, mealId: string, options
     ]);
     if (sameRequest) return { analysis: sameRequest, fresh: false, queued: sameRequest.status === "queued" || sameRequest.status === "running" };
     if (concurrent) return { analysis: concurrent, fresh: false, queued: true };
-    console.error("[meal-analysis] durable enqueue failed", { requestId: options.analysisRequestId, stage: "enqueue", reason: error instanceof Error ? error.name : "unknown" });
+    logMeal("error", "enqueue", error);
     throw new MealServiceError("unavailable", "L’analyse du repas n’a pas pu être mise en file.", "storage_error");
   }
 }
@@ -797,7 +805,7 @@ function workerFailure(error: unknown) {
  */
 export async function processNextMealAnalysis(target?: { userId: string; analysisId: string }) {
   await requeueRetryableMealAnalyses().catch((error) => {
-    console.warn("[meal-analysis] automatic retry scan failed", { stage: "retry_scan", reason: error instanceof Error ? error.name : "unknown" });
+    logMeal("warn", "retry_scan", error);
   });
   const candidate = target
     ? await findQueuedMealAnalysis(target.userId, target.analysisId)
@@ -810,7 +818,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
   const requestId = typeof candidate.analysis_request_id === "string" ? candidate.analysis_request_id : undefined;
   const queuedAt = Date.parse(String(candidate.created_at));
   if (Number.isFinite(queuedAt)) {
-    console.info("[meal-analysis] stage", { mealId: candidate.meal_id, requestId, stage: "queue_wait", durationMs: Math.max(0, Date.now() - queuedAt) });
+    logMeal("info", "queue_wait", undefined, Math.max(0, Date.now() - queuedAt));
   }
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   try {
@@ -836,7 +844,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
         refreshCloudflareLockWithToken(lockKey, candidate.user_id, leaseToken, ANALYSIS_LEASE_TTL_MS),
         touchMealAnalysis(candidate.user_id, candidate.id, leaseToken),
       ]).catch((error) => {
-        console.warn("[meal-analysis] worker heartbeat failed", { requestId, stage: "worker_heartbeat", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("warn", "worker_heartbeat", error);
       }).finally(() => { heartbeatInFlight = false; });
     }, ANALYSIS_HEARTBEAT_MS);
 
@@ -850,15 +858,15 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
     const note = typeof candidate.source_note === "string" ? candidate.source_note : "";
     const [images, recipeReferences] = await Promise.all([
       Promise.all(availablePhotos.map(async (photo) => {
-        const data = await timedMealStage("photo_download", { mealId: candidate.meal_id, requestId }, () => loadMealPhotoForAnalysis(photo.objectPath));
+        const data = await timedMealStage("photo_download", () => loadMealPhotoForAnalysis(photo.objectPath));
         return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: photo.comment ?? null, data };
       })),
       findRelevantMealRecipeReferences(candidate.user_id, { note, correction: candidate.source_correction ?? undefined }).catch((error) => {
-        console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId, stage: "worker_recipe_context", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("warn", "worker_recipe_context", error);
         return [];
       }),
     ]);
-    const analysed = await timedMealStage("providers", { mealId: candidate.meal_id, requestId }, () => analyzeMealInputWithFallback({
+    const analysed = await timedMealStage("providers", () => analyzeMealInputWithFallback({
       mealType: candidate.source_meal_type ?? meal.mealType,
       mealDate: candidate.source_meal_date ?? meal.mealDate,
       note: note || null,
@@ -872,7 +880,7 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
     }, { requestId }));
     let canonicalResult;
     try {
-      canonicalResult = await timedMealStage("validation", { mealId: candidate.meal_id, requestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
+      canonicalResult = await timedMealStage("validation", async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
     } catch {
       throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
     }
@@ -915,13 +923,13 @@ export async function processNextMealAnalysis(target?: { userId: string; analysi
       return { processed: true as const, analysis: failed };
     } catch (persistError) {
       // A lost lease means another worker owns recovery. Do not overwrite it.
-      console.error("[meal-analysis] worker result could not be persisted", { requestId, stage: "worker_failure_persistence", reason: persistError instanceof Error ? persistError.name : "unknown" });
+      logMeal("error", "worker_failure_persistence", persistError);
       throw new MealServiceError("unavailable", "Le résultat de l’analyse n’a pas pu être enregistré.", "storage_error");
     }
   } finally {
     if (heartbeat !== null) clearInterval(heartbeat);
     await releaseMealLease(lockKey, candidate.user_id, lease.token).catch((error) => {
-      console.warn("[meal-analysis] worker lease release failed", { requestId, stage: "worker_lease_release", reason: error instanceof Error ? error.name : "unknown" });
+      logMeal("warn", "worker_lease_release", error);
     });
   }
 }
@@ -995,9 +1003,9 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         refreshCloudflareLockWithToken(lockKey, userId, analysisLeaseToken, ANALYSIS_LEASE_TTL_MS),
         touchMealAnalysis(userId, analysisId),
       ]).then(([lockRefreshed]) => {
-        if (!lockRefreshed) console.warn("[meal-analysis] analysis lease was lost", { requestId: options.analysisRequestId, mealId, stage: "lease_refresh" });
+        if (!lockRefreshed) logMeal("warn", "lease_refresh");
       }).catch((error) => {
-        console.warn("[meal-analysis] analysis heartbeat failed", { requestId: options.analysisRequestId, mealId, stage: "heartbeat", reason: error instanceof Error ? error.name : "unknown" });
+        logMeal("warn", "heartbeat", error);
       }).finally(() => {
         heartbeatInFlight = false;
       });
@@ -1010,7 +1018,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
           return { id: photo.id, mimeType: photo.mimeType, origin: photo.origin, comment: photo.comment ?? null, data: await object.arrayBuffer() };
         })),
         findRelevantMealRecipeReferences(userId, { note, correction: options.correction }).catch((error) => {
-          console.warn("[meal-analysis] recipe context unavailable; continuing without it", { requestId: options.analysisRequestId, mealId, stage: "recipe_context", reason: error instanceof Error ? error.name : "unknown" });
+          logMeal("warn", "recipe_context", error);
           return [];
         }),
       ]);
@@ -1023,10 +1031,10 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         ...(lastSuccessful?.result ? { previousAnalysis: lastSuccessful.result } : {}),
         ...(recipeReferences.length ? { recipeReferences } : {}),
       };
-      const analysed = await timedMealStage("providers", { mealId, requestId: options.analysisRequestId }, () => analyzeMealInputWithFallback(input, { provider: options.provider, requestId: options.analysisRequestId }));
+      const analysed = await timedMealStage("providers", () => analyzeMealInputWithFallback(input, { provider: options.provider, requestId: options.analysisRequestId }));
       let canonicalResult;
       try {
-        canonicalResult = await timedMealStage("validation", { mealId, requestId: options.analysisRequestId }, async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
+        canonicalResult = await timedMealStage("validation", async () => validateMealAnalysis(analysed.result, { sourcePhotoIds }));
       } catch {
         throw new MealServiceError("unavailable", "L’analyse du repas a retourné des données incohérentes. Réessaie.", "invalid_response");
       }
@@ -1060,13 +1068,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
         try {
           failed = await updateMealAnalysis(userId, analysisId, { status: "failed", error: safeError, error_code: errorCode, source_fingerprint: sourceFingerprint, failure_started_at: new Date().toISOString(), retry_after_at: retryAfter, completed_at: new Date().toISOString() }, "running");
         } catch (persistError) {
-          console.error("[meal-analysis] failed analysis could not be persisted", {
-            requestId: options.analysisRequestId,
-            mealId,
-            analysisId,
-            stage: "failure_persistence",
-            reason: persistError instanceof Error ? persistError.name : "unknown",
-          });
+          logMeal("error", "failure_persistence", persistError);
         }
       }
       if (error instanceof MealServiceError) throw error;
@@ -1078,12 +1080,7 @@ export async function analyzeMeal(userId: string, mealId: string, options: { for
     try {
       await releaseMealLease(lockKey, userId, lease.token);
     } catch (error) {
-      console.error("[meal-analysis] analysis lock release failed", {
-        requestId: options.analysisRequestId,
-        mealId,
-        stage: "lock_release",
-        reason: error instanceof Error ? error.name : "unknown",
-      });
+      logMeal("error", "lock_release", error);
     }
   }
 }
