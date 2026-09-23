@@ -13,14 +13,15 @@ import {
 } from "@/integrations/xai/meal-vision";
 
 /**
- * OpenAI adapter for the same Responses + strict JSON contract as the xAI
- * adapter. Keeping it independent makes a real provider fallback possible and
- * prevents the rest of Soma from knowing provider-specific HTTP details.
+ * OpenAI adapter for Soma's Responses + strict JSON contract. The meal
+ * pipeline pins this provider to GPT-6 Luna independently of the assistant.
  */
+export const OPENAI_MEAL_ANALYSIS_MODEL = "gpt-6-luna";
+
 export function createOpenAiMealVisionProvider(options: { maxAttempts?: number; timeoutMs?: number } = {}): MealVisionProvider {
-  const model = process.env.OPENAI_MEAL_ANALYSIS_MODEL || process.env.OPENAI_MEAL_VALIDATOR_MODEL || "gpt-5.6-sol";
+  const model = OPENAI_MEAL_ANALYSIS_MODEL;
   const endpoint = process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses";
-  const reasoningEffort = process.env.OPENAI_MEAL_ANALYSIS_REASONING_EFFORT || process.env.OPENAI_MEAL_VALIDATOR_REASONING_EFFORT || "low";
+  const reasoningEffort = process.env.OPENAI_MEAL_ANALYSIS_REASONING_EFFORT || "low";
   return {
     name: "openai",
     model,

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { selectSummaryRelations, type AnalysisPeriod } from "@/domain/lab/matrix";
+import { selectSummaryRelations, summaryRelationKey, type AnalysisPeriod } from "@/domain/lab/matrix";
 import { getCurrentUser } from "@/lib/auth";
 import { getPersonalLabSnapshot } from "@/services/personal-lab";
-
-type RankedEffect = { index: number; note: string };
 
 function validPeriod(value: unknown): value is AnalysisPeriod {
   return value === 15 || value === 30 || value === 90 || value === "all";
@@ -17,18 +15,16 @@ function responseText(value: unknown): string | null {
   return response.output?.flatMap((item) => item.content ?? []).filter((item) => item.type === "output_text" && typeof item.text === "string").map((item) => item.text as string).join("") || null;
 }
 
-function parseRanked(value: unknown, count: number): RankedEffect[] | null {
+function parseRanked(value: unknown, count: number): number[] | null {
   if (!value || typeof value !== "object" || !Array.isArray((value as { ranked?: unknown }).ranked)) return null;
   const ranked = (value as { ranked: unknown[] }).ranked;
   if (!ranked.length || ranked.length > Math.min(3, count)) return null;
   const seen = new Set<number>();
-  const safe: RankedEffect[] = [];
+  const safe: number[] = [];
   for (const item of ranked) {
-    if (!item || typeof item !== "object") return null;
-    const { index, note } = item as { index?: unknown; note?: unknown };
-    if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= count || seen.has(index as number) || typeof note !== "string" || note.length > 140) return null;
-    seen.add(index as number);
-    safe.push({ index: index as number, note: note.trim() });
+    if (typeof item !== "number" || !Number.isInteger(item) || item < 0 || item >= count || seen.has(item)) return null;
+    seen.add(item);
+    safe.push(item);
   }
   return safe;
 }
@@ -41,7 +37,12 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Summary unavailable." }, { status: 503 });
 
-  const snapshot = await getPersonalLabSnapshot(user, { periods: [body.period] });
+  let snapshot: Awaited<ReturnType<typeof getPersonalLabSnapshot>>;
+  try {
+    snapshot = await getPersonalLabSnapshot(user, { periods: [body.period] });
+  } catch {
+    return NextResponse.json({ error: "Summary unavailable." }, { status: 503 });
+  }
   const relations = selectSummaryRelations(snapshot.matrix.rows.flatMap((row) => row.relations), { requireTemporalStability: body.requireTemporalStability });
   if (!relations.length) return NextResponse.json({ ranked: [] }, { headers: { "Cache-Control": "private, no-store" } });
 
@@ -67,10 +68,10 @@ export async function POST(request: NextRequest) {
         model: "gpt-6-luna",
         store: false,
         reasoning: { effort: "low" },
-        max_output_tokens: 350,
-        instructions: "Tu rédiges un bref récapitulatif descriptif de relations statistiques personnelles. Choisis au maximum 3 relations parmi les indices fournis, dans l'ordre le plus utile. Pour chacune, écris une note française très simple de 140 caractères maximum. N'invente aucune mesure, aucun effet, aucune cause ni conseil médical. Les associations ne prouvent pas la causalité. N'utilise que les données fournies.",
+        max_output_tokens: 120,
+        instructions: "Choisis au maximum 3 relations parmi les indices fournis, dans l'ordre le plus utile. Retourne uniquement leurs indices. N'invente aucune relation. Les associations ne prouvent pas la causalité.",
         input: JSON.stringify({ period: body.period, evidence }),
-        text: { format: { type: "json_schema", name: "effects_summary", strict: true, schema: { type: "object", properties: { ranked: { type: "array", items: { type: "object", properties: { index: { type: "integer" }, note: { type: "string" } }, required: ["index", "note"], additionalProperties: false } } }, required: ["ranked"], additionalProperties: false } } },
+        text: { format: { type: "json_schema", name: "effects_summary", strict: true, schema: { type: "object", properties: { ranked: { type: "array", minItems: 1, maxItems: 3, items: { type: "integer" } } }, required: ["ranked"], additionalProperties: false } } },
       }),
       signal: controller.signal,
       cache: "no-store",
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     const text = responseText(await response.json().catch(() => null));
     const ranked = text ? parseRanked(JSON.parse(text), relations.length) : null;
     if (!ranked) return NextResponse.json({ error: "Summary unavailable." }, { status: 502 });
-    return NextResponse.json({ ranked }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ ranked: ranked.map((index) => summaryRelationKey(relations[index])) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return NextResponse.json({ error: "Summary unavailable." }, { status: 502 });
   } finally {

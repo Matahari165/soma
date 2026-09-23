@@ -47,7 +47,7 @@ export function AiCostCard() {
         <div>
           <h3 id="ai-cost-title">AI Usage &amp; Cost Transparency</h3>
           <p className="settings-card__subtitle">
-            Exact tracking of vision AI models (xAI Grok &amp; OpenAI) and estimated infrastructure spend.
+            Estimated meal-analysis cost by provider. Soma chat and Analyse summaries are not included.
           </p>
         </div>
       </header>
@@ -72,8 +72,8 @@ export function AiCostCard() {
         <div className="ai-provider-grid">
           <div className="ai-provider-item">
             <div className="ai-provider-info">
-              <strong>xAI Grok Vision</strong>
-              <small>grok-2-vision</small>
+              <strong>xAI Grok</strong>
+              <small>Earlier meal analyses</small>
             </div>
             <div className="ai-provider-stats font-mono">
               <span>{summary?.byProvider.xai.count ?? 0} runs</span>
@@ -82,8 +82,8 @@ export function AiCostCard() {
           </div>
           <div className="ai-provider-item">
             <div className="ai-provider-info">
-              <strong>OpenAI GPT-5.6 / 4o</strong>
-              <small>Multi-modal Fallback</small>
+              <strong>OpenAI</strong>
+              <small>GPT-6 Luna and earlier models</small>
             </div>
             <div className="ai-provider-stats font-mono">
               <span>{summary?.byProvider.openai.count ?? 0} runs</span>

@@ -247,7 +247,13 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card_
   grid-column: 1 / -1 !important;
   order: 1 !important;
   min-width: 0 !important;
+  max-width: 460px !important;
  }
+}
+
+@media (min-width: 1200px) {
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-journal-column { grid-column: span 8 / span 8 !important; }
+ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-meal-column { grid-column: span 4 / span 4 !important; }
 }
 
 /* Responsive journal controls and an explicit three-day mobile window. */

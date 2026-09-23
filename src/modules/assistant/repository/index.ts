@@ -1,4 +1,6 @@
 import "server-only";
+import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 import { assistantAttachmentMetadataSchema, assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema, assistantMessagePartSchema, type AssistantMessagePart, type AssistantQuality } from "../contracts";
 import { assistantDatabaseRequest, assistantFilter } from "./database";
@@ -396,23 +398,102 @@ export async function proposeAssistantGoalSet(userId: string, sourceMessageId: s
     body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, secondary_directions: value.secondaryDirections },
   }), "Assistant goal set");
   if (value.goals.length) {
-    await assistantDatabaseRequest("assistant_goals", {
-      method: "POST", prefer: "return=minimal",
-      body: value.goals.map((goal, position) => ({
-        id: crypto.randomUUID(), user_id: userId, goal_set_id: goalSetId, position,
-        label: goal.label, domain: goal.domain, baseline: goal.baseline, target: goal.target,
-        horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints, success_criteria: goal.successCriteria,
-        source_message_id: sourceMessageId,
-      })),
-    });
+    try {
+      await assistantDatabaseRequest("assistant_goals", {
+        method: "POST", prefer: "return=minimal",
+        body: value.goals.map((goal, position) => ({
+          id: crypto.randomUUID(), user_id: userId, goal_set_id: goalSetId, position,
+          label: goal.label, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+          horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints, success_criteria: goal.successCriteria,
+          source_message_id: sourceMessageId,
+        })),
+      });
+    } catch (error) {
+      await assistantDatabaseRequest(
+        `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(goalSetId)}&status=eq.draft`,
+        { method: "DELETE", prefer: "return=minimal" },
+      ).catch(() => undefined);
+      throw error;
+    }
   }
   return goalSet;
 }
 
 export async function confirmAssistantGoalSet(userId: string, goalSetId: string, confirmationMessageId: string) {
-  return assistantDatabaseRequest("rpc/confirm_assistant_goal_set", {
+  return assistantDatabaseRequest<{ id: string; status: string; confirmed_by_message_id: string | null }>("rpc/confirm_assistant_goal_set", {
     method: "POST", body: { p_user_id: userId, p_goal_set_id: goalSetId, p_confirmation_message_id: confirmationMessageId },
   });
+}
+
+function stableGoalUuid(...parts: string[]) {
+  const hash = createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-8${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
+
+export async function saveAssistantGoalSet(userId: string, confirmationMessageId: string, input: unknown) {
+  const value = assistantGoalSetInputSchema.parse(input);
+  const goalSetId = stableGoalUuid("assistant-goal-set", userId, confirmationMessageId);
+  const setPath = `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&id=eq.${goalSetId}&select=id,status,primary_direction,secondary_directions,confirmed_by_message_id`;
+  type StoredSet = { id: string; status: string; primary_direction: string; secondary_directions: string[]; confirmed_by_message_id: string | null };
+  const readSet = async () => (await assistantDatabaseRequest<StoredSet[]>(setPath))[0] ?? null;
+  let stored = await readSet();
+  if (!stored) {
+    try {
+      await assistantDatabaseRequest("assistant_goal_sets", {
+        method: "POST", prefer: "resolution=ignore-duplicates,return=minimal",
+        body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, secondary_directions: value.secondaryDirections },
+      });
+    } catch (error) {
+      // The database may have committed while its HTTP response was lost.
+      stored = await readSet();
+      if (!stored) throw error;
+    }
+    stored ??= await readSet();
+  }
+  if (!stored) throw new Error("Assistant goal set was not persisted.");
+  if (stored.primary_direction !== value.primaryDirection || !isDeepStrictEqual(stored.secondary_directions, value.secondaryDirections)) {
+    throw new Error("This confirmation already has a different goal set. Review it before saving.");
+  }
+
+  const expectedGoals = value.goals.map((goal, position) => ({
+    id: stableGoalUuid("assistant-goal", goalSetId, String(position)), user_id: userId, goal_set_id: goalSetId, position,
+    label: goal.label, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+    horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints, success_criteria: goal.successCriteria,
+    source_message_id: confirmationMessageId,
+  }));
+  if (stored.status === "draft" && expectedGoals.length) {
+    try {
+      await assistantDatabaseRequest("assistant_goals", {
+        method: "POST", prefer: "resolution=ignore-duplicates,return=minimal", body: expectedGoals,
+      });
+    } catch {
+      // Verify the rows below: a failed HTTP response is not proof of a failed write.
+    }
+  }
+  const savedGoals = await assistantDatabaseRequest<Array<Record<string, unknown>>>(
+    `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${goalSetId}&select=position,label,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
+  );
+  const expectedContent = expectedGoals.map(({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria }) =>
+    ({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria }));
+  if (!isDeepStrictEqual(savedGoals, expectedContent)) throw new Error("Assistant goals were not fully persisted.");
+  if (stored.status === "confirmed" || stored.status === "archived") {
+    if (stored.confirmed_by_message_id !== confirmationMessageId) throw new Error("Goal confirmation does not match the user message.");
+    return { id: goalSetId, saved: true, active: stored.status === "confirmed", replayed: true };
+  }
+  try {
+    const confirmed = await confirmAssistantGoalSet(userId, goalSetId, confirmationMessageId);
+    if (confirmed?.id === goalSetId && confirmed.status === "confirmed" && confirmed.confirmed_by_message_id === confirmationMessageId) {
+      return { id: goalSetId, saved: true, active: true, replayed: false };
+    }
+  } catch (error) {
+    stored = await readSet();
+    if (stored?.status !== "confirmed" || stored.confirmed_by_message_id !== confirmationMessageId) throw error;
+  }
+  stored = await readSet();
+  if (stored?.status !== "confirmed" || stored.confirmed_by_message_id !== confirmationMessageId) {
+    throw new Error("Assistant goal save could not be verified.");
+  }
+  return { id: goalSetId, saved: true, active: true, replayed: false };
 }
 
 export async function loadConfirmedGoalContext(userId: string) {

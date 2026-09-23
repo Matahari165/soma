@@ -10,7 +10,7 @@ describe("assistant image normalization", () => {
     expect(assistantUploadMimeType({ type: "application/pdf", name: "meal.pdf" })).toBeNull();
   });
 
-  it("converts WebP to a valid JPEG accepted by Grok", async () => {
+  it("converts WebP to a valid JPEG accepted by the assistant provider", async () => {
     const webp = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#e85d3f" } }).webp().toBuffer();
     const result = await normalizeAssistantImage(webp, "image/webp");
     expect(result.mediaType).toBe("image/jpeg");

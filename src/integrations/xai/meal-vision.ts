@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { MealRecipeReference } from "@/domain/meal-recipes";
 import {
   validateMealAnalysis,
@@ -15,6 +17,7 @@ import {
   MEAL_VARIETY_POSITIVE_FOOD_GROUPS,
 } from "@/domain/meal-taxonomy";
 import { requireServerEnv } from "@/lib/env";
+import { z } from "zod";
 
 export type MealVisionImage = {
   id: string;
@@ -33,6 +36,8 @@ export type MealVisionInput = {
   /** Previous structured result used only as a correction reference after photo purge. */
   previousAnalysis?: MealAnalysis | null;
   recipeReferences?: MealRecipeReference[];
+  /** Internal retry guidance only; never pass user text or provider payloads. */
+  retryHint?: string;
   /** Correlation only; never included in the model prompt. */
   requestId?: string;
 };
@@ -45,6 +50,8 @@ export type MealVisionTextInput = {
   /** Previous structured result used only as a correction reference after photo purge. */
   previousAnalysis?: MealAnalysis | null;
   recipeReferences?: MealRecipeReference[];
+  /** Internal retry guidance only; never pass user text or provider payloads. */
+  retryHint?: string;
   requestId?: string;
 };
 
@@ -112,9 +119,11 @@ export function isXaiVisionMimeType(mimeType: string) {
 }
 
 const MAX_PROVIDER_ATTEMPTS = 2;
-const DEFAULT_PROVIDER_TIMEOUT_MS = 45_000;
-const MAX_PROVIDER_TIMEOUT_MS = 45_000;
-const TEXT_PROVIDER_TIMEOUT_MS = 45_000;
+// Leave eight seconds in the 60-second worker for photo I/O and persistence.
+// A real three-photo request crossed the former 45-second cap.
+const DEFAULT_PROVIDER_TIMEOUT_MS = 52_000;
+const MAX_PROVIDER_TIMEOUT_MS = 52_000;
+const TEXT_PROVIDER_TIMEOUT_MS = 52_000;
 
 function providerTimeoutMs(fallback: number, requested?: number) {
   const configured = requested ?? Number(process.env.MEAL_ANALYSIS_PROVIDER_TIMEOUT_MS || fallback);
@@ -124,12 +133,21 @@ function providerTimeoutMs(fallback: number, requested?: number) {
 }
 
 /** Bump these identifiers whenever the provider contract changes. */
-export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v4";
+export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v5";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
+
+/** A stable, versioned cache identifier that stays under OpenAI's 64-character limit. */
+function mealPromptCacheKey(provider: string, model: string, attempt: number, stream = false) {
+  const fingerprint = createHash("sha256")
+    .update([MEAL_ANALYSIS_PROMPT_VERSION, MEAL_ANALYSIS_SCHEMA_VERSION, provider, model, attempt, stream].join(":"))
+    .digest("hex")
+    .slice(0, 24);
+  return `soma-meal-${fingerprint}`;
+}
 
 type VisionImageDetail = "low" | "high" | "auto";
 
-const MEAL_PHOTO_EVIDENCE_CONTRACT_PROMPT = "Traite chaque photo comme une preuve indépendante : plusieurs photos montrent généralement des éléments différents du même repas. Conserve ces aliments séparément. Ne fusionne que si tu reconnais clairement le même aliment ou la même portion sous des angles différents ; dans ce cas, garde un seul food et toutes les evidencePhotoIds correspondantes. Ne déduplique jamais seulement parce que deux noms se ressemblent. Chaque evidencePhotoIds doit appartenir exactement aux identifiants des photos fournies, et tout aliment attribué à une photo doit référencer au moins une de ces photos.";
+const MEAL_PHOTO_EVIDENCE_CONTRACT_PROMPT = "Traite chaque photo comme une preuve indépendante : plusieurs photos montrent généralement des éléments différents du même repas. Conserve ces aliments séparément. Ne fusionne que si tu reconnais clairement le même aliment ou la même portion sous des angles différents ; dans ce cas, garde un seul food et toutes les evidencePhotoIds correspondantes. Ne déduplique jamais seulement parce que deux noms se ressemblent. Chaque evidencePhotoIds doit contenir uniquement un alias exact photo-N listé dans les références de la demande (par exemple photo-1 ou photo-2), jamais un identifiant inventé ou un identifiant technique, et tout aliment attribué à une photo doit référencer au moins une de ces photos.";
 
 const MEAL_VARIETY_CONTRACT_PROMPT = [
   `Pour la variété positive, utilise uniquement les familles foodGroups positives : ${MEAL_VARIETY_POSITIVE_FOOD_GROUPS.join(", ")}. Un aliment sans famille justifiée ne compte pas.`,
@@ -146,7 +164,7 @@ const MEAL_SUGAR_CONTRACT_PROMPT = "Pour chaque aliment et dans totals, transmet
 const MEAL_NOVA_CONTRACT_PROMPT = "Pour novaGroup, utilise uniquement 1, 2, 3 ou 4 lorsque le niveau de transformation est raisonnablement identifiable ; utilise null sinon et n'infère jamais NOVA depuis le seul caractère sain ou malsain.";
 const MEAL_OBSERVATION_CONTRACT_PROMPT = "Les statuts observation et leurs valeurs doivent toujours correspondre : si portion, estimatedGrams, quantity.value ou quantity.grams contient une valeur, observation.portion doit être observed ; si observation.portion est unknown, portion, estimatedGrams, quantity.value et quantity.grams doivent tous être null. Si novaGroup est non-null, observation.novaGroup doit être observed ; s'il est unknown, novaGroup doit être null. Si sugarExposure est unknown, sugarExposure doit être null. Si qualityProperties est unknown, qualityProperties doit être null.";
 
-export const MEAL_PHOTO_PROVIDER_INSTRUCTIONS = `You are a careful food-photo analyst. Return stable food ids, per-axis observation statuses and per-axis confidence. Treat each supplied photo as independent evidence: several photos usually show different parts or elements of the same meal, so keep distinct foods distinct. Merge only when it is clear that two photos show the same food or portion from another angle; then keep one food item and list every supporting photo id in evidencePhotoIds. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Every evidencePhotoIds value must be one of the supplied photo ids, and a photo-supported food must reference at least one of them. Use ranges with low <= likely <= high, explicit nulls when not estimable, and structured uncertainty signals for important unknowns. Missing nutrition is never zero. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Labels in French. Return only the requested JSON object.`;
+export const MEAL_PHOTO_PROVIDER_INSTRUCTIONS = `You are a careful food-photo analyst. Return stable food ids, per-axis observation statuses and per-axis confidence. Treat each supplied photo as independent evidence: several photos usually show different parts or elements of the same meal, so keep distinct foods distinct. Merge only when it is clear that two photos show the same food or portion from another angle; then keep one food item and list every supporting photo id in evidencePhotoIds. Never invent hidden ingredients, exact weights, or nutrition precision that the photos cannot support. Every evidencePhotoIds value must be one of the exact photo-N aliases listed in the user request, and a photo-supported food must reference at least one of them. Never emit technical source identifiers or invented aliases. Use ranges with low <= likely <= high, explicit nulls when not estimable, and structured uncertainty signals for important unknowns. Missing nutrition is never zero. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Labels in French. Return only the requested JSON object.`;
 
 export const MEAL_TEXT_PROVIDER_INSTRUCTIONS = `You are a careful food-description analyst. List only foods named in the user description and return stable food ids with structured observation statuses. Never invent exact grams or nutrition precision the description cannot support; use wide ranges with low <= likely <= high and explicit nulls when not estimable. Missing nutrition is never zero. Default confidence to low unless the description is very precise. ${MEAL_VARIETY_CONTRACT_PROMPT} ${MEAL_QUALITY_CONTRACT_PROMPT} ${MEAL_NOVA_CONTRACT_PROMPT} ${MEAL_SUGAR_CONTRACT_PROMPT} Always include 'Estimation à partir de la seule description, sans photo.' in uncertainties and machine-readable uncertaintySignals for important unknowns. A text-only food must use an empty evidencePhotoIds array and must not claim photo evidence. Labels in French. Return only the requested JSON object.`;
 
@@ -460,6 +478,39 @@ function clampSugarInvariants(item: { carbohydrateGrams?: unknown; sugarGrams?: 
   }
 }
 
+function photoAlias(index: number) {
+  return `photo-${index + 1}`;
+}
+
+/**
+ * Providers see short, positional aliases instead of opaque source UUIDs.
+ * Canonical source IDs are still accepted for compatibility, while every
+ * unknown value is deliberately left untouched so the source-aware validator
+ * rejects it rather than silently accepting invented evidence.
+ */
+function remapEvidencePhotoAliases(value: unknown, sourcePhotoIds?: readonly string[]) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || !sourcePhotoIds) return value;
+
+  const sourceIds = new Set(sourcePhotoIds);
+  const aliases = new Map(sourcePhotoIds.map((sourceId, index) => [photoAlias(index), sourceId]));
+  const source = value as Record<string, unknown>;
+  const rawFoods = Array.isArray(source.foods) ? source.foods : [];
+  const foods = rawFoods.map((food) => {
+    if (!food || typeof food !== "object" || Array.isArray(food)) return food;
+    const item = food as Record<string, unknown>;
+    if (!Array.isArray(item.evidencePhotoIds)) return food;
+    const evidencePhotoIds = item.evidencePhotoIds.map((photoId) => {
+      if (typeof photoId !== "string") return photoId;
+      const normalizedId = photoId.trim();
+      if (sourceIds.has(normalizedId)) return normalizedId;
+      return aliases.get(normalizedId) ?? normalizedId;
+    });
+    return { ...item, evidencePhotoIds };
+  });
+
+  return { ...source, foods };
+}
+
 const STRUCTURED_NUTRITION_FIELDS = [
   "calories",
   "proteinGrams",
@@ -495,10 +546,9 @@ function harmonizeTotalsOverlap(
   });
 }
 
-export function normalizeStructuredAnalysis(value: unknown, _sourcePhotoIds?: readonly string[]) {
-  void _sourcePhotoIds;
+export function normalizeStructuredAnalysis(value: unknown, sourcePhotoIds?: readonly string[]) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const source = value as Record<string, unknown>;
+  const source = remapEvidencePhotoAliases(value, sourcePhotoIds) as Record<string, unknown>;
   const rawFoods = Array.isArray(source.foods) ? source.foods : [];
 
   const normalizeFood = (food: unknown, foodIndex: number) => {
@@ -704,6 +754,36 @@ function structuredJson(text: string, sourcePhotoIds?: readonly string[]) {
   throw new MealVisionError("response_parse_error", "La réponse du provider n’est pas un JSON valide.", { cause: lastError });
 }
 
+type SafeSchemaDiagnostic = { path: string; code: string };
+
+/** Keep schema telemetry useful without logging model output, values, or secrets. */
+function safeSchemaDiagnostics(error: unknown): SafeSchemaDiagnostic[] {
+  if (!(error instanceof z.ZodError)) return [{ path: "$", code: "unknown" }];
+  return error.issues.slice(0, 12).map((issue) => ({
+    path: issue.path.map((segment) => {
+      if (typeof segment === "number" && Number.isInteger(segment) && segment >= 0) return String(segment);
+      if (typeof segment === "string" && /^[A-Za-z][A-Za-z0-9_]*$/.test(segment)) return segment;
+      return "[redacted]";
+    }).join(".") || "$",
+    code: issue.code,
+  }));
+}
+
+function schemaRetryPrompt(sourcePhotoIds: readonly string[] | undefined, diagnostics: SafeSchemaDiagnostic[]) {
+  const paths = diagnostics.length
+    ? diagnostics.map(({ path, code }) => `${path}/${code}`).slice(0, 8).join(", ")
+    : "$/unknown";
+  const aliases = sourcePhotoIds?.length
+    ? sourcePhotoIds.map((_, index) => photoAlias(index)).join(", ")
+    : "aucun alias photo";
+  return [
+    "=== CORRECTION TECHNIQUE DE LA TENTATIVE PRÉCÉDENTE ===",
+    `La tentative précédente n'a pas respecté le contrat JSON. Corrige uniquement les chemins/code signalés : ${paths}.`,
+    `Pour evidencePhotoIds, utilise exclusivement ces alias exacts : ${aliases}. N'invente aucun identifiant et ne renvoie aucun UUID technique.`,
+    "Conserve les valeurs réellement inconnues à null, respecte les statuts d'observation et retourne uniquement l'objet JSON demandé.",
+  ].join("\n");
+}
+
 function retryAfterMs(response: Response) {
   const value = response.headers.get("retry-after")?.trim();
   if (!value) return undefined;
@@ -738,6 +818,16 @@ function previousAnalysisPrompt(previousAnalysis: MealAnalysis | null | undefine
       ? "Analyse précédente du repas (base à conserver et mettre à jour avec la modification utilisateur ci-dessus) :"
       : "Analyse précédente conservée (référence textuelle uniquement) :",
     `Previous structured analysis: ${JSON.stringify(previousAnalysis)}`,
+  ].join("\n");
+}
+
+function retryHintPrompt(retryHint: string | null | undefined) {
+  const normalized = retryHint?.trim().replace(/\s+/g, " ").slice(0, 500);
+  if (!normalized) return "";
+  return [
+    "=== CONSEIL TECHNIQUE DE REPRISE (ne contient aucune donnée du repas) ===",
+    normalized,
+    "Respecte ce conseil sans reprendre de contenu de la tentative précédente et retourne uniquement l'objet JSON demandé.",
   ].join("\n");
 }
 
@@ -782,6 +872,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     correctionPrompt(input.correction),
     previousAnalysisPrompt(input.previousAnalysis, hasCorrection),
     recipeReferencesPrompt(input.recipeReferences),
+    retryHintPrompt(input.retryHint),
   ].join("\n");
 }
 
@@ -789,7 +880,7 @@ export function makePrompt(input: MealVisionInput) {
   const hasCorrection = Boolean(input.correction);
   const origins = input.images.map((image, index) => {
     const context = image.comment?.trim() ? ` comment: ${image.comment.trim().slice(0, 240)}` : "";
-    return `Photo ${index + 1} id: ${image.id} source: ${image.origin}${context}`;
+    return `${photoAlias(index)} source: ${image.origin}${context}`;
   }).join("\n");
   return [
     "Analyse these photos as one meal for a personal food journal. Réponds avec des libellés en français.",
@@ -805,7 +896,7 @@ export function makePrompt(input: MealVisionInput) {
     MEAL_QUALITY_CONTRACT_PROMPT + " Utilise [] si l'axe a été examiné et aucun rôle actif n'est observé ; transmets qualityProperties=null si l'information est inconnue. Ne déduis jamais une qualité globale.",
     "Renseigne observation avec observed, none_observed ou unknown pour portion, novaGroup, sugarExposure et qualityProperties. Pour portion et novaGroup, none_observed n'est pas valide : utilise unknown si la preuve manque. Ajoute confidence avec low, medium ou high pour chacun des quatre axes, séparément de la confiance globale.",
     MEAL_OBSERVATION_CONTRACT_PROMPT,
-    "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte son identifiant dans evidencePhotoIds. Ne les invente pas et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
+    "Conserve les traces plausibles de sauce, d'huile ou de préparation comme aliments structurés avec evidence=inferred ou evidence=unknown et evidenceSource=photo, note ou model selon la preuve. Si une photo justifie l'aliment, reporte l'alias photo-N correspondant dans evidencePhotoIds. N'utilise jamais d'identifiant technique ou inventé et ne fabrique aucune quantité ; quantity.value, quantity.grams et estimatedGrams restent null lorsque la photo ne permet pas de les estimer.",
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
     MEAL_SUGAR_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs de confiance et d'incertitude sont internes au contrat, pas une consigne d'affichage.",
@@ -817,6 +908,8 @@ export function makePrompt(input: MealVisionInput) {
     correctionPrompt(input.correction),
     previousAnalysisPrompt(input.previousAnalysis, hasCorrection),
     recipeReferencesPrompt(input.recipeReferences),
+    retryHintPrompt(input.retryHint),
+    "Photo references (use these exact aliases in evidencePhotoIds; do not use technical source IDs):",
     origins,
   ].join("\n");
 }
@@ -830,7 +923,7 @@ type StructuredRequest = {
   promptText: string;
   imageContents: Array<{ type: string; image_url: string; detail: string }>;
   maxOutputTokens: number;
-  /** Source ids are used only for deterministic evidence validation. */
+  /** Source ids stay at the boundary: aliases are remapped before validation. */
   sourcePhotoIds?: readonly string[];
   requestId?: string;
   reasoningEffort?: string;
@@ -849,6 +942,7 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
   }
   let lastError: unknown;
   let retryWithLargerBudget = false;
+  let schemaRetryInstructions: string | null = null;
   const maxAttempts = request.maxAttempts ?? MAX_PROVIDER_ATTEMPTS;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     // A truncated structured response cannot be repaired by sending the same
@@ -858,15 +952,13 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
     const payload = {
       model: request.model,
       store: false,
-      prompt_cache_key: attempt === 1
-        ? `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}`
-        : `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-${request.provider}-${request.model}-retry-${attempt}`,
+      prompt_cache_key: mealPromptCacheKey(request.provider, request.model, attempt),
       reasoning: { effort: request.reasoningEffort || (request.provider === "xai" && request.model.startsWith("grok-4.3") ? "none" : "low") },
       max_output_tokens: maxOutputTokens,
       instructions: request.instructions,
       input: [{
         role: "user",
-        content: [{ type: "input_text", text: request.promptText }, ...request.imageContents],
+        content: [{ type: "input_text", text: schemaRetryInstructions ? `${request.promptText}\n${schemaRetryInstructions}` : request.promptText }, ...request.imageContents],
       }],
       text: {
         format: {
@@ -1031,25 +1123,27 @@ export async function requestStructuredMealAnalysis(request: StructuredRequest) 
           });
           return result;
         } catch (error) {
+          const diagnostics = safeSchemaDiagnostics(error);
+          console.error("[meal-analysis] provider content failed schema validation", {
+            requestId: request.requestId,
+            provider: request.provider,
+            model: request.model,
+            stage: "response_schema",
+            attempt,
+            imageCount,
+            payloadBytes,
+            durationMs,
+            code: "response_schema_error",
+            schemaIssues: diagnostics,
+          });
           if (responseStatus !== "incomplete" && attempt < maxAttempts) {
             lastError = error;
+            schemaRetryInstructions = schemaRetryPrompt(request.sourcePhotoIds, diagnostics);
             await new Promise((resolve) => setTimeout(resolve, 250 + Math.floor(Math.random() * 250)));
             continue;
           }
           if (responseStatus !== "incomplete" || attempt >= maxAttempts) {
-            console.error("[meal-analysis] provider content failed schema validation", {
-              requestId: request.requestId,
-              provider: request.provider,
-              model: request.model,
-              stage: "response_schema",
-              attempt,
-              imageCount,
-              payloadBytes,
-              durationMs,
-              code: "response_schema_error",
-              reason: error instanceof Error ? error.name : "unknown",
-            });
-            throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: true });
+            throw new MealVisionError("response_schema_error", "Le provider a retourné une analyse structurée incohérente (invalid structured meal analysis).", { cause: error, provider: request.provider, requestId: request.requestId, retryable: false });
           }
         }
       }
@@ -1153,7 +1247,7 @@ async function requestGrokAnalysisStream(
     model: request.model,
     stream: true,
     store: false,
-    prompt_cache_key: `soma-${MEAL_ANALYSIS_PROMPT_VERSION}-${MEAL_ANALYSIS_SCHEMA_VERSION}-xai-${request.model}-stream`,
+    prompt_cache_key: mealPromptCacheKey("xai", request.model, 1, true),
     reasoning: { effort: request.reasoningEffort || (request.model.startsWith("grok-4.3") ? "none" : "low") },
     max_output_tokens: request.maxOutputTokens,
     instructions: request.instructions,
@@ -1332,10 +1426,6 @@ export function createXaiMealVisionProvider(options: { maxAttempts?: number; tim
   };
 }
 
-export function getMealVisionProvider(): MealVisionProvider {
-  return createXaiMealVisionProvider();
-}
-
 function validateProviderResult(value: MealAnalysis, sourcePhotoIds: readonly string[], provider: MealVisionProvider) {
   try {
     const sanitized = normalizeStructuredAnalysis(value, sourcePhotoIds) as MealAnalysis;
@@ -1351,12 +1441,12 @@ function validateProviderResult(value: MealAnalysis, sourcePhotoIds: readonly st
   }
 }
 
-export async function analyzeMealImages(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider()) {
+export async function analyzeMealImages(input: MealVisionInput, provider: MealVisionProvider) {
   const result = await provider.analyze(input);
   return { result, provider: provider.name, model: provider.model };
 }
 
-export async function analyzeMealText(input: MealVisionTextInput, provider: MealVisionProvider = getMealVisionProvider()) {
+export async function analyzeMealText(input: MealVisionTextInput, provider: MealVisionProvider) {
   if (!provider.analyzeText) throw new Error("This meal analysis provider does not support text-only analysis.");
   const result = await provider.analyzeText(input);
   return { result, provider: provider.name, model: provider.model };
@@ -1366,7 +1456,7 @@ export async function analyzeMealText(input: MealVisionTextInput, provider: Meal
  * Dispatches one meal analysis according to the available evidence using a single
  * configured vision or text-analysis model without any secondary validator.
  */
-export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider = getMealVisionProvider(), options: { requestId?: string } = {}) {
+export async function analyzeMealInput(input: MealVisionInput, provider: MealVisionProvider, options: { requestId?: string } = {}) {
   const providerInput = options.requestId && !input.requestId ? { ...input, requestId: options.requestId } : input;
   const recipeContext = input.recipeReferences?.length ? { recipeReferences: input.recipeReferences } : {};
   const primaryResponse = input.images.length > 0
@@ -1381,6 +1471,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
         note: note || (input.correction ? "Mise à jour du repas précédent." : ""),
         ...(input.correction ? { correction: input.correction } : {}),
         ...(input.previousAnalysis ? { previousAnalysis: input.previousAnalysis } : {}),
+        ...(providerInput.retryHint ? { retryHint: providerInput.retryHint } : {}),
         ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
         ...recipeContext,
       });
@@ -1400,7 +1491,7 @@ export async function analyzeMealInput(input: MealVisionInput, provider: MealVis
 
 export async function analyzeMealInputStream(
   input: MealVisionInput,
-  provider: MealVisionProvider = getMealVisionProvider(),
+  provider: MealVisionProvider,
   options: { requestId?: string } = {},
   onProgress?: (event: GrokStreamProgressEvent) => void,
 ) {
@@ -1422,6 +1513,7 @@ export async function analyzeMealInputStream(
       note: note || (input.correction ? "Mise à jour du repas précédent." : ""),
       ...(input.correction ? { correction: input.correction } : {}),
       ...(input.previousAnalysis ? { previousAnalysis: input.previousAnalysis } : {}),
+      ...(providerInput.retryHint ? { retryHint: providerInput.retryHint } : {}),
       ...(providerInput.requestId ? { requestId: providerInput.requestId } : {}),
       ...recipeContext,
     };

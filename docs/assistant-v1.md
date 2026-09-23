@@ -25,12 +25,12 @@ benchmarks must be available when the user asks to see them.
   notification.
 - Text and private JPEG/PNG/WebP/HEIC photo input are active, up to 4 MB in one
   upload. WebP and HEIC are normalized server-side to a format accepted by
-  Grok. Only photos explicitly
-  attached to the current message are transmitted to xAI; historical photos are
+  GPT-6 Luna. Only photos explicitly
+  attached to the current message are transmitted to OpenAI; historical photos are
   not resent automatically.
 - Responses render safe headings, lists and emphasis. Native charts and tables
   remain outside this conversation-only V1.
-- Web search is intentionally disabled in V1. Grok answers from its model
+- Web search is intentionally disabled in V1. GPT-6 Luna answers from its model
   knowledge and Soma's canonical data tools; no health-derived search query is
   sent to an external search service.
 
@@ -110,7 +110,7 @@ sub-agents. Model selection is deterministic and quality-adaptive:
 - `deep`: longitudinal analysis, plan creation and explicit `analyse en
   profondeur` requests.
 
-The assistant uses the explicit public xAI model identifier `grok-4.7`.
+The assistant uses the explicit OpenAI model identifier `gpt-6-luna`.
 Step, token, duration and cost budgets are finite. The
 user ID is derived from the authenticated session and is never accepted from
 the model or request body.
@@ -121,7 +121,7 @@ the model or request body.
   unrelated fields are excluded from tool results.
 - Names, email addresses, provider IDs, tokens and unrelated metadata are
   stripped.
-- xAI requests use `store: false`; provider-side policy and account settings
+- OpenAI Responses requests use `store: false`; provider-side policy and account settings
   must still be verified before production activation.
 - Raw health datasets are not written to logs or tool-call audit rows.
 - Logs contain request/run IDs, tool names, period manifests, model, usage,
