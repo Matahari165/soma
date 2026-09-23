@@ -127,6 +127,11 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
     if (!name) return [];
     const sugar = legacyRange(item.sugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
     const addedSugar = legacyRange(item.addedSugarGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
+    const foodCalories = legacyRange(item.calories as { low?: unknown; likely?: unknown; high?: unknown } | null);
+    const foodProtein = legacyRange(item.proteinGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
+    const foodCarbohydrates = legacyRange(item.carbohydratesGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
+    const foodFat = legacyRange(item.fatGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
+    const foodFiber = legacyRange(item.fiberGrams as { low?: unknown; likely?: unknown; high?: unknown } | null);
     const quantity = item.quantity === null ? null : mealQuantitySchema.safeParse(item.quantity);
     const novaGroup = item.novaGroup === null ? null : mealNovaGroupSchema.safeParse(item.novaGroup);
     return [{
@@ -150,11 +155,11 @@ export function legacyAnalysisToStructured(value: unknown): MealAnalysis | null 
       sugarExposure: legacySugarExposure(item.sugarExposure),
       qualityProperties: legacyQualityProperties(item.qualityProperties),
       observation: legacyFoodObservation(item.observation),
-      calories: null,
-      proteinGrams: null,
-      carbohydrateGrams: null,
-      fatGrams: null,
-      fiberGrams: null,
+      calories: foodCalories === "invalid" ? null : foodCalories,
+      proteinGrams: foodProtein === "invalid" ? null : foodProtein,
+      carbohydrateGrams: foodCarbohydrates === "invalid" ? null : foodCarbohydrates,
+      fatGrams: foodFat === "invalid" ? null : foodFat,
+      fiberGrams: foodFiber === "invalid" ? null : foodFiber,
       sugarGrams: sugar === "invalid" ? null : sugar,
       addedSugarGrams: addedSugar === "invalid" ? null : addedSugar,
       confidence: item.confidence === "high" || item.confidence === "medium" ? item.confidence : "low",
@@ -194,7 +199,7 @@ export function mealToLegacyApi(meal: Meal) {
   const analysisRecord = meal.analysis?.result ? meal.analysis : meal.lastSuccessfulAnalysis;
   const analysis = analysisRecord?.result;
   const legacyAnalysis = analysis ? {
-    ingredients: analysis.foods.map((food) => ({ id: food.id, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, observation: food.observation, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
+    ingredients: analysis.foods.map((food) => ({ id: food.id, name: food.name, portion: food.portion ?? "", confidence: food.confidence, kind: food.kind, parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals, foodGroups: food.foodGroups, varietyKey: food.varietyKey ?? null, alcoholic: food.alcoholic, novaGroup: food.novaGroup, sugarExposure: food.sugarExposure, qualityProperties: food.qualityProperties, observation: food.observation, evidence: food.evidence, evidenceSource: food.evidenceSource, evidencePhotoIds: food.evidencePhotoIds, quantity: food.quantity, preparation: food.preparation, estimatedGrams: food.estimatedGrams, calories: legacyRangeFromCanonical(food.calories), proteinGrams: legacyRangeFromCanonical(food.proteinGrams), carbohydratesGrams: legacyRangeFromCanonical(food.carbohydrateGrams), fatGrams: legacyRangeFromCanonical(food.fatGrams), fiberGrams: legacyRangeFromCanonical(food.fiberGrams), sugarGrams: legacyRangeFromCanonical(food.sugarGrams), addedSugarGrams: legacyRangeFromCanonical(food.addedSugarGrams) })),
     dishType: analysis.dishType ?? null,
     calorieAnalysis: analysis.calorieAnalysis ?? null,
     calories: legacyRangeFromCanonical(analysis.totals.calories),

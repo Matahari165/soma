@@ -109,4 +109,23 @@ describe("legacy meal API adapter", () => {
 
     expect(mealToLegacyApi(richMeal).analysis?.ingredients[0]).toMatchObject({ alcoholic: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
+
+  it("preserves known food nutrients through the journal adapter without turning unknowns into zero", () => {
+    const calories = { low: 110, likely: 140, high: 180 };
+    const protein = { low: 8, likely: 11, high: 14 };
+    const richMeal = {
+      ...meal,
+      analysis: {
+        ...meal.analysis!,
+        result: {
+          ...meal.analysis!.result!,
+          foods: [{ id: "food-1", name: "Yaourt", preparation: null, portion: null, estimatedGrams: null, calories, proteinGrams: protein, carbohydrateGrams: null, fatGrams: null, fiberGrams: null, confidence: "medium" as const }],
+        },
+      },
+    } satisfies Meal;
+    const ingredient = mealToLegacyApi(richMeal).analysis?.ingredients[0];
+    expect(ingredient).toMatchObject({ calories, proteinGrams: protein, fiberGrams: { low: null, likely: null, high: null } });
+    const restored = legacyAnalysisToStructured(mealToLegacyApi(richMeal).analysis);
+    expect(restored?.foods[0]).toMatchObject({ calories, proteinGrams: protein, fiberGrams: null });
+  });
 });
