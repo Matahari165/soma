@@ -465,10 +465,6 @@ export function LabMealCard({
     </div>
   );
 
-  const confirmAction = status === "review" && onConfirm && (
-    <button type="button" className={styles.analyzeButton} disabled={saving || mutationBusy} onClick={onConfirm}>Valider le repas</button>
-  );
-
   // Analyzing indicator
   if (isAnalyzing) {
     if (designVariant === "v1") {
@@ -639,7 +635,6 @@ export function LabMealCard({
             </div>
           </div>
           {photoStrip}
-          {confirmAction}
           {meal?.analysis?.ingredients && meal.analysis.ingredients.length > 0 && (
             <p className={`text-xs text-content-tertiary font-mono ${styles.personalLabIngredients}`}>
               {meal.analysis.ingredients.map((i) => i.name).join(" · ")}
@@ -779,7 +774,6 @@ export function LabMealCard({
         {isFilled ? (
           <div className={styles.v2FilledSummary}>
             <p className={styles.v2DishText}>{getSummaryText(meal)}</p>
-            {confirmAction}
             <MealMetrics metrics={metrics} slot={slot} targets={targets} />
             {confirmRetryAction}
             {isCorrectionOpen && correctionForm}
@@ -894,7 +888,6 @@ export function LabMealCard({
           {isFilled ? (
             <>
               <p className={styles.v1DishText}>{getSummaryText(meal)}</p>
-              {confirmAction}
               <MealMetrics metrics={metrics} slot={slot} targets={targets} />
               {confirmRetryAction}
               {isCorrectionOpen && correctionForm}

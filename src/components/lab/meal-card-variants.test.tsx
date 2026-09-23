@@ -9,7 +9,7 @@ describe("LabMealCard nutrition chart", () => {
   it("shows the analyzed meal immediately and keeps a comment for each draft photo", () => {
     const meal: MealRecord = { id: "meal-lunch", date: "2026-08-31", slot: "lunch", note: "Riz", photos: [{ id: "photo-one", url: "blob:one", origin: "homemade", comment: "Sauce à part" }], analysis: { ingredients: [], calories: { low: 200, likely: 250, high: 300 }, proteinGrams: { low: 5, likely: 8, high: 12 } }, mouthHeat: null, stomachLoad: null, status: "review" };
     const props = { meal, slot: "lunch" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined, onPhotoComment: () => undefined };
-    const review = renderToStaticMarkup(<LabMealCard {...props} />);
+    const review = renderToStaticMarkup(<LabMealCard {...props} onConfirm={() => undefined} />);
     expect(review).not.toContain("Valider le repas");
     expect(review).not.toContain("Confirm result");
     expect(review).toContain('aria-label="Added sugar">S</dt><dd>—</dd>');
