@@ -5,11 +5,34 @@ export type HealthMetricTone = "positive" | "negative" | "neutral";
 
 type HealthSourceFreshness = {
   metric_date?: string | null;
+  data_quality?: {
+    source?: string | null;
+    providers?: string[];
+    primaryWearable?: string | null;
+    sourceDevices?: string[];
+    importedAt?: string | null;
+  };
   source_freshness?: {
     latestMeasuredAt?: string | null;
     byType?: Record<string, string | null>;
   };
 };
+
+/** Returns a human readable source without guessing when provenance is absent. */
+export function healthSourceLabel(day: HealthSourceFreshness | null | undefined) {
+  const provenance = day?.data_quality;
+  const values = [
+    provenance?.source,
+    ...(provenance?.providers ?? []),
+    provenance?.primaryWearable,
+    ...(provenance?.sourceDevices ?? []),
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.toLowerCase());
+  if (values.some((value) => value.includes("apple_health") || value.includes("apple health") || value.includes("apple watch"))) return "Apple Health";
+  if (values.some((value) => value.includes("google_health") || value.includes("google health"))) return "Google Health";
+  if (values.some((value) => value.includes("whoop"))) return "WHOOP";
+  if (values.length > 1) return "Health sources";
+  return "Health source";
+}
 
 /** Counts only finite readings; null, undefined and invalid numbers stay absent. */
 export function measuredCoverage(values: Array<number | null | undefined>) {

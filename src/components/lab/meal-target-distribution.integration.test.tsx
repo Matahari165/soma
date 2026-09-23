@@ -48,7 +48,6 @@ function renderMeal(meal: MealRecord, targets = DEFAULT_NUTRITION_TARGETS): stri
       onAnalyze={() => undefined}
       onCancelAnalysis={() => undefined}
       onNote={() => undefined}
-      onEdit={() => undefined}
     />,
   );
 }

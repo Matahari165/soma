@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.json({ archived });
   } catch (error) {
-    console.error("[api/cron/archive-health] archive failed", { error: error instanceof Error ? error.message : "Unknown archive error." });
+    console.error("[api/cron/archive-health] archive failed", { reason: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ error: "Health records could not be archived." }, { status: 500 });
   }
 }

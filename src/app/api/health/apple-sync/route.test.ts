@@ -64,6 +64,7 @@ describe("Apple Health Sync API route", () => {
             hrv: 62,
             restingHeartRate: 50,
             steps: 9500,
+            activeCalories: 321,
           },
         ],
       };
@@ -90,10 +91,15 @@ describe("Apple Health Sync API route", () => {
             metric_date: "2026-09-15",
             sleep_minutes: 480,
             hrv_ms: 62,
+            active_energy_kcal: 321,
+            data_quality: expect.objectContaining({ source: "apple_health", primaryWearable: "Apple Watch" }),
           }),
         ]),
         { onConflict: "user_id,metric_date" },
       );
+      expect(upsertMock).toHaveBeenCalledTimes(1);
+      const [rows] = upsertMock.mock.calls[0] as [Array<Record<string, unknown>>];
+      expect(rows[0]).not.toHaveProperty("active_energy");
     });
 
     it("rejects unauthorized calls without a token", async () => {

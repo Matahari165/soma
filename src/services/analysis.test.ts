@@ -187,6 +187,7 @@ describe("civil-time health analysis", () => {
   it("follows daylight-saving transitions", () => {
     expect(minutesSinceMidnightIn("2026-03-29T00:30:00.000Z", "Europe/Paris")).toBe(90);
     expect(minutesSinceMidnightIn("2026-03-29T01:30:00.000Z", "Europe/Paris")).toBe(210);
+    expect(minutesSinceMidnightIn("not-a-date", "Europe/Paris")).toBeNull();
   });
 
   it("does not reload unused high-frequency series for daily materialization", () => {
@@ -344,6 +345,7 @@ describe("recomputeUserHealth analysis windows", () => {
     expect(noRunDay?.running_distance_km).toBeNull();
     expect(noRunDay?.running_pace_seconds_per_km).toBeNull();
     expect(noRunDay?.running_average_heart_rate).toBeNull();
+    expect(noRunDay?.cumulative_sleep_debt_minutes).toBeNull();
   });
 
   it("passes the configured nutrition calorie target to every effort score", async () => {

@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { createPreviewMeal, addPreviewMealPhotos, analyzePreviewMeal, clearPreviewUserData, deletePreviewMeal, findPreviewMeal, findPreviewPhoto, loadPreviewConfirmedMealRecords, updatePreviewMeal, updatePreviewPhotoOrigin } from "./meal-preview";
 
 describe("local meal preview store", () => {
+  it("applies mixed corrections to the matching nutrients without copying the instruction into the summary", () => {
+    const userId = `preview-${crypto.randomUUID()}`;
+    const meal = createPreviewMeal(userId, { mealDate: "2026-09-12", mealType: "lunch", note: "Riz et légumes" });
+    analyzePreviewMeal(userId, meal.id);
+
+    const corrected = analyzePreviewMeal(userId, meal.id, { correction: "Retire 100 kcal mais ajoute 20 g de protéines" });
+    expect(corrected?.analysis.result?.totals.calories?.likely).toBe(500);
+    expect(corrected?.analysis.result?.totals.proteinGrams?.likely).toBe(48);
+    expect(corrected?.analysis.result?.summary).not.toContain("Retire 100 kcal");
+    expect(corrected?.analysis.result?.calorieAnalysis).toBeNull();
+  });
   it("supports the mobile flow without D1, R2, or xAI", () => {
     const userId = `preview-${crypto.randomUUID()}`;
     const meal = createPreviewMeal(userId, { mealDate: "2026-08-31", mealType: "dinner", note: null, idempotencyKey: "preview-idempotency-1" });

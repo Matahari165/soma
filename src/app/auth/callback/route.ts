@@ -94,10 +94,7 @@ export async function GET(request: Request) {
     clearWebOAuthCookies(cookieStore);
     return NextResponse.redirect(new URL(postLoginDestination(nextPath, onboardingCompleted), getSiteUrl()));
   } catch (error) {
-    console.error("[auth/callback] OAuth callback failed", {
-      stage,
-      message: error instanceof Error ? error.message.slice(0, 240) : "Unknown error",
-    });
+    console.error("[auth/callback] OAuth callback failed", { stage, reason: error instanceof Error ? error.name : "unknown" });
     return failure("oauth_callback");
   }
 }

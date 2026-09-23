@@ -159,10 +159,13 @@ export function healthRecordCoverageDates(records: Array<Pick<NormalizedHealthRe
 }
 
 export function minutesSinceMidnightIn(value: string, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
   const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
-  return hour * 60 + minute;
+  const result = hour * 60 + minute;
+  return Number.isFinite(result) ? result : null;
 }
 
 function todayIn(timezone: string) {
@@ -214,15 +217,10 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   const wearableWindow = recordsInsideWearableWindow((records ?? []) as NormalizedHealthRecord[], timezone);
   const days = aggregateHealthRecords(wearableWindow.records, timezone)
     .filter((day) => day.metric_date >= analysisStart);
-  console.info("[health-analysis] source records loaded", {
-    recordCount: wearableWindow.records.length,
-    dayCount: days.length,
-    dataTypes: [...new Set(wearableWindow.records.map((record) => record.data_type))].sort(),
-    wearableWindowStart: wearableWindow.startDate,
-  });
+  console.info("[health-analysis] source records loaded");
   if (!days.length) {
     await deleteStaleDerivedRows(userId, analysisStart, sourceCoverageDates);
-    console.warn("[health-analysis] no dated health records available", { analysisStart });
+    console.warn("[health-analysis] no dated health records available");
     return { days: 0, scores: 0, insights: 0 };
   }
 
@@ -251,7 +249,11 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     const recentSleep = history.map((item) => item.sleep_minutes).filter((value): value is number => value !== null);
     const priorEffort = index ? effortByDate.get(days[index - 1].metric_date) ?? null : null;
     const sleepNeed = estimateSleepNeed({ baseTargetMinutes: baseSleepTarget, recentSleepMinutes: recentSleep, priorDayEffort: priorEffort });
-    const regularNights = [...history, day].filter((item) => item.bedtime && item.wake_time).slice(-14).map((item) => ({ bedtimeMinutes: minutesSinceMidnightIn(item.bedtime as string, timezone), wakeMinutes: minutesSinceMidnightIn(item.wake_time as string, timezone) }));
+    const regularNights = [...history, day]
+      .filter((item) => item.sleep_minutes !== null && item.bedtime && item.wake_time)
+      .slice(-14)
+      .map((item) => ({ bedtimeMinutes: minutesSinceMidnightIn(item.bedtime as string, timezone), wakeMinutes: minutesSinceMidnightIn(item.wake_time as string, timezone) }))
+      .filter((night): night is { bedtimeMinutes: number; wakeMinutes: number } => night.bedtimeMinutes !== null && night.wakeMinutes !== null);
     const regularity = sleepRegularityScore(regularNights);
     const sleep = day.sleep_minutes !== null && day.sleep_efficiency !== null && regularity !== null
       ? calculateSleepScore({ actualSleepMinutes: day.sleep_minutes, estimatedNeedMinutes: sleepNeed.estimatedNeedMinutes, efficiencyPercent: day.sleep_efficiency, regularityPercent: regularity })
@@ -267,7 +269,10 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
     effortByDate.set(day.metric_date, effort.score);
     const weekday = new Date(`${day.metric_date}T12:00:00Z`).getUTCDay();
     const weekStart = index - ((weekday + 6) % 7);
-    const weeklyEffort = days.slice(Math.max(0, weekStart), index + 1).reduce((sum, item) => sum + (effortByDate.get(item.metric_date) ?? 0), 0);
+    const weeklyEfforts = days.slice(Math.max(0, weekStart), index + 1)
+      .map((item) => effortByDate.get(item.metric_date) ?? null)
+      .filter((value): value is number => value !== null);
+    const weeklyEffort = weeklyEfforts.length ? weeklyEfforts.reduce((sum, value) => sum + value, 0) : null;
     const bedtimeRecommendation = recommendBedtimeFromHistory({
       wakeTime: String(sleepPreferences?.usual_wake_time ?? "07:00").slice(0, 5),
       sleepNeedMinutes: sleepNeed.estimatedNeedMinutes,
@@ -280,7 +285,12 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
 
     const dailySleepDebt = day.sleep_minutes === null ? null : sleepNeed.estimatedNeedMinutes - day.sleep_minutes;
     sleepDebtByDate.set(day.metric_date, dailySleepDebt);
-    const cumulativeSleepDebt = Math.max(0, Math.round(days.slice(Math.max(0, index - 13), index + 1).reduce((sum, item) => sum + (sleepDebtByDate.get(item.metric_date) ?? 0), 0)));
+    const measuredSleepDebts = days.slice(Math.max(0, index - 13), index + 1)
+      .map((item) => sleepDebtByDate.get(item.metric_date) ?? null)
+      .filter((value): value is number => value !== null);
+    const cumulativeSleepDebt = measuredSleepDebts.length
+      ? Math.max(0, Math.round(measuredSleepDebts.reduce((sum, value) => sum + value, 0)))
+      : null;
     const recentActivity = days.slice(Math.max(0, index - 27), index + 1).map((item) => ({
       steps: item.steps,
       activeZoneMinutes: item.zone_minutes,
@@ -324,8 +334,8 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   const scorePoints = (kind: string) => scoreRows.filter((row) => row.kind === kind && typeof row.score === "number").map((row) => ({ date: String(row.score_date), value: Number(row.score) }));
   const bedtimePoints = days.filter((day) => day.bedtime).map((day) => {
     const minutes = minutesSinceMidnightIn(day.bedtime as string, timezone);
-    return { date: day.metric_date, value: minutes < 12 * 60 ? minutes + 1440 : minutes };
-  });
+    return minutes === null ? null : { date: day.metric_date, value: minutes < 12 * 60 ? minutes + 1440 : minutes };
+  }).filter((point): point is { date: string; value: number } => point !== null);
   const correlationDefinitions: Array<{ x: string; y: string; first: CorrelationPoint[]; second: CorrelationPoint[]; lag: number }> = [
     { x: "bedtime", y: "recovery_score", first: bedtimePoints, second: scorePoints("recovery"), lag: 0 },
     { x: "sleep_minutes", y: "recovery_score", first: observationsFromDays(days, "sleep_minutes"), second: scorePoints("recovery"), lag: 0 },
@@ -361,7 +371,7 @@ export async function recomputeUserHealth(userId: string, options: RecomputeUser
   ], { onConflict: "user_id,kind,brief_date" });
   if (briefError) throw new Error("Health summaries could not be stored.");
   const result = { days: metricRows.length, scores: scoreRows.length, insights: insights.length };
-  console.info("[health-analysis] recompute completed", result);
+  console.info("[health-analysis] recompute completed");
   return result;
 }
 

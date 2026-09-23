@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { verifyCredentialsLogin } from "@/lib/auth-credentials";
+import { allowAuthAttempt, AUTH_RETRY_AFTER_SECONDS } from "@/lib/auth-rate-limit";
 import { createSession, hasCompletedOnboarding } from "@/lib/cloudflare/session";
 
 export async function POST(request: Request) {
@@ -26,6 +27,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!(await allowAuthAttempt(request, email))) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, {
+        status: 429,
+        headers: { "Retry-After": String(AUTH_RETRY_AFTER_SECONDS) },
+      });
+    }
     const user = await verifyCredentialsLogin({ email, password });
     const { token, cookieOptions } = await createSession(user.id);
     const onboarded = await hasCompletedOnboarding(user.id);
@@ -45,7 +52,10 @@ export async function POST(request: Request) {
     response.cookies.set("soma_session", token, cookieOptions);
     return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Authentication failed.";
-    return NextResponse.json({ error: message }, { status: 401 });
+    const invalid = error instanceof Error && error.message === "Invalid email or password.";
+    return NextResponse.json(
+      { error: invalid ? "Invalid email or password." : "Sign in is temporarily unavailable. Please try again later." },
+      { status: invalid ? 401 : 503 },
+    );
   }
 }

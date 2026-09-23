@@ -63,6 +63,7 @@ export type MealIngredient = {
   parentId?: string | null;
   course?: MealFoodCourse | null;
   countedInTotals?: boolean;
+  alcoholic?: boolean;
   foodGroups?: MealFoodGroup[];
   varietyKey?: string | null;
   evidence?: MealFoodEvidence;

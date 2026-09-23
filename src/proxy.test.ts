@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { middleware, requestBodyLimitForPath } from "@/middleware";
+import { proxy, requestBodyLimitForPath } from "@/proxy";
 
 vi.mock("@/lib/env", () => ({ isLocalPreviewMode: () => false }));
 
@@ -10,7 +10,7 @@ describe("unauthenticated auth routes", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it.each(["/api/auth/register", "/api/auth/login"])("allows %s without a session", async (path) => {
-    const response = await middleware(new NextRequest(`https://soma.example${path}`, {
+    const response = await proxy(new NextRequest(`https://soma.example${path}`, {
       method: "POST",
       headers: { origin: "https://soma.example", host: "soma.example" },
     }));
@@ -19,18 +19,18 @@ describe("unauthenticated auth routes", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("allows Apple Health sync with its bearer credential", async () => {
-    const response = await middleware(new NextRequest("https://soma.example/api/health/apple-sync", {
+  it("allows the Web Apple Health sync token without a browser cookie", async () => {
+    const token = "a".repeat(43);
+    const response = await proxy(new NextRequest("https://soma.example/api/health/apple-sync", {
       method: "POST",
-      headers: { authorization: `Bearer ${"a".repeat(43)}`, host: "soma.example" },
+      headers: { authorization: `Bearer ${token}`, host: "soma.example" },
     }));
-
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("still redirects unauthenticated private mutations", async () => {
-    const response = await middleware(new NextRequest("https://soma.example/api/account", {
+    const response = await proxy(new NextRequest("https://soma.example/api/account", {
       method: "POST",
       headers: { origin: "https://soma.example", host: "soma.example" },
     }));
@@ -40,7 +40,7 @@ describe("unauthenticated auth routes", () => {
   });
 
   it("still blocks cross-site registration requests", async () => {
-    const response = await middleware(new NextRequest("https://soma.example/api/auth/register", {
+    const response = await proxy(new NextRequest("https://soma.example/api/auth/register", {
       method: "POST",
       headers: { origin: "https://other.example", host: "soma.example" },
     }));

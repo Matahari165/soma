@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { averageLast30Measured, averageLast30MeasuredWithCount, formatDurationMinutes, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30Measured, averageLast30MeasuredWithCount, formatDurationMinutes, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 
 describe("health metric comparisons", () => {
   it("averages measured values across the inclusive 30-day window", () => {
@@ -42,5 +42,11 @@ describe("health metric comparisons", () => {
         },
       },
     })).toBe("2026-09-10T07:00:00.000Z");
+  });
+
+  it("labels the recorded source and keeps missing provenance generic", () => {
+    expect(healthSourceLabel({ data_quality: { source: "apple_health", primaryWearable: "Apple Watch" } })).toBe("Apple Health");
+    expect(healthSourceLabel({ data_quality: { providers: ["google_health"] } })).toBe("Google Health");
+    expect(healthSourceLabel({ data_quality: {} })).toBe("Health source");
   });
 });

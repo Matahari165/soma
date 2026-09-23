@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
 import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+
 const date = "2026-08-31";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -180,7 +182,7 @@ describe("MealJournal", () => {
     expect(html).toContain('aria-label="Protein">P</dt><dd>10g</dd>');
     expect(html).toContain('aria-label="Carbohydrates">C</dt><dd>120g</dd>');
     expect(html).toContain('aria-label="Added sugar">S</dt><dd>5g</dd>');
-    expect(html).toContain(">Modifier</button>");
+    expect(html).toContain('aria-label="Déplier Breakfast"');
     expect(html).toContain(">Snack</h3>");
     expect(html).toContain('aria-label="Analyze Lunch"');
     expect(html).toContain('aria-label="Take photo for Lunch"');
@@ -264,6 +266,16 @@ describe("MealJournal", () => {
     const html = renderToStaticMarkup(<MealJournal variant="lab" showDateNavigation date={date} today={date} historyDays={6} initialData={{ date, meals: {} }} />);
 
     expect(html.match(/aria-pressed=/g)).toHaveLength(7);
+  });
+
+  it("keeps unavailable lab calories distinct from an explicit zero", () => {
+    const html = renderToStaticMarkup(<MealJournal variant="lab" date={date} today={date} initialData={{ date, meals: {} }} />);
+
+    expect(calorieProgressForDisplay(null, 3000)).toBeNull();
+    expect(html).toContain('role="img"');
+    expect(html).toContain('data-state="unavailable"');
+    expect(html).toContain('aria-label="Calorie target progress: Calories unavailable"');
+    expect(html).not.toContain('aria-valuenow="0"');
   });
 
   it("renders the four empty meal slots with photo actions", () => {
@@ -455,17 +467,25 @@ describe("MealJournal", () => {
     expect(result.id).toBe("0199a111-b222-7ccc-8ddd-eeeeeeeeeeee");
   });
 
-  it("retains the server id and queued status when analysis continues in the background", async () => {
+  it("waits for a queued correction before showing the recalculated meal", async () => {
     const createdIds: string[] = [];
+    const statusHeaders: Array<HeadersInit | undefined> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/meals") return Response.json({ meal: { id: "server-meal" } }, { status: 201 });
-      expect((init?.headers as Record<string, string>).Accept).toBeUndefined();
-      return Response.json({ meal: { id: "server-meal", mealDate: date, mealType: "lunch", note: "Riz", status: "draft", photos: [], analysis: { status: "queued" } } }, { status: 202 });
+      if (init?.method === "POST") return Response.json({ queued: true, analysis: { status: "queued" }, meal: { id: "server-meal", mealDate: date, mealType: "lunch", note: "Riz", status: "draft", photos: [], analysis: null } }, { status: 202 });
+      if (url.endsWith("/analyze")) {
+        statusHeaders.push(init?.headers);
+        return Response.json({ analysis: { status: "completed" }, meal: { id: "server-meal", mealDate: date, mealType: "lunch", note: "Riz et œufs", status: "confirmed", photos: [], analysis: { result: { summary: "Riz et œufs", dishType: "Riz et œufs", foods: [], totals: { calories: { low: 700, likely: 740, high: 780 }, proteinGrams: { low: 35, likely: 40, high: 45 } } } } } });
+      }
+      return Response.json({ meal: { id: "server-meal" } });
     }));
     const result = await defaultAnalyze({ date, slot: "lunch", files: [], meal: { id: "meal-local", date, slot: "lunch", note: "Riz", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" } }, { onMealCreated: (id) => createdIds.push(id) });
     expect(createdIds).toEqual(["server-meal"]);
-    expect(result.status).toBe("accepted");
+    expect(result.status).toBe("confirmed");
+    expect(result.analysis?.calories?.likely).toBe(740);
+    expect(statusHeaders).toHaveLength(1);
+    expect((statusHeaders[0] as Record<string, string>)["X-Analysis-Request-Id"]).toMatch(/^analysis-/);
   });
 
   it("updates and analyzes an existing text-only meal without requiring photos", async () => {
@@ -979,6 +999,7 @@ describe("apiMealToRecord", () => {
   it("does not turn a descriptive note into an uncertainty", () => {
     const payload = recordAnalysisToApi({
       ingredients: [],
+      summary: "Repas corrigé : œufs ajoutés.",
       calories: { low: null, high: null },
       proteinGrams: { low: null, high: null },
       note: "Description normale du repas",
@@ -986,6 +1007,7 @@ describe("apiMealToRecord", () => {
     });
 
     expect(payload.uncertainties).toEqual([]);
+    expect(payload.summary).toBe("Repas corrigé : œufs ajoutés.");
   });
 
   it("preserves rich food observations when confirming an analysis", () => {
@@ -993,10 +1015,11 @@ describe("apiMealToRecord", () => {
       ingredients: [{
         id: "food-1",
         sourceId: "food-1",
-        name: "Jus",
+        name: "Boisson alcoolisée",
         portion: "250 ml",
         estimatedGrams: null,
-        countedInTotals: true,
+        countedInTotals: false,
+        alcoholic: true,
         novaGroup: 4,
         sugarExposure: { concentrated: true, liquid: true },
         qualityProperties: [],
@@ -1007,7 +1030,7 @@ describe("apiMealToRecord", () => {
       proteinGrams: { low: null, high: null },
     });
 
-    expect(payload.foods[0]).toMatchObject({ id: "food-1", novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
+    expect(payload.foods[0]).toMatchObject({ id: "food-1", alcoholic: true, countedInTotals: false, novaGroup: 4, sugarExposure: { concentrated: true, liquid: true }, qualityProperties: [], observation: { qualityProperties: "none_observed" } });
   });
 
   it("renders lab meal card in V1 with ingredients, nutrition bars, and no repeated dish label", () => {
@@ -1045,8 +1068,8 @@ describe("apiMealToRecord", () => {
     expect(html).not.toContain("mon petit déjeuner");
     expect(html).toContain("250");
     expect(html).toContain("18");
-    expect(html).toContain("Modifier");
-    expect(html).toContain("Analysis details");
+    expect(html).toContain('aria-label="Déplier Breakfast"');
+    expect(html).not.toContain("Analysis details");
     expect(html).not.toContain("Confirm meal");
   });
 
