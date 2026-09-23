@@ -8,7 +8,8 @@ import {
   type EffortTargetContext,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, hasSupabaseRuntime, stableIdentity } from "@/lib/cloudflare/db";
+import { createSupabaseRequest } from "@/lib/cloudflare/db-supabase";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 
@@ -139,14 +140,27 @@ export async function saveNutritionTargetsForUser(userId: string, targets: Nutri
     previewTargets.set(userId, parsed);
     return parsed;
   }
-  const now = new Date().toISOString();
-  const result = await createCloudflareAdminClient()
-    .from("nutrition_targets")
-    .upsert({ user_id: userId, targets: parsed, created_at: now, updated_at: now }, { onConflict: "user_id" })
-    .select("targets")
-    .single();
-  if (result.error || !result.data) throw new Error("Nutrition targets could not be saved.");
-  return nutritionTargetsFromRow(result.data);
+  if (!hasSupabaseRuntime()) {
+    const now = new Date().toISOString();
+    const result = await createCloudflareAdminClient()
+      .from("nutrition_targets")
+      .upsert({ user_id: userId, targets: parsed, created_at: now, updated_at: now }, { onConflict: "user_id" })
+      .select("targets")
+      .single();
+    if (result.error || !result.data) throw new Error("Nutrition targets could not be saved.");
+    return nutritionTargetsFromRow(result.data);
+  }
+  const result = await createSupabaseRequest()<unknown>("rpc/save_soma_nutrition_targets", {
+    method: "POST",
+    body: JSON.stringify({
+      p_user_id: userId,
+      p_row_key: stableIdentity("nutrition_targets", { user_id: userId }, "user_id"),
+      p_targets: parsed,
+    }),
+  });
+  const saved = parseNutritionTargets(result);
+  if (!saved) throw new Error("Nutrition targets could not be saved.");
+  return saved;
 }
 
 export function nutritionTargetLikelyValues(targets: NutritionTargets) {

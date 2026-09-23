@@ -40,9 +40,19 @@ $$;
 
 -- Another interface may subsequently change the target. A replay must not
 -- claim that the original target is still saved.
-update public.soma_rows set json_data = jsonb_set(json_data, '{targets}',
-  '{"proteinG":{"likely":140}}'::jsonb)
-where table_name = 'nutrition_targets' and row_key = 'synthetic-nutrition-key';
+select public.save_soma_nutrition_targets('synthetic-nutrition-smoke',
+  'synthetic-nutrition-key', '{"proteinG":{"likely":140}}'::jsonb);
+
+do $$
+begin
+  begin
+    perform public.save_soma_nutrition_targets('synthetic-nutrition-smoke',
+      'synthetic-nutrition-key', null);
+    raise exception 'Null target was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+end;
+$$;
 
 do $$
 declare v_result jsonb;
