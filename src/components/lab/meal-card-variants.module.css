@@ -1448,13 +1448,13 @@
   white-space: nowrap;
 }
 
-.personalLabNutrient dt {
+.personalLabNutrient dt,
+.personalLabNutrient dd {
   color: var(--lab-text-secondary);
 }
 
 .personalLabNutrient dd {
   margin: 0;
-  color: var(--lab-text-primary);
 }
 
 .personalLabType h3 {
