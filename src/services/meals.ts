@@ -306,7 +306,7 @@ export async function reconcileAbandonedMealPhotoUploads(limit = 100) {
   for (const job of jobs) {
     try {
       const photo = await findMealPhoto(job.user_id, job.meal_id, job.photo_id);
-      if (!photo) await deleteR2MealPhotoObject(job.object_path);
+      if (!photo || photo.objectPath !== job.object_path) await deleteR2MealPhotoObject(job.object_path);
       await deleteMealPhotoUploadJob(job.user_id, job.id);
       cleared += 1;
     } catch {

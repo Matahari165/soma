@@ -351,10 +351,19 @@ describe("durable meal photo upload cleanup", () => {
 
   it("preserves a saved photo when a completed upload job remains", async () => {
     state.listStaleMealPhotoUploadJobs.mockResolvedValue([{ id: "job-1", user_id: "user-1", meal_id: mealId, photo_id: "photo-1", object_path: "private/photo", created_at: "2026-08-31T10:00:00.000Z" }]);
-    state.findMealPhoto.mockResolvedValue({ id: "photo-1" });
+    state.findMealPhoto.mockResolvedValue({ id: "photo-1", objectPath: "private/photo" });
 
     expect(await reconcileAbandonedMealPhotoUploads()).toEqual({ attempted: 1, cleared: 1 });
     expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
+    expect(state.deleteMealPhotoUploadJob).toHaveBeenCalledWith("user-1", "job-1");
+  });
+
+  it("removes an abandoned upload when the saved photo points to another object", async () => {
+    state.listStaleMealPhotoUploadJobs.mockResolvedValue([{ id: "job-1", user_id: "user-1", meal_id: mealId, photo_id: "photo-1", object_path: "private/orphan", created_at: "2026-08-31T10:00:00.000Z" }]);
+    state.findMealPhoto.mockResolvedValue({ id: "photo-1", objectPath: "private/current" });
+
+    expect(await reconcileAbandonedMealPhotoUploads()).toEqual({ attempted: 1, cleared: 1 });
+    expect(deleteR2MealPhotoObject).toHaveBeenCalledWith("private/orphan");
     expect(state.deleteMealPhotoUploadJob).toHaveBeenCalledWith("user-1", "job-1");
   });
 });
