@@ -274,8 +274,9 @@ export async function reconcileMealPhotoPurges(limit = 100) {
     const status = row.storage_status === "purged" ? "purged" : row.storage_status === "purge_pending" ? "purge_pending" : "available";
     if (status === "purged") continue;
     const meal = await findMeal(String(row.user_id), String(row.meal_id)).catch(() => null);
-    const isOldDraft = meal && meal.status === "draft" && (Date.now() - new Date(row.created_at).getTime() > 2 * 3600 * 1000);
-    if (!meal || (status === "available" && meal.status !== "confirmed" && !isOldDraft)) continue;
+    // Draft photos are still the user's evidence, regardless of their age.
+    // Only an explicit pending purge or a confirmed meal may release them.
+    if (!meal || (status === "available" && meal.status !== "confirmed")) continue;
     const photo = meal.photos.find((candidate) => candidate.id === row.id);
     if (!photo) continue;
     attempted += 1;

@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   createMealPhotoUploadJob: vi.fn(),
   deleteMealPhotoUploadJob: vi.fn(),
   listStaleMealPhotoUploadJobs: vi.fn(),
+  listMealPhotoRowsForReconciliation: vi.fn(),
   findMealPhoto: vi.fn(),
   deletePhoto: vi.fn(),
   listMeals: vi.fn(),
@@ -24,13 +25,13 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/meals", () => ({
-  deleteMeal: state.deleteMeal, deletePhoto: state.deletePhoto, createMealPhotoUploadJob: state.createMealPhotoUploadJob, deleteMealPhotoUploadJob: state.deleteMealPhotoUploadJob, listStaleMealPhotoUploadJobs: state.listStaleMealPhotoUploadJobs, findActiveMealAnalysis: state.findActiveMealAnalysis, findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: state.findMealPhoto, findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: state.insertPhoto, listMealPhotos: vi.fn(), listMeals: state.listMeals, touchMealAnalysis: state.touchMealAnalysis, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
+  deleteMeal: state.deleteMeal, deletePhoto: state.deletePhoto, createMealPhotoUploadJob: state.createMealPhotoUploadJob, deleteMealPhotoUploadJob: state.deleteMealPhotoUploadJob, listStaleMealPhotoUploadJobs: state.listStaleMealPhotoUploadJobs, listMealPhotoRowsForReconciliation: state.listMealPhotoRowsForReconciliation, findActiveMealAnalysis: state.findActiveMealAnalysis, findLatestMealAnalysis: vi.fn(), findMealAnalysisByRequestId: state.findMealAnalysisByRequestId, findMeal: state.findMeal, findMealByIdempotencyKey: vi.fn(), findMealForSlot: state.findMealForSlot, findMealPhoto: state.findMealPhoto, findPhotosByUploadIdempotencyKey: vi.fn(), insertMeal: state.insertMeal, insertMealAnalysis: state.insertMealAnalysis, insertPhoto: state.insertPhoto, listMealPhotos: vi.fn(), listMeals: state.listMeals, touchMealAnalysis: state.touchMealAnalysis, updateMeal: state.updateMeal, updateMealAnalysis: vi.fn(), updatePhotoOrigin: state.updatePhotoOrigin, updatePhotoStorage: state.updatePhotoStorage, upsertMealFeelings: state.upsertMealFeelings,
 }));
 vi.mock("@/lib/cloudflare/db", () => ({ claimCloudflareLock: vi.fn(), releaseCloudflareLock: vi.fn(), claimCloudflareLockWithToken: vi.fn(), refreshCloudflareLockWithToken: vi.fn(), releaseCloudflareLockWithToken: vi.fn() }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: vi.fn(), getR2MealPhotoObject: vi.fn(), mealPhotoObjectPath: vi.fn(), putR2MealPhotoObject: vi.fn() }));
 vi.mock("@/services/meal-recipes", () => ({ findRelevantMealRecipeReferences: state.findRelevantMealRecipeReferences }));
 
-import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, deleteMeal, loadConfirmedMealRecords, MealServiceError, reconcileAbandonedMealPhotoUploads, updateMealPhotoOrigin, updateMealRecord } from "./meals";
+import { computeMealSourceFingerprint, createMeal, addMealPhotos, analyzeMeal, deleteMeal, loadConfirmedMealRecords, MealServiceError, reconcileAbandonedMealPhotoUploads, reconcileMealPhotoPurges, updateMealPhotoOrigin, updateMealRecord } from "./meals";
 import { findLatestMealAnalysis, touchMealAnalysis, updateMealAnalysis } from "@/repositories/meals";
 import { claimCloudflareLock, claimCloudflareLockWithToken, refreshCloudflareLockWithToken, releaseCloudflareLock, releaseCloudflareLockWithToken } from "@/lib/cloudflare/db";
 import { deleteR2MealPhotoObject, getR2MealPhotoObject, mealPhotoObjectPath, putR2MealPhotoObject } from "@/lib/r2";
@@ -355,6 +356,32 @@ describe("durable meal photo upload cleanup", () => {
     expect(await reconcileAbandonedMealPhotoUploads()).toEqual({ attempted: 1, cleared: 1 });
     expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
     expect(state.deleteMealPhotoUploadJob).toHaveBeenCalledWith("user-1", "job-1");
+  });
+});
+
+describe("meal photo purge reconciliation", () => {
+  const mealId = "12345678-1234-1234-1234-123456789012";
+  const photo = { id: "photo-1", user_id: "user-1", meal_id: mealId, object_path: "private/photo", storage_status: "available", created_at: "2026-08-01T10:00:00.000Z" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.listMealPhotoRowsForReconciliation.mockResolvedValue([photo]);
+    state.findMeal.mockResolvedValue({ id: mealId, userId: "user-1", status: "draft", photos: [{ id: "photo-1", objectPath: "private/photo", storageStatus: "available" }] });
+  });
+
+  it("keeps an old draft photo available for a later analysis", async () => {
+    expect(await reconcileMealPhotoPurges()).toEqual({ attempted: 0, purged: 0 });
+    expect(deleteR2MealPhotoObject).not.toHaveBeenCalled();
+    expect(state.updatePhotoStorage).not.toHaveBeenCalled();
+  });
+
+  it("purges a confirmed meal photo", async () => {
+    state.findMeal.mockResolvedValue({ id: mealId, userId: "user-1", status: "confirmed", photos: [{ id: "photo-1", objectPath: "private/photo", storageStatus: "available" }] });
+    state.updatePhotoStorage.mockResolvedValue({ id: "photo-1" });
+    vi.mocked(deleteR2MealPhotoObject).mockResolvedValue(undefined);
+
+    expect(await reconcileMealPhotoPurges()).toEqual({ attempted: 1, purged: 1 });
+    expect(deleteR2MealPhotoObject).toHaveBeenCalledWith("private/photo");
   });
 });
 
