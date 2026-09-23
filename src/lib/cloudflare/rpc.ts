@@ -35,23 +35,27 @@ export async function executeCloudflareRpc(name: string, input: Row): Promise<Re
       return { data: null, error: null };
     }
 
-    if (name === "update_soma_profile") {
-      await client.from("profiles").update({
+    if (name === "update_soma_profile" || name === "update_soma_profile_details") {
+      const profileResult = await client.from("profiles").update({
         display_name: input.p_display_name,
         date_of_birth: input.p_date_of_birth,
         height_cm: input.p_height_cm,
         weight_kg: input.p_weight_kg,
         import_range: input.p_import_range,
       }).eq("user_id", input.p_user_id);
-      await client.from("sleep_preferences").upsert({
+      if (profileResult.error) return { data: null, error: profileResult.error };
+      const sleepResult = await client.from("sleep_preferences").upsert({
         user_id: input.p_user_id,
         base_target_minutes: input.p_base_sleep_target_minutes,
         usual_wake_time: input.p_usual_wake_time,
       }, { onConflict: "user_id" });
-      const { data: current } = await client.from("health_goals").select("id,goal_type").eq("user_id", input.p_user_id).eq("priority", 1).is("ended_on", null).maybeSingle();
-      if (!current || current.goal_type !== input.p_primary_goal) {
-        await client.from("health_goals").update({ ended_on: new Date().toISOString().slice(0, 10) }).eq("user_id", input.p_user_id).eq("priority", 1).is("ended_on", null);
-        await client.from("health_goals").insert({ user_id: input.p_user_id, goal_type: input.p_primary_goal, priority: 1 });
+      if (sleepResult.error) return { data: null, error: sleepResult.error };
+      if (name === "update_soma_profile") {
+        const { data: current } = await client.from("health_goals").select("id,goal_type").eq("user_id", input.p_user_id).eq("priority", 1).is("ended_on", null).maybeSingle();
+        if (!current || current.goal_type !== input.p_primary_goal) {
+          await client.from("health_goals").update({ ended_on: new Date().toISOString().slice(0, 10) }).eq("user_id", input.p_user_id).eq("priority", 1).is("ended_on", null);
+          await client.from("health_goals").insert({ user_id: input.p_user_id, goal_type: input.p_primary_goal, priority: 1 });
+        }
       }
       return { data: null, error: null };
     }

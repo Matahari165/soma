@@ -1,14 +1,17 @@
 import "server-only";
 
+import { isDeepStrictEqual } from "node:util";
 import { tool } from "ai";
 import { z } from "zod";
 
-import { assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema } from "../contracts";
+import { assistantGoalInputSchema, assistantGoalRevisionSchema, assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema } from "../contracts";
 import {
   confirmAssistantGoalSet,
   confirmAssistantMemory,
   confirmAssistantPlanVersion,
+  loadPendingAssistantChanges,
   proposeAssistantGoalSet,
+  proposeAssistantGoalRevision,
   proposeAssistantMemory,
   proposeAssistantPlanVersion,
   saveAssistantGoalSet,
@@ -24,6 +27,7 @@ const inputSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("propose_memory"), memory: assistantMemoryInputSchema }),
   z.object({ operation: z.literal("confirm_memory"), ...confirmationFields.shape }),
   z.object({ operation: z.literal("propose_goal_set"), goalSet: assistantGoalSetInputSchema }),
+  z.object({ operation: z.literal("propose_goal_revision"), revision: assistantGoalRevisionSchema }),
   z.object({ operation: z.literal("confirm_goal_set"), ...confirmationFields.shape }),
   z.object({ operation: z.literal("save_goal_set"), confirmationQuote: confirmationFields.shape.confirmationQuote, goalSet: assistantGoalSetInputSchema }),
   z.object({
@@ -56,6 +60,26 @@ export function assertAssistantConfirmation(userText: string, quote: string) {
   }
 }
 
+function draftMatchesGoalSet(draft: Record<string, unknown>, input: z.infer<typeof assistantGoalSetInputSchema>) {
+  if (!Array.isArray(draft.goals)) return false;
+  const goals = draft.goals.map((row) => {
+    if (!row || typeof row !== "object") return null;
+    const goal = row as Record<string, unknown>;
+    return assistantGoalInputSchema.safeParse({
+      label: goal.label, status: goal.status, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+      horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints,
+      successCriteria: goal.success_criteria,
+    });
+  });
+  if (goals.some((goal) => !goal?.success)) return false;
+  return isDeepStrictEqual({
+    primaryDirection: draft.primary_direction,
+    primaryGoalType: draft.primary_goal_type ?? null,
+    secondaryDirections: draft.secondary_directions,
+    goals: goals.map((goal) => goal?.success ? goal.data : null),
+  }, input);
+}
+
 export function createManageUserContextTool(context: {
   userId: string;
   runId: string;
@@ -63,7 +87,7 @@ export function createManageUserContextTool(context: {
   triggeringUserText: string;
 }) {
   return tool({
-    description: "Propose ou confirme une mémoire, un cadre d’objectifs ou une version de plan. Comprends les confirmations en langage naturel : « c’est bon, tu peux enregistrer » suffit. Une correction, un refus ou une simple question sur le cadre ne vaut pas confirmation ; une demande explicite de sauvegarder, même formulée comme une question, le peut. Ne demande jamais une formule exacte. Pour un cadre déjà proposé et inchangé, confirme son identifiant ; sinon save_goal_set peut enregistrer directement le cadre explicitement approuvé, même si ses métriques facultatives sont inconnues.",
+    description: "Propose ou confirme une mémoire, un cadre d’objectifs ou une version de plan. Pour réviser un cadre confirmé sans perdre les autres objectifs, utilise propose_goal_revision : goalUpdates pour les champs modifiés, addGoals ou removeGoalIds pour ajouter ou retirer un objectif, puis confirme le nouveau cadre après accord. Comprends les confirmations en langage naturel : « c’est bon, tu peux enregistrer » suffit. Une correction, un refus ou une simple question sur le cadre ne vaut pas confirmation ; une demande explicite de sauvegarder, même formulée comme une question, le peut. Ne demande jamais une formule exacte. Pour un cadre déjà proposé et inchangé, confirme son identifiant ; sinon save_goal_set peut enregistrer directement le cadre explicitement approuvé, même si ses métriques facultatives sont inconnues.",
     inputSchema,
     execute: async (input, options) => {
       const confirming = input.operation.startsWith("confirm_") || input.operation === "save_goal_set";
@@ -80,8 +104,18 @@ export function createManageUserContextTool(context: {
           if (input.operation === "propose_goal_set") {
             return proposeAssistantGoalSet(context.userId, context.triggeringMessageId, input.goalSet);
           }
+          if (input.operation === "propose_goal_revision") {
+            return proposeAssistantGoalRevision(context.userId, context.triggeringMessageId, input.revision);
+          }
           if (input.operation === "save_goal_set") {
             assertAssistantConfirmation(context.triggeringUserText, input.confirmationQuote);
+            const pending = await loadPendingAssistantChanges(context.userId);
+            if (pending.goalSets.length) {
+              const matching = pending.goalSets[0] && draftMatchesGoalSet(pending.goalSets[0], input.goalSet) ? pending.goalSets[0] : null;
+              if (!matching || typeof matching.id !== "string") throw new Error("Le cadre proposé a changé. Présente la nouvelle version avant de l'enregistrer.");
+              const confirmed = await confirmAssistantGoalSet(context.userId, matching.id, context.triggeringMessageId);
+              return { id: matching.id, saved: confirmed?.status === "confirmed", active: confirmed?.status === "confirmed", replayed: false };
+            }
             return saveAssistantGoalSet(context.userId, context.triggeringMessageId, input.goalSet);
           }
           if (input.operation === "propose_plan") {
@@ -99,6 +133,10 @@ export function createManageUserContextTool(context: {
             return confirmAssistantMemory(context.userId, input.targetId, context.triggeringMessageId);
           }
           if (input.operation === "confirm_goal_set") {
+            const pending = await loadPendingAssistantChanges(context.userId);
+            if (pending.goalSets[0]?.id !== input.targetId) {
+              throw new Error("Le cadre proposé a changé. Clarifie lequel confirmer avant l'enregistrement.");
+            }
             return confirmAssistantGoalSet(context.userId, input.targetId, context.triggeringMessageId);
           }
           return confirmAssistantPlanVersion(context.userId, input.targetId, context.triggeringMessageId);

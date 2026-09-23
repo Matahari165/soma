@@ -9,7 +9,7 @@ import { executeAuditedAssistantTool } from "./audited-tool";
 
 export function createGetPlanDetailsTool(context: { userId: string; runId: string }) {
   return tool({
-    description: "Lit une section du plan actif confirmé, avec pagination. Utilise l'identifiant de plan fourni par getUserContext. Ne déduis pas le contenu d'une section à partir de son titre.",
+    description: "Lit une section d'un plan confirmé actif ou à revoir après un changement d'objectif, avec pagination. Utilise l'identifiant fourni par getUserContext et respecte le statut returned. Ne déduis pas le contenu d'une section à partir de son titre.",
     inputSchema: z.object({
       planId: z.uuid(),
       sectionIndex: z.number().int().min(0).max(19).default(0),
@@ -34,6 +34,7 @@ export function createGetPlanDetailsTool(context: { userId: string; runId: strin
         return {
           found: true,
           planId: plan.id,
+          status: plan.status,
           version: plan.confirmedVersion?.version,
           title: body.title,
           objectiveSummary: body.objectiveSummary,

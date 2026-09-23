@@ -14,7 +14,7 @@ afterEach(() => vi.clearAllMocks());
 describe("getPlanDetails", () => {
   it("returns a bounded section page with an explicit continuation cursor", async () => {
     vi.mocked(loadActiveAssistantPlan).mockResolvedValue({
-      id: planId, goal_set_id: null, updated_at: "2026-09-23T10:00:00Z",
+      id: planId, goal_set_id: null, status: "active", updated_at: "2026-09-23T10:00:00Z",
       confirmedVersion: { id: "version-1", version: 3, confirmed_at: "2026-09-23T10:00:00Z", body: {
         title: "Course", objectiveSummary: "Progresser régulièrement", detailedThrough: "2026-10-01", reviewOn: "2026-10-02", phases: [],
         sections: [{ domain: "running", title: "Séances", content: Array.from({ length: 3 }, (_, index) => ({ title: `Séance ${index + 1}`, description: "Facile", scheduledFor: null, successCriteria: [] })) }],

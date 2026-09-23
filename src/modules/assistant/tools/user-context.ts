@@ -3,7 +3,7 @@ import "server-only";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { assistantPlanBodySchema } from "../contracts";
 
-import { loadActiveAssistantPlans, loadConfirmedAssistantMemories, loadConfirmedGoalContext, loadPendingAssistantChanges } from "../repository";
+import { loadActiveAssistantPlans, loadAssistantPlansNeedingReview, loadConfirmedAssistantMemories, loadConfirmedGoalContext, loadPendingAssistantChanges } from "../repository";
 
 function ageOn(dateOfBirth: string | null, now = new Date()) {
   if (!dateOfBirth) return null;
@@ -34,19 +34,20 @@ export async function loadAssistantUserContext(userId: string) {
   const profile = profileResult.data;
   const timezone = profile?.timezone ?? "Europe/Paris";
   const today = todayInTimezone(timezone);
-  const [legacyGoalsResult, goalContext, memories, pendingChanges, plans] = await Promise.all([
-    admin.from("health_goals")
-      .select("goal_type,priority,started_on,ended_on")
-      .eq("user_id", userId)
-      .is("ended_on", null)
-      .order("priority", { ascending: true }),
+  const [goalContext, memories, pendingChanges, plans, plansNeedingReview] = await Promise.all([
     loadConfirmedGoalContext(userId),
     loadConfirmedAssistantMemories(userId, today),
     loadPendingAssistantChanges(userId),
     loadActiveAssistantPlans(userId),
+    loadAssistantPlansNeedingReview(userId),
   ]);
 
-  if (legacyGoalsResult.error) throw new Error("Assistant goal context could not be loaded.");
+  const legacyGoalsResult = goalContext ? null : await admin.from("health_goals")
+    .select("goal_type,priority,starts_on,ended_on")
+    .eq("user_id", userId)
+    .is("ended_on", null)
+    .order("priority", { ascending: true });
+  if (legacyGoalsResult?.error) throw new Error("Assistant goal context could not be loaded.");
 
   return {
     profile: {
@@ -57,7 +58,8 @@ export async function loadAssistantUserContext(userId: string) {
       sexForHealthCalculations: profile?.sex_for_health_calculations ?? null,
     },
     confirmedGoals: goalContext,
-    legacyGoals: legacyGoalsResult.data ?? [],
+    // The older profile goal is only a seed before the first confirmed coach goal.
+    legacyGoals: legacyGoalsResult?.data ?? [],
     confirmedMemories: memories.slice(0, 100).map((memory) => ({
       kind: memory.kind,
       content: memory.content,
@@ -83,6 +85,8 @@ export async function loadAssistantUserContext(userId: string) {
       };
     }),
     activePlansComplete: plans.complete,
+    plansNeedingReview: plansNeedingReview.slice(0, 10),
+    plansNeedingReviewComplete: plansNeedingReview.length <= 10,
     pendingChanges,
   };
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
-import { assistantAttachmentMetadataSchema, assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema, assistantMessagePartSchema, type AssistantMessagePart, type AssistantQuality } from "../contracts";
+import { assistantAttachmentMetadataSchema, assistantGoalInputSchema, assistantGoalRevisionSchema, assistantGoalSetInputSchema, assistantMemoryInputSchema, assistantPlanBodySchema, assistantMessagePartSchema, type AssistantMessagePart, type AssistantQuality } from "../contracts";
 import { assistantDatabaseRequest, assistantFilter } from "./database";
 
 type ConversationRow = {
@@ -370,9 +370,15 @@ export async function loadActiveAssistantPlans(userId: string) {
   return { activePlans, complete };
 }
 
+export async function loadAssistantPlansNeedingReview(userId: string) {
+  return assistantDatabaseRequest<Array<{ id: string; goal_set_id: string | null; updated_at: string }>>(
+    `assistant_plans?user_id=eq.${assistantFilter(userId)}&status=eq.needs_review&select=id,goal_set_id,updated_at&order=updated_at.desc&limit=11`,
+  );
+}
+
 export async function loadActiveAssistantPlan(userId: string, planId: string) {
-  const plans = await assistantDatabaseRequest<Array<{ id: string; goal_set_id: string | null; updated_at: string }>>(
-    `assistant_plans?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(planId)}&status=eq.active&select=id,goal_set_id,updated_at&limit=1`,
+  const plans = await assistantDatabaseRequest<Array<{ id: string; goal_set_id: string | null; status: "active" | "needs_review"; updated_at: string }>>(
+    `assistant_plans?user_id=eq.${assistantFilter(userId)}&id=eq.${assistantFilter(planId)}&status=in.(active,needs_review)&select=id,goal_set_id,status,updated_at&limit=1`,
   );
   const plan = plans[0];
   if (!plan) return null;
@@ -388,7 +394,7 @@ export async function loadPendingAssistantChanges(userId: string) {
       `assistant_memories?user_id=eq.${assistantFilter(userId)}&status=eq.proposed&select=id,kind,content,structured_value,sensitivity,valid_from,valid_until&order=updated_at.desc&limit=20`,
     ),
     assistantDatabaseRequest<Array<Record<string, unknown>>>(
-      `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.draft&select=id,primary_direction,secondary_directions,updated_at&order=updated_at.desc&limit=5`,
+      `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.draft&select=id,primary_direction,primary_goal_type,secondary_directions,supersedes_goal_set_id,updated_at&order=updated_at.desc&limit=5`,
     ),
     assistantDatabaseRequest<Array<Record<string, unknown>>>(
       `assistant_plan_versions?user_id=eq.${assistantFilter(userId)}&status=eq.proposed&select=id,plan_id,version,body,based_on_version&order=created_at.desc&limit=5`,
@@ -398,9 +404,9 @@ export async function loadPendingAssistantChanges(userId: string) {
     const id = goalSet.id;
     if (typeof id !== "string") throw new Error("Assistant draft goal set is invalid.");
     const goals = await assistantDatabaseRequest<Array<Record<string, unknown>>>(
-      `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${assistantFilter(id)}&select=position,label,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
+      `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${assistantFilter(id)}&select=id,position,label,status,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
     );
-    return { ...goalSet, goals };
+    return { ...goalSet, id, goals } as Record<string, unknown> & { id: string; goals: Record<string, unknown>[] };
   }));
   return { memories, goalSets, planVersions };
 }
@@ -424,12 +430,12 @@ export async function confirmAssistantMemory(userId: string, memoryId: string, c
   });
 }
 
-export async function proposeAssistantGoalSet(userId: string, sourceMessageId: string, input: unknown) {
+export async function proposeAssistantGoalSet(userId: string, sourceMessageId: string, input: unknown, supersedesGoalSetId: string | null = null) {
   const value = assistantGoalSetInputSchema.parse(input);
   const goalSetId = crypto.randomUUID();
   const goalSet = one(await assistantDatabaseRequest<Array<{ id: string; status: string }>>("assistant_goal_sets", {
     method: "POST", prefer: "return=representation",
-    body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, secondary_directions: value.secondaryDirections },
+    body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, primary_goal_type: value.primaryGoalType, secondary_directions: value.secondaryDirections, supersedes_goal_set_id: supersedesGoalSetId },
   }), "Assistant goal set");
   if (value.goals.length) {
     try {
@@ -437,7 +443,7 @@ export async function proposeAssistantGoalSet(userId: string, sourceMessageId: s
         method: "POST", prefer: "return=minimal",
         body: value.goals.map((goal, position) => ({
           id: crypto.randomUUID(), user_id: userId, goal_set_id: goalSetId, position,
-          label: goal.label, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+          label: goal.label, status: goal.status, domain: goal.domain, baseline: goal.baseline, target: goal.target,
           horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints, success_criteria: goal.successCriteria,
           source_message_id: sourceMessageId,
         })),
@@ -467,15 +473,15 @@ function stableGoalUuid(...parts: string[]) {
 export async function saveAssistantGoalSet(userId: string, confirmationMessageId: string, input: unknown) {
   const value = assistantGoalSetInputSchema.parse(input);
   const goalSetId = stableGoalUuid("assistant-goal-set", userId, confirmationMessageId);
-  const setPath = `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&id=eq.${goalSetId}&select=id,status,primary_direction,secondary_directions,confirmed_by_message_id`;
-  type StoredSet = { id: string; status: string; primary_direction: string; secondary_directions: string[]; confirmed_by_message_id: string | null };
+  const setPath = `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&id=eq.${goalSetId}&select=id,status,primary_direction,primary_goal_type,secondary_directions,confirmed_by_message_id`;
+  type StoredSet = { id: string; status: string; primary_direction: string; primary_goal_type: string | null; secondary_directions: string[]; confirmed_by_message_id: string | null };
   const readSet = async () => (await assistantDatabaseRequest<StoredSet[]>(setPath))[0] ?? null;
   let stored = await readSet();
   if (!stored) {
     try {
       await assistantDatabaseRequest("assistant_goal_sets", {
         method: "POST", prefer: "resolution=ignore-duplicates,return=minimal",
-        body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, secondary_directions: value.secondaryDirections },
+        body: { id: goalSetId, user_id: userId, status: "draft", primary_direction: value.primaryDirection, primary_goal_type: value.primaryGoalType, secondary_directions: value.secondaryDirections },
       });
     } catch (error) {
       // The database may have committed while its HTTP response was lost.
@@ -485,13 +491,13 @@ export async function saveAssistantGoalSet(userId: string, confirmationMessageId
     stored ??= await readSet();
   }
   if (!stored) throw new Error("Assistant goal set was not persisted.");
-  if (stored.primary_direction !== value.primaryDirection || !isDeepStrictEqual(stored.secondary_directions, value.secondaryDirections)) {
+  if (stored.primary_direction !== value.primaryDirection || (stored.primary_goal_type ?? null) !== value.primaryGoalType || !isDeepStrictEqual(stored.secondary_directions, value.secondaryDirections)) {
     throw new Error("This confirmation already has a different goal set. Review it before saving.");
   }
 
   const expectedGoals = value.goals.map((goal, position) => ({
     id: stableGoalUuid("assistant-goal", goalSetId, String(position)), user_id: userId, goal_set_id: goalSetId, position,
-    label: goal.label, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+    label: goal.label, status: goal.status, domain: goal.domain, baseline: goal.baseline, target: goal.target,
     horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints, success_criteria: goal.successCriteria,
     source_message_id: confirmationMessageId,
   }));
@@ -505,10 +511,10 @@ export async function saveAssistantGoalSet(userId: string, confirmationMessageId
     }
   }
   const savedGoals = await assistantDatabaseRequest<Array<Record<string, unknown>>>(
-    `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${goalSetId}&select=position,label,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
+    `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${goalSetId}&select=position,label,status,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
   );
-  const expectedContent = expectedGoals.map(({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria }) =>
-    ({ position, label, domain, baseline, target, horizon, cadence, constraints, success_criteria }));
+  const expectedContent = expectedGoals.map(({ position, label, status, domain, baseline, target, horizon, cadence, constraints, success_criteria }) =>
+    ({ position, label, status, domain, baseline, target, horizon, cadence, constraints, success_criteria }));
   if (!isDeepStrictEqual(savedGoals, expectedContent)) throw new Error("Assistant goals were not fully persisted.");
   if (stored.status === "confirmed" || stored.status === "archived") {
     if (stored.confirmed_by_message_id !== confirmationMessageId) throw new Error("Goal confirmation does not match the user message.");
@@ -531,24 +537,64 @@ export async function saveAssistantGoalSet(userId: string, confirmationMessageId
 }
 
 export async function loadConfirmedGoalContext(userId: string) {
-  const sets = await assistantDatabaseRequest<Array<{ id: string; primary_direction: string; secondary_directions: string[] }>>(
-    `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.confirmed&select=id,primary_direction,secondary_directions&limit=1`,
+  const sets = await assistantDatabaseRequest<Array<{ id: string; primary_direction: string; primary_goal_type: string | null; secondary_directions: string[] }>>(
+    `assistant_goal_sets?user_id=eq.${assistantFilter(userId)}&status=eq.confirmed&select=id,primary_direction,primary_goal_type,secondary_directions&limit=1`,
   );
   const goalSet = sets[0];
   if (!goalSet) return null;
   const goals = await assistantDatabaseRequest<Array<Record<string, unknown>>>(
-    `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${assistantFilter(goalSet.id)}&status=eq.active&select=id,position,label,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
+    `assistant_goals?user_id=eq.${assistantFilter(userId)}&goal_set_id=eq.${assistantFilter(goalSet.id)}&select=id,position,label,status,domain,baseline,target,horizon,cadence,constraints,success_criteria&order=position.asc`,
   );
   return { goalSet, goals };
 }
 
+export async function proposeAssistantGoalRevision(userId: string, sourceMessageId: string, input: unknown) {
+  const change = assistantGoalRevisionSchema.parse(input);
+  const current = await loadConfirmedGoalContext(userId);
+  if (!current) throw new Error("No confirmed goal set is available to revise.");
+  const updates = new Map(change.goalUpdates.map((entry) => [entry.goalId, entry.changes]));
+  if (updates.size !== change.goalUpdates.length) throw new Error("A goal cannot be revised twice in one proposal.");
+  const currentIds = new Set(current.goals.map((goal) => String(goal.id)));
+  if ([...updates.keys()].some((id) => !currentIds.has(id))) throw new Error("A goal to revise is no longer active.");
+  const removed = new Set(change.removeGoalIds);
+  if (removed.size !== change.removeGoalIds.length || [...removed].some((id) => !currentIds.has(id))) throw new Error("A goal to remove is no longer active.");
+  if ([...removed].some((id) => updates.has(id))) throw new Error("A goal cannot be updated and removed together.");
+  const goals = current.goals.filter((goal) => !removed.has(String(goal.id))).map((goal) => assistantGoalInputSchema.parse({
+    label: goal.label, status: goal.status, domain: goal.domain, baseline: goal.baseline, target: goal.target,
+    horizon: goal.horizon, cadence: goal.cadence, constraints: goal.constraints,
+    successCriteria: goal.success_criteria,
+    ...updates.get(String(goal.id)),
+  })).concat(change.addGoals);
+  const proposal = await proposeAssistantGoalSet(userId, sourceMessageId, {
+    primaryDirection: change.primaryDirection ?? current.goalSet.primary_direction,
+    primaryGoalType: change.primaryGoalType === undefined ? current.goalSet.primary_goal_type : change.primaryGoalType,
+    secondaryDirections: change.secondaryDirections ?? current.goalSet.secondary_directions,
+    goals,
+  }, current.goalSet.id);
+  return { ...proposal, supersedesGoalSetId: current.goalSet.id };
+}
+
 export async function proposeAssistantPlanVersion(input: { userId: string; goalSetId: string | null; sourceMessageId: string; planId?: string; body: unknown }) {
   const body = assistantPlanBodySchema.parse(input.body);
+  const currentGoals = await loadConfirmedGoalContext(input.userId);
+  const currentGoalSetId = currentGoals?.goalSet.id ?? null;
+  if (input.goalSetId && input.goalSetId !== currentGoalSetId) {
+    throw new Error("The plan is based on an outdated goal set.");
+  }
+  const goalSetId = currentGoalSetId;
   let planId = input.planId;
+  if (planId) {
+    const existing = await assistantDatabaseRequest<Array<{ goal_set_id: string | null }>>(
+      `assistant_plans?user_id=eq.${assistantFilter(input.userId)}&id=eq.${assistantFilter(planId)}&select=goal_set_id&limit=1`,
+    );
+    if (!existing.length || existing[0].goal_set_id !== goalSetId) {
+      throw new Error("This plan must be reviewed against the current goals before updating it.");
+    }
+  }
   if (!planId) {
     const plans = await assistantDatabaseRequest<Array<{ id: string }>>("assistant_plans", {
       method: "POST", prefer: "return=representation",
-      body: { id: crypto.randomUUID(), user_id: input.userId, goal_set_id: input.goalSetId, status: "draft" },
+      body: { id: crypto.randomUUID(), user_id: input.userId, goal_set_id: goalSetId, status: "draft" },
     });
     planId = one(plans, "Assistant plan").id;
   }

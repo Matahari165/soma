@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { loadActiveAssistantPlans, loadConfirmedAssistantMemories, loadConfirmedGoalContext, loadPendingAssistantChanges } from "../repository";
+import { loadActiveAssistantPlans, loadAssistantPlansNeedingReview, loadConfirmedAssistantMemories, loadConfirmedGoalContext, loadPendingAssistantChanges } from "../repository";
 import { loadAssistantUserContext } from "./user-context";
 
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: vi.fn() }));
 vi.mock("../repository", () => ({
   loadActiveAssistantPlans: vi.fn(),
+  loadAssistantPlansNeedingReview: vi.fn(),
   loadConfirmedAssistantMemories: vi.fn(),
   loadConfirmedGoalContext: vi.fn(),
   loadPendingAssistantChanges: vi.fn(),
@@ -33,11 +34,29 @@ describe("assistant user context", () => {
         phases: [], sections: [{ domain: "running", title: "Séances", content: [{ title: "Sortie facile", description: "Détail réservé à la lecture ciblée", scheduledFor: null, successCriteria: [] }] }],
       } },
     }] });
+    vi.mocked(loadAssistantPlansNeedingReview).mockResolvedValue([]);
 
     const context = await loadAssistantUserContext("user-1");
     expect(loadConfirmedAssistantMemories).toHaveBeenCalledWith("user-1", "2026-09-23");
     expect(context.activePlans[0]).toMatchObject({ title: "Progression course", version: 2, status: "confirmed", sections: [{ itemCount: 1 }] });
     expect(JSON.stringify(context)).not.toContain("Détail réservé à la lecture ciblée");
     expect(context.confirmedMemoriesComplete).toBe(true);
+  });
+
+  it("does not depend on legacy goals after a coach goal is confirmed", async () => {
+    vi.mocked(createCloudflareAdminClient).mockReturnValue({
+      from: (table: string) => {
+        if (table !== "profiles") throw new Error("Legacy goal storage is unavailable");
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { timezone: "Europe/Zurich" }, error: null }) }) }) };
+      },
+    } as never);
+    vi.mocked(loadConfirmedGoalContext).mockResolvedValue({ goalSet: { id: "set-1", primary_direction: "Développer la force", primary_goal_type: "build_muscle", secondary_directions: [] }, goals: [] });
+    vi.mocked(loadConfirmedAssistantMemories).mockResolvedValue([]);
+    vi.mocked(loadPendingAssistantChanges).mockResolvedValue({ memories: [], goalSets: [], planVersions: [] });
+    vi.mocked(loadActiveAssistantPlans).mockResolvedValue({ complete: true, activePlans: [] });
+    vi.mocked(loadAssistantPlansNeedingReview).mockResolvedValue([]);
+    const context = await loadAssistantUserContext("user-1");
+    expect(context.legacyGoals).toEqual([]);
+    expect(context.confirmedGoals?.goalSet.primary_direction).toBe("Développer la force");
   });
 });
