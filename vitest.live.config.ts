@@ -1,5 +1,6 @@
-import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
+
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -10,7 +11,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}"],
-    exclude: ["src/**/*.live.test.{ts,tsx}"],
+    include: ["src/**/*.live.test.{ts,tsx}"],
   },
 });

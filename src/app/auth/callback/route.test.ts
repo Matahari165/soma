@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.mocked(createSession).mockResolvedValue({
     token: "tok-test",
     session: { id: "session-web", platform: "web", deviceName: "Web browser", createdAt: new Date().toISOString(), expiresAt: new Date().toISOString() },
-    cookieOptions: { httpOnly: true, secure: true, sameSite: "lax", path: "/", expires: new Date(Date.now() + 86400000) },
+    cookieOptions: { httpOnly: true, secure: true, sameSite: "lax", path: "/", expires: new Date(Date.now() + 86_400_000) },
   });
   vi.stubGlobal("fetch", vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "token" }), { status: 200 }))
@@ -47,6 +47,7 @@ describe("Google OAuth Web callback", () => {
     expect(response.headers.get("location")).toBe("https://soma.example/lab");
     const tokenRequest = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
     expect(new URLSearchParams(String(tokenRequest.body)).get("redirect_uri")).toBe("https://soma.example/auth/callback");
+    expect(createSession).toHaveBeenCalledWith("user-1");
   });
 
   it("sends a new user to onboarding", async () => {
@@ -76,9 +77,10 @@ describe("Google OAuth Web callback", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("handles provider cancellation without contacting Google", async () => {
+  it("clears the web transaction on provider cancellation without contacting Google", async () => {
     const response = await GET(new Request("https://soma.example/auth/callback?error=access_denied&state=expected-state"));
     expect(new URL(response.headers.get("location") as string).searchParams.get("error")).toBe("cancelled");
+    expect(deleteCookie).toHaveBeenCalledTimes(3);
     expect(fetch).not.toHaveBeenCalled();
     expect(deleteCookie).toHaveBeenCalledWith("soma_oauth_state");
   });

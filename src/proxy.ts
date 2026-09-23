@@ -22,7 +22,6 @@ const publicPaths = [
 ];
 
 const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
-
 export function requestBodyLimitForPath(pathname: string) {
   if (pathname === "/api/assistant/attachments") return 4 * 1024 * 1024 + 256 * 1024;
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")

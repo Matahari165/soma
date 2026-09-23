@@ -1,10 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { MealBalanceScore } from "@/domain/scores/meal-balance";
-import { CANONICAL_RESULTS_DIRECTORY, DEFAULT_FIXTURE_DIRECTORY, migrateRealisticMealBalanceCache, runRealisticMealBalance } from "../../scripts/meal-balance-realistic-test";
+import { DEFAULT_FIXTURE_DIRECTORY, migrateRealisticMealBalanceCache, runRealisticMealBalance } from "../../scripts/meal-balance-realistic-test";
 
 type CanonicalRunArtifact = {
   scores: Array<{ date: string; score: Pick<MealBalanceScore, "algorithmVersion" | "score" | "rawScore"> }>;
@@ -15,16 +16,28 @@ function scoreValues(scores: CanonicalRunArtifact["scores"]) {
 }
 
 describe("realistic meal-balance replay corpus", () => {
+  let temporaryRoot: string;
+  let fixtureDirectory: string;
+  let resultsDirectory: string;
+
   beforeAll(async () => {
-    await migrateRealisticMealBalanceCache({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, resultsDirectory: CANONICAL_RESULTS_DIRECTORY });
-    await runRealisticMealBalance({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, resultsDirectory: CANONICAL_RESULTS_DIRECTORY, replay: true, writeResults: true });
+    temporaryRoot = await mkdtemp(join(tmpdir(), "soma-meal-replay-"));
+    fixtureDirectory = join(temporaryRoot, "fixture");
+    resultsDirectory = join(fixtureDirectory, "results");
+    await cp(DEFAULT_FIXTURE_DIRECTORY, fixtureDirectory, { recursive: true });
+    await migrateRealisticMealBalanceCache({ fixtureDirectory, resultsDirectory });
+    await runRealisticMealBalance({ fixtureDirectory, resultsDirectory, replay: true, writeResults: true });
+  });
+
+  afterAll(async () => {
+    await rm(temporaryRoot, { recursive: true, force: true });
   });
 
   it("revalidates all stored analyses and reproduces every daily score", async () => {
-    const artifactPath = join(CANONICAL_RESULTS_DIRECTORY, "run-result.json");
+    const artifactPath = join(resultsDirectory, "run-result.json");
     const artifactBefore = await readFile(artifactPath, "utf8");
     const canonical = JSON.parse(artifactBefore) as CanonicalRunArtifact;
-    const result = await runRealisticMealBalance({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, replay: true, writeResults: false });
+    const result = await runRealisticMealBalance({ fixtureDirectory, resultsDirectory, replay: true, writeResults: false });
     const artifactAfter = await readFile(artifactPath, "utf8");
 
     expect(result.mode).toBe("replay");
@@ -39,7 +52,7 @@ describe("realistic meal-balance replay corpus", () => {
   });
 
   it("replays independently of provider environment variables without network or writes", async () => {
-    const artifactPath = join(CANONICAL_RESULTS_DIRECTORY, "run-result.json");
+    const artifactPath = join(resultsDirectory, "run-result.json");
     const artifactBefore = await readFile(artifactPath, "utf8");
     const canonical = JSON.parse(artifactBefore) as CanonicalRunArtifact;
     const pollutedEnvironment = {
@@ -67,7 +80,7 @@ describe("realistic meal-balance replay corpus", () => {
         process.env[key] = value;
       }
 
-      const result = await runRealisticMealBalance({ fixtureDirectory: DEFAULT_FIXTURE_DIRECTORY, replay: true, writeResults: false });
+      const result = await runRealisticMealBalance({ fixtureDirectory, resultsDirectory, replay: true, writeResults: false });
 
       expect(result.cases).toHaveLength(38);
       expect(result.cases.every((item) => item.status === "completed")).toBe(true);
