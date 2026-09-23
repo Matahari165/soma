@@ -11,7 +11,7 @@ Soma est une application personnelle de suivi de santé, de sommeil, d'activité
 | `src/domain` | Calculs et règles métier, dont les scores et les repas. |
 | `src/services` | Parcours métier et orchestration des opérations. |
 | `src/repositories` | Accès aux données des repas et d'autres modules. |
-| `src/lib/cloudflare/db.ts` | Adaptateur de compatibilité entre l'ancien stockage D1 et le stockage Supabase actuel. |
+| `src/lib/cloudflare/db*.ts` | Façade et adaptateurs de compatibilité D1/Supabase, avec requêtes, identités et types séparés. |
 | `src/integrations` | Fournisseurs externes, dont Google Health et l'analyse des repas. |
 | `supabase/migrations` | Historique SQL de Supabase ; ne pas modifier les migrations déjà appliquées. |
 | `cloudflare/migrations` | Historique de l'ancien stockage D1. |
