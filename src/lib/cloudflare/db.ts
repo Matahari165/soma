@@ -110,6 +110,10 @@ export function affectsLabMatrixRevision(table: string) {
   return labMatrixRevisionTableSet.has(table);
 }
 
+function nextSupabaseLabMatrixRevision() {
+  return crypto.randomUUID();
+}
+
 function labMatrixRevisionStatement(db: D1DatabaseLike, userId: string) {
   const now = new Date().toISOString();
   const row = { user_id: userId, revision: 1, updated_at: now };
@@ -172,7 +176,7 @@ export async function saveCloudflareJournalDay({ userId, entryDate, entries, val
     });
     const dayResult = await admin.from("journal_days").upsert(dayRow, { onConflict: "user_id,entry_date" });
     if (dayResult.error) throw new Error(dayResult.error.message);
-    const revisionResult = await admin.from(LAB_MATRIX_REVISION_TABLE).upsert({ user_id: userId, revision: 1, updated_at: now }, { onConflict: "user_id" });
+    const revisionResult = await admin.from(LAB_MATRIX_REVISION_TABLE).upsert({ user_id: userId, revision: nextSupabaseLabMatrixRevision(), updated_at: now }, { onConflict: "user_id" });
     if (revisionResult.error) throw new Error(revisionResult.error.message);
 
     const persistedEntriesResult = await admin.from("journal_entries").select("*").eq("user_id", userId).eq("entry_date", entryDate);
@@ -478,10 +482,24 @@ export async function healthRecordsForAnalysis(userId: string, dataTypes: readon
 
 export async function labMatrixInputRevision(userId: string) {
   if (hasSupabaseRuntime()) {
+    try {
+      const rows = await supabaseRequest<Array<{ revision: string }>>(supabasePath("soma_lab_matrix_revisions", [
+        ["select", "revision"],
+        ["user_id", `eq.${userId}`],
+        ["limit", "1"],
+      ]));
+      return rows[0]?.revision ?? "0";
+    } catch (error) {
+      // The additive migration may not be installed yet. Keep the legacy
+      // revision until the database is migrated; other errors bypass caching.
+      const message = error instanceof Error ? error.message : "";
+      if (!/soma_lab_matrix_revisions/i.test(message) || !/schema cache|does not exist|not found/i.test(message)) throw error;
+    }
     const result = await createCloudflareAdminClient().from(LAB_MATRIX_REVISION_TABLE).select("revision").eq("user_id", userId).maybeSingle();
     if (result.error) throw new Error(result.error.message);
-    const revision = Number(result.data?.revision);
-    return Number.isSafeInteger(revision) && revision >= 0 ? String(revision) : "0";
+    const revision = result.data?.revision;
+    return typeof revision === "string" && revision ? revision
+      : Number.isSafeInteger(revision) && revision >= 0 ? String(revision) : "0";
   }
   const row = await cloudflareDb().prepare("SELECT json_data FROM soma_rows WHERE table_name = ? AND row_key = ? LIMIT 1")
     .bind(LAB_MATRIX_REVISION_TABLE, userId)
@@ -929,8 +947,8 @@ function createD1AdminClient() {
             await db.batch([
               db.prepare("DELETE FROM soma_sessions WHERE user_id = ?").bind(userId),
               db.prepare("DELETE FROM soma_credentials WHERE user_id = ?").bind(userId),
-              db.prepare("DELETE FROM soma_users WHERE id = ?").bind(userId),
               db.prepare("DELETE FROM soma_rows WHERE user_id = ?").bind(userId),
+              db.prepare("DELETE FROM soma_users WHERE id = ?").bind(userId),
             ]);
             return { data: null, error: null };
           } catch (error) {
@@ -1089,22 +1107,9 @@ function storageRow(table: string, row: Row, explicitConflict?: string): Supabas
 async function bumpSupabaseLabMatrixRevisions(userIds: readonly string[]) {
   const uniqueUserIds = [...new Set(userIds)];
   for (const userId of uniqueUserIds) {
-    const current = await readSupabaseStorageRows(
-      LAB_MATRIX_REVISION_TABLE,
-      [{ field: "user_id", operator: "eq", value: userId }],
-      [],
-      [],
-      0,
-      undefined,
-      1,
-      false,
-      undefined,
-    );
-    const revision = Number(current[0]?.revision);
-    const nextRevision = Number.isSafeInteger(revision) && revision >= 0 ? revision + 1 : 1;
     const stored = storageRow(LAB_MATRIX_REVISION_TABLE, {
       user_id: userId,
-      revision: nextRevision,
+      revision: nextSupabaseLabMatrixRevision(),
       updated_at: new Date().toISOString(),
     }, "user_id");
     await supabaseRequest<unknown[]>("soma_rows?on_conflict=table_name%2Crow_key", {
@@ -1301,7 +1306,7 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     await supabaseRequest<unknown[]>(`soma_rows${query}`, { method: "POST", headers, body: JSON.stringify(stored) });
     if (affectsLabMatrixRevision(this.table)) {
       const userIds = [...new Set(rows.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []))];
-      if (userIds.length) await new SupabaseQueryBuilder(LAB_MATRIX_REVISION_TABLE).upsert(userIds.map((userId) => ({ user_id: userId, revision: 1, updated_at: new Date().toISOString() })), { onConflict: "user_id" });
+      if (userIds.length) await bumpSupabaseLabMatrixRevisions(userIds);
     }
   }
 
@@ -1348,10 +1353,10 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
     }
 
     if (mutation.kind === "delete") {
+      for (const row of existing) await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${stableIdentity(this.table, row)}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
       if (existing.length && affectsLabMatrixRevision(this.table)) {
         await bumpSupabaseLabMatrixRevisions(existing.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []));
       }
-      for (const row of existing) await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["table_name", `eq.${this.table}`], ["row_key", `eq.${stableIdentity(this.table, row)}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
       return this.shape(existing);
     }
 
@@ -1370,6 +1375,9 @@ class SupabaseQueryBuilder implements PromiseLike<ManyResult> {
         body: JSON.stringify(storageRow(this.table, newRow)),
       });
       if (updated.length > 0) persisted.push(newRow);
+    }
+    if (persisted.length && affectsLabMatrixRevision(this.table)) {
+      await bumpSupabaseLabMatrixRevisions(persisted.flatMap((row) => typeof row.user_id === "string" ? [row.user_id] : []));
     }
     return this.shape(persisted);
   }
@@ -1397,8 +1405,8 @@ function createSupabaseAdminClient() {
           try {
             await supabaseRequest<unknown[]>(supabasePath("soma_sessions", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             await supabaseRequest<unknown[]>(supabasePath("soma_credentials", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
-            await supabaseRequest<unknown[]>(supabasePath("soma_users", [["id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             await supabaseRequest<unknown[]>(supabasePath("soma_rows", [["user_id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
+            await supabaseRequest<unknown[]>(supabasePath("soma_users", [["id", `eq.${userId}`]]), { method: "DELETE", headers: new Headers({ Prefer: "return=minimal" }) });
             return { data: null, error: null };
           } catch (error) {
             return { data: null, error: { message: error instanceof Error ? error.message : "Account deletion failed." } };

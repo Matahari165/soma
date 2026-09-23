@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, createCloudflareAdminClient, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
+import { affectsLabMatrixRevision, assertJournalDayPersisted, buildCloudflareReadPlan, buildCloudflareUpdatePlan, createCloudflareAdminClient, labMatrixInputRevision, labMatrixRevisionTables, mergeJournalOmissions, stableIdentity } from "@/lib/cloudflare/db";
 
 describe("Cloudflare D1 row identity", () => {
   it("keeps idempotent sync jobs on the same connection-scoped row", () => {
@@ -130,7 +130,26 @@ describe("Cloudflare D1 read planning", () => {
 });
 
 describe("Supabase storage pagination", () => {
-  it("increments the Personal Lab revision after deleting an analytical row", async () => {
+  it("reads the transactional matrix revision when the migration is installed", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify([{ revision: "98aa82da-8599-407e-9259-6bffb9f1a928" }]), { status: 200 }));
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      expect(await labMatrixInputRevision("user-1")).toBe("98aa82da-8599-407e-9259-6bffb9f1a928");
+      expect(String(fetchMock.mock.calls[0]?.[0])).toContain("soma_lab_matrix_revisions");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
+  it("changes the Personal Lab revision after deleting an analytical row", async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -170,7 +189,43 @@ describe("Supabase storage pagination", () => {
       const revisionWrite = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
       expect(revisionWrite).toBeDefined();
       const body = JSON.parse(String(revisionWrite?.[1]?.body));
-      expect(body[0].json_data).toMatchObject({ user_id: "user-1", revision: 8 });
+      expect(body[0].json_data).toMatchObject({ user_id: "user-1", revision: expect.any(String) });
+      expect(body[0].json_data.revision).not.toBe("7");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    }
+  });
+
+  it("changes the Personal Lab revision after an analytical update", async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") return new Response(JSON.stringify([{}]), { status: 200 });
+      if (init?.method === "POST") return new Response(JSON.stringify([]), { status: 200 });
+      const url = new URL(String(input));
+      if (url.searchParams.get("table_name") !== "eq.meals") return new Response(JSON.stringify([]), { status: 200 });
+      return new Response(JSON.stringify([{
+        table_name: "meals",
+        row_key: stableIdentity("meals", { user_id: "user-1", meal_date: "2026-09-22", meal_type: "lunch" }),
+        user_id: "user-1",
+        json_data: { id: "meal-1", user_id: "user-1", meal_date: "2026-09-22", meal_type: "lunch", note: "avant" },
+      }]), { status: 200 });
+    });
+    process.env.SUPABASE_URL = "https://supabase.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const result = await createCloudflareAdminClient().from("meals").update({ note: "après" }).eq("user_id", "user-1").eq("id", "meal-1");
+      expect(result.error).toBeNull();
+      const revisionWrite = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+      expect(revisionWrite).toBeDefined();
+      const row = JSON.parse(String(revisionWrite?.[1]?.body))[0];
+      expect(row.table_name).toBe("lab_matrix_revisions");
+      expect(row.json_data.revision).toMatch(/^[0-9a-f-]{36}$/);
     } finally {
       vi.unstubAllGlobals();
       if (previousUrl === undefined) delete process.env.SUPABASE_URL;
