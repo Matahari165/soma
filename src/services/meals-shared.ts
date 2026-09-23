@@ -12,6 +12,7 @@ export class MealServiceError extends Error {
     this.name = "MealServiceError";
   }
 }
+
 export const ANALYSIS_LEASE_TTL_MS = 120_000;
 export const ANALYSIS_HEARTBEAT_MS = 30_000;
 export const FAILED_ANALYSIS_PHOTO_TTL_MS = 24 * 60 * 60 * 1000;
@@ -46,6 +47,7 @@ export async function timedMealStage<T>(stage: string, operation: () => Promise<
     logMeal("info", stage, undefined, Date.now() - startedAt);
   }
 }
+
 export async function claimMealLease(lockKey: string, userId: string, ttlMs: number) {
   if (typeof claimCloudflareLockWithToken === "function") {
     const token = await claimCloudflareLockWithToken(lockKey, userId, ttlMs);
@@ -61,6 +63,7 @@ export async function releaseMealLease(lockKey: string, userId: string, token: s
   if (token && typeof releaseCloudflareLockWithToken === "function") return releaseCloudflareLockWithToken(lockKey, userId, token);
   return releaseCloudflareLock(lockKey, userId);
 }
+
 export function hasPreservedAnalysis(meal: Meal, confirmedAnalysis: UpdateMealInput["confirmedAnalysis"]) {
   if (meal.analysis?.status === "queued" || meal.analysis?.status === "running") return Boolean(confirmedAnalysis);
   return Boolean(
@@ -98,6 +101,7 @@ export async function analysisSourceStillCurrent(userId: string, mealId: string,
   if (!sourceFingerprint) return true;
   return await computeMealSourceFingerprint(meal) === sourceFingerprint;
 }
+
 export function isRetryableAnalysisCode(value: unknown) {
   return typeof value === "string" && RETRYABLE_ANALYSIS_CODES.has(value);
 }
@@ -107,6 +111,7 @@ export function rowPhotoIds(row: AnalysisRow) {
     ? row.source_photo_ids.filter((id): id is string => typeof id === "string")
     : [];
 }
+
 export function assertMealId(id: string) {
   if (!/^[0-9a-f-]{20,80}$/i.test(id)) throw new MealServiceError("invalid", "The meal id is invalid.");
 }
