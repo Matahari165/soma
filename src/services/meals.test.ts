@@ -83,7 +83,7 @@ describe("meal analysis provenance", () => {
     expect(state.updateMeal).not.toHaveBeenCalled();
   });
 
-  it("binds native confirmation to the exact analysis identity and source", async () => {
+  it("binds confirmation to the exact analysis identity and source", async () => {
     const photos = [{ id: "photo-1", mealId: "12345678-1234-1234-1234-123456789012", origin: "homemade" as const, objectPath: "private/photo", mimeType: "image/jpeg" as const, bytes: 10, createdAt: "2026-08-31T10:00:00.000Z" }];
     const sourceFingerprint = await computeMealSourceFingerprint({ note: null, photos });
     state.findMeal.mockResolvedValue({

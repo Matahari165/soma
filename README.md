@@ -13,7 +13,6 @@ Soma est une application personnelle de suivi de santé, de sommeil, d'activité
 | `src/repositories` | Accès aux données des repas et d'autres modules. |
 | `src/lib/cloudflare/db.ts` | Adaptateur de compatibilité entre l'ancien stockage D1 et le stockage Supabase actuel. |
 | `src/integrations` | Fournisseurs externes, dont Google Health et l'analyse des repas. |
-| `Native` | Client Apple et bibliothèque SomaCore. |
 | `supabase/migrations` | Historique SQL de Supabase ; ne pas modifier les migrations déjà appliquées. |
 | `cloudflare/migrations` | Historique de l'ancien stockage D1. |
 
@@ -38,12 +37,9 @@ Pour les intégrations, renseigner les variables serveur décrites dans `.env.ex
 
 ```bash
 CI=true pnpm verify
-swift test --package-path Native/SomaCore
 ```
 
-Sur Mac, les tests Swift nécessitent Xcode complet. Si les outils de ligne de commande sont sélectionnés, utiliser `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path Native/SomaCore`.
-
-`pnpm verify` lance le lint, le contrôle TypeScript, les tests Vitest ordinaires et le build Web. Les fichiers `*.live.test.ts` demandent des intégrations réelles et ne font pas partie de cette suite. Un résultat vert ne prouve ni les migrations sur la base de production, ni une connexion authentifiée, ni le fonctionnement sur un appareil Apple.
+`pnpm verify` lance le lint, le contrôle TypeScript, les tests Vitest ordinaires et le build Web. Les fichiers `*.live.test.ts` demandent des intégrations réelles et ne font pas partie de cette suite. Un résultat vert ne prouve ni les migrations sur la base de production, ni une connexion authentifiée.
 
 Les données manquantes doivent rester distinctes d'une valeur enregistrée à zéro. Cette règle s'applique aux calculs, aux API et aux graphiques ; toute modification de ces parcours doit la conserver.
 

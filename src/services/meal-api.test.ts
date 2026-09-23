@@ -75,7 +75,7 @@ describe("legacy meal API adapter", () => {
     expect(legacyAnalysisToStructured({ ingredients: [], calories: { low: 400, high: 600 } })).toBeNull();
   });
 
-  it("normalizes a stored legacy analysis before sending it to native clients", () => {
+  it("normalizes a stored legacy analysis before returning it to clients", () => {
     const legacyMeal = {
       ...meal,
       analysis: {
