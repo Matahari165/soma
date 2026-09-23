@@ -39,27 +39,26 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const averageRecoveryScore = nullable(data.averageRecoveryScore);
   const averageEffortScore = nullable(data.averageEffortScore);
   const averageCaloriesKcal = nullable(data.averageCaloriesKcal);
+  const [initialCalories] = useState(() => nullable(data.caloriesKcal));
   const caloriesRef = useRef<number|null>(nullable(data.caloriesKcal));
   const traceReadyRef = useRef(nullable(data.caloriesKcal) !== null);
-  const [traceReady, setTraceReady] = useState(traceReadyRef.current);
-  const [traceSettled, setTraceSettled] = useState(false);
+  const [eventReady, setEventReady] = useState(false);
+  const [traceSettledState, setTraceSettled] = useState(false);
+  const traceReady = eventReady || nullable(data.caloriesKcal) !== null;
+  const traceSettled = traceSettledState || (traceReady && nullable(data.caloriesKcal) !== initialCalories);
   const [calories,setCalories] = useState<number|null>(nullable(data.caloriesKcal));
   const calorieTargetRef = useRef<number|null>(nullable(data.calorieTarget));
   const [calorieTarget,setCalorieTarget] = useState<number|null>(nullable(data.calorieTarget));
   useEffect(()=>{
     const next=nullable(data.caloriesKcal);
-    if (traceReadyRef.current && caloriesRef.current !== next) setTraceSettled(true);
-    if (next !== null) {
-      traceReadyRef.current = true;
-      setTraceReady(true);
-    }
+    if (next !== null) traceReadyRef.current = true;
     caloriesRef.current=next;
     startTransition(()=>setCalories(next));
   },[data.caloriesKcal]);
   useEffect(()=>{
     if (traceReady) return;
     // Le journal peut ne jamais répondre (erreur ou emplacement non monté).
-    const fallback = window.setTimeout(() => { traceReadyRef.current = true; setTraceReady(true); }, 1200);
+    const fallback = window.setTimeout(() => { traceReadyRef.current = true; setEventReady(true); }, 1200);
     return () => window.clearTimeout(fallback);
   },[traceReady]);
   useEffect(()=>{
@@ -85,7 +84,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         const changed=caloriesRef.current!==nextCalories;
         if (traceReadyRef.current && changed) setTraceSettled(true);
         traceReadyRef.current=true;
-        setTraceReady(true);
+        setEventReady(true);
         caloriesRef.current=nextCalories;
         setCalories(nextCalories);
         calorieTargetRef.current=nextTarget;
