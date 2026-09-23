@@ -12,9 +12,6 @@ const MOTION_TARGETS = [
   ".settings-page > header",
   ".settings-layout > *",
   "#main-page-content > header",
-  ".lab-intro .arrival-heading",
-  ".lab-intro .arrival-art",
-  ".strongest-effects",
 ].join(",");
 
 /**
