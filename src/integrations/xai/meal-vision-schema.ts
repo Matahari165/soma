@@ -120,7 +120,7 @@ export function mealAnalysisJsonSchema() {
     additionalProperties: false,
     required: ["summary", "dishType", "calorieAnalysis", "foods", "totals", "confidence", "uncertainties", "uncertaintySignals"],
     properties: {
-      summary: { type: "string", maxLength: 800 },
+      summary: { type: "string", maxLength: 160 },
       dishType: { anyOf: [{ type: "string", maxLength: 80 }, { type: "null" }] },
       calorieAnalysis: { anyOf: [{ type: "string", maxLength: 500 }, { type: "null" }] },
       foods: { type: "array", maxItems: 30, items: food },

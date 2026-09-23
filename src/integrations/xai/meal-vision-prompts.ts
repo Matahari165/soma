@@ -9,7 +9,7 @@ import {
 import type { MealVisionInput, MealVisionTextInput } from "./meal-vision-types";
 
 /** Bump these identifiers whenever the provider contract changes. */
-export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v5";
+export const MEAL_ANALYSIS_PROMPT_VERSION = "meal-analysis-prompt-v6";
 export const MEAL_ANALYSIS_SCHEMA_VERSION = "meal-analysis-schema-v2";
 
 export function photoAlias(index: number) {
@@ -79,9 +79,15 @@ function correctionPrompt(correction: MealAnalysisCorrection | null | undefined)
     "   - Renseigne son rôle dans course (ex : 'dessert', 'starter', 'side', 'main') et ses macros/calories de façon cohérente.",
     "4. Mets à jour la liste complète des foods du repas pour combiner les aliments conservés et les ajouts/modifications.",
     "5. Recalcule intégralement les totals (calories, protéines, glucides, lipides, fibres, sucres) pour refléter fidèlement le repas complet après modification.",
-    "6. Mets à jour le summary et calorieAnalysis pour refléter l'ensemble du repas mis à jour.",
+    "6. Réécris summary pour décrire le repas complet après correction, sans recopier la demande de correction. Garde calorieAnalysis à null.",
   ].join("\n");
 }
+
+const MEAL_PRESENTATION_PROMPT = [
+  "summary est obligatoire : une seule phrase courte en français (160 caractères maximum) sur la préparation ou une limite importante de l'analyse. Si rien ne distingue le repas, donne une description sobre de l'ensemble.",
+  "Ne répète pas dans summary la note utilisateur, la liste foods, les calories ou les macronutriments déjà présents dans totals. N'ajoute ni jugement léger/copieux, ni conseil alimentaire.",
+  "calorieAnalysis doit être null : ce champ reste présent uniquement pour le contrat existant. Les calories et macros sont fournies par totals, les incertitudes concrètes par uncertainties et uncertaintySignals. N'ajoute aucun champ au JSON demandé.",
+].join(" ");
 
 export function makeTextPrompt(input: MealVisionTextInput) {
   const hasCorrection = Boolean(input.correction);
@@ -100,7 +106,7 @@ export function makeTextPrompt(input: MealVisionTextInput) {
     "Estime la nutrition en fourchettes larges, pas en fausse précision. Pour chaque fourchette non-nulle, fournis low, likely et high avec low <= likely <= high. Utilise null quand un nutriment ne peut pas être estimé de façon responsable.",
     MEAL_SUGAR_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Ne fabrique aucune quantité : quantity et estimatedGrams restent null quand la description ne permet pas une estimation responsable.",
-    "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
+    MEAL_PRESENTATION_PROMPT,
     "confidence à low par défaut, sauf si la description est très précise (aliments, quantités et préparation explicites). Remplis uncertaintySignals avec des codes structurés et un détail concret pour chaque incertitude importante ; conserve aussi uncertainties pour une explication lisible.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,
     `User description: ${input.note}`,
@@ -135,7 +141,7 @@ export function makePrompt(input: MealVisionInput) {
     "Estimate portion sizes and nutrition as ranges, not false precision. For every non-null range provide low, likely, and high values with low <= likely <= high. Use null when a nutrient cannot be estimated responsibly.",
     MEAL_SUGAR_CONTRACT_PROMPT,
     "Ne demande jamais à l'utilisateur de saisir des calories ou des grammes. Les champs de confiance et d'incertitude sont internes au contrat, pas une consigne d'affichage.",
-    "calorieAnalysis : 1-2 phrases en français avec la fourchette likely des calories et une appréciation sobre (léger, modéré, copieux), ou null si non estimable.",
+    MEAL_PRESENTATION_PROMPT,
     "Include the main preparation (for example grilled, fried, raw, or with sauce) only when visible or stated.",
     "Return a concise summary, itemized foods, total calories and macros, confidence, legacy uncertainties, and structured uncertaintySignals with code, field, foodId, severity, and concrete detail.",
     `Meal slot: ${input.mealType}. Date: ${input.mealDate}.`,

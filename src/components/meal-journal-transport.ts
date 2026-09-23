@@ -209,6 +209,22 @@ export async function defaultAnalyze({ date, slot, meal, files, photoFiles, corr
   }
 
   const body = await readJson(response);
+  if (response.status === 202 || body?.queued) {
+    options.onProgress?.({ phase: "Analyse en cours…", foods: [] });
+    for (let attempt = 0; attempt < 45; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2_000));
+      const statusResponse = await fetchMealWithTimeout(
+        `/api/meals/${encodeURIComponent(mealId)}/analyze`,
+        { cache: "no-store", headers: { "X-Analysis-Request-Id": analysisRequestId } },
+        MEAL_ANALYSIS_STATUS_TIMEOUT_MS,
+        { operation: "load", requestId: analysisRequestId },
+      );
+      const statusBody = await readJson(statusResponse);
+      if (statusBody?.analysis?.status === "failed") throw new Error(statusBody.analysis.error || "L’analyse du repas a échoué.");
+      if (statusBody?.analysis?.status === "completed" && statusBody.meal) return apiMealToRecord(statusBody.meal);
+    }
+    throw new Error("L’analyse se poursuit. Réessaie dans un instant pour voir le résultat enregistré.");
+  }
   if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("The server did not return the analyzed meal.");
   return apiMealToRecord(body.meal);
 }

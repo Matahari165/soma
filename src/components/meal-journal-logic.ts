@@ -213,7 +213,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
   const calories = normalizedApiRange(analysis.calories);
   const proteinGrams = normalizedApiRange(analysis.proteinGrams);
   return {
-    summary: "Analysis reviewed and confirmed.",
+    summary: analysis.summary?.trim() ? analysis.summary.trim().slice(0, 500) : "Analysis reviewed and confirmed.",
     dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
     calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
     foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({
@@ -226,6 +226,7 @@ export function recordAnalysisToApi(analysis: MealAnalysis) {
       parentId: ingredient.parentId ?? null,
       course: ingredient.course ?? null,
       countedInTotals: ingredient.countedInTotals,
+      alcoholic: ingredient.alcoholic,
       foodGroups: ingredient.foodGroups,
       varietyKey: ingredient.varietyKey ?? null,
       evidence: ingredient.evidence,
