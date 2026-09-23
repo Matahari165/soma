@@ -376,7 +376,7 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("text-sm font-medium text-content-primary truncate");
+    expect(html).toContain("journal-habit-name text-content-primary truncate");
     expect(html).toContain("journal-header-validate");
     expect(html).toContain("text-content-secondary hover:text-content-primary");
     expect(html).toContain('aria-label="Edit protocol"');

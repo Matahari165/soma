@@ -1389,3 +1389,112 @@
   transform: scale(0.98);
   transition: transform 150ms ease;
 }
+.personalLabType {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.personalLabType > div:first-of-type {
+  align-items: center;
+  min-height: 28px;
+  position: relative;
+}
+
+.personalLabType textarea {
+  min-height: 36px;
+  height: 36px;
+  padding: 8px 10px;
+  resize: none;
+  transition: height 420ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.personalLabType textarea:focus,
+.personalLabType textarea:not(:placeholder-shown) {
+  height: 112px;
+}
+
+.personalLabType textarea::placeholder {
+  color: var(--lab-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.personalLabIngredients {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.personalLabNutritionRow {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.personalLabNutrients {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 10px;
+  margin: 0 0 0 auto;
+}
+
+.personalLabNutrient {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.personalLabNutrient dt,
+.personalLabNutrient dd {
+  color: var(--lab-text-secondary);
+}
+
+.personalLabNutrient dd {
+  margin: 0;
+}
+
+.personalLabType h3 {
+  font-family: var(--font-soma-mono), "SF Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.personalLabType button {
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 13px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.personalLabType button[aria-label^="Take photo"],
+.personalLabType button[aria-label^="Choose photos"] {
+  padding-inline: 6px;
+}
+
+.personalLabType button[aria-label^="Analyze"] {
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+
+.personalLabSkip {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  min-height: 44px;
+  transform: translateY(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personalLabType textarea {
+    transition: none;
+  }
+}
