@@ -53,23 +53,56 @@ import {
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
 import {
-  classifyMealClientError,
-  fetchMealWithTimeout,
-  MEAL_ANALYSIS_REQUEST_TIMEOUT_MS,
-  MEAL_ANALYSIS_STATUS_TIMEOUT_MS,
   visibleAnalysisError,
 } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import { LabMealCard, type MealDesignVariant } from "@/components/lab/meal-card-variants";
+import {
+  calorieProgressForDisplay,
+  compactDayLabel,
+  emptyData,
+  emptyMeal,
+  firstAvailableMealSlot,
+  formatDate,
+  formatIngredientLabel,
+  formatLowHigh,
+  groupIngredientSections,
+  groupMealIngredients,
+  ingredientCourse,
+  ingredientNutritionLabel,
+  likelyLabel,
+  localDateFor,
+  mealHistoryDates,
+  mealLabelWithArticle,
+  mealPhotoLimitMessage,
+  mealSlotForLocalTime,
+  nextMealPriorityBoundary,
+  normalizeData,
+  normalizeMeal,
+  normalizedDisplayText,
+  recordAnalysisToApi,
+  shiftIsoDate,
+  statusLabel,
+  sumLikelyDay,
+  type DayTotal,
+  type MealIngredientTree,
+} from "./meal-journal-logic";
+import {
+  defaultAnalyze,
+  defaultLoad,
+  defaultLoadAnalysisStatus,
+  defaultRemoveMeal,
+  defaultRemovePhoto,
+  defaultSave,
+  defaultSetEntryState,
+  defaultSetPhotoOrigin,
+  type MealAnalysisProgress,
+} from "./meal-journal-transport";
 import styles from "./meal-journal.module.css";
 
 export { apiMealToRecord, MEAL_SLOTS, visibleAnalysisError };
 export type { MealEntryState } from "@/domain/meals";
-export type MealAnalysisProgress = {
-  phase?: string;
-  dishType?: string;
-  foods: string[];
-};
+export type { MealAnalysisProgress } from "./meal-journal-transport";
 export type {
   AnalyzeMealInput,
   MealAnalysis,
@@ -85,6 +118,21 @@ export type {
   NutritionRange,
   Rating,
 };
+
+export {
+  calorieProgressForDisplay,
+  defaultAnalyze,
+  defaultRemoveMeal,
+  defaultSave,
+  defaultSetEntryState,
+  firstAvailableMealSlot,
+  groupMealIngredients,
+  mealHistoryDates,
+  mealPhotoLimitMessage,
+  mealSlotForLocalTime,
+  recordAnalysisToApi,
+};
+export type { DayTotal, MealIngredientTree } from "./meal-journal-logic";
 
 const COURSE_LABELS: Record<MealFoodCourse, string> = {
   starter: "Starter",
@@ -108,15 +156,6 @@ function readStoredDraftNote(date: string, slot: MealSlot) {
   } catch {
     return "";
   }
-}
-
-function formatIngredientLabel(ingredient: MealIngredient) {
-  // Keep the quantity in one place. The model can return both a human portion
-  // (for example "300 g") and estimatedGrams; displaying both duplicates the
-  // same information in the journal.
-  const quantity = ingredient.portion.trim() || (typeof ingredient.estimatedGrams === "number" ? `${Math.round(ingredient.estimatedGrams)} g` : "");
-  const preparation = ingredient.preparation?.trim() ? ` · ${ingredient.preparation.trim()}` : "";
-  return `${ingredient.name.trim()}${quantity ? ` (${quantity})` : ""}${preparation}`;
 }
 
 type Props = {
@@ -152,38 +191,6 @@ const SLOT_LABELS: Record<MealSlot, string> = {
   snack: "Snack",
 };
 
-export function mealSlotForLocalTime(value: Date = new Date()): MealSlot | null {
-  const hour = value.getHours();
-  if (hour >= 6 && hour < 11) return "breakfast";
-  if (hour >= 11 && hour < 16) return "lunch";
-  if (hour === 16) return "snack";
-  if (hour >= 17 && hour < 24) return "dinner";
-  return null;
-}
-
-function localDateFor(value: Date) {
-  const offset = value.getTimezoneOffset() * 60_000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 10);
-}
-
-function nextMealPriorityBoundary(value: Date) {
-  const next = new Date(value);
-  const hour = value.getHours();
-  if (hour < 6) next.setHours(6, 0, 0, 0);
-  else if (hour < 11) next.setHours(11, 0, 0, 0);
-  else if (hour < 16) next.setHours(16, 0, 0, 0);
-  else if (hour < 17) next.setHours(17, 0, 0, 0);
-  else {
-    next.setDate(next.getDate() + 1);
-    next.setHours(0, 0, 0, 0);
-  }
-  return next;
-}
-
-function mealLabelWithArticle(slot: MealSlot) {
-  return SLOT_LABELS[slot].toLowerCase();
-}
-
 const ORIGIN_LABELS: Record<MealOrigin, string> = {
   homemade: "Homemade",
   prepared: "Prepared / store-bought",
@@ -194,82 +201,6 @@ const RATING_LABELS = {
   mouthHeat: "Mouth heat",
   stomachLoad: "Stomach heaviness",
 } as const;
-
-function shiftIsoDate(date: string, days: number) {
-  const value = new Date(`${date}T12:00:00`);
-  value.setDate(value.getDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
-export function mealHistoryDates(selectedDate: string, today = todayInLocalTime(), count = 7) {
-  const start = selectedDate < shiftIsoDate(today, -3) ? shiftIsoDate(selectedDate, 3) : today;
-  return Array.from({ length: Math.max(1, Math.floor(count)) }, (_, index) => shiftIsoDate(start, -index));
-}
-
-export function calorieProgressForDisplay(calories: number | null, target: number) {
-  if (calories === null) return null;
-  if (!Number.isFinite(target) || target <= 0) return 0;
-  return Math.max(0, Math.round((calories / target) * 100));
-}
-
-export type MealIngredientTree = {
-  ingredient: MealIngredient;
-  children: MealIngredientTree[];
-};
-
-export function groupMealIngredients(ingredients: readonly MealIngredient[]): MealIngredientTree[] {
-  const nodes = ingredients.map((ingredient) => ({ ingredient, children: [] as MealIngredientTree[] }));
-  const byId = new Map(nodes.map((node) => [node.ingredient.id, node]));
-  const roots: MealIngredientTree[] = [];
-
-  for (const node of nodes) {
-    const parentId = node.ingredient.parentId?.trim();
-    const parent = parentId ? byId.get(parentId) : undefined;
-    if (parent && parent !== node) parent.children.push(node);
-    else roots.push(node);
-  }
-  return roots;
-}
-
-function ingredientCourse(node: MealIngredientTree, inferUnparentedCourse: boolean): MealFoodCourse | null {
-  if (node.ingredient.course) return node.ingredient.course;
-  if (node.ingredient.kind === "dish") return "main";
-  if (!inferUnparentedCourse) return null;
-  return node.ingredient.foodGroups?.some((group) => group === "fruit" || group === "sweet") ? "dessert" : "side";
-}
-
-function groupIngredientSections(nodes: readonly MealIngredientTree[]) {
-  const sections: Array<{ key: string; course: MealFoodCourse | null; nodes: MealIngredientTree[] }> = [];
-  const hasDishRoot = nodes.some((node) => node.ingredient.kind === "dish");
-  for (const node of nodes) {
-    const course = ingredientCourse(node, hasDishRoot && !node.ingredient.parentId);
-    const section = course ? sections.find((candidate) => candidate.course === course) : undefined;
-    if (section) section.nodes.push(node);
-    else sections.push({ key: `${course ?? "unclassified"}-${node.ingredient.id}`, course, nodes: [node] });
-  }
-  return sections;
-}
-
-function hasNutritionValue(range: NutritionRange | undefined) {
-  return Boolean(range && (range.low !== null || range.likely !== null && range.likely !== undefined || range.high !== null));
-}
-
-function ingredientNutritionLabel(ingredient: MealIngredient) {
-  const parts = [
-    hasNutritionValue(ingredient.calories) ? `${likelyLabel(ingredient.calories)} kcal` : null,
-    hasNutritionValue(ingredient.proteinGrams) ? `${likelyLabel(ingredient.proteinGrams)} g protein` : null,
-    hasNutritionValue(ingredient.carbohydratesGrams) ? `${likelyLabel(ingredient.carbohydratesGrams)} g carbs` : null,
-    hasNutritionValue(ingredient.fatGrams) ? `${likelyLabel(ingredient.fatGrams)} g fat` : null,
-    hasNutritionValue(ingredient.fiberGrams) ? `${likelyLabel(ingredient.fiberGrams)} g fiber` : null,
-    hasNutritionValue(ingredient.sugarGrams) ? `${likelyLabel(ingredient.sugarGrams)} g sugar` : null,
-    hasNutritionValue(ingredient.addedSugarGrams) ? `${likelyLabel(ingredient.addedSugarGrams)} g added sugar` : null,
-  ];
-  return parts.filter((part): part is string => Boolean(part)).join(" · ");
-}
-
-function normalizedDisplayText(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-}
 
 function IngredientTreeItem({ node }: { node: MealIngredientTree }) {
   const nutrition = ingredientNutritionLabel(node.ingredient);
@@ -295,444 +226,6 @@ function IngredientGroups({ analysis }: { analysis: MealAnalysis }) {
       </li>)}
     </ul>
   </div>;
-}
-
-function compactDayLabel(date: string, today?: string) {
-  const value = new Date(`${date}T12:00:00`);
-  const relativeDays = today
-    ? Math.round((new Date(`${today}T12:00:00`).getTime() - value.getTime()) / 86_400_000)
-    : null;
-  const weekday = relativeDays === 0
-    ? "Today"
-    : relativeDays === 1
-      ? "Yesterday"
-      : relativeDays === 2
-        ? "2 days ago"
-        : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(value);
-  return {
-    weekday,
-    day: new Intl.DateTimeFormat("en-US", today ? { month: "short", day: "numeric" } : { day: "numeric" }).format(value),
-  };
-}
-
-function emptyData(date: string): MealJournalData {
-  return { date, meals: { breakfast: null, lunch: null, snack: null, dinner: null } };
-}
-
-function emptyMeal(date: string, slot: MealSlot): MealRecord {
-  return { id: randomId("meal"), date, slot, photos: [], note: "", analysis: null, mouthHeat: null, stomachLoad: null, status: "draft", entryState: "recorded", error: null, confirmedAt: null };
-}
-
-export function firstAvailableMealSlot(meals: MealJournalData["meals"], disabledSlots: readonly MealSlot[] = []) {
-  return MEAL_SLOTS.find((slot) => !disabledSlots.includes(slot) && !meals[slot]) ?? null;
-}
-
-/**
- * Returns the recovery copy for an over-limit selection without changing the
- * accepted photos. Keeping this pure makes the boundary easy to test and
- * keeps the client message clear even when the API is not reached.
- */
-export function mealPhotoLimitMessage(activePhotoCount: number, incomingPhotoCount: number, maxPhotos = MAX_MEAL_PHOTOS) {
-  const available = Math.max(0, maxPhotos - Math.max(0, activePhotoCount));
-  const rejected = Math.max(0, incomingPhotoCount - available);
-  if (rejected === 0) return null;
-  if (available === 0) return `Maximum limit of ${maxPhotos} photos per meal reached. Remove a photo before adding another.`;
-  const subject = `${rejected} photo${rejected > 1 ? "s" : ""}`;
-  return `Maximum ${maxPhotos} photos per meal. ${subject} ${rejected > 1 ? "were not added" : "was not added"}.`;
-}
-
-function normalizeMeal(raw: MealRecord, date: string, slot: MealSlot): MealRecord {
-  return {
-    ...emptyMeal(date, slot),
-    ...raw,
-    date: raw.date || date,
-    slot: raw.slot || slot,
-    photos: Array.isArray(raw.photos) ? raw.photos.map((photo) => ({ ...photo, origin: photo.origin ?? null })) : [],
-    note: typeof raw.note === "string" ? raw.note.slice(0, 500) : "",
-    analysis: raw.analysis ? {
-      ...raw.analysis,
-      ingredients: Array.isArray(raw.analysis.ingredients) ? raw.analysis.ingredients : [],
-      calories: raw.analysis.calories ?? { low: null, high: null },
-      proteinGrams: raw.analysis.proteinGrams ?? { low: null, high: null },
-    } : null,
-    mouthHeat: raw.mouthHeat ?? null,
-    stomachLoad: raw.stomachLoad ?? null,
-    status: raw.status ?? "draft",
-    entryState: raw.entryState ?? "recorded",
-  };
-}
-
-function normalizeData(raw: MealJournalData, date: string): MealJournalData {
-  return {
-    date: raw.date || date,
-    meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, raw.meals?.[slot] ? normalizeMeal(raw.meals[slot] as MealRecord, date, slot) : null])) as MealJournalData["meals"],
-  };
-}
-
-async function readJson(response: Response) {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(typeof body?.error === "string" ? body.error : "Meals are currently unavailable.");
-    Object.assign(error, { code: typeof body?.code === "string" ? body.code : "UNKNOWN_ANALYSIS_ERROR", requestId: typeof body?.requestId === "string" ? body.requestId : response.headers.get("X-Analysis-Request-Id") });
-    throw error;
-  }
-  return body;
-}
-
-async function defaultLoad(date: string) {
-  const response = await fetchMealWithTimeout(`/api/meals?from=${encodeURIComponent(date)}&to=${encodeURIComponent(date)}`, { cache: "no-store" }, 15_000, { operation: "load" });
-  const body = await readJson(response) as { meals?: unknown[] };
-  const meals = Array.isArray(body.meals) ? body.meals.map(apiMealToRecord) : [];
-  return { date, meals: Object.fromEntries(MEAL_SLOTS.map((slot) => [slot, meals.find((meal) => meal.slot === slot) ?? null])) } as MealJournalData;
-}
-
-type UploadedPhotoPair = { localPhotoId: string; photo: MealPhoto };
-
-type DefaultAnalyzeOptions = {
-  onMealCreated?: (mealId: string) => void;
-  onPhotosUploaded?: (photos: UploadedPhotoPair[]) => void;
-  onProgress?: (progress: MealAnalysisProgress) => void;
-};
-
-export async function defaultAnalyze({ date, slot, meal, files, photoFiles, correction }: AnalyzeMealInput, options: DefaultAnalyzeOptions = {}) {
-  const hasPhotoEvidence = files.length > 0 || (meal.status !== "confirmed" && meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available"));
-  const hasTextEvidence = Boolean(meal.note.trim());
-  const hasCorrection = Boolean(correction?.trim());
-  if (!hasPhotoEvidence && !hasTextEvidence && !hasCorrection) throw new Error("Add a photo or a description of the meal before starting analysis.");
-  const analysisRequestId = randomId("analysis");
-  let mealId = meal.id;
-  const isNewMeal = mealId.startsWith("meal-");
-  if (isNewMeal) {
-    const createResponse = await fetchMealWithTimeout("/api/meals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
-      body: JSON.stringify({ mealDate: date, mealType: slot, status: "draft", entryState: "recorded", ...(meal.note.trim() ? { note: meal.note.trim().slice(0, 500) } : {}) }),
-    }, 15_000, { operation: "create", requestId: analysisRequestId });
-    const created = await readJson(createResponse) as { meal: { id: string } };
-    mealId = created.meal.id;
-    options.onMealCreated?.(mealId);
-  }
-  const uploadEntries = photoFiles?.length
-    ? photoFiles
-      .map(({ photoId, file }) => ({ photo: meal.photos.find((candidate) => candidate.id === photoId), file }))
-      .filter((entry): entry is { photo: MealPhoto; file: File } => Boolean(entry.photo))
-    : meal.photos.flatMap((photo) => {
-      const file = filesByFilename(files, photo.filename);
-      return file ? [{ photo, file }] : [];
-    });
-  if (!isNewMeal) {
-    await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: meal.note.trim().slice(0, 500), entryState: "recorded" }) }, 15_000, { operation: "update", requestId: analysisRequestId }));
-    await Promise.all(meal.photos.filter((photo) => !photo.id.startsWith("photo-") && photo.comment != null).map(async (photo) =>
-      readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/photos/${encodeURIComponent(photo.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: photo.comment }) }, 15_000, { operation: "update", requestId: analysisRequestId })),
-    ));
-  }
-  if (files.length > 0) {
-    const uploadFiles = uploadEntries.map((entry) => entry.file);
-    const origins = uploadEntries.map((entry) => entry.photo.origin ?? "unknown");
-    if (uploadFiles.length !== files.length) throw new Error("Selected photos no longer match the meal.");
-    for (const [index, entry] of uploadEntries.entries()) {
-      const file = uploadFiles[index];
-      if (file.size > 4 * 1024 * 1024) throw new Error("Cette photo est trop lourde pour l’envoi. Choisis une photo plus légère.");
-      const form = new FormData();
-      form.set("origin", origins[index]);
-      form.set("comment_0", entry.photo.comment ?? "");
-      form.append("photos", file, file.name);
-      const uploadKey = `meal-${mealId}-photo-${entry.photo.id}`;
-      const uploadedBody = await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/photos`, { method: "POST", headers: { "Idempotency-Key": uploadKey }, body: form }, 60_000, { operation: "upload", requestId: analysisRequestId })) as { photos?: MealPhoto[] };
-      if (!Array.isArray(uploadedBody.photos) || uploadedBody.photos.length !== 1) throw new Error("The server did not confirm the photo for the meal.");
-      options.onPhotosUploaded?.([{ localPhotoId: entry.photo.id, photo: uploadedBody.photos[0] }]);
-    }
-  }
-  const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(mealId)}/analyze`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Analysis-Request-Id": analysisRequestId,
-      "Idempotency-Key": analysisRequestId
-    },
-    body: JSON.stringify({
-      stream: false,
-      force: Boolean(correction || meal.analysis),
-      idempotencyKey: analysisRequestId,
-      ...(correction ? { correction } : {})
-    })
-  }, MEAL_ANALYSIS_REQUEST_TIMEOUT_MS, { operation: "analyze", requestId: analysisRequestId });
-
-  if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let currentProgress: MealAnalysisProgress = { phase: "Connexion…", foods: [] as string[], dishType: undefined };
-    let buffer = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        let currentEvent = "";
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            const dataStr = line.slice(6).trim();
-            if (!dataStr) continue;
-            try {
-              const data = JSON.parse(dataStr);
-              if (currentEvent === "phase") {
-                const phasesMap: Record<string, string> = {
-                  "starting": "Préparation des photos…",
-                  "downloading_photos": "Préparation des photos…",
-                  "reasoning": "Réflexion nutritionnelle…",
-                  "analyzing": "Analyse du repas…",
-                  "validating": "Validation des données…",
-                  "finalizing": "Enregistrement…"
-                };
-                currentProgress = { ...currentProgress, phase: phasesMap[data.phase] || "Analyse en cours…" };
-                options.onProgress?.(currentProgress);
-              } else if (currentEvent === "dish_detected") {
-                currentProgress = { ...currentProgress, dishType: data.dishType, phase: `Plat : ${data.dishType}` };
-                options.onProgress?.(currentProgress);
-              } else if (currentEvent === "food_detected") {
-                if (!currentProgress.foods.includes(data.food)) {
-                  currentProgress = { ...currentProgress, phase: "Identification des aliments…", foods: [...currentProgress.foods, data.food] };
-                  options.onProgress?.(currentProgress);
-                }
-              } else if (currentEvent === "complete") {
-                return apiMealToRecord(data.meal);
-              } else if (currentEvent === "error") {
-                throw new Error(data.error || "L’analyse a échoué.");
-              }
-            } catch (e) {
-              if (currentEvent === "error") throw e;
-            }
-          }
-        }
-      }
-    } catch (readError) {
-      // If the stream is interrupted (network glitch, client timeout, or disconnect),
-      // verify if the server completed the analysis in the background before failing.
-      try {
-        const statusRes = await fetchMealWithTimeout(
-          `/api/meals/${encodeURIComponent(mealId)}/analyze`,
-          { cache: "no-store" },
-          5_000,
-          { operation: "load" }
-        );
-        const statusBody = await readJson(statusRes) as { meal?: unknown };
-        if (statusBody?.meal) {
-          return apiMealToRecord(statusBody.meal);
-        }
-      } catch {
-        // Fall through to throw classified error
-      }
-      throw classifyMealClientError(readError, "analyze", analysisRequestId);
-    } finally {
-      try {
-        reader.releaseLock();
-      } catch {
-        // Reader may already be released
-      }
-    }
-  }
-
-  const body = await readJson(response);
-  if (!body || typeof body.meal !== "object" || body.meal === null) throw new Error("The server did not return the analyzed meal.");
-  return apiMealToRecord(body.meal);
-}
-
-export async function defaultSave(meal: MealRecord) {
-  let mealId = meal.id;
-  if (mealId.startsWith("meal-")) {
-    const createResponse = await fetch("/api/meals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
-      body: JSON.stringify({ mealDate: meal.date, mealType: meal.slot, status: "draft", entryState: meal.entryState ?? "recorded", ...(meal.note.trim() ? { note: meal.note.trim().slice(0, 500) } : {}) }),
-    });
-    const created = await readJson(createResponse) as { meal: { id: string } };
-    mealId = created.meal.id;
-  }
-  const response = await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-    status: "confirmed",
-    entryState: meal.entryState ?? "recorded",
-    note: meal.note.trim().slice(0, 500),
-    mouthWarmthIntensity: serializeRating(meal.mouthHeat),
-    stomachOverfullIntensity: serializeRating(meal.stomachLoad),
-    ...(meal.analysis ? { confirmedAnalysis: recordAnalysisToApi(meal.analysis) } : {}),
-  }) });
-  const body = await readJson(response);
-  return body.meal ? apiMealToRecord(body.meal) : meal;
-}
-
-/** Persist an explicit slot state without creating nutrition or AI evidence. */
-export async function defaultSetEntryState(meal: MealRecord, entryState: MealEntryState) {
-  if (meal.id.startsWith("meal-")) {
-    const response = await fetch("/api/meals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": meal.id },
-      body: JSON.stringify({ mealDate: meal.date, mealType: meal.slot, entryState }),
-    });
-    const body = await readJson(response) as { meal?: unknown };
-    if (!body.meal || typeof body.meal !== "object") throw new Error("The slot status could not be saved.");
-    const saved = apiMealToRecord(body.meal);
-    return { ...saved, note: meal.note, photos: meal.photos, analysis: meal.analysis };
-  }
-  const response = await fetch(`/api/meals/${encodeURIComponent(meal.id)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entryState }),
-  });
-  const body = await readJson(response) as { meal?: unknown };
-  if (!body.meal || typeof body.meal !== "object") throw new Error("The slot status could not be saved.");
-  return apiMealToRecord(body.meal);
-}
-
-async function defaultRemovePhoto(mealId: string, photoId: string) {
-  await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}/photos/${encodeURIComponent(photoId)}`, { method: "DELETE" }));
-}
-
-export async function defaultRemoveMeal(mealId: string) {
-  await readJson(await fetch(`/api/meals/${encodeURIComponent(mealId)}`, { method: "DELETE" }));
-}
-
-function filesByFilename(files: File[], filename?: string) {
-  return filename ? files.find((file) => file.name === filename) : undefined;
-}
-
-function serializeRating(value: Rating | null) {
-  return value === null ? null : value === 0 ? "none" : value;
-}
-
-function normalizedApiRange(range: NutritionRange | undefined) {
-  if (!range || range.low === null || range.high === null) return null;
-  const low = Math.min(range.low, range.high);
-  const high = Math.max(range.low, range.high);
-  const likely = typeof range.likely === "number" && range.likely >= low && range.likely <= high ? range.likely : null;
-  return likely === null ? { low, high } : { low, likely, high };
-}
-
-export function recordAnalysisToApi(analysis: MealAnalysis) {
-  const calories = normalizedApiRange(analysis.calories);
-  const proteinGrams = normalizedApiRange(analysis.proteinGrams);
-  return {
-    summary: "Analysis reviewed and confirmed.",
-    dishType: analysis.dishType?.trim() ? analysis.dishType.trim().slice(0, 80) : null,
-    calorieAnalysis: analysis.calorieAnalysis?.trim() ? analysis.calorieAnalysis.trim().slice(0, 500) : null,
-    foods: analysis.ingredients.filter((ingredient) => ingredient.name.trim()).map((ingredient) => ({
-      id: ingredient.sourceId,
-      name: ingredient.name.trim(),
-      preparation: ingredient.preparation?.trim() || null,
-      portion: ingredient.portion.trim() || null,
-      estimatedGrams: ingredient.estimatedGrams ?? null,
-      kind: ingredient.kind,
-      parentId: ingredient.parentId ?? null,
-      course: ingredient.course ?? null,
-      countedInTotals: ingredient.countedInTotals,
-      foodGroups: ingredient.foodGroups,
-      varietyKey: ingredient.varietyKey ?? null,
-      evidence: ingredient.evidence,
-      evidenceSource: ingredient.evidenceSource,
-      evidencePhotoIds: ingredient.evidencePhotoIds,
-      quantity: ingredient.quantity ?? null,
-      novaGroup: ingredient.novaGroup ?? null,
-      sugarExposure: ingredient.sugarExposure ?? null,
-      qualityProperties: ingredient.qualityProperties,
-      observation: ingredient.observation,
-      calories: normalizedApiRange(ingredient.calories),
-      proteinGrams: normalizedApiRange(ingredient.proteinGrams),
-      carbohydrateGrams: normalizedApiRange(ingredient.carbohydratesGrams),
-      fatGrams: normalizedApiRange(ingredient.fatGrams),
-      fiberGrams: normalizedApiRange(ingredient.fiberGrams),
-      sugarGrams: normalizedApiRange(ingredient.sugarGrams),
-      addedSugarGrams: normalizedApiRange(ingredient.addedSugarGrams),
-      confidence: ingredient.confidence ?? "medium",
-    })),
-    totals: { calories, proteinGrams, carbohydrateGrams: normalizedApiRange(analysis.carbohydratesGrams), fatGrams: normalizedApiRange(analysis.fatGrams), fiberGrams: normalizedApiRange(analysis.fiberGrams), sugarGrams: normalizedApiRange(analysis.sugarGrams), addedSugarGrams: normalizedApiRange(analysis.addedSugarGrams) },
-    confidence: analysis.confidence ?? "medium",
-    uncertainties: analysis.uncertainties?.slice(0, 12).map((item) => item.slice(0, 300)) ?? [],
-    uncertaintySignals: analysis.uncertaintySignals,
-  };
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${date}T12:00:00`));
-}
-
-function formatRange(range: NutritionRange | undefined, unit: string) {
-  if (!range || (range.low === null && range.high === null)) return "—";
-  if (range.low === range.high || range.high === null) return `${range.low ?? range.high} ${unit}`;
-  if (range.low === null) return `≤ ${range.high} ${unit}`;
-  return `${range.low}–${range.high} ${unit}`;
-}
-
-function formatLowHigh(range: NutritionRange | undefined) {
-  if (!range || (range.low === null && range.high === null)) return "—";
-  return formatRange(range, "").trim();
-}
-
-function likelyOf(range: NutritionRange | undefined): number | null {
-  return typeof range?.likely === "number" ? range.likely : null;
-}
-
-function likelyLabel(range: NutritionRange | undefined) {
-  const likely = likelyOf(range);
-  if (likely !== null) return `${likely}`;
-  if (range?.low !== null && range?.low !== undefined) return `${range.low}`;
-  if (range?.high !== null && range?.high !== undefined) return `${range.high}`;
-  return "—";
-}
-
-type DayTotal = { calories: number | null; protein: number | null; fat: number | null; carbs: number | null; fiber: number | null; addedSugar: number | null };
-
-function sumLikelyDay(meals: MealJournalData["meals"]): DayTotal | null {
-  const confirmed = MEAL_SLOTS.map((slot) => meals[slot]).filter((meal): meal is MealRecord => meal !== null && meal !== undefined && meal.status === "confirmed" && meal.entryState !== "skipped");
-  if (confirmed.length === 0) return null;
-  let calories: number | null = 0;
-  let protein: number | null = 0;
-  let fat: number | null = 0;
-  let carbs: number | null = 0;
-  let fiber: number | null = 0;
-  let addedSugar: number | null = 0;
-  for (const meal of confirmed) {
-    const analysis = meal.analysis;
-    const add = (total: number | null, value: number | null) => total === null || value === null ? null : total + value;
-    calories = add(calories, likelyOf(analysis?.calories));
-    protein = add(protein, likelyOf(analysis?.proteinGrams));
-    fat = add(fat, likelyOf(analysis?.fatGrams));
-    carbs = add(carbs, likelyOf(analysis?.carbohydratesGrams));
-    fiber = add(fiber, likelyOf(analysis?.fiberGrams));
-    addedSugar = add(addedSugar, likelyOf(analysis?.addedSugarGrams));
-  }
-  return {
-    calories: calories === null ? null : Math.round(calories),
-    protein: protein === null ? null : Math.round(protein),
-    fat: fat === null ? null : Math.round(fat),
-    carbs: carbs === null ? null : Math.round(carbs),
-    fiber: fiber === null ? null : Math.round(fiber),
-    addedSugar: addedSugar === null ? null : Math.round(addedSugar),
-  };
-}
-
-function statusLabel(meal: MealRecord | null) {
-  if (!meal) return "";
-  if (meal.entryState === "skipped") return "Skipped";
-  if (meal.status === "error" || meal.error) return "Needs retry";
-  if (meal.status === "confirmed") return "Confirmed";
-  // Older API responses used `review` after analysis. The new flow confirms
-  // successful analyses automatically, so keep that legacy response from
-  // exposing a second review step while the backend rolls forward.
-  if (meal.status === "review" && meal.analysis && !meal.error) return "Finalisation…";
-  if (meal.status === "accepted") return "Analysis queued";
-  if (meal.status === "analyzing") return "Analyzing…";
-  if (meal.status === "review") return "Ready for review";
-  const hasPhotos = meal.photos.some((photo) => (photo.storageStatus ?? "available") === "available");
-  const hasText = Boolean(meal.note.trim());
-  if (hasPhotos && hasText) return "Ready to analyze";
-  if (hasPhotos) return "Photos to analyze";
-  if (hasText) return "Note to analyze";
-  return "Draft";
 }
 
 export const MEAL_NOTE_MAX_LENGTH = 500;
@@ -1484,8 +977,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       await Promise.all(activeMeals.map(async ({ slot, meal }) => {
         if (cancelledAnalysisIds.current.has(meal.id)) return;
         try {
-          const response = await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/analyze`, { cache: "no-store" }, MEAL_ANALYSIS_STATUS_TIMEOUT_MS, { operation: "load" });
-          const body = await readJson(response) as { meal?: unknown };
+          const body = await defaultLoadAnalysisStatus(meal.id);
           if (cancelled || !body.meal) return;
           const next = normalizeMeal(apiMealToRecord(body.meal), selectedDate, slot);
           if (next.status === "accepted" || next.status === "analyzing") setAnalysisProgress((current) => ({ ...current, [slot]: { phase: next.status === "accepted" ? "En attente de l’analyse…" : "Analyse du repas en cours…", foods: [] } }));
@@ -1960,7 +1452,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     if (!meal || meal.id.startsWith("meal-") || photoId.startsWith("photo-")) return;
     try {
       if (api?.updatePhotoOrigin) await api.updatePhotoOrigin(meal.id, photoId, origin);
-      else await readJson(await fetchMealWithTimeout(`/api/meals/${encodeURIComponent(meal.id)}/photos/${encodeURIComponent(photoId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin }) }, 15_000, { operation: "update" }));
+      else await defaultSetPhotoOrigin(meal.id, photoId, origin);
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "The photo origin could not be saved.");
     }
