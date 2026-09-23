@@ -1,18 +1,16 @@
 import "server-only";
 
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 
-import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime, storeNativeAuthCode } from "@/lib/cloudflare/db";
+import { cloudflareDb, createCloudflareAdminClient, hasSupabaseRuntime } from "@/lib/cloudflare/db";
 
 export const SESSION_COOKIE = "soma_session";
 const SESSION_DAYS = 30;
 const SESSION_READ_TIMEOUT_MS = 4_000;
 
-export type SessionPlatform = "web" | "ios" | "macos";
-
-export type DeviceSession = {
+type WebSession = {
   id: string;
-  platform: SessionPlatform;
+  platform: "web";
   deviceName: string;
   createdAt: string;
   expiresAt: string;
@@ -34,7 +32,7 @@ async function sha256(value: string) {
   return Buffer.from(digest).toString("hex");
 }
 
-export async function createSession(userId: string, device: { platform?: SessionPlatform; deviceName?: string; setCookie?: boolean } = {}) {
+export async function createSession(userId: string) {
   const token = randomToken();
   const tokenHash = await sha256(token);
   const sessionId = crypto.randomUUID();
@@ -48,9 +46,8 @@ export async function createSession(userId: string, device: { platform?: Session
     path: "/",
     expires,
   };
-  const platform = device.platform ?? "web";
-  const deviceName = device.deviceName?.trim().slice(0, 80) || (platform === "web" ? "Web browser" : platform === "ios" ? "iPhone" : "Mac");
-  const setCookie = device.setCookie ?? platform === "web";
+  const platform = "web" as const;
+  const deviceName = "Web browser";
 
   if (hasSupabaseRuntime()) {
     const result = await createCloudflareAdminClient().from("soma_sessions").insert({
@@ -63,80 +60,36 @@ export async function createSession(userId: string, device: { platform?: Session
       created_at: now.toISOString(),
     });
     if (result.error) throw new Error(result.error.message);
-    if (setCookie) (await cookies()).set(SESSION_COOKIE, token, cookieOptions);
-    return { token, cookieOptions, session: { id: sessionId, platform, deviceName, createdAt: now.toISOString(), expiresAt: expires.toISOString() } satisfies DeviceSession };
+    (await cookies()).set(SESSION_COOKIE, token, cookieOptions);
+    return { token, cookieOptions, session: { id: sessionId, platform, deviceName, createdAt: now.toISOString(), expiresAt: expires.toISOString() } satisfies WebSession };
   }
 
   const result = await cloudflareDb().prepare(
     "INSERT INTO soma_sessions (token_hash, session_id, user_id, platform, device_name, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   ).bind(tokenHash, sessionId, userId, platform, deviceName, expires.toISOString(), now.toISOString()).run();
   if (!result.success) throw new Error(result.error ?? "Session creation failed.");
-  if (setCookie) (await cookies()).set(SESSION_COOKIE, token, cookieOptions);
-  return { token, cookieOptions, session: { id: sessionId, platform, deviceName, createdAt: now.toISOString(), expiresAt: expires.toISOString() } satisfies DeviceSession };
-}
-
-export async function createNativeAuthCode(userId: string, input: { platform: "ios" | "macos"; pkceChallenge: string }) {
-  const code = randomToken(48);
-  const createdAt = new Date();
-  const expiresAt = new Date(createdAt.getTime() + 2 * 60 * 1_000);
-  await storeNativeAuthCode({
-    code_hash: await sha256(code),
-    user_id: userId,
-    platform: input.platform,
-    device_name: input.platform === "ios" ? "iPhone" : "Mac",
-    pkce_challenge: input.pkceChallenge,
-    created_at: createdAt.toISOString(),
-    expires_at: expiresAt.toISOString(),
-  });
-  return code;
-}
-
-function bearerToken(value: string | null) {
-  const match = value?.match(/^Bearer ([A-Za-z0-9_-]{32,})$/);
-  return match?.[1] ?? null;
+  (await cookies()).set(SESSION_COOKIE, token, cookieOptions);
+  return { token, cookieOptions, session: { id: sessionId, platform, deviceName, createdAt: now.toISOString(), expiresAt: expires.toISOString() } satisfies WebSession };
 }
 
 export async function currentSessionToken() {
-  const authorization = (await headers()).get("authorization");
-  return bearerToken(authorization) ?? (await cookies()).get(SESSION_COOKIE)?.value ?? null;
-}
-
-async function currentBearerToken() {
-  return bearerToken((await headers()).get("authorization"));
+  return (await cookies()).get(SESSION_COOKIE)?.value ?? null;
 }
 
 export async function deleteCurrentSession() {
   const cookieStore = await cookies();
-  const authorizationToken = bearerToken((await headers()).get("authorization"));
-  const token = authorizationToken ?? cookieStore.get(SESSION_COOKIE)?.value ?? null;
+  const token = cookieStore.get(SESSION_COOKIE)?.value ?? null;
   if (token) {
     const tokenHash = await sha256(token);
     if (hasSupabaseRuntime()) await createCloudflareAdminClient().from("soma_sessions").delete().eq("token_hash", tokenHash);
     else await cloudflareDb().prepare("DELETE FROM soma_sessions WHERE token_hash = ?").bind(tokenHash).run();
   }
-  if (!authorizationToken) cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(SESSION_COOKIE);
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const token = await currentSessionToken();
   return getSessionUserForToken(token);
-}
-
-export async function getBearerSessionUser(): Promise<SessionUser | null> {
-  return getSessionUserForToken(await currentBearerToken());
-}
-
-export async function getBearerDeviceSession(): Promise<DeviceSession | null> {
-  const token = await currentBearerToken();
-  if (!token) return null;
-  const tokenHash = await sha256(token);
-  if (!hasSupabaseRuntime()) {
-    const row = await cloudflareDb().prepare("SELECT session_id, platform, device_name, created_at, expires_at FROM soma_sessions WHERE token_hash = ? AND expires_at > ? LIMIT 1").bind(tokenHash, new Date().toISOString()).first<{ session_id: string | null; platform: string | null; device_name: string | null; created_at: string; expires_at: string }>();
-    return row ? sessionFromRow(row)[0] ?? null : null;
-  }
-  const result = await createCloudflareAdminClient().from("soma_sessions").select("session_id,platform,device_name,created_at,expires_at").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
-  if (result.error) throw new Error(result.error.message);
-  return result.data ? sessionFromRow(result.data)[0] ?? null : null;
 }
 
 async function getSessionUserForToken(token: string | null): Promise<SessionUser | null> {
@@ -191,48 +144,6 @@ async function getSessionUserForToken(token: string | null): Promise<SessionUser
     LIMIT 1
   `).bind(await sha256(token), new Date().toISOString()).first<{ id: string; email: string | null; display_name: string }>();
   return row ? { id: row.id, email: row.email, displayName: row.display_name } : null;
-}
-
-export async function sessionUserById(userId: string): Promise<SessionUser | null> {
-  if (hasSupabaseRuntime()) {
-    const result = await createCloudflareAdminClient().from("soma_users").select("id,email,display_name").eq("id", userId).maybeSingle();
-    if (result.error) throw new Error(result.error.message);
-    return result.data ? {
-      id: result.data.id,
-      email: typeof result.data.email === "string" ? result.data.email : null,
-      displayName: typeof result.data.display_name === "string" ? result.data.display_name : "Soma user",
-    } : null;
-  }
-  const row = await cloudflareDb().prepare("SELECT id, email, display_name FROM soma_users WHERE id = ? LIMIT 1").bind(userId).first<{ id: string; email: string | null; display_name: string }>();
-  return row ? { id: row.id, email: row.email, displayName: row.display_name } : null;
-}
-
-export async function listDeviceSessions(userId: string): Promise<DeviceSession[]> {
-  if (!hasSupabaseRuntime()) {
-    const result = await cloudflareDb().prepare("SELECT session_id, platform, device_name, created_at, expires_at FROM soma_sessions WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC").bind(userId, new Date().toISOString()).all<{ session_id: string | null; platform: string | null; device_name: string | null; created_at: string; expires_at: string }>();
-    if (!result.success) throw new Error(result.error ?? "Sessions could not be loaded.");
-    return (result.results ?? []).flatMap(sessionFromRow);
-  }
-  const result = await createCloudflareAdminClient().from("soma_sessions").select("session_id,platform,device_name,created_at,expires_at").eq("user_id", userId).gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false });
-  if (result.error) throw new Error(result.error.message);
-  return (result.data ?? []).flatMap(sessionFromRow);
-}
-
-function sessionFromRow(row: { session_id?: unknown; platform?: unknown; device_name?: unknown; created_at?: unknown; expires_at?: unknown }): DeviceSession[] {
-  if (typeof row.session_id !== "string" || typeof row.created_at !== "string" || typeof row.expires_at !== "string") return [];
-  const platform = row.platform === "ios" || row.platform === "macos" ? row.platform : "web";
-  return [{ id: row.session_id, platform, deviceName: typeof row.device_name === "string" ? row.device_name : "Unknown device", createdAt: row.created_at, expiresAt: row.expires_at }];
-}
-
-export async function revokeDeviceSession(userId: string, sessionId: string) {
-  if (hasSupabaseRuntime()) {
-    const result = await createCloudflareAdminClient().from("soma_sessions").delete().eq("user_id", userId).eq("session_id", sessionId).select("token_hash");
-    if (result.error) throw new Error(result.error.message);
-    return (result.data?.length ?? 0) > 0;
-  }
-  const result = await cloudflareDb().prepare("DELETE FROM soma_sessions WHERE user_id = ? AND session_id = ?").bind(userId, sessionId).run();
-  if (!result.success) throw new Error(result.error ?? "Session could not be revoked.");
-  return Number(result.meta?.changes ?? 0) > 0;
 }
 
 export async function hasCompletedOnboarding(userId: string) {

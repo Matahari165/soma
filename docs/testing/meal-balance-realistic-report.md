@@ -465,13 +465,14 @@ Dimensions du score : toutes indisponibles, car aucun repas conforme n’a attei
 
 ## Reproduction
 
+Ce document et les résultats versionnés associés sont un instantané historique. Les nouvelles exécutions restent locales afin qu’un test fournisseur ne modifie plus le dépôt.
+
 ```bash
-CI=true pnpm vitest run src/scripts/meal-balance-realistic-test.test.ts src/scripts/meal-balance-realistic-live.test.ts
-MEAL_BALANCE_REALISTIC_LIVE=1 CI=true pnpm vitest run src/scripts/meal-balance-realistic-live.test.ts
+pnpm test:live:meal-balance
 node scripts/render-meal-balance-realistic-report.mjs
 ```
 
-Les sorties brutes canoniques sont dans `docs/testing/meal-balance-realistic-results/raw/`; le bilan machine est `run-summary.json`. Les variables fournisseur proviennent de l’environnement local et ne sont jamais écrites dans ces fichiers.
+Les nouvelles sorties brutes, le bilan machine et le rapport sont créés dans `analysis/private/meal-balance-realistic-live/`, ignoré par Git. Les variables fournisseur proviennent de l’environnement local et ne sont jamais écrites dans ces fichiers.
 
 ## Limites
 

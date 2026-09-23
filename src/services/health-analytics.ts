@@ -1,4 +1,4 @@
-import { getCurrentUser, type SomaUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
@@ -398,14 +398,12 @@ export function heartRateWindowForCivilDate(civilDate: string, timeZone: string)
   return start && end ? { start: start.toISOString(), end: end.toISOString() } : null;
 }
 
-async function loadHealthAnalytics(scope: HealthAnalyticsScope, explicitUserId?: string): Promise<HealthAnalytics> {
-  if (!explicitUserId && isLocalPreviewMode()) return buildPreviewAnalytics();
-  const user = explicitUserId ? { id: explicitUserId } : await getCurrentUser();
+async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthAnalytics> {
+  if (isLocalPreviewMode()) return buildPreviewAnalytics();
+  const user = await getCurrentUser();
   if (!user) return { timezone: "Europe/Paris", importedAt: null, days: [], scores: [], sleepRecommendation: null, latestSleepStages: [], heartRateSamples: [], exercises: [], effortTargets: effortScoreTargets(), effortTargetSource: "fallback" };
   const admin = createCloudflareAdminClient();
-  // Native Bearer sessions have no Web cookie. Their authenticated routes use
-  // the server-side client with an explicit, already-authorized user id.
-  const supabase = explicitUserId ? admin : await createCloudflareServerClient();
+  const supabase = await createCloudflareServerClient();
   // Detail reads are useful context, but the daily metrics and persisted scores
   // are the primary page data. Start every read immediately, then give the
   // secondary reads a short budget so one stalled chart cannot hold the page.
@@ -572,7 +570,6 @@ export async function allImportedExercises(userId: string): Promise<ExerciseSumm
 
 export function getHealthAnalytics() { return loadHealthAnalytics("all"); }
 export function getSleepAnalytics() { return loadHealthAnalytics("sleep"); }
-export function getSleepAnalyticsForUser(user: SomaUser) { return loadHealthAnalytics("sleep", user.id); }
 export function getRecoveryAnalytics() { return loadHealthAnalytics("recovery"); }
 export async function getActivityAnalytics() {
   const analytics = await loadHealthAnalytics("activity");
@@ -580,5 +577,4 @@ export async function getActivityAnalytics() {
   const user = await getCurrentUser();
   return user ? { ...analytics, exercises: await allImportedExercises(user.id) } : analytics;
 }
-export function getNativeActivityAnalytics(userId: string) { return loadHealthAnalytics("activity", userId); }
 export function getTrendsAnalytics() { return loadHealthAnalytics("trends"); }

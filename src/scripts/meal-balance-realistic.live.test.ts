@@ -12,12 +12,12 @@ describe.skipIf(!live)("realistic meal-balance live provider run", () => {
       live: true,
       verify: true,
       fixtureDirectory: "tests/fixtures/meal-balance-realistic",
-      resultsDirectory: "docs/testing/meal-balance-realistic-results/raw",
+      resultsDirectory: "analysis/private/meal-balance-realistic-live/raw",
     });
 
-    await mkdir("docs/testing/meal-balance-realistic-results", { recursive: true });
+    await mkdir("analysis/private/meal-balance-realistic-live", { recursive: true });
     await writeFile(
-      "docs/testing/meal-balance-realistic-results/run-summary.json",
+      "analysis/private/meal-balance-realistic-live/run-summary.json",
       `${JSON.stringify(result, null, 2)}\n`,
       "utf8",
     );

@@ -545,7 +545,7 @@ export const updateMealInputSchema = z.object({
   entryState: mealEntryStateSchema.optional(),
   mouthWarmthIntensity: mealFeelingInputSchema.nullable().optional(),
   stomachOverfullIntensity: mealFeelingInputSchema.nullable().optional(),
-  /** Optional proof binding for native confirmation. */
+  /** Optional proof binding for confirmation requests. */
   analysisRequestId: z.string().trim().min(8).max(160).optional(),
   analysisSourceRevision: z.string().trim().max(120).optional(),
   analysisSourceFingerprint: z.string().trim().regex(/^[a-f0-9]{64}$/i).optional(),
