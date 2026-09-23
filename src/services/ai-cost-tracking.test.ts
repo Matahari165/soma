@@ -51,6 +51,15 @@ describe("AI Cost Tracking service", () => {
         created_at: "2026-09-15T15:00:00Z",
         completed_at: null,
       },
+      {
+        id: "analysis-5",
+        meal_id: "meal-5",
+        provider: "openai",
+        model: "gpt-6-luna",
+        status: "completed",
+        created_at: "2026-09-15T16:00:00Z",
+        completed_at: "2026-09-15T16:00:05Z",
+      },
     ];
 
     vi.mocked(createCloudflareAdminClient).mockReturnValue({
@@ -65,12 +74,12 @@ describe("AI Cost Tracking service", () => {
 
     const summary = await getAiUsageSummary("user-test");
 
-    expect(summary.totalAnalyses).toBe(3); // only completed ones count towards spend
+    expect(summary.totalAnalyses).toBe(4); // only completed ones count towards spend
     expect(summary.byProvider.xai.count).toBe(2);
-    expect(summary.byProvider.openai.count).toBe(1);
-    // 2 * 0.006 + 1 * 0.012 = 0.024
-    expect(summary.totalEstimatedCostUsd).toBe(0.024);
-    expect(summary.averageCostPerMealUsd).toBe(0.008);
-    expect(summary.recentAnalyses).toHaveLength(4);
+    expect(summary.byProvider.openai.count).toBe(2);
+    // Two historic Grok runs, one GPT-4o run, and one Luna estimate.
+    expect(summary.totalEstimatedCostUsd).toBe(0.026);
+    expect(summary.averageCostPerMealUsd).toBe(0.007);
+    expect(summary.recentAnalyses).toHaveLength(5);
   });
 });

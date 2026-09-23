@@ -29,8 +29,10 @@ export type AiUsageSummary = {
   }>;
 };
 
-// Unit cost estimates based on multi-modal vision payloads + structured JSON outputs
+// Planning estimates, not billed usage. Luna assumes roughly 5K input and 3K
+// output tokens per meal at the published $0.10/$0.50 per million token rates.
 const ESTIMATED_COST_PER_RUN: Record<string, number> = {
+  "gpt-6-luna": 0.002,
   "grok-2-vision-1212": 0.006,
   "grok-2-vision": 0.006,
   "grok-vision": 0.006,
