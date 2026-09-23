@@ -297,7 +297,7 @@ export function AssistantWorkspace() {
     const element = textareaRef.current;
     if (!element) return;
     element.style.height = "0px";
-    element.style.height = `${Math.min(element.scrollHeight, 152)}px`;
+    element.style.height = `${Math.min(element.scrollHeight, 96)}px`;
   }
 
   function addPhotos(files: FileList | null) {
@@ -472,8 +472,7 @@ export function AssistantWorkspace() {
       {historyOpen && <button className={styles.scrim} type="button" aria-label="Fermer les conversations" onClick={() => setHistoryOpen(false)} />}
       <aside className={`${styles.history} ${historyOpen ? styles.historyOpen : ""}`} aria-label="Conversations">
         <div className={styles.historyHeader}>
-          <h1>Assistant</h1>
-          <button type="button" className={styles.newButton} onClick={startConversation}><Plus size={16} aria-hidden="true" /> Nouvelle</button>
+          <button type="button" className={styles.newButton} onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={18} aria-hidden="true" /></button>
           <button type="button" className={styles.closeHistory} onClick={() => setHistoryOpen(false)} aria-label="Fermer les conversations"><X size={19} aria-hidden="true" /></button>
         </div>
         <nav aria-label="Historique des conversations" className={styles.conversationList}>
@@ -539,7 +538,6 @@ export function AssistantWorkspace() {
             <div className={styles.composerActions}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
               <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={editingMessageId ? "Les photos ne peuvent pas être modifiées" : "Joindre des photos"}><Paperclip size={18} aria-hidden="true" /></button>
-              <span className={styles.hint}>Entrée pour envoyer · Maj + Entrée pour une ligne</span>
               <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || (!text.trim() && !photos.length)} aria-label={editingMessageId ? "Enregistrer la modification" : "Envoyer le message"}>{editingMessageId ? <Check size={18} aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}</button>
             </div>
           </form>
