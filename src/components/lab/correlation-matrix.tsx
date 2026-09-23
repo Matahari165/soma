@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 
-import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
+import { isPersonalLabDisplayableRelation, PRACTICAL_EFFECT_THRESHOLDS, selectMeaningfulRelations, selectSummaryRelations, type AnalysisPeriod, type MatrixRelation, type PersonalLabRelationDisplayOptions } from "@/domain/lab/matrix";
 import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
@@ -485,7 +485,45 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
 
 const strongestEffectPeriods: AnalysisPeriod[] = [15, 30, 90, "all"];
 
-export function StrongestEffectsPanel() {
+type RankedEffect = { index: number; note: string };
+
+function EffectsSummary({ relations, period, requireTemporalStability }: { relations: MatrixRelation[]; period: AnalysisPeriod; requireTemporalStability: boolean }) {
+  const [rankedResult, setRankedResult] = useState<{ key: string; ranked: RankedEffect[] } | null>(null);
+  const relationKey = relations.map((relation) => `${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`).join("|");
+  const requestKey = `${period}:${requireTemporalStability}:${relationKey}`;
+  const ranked = rankedResult?.key === requestKey ? rankedResult.ranked : null;
+
+  useEffect(() => {
+    if (!relations.length) return;
+    const controller = new AbortController();
+    void fetch("/api/lab/effects-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ period, requireTemporalStability }),
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const result = await response.json() as { ranked?: RankedEffect[] };
+      if (Array.isArray(result.ranked)) setRankedResult({ key: requestKey, ranked: result.ranked });
+    }).catch(() => {});
+    return () => controller.abort();
+  // relationKey changes only when the displayed evidence changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, requireTemporalStability, relationKey, requestKey]);
+
+  const entries = ranked?.map(({ index, note }) => ({ relation: relations[index], note })).filter((entry) => entry.relation) ?? relations.slice(0, 3).map((relation) => ({ relation, note: "" }));
+  return <section className="effects-summary" aria-labelledby="effects-summary-title">
+    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Lecture par GPT-6 Luna" : "Associations mesurées"}</span></div>
+    {entries.length ? <ol>{entries.map(({ relation, note }) => <li key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>
+      <span className="effects-summary__arrow" aria-hidden="true">→</span>
+      <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small>{note && <em>{note}</em>}</p>
+    </li>)}</ol> : <p className="effects-summary__empty">Aucune relation assez solide pour un récapitulatif sur cette période.</p>}
+    <p className="effects-summary__footnote">Ces liens sont des associations observées, pas des causes démontrées.</p>
+  </section>;
+}
+
+export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: boolean } = {}) {
   const [period, setPeriod] = useState<AnalysisPeriod>(90);
   const [rowsByPeriod, setRowsByPeriod] = useState<Partial<Record<AnalysisPeriod, PersonalLabSnapshot["matrix"]["rows"]>>>({});
   const [outcomes, setOutcomes] = useState<PersonalLabSnapshot["matrix"]["outcomes"]>([]);
@@ -539,6 +577,7 @@ export function StrongestEffectsPanel() {
 
   const rows = rowsByPeriod[period] ?? [];
   const relations = rows.flatMap((row) => row.relations);
+  const summaryRelations = showSummary ? selectSummaryRelations(relations, { requireTemporalStability }) : [];
   const periodControl = <div className="strongest-effects__periods" role="group" aria-label="Période d’analyse">
     {strongestEffectPeriods.map((value) => <button type="button" aria-label={`Afficher les relations sur ${value === "all" ? "toute la période" : `${value} jours`}`} aria-pressed={period === value} disabled={loadingPeriod !== null} onClick={() => selectPeriod(value)} key={value}>{periodDisplayLabel(value)}</button>)}
   </div>;
@@ -564,6 +603,7 @@ export function StrongestEffectsPanel() {
   </section>;
 
   return <div className="strongest-effects-panel lab-entry__section" aria-busy={loadingPeriod !== null}>
+    {showSummary && <EffectsSummary relations={summaryRelations} period={period} requireTemporalStability={requireTemporalStability} />}
     <StrongestEffects
       relations={relations}
       outcomes={outcomes}

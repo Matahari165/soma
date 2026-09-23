@@ -152,7 +152,6 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
     </div>
 
     <aside className={styles.scoreSummary} aria-labelledby="activity-score-summary-title">
-      <span className={styles.summaryKicker}>Today</span>
       <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-detail-panel" aria-expanded={selectedDetail === "score"} aria-label={`${scoreLabel(score)}. View score breakdown.`} onClick={() => selectDetail("score")}>
         <span id="activity-score-summary-title" className={styles.scoreLabel}>Activity score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
       </button>

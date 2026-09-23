@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabDisplayableRelation, isPersonalLabFeatureEligible, isPersonalLabMetricAllowed, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, type MatrixSeries } from "./matrix";
+import { adjustMatrixRelations, calculateMatrixRelation, isPersonalLabDisplayableRelation, isPersonalLabFeatureEligible, isPersonalLabMetricAllowed, PRACTICAL_EFFECT_THRESHOLDS, protectAgainstExtremeImportErrors, selectMeaningfulRelations, selectSummaryRelations, type MatrixSeries } from "./matrix";
 
 function date(index: number) {
   const value = new Date("2025-01-01T12:00:00Z");
@@ -300,6 +300,19 @@ describe("Personal Lab raw within-person relations", () => {
       relation(1, 2, .04, 80),
       relation(2, 2.4, .02, 60),
     ])[0]?.lagDays).toBe(2);
+  });
+
+  it("summarizes distinct outcomes when several strong relations share one outcome", () => {
+    const base = calculateMatrixRelation(series("load", Array.from({ length: 80 }, (_, index) => index)), series("hrv", Array.from({ length: 80 }, (_, index) => 40 + index)));
+    const relation = (predictorId: string, outcomeId: string, practicalRatio: number) => ({ ...base, predictorId, outcomeId, practicalRatio, qValue: .01, featureEligible: true, practicallyMeaningful: true, stable: true, excluded: false });
+    const selected = selectSummaryRelations([
+      relation("steps", "hrv", 4),
+      relation("active_minutes", "hrv", 3),
+      relation("exercise_minutes", "hrv", 2),
+      relation("zone_minutes", "recovery", 1.5),
+      relation("bedtime", "sleep_fragmentation", 1.2),
+    ]);
+    expect(selected.slice(0, 3).map((item) => item.outcomeId)).toEqual(["hrv", "recovery", "sleep_fragmentation"]);
   });
 
   it("reports the effect for the observed habitual predictor variation", () => {

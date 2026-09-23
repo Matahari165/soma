@@ -258,9 +258,35 @@
 .readingsGrid dt,
 .readingsGrid small { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .readingsGrid dd { margin: 5px 0 2px; color: var(--effort-text); font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.readingsGrid .benchmark { align-content: start; }
+.benchmark > dd { width: 100%; }
+.benchmarkTrigger { display: grid; width: 100%; min-height: 76px; justify-items: center; align-content: start; gap: 2px; padding: 4px 8px 8px; border: 0; background: transparent; color: var(--effort-text); cursor: pointer; }
+.benchmarkTrigger strong { font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.benchmarkTrigger small { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.benchmarkTrigger svg { margin-top: 3px; color: var(--effort-muted); transition: transform 320ms cubic-bezier(.2, .8, .2, 1); }
+.benchmarkTrigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+.benchmarkTrigger:hover { background: var(--lab-surface-selected); }
+.benchmarkTrigger:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 2px; }
+.readingsGrid .benchmarkExplanation { display: grid; grid-template-rows: 0fr; margin: 0; opacity: 0; text-align: left; transition: grid-template-rows 320ms cubic-bezier(.2, .8, .2, 1), opacity 240ms ease; }
+.benchmarkExplanation[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
+.benchmarkExplanation span { min-height: 0; overflow: hidden; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.benchmarkExplanation[data-open="true"] span { padding-top: 8px; }
 
 .trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; min-width: 0; }
 .trendGrid :global(.metric-trend-card) { min-width: 0; padding: 0; border: 0 !important; border-radius: 0; background: transparent; box-shadow: none; }
+.trendGrid :global(.metric-trend-card) :global(header) { justify-content: center; text-align: center; }
+.trendGrid :global(.metric-trend-card) :global(header > div) { justify-items: center; }
+.trendGrid :global(.metric-trend-card__current-label) { margin-top: 5px; color: var(--effort-muted); font: 400 11px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.trendGrid :global(.metric-trend-card__average-legend) { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; margin-top: 3px; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
+.trendGrid :global(.metric-trend-card__average-legend small) { color: var(--effort-muted); font: inherit; }
+.trendGrid :global(.metric-trend-card__average-rule) { display: inline-block; width: 24px; height: 0; border-top: 1px dashed var(--effort-muted); opacity: .6; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-chart-average) { stroke: var(--effort-muted); stroke-dasharray: 3 6; stroke-width: 1; opacity: .5; }
+.trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 30px) * .04); padding-inline-end: calc(30px + (100% - 30px) * .04); }
+
+@media (prefers-reduced-motion: reduce) {
+  .benchmarkTrigger svg,
+  .readingsGrid .benchmarkExplanation { transition: none; }
+}
 
 .section :global(.zone-distribution) { width: 100%; height: 16px; margin-top: 0; border: 0; border-radius: 0; overflow: hidden; }
 .section :global(.stage-legend) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 20px; margin-top: 16px; color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
