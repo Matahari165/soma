@@ -69,6 +69,13 @@ describe("effects summary", () => {
     expect(response.status).toBe(502);
   });
 
+  it.each(["Une relation mêlée 关联.", "Une phrase inachevée"])("does not publish an unreadable note: %s", async (note) => {
+    process.env.OPENAI_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ output_text: JSON.stringify({ ranked: [{ index: 0, note }] }) }) }));
+    const response = await POST(request({ period: 90, requireTemporalStability: false }));
+    expect(response.status).toBe(502);
+  });
+
   it("rejects a model selection outside the supplied evidence", async () => {
     process.env.OPENAI_API_KEY = "test-key";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ output_text: JSON.stringify({ ranked: [{ index: 2, note: "Unverified" }] }) }) }));

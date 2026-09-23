@@ -28,7 +28,9 @@ function parseRanked(value: unknown, count: number): RankedEffect[] | null {
     const { index, note } = item as { index?: unknown; note?: unknown };
     if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= count || seen.has(index as number) || typeof note !== "string") return null;
     const trimmedNote = note.trim();
-    if (!trimmedNote || trimmedNote.length > 140) return null;
+    // A valid JSON shape alone does not guarantee a readable sentence.
+    // Fall back to the measured relations when the model mixes scripts or truncates a note.
+    if (!trimmedNote || trimmedNote.length > 140 || !/^[\p{Script=Latin}\p{M}\p{N}\p{Zs}.,;:!?…()'’\-–+%°/]+$/u.test(trimmedNote) || !/[.!?…]$/u.test(trimmedNote)) return null;
     seen.add(index as number);
     safe.push({ index: index as number, note: trimmedNote });
   }
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
         store: false,
         reasoning: { effort: "low" },
         max_output_tokens: 350,
-        instructions: "Tu rédiges un bref récapitulatif descriptif de relations statistiques personnelles. Choisis au maximum 3 relations parmi les indices fournis, dans l'ordre le plus utile. Pour chacune, écris une note française très simple de 140 caractères maximum. N'invente aucune mesure, aucun effet, aucune cause ni conseil médical. Les associations ne prouvent pas la causalité. N'utilise que les données fournies.",
+        instructions: "Tu rédiges un bref récapitulatif descriptif de relations statistiques personnelles. Choisis au maximum 3 relations parmi les indices fournis, dans l'ordre le plus utile. Pour chacune, écris une phrase française complète en alphabet latin, terminée par un point, de 140 caractères maximum. N'invente aucune mesure, aucun effet, aucune cause ni conseil médical. Les associations ne prouvent pas la causalité. N'utilise que les données fournies.",
         input: JSON.stringify({ period: body.period, evidence }),
         text: { format: { type: "json_schema", name: "effects_summary", strict: true, schema: { type: "object", properties: { ranked: { type: "array", minItems: 1, maxItems: 3, items: { type: "object", properties: { index: { type: "integer" }, note: { type: "string", minLength: 1, maxLength: 140 } }, required: ["index", "note"], additionalProperties: false } } }, required: ["ranked"], additionalProperties: false } } },
       }),
