@@ -71,6 +71,7 @@ export function WorkoutStudio() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [primaryGoal, setPrimaryGoal] = useState("general_fitness");
+  const [primaryGoalDirection, setPrimaryGoalDirection] = useState("");
   const [selected, setSelected] = useState<ProgramExercise[]>([]);
   const [name, setName] = useState("Full Body A");
   const [query, setQuery] = useState("");
@@ -123,6 +124,7 @@ export function WorkoutStudio() {
         setExercises(Array.isArray(data.exercises) ? data.exercises.filter(isExercise) : []);
         setPrograms(normalizePrograms(data.programs));
         setPrimaryGoal(typeof data.primaryGoal === "string" ? data.primaryGoal : "general_fitness");
+        setPrimaryGoalDirection(typeof data.primaryGoalDirection === "string" ? data.primaryGoalDirection : "");
       })
       .catch((error) => {
         if (error instanceof Error && error.name !== "AbortError") setLoadError(error.message);
@@ -250,7 +252,7 @@ export function WorkoutStudio() {
 
   return <div className="workout-page" id="main-page-content">
     <header className="workout-header"><h1>Entraînements</h1><button className="primary-button" type="button" onClick={() => setBuilderOpen(true)}><Plus size={17} />Nouveau programme</button></header>
-    <section className="workout-summary" aria-label="Résumé des entraînements"><article><span>Programmes</span><strong>{programs.length}</strong></article><article><span>Séries prévues</span><strong>{totalSets}</strong></article><article><span>Objectif principal</span><strong>{goalLabels[primaryGoal] ?? "Autre"}</strong></article></section>
+    <section className="workout-summary" aria-label="Résumé des entraînements"><article><span>Programmes</span><strong>{programs.length}</strong></article><article><span>Séries prévues</span><strong>{totalSets}</strong></article><article><span>Objectif principal</span><strong>{primaryGoalDirection || goalLabels[primaryGoal] || "Autre"}</strong></article></section>
     {actionError && !builderOpen && !active && <p className="form-error" role="alert">{actionError}</p>}
     {programs.length ? <section className="program-grid" aria-label="Vos programmes d’entraînement">{programs.map((program) => <article className="program-card" key={program.id}><div className="program-icon"><Dumbbell /></div><span>{program.exercises.length} exercice{program.exercises.length === 1 ? "" : "s"}</span><h2>{program.name}</h2><ul>{program.exercises.slice(0, 4).map((item) => <li key={item.exercise.id}>{item.exercise.name}<span>{item.sets} × {item.repsMin}–{item.repsMax}</span></li>)}</ul><button disabled={Boolean(startingId)} type="button" onClick={() => void start(program)}>{startingId === program.id ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}{startingId === program.id ? "Démarrage…" : "Démarrer la séance"}</button></article>)}</section> : <section className="workout-empty"><Dumbbell size={28} /><h2>Créez votre premier programme</h2><p>Utilisez <strong>Nouveau programme</strong> pour choisir vos exercices, séries, répétitions et temps de repos.</p></section>}
 

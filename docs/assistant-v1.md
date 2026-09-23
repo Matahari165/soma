@@ -48,8 +48,11 @@ benchmarks must be available when the user asks to see them.
 - Every plan edit creates an immutable version. A direct instruction such as
   `Déplace mardi à mercredi` authorises that exact edit. Ambiguous language
   produces a proposal or one clarifying question.
-- Confirmation can be natural language or a UI action. Implicit approval is not
-  enough.
+- Confirmation can be natural language or a UI action. A clear answer such as
+  `c'est bon, tu peux enregistrer` after a reviewed summary is sufficient; no
+  exact command word is required. A correction, a question about the content,
+  or conditional approval is not confirmation; an explicit request to save can
+  be phrased as a question. Metrics not yet specified stay unknown, not blocking.
 
 ## Memory
 
@@ -72,8 +75,10 @@ The V1 assistant may write only:
 
 All other Soma data is read-only. Meal writes are idempotent, attributable to a
 user message and reversible for 24 hours through a typed compensating action.
-Goals, plans and memories remain proposals until an exact confirmation from the
-current user message activates them.
+Goals, plans and memories remain proposals until clear consent from the current
+user message activates them. The server binds that consent to the authenticated
+message; the assistant must compare any existing draft with the reviewed summary
+before selecting it. Neither layer requires a magic phrase.
 
 For meal recording, an omitted date means today in the user's timezone. An
 omitted meal slot must be asked; it is never inferred from the current time. A

@@ -67,6 +67,24 @@ describe("assistant semantic data queries", () => {
     expect(second.manifest).toMatchObject({ hasMore: false, complete: true });
   });
 
+  it("retrieves a four-month history across pages without losing days", async () => {
+    const start = Date.parse("2026-01-01T00:00:00Z");
+    const health = Array.from({ length: 120 }, (_, index) => baseHealthDay(new Date(start + index * 86_400_000).toISOString().slice(0, 10), index));
+    const period = { from: "2026-01-01", to: "2026-04-30" };
+    let cursor: string | null = null;
+    const collected: string[] = [];
+    do {
+      const page = await queryAssistantData("user-1", {
+        dataset: "daily_health", period, metrics: ["steps"], pagination: { limit: 35, cursor, order: "asc" },
+      }, { sources: sources({ health }), cursorSecret: secret });
+      collected.push(...page.items.map((item) => item.date));
+      cursor = page.manifest.nextCursor;
+      if (!cursor) expect(page.manifest.complete).toBe(true);
+    } while (cursor);
+    expect(collected).toEqual(health.map((day) => day.metric_date));
+    expect(new Set(collected).size).toBe(120);
+  });
+
   it("rejects altered and cross-dataset cursors", () => {
     const cursor = encodeAssistantCursor({ version: 1, dataset: "daily_health", queryHash: "query-a", position: "2026-09-20" }, secret);
     expect(() => decodeAssistantCursor(`${cursor}x`, "daily_health", secret)).toThrow(/signature/);

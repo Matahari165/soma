@@ -8,7 +8,8 @@ import {
   type EffortTargetContext,
   type NutritionTargets,
 } from "@/domain/nutrition-targets";
-import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
+import { createCloudflareAdminClient, hasSupabaseRuntime, stableIdentity } from "@/lib/cloudflare/db";
+import { createSupabaseRequest } from "@/lib/cloudflare/db-supabase";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 
@@ -48,15 +49,15 @@ export function nutritionTargetsFromRow(row: unknown): NutritionTargets {
   return parseNutritionTargets(value.targets) ?? DEFAULT_NUTRITION_TARGETS;
 }
 
-export async function loadNutritionTargetsStateForUser(userId: string, options: { timeoutMs?: number } = {}): Promise<{ targets: NutritionTargets; persisted: boolean }> {
-  if (isLocalPreviewMode()) return { targets: previewTargets.get(userId) ?? DEFAULT_NUTRITION_TARGETS, persisted: previewTargets.has(userId) };
+export async function loadNutritionTargetsStateForUser(userId: string, options: { timeoutMs?: number } = {}): Promise<{ targets: NutritionTargets; persisted: boolean; rawTargets?: unknown }> {
+  if (isLocalPreviewMode()) return { targets: previewTargets.get(userId) ?? DEFAULT_NUTRITION_TARGETS, persisted: previewTargets.has(userId), rawTargets: previewTargets.get(userId) };
   const query = createCloudflareAdminClient()
     .from("nutrition_targets")
     .select("targets")
     .eq("user_id", userId);
   const result = await (options.timeoutMs === undefined ? query : query.withTimeout(options.timeoutMs)).maybeSingle();
   if (result.error) throw new Error("Nutrition targets could not be loaded.");
-  return { targets: nutritionTargetsFromRow(result.data), persisted: Boolean(result.data) };
+  return { targets: nutritionTargetsFromRow(result.data), persisted: Boolean(result.data), rawTargets: (result.data as TargetRow | null)?.targets };
 }
 
 export async function loadNutritionTargetsForUser(userId: string): Promise<NutritionTargets> {
@@ -139,14 +140,27 @@ export async function saveNutritionTargetsForUser(userId: string, targets: Nutri
     previewTargets.set(userId, parsed);
     return parsed;
   }
-  const now = new Date().toISOString();
-  const result = await createCloudflareAdminClient()
-    .from("nutrition_targets")
-    .upsert({ user_id: userId, targets: parsed, created_at: now, updated_at: now }, { onConflict: "user_id" })
-    .select("targets")
-    .single();
-  if (result.error || !result.data) throw new Error("Nutrition targets could not be saved.");
-  return nutritionTargetsFromRow(result.data);
+  if (!hasSupabaseRuntime()) {
+    const now = new Date().toISOString();
+    const result = await createCloudflareAdminClient()
+      .from("nutrition_targets")
+      .upsert({ user_id: userId, targets: parsed, created_at: now, updated_at: now }, { onConflict: "user_id" })
+      .select("targets")
+      .single();
+    if (result.error || !result.data) throw new Error("Nutrition targets could not be saved.");
+    return nutritionTargetsFromRow(result.data);
+  }
+  const result = await createSupabaseRequest()<unknown>("rpc/save_soma_nutrition_targets", {
+    method: "POST",
+    body: JSON.stringify({
+      p_user_id: userId,
+      p_row_key: stableIdentity("nutrition_targets", { user_id: userId }, "user_id"),
+      p_targets: parsed,
+    }),
+  });
+  const saved = parseNutritionTargets(result);
+  if (!saved) throw new Error("Nutrition targets could not be saved.");
+  return saved;
 }
 
 export function nutritionTargetLikelyValues(targets: NutritionTargets) {

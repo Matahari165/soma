@@ -21,7 +21,7 @@ describe("assistant quality policy", () => {
     process.env.SOMA_ASSISTANT_MODEL_FAST = "provider/fast";
     process.env.SOMA_ASSISTANT_MODEL_BALANCED = "provider/balanced";
     process.env.SOMA_ASSISTANT_MODEL_DEEP = "provider/deep";
-    expect(assistantPolicyFor({ text: "Construis un plan complet." })).toMatchObject({ quality: "deep", model: "provider/deep", maxSteps: 8, maxOutputTokens: 4_000, allowWebSearch: false });
+    expect(assistantPolicyFor({ text: "Construis un plan complet." })).toMatchObject({ quality: "deep", model: "provider/deep", maxSteps: 14, maxOutputTokens: 4_000, allowWebSearch: false });
     expect(assistantPolicyFor({ text: "Oui, je confirme." })).toMatchObject({ quality: "fast", maxSteps: 6 });
   });
   it("fails closed when a selected model is not configured", () => expect(() => assistantPolicyFor({ text: "Bonjour" })).toThrow(/SOMA_ASSISTANT_MODEL_FAST/));
