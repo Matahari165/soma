@@ -1389,3 +1389,20 @@
   transform: scale(0.98);
   transition: transform 150ms ease;
 }
+.personalLabType h3 {
+  font-family: var(--font-soma-mono), "SF Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.personalLabType button {
+  font-family: var(--font-soma-ui), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 13px;
+  letter-spacing: normal;
+  text-transform: none;
+}

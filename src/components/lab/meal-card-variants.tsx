@@ -391,7 +391,7 @@ export function LabMealCard({
   if (isSkipped) {
     if (designVariant === "v1") {
       return (
-        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
+        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || mutationBusy} data-purpose={`meal-${slot}-skipped`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 id={headingId} className="font-sans text-xs font-semibold uppercase tracking-wider text-content-primary">{slotLabel}</h3>
@@ -467,7 +467,7 @@ export function LabMealCard({
   if (isAnalyzing) {
     if (designVariant === "v1") {
       return (
-        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
+        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-analyzing`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" />
@@ -535,7 +535,7 @@ export function LabMealCard({
   if (status === "error") {
     if (designVariant === "v1") {
       return (
-        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3" aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
+        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 ${styles.personalLabType}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || mutationBusy} data-purpose={`meal-${slot}-error`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -619,7 +619,7 @@ export function LabMealCard({
   if (designVariant === "v1") {
     if (isFilled) {
       return (
-        <article className="p-4 rounded border border-hairline bg-surface-card/60 space-y-3 animate-fade-in transition-opacity duration-300" data-purpose={`meal-${slot}`}>
+        <article className={`p-4 rounded border border-hairline bg-surface-card/60 space-y-3 animate-fade-in transition-opacity duration-300 ${styles.personalLabType}`} data-purpose={`meal-${slot}`}>
           {fileInputs}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -676,7 +676,7 @@ export function LabMealCard({
     }
 
     return (
-      <article className="p-4 rounded border border-hairline-light bg-surface-subtle space-y-3 relative" data-purpose={`meal-${slot}-pending`}>
+      <article className={`p-4 rounded border border-hairline-light bg-surface-subtle space-y-3 relative ${styles.personalLabType}`} data-purpose={`meal-${slot}-pending`}>
         {fileInputs}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
