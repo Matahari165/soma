@@ -578,7 +578,7 @@
 .root:global(.meals-page-trends) .value { margin-top: 5px; font-size: 20px; font-weight: 400; line-height: 26px; }
 .root:global(.meals-page-trends) .average { width: max-content; justify-self: center; font-family: var(--font-soma-mono), ui-monospace, monospace; font-size: 11px; text-align: center; }
 .root:global(.meals-page-trends) .chartFrame { gap: 8px; }
-.root:global(.meals-page-trends) .barChart { width: calc(100% - 88px); min-height: 193px; }
+.root:global(.meals-page-trends) .barChart { width: calc(100% - 88px); min-height: 187px; }
 .root:global(.meals-page-trends) .barColumn { height: 174px; }
 .root:global(.meals-page-trends) .axis { width: calc(100% - 88px); font-family: var(--font-soma-mono), ui-monospace, monospace; }
 @media (max-width: 560px) {
