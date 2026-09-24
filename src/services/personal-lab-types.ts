@@ -60,6 +60,7 @@ export type PersonalLabSnapshot = {
   };
   metricRegistry: Array<LabMetricDefinition & { role: MetricRole; recordedDays: number; received: boolean; sources: Array<{ source: string; days: number }> }>;
   matrix: {
+    analysisEndDate: string;
     outcomes: Array<{ id: string; label: string; unit: string; direction: "higher" | "lower" | "target" }>;
     rows: LabMatrixRow[];
     periods: AnalysisPeriod[];

@@ -6,8 +6,10 @@ import { LAB_MATRIX_CACHE_VERSION, putLabMatrixCacheObject } from "@/lib/lab-mat
 import { loadPreviewConfirmedMealRecords } from "@/services/meal-preview";
 import { loadNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { loadPersonalLabData } from "./personal-lab-data";
+import { saveDailyLabRelationSnapshot } from "./lab-relation-history";
 import { previewData } from "./personal-lab-preview";
 import { buildJournalView, buildOverview, buildSnapshot } from "./personal-lab-snapshot";
+import { dateInTimezone } from "./personal-lab-today";
 import type { PersonalLabSnapshot, PersonalLabStream } from "./personal-lab-types";
 
 export type { DailyCheckin, PersonalLabHistoryPoint } from "./personal-lab-today";
@@ -59,16 +61,24 @@ export function createPersonalLabStream(user: SomaUser, options: { periods?: Ana
       targets,
       metricPreferences: detail.metricPreferenceResult.data ?? [],
       requestedPeriods: options.periods,
-      cachedMatrix: detail.matrixCache?.cachedMatrix ?? undefined,
+      cachedMatrix: detail.matrixCache?.analysisDate === dateInTimezone(core.timeZone)
+        ? detail.matrixCache.cachedMatrix ?? undefined
+        : undefined,
     });
-    if (loaded.matrixCacheKey && detail.matrixCache && !detail.matrixCache.cachedMatrix) {
-      await putLabMatrixCacheObject(user.id, loaded.matrixCacheKey, {
+    const reusedCache = detail.matrixCache?.analysisDate === snapshot.todayDate && Boolean(detail.matrixCache.cachedMatrix);
+    const writes: Promise<unknown>[] = [];
+    if (loaded.matrixCacheKey && detail.matrixCache && !reusedCache) {
+      writes.push(putLabMatrixCacheObject(user.id, loaded.matrixCacheKey, {
         inputRevision: detail.matrixCache.inputRevision,
         algorithmVersion: LAB_MATRIX_CACHE_VERSION,
         matrix: snapshot.matrix,
+        analysisDate: snapshot.todayDate,
         calculatedAt: new Date().toISOString(),
-      }).catch(() => console.warn("[personal-lab] matrix cache write failed", { stage: "matrix-cache", category: "write" }));
+      }).catch(() => console.warn("[personal-lab] matrix cache write failed", { stage: "matrix-cache", category: "write" })));
     }
+    writes.push(saveDailyLabRelationSnapshot(user.id, snapshot, detail.matrixCache?.inputRevision ?? null)
+      .catch(() => console.warn("[personal-lab] relation history write failed", { stage: "relation-history", category: "write" })));
+    await Promise.all(writes);
     console.info("[personal-lab] snapshot ready", {
       stage: "snapshot",
       category: "personal-lab-analysis",

@@ -61,6 +61,7 @@ export function isCachedMatrix(value: unknown): value is PersonalLabSnapshot["ma
       && isPersonalLabMetricAllowed((relation as MatrixRelation).predictorId)
       && isPersonalLabMetricAllowed((relation as MatrixRelation).outcomeId));
   return Array.isArray(matrix.outcomes)
+    && typeof matrix.analysisEndDate === "string"
     && Array.isArray(matrix.rows)
     && Array.isArray(matrix.periods)
     && relationListIsAllowed(matrix.meaningfulRelations)
@@ -428,6 +429,7 @@ export function buildCorrelationMatrix(input: {
         family: row.journal ? "journal-acute" : "automatic-acute",
         minimumMeaningfulEffect: minimumVisibleEffect[outcome.id],
         period,
+        analysisEndDate: latestDate,
         outcomeDirection: outcome.direction,
         outcomeTarget: outcome.id === "sleep_minutes" ? 510 : undefined,
       },
@@ -449,6 +451,7 @@ export function buildCorrelationMatrix(input: {
   const chronicHighlights = selectMeaningfulRelations(visibleRows.filter((row) => row.period === 90 || row.period === "all").flatMap((row) => row.relations), 8);
   const topRelations = meaningfulRelations;
   return {
+    analysisEndDate: latestDate,
     outcomes: dailyOutcomes.map(({ id, label, unit, direction }) => ({ id, label, unit, direction })),
     rows: visibleRows,
     periods,

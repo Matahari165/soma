@@ -20,6 +20,7 @@ const conflictKeys: Record<string, string[]> = {
   journal_entries: ["user_id", "variable_id", "entry_date"],
   lab_narratives: ["user_id"],
   lab_narrative_history: ["user_id", "analysis_date"],
+  lab_relation_snapshots: ["user_id", "analysis_date", "period", "method_version"],
   journal_imports: ["id"],
   journal_days: ["user_id", "entry_date"],
   lab_metric_preferences: ["user_id", "metric_id"],

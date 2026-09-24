@@ -18,7 +18,7 @@ function makeRelation(overrides: Partial<MatrixRelation> = {}): MatrixRelation {
     sampleSize: 30, effectiveSampleSize: 30, pValue: .01, qValue: .03,
     confidenceLow: -.4, confidenceHigh: -.1, relevance: 1, lagDays: 0,
     grain: "day", timeScale: "acute", period: 30, family: "automatic-acute",
-    method: "raw-within-person-hac", evidence: "established", stable: true,
+    method: "within-person-calendar-hac", evidence: "established", stable: true,
     stability: { chronologicalBlocks: 4, directionHeldInBlocks: true, trendAdjustedDirectionHeld: true, outlierAdjustedDirectionHeld: true },
     strength: "clear", coverageBySource: [{ source: "Demo", pairedDays: 30, pairedWeeks: 0 }], sourceEstimates: [],
     doseResponse: null, habitualPredictorDelta: 25, habitualEffect: -13,
