@@ -11,7 +11,7 @@
   min-width: 0;
   padding: 28px 16px;
   border-right: 1px solid var(--lab-border);
-  background: var(--lab-surface-subtle);
+  background: #141414;
 }
 
 .historyHeader { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 24px; }
