@@ -42,6 +42,9 @@ it("does not bridge across an absent interior axis", () => {
   expect(html).not.toContain('<polygon className="radar-value"');
   expect((html.match(/class="radar-point"/g) ?? []).length).toBe(3);
   expect((html.match(/class="radar-value-segment"/g) ?? []).length).toBe(2);
+  expect(html).not.toContain('data-radar-point-index="1"');
+  expect(html).toContain('data-radar-point-index="2"');
+  expect(html).toContain('data-radar-segment-index="2"');
   expect(html).toContain("Récupération : —");
 });
 
@@ -94,6 +97,16 @@ it("uses the personal calorie target received from the meal journal", async () =
   })));
   expect(container.querySelector(".radar-value")?.getAttribute("points")).toContain("180,280");
   expect(container.querySelector("svg")?.getAttribute("aria-label")).toMatch(/Objectif : 3[\s\u202f]000 kcal/);
+  await act(async () => root.unmount());
+});
+
+it("settles the trace only when the completed shape finishes its fill", async () => {
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  await act(async () => root.render(<ObservatoryRadar data={data} />));
+  expect(container.querySelector(".observatory-radar--trace-settled")).toBeNull();
+  await act(async () => container.querySelector(".radar-value")?.dispatchEvent(new Event("animationend", { bubbles: true })));
+  expect(container.querySelector(".observatory-radar--trace-settled")).not.toBeNull();
   await act(async () => root.unmount());
 });
 
