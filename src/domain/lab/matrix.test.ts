@@ -12,7 +12,7 @@ function series(id: string, values: Array<number | null>, kind: MatrixSeries["ki
   return { id, label: id, unit: id === "hrv" ? "ms" : "min", kind, presentation, points: values.flatMap((value, index) => value === null ? [] : [{ date: date(index), value, segment: segments?.[index] }]) };
 }
 
-describe("Personal Lab raw within-person relations", () => {
+describe("Personal Lab within-person calendar relations", () => {
   it("shares the Personal Lab metric and feature eligibility gate", () => {
     expect(isPersonalLabMetricAllowed("sleep_awakenings")).toBe(false);
     expect(isPersonalLabMetricAllowed("sleep_fragmentation")).toBe(true);
@@ -29,15 +29,15 @@ describe("Personal Lab raw within-person relations", () => {
     expect(selectMeaningfulRelations([{ ...eligible, outcomeId: "sleep_awakenings" }])).toEqual([]);
   });
 
-  it("publishes with the observed direction in at least two of four chronological blocks", () => {
+  it("does not publish when the direction reverses in two of four calendar blocks", () => {
     const blockStrengths = [8, -1, 8, -1];
     const predictor = Array.from({ length: 400 }, (_, index) => [-3, -1, 1, 3][index % 4]);
     const outcome = predictor.map((value, index) => value * blockStrengths[Math.floor(index / 100)]);
     const relation = calculateMatrixRelation(series("load", predictor), series("hrv", outcome));
 
-    expect(relation.stability).toMatchObject({ chronologicalBlocks: 2, directionHeldInBlocks: true });
-    expect(relation.stable).toBe(true);
-    expect(isPersonalLabFeatureEligible(relation)).toBe(true);
+    expect(relation.stability).toMatchObject({ chronologicalBlocks: 2, directionHeldInBlocks: false });
+    expect(relation.stable).toBe(false);
+    expect(isPersonalLabFeatureEligible(relation)).toBe(false);
 
     const oneMatchingBlock = calculateMatrixRelation(
       series("load", predictor),
@@ -72,7 +72,7 @@ describe("Personal Lab raw within-person relations", () => {
     const exposure = Array.from({ length: 80 }, (_, index) => index % 2);
     const outcome = exposure.map((value, index) => 61 - 5 * value + Math.sin(index / 3));
     const relation = calculateMatrixRelation(series("habit", exposure, "binary"), series("hrv", outcome));
-    expect(relation.method).toBe("raw-within-person-hac");
+    expect(relation.method).toBe("within-person-calendar-hac");
     expect(relation.comparisonLabel).toBe("yes vs no");
     expect(relation.baselineCount).toBe(40);
     expect(relation.comparisonCount).toBe(40);
