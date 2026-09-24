@@ -320,6 +320,16 @@
 @media (max-width: 700px) {
   .composerLine { grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px; }
   .composerLine > .attachButton, .composerLine > .dictationAction, .composerLine > .liveAction, .composerLine > .sendButton { align-self: end; }
+  .composerLine > .sendButton {
+    background: radial-gradient(circle 18px at center, var(--lab-brand) 99%, transparent 100%);
+  }
+  .composerLine > .sendButton:hover:not(:disabled) {
+    background: radial-gradient(circle 18px at center, var(--lab-text-primary) 99%, transparent 100%);
+  }
+  .composerLine > .attachButton svg,
+  .composerLine > .dictationAction svg,
+  .composerLine > .liveAction svg,
+  .composerLine > .sendButton svg { width: 16px; height: 16px; }
   .composer:has(.dictationAction[data-phase="recording"]) .composerLine,
   .composer:has(.liveAction[data-live-phase="requesting"]) .composerLine,
   .composer:has(.liveAction[data-live-phase="connecting"]) .composerLine,
