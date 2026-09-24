@@ -39,6 +39,13 @@ type Message = {
 };
 
 type PendingPhoto = { id: string; file: File; previewUrl: string };
+type StarterPrompt = { id: string; text: string };
+
+const fallbackPrompts: StarterPrompt[] = [
+  { id: "overview", text: "Fais le point sur mes données récentes et dis-moi ce qu’on peut en conclure." },
+  { id: "missing", text: "Quelles données me manquent pour mieux suivre mes progrès ?" },
+  { id: "next-step", text: "Quelle serait une prochaine étape réaliste pour mes objectifs ?" },
+];
 
 const DOMAIN_LABELS: Record<DataSummaryPart["domains"][number], string> = {
   nutrition: "nutrition",
@@ -214,12 +221,15 @@ export function AssistantWorkspace() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
+  const [starterState, setStarterState] = useState<"loading" | "calibration" | "ready" | "unavailable">("loading");
+  const [starterPrompts, setStarterPrompts] = useState<StarterPrompt[]>(fallbackPrompts);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
   const historyPanelRef = useRef<HTMLElement>(null);
   const followConversationRef = useRef(true);
+  const starterRequestRef = useRef(0);
 
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
@@ -269,6 +279,43 @@ export function AssistantWorkspace() {
     }
   }, []);
 
+  const loadStarters = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++starterRequestRef.current;
+    try {
+      const payload = await readJson(await fetch("/api/assistant/starter-prompts", { cache: "no-store", signal }));
+      if (signal?.aborted || requestId !== starterRequestRef.current) return;
+      if (payload?.calibrated === true) {
+        setStarterPrompts(Array.isArray(payload.prompts) && payload.prompts.length === 3 ? payload.prompts : fallbackPrompts);
+        setStarterState("ready");
+      } else {
+        setStarterState("calibration");
+      }
+    } catch {
+      if (signal?.aborted || requestId !== starterRequestRef.current) return;
+      setStarterPrompts(fallbackPrompts);
+      setStarterState("unavailable");
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++starterRequestRef.current;
+    fetch("/api/assistant/starter-prompts", { cache: "no-store", signal: controller.signal })
+      .then(readJson)
+      .then((payload) => {
+        if (controller.signal.aborted || requestId !== starterRequestRef.current) return;
+        if (payload?.calibrated === true) {
+          setStarterPrompts(Array.isArray(payload.prompts) && payload.prompts.length === 3 ? payload.prompts : fallbackPrompts);
+          setStarterState("ready");
+        } else setStarterState("calibration");
+      })
+      .catch(() => {
+        if (controller.signal.aborted || requestId !== starterRequestRef.current) return;
+        setStarterPrompts(fallbackPrompts);
+        setStarterState("unavailable");
+      });
+    return () => controller.abort();
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/assistant/conversations", { cache: "no-store", signal: controller.signal })
@@ -307,6 +354,7 @@ export function AssistantWorkspace() {
   }
 
   function startConversation() {
+    setStarterState("loading");
     setActiveId(null);
     setMessages([]);
     setText("");
@@ -319,6 +367,7 @@ export function AssistantWorkspace() {
     setHistoryOpen(false);
     setEditingMessageId(null);
     followConversationRef.current = true;
+    void loadStarters();
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
@@ -538,12 +587,27 @@ export function AssistantWorkspace() {
           const element = event.currentTarget;
           followConversationRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
         }}>
-          {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty ? (
+          {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
+            <div className={styles.loadingState} role="status"><span /><span /><span /><p>Préparation de votre espace…</p></div>
+          ) : empty && starterState === "calibration" ? (
             <div className={styles.welcome}>
               <span className={styles.welcomeLabel}>Calibration initiale</span>
               <h2>Partons d’une base propre.</h2>
               <p>Je vais relire ton profil et tes objectifs actuels. Tu pourras confirmer, corriger ou compléter chaque élément, un par un.</p>
               <button type="button" onClick={() => void sendMessage(undefined, "Commence ma calibration initiale. Présente-moi d’abord l’état actuel de mes objectifs connus, distingue ce qui est confirmé, ancien, incomplet ou supposé, puis pose une seule question à la fois.")} disabled={sending || notConfigured}>Faire le point</button>
+            </div>
+          ) : empty && starterState === "unavailable" ? (
+            <div className={styles.welcome}>
+              <h2>Écris à Soma.</h2>
+              <p>Je n’arrive pas à charger les questions suggérées. Tu peux écrire directement ou réessayer.</p>
+              <button type="button" onClick={() => { setStarterState("loading"); void loadStarters(); }}>Réessayer</button>
+            </div>
+          ) : empty ? (
+            <div className={styles.starters}>
+              <h2>Que veux-tu explorer ?</h2>
+              <div className={styles.starterList} role="group" aria-label="Questions suggérées">
+                {starterPrompts.map((prompt) => <button key={prompt.id} type="button" onClick={() => void sendMessage(undefined, prompt.text)} disabled={sending || notConfigured}>{prompt.text}<span aria-hidden="true">↗</span></button>)}
+              </div>
             </div>
           ) : (
             <ol className={styles.messages}>
