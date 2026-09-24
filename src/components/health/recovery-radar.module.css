@@ -55,7 +55,7 @@
 }
 
 .valueShape {
-  fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
+  fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 10%, transparent);
   stroke: none;
   fill-opacity: 0;
   transform-box: fill-box;
@@ -175,11 +175,11 @@
 
 @media (max-width: 640px) {
   .root {
-    width: min(100%, 380px);
+    width: min(100%, 320px);
   }
 
   .chart {
-    max-width: 380px;
+    max-width: 320px;
   }
 
   .axisName {

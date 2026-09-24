@@ -18,6 +18,7 @@ import { supplementDefinitionToView, supplementEntryToView } from "@/domain/supp
 
 type MatrixCacheState = {
   inputRevision: string;
+  analysisDate: string | null;
   cachedMatrix: PersonalLabSnapshot["matrix"] | null;
 } | null;
 
@@ -41,7 +42,7 @@ export function loadPersonalLabData(userId: string, options: { periods?: Analysi
         && isCachedMatrix(cache.matrix)
         ? cache.matrix
         : null;
-      return { inputRevision, cachedMatrix };
+      return { inputRevision, analysisDate: typeof cache?.analysisDate === "string" ? cache.analysisDate : null, cachedMatrix };
     } catch {
       return null;
     }

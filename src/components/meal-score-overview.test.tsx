@@ -73,7 +73,7 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toContain("Confidence");
     expect(html).not.toContain("Coverage");
     expect(html).toContain("No score history available.");
-    expect(html).toContain("No averages available.");
+    expect(html).toContain("No observations");
     expect(html).not.toContain(">0%</dd>");
   });
 
@@ -99,8 +99,10 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toContain("Contribution");
     expect(html).toContain("Dimension details");
     expect(html).toContain("28-day trend");
-    expect(html).toContain("14-day (8 observed)");
-    expect(html).toContain("28-day (12 observed)");
+    expect(html).toContain("14-day average");
+    expect(html).toContain("8 observed days");
+    expect(html).toContain("28-day average");
+    expect(html).toContain("12 observed days");
     expect(html.match(/role="button"/g)).toHaveLength(5);
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
     expect(html).toContain('data-key="nutritionAdequacy"');
@@ -127,5 +129,19 @@ describe("MealScoreOverviewPanel", () => {
     expect((html.match(/data-testid="meal-score-line-segment"/g) ?? [])).toHaveLength(2);
     expect(html).toContain('bottom:0%');
     expect(html).not.toContain("NaN");
+  });
+
+  it("centre le titre de tendance entre les premiers et derniers jours mesurés", () => {
+    const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
+      { date: "2026-09-08", score: null },
+      { date: "2026-09-09", score: 61 },
+      { date: "2026-09-10", score: null },
+      { date: "2026-09-11", score: null },
+      { date: "2026-09-12", score: 72 },
+      { date: "2026-09-13", score: null },
+      { date: "2026-09-14", score: null },
+    ]} />);
+
+    expect(html).toContain('id="meal-score-trend-title" style="position:relative;left:calc(-8.3333% + 3.1667px)"');
   });
 });
