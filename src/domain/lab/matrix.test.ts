@@ -286,7 +286,7 @@ describe("Personal Lab within-person calendar relations", () => {
 
   it("prefers the next day unless J+2 is materially larger and statistically clearer", () => {
     const base = calculateMatrixRelation(series("load", Array.from({ length: 80 }, (_, index) => index)), series("hrv", Array.from({ length: 80 }, (_, index) => 40 + index)));
-    const relation = (lagDays: number, practicalRatio: number, qValue: number, sampleSize: number) => ({ ...base, lagDays, practicalRatio, qValue, sampleSize, practicallyMeaningful: true, featureEligible: true });
+    const relation = (lagDays: number, practicalRatio: number, qValue: number, sampleSize: number) => ({ ...base, lagDays, practicalRatio, qValue, sampleSize, practicallyMeaningful: true, featureEligible: true, stable: true, excluded: false });
     expect(selectMeaningfulRelations([
       relation(0, 2, .01, 80),
       relation(1, 2, .04, 60),

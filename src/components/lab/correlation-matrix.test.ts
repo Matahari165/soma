@@ -72,7 +72,7 @@ describe("relationship matrix motion helpers", () => {
       { id: "bedtime", label: "Bedtime", unit: "min", kind: "numeric", points: dates.map((date, index) => ({ date, value: 1320 + index })) },
       { id: "hrv", label: "HRV", unit: "ms", kind: "numeric", points: dates.map((date, index) => ({ date, value: 50 + index })) },
     );
-    const published = { ...base, featureEligible: true, practicallyMeaningful: true, excluded: false, qValue: .01 };
+    const published = { ...base, featureEligible: true, practicallyMeaningful: true, stable: true, excluded: false, qValue: .01 };
     const stale = { ...published, lagDays: 1, qValue: .2 };
     expect(publishedRelationsForPair([published, stale], published)).toEqual([published]);
     expect(publishedRelationsForPair([{ ...published, stable: false }], published, { requireTemporalStability: false })).toHaveLength(1);
