@@ -277,7 +277,11 @@
 .trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; min-width: 0; }
 .trendGrid :global(.metric-trend-card) { min-width: 0; padding: 0; border: 0 !important; border-radius: 0; background: transparent; box-shadow: none; }
 .trendGrid :global(.metric-trend-card) :global(header) { justify-content: center; text-align: center; }
-.trendGrid :global(.metric-trend-card) :global(header > div) { justify-items: center; }
+.trendGrid :global(.metric-trend-card) :global(header > div) {
+  width: calc(100% - 88px);
+  margin-inline-end: 88px;
+  justify-items: center;
+}
 .trendGrid :global(.metric-trend-card) :global(header) { min-height: 64px; align-items: flex-start; }
 .trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; margin-top: 16px; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { padding-right: 88px; }

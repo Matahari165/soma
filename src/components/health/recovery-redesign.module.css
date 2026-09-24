@@ -689,7 +689,11 @@
   text-align: center;
 }
 
-.trendGrid :global(.metric-trend-card) :global(header > div) { justify-items: center; }
+.trendGrid :global(.metric-trend-card) :global(header > div) {
+  width: calc(100% - 88px);
+  margin-inline-end: 88px;
+  justify-items: center;
+}
 
 .trendGrid :global(.metric-trend-card) :global(header span) {
   color: var(--recovery-muted);
