@@ -224,10 +224,10 @@
 
 @media (max-width: 640px) {
   .root { padding-bottom: 32px; }
-  .scoreEssentials { gap: 24px; padding-bottom: 24px; }
+  .scoreEssentials { gap: 16px; padding-bottom: 24px; }
   .radarStage, .radarStage[data-detail-open="true"] { display: grid; position: static; gap: 16px; }
   .balanceRadar, .radarStage[data-detail-open="true"] .balanceRadar { transform: none; }
-  .balanceRadar svg { width: min(100%, 320px); }
+  .balanceRadar svg { width: min(100%, 380px); }
   .dimensionDetailShell { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--score-radar-motion) var(--score-radar-ease); }
   .dimensionDetailShell[data-open="true"] { grid-template-rows: 1fr; }
   .dimensionDetail { position: static; width: auto; max-height: none; min-height: 0; padding: 16px 0 0; border: 0; border-top: 1px solid transparent; transform: none; transition: opacity var(--score-radar-motion) var(--score-radar-ease), border-color var(--score-radar-motion) var(--score-radar-ease), visibility 0s linear var(--score-radar-motion); }

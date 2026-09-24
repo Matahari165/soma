@@ -926,8 +926,8 @@
 
 @media (max-width: 640px) {
   .page {
-    --recovery-header-height: 64px;
-    --recovery-flow-gap: 40px;
+    --recovery-header-height: 48px;
+    --recovery-flow-gap: 32px;
   }
 
   .page :global(.health-detail-page--recovery) :global(.health-detail-hero) {
@@ -950,7 +950,7 @@
   }
 
   .page .heroScene {
-    gap: 24px;
+    gap: 12px;
     padding-bottom: 0;
   }
 
@@ -959,7 +959,8 @@
   }
 
   .radarRegion :global(figure) {
-    width: min(100%, 320px);
+    width: 100%;
+    max-width: 380px;
   }
 
   .recoveryRadarStage,
@@ -1048,8 +1049,12 @@
   }
 
   .trendGrid :global(.metric-trend-card) {
-    min-height: 228px;
+    min-height: 0;
     padding-block: 0;
+  }
+
+  .trendGrid :global(.metric-trend-card) :global(header) {
+    min-height: 32px;
   }
 
   .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
