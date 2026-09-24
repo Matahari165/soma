@@ -180,6 +180,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [dictationBusy, setDictationBusy] = useState(false);
   const [liveVoiceBusy, setLiveVoiceBusy] = useState(false);
   const [voicePresentation, setVoicePresentation] = useState<LiveVoicePresentation | null>(null);
+  const [voiceLatestMessage, setVoiceLatestMessage] = useState<Message | null>(null);
   const handleVoicePresentationChange = useCallback((presentation: LiveVoicePresentation | null) => setVoicePresentation(presentation), []);
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
@@ -275,6 +276,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }, []);
 
   const activateVoiceConversation = useCallback(async (conversationId: string) => {
+    setVoiceLatestMessage(null);
     activeIdRef.current = conversationId;
     setActiveId(conversationId);
     setLoadingConversation(true);
@@ -295,7 +297,11 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const refreshVoiceConversation = useCallback(async (conversationId: string) => {
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(conversationId)}`, { cache: "no-store" }));
-      if (activeIdRef.current === conversationId && Array.isArray(payload?.messages)) setMessages(payload.messages);
+      if (activeIdRef.current === conversationId && Array.isArray(payload?.messages)) {
+        const updatedMessages = payload.messages as Message[];
+        setMessages(updatedMessages);
+        setVoiceLatestMessage(updatedMessages.findLast((message) => message.role === "assistant" && message.status === "completed") ?? null);
+      }
       await loadConversations();
     } catch (loadError) {
       if (activeIdRef.current === conversationId) setError(loadError instanceof Error ? loadError.message : "La réponse vocale n’a pas pu être rechargée.");
@@ -633,10 +639,13 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
         }}>
           {voicePresentation ? <section className={styles.voiceStage} aria-label="Conversation vocale en cours">
             <div className={styles.voiceStageContent}>
+              {previewMode && <p className={styles.voicePreviewNotice}>Aperçu local · données de démonstration. Les données personnelles ne sont pas disponibles ici.</p>}
               <p className={styles.voiceStageStatus} role="status">{voicePresentation.phase === "requesting" ? "Autorisation du microphone…" : voicePresentation.phase === "connecting" ? "Connexion vocale…" : voicePresentation.phase === "closing" ? "Fermeture de la session…" : voicePresentation.muted ? "Micro coupé" : voicePresentation.assistantCaption ? "Soma répond" : "À ton écoute"}</p>
+              {voicePresentation.error && <p className={styles.voiceStageError} role="alert">{voicePresentation.error}</p>}
               {voicePresentation.userCaption && <div className={styles.voiceTurn}><span>Vous</span><p>{voicePresentation.userCaption}</p></div>}
-              {voicePresentation.assistantCaption && <div className={styles.voiceTurn}><span>Soma</span><p>{voicePresentation.assistantCaption}</p></div>}
-              {!voicePresentation.userCaption && !voicePresentation.assistantCaption && voicePresentation.phase === "active" && <p className={styles.voicePrompt}>Parle à Soma.</p>}
+              {voiceLatestMessage ? <div className={styles.voiceAnswer}><span>Dernière réponse complète</span><div className={styles.messageBody}><MessageBody message={voiceLatestMessage} /></div></div>
+                : voicePresentation.assistantCaption && <div className={styles.voiceTurn}><span>Soma</span><p>{voicePresentation.assistantCaption}</p></div>}
+              {!voicePresentation.userCaption && !voicePresentation.assistantCaption && !voiceLatestMessage && voicePresentation.phase === "active" && <p className={styles.voicePrompt}>Parle à Soma.</p>}
             </div>
           </section> : loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
             <div className={styles.loadingState} role="status"><span /><span /><span /><p>Préparation de votre espace…</p></div>

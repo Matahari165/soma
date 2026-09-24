@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./assistant-live-voice.module.css";
 
 type Phase = "idle" | "requesting" | "connecting" | "active" | "closing";
-export type LiveVoicePresentation = { phase: Phase; userCaption: string; assistantCaption: string; muted: boolean };
+export type LiveVoicePresentation = { phase: Phase; userCaption: string; assistantCaption: string; muted: boolean; error: string | null };
 type LiveEvent = Record<string, unknown> & { type?: unknown };
 type TranscriptFragment = { startMs: number; endMs: number; text: string };
 type PendingDelegation = {
@@ -395,6 +395,7 @@ export function AssistantLiveVoice({
 
   const queueDelegation = useCallback((delegationId: string, offsetMs: number) => {
     if (handledDelegationsRef.current.has(delegationId)) return;
+    setError(null);
     handledDelegationsRef.current.add(delegationId);
     const superseded = new Set([
       ...pendingDelegationsRef.current.keys(),
@@ -656,8 +657,8 @@ export function AssistantLiveVoice({
 
   const busy = phase !== "idle";
   useEffect(() => {
-    onPresentationChange?.(busy ? { phase, userCaption, assistantCaption, muted } : null);
-  }, [assistantCaption, busy, muted, onPresentationChange, phase, userCaption]);
+    onPresentationChange?.(busy ? { phase, userCaption, assistantCaption, muted, error } : null);
+  }, [assistantCaption, busy, error, muted, onPresentationChange, phase, userCaption]);
   const status = phase === "requesting" ? "Autorisation du microphone…"
     : phase === "connecting" ? "Connexion vocale…"
       : phase === "active" ? (muted ? "Micro coupé" : "Mode vocal actif")
@@ -681,6 +682,6 @@ export function AssistantLiveVoice({
         {phase === "closing" ? <LoaderCircle size={15} className={styles.spinner} aria-hidden="true" /> : <><Square size={12} fill="currentColor" aria-hidden="true" /><span>Terminer</span></>}
       </button>
     </>}
-    {error && <span className={styles.error} role="alert">{error}</span>}
+    {error && !busy && <span className={styles.error} role="alert">{error}</span>}
   </div>;
 }

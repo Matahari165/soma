@@ -160,6 +160,9 @@ export async function createAssistantLiveSession(
   if (!parsed.success) throw new AssistantLiveError("assistant_live_invalid_request", 400, "La demande de session vocale est invalide.");
 
   const apiKey = liveApiKey();
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    throw new AssistantLiveError("assistant_live_not_configured", 503, "L’assistant Soma n’est pas configuré sur ce serveur. Ajoute sa clé OpenAI avant de démarrer le mode vocal.");
+  }
   const now = options.now?.() ?? Date.now();
   let conversationId = parsed.data.conversationId;
 

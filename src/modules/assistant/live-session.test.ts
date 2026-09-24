@@ -47,6 +47,7 @@ describe("assistant Live voice session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("OPENAI_LIVE_API_KEY", apiKey);
+    vi.stubEnv("OPENAI_API_KEY", "test-chat-key-not-a-real-secret");
     state.isLocalPreviewMode.mockReturnValue(false);
     state.createAssistantConversation.mockResolvedValue({ id: conversationId });
     state.findAssistantConversation.mockResolvedValue({ id: conversationId });
@@ -101,6 +102,15 @@ describe("assistant Live voice session", () => {
     vi.stubEnv("OPENAI_LIVE_API_KEY", apiKey);
     await expect(createAssistantLiveSession(userId, { conversationId: null, sdp: "not-an-offer" }, { fetchImpl }))
       .rejects.toMatchObject({ code: "assistant_live_invalid_request", status: 400 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(state.createAssistantConversation).not.toHaveBeenCalled();
+  });
+
+  it("rejects voice startup before a paid Live session when the backend chat key is absent", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const fetchImpl = vi.fn();
+    await expect(createAssistantLiveSession(userId, { conversationId: null, sdp: sdpOffer }, { fetchImpl }))
+      .rejects.toMatchObject({ code: "assistant_live_not_configured", status: 503 });
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(state.createAssistantConversation).not.toHaveBeenCalled();
   });

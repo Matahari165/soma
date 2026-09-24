@@ -11,6 +11,8 @@ const deepSignals = [
 ];
 const balancedSignals = [
   /(?:compare|progression|tendance|pourquoi|avis|objectif|performance)/iu,
+  /(?:donn[ée]es|s[ée]ances?|activit[ée]s?|course|courir|running).{0,60}(?:derni[eè]res?|pass[ée]es?)\s+(?:(?:\d+|deux|trois|quatre|six|huit)\s+)?semaines?/iu,
+  /(?:derni[eè]res?|pass[ée]es?)\s+(?:(?:\d+|deux|trois|quatre|six|huit)\s+)?semaines?.{0,60}(?:donn[ée]es|s[ée]ances?|activit[ée]s?|course|courir|running)/iu,
   /(?:sommeil|r[ée]cup[ée]ration).{0,30}(?:effort|course|musculation|alimentation)/iu,
 ];
 
