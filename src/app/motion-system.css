@@ -71,24 +71,35 @@
 }
 
 /* The Observatory radar uses global classes because it belongs to the
-   immersive scene; keep it on the same timing as the route radars. */
+   immersive scene; its entrance is slightly slower than the route radars. */
+.observatory-radar {
+  --soma-radar-fill-duration: 1050ms;
+  --soma-radar-trace-duration: 900ms;
+  --soma-radar-point-duration: 360ms;
+  --soma-radar-fill-delay: 150ms;
+  --soma-radar-trace-delay: 180ms;
+  --soma-radar-point-delay: 820ms;
+  --soma-radar-stagger: 105ms;
+  --soma-radar-ease: cubic-bezier(.33, 0, .2, 1);
+}
+
 .observatory-radar .radar-value {
   transform-box: fill-box;
   transform-origin: center;
-  animation: soma-radar-fill var(--soma-radar-fill-duration) var(--soma-ease-enter) var(--soma-radar-fill-delay) both;
+  animation: soma-radar-fill var(--soma-radar-fill-duration) var(--soma-radar-ease) var(--soma-radar-fill-delay) both;
 }
 
 .observatory-radar .radar-value-segment {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: soma-radar-trace var(--soma-radar-trace-duration) var(--soma-ease-enter) calc(var(--soma-radar-trace-delay) + var(--radar-segment-index, 0) * var(--soma-radar-stagger)) both;
+  animation: soma-radar-trace var(--soma-radar-trace-duration) var(--soma-radar-ease) calc(var(--soma-radar-trace-delay) + var(--radar-segment-index, 0) * var(--soma-radar-stagger)) both;
 }
 
 .observatory-radar .radar-point {
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: soma-radar-point var(--soma-radar-point-duration) var(--soma-ease-enter) calc(var(--soma-radar-point-delay) + var(--radar-point-index, 0) * var(--soma-radar-stagger)) both;
+  animation: soma-radar-point var(--soma-radar-point-duration) var(--soma-radar-ease) calc(var(--soma-radar-point-delay) + var(--radar-point-index, 0) * var(--soma-radar-stagger)) both;
 }
 
 /* Controls acknowledge state without lifting, bouncing or glowing. */

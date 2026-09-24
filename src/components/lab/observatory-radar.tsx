@@ -50,9 +50,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     startTransition(()=>setCalories(next));
   },[data.caloriesKcal]);
   useEffect(()=>{
-    // The last point finishes at 1270 ms with the shared motion tokens.
+    // The last point finishes at 1495 ms with the Observatory motion tokens.
     // Settle only after the entire entrance has completed.
-    const finish = window.setTimeout(() => setTraceSettled(true), 1400);
+    const finish = window.setTimeout(() => setTraceSettled(true), 1650);
     return () => window.clearTimeout(finish);
   },[]);
   useEffect(()=>{
