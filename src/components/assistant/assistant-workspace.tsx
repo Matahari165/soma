@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Image as ImageIcon, Menu, Paperclip, Pencil, Plus, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
@@ -149,51 +149,11 @@ function AssistantText({ text }: { text: string }) {
   return <>{blocks}</>;
 }
 
-function ProgressiveAssistantText({ text, onReveal }: { text: string; onReveal: () => void }) {
-  const [visibleLength, setVisibleLength] = useState(0);
-  const onRevealRef = useRef(onReveal);
-  useEffect(() => { onRevealRef.current = onReveal; }, [onReveal]);
-
-  useEffect(() => {
-    if (!text || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const frame = window.requestAnimationFrame(() => setVisibleLength(text.length));
-      return () => window.cancelAnimationFrame(frame);
-    }
-    let interval: number | undefined;
-    const frame = window.requestAnimationFrame(() => {
-      setVisibleLength(0);
-      const step = Math.max(6, Math.ceil(text.length / 35));
-      let revealed = 0;
-      interval = window.setInterval(() => {
-        revealed = Math.min(text.length, revealed + step);
-        setVisibleLength(revealed);
-        if (revealed === text.length && interval) window.clearInterval(interval);
-      }, 24);
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      if (interval) window.clearInterval(interval);
-    };
-  }, [text]);
-
-  useEffect(() => { onRevealRef.current(); }, [visibleLength]);
-
-  return (
-    <>
-      <span className={styles.srOnly}>{text}</span>
-      <div className={styles.progressiveContent} aria-hidden="true"><AssistantText text={text.slice(0, visibleLength)} /></div>
-      {visibleLength < text.length && <span className={styles.responseCaret} aria-hidden="true" />}
-    </>
-  );
-}
-
-function MessageBody({ message, progressive = false, onReveal }: { message: Message; progressive?: boolean; onReveal: () => void }) {
+function MessageBody({ message }: { message: Message }) {
   return <>
     {message.parts.map((part, index) => {
       if (part.type === "text") return message.role === "assistant"
-        ? progressive
-          ? <ProgressiveAssistantText key={`${message.id}-text-${index}`} text={part.text} onReveal={onReveal} />
-          : <AssistantText key={`${message.id}-text-${index}`} text={part.text} />
+        ? <AssistantText key={`${message.id}-text-${index}`} text={part.text} />
         : <p key={`${message.id}-text-${index}`}>{part.text}</p>;
       if (part.type === "data-summary") return <AnalysisSummary key={`${message.id}-data-${index}`} part={part} />;
       if (part.type === "attachment") return <span className={styles.attachmentNote} key={`${message.id}-attachment-${index}`}><ImageIcon size={15} aria-hidden="true" /> Photo jointe</span>;
@@ -219,11 +179,16 @@ export function AssistantWorkspace() {
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
+  const [showLatest, setShowLatest] = useState(false);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
   const [starterState, setStarterState] = useState<"loading" | "calibration" | "ready" | "unavailable">("loading");
   const [starterPrompts, setStarterPrompts] = useState<StarterPrompt[]>(fallbackPrompts);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const preEditDraftRef = useRef("");
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
@@ -262,10 +227,31 @@ export function AssistantWorkspace() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [historyOpen, closeHistory]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const closeMenu = (event: PointerEvent | globalThis.KeyboardEvent) => {
+      if (event instanceof globalThis.KeyboardEvent && event.key === "Escape") setOpenMenuId(null);
+      if (event instanceof PointerEvent && !(event.target as Element).closest("[data-conversation-actions]")) setOpenMenuId(null);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeMenu);
+    };
+  }, [openMenuId]);
+
   const scrollToLatest = useCallback(() => {
     const transcript = transcriptRef.current;
     if (!transcript || !followConversationRef.current) return;
     transcript.scrollTop = transcript.scrollHeight;
+  }, []);
+
+  const jumpToLatest = useCallback(() => {
+    followConversationRef.current = true;
+    setShowLatest(false);
+    const transcript = transcriptRef.current;
+    transcript?.scrollTo({ top: transcript.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }, []);
 
   const loadConversations = useCallback(async () => {
@@ -335,6 +321,8 @@ export function AssistantWorkspace() {
     if (id === activeId && messages.length) return;
     setActiveId(id);
     setEditingMessageId(null);
+    preEditDraftRef.current = "";
+    setOpenMenuId(null);
     setProgressiveMessageId(null);
     setText("");
     setLoadingConversation(true);
@@ -342,6 +330,7 @@ export function AssistantWorkspace() {
     setHistoryOpen(false);
     window.requestAnimationFrame(() => textareaRef.current?.focus());
     followConversationRef.current = true;
+    setShowLatest(false);
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" }));
       setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
@@ -366,6 +355,10 @@ export function AssistantWorkspace() {
     setError(null);
     setHistoryOpen(false);
     setEditingMessageId(null);
+    setEditingDraft("");
+    preEditDraftRef.current = "";
+    setOpenMenuId(null);
+    setShowLatest(false);
     followConversationRef.current = true;
     void loadStarters();
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -379,6 +372,7 @@ export function AssistantWorkspace() {
       await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(conversation.id)}`, { method: "DELETE" }));
       setConversations((current) => current.filter((candidate) => candidate.id !== conversation.id));
       if (activeId === conversation.id) startConversation();
+      setOpenMenuId(null);
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "La conversation n’a pas pu être supprimée.");
     } finally {
@@ -390,7 +384,7 @@ export function AssistantWorkspace() {
     const element = textareaRef.current;
     if (!element) return;
     element.style.height = "0px";
-    element.style.height = `${Math.min(element.scrollHeight, 96)}px`;
+    element.style.height = `${Math.min(element.scrollHeight, 220)}px`;
   }
 
   function addPhotos(files: FileList | null) {
@@ -438,11 +432,11 @@ export function AssistantWorkspace() {
 
   async function sendMessage(event?: FormEvent, overrideText?: string) {
     event?.preventDefault();
-    const cleanText = (overrideText ?? text).trim() || (photos.length ? "Analyse cette photo." : "");
-    if ((!cleanText && !photos.length) || sending) return;
+    const cleanText = (overrideText ?? text).trim() || (!editingMessageId && photos.length ? "Analyse cette photo." : "");
+    if ((!cleanText && !photos.length) || (editingMessageId && !cleanText) || sending) return;
     followConversationRef.current = true;
 
-    const submittedPhotos = photos;
+    const submittedPhotos = editingMessageId ? [] : photos;
     const editedMessageId = editingMessageId;
     const editedMessage = editedMessageId ? messages.find((message) => message.id === editedMessageId) : null;
     const previousMessages = messages;
@@ -462,10 +456,11 @@ export function AssistantWorkspace() {
     setMessages((current) => editedMessage
       ? [...current.filter((message) => message.sequence < editedMessage.sequence), optimisticMessage]
       : [...current, optimisticMessage]);
-    setText("");
-    setPhotos([]);
+    setText(editedMessageId ? preEditDraftRef.current : "");
+    if (!editedMessageId) setPhotos([]);
     setEditingMessageId(null);
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    setEditingDraft("");
+    if (textareaRef.current && !editedMessageId) textareaRef.current.style.height = "auto";
     setSending(true);
     setError(null);
     setNotConfigured(false);
@@ -511,10 +506,11 @@ export function AssistantWorkspace() {
       await loadConversations();
     } catch (sendError) {
       setMessages(previousMessages);
-      setText(cleanText);
-      setPhotos(submittedPhotos);
+      setText(editedMessageId ? preEditDraftRef.current : cleanText);
+      if (!editedMessageId) setPhotos(submittedPhotos);
       setEditingMessageId(editedMessageId);
-      requestAnimationFrame(resizeComposer);
+      setEditingDraft(cleanText);
+      if (!editedMessageId) requestAnimationFrame(resizeComposer);
       const code = sendError && typeof sendError === "object" && "code" in sendError ? sendError.code : null;
       setNotConfigured(code === "assistant_not_configured");
       setError(sendError instanceof Error ? sendError.message : "Le message n’a pas pu être envoyé.");
@@ -526,28 +522,21 @@ export function AssistantWorkspace() {
   function editMessage(message: Message) {
     const value = messageText(message);
     if (!value || sending) return;
-    setPhotos((current) => {
-      current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
-      return [];
-    });
+    preEditDraftRef.current = text;
     setEditingMessageId(message.id);
-    setText(value);
+    setEditingDraft(value);
     setError(null);
-    requestAnimationFrame(() => {
-      resizeComposer();
-      textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(value.length, value.length);
-    });
+    requestAnimationFrame(() => editTextareaRef.current?.focus());
   }
 
   function cancelEditing() {
     setEditingMessageId(null);
-    setText("");
-    requestAnimationFrame(resizeComposer);
+    setEditingDraft("");
+    setText(preEditDraftRef.current);
   }
 
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !editingMessageId) {
       event.preventDefault();
       void sendMessage();
     }
@@ -566,7 +555,7 @@ export function AssistantWorkspace() {
       {historyOpen && <button className={styles.scrim} type="button" aria-label="Fermer les conversations" onClick={closeHistory} />}
       <aside id="assistant-conversations" ref={historyPanelRef} className={`${styles.history} ${historyOpen ? styles.historyOpen : ""}`} aria-label="Conversations" role={historyOpen ? "dialog" : undefined} aria-modal={historyOpen || undefined}>
         <div className={styles.historyHeader}>
-          <button type="button" className={styles.newButton} onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={18} aria-hidden="true" /></button>
+          <button type="button" className={styles.newButton} onClick={startConversation}><Plus size={18} aria-hidden="true" /><span>Nouvelle conversation</span></button>
           <button type="button" className={styles.closeHistory} onClick={closeHistory} aria-label="Fermer les conversations"><X size={19} aria-hidden="true" /></button>
         </div>
         <nav aria-label="Historique des conversations" className={styles.conversationList}>
@@ -576,16 +565,23 @@ export function AssistantWorkspace() {
                 <span>{conversation.title || "Nouvelle conversation"}</span>
                 {conversationDate(conversation) && <time>{conversationDate(conversation)}</time>}
               </button>
-              <button className={styles.deleteConversation} type="button" onClick={() => void deleteConversation(conversation)} disabled={deletingId === conversation.id} aria-label={`Supprimer ${conversation.title || "la conversation"}`}><Trash2 size={15} aria-hidden="true" /></button>
+              <div className={styles.rowActions} data-conversation-actions>
+                <button className={styles.moreConversation} type="button" onClick={() => setOpenMenuId((current) => current === conversation.id ? null : conversation.id)} aria-label={`Options pour ${conversation.title || "la conversation"}`} aria-expanded={openMenuId === conversation.id}><MoreHorizontal size={17} aria-hidden="true" /></button>
+                {openMenuId === conversation.id && <div className={styles.conversationMenu}>
+                  <button type="button" onClick={() => void deleteConversation(conversation)} disabled={deletingId === conversation.id}><Trash2 size={15} aria-hidden="true" /> Supprimer</button>
+                </div>}
+              </div>
             </div>
           )) : <p className={styles.listStatus}>Aucune conversation.</p>}
         </nav>
       </aside>
 
       <section className={styles.conversation} aria-label="Conversation avec Soma">
-        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Transcript de la conversation" aria-live="polite" aria-relevant="additions" aria-busy={loadingConversation || sending} onScroll={(event) => {
+        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions" aria-busy={loadingConversation || sending} onScroll={(event) => {
           const element = event.currentTarget;
-          followConversationRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+          const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+          followConversationRef.current = distance < 80;
+          setShowLatest(distance > 240);
         }}>
           {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
             <div className={styles.loadingState} role="status"><span /><span /><span /><p>Préparation de votre espace…</p></div>
@@ -614,8 +610,15 @@ export function AssistantWorkspace() {
               {messages.filter((message) => message.role !== "tool").map((message) => (
                 <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
                   <span className={styles.speaker}>{message.role === "user" ? "Vous" : "Soma"}</span>
-                  <div className={styles.messageBody}><MessageBody message={message} progressive={message.id === progressiveMessageId} onReveal={scrollToLatest} /></div>
-                  {message.role === "user" && message.status !== "pending" && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
+                  {editingMessageId === message.id ? <div className={styles.inlineEditor}>
+                    <label className={styles.srOnly} htmlFor={`edit-${message.id}`}>Modifier le message</label>
+                    <textarea id={`edit-${message.id}`} ref={editTextareaRef} value={editingDraft} onChange={(event) => setEditingDraft(event.target.value)} rows={Math.max(3, Math.min(8, editingDraft.split("\n").length + 1))} onKeyDown={(event) => {
+                      if (event.key === "Escape") cancelEditing();
+                      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void sendMessage(undefined, editingDraft);
+                    }} disabled={sending} />
+                    <div className={styles.inlineEditorActions}><button type="button" onClick={cancelEditing} disabled={sending}>Annuler</button><button type="button" onClick={() => void sendMessage(undefined, editingDraft)} disabled={sending || !editingDraft.trim()}><Check size={15} aria-hidden="true" /> Enregistrer et envoyer</button></div>
+                  </div> : <div className={styles.messageBody}><MessageBody message={message} /></div>}
+                  {message.role === "user" && message.status !== "pending" && editingMessageId !== message.id && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
               ))}
@@ -624,10 +627,11 @@ export function AssistantWorkspace() {
           )}
         </div>
 
+        {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> Dernier message</button>}
+
         <div className={styles.composerRegion}>
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
           <form className={styles.composer} onSubmit={(event) => void sendMessage(event)}>
-            {editingMessageId && <div className={styles.editingNotice}><span><Pencil size={14} aria-hidden="true" /> Modification du message</span><button type="button" onClick={cancelEditing} aria-label="Annuler la modification"><X size={15} aria-hidden="true" /></button></div>}
             {photos.length > 0 && <ul className={styles.photoList} aria-label="Photos à joindre">{photos.map((photo) => (
               <li key={photo.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- local object URL selected by the user */}
@@ -643,13 +647,13 @@ export function AssistantWorkspace() {
               value={text}
               onChange={(event) => { setText(event.target.value); resizeComposer(); }}
               onKeyDown={onComposerKeyDown}
-              placeholder="Écris à Soma…"
-              disabled={sending || notConfigured}
+              placeholder={editingMessageId ? "Termine la modification ci-dessus…" : "Demande à Soma…"}
+              disabled={sending || notConfigured || Boolean(editingMessageId)}
             />
             <div className={styles.composerActions}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={editingMessageId ? "Les photos ne peuvent pas être modifiées" : "Joindre des photos"}><Paperclip size={18} aria-hidden="true" /></button>
-              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || (!text.trim() && !photos.length)} aria-label={editingMessageId ? "Enregistrer la modification" : "Envoyer le message"}>{editingMessageId ? <Check size={18} aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}</button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={20} aria-hidden="true" /></button>
+              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><Send size={18} aria-hidden="true" /></button>
             </div>
           </form>
         </div>
