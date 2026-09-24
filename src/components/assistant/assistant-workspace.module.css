@@ -112,7 +112,6 @@
 .composer { width: min(760px, 100%); margin: 0 auto; padding: 12px; border: 1px solid var(--lab-border-strong); border-radius: var(--lab-radius-sm); background: var(--lab-surface-subtle); }
 .composer textarea { display: block; width: 100%; min-height: 40px; max-height: 96px; padding: 8px 0; resize: none; overflow-y: auto; border: 0; outline: 0; background: transparent; color: var(--lab-text-primary); caret-color: var(--lab-text-primary); font: 400 16px/1.5 var(--font-soma-ui), system-ui, sans-serif; }
 .composer textarea::placeholder { color: var(--lab-text-secondary); opacity: .8; }
-.composerActions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .attachButton { min-width: 36px; min-height: 36px; }
 .sendButton { min-width: 36px; min-height: 36px; background: var(--lab-brand); color: var(--lab-surface); }
 .sendButton:hover:not(:disabled) { background: var(--lab-text-primary); }
@@ -171,24 +170,24 @@
 }
 
 /* The chat is one continuous reading surface. Only the composer floats above it. */
-.page { height: 100dvh; min-height: 0; background: var(--lab-canvas); }
+.page { height: 100dvh; min-height: 0; box-sizing: border-box; background: var(--lab-canvas); }
 :global(.app-shell--preview) .page { height: calc(100dvh - 28px); }
-.history { overflow-y: auto; padding: 22px 12px; background: #0b0b0b; border-right-color: #242424; scrollbar-width: thin; }
+.history { min-height: 0; overflow-y: auto; margin: 10px 0 10px 10px; padding: 22px 12px; border: 0; border-radius: 18px; background: #111; scrollbar-width: thin; }
 .historyHeader { justify-content: stretch; margin-bottom: 22px; }
-.newButton { display: flex; width: 100%; min-height: 44px; justify-content: flex-start; gap: 12px; padding: 0 12px; border: 1px solid #303030; border-radius: 4px; color: var(--lab-text-primary); font-size: 13px; transition: background-color 160ms ease, border-color 160ms ease; }
+.newButton { display: flex; width: 100%; min-height: 44px; justify-content: flex-start; gap: 12px; padding: 0 12px; border: 1px solid #303030; border-radius: 13px; color: var(--lab-text-primary); font-size: 13px; transition: background-color 160ms ease, border-color 160ms ease; }
 .newButton span { white-space: nowrap; }
 .newButton:hover { border-color: #4a4a4a; background: #1c1c1c; }
 .conversationList { gap: 2px; }
-.conversationRow { position: relative; grid-template-columns: minmax(0, 1fr) 36px; gap: 0; border-radius: 4px; }
-.conversationList .conversationRow > button:first-child { min-height: 46px; padding: 8px 10px; transition: background-color 150ms ease, color 150ms ease; }
+.conversationRow { position: relative; grid-template-columns: minmax(0, 1fr) 36px; gap: 0; border-radius: 12px; }
+.conversationList .conversationRow > button:first-child { min-height: 46px; padding: 8px 10px; border-radius: 12px; transition: background-color 150ms ease, color 150ms ease; }
 .conversationList .conversationRow > button:first-child[aria-current="page"] { background: #202020; }
 .conversationList time { font-size: 11px; }
 .rowActions { position: relative; align-self: center; }
-.moreConversation { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--lab-text-secondary); opacity: 0; transition: opacity 150ms ease, background-color 150ms ease; }
+.moreConversation { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--lab-text-secondary); opacity: 0; transition: opacity 150ms ease, background-color 150ms ease; }
 .conversationRow:hover .moreConversation, .conversationRow:focus-within .moreConversation, .moreConversation[aria-expanded="true"] { opacity: 1; }
 .moreConversation:hover { background: #303030; color: var(--lab-text-primary); }
-.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid #3a3a3a; border-radius: 4px; background: #1c1c1c; box-shadow: 0 12px 24px #0008; }
-.conversationMenu button { display: flex; width: 100%; min-height: 40px; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 3px; background: transparent; color: var(--lab-text-primary); font: 400 13px/1.3 var(--font-soma-ui), sans-serif; text-align: left; }
+.conversationMenu { position: absolute; z-index: 5; top: 40px; right: 0; min-width: 152px; padding: 4px; border: 1px solid #3a3a3a; border-radius: 12px; background: #1c1c1c; box-shadow: 0 12px 24px #0008; }
+.conversationMenu button { display: flex; width: 100%; min-height: 40px; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--lab-text-primary); font: 400 13px/1.3 var(--font-soma-ui), sans-serif; text-align: left; }
 .conversationMenu button:hover { background: #303030; }
 .conversation { position: relative; height: 100%; background: var(--lab-canvas); }
 .transcript { grid-row: 1; grid-column: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #353535 transparent; }
@@ -210,16 +209,17 @@
 .inlineEditorActions button:disabled { opacity: .45; }
 .jumpToLatest { z-index: 2; display: inline-flex; grid-row: 1; grid-column: 1; align-self: end; justify-self: center; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 14px; padding: 0 14px; border: 1px solid #414141; border-radius: 20px; background: #242424; color: var(--lab-text-primary); box-shadow: 0 6px 16px #0007; font: 500 12px/1 var(--font-soma-ui), sans-serif; }
 .jumpToLatest:hover { background: #303030; }
-.composerRegion { grid-row: 2; grid-column: 1; padding: 10px 24px max(18px, env(safe-area-inset-bottom)); background: var(--lab-canvas); }
-.composer { width: min(780px, 100%); padding: 13px 14px 11px; border: 1px solid #373737; border-radius: 23px; background: #1b1b1b; box-shadow: 0 8px 28px #0005; transition: border-color 160ms ease, background-color 160ms ease; }
+.composerRegion { grid-row: 2; grid-column: 1; min-height: 0; max-height: min(50dvh, 360px); overflow-y: auto; overscroll-behavior: contain; padding: 8px 24px max(18px, env(safe-area-inset-bottom)); background: var(--lab-canvas); }
+.composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid #373737; border-radius: 22px; background: #1b1b1b; box-shadow: 0 8px 28px #0005; transition: border-color 160ms ease, background-color 160ms ease; }
 .composer:hover { border-color: #494949; }
-.composer:focus-within { border-color: #767676; background: #202020; }
-.composer textarea { min-height: 42px; max-height: 220px; padding: 8px 4px; }
+.composer:focus-within { border-color: #3e3e3e; background: #222; }
+.composerLine { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: end; gap: 8px; }
+.composer textarea { min-height: 40px; max-height: 220px; padding: 7px 0; }
+.page .composer textarea:focus-visible { outline: none; }
 .composer textarea::placeholder { color: #a5a5a5; opacity: 1; }
 .composer textarea:disabled { cursor: not-allowed; opacity: .6; }
-.composerActions { margin-top: 4px; }
-.attachButton { min-width: 38px; min-height: 38px; border-radius: 50%; color: var(--lab-text-secondary); transition: background-color 150ms ease, color 150ms ease; }
-.sendButton { min-width: 38px; min-height: 38px; border-radius: 50%; transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease; }
+.attachButton { min-width: 40px; min-height: 40px; border-radius: 50%; color: var(--lab-text-secondary); transition: background-color 150ms ease, color 150ms ease; }
+.sendButton { min-width: 40px; min-height: 40px; border-radius: 50%; transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease; }
 .sendButton:hover:not(:disabled) { transform: translateY(-1px); }
 .sendButton:active:not(:disabled), .attachButton:active:not(:disabled) { transform: scale(.96); }
 .photoList { flex-wrap: wrap; margin-bottom: 8px; }
@@ -232,11 +232,15 @@
   .moreConversation, .editMessage { opacity: 1; }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 1100px) {
   .page { height: calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
   :global(.app-shell--preview) .page { height: calc(100dvh - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 700px) {
   .mobileToolbar { border-bottom-color: #242424; }
-  .history { inset: 0 auto 0 0; width: min(320px, 88vw); padding: max(20px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-inline-end)) max(20px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-inline-start)); }
+  .mobileToolbar button, .closeHistory { border-radius: 12px; }
+  .history { inset: 0 auto 0 0; width: min(320px, 88vw); margin: 0; padding: max(20px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-inline-end)) max(20px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-inline-start)); border-radius: 0 18px 18px 0; }
   .historyHeader { gap: 8px; }
   .conversation { height: calc(100% - 52px); }
   .messages { width: calc(100% - 32px); padding: 24px 0 42px; gap: 26px; }
@@ -245,12 +249,17 @@
   .userMessage:has(.inlineEditor) { width: 100%; }
   .inlineEditorActions { flex-wrap: wrap; }
   .composerRegion { padding: 8px 12px max(12px, env(safe-area-inset-bottom)); }
-  .composer { padding: 10px 12px 8px; border-radius: 20px; }
+  .composer { padding: 8px 10px; border-radius: 20px; }
+  .composerLine { grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 6px; }
   .composer textarea { max-height: min(220px, 30dvh); }
   .jumpToLatest { margin-bottom: 10px; }
 }
 
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 700px) {
+  .page { height: calc(100dvh - 52px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 701px) and (max-width: 900px) {
   .page { height: calc(100dvh - 52px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
 

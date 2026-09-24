@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
@@ -640,20 +640,20 @@ export function AssistantWorkspace() {
               </li>
             ))}</ul>}
             <label className={styles.srOnly} htmlFor="assistant-message">Message à Soma</label>
-            <textarea
-              id="assistant-message"
-              ref={textareaRef}
-              rows={1}
-              value={text}
-              onChange={(event) => { setText(event.target.value); resizeComposer(); }}
-              onKeyDown={onComposerKeyDown}
-              placeholder={editingMessageId ? "Termine la modification ci-dessus…" : "Demande à Soma…"}
-              disabled={sending || notConfigured || Boolean(editingMessageId)}
-            />
-            <div className={styles.composerActions}>
+            <div className={styles.composerLine}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={20} aria-hidden="true" /></button>
-              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><Send size={18} aria-hidden="true" /></button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={20} strokeWidth={2.2} aria-hidden="true" /></button>
+              <textarea
+                id="assistant-message"
+                ref={textareaRef}
+                rows={1}
+                value={text}
+                onChange={(event) => { setText(event.target.value); resizeComposer(); }}
+                onKeyDown={onComposerKeyDown}
+                placeholder={editingMessageId ? "Termine la modification ci-dessus…" : "Demande à Soma…"}
+                disabled={sending || notConfigured || Boolean(editingMessageId)}
+              />
+              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={21} strokeWidth={2.5} aria-hidden="true" /></button>
             </div>
           </form>
         </div>
