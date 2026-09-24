@@ -100,4 +100,19 @@ describe("relation detail formatting", () => {
     expect(html).toContain("during the same sleep session");
     expect(html).not.toContain("95% interval · tests");
   });
+
+  it("renders the analysis detail inline without its eyebrow", () => {
+    const html = renderToStaticMarkup(createElement(RelationDetail, {
+      relations: [makeRelation()],
+      direction: "lower",
+      onClose: () => undefined,
+      detailRef: createRef<HTMLElement>(),
+      variant: "inline",
+      panelId: "relation-detail-panel",
+    }));
+
+    expect(html).toContain('id="relation-detail-panel"');
+    expect(html).toContain("Wake time → Awake time");
+    expect(html).not.toContain("class=\"relation-detail__eyebrow\"");
+  });
 });

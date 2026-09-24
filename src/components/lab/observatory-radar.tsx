@@ -39,31 +39,16 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const averageEffortScore = nullable(data.averageEffortScore);
   const averageCaloriesKcal = nullable(data.averageCaloriesKcal);
   const caloriesRef = useRef<number|null>(nullable(data.caloriesKcal));
-  const traceReadyRef = useRef(nullable(data.caloriesKcal) !== null);
-  const [eventReady, setEventReady] = useState(false);
   const [traceSettledState, setTraceSettled] = useState(false);
   const [calories,setCalories] = useState<number|null>(nullable(data.caloriesKcal));
-  const traceReady = eventReady || calories !== null;
   const traceSettled = traceSettledState;
   const calorieTargetRef = useRef<number|null>(nullable(data.calorieTarget));
   const [calorieTarget,setCalorieTarget] = useState<number|null>(nullable(data.calorieTarget));
   useEffect(()=>{
     const next=nullable(data.caloriesKcal);
-    if (next !== null) traceReadyRef.current = true;
     caloriesRef.current=next;
     startTransition(()=>setCalories(next));
   },[data.caloriesKcal]);
-  useEffect(()=>{
-    if (traceReady) return;
-    // Le journal peut ne jamais répondre (erreur ou emplacement non monté).
-    const fallback = window.setTimeout(() => { traceReadyRef.current = true; setEventReady(true); }, 1200);
-    return () => window.clearTimeout(fallback);
-  },[traceReady]);
-  useEffect(()=>{
-    if (!traceReady || traceSettled) return;
-    const finish = window.setTimeout(() => setTraceSettled(true), 1100);
-    return () => window.clearTimeout(finish);
-  },[traceReady, traceSettled]);
   useEffect(()=>{
     const next = nullable(data.calorieTarget);
     // Une réponse partielle sans cible garde la cible courante ; une cible
@@ -80,9 +65,6 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         const nextCalories=nullable(detail.calories);
         const nextTarget=nullable(detail.calorieTarget);
         const changed=caloriesRef.current!==nextCalories;
-        if (traceReadyRef.current && changed) setTraceSettled(true);
-        traceReadyRef.current=true;
-        setEventReady(true);
         caloriesRef.current=nextCalories;
         setCalories(nextCalories);
         calorieTargetRef.current=nextTarget;
@@ -110,10 +92,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const hasCompleteValueShape = validPoints.length === axes.length;
   const valueSegments = points.flatMap((point, index) => {
     const next = points[(index + 1) % points.length];
-    return point && next ? [{ from: point, to: next }] : [];
-  }).map((segment, sequenceIndex) => ({ ...segment, sequenceIndex }));
-  const animatedPoints = points.flatMap((point) => point ? [point] : [])
-    .map((point, sequenceIndex) => ({ point, sequenceIndex }));
+    return point && next ? [{ from: point, to: next, sequenceIndex: index }] : [];
+  });
+  const animatedPoints = points.flatMap((point, index) => point ? [{ point, sequenceIndex: index }] : []);
   const generatedDetailId = useId();
   const detailId = detailIdProp ?? `observatory-radar-detail-${generatedDetailId.replace(/[^a-zA-Z0-9]/g, "")}`;
   const detailTitleId = `${detailId}-title`;
@@ -158,11 +139,11 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />
       </Fragment>)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
-      {traceReady && <g className="radar-data-layer" aria-hidden="true">
-        {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
+      <g className="radar-data-layer" aria-hidden="true">
+        {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} onAnimationEnd={() => setTraceSettled(true)} />}
         {valueSegments.map(({ from, to, sequenceIndex })=><line className="radar-value-segment" data-radar-trace="" data-radar-segment-index={sequenceIndex} pathLength="1" style={{ "--radar-segment-index": sequenceIndex } as CSSProperties} key={`radar-value-segment-${sequenceIndex}`} x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />)}
         {animatedPoints.map(({ point, sequenceIndex })=><circle className="radar-point" data-radar-point="" data-radar-point-index={sequenceIndex} style={{ "--radar-point-index": sequenceIndex } as CSSProperties} key={sequenceIndex} cx={point[0]} cy={point[1]} r={Math.round(8*unit*10)/10}/>)}
-      </g>}
+      </g>
       {axes.map((axis,i)=>{
         const trend=axis.value===null||axis.average===null?"":axis.value>axis.average?"↑":axis.value<axis.average?"↓":"↔";
         const comparison=trend==="↑"?"Au-dessus de la moyenne sur 30 jours":trend==="↓"?"Sous la moyenne sur 30 jours":trend==="↔"?"Au niveau de la moyenne sur 30 jours":"Moyenne indisponible";
