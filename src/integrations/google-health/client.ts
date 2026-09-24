@@ -86,6 +86,7 @@ export const GOOGLE_HEALTH_AUTOMATIC_DATA_TYPES = [
   "sleep",
   "daily-heart-rate-variability",
   "daily-resting-heart-rate",
+  "daily-heart-rate-zones",
   "daily-respiratory-rate",
   "daily-oxygen-saturation",
   "daily-sleep-temperature-derivations",
@@ -156,6 +157,10 @@ export type DataPointListResponse = {
 export type DailyRollupResponse = {
   rollupDataPoints?: Record<string, unknown>[];
   nextPageToken?: string;
+};
+
+export type HeartRateSessionRollupResponse = {
+  rollupDataPoints?: Array<{ heartRate?: { beatsPerMinuteMax?: number } }>;
 };
 
 export function getGoogleHealthClientId() {
@@ -329,6 +334,23 @@ export function listGoogleHealthDataPoints(input: {
   return googleHealthRequest<DataPointListResponse>(
     `/users/me/dataTypes/${input.dataType}/dataPoints?${query.toString()}`,
     input.accessToken,
+  );
+}
+
+/** One reconciled maximum for the exercise interval, including sessions with many raw samples. */
+export function rollUpGoogleHealthSessionHeartRate(input: { accessToken: string; start: Date; end: Date }) {
+  const durationMs = input.end.getTime() - input.start.getTime();
+  if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > 24 * 60 * 60 * 1_000) {
+    throw new Error("Google Health session heart-rate range is invalid or too large.");
+  }
+  return googleHealthRequest<HeartRateSessionRollupResponse>(
+    "/users/me/dataTypes/heart-rate/dataPoints:rollUp",
+    input.accessToken,
+    { method: "POST", body: JSON.stringify({
+      range: { startTime: input.start.toISOString(), endTime: input.end.toISOString() },
+      windowSize: `${Math.ceil(durationMs / 1_000)}s`,
+      pageSize: 1,
+    }) },
   );
 }
 
