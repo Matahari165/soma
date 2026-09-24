@@ -461,11 +461,11 @@
   margin-inline-end: 88px;
   justify-items: center;
 }
-.trendGrid :global(.metric-trend-card) :global(header) { min-height: 64px; align-items: flex-start; }
-.trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; margin-top: 16px; }
-:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { padding-right: 88px; }
+.root .trendGrid :global(.metric-trend-card) :global(header) { min-height: 24px; align-items: flex-start; }
+.root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; height: 194px; margin-top: 8px; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; padding-right: 88px; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-chart-average) { stroke: var(--lab-info); stroke-dasharray: 4 5; stroke-width: 1.5; opacity: 1; vector-effect: non-scaling-stroke; }
-.trendGrid :global(.health-chart-range) { right: 0; width: 76px; }
+.trendGrid :global(.health-chart-range) { top: 15.52%; right: 0; bottom: 11.49%; width: 76px; }
 .trendGrid :global(.health-chart-average-label) { position: absolute; right: 0; display: block; width: 76px; color: var(--lab-info); font: 500 11px/14px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateY(-50%); }
 .trendGrid :global(.health-chart-average-label)::before { content: ""; display: inline-block; width: 9px; margin-right: 4px; border-top: 1.5px dashed currentColor; vertical-align: 3px; }
 .trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 88px) * .04); padding-inline-end: calc(88px + (100% - 88px) * .04); }
@@ -506,6 +506,8 @@
   .scoreColumn { padding: 0 0 24px; border-bottom: 1px solid var(--sleep-border); }
   .readingsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
   .trendGrid { grid-template-columns: 1fr; gap: 24px; }
+  .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 187px; }
+  :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; }
   .distributionPanel :global(.stage-legend) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

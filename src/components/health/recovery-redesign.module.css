@@ -722,19 +722,19 @@
   white-space: nowrap;
 }
 
-.trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-  height: 116px;
-  margin-top: 16px;
+.page .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
+  height: 194px;
+  margin-top: 8px;
 }
 
 :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) {
-  height: 120px;
+  height: 187px;
   padding-right: 88px;
 }
 
-.trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
+.page .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
   width: 100%;
-  height: 112px;
+  height: 187px;
 }
 
 .trendGrid :global(.metric-trend-card) :global(.chart-axis) {
@@ -745,7 +745,9 @@
 }
 
 .trendGrid :global(.metric-trend-card) :global(.health-chart-range) {
+  top: 15.52%;
   right: 0;
+  bottom: 11.49%;
   width: 76px;
 }
 
@@ -1083,16 +1085,17 @@
     padding-block: 0;
   }
 
-  .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
-    height: 112px;
+  .page .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
+    height: 187px;
+    margin-top: 8px;
   }
 
-  .trendGrid :global(.metric-trend-card) :global(.health-line-chart-wrap) {
-    height: 112px;
+  :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) {
+    height: 187px;
   }
 
-  .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
-    height: 112px;
+  .page .trendGrid :global(.metric-trend-card) :global(.health-line-chart) {
+    height: 187px;
   }
 
   .zoneLegend {
