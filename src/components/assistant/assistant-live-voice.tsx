@@ -153,9 +153,14 @@ export function AssistantLiveVoice({
   const transcriptCursorRef = useRef(0);
   const pendingDelegationsRef = useRef(new Map<string, PendingDelegation>());
   const handledDelegationsRef = useRef(new Set<string>());
+  const queuedDelegationsRef = useRef(new Set<string>());
   const inFlightDelegationsRef = useRef(new Set<string>());
+  const delegationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const latestDelegationRef = useRef<string | null>(null);
+  const sessionEpochRef = useRef(0);
   const sessionStartedRef = useRef(false);
-  const closeWaiterRef = useRef<(() => void) | null>(null);
+  const closeWaiterRef = useRef<((confirmed: boolean) => void) | null>(null);
+  const closingPromiseRef = useRef<Promise<boolean> | null>(null);
   const mountedRef = useRef(true);
   const phaseRef = useRef<Phase>("idle");
   const finalizeRef = useRef<(() => void) | null>(null);
@@ -178,11 +183,22 @@ export function AssistantLiveVoice({
     onBusyChangeRef.current(next !== "idle");
   }, []);
 
+  const stopMicrophoneInput = useCallback(() => {
+    microphoneRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = false;
+      if (track.readyState !== "ended") track.stop();
+    });
+  }, []);
+
   const releaseTransport = useCallback(() => {
+    sessionEpochRef.current += 1;
     createAbortRef.current?.abort();
     createAbortRef.current = null;
     for (const pending of pendingDelegationsRef.current.values()) clearTimeout(pending.timer);
     pendingDelegationsRef.current.clear();
+    queuedDelegationsRef.current.clear();
+    inFlightDelegationsRef.current.clear();
+    latestDelegationRef.current = null;
     const channel = channelRef.current;
     channelRef.current = null;
     if (channel && channel.readyState !== "closed") {
@@ -198,7 +214,9 @@ export function AssistantLiveVoice({
       peer.onconnectionstatechange = null;
       try { peer.close(); } catch { /* The transport may already be closed. */ }
     }
-    microphoneRef.current?.getTracks().forEach((track) => track.stop());
+    microphoneRef.current?.getTracks().forEach((track) => {
+      if (track.readyState !== "ended") track.stop();
+    });
     microphoneRef.current = null;
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
     sessionTokenRef.current = null;
@@ -207,14 +225,15 @@ export function AssistantLiveVoice({
     transcriptFragmentsRef.current = [];
     transcriptCursorRef.current = 0;
     handledDelegationsRef.current.clear();
-    inFlightDelegationsRef.current.clear();
     sessionStartedRef.current = false;
-    setMuted(false);
-    setPlaybackBlocked(false);
+    if (mountedRef.current) {
+      setMuted(false);
+      setPlaybackBlocked(false);
+    }
   }, []);
 
   const finishSession = useCallback((closedEvent?: LiveEvent) => {
-    closeWaiterRef.current?.();
+    closeWaiterRef.current?.(true);
     closeWaiterRef.current = null;
     releaseTransport();
     if (!mountedRef.current) return;
@@ -229,21 +248,53 @@ export function AssistantLiveVoice({
     setCurrentPhase("idle");
   }, [releaseTransport, setCurrentPhase]);
 
+  const closeLiveSession = useCallback((channel: RTCDataChannel) => {
+    if (closingPromiseRef.current) return closingPromiseRef.current;
+    const closing = new Promise<boolean>((resolve) => {
+      let settled = false;
+      const settle = (confirmed: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (closeWaiterRef.current === onClosed) closeWaiterRef.current = null;
+        resolve(confirmed);
+      };
+      const timeout = setTimeout(() => settle(false), SESSION_CLOSE_TIMEOUT_MS);
+      const onClosed = () => settle(true);
+      closeWaiterRef.current = onClosed;
+      try {
+        channel.send(JSON.stringify({ type: "session.close", event_id: crypto.randomUUID() }));
+      } catch {
+        settle(false);
+      }
+    });
+    closingPromiseRef.current = closing;
+    void closing.finally(() => {
+      if (closingPromiseRef.current === closing) closingPromiseRef.current = null;
+    });
+    return closing;
+  }, []);
+
   useEffect(() => {
     finalizeRef.current = () => {
+      createAbortRef.current?.abort();
+      for (const pending of pendingDelegationsRef.current.values()) clearTimeout(pending.timer);
+      pendingDelegationsRef.current.clear();
+      latestDelegationRef.current = null;
+      stopMicrophoneInput();
       const channel = channelRef.current;
-      if (channel?.readyState === "open") {
-        try { channel.send(JSON.stringify({ type: "session.close", event_id: crypto.randomUUID() })); } catch { /* Cleanup continues below. */ }
+      if (sessionStartedRef.current && channel?.readyState === "open") {
+        void closeLiveSession(channel).finally(() => releaseTransport());
+      } else {
+        releaseTransport();
       }
-      releaseTransport();
     };
-  }, [releaseTransport]);
+  }, [closeLiveSession, releaseTransport, stopMicrophoneInput]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      closeWaiterRef.current?.();
       finalizeRef.current?.();
       onBusyChangeRef.current(false);
     };
@@ -287,52 +338,80 @@ export function AssistantLiveVoice({
     return true;
   }, []);
 
-  const runDelegation = useCallback(async (delegationId: string, offsetMs: number) => {
-    inFlightDelegationsRef.current.add(delegationId);
-    const sessionToken = sessionTokenRef.current;
-    const currentConversationId = liveConversationIdRef.current;
-    const transcript = transcriptForOffset(transcriptFragmentsRef.current, transcriptCursorRef.current, offsetMs);
-    if (!sessionToken || !currentConversationId) {
-      inFlightDelegationsRef.current.delete(delegationId);
-      return;
-    }
-    if (!transcript) {
-      setError("Je n’ai pas compris la demande. Répète-la après la réponse en cours.");
-      sendCommentary(delegationId, "Je n’ai pas assez entendu la demande. Je vais te laisser la répéter.");
-      inFlightDelegationsRef.current.delete(delegationId);
-      return;
-    }
-    transcriptCursorRef.current = Math.max(transcriptCursorRef.current, offsetMs);
+  const enqueueDelegation = useCallback((delegationId: string, transcript: string, epoch: number) => {
+    queuedDelegationsRef.current.add(delegationId);
+    const run = async () => {
+      queuedDelegationsRef.current.delete(delegationId);
+      if (!mountedRef.current || epoch !== sessionEpochRef.current) return;
 
-    try {
-      const response = await fetch("/api/assistant/live/delegations", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionToken, delegationId, transcript }),
-      });
-      const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(readApiError(payload) ?? "La réponse de Soma n’a pas pu être préparée.");
-      if (!isRecord(payload) || payload.delegationId !== delegationId || typeof payload.responseText !== "string") {
-        throw new Error("La réponse vocale reçue n’est pas complète. Réessaie.");
+      inFlightDelegationsRef.current.add(delegationId);
+      const sessionToken = sessionTokenRef.current;
+      const currentConversationId = liveConversationIdRef.current;
+      const isCurrent = () => mountedRef.current
+        && epoch === sessionEpochRef.current
+        && latestDelegationRef.current === delegationId;
+      try {
+        if (!sessionToken || !currentConversationId) return;
+        if (!transcript) {
+          if (isCurrent()) {
+            setError("Je n’ai pas compris la demande. Répète-la après la réponse en cours.");
+            sendCommentary(delegationId, "Je n’ai pas assez entendu la demande. Je vais te laisser la répéter.");
+          }
+          return;
+        }
+
+        const response = await fetch("/api/assistant/live/delegations", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionToken, delegationId, transcript }),
+        });
+        const payload: unknown = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(readApiError(payload) ?? "La réponse de Soma n’a pas pu être préparée.");
+        if (!isRecord(payload) || payload.delegationId !== delegationId || typeof payload.responseText !== "string") {
+          throw new Error("La réponse vocale reçue n’est pas complète. Réessaie.");
+        }
+        if (!isCurrent()) return;
+        const sent = sendCommentary(delegationId, payload.responseText);
+        if (!sent) throw new Error("La session vocale s’est interrompue avant la réponse.");
+        setUserCaption("");
+        setAssistantCaption("");
+        onConversationUpdatedRef.current(currentConversationId);
+      } catch (cause) {
+        if (!isCurrent()) return;
+        setError(cause instanceof Error ? cause.message : "La demande vocale n’a pas abouti. Réessaie.");
+        sendCommentary(delegationId, "Je n’ai pas pu terminer cette demande. Tu peux me la redire dans un instant.");
+      } finally {
+        if (epoch === sessionEpochRef.current) inFlightDelegationsRef.current.delete(delegationId);
       }
-      const sent = sendCommentary(delegationId, payload.responseText);
-      if (!sent) throw new Error("La session vocale s’est interrompue avant la réponse.");
-      setUserCaption("");
-      setAssistantCaption("");
-      onConversationUpdatedRef.current(currentConversationId);
-    } catch (cause) {
-      if (!mountedRef.current) return;
-      setError(cause instanceof Error ? cause.message : "La demande vocale n’a pas abouti. Réessaie.");
-      sendCommentary(delegationId, "Je n’ai pas pu terminer cette demande. Tu peux me la redire dans un instant.");
-    } finally {
-      inFlightDelegationsRef.current.delete(delegationId);
-    }
+    };
+
+    const queued = delegationQueueRef.current.then(run, run);
+    delegationQueueRef.current = queued.catch(() => undefined);
   }, [sendCommentary]);
 
   const queueDelegation = useCallback((delegationId: string, offsetMs: number) => {
     if (handledDelegationsRef.current.has(delegationId)) return;
     handledDelegationsRef.current.add(delegationId);
+    const superseded = new Set([
+      ...pendingDelegationsRef.current.keys(),
+      ...queuedDelegationsRef.current,
+      ...inFlightDelegationsRef.current,
+    ]);
+    superseded.delete(delegationId);
+    for (const previousId of superseded) {
+      sendCommentary(previousId, "Je prends en compte ta dernière précision et je mets à jour la demande précédente.");
+    }
+    latestDelegationRef.current = delegationId;
+    for (const [pendingId, pending] of pendingDelegationsRef.current) {
+      if (pendingId === delegationId) continue;
+      clearTimeout(pending.timer);
+      pendingDelegationsRef.current.delete(pendingId);
+    }
+    if (superseded.size > 0) {
+      sendCommentary(delegationId, "Je vérifie la demande avec ta dernière précision.");
+    }
+    const epoch = sessionEpochRef.current;
     const startedAt = Date.now();
     const flush = () => {
       const pending = pendingDelegationsRef.current.get(delegationId);
@@ -345,11 +424,13 @@ export function AssistantLiveVoice({
         return;
       }
       pendingDelegationsRef.current.delete(delegationId);
-      void runDelegation(delegationId, offsetMs);
+      const transcript = transcriptForOffset(transcriptFragmentsRef.current, transcriptCursorRef.current, offsetMs);
+      transcriptCursorRef.current = Math.max(transcriptCursorRef.current, offsetMs);
+      enqueueDelegation(delegationId, transcript, epoch);
     };
     const timer = setTimeout(flush, DELEGATION_SETTLE_MS);
     pendingDelegationsRef.current.set(delegationId, { id: delegationId, offsetMs, timer, startedAt, lastTranscriptAt: startedAt, flush });
-  }, [runDelegation]);
+  }, [enqueueDelegation, sendCommentary]);
 
   const handleServerEvent = useCallback((event: LiveEvent) => {
     if (event.type === "session.started") {
@@ -455,7 +536,9 @@ export function AssistantLiveVoice({
         }
       };
       channel.onclose = () => {
-        if (phaseRef.current !== "closing" && phaseRef.current !== "idle") {
+        if (phaseRef.current === "closing") {
+          closeWaiterRef.current?.(false);
+        } else if (phaseRef.current !== "idle") {
           setError("La connexion vocale s’est fermée. Tu peux la relancer.");
           finishSession();
         }
@@ -482,6 +565,7 @@ export function AssistantLiveVoice({
       sessionTokenRef.current = payload.sessionToken;
       liveConversationIdRef.current = payload.conversationId;
       requestedConversationIdRef.current = payload.conversationId;
+      closingPromiseRef.current = null;
       onConversationStartedRef.current(payload.conversationId);
       await peer.setRemoteDescription({ type: "answer", sdp: payload.sdp });
       if (!mountedRef.current || controller.signal.aborted) return;
@@ -500,6 +584,11 @@ export function AssistantLiveVoice({
           : cause instanceof Error ? cause.message : "Le mode vocal n’a pas pu démarrer.";
         setError(message);
       }
+      const channel = channelRef.current;
+      if (sessionStartedRef.current && channel?.readyState === "open") {
+        stopMicrophoneInput();
+        await closeLiveSession(channel);
+      }
       releaseTransport();
       if (mountedRef.current) setCurrentPhase("idle");
     } finally {
@@ -513,40 +602,26 @@ export function AssistantLiveVoice({
     if (!sessionStartedRef.current || !channel || channel.readyState !== "open") {
       createAbortRef.current?.abort();
       releaseTransport();
-      setCurrentPhase("idle");
+      if (mountedRef.current) setCurrentPhase("idle");
       return;
     }
     setCurrentPhase("closing");
-    microphoneRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    stopMicrophoneInput();
     const drainDeadline = Date.now() + DELEGATION_DRAIN_TIMEOUT_MS;
-    while ((pendingDelegationsRef.current.size > 0 || inFlightDelegationsRef.current.size > 0) && Date.now() < drainDeadline) {
+    while ((pendingDelegationsRef.current.size > 0 || queuedDelegationsRef.current.size > 0 || inFlightDelegationsRef.current.size > 0) && Date.now() < drainDeadline) {
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
-    const delegationDrainTimedOut = pendingDelegationsRef.current.size > 0 || inFlightDelegationsRef.current.size > 0;
-    const closed = new Promise<void>((resolve) => {
-      let settled = false;
-      const settle = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        closeWaiterRef.current = null;
-        resolve();
-      };
-      const timeout = setTimeout(settle, SESSION_CLOSE_TIMEOUT_MS);
-      closeWaiterRef.current = settle;
-    });
-    try {
-      channel.send(JSON.stringify({ type: "session.close", event_id: crypto.randomUUID() }));
-    } catch {
-      closeWaiterRef.current?.();
-    }
-    await closed;
-    if (phaseRef.current === "closing") {
-      setError(delegationDrainTimedOut
+    const delegationDrainTimedOut = pendingDelegationsRef.current.size > 0
+      || queuedDelegationsRef.current.size > 0
+      || inFlightDelegationsRef.current.size > 0;
+    if (phaseRef.current !== "closing") return;
+    const confirmed = await closeLiveSession(channel);
+    if (!confirmed && phaseRef.current === "closing") {
+      if (mountedRef.current) setError(delegationDrainTimedOut
         ? "Le micro est arrêté. La demande en cours n’a pas pu être confirmée avant la fermeture."
         : "Le micro est arrêté, mais la fin de session n’a pas été confirmée.");
       releaseTransport();
-      setCurrentPhase("idle");
+      if (mountedRef.current) setCurrentPhase("idle");
     }
   }
 

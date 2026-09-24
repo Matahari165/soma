@@ -119,12 +119,14 @@ describe("assistant Live voice session", () => {
     const attempt = createAssistantLiveSession(userId, { conversationId: null, sdp: sdpOffer }, { fetchImpl });
     await expect(attempt).rejects.toMatchObject({ code: "assistant_live_session_failed", status: 502 });
     await expect(attempt).rejects.not.toThrow(/private provider response|test-live-key-not-a-real-secret/);
+    expect(state.createAssistantConversation).not.toHaveBeenCalled();
   });
 
   it("rejects a successful but malformed Live response", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ session: { id: "live_session_123" } }), { status: 201 }));
     await expect(createAssistantLiveSession(userId, { conversationId: null, sdp: sdpOffer }, { fetchImpl }))
       .rejects.toMatchObject({ code: "assistant_live_session_failed", status: 502 });
+    expect(state.createAssistantConversation).not.toHaveBeenCalled();
   });
 
   it("binds a delegation ticket to its user and persists a normal Luna conversation turn idempotently", async () => {

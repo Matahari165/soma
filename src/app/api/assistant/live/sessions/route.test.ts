@@ -47,6 +47,21 @@ describe("assistant Live session route", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("accepts the local browser proxy origin while the backend uses another port", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("SOMA_LOCAL_PREVIEW", "true");
+    const localProxyRequest = new Request("http://localhost:3001/api/assistant/live/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "http://localhost:54354", Host: "localhost:54354" },
+      body: validBody,
+    });
+
+    const response = await POST(localProxyRequest);
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "assistant_live_not_configured" });
+  });
+
   it("returns a sanitized configuration error when the dedicated key is absent", async () => {
     const response = await POST(request());
 

@@ -145,7 +145,13 @@ the model or request body.
   `POST /v1/live/sessions` endpoint using `gpt-live-1`, client delegation and
   `store: false`. The browser receives the SDP answer, the Soma conversation ID,
   the Live session ID and a short-lived signed session ticket. The OpenAI key is
-  never returned to the browser.
+  never returned to the browser. For a new chat, the conversation is created
+  only after OpenAI accepts the session, so a failed handshake leaves no empty
+  conversation behind.
+- Both Live POST routes use the same strict Origin check. In the local preview,
+  a loopback browser port may differ from Next's internal port; only a matching
+  loopback Host or a single, consistent forwarded loopback authority is accepted.
+  External and ambiguous origins remain blocked.
 - The WebRTC audio connection runs from the browser to OpenAI. Soma does not
   upload or persist the raw audio. The Live session sets `store: false`; this
   disables Live session storage and recording access. Provider retention and

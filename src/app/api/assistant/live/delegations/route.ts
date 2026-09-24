@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
+import { isAssistantLiveOriginAllowed } from "@/lib/assistant-live-origin";
 import { AssistantLiveError, respondToAssistantLiveDelegation } from "@/modules/assistant/live-session";
 
 export const runtime = "nodejs";
@@ -10,23 +11,10 @@ export const maxDuration = 120;
 const noStore = { "Cache-Control": "private, no-store" };
 const maxBodyBytes = 24 * 1024;
 
-function originAllowed(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return request.headers.get("sec-fetch-site") !== "cross-site";
-  try {
-    const expectedOrigins = new Set([new URL(request.url).origin]);
-    const configured = process.env.NEXT_PUBLIC_SITE_URL;
-    if (configured) expectedOrigins.add(new URL(configured).origin);
-    return expectedOrigins.has(new URL(origin).origin);
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ code: "unauthorized", message: "Authentication required." }, { status: 401, headers: noStore });
-  if (!originAllowed(request)) return NextResponse.json({ code: "invalid_origin", message: "Origine non autorisée." }, { status: 403, headers: noStore });
+  if (!isAssistantLiveOriginAllowed(request)) return NextResponse.json({ code: "invalid_origin", message: "Origine non autorisée." }, { status: 403, headers: noStore });
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
     return NextResponse.json({ code: "invalid_request", message: "Le corps JSON est requis." }, { status: 415, headers: noStore });
   }

@@ -163,16 +163,11 @@ export async function createAssistantLiveSession(
   const now = options.now?.() ?? Date.now();
   let conversationId = parsed.data.conversationId;
 
-  if (isLocalPreviewMode()) {
-    const conversation = conversationId ? getPreviewConversation(conversationId) : createPreviewConversation();
+  if (conversationId) {
+    const conversation = isLocalPreviewMode()
+      ? getPreviewConversation(conversationId)
+      : await findAssistantConversation(userId, conversationId);
     if (!conversation) throw new AssistantLiveError("assistant_live_conversation_not_found", 404, "Conversation introuvable.");
-    conversationId = conversation.id;
-  } else if (conversationId) {
-    const conversation = await findAssistantConversation(userId, conversationId);
-    if (!conversation) throw new AssistantLiveError("assistant_live_conversation_not_found", 404, "Conversation introuvable.");
-  } else {
-    const conversation = await createAssistantConversation(userId);
-    conversationId = conversation.id;
   }
 
   const safetyIdentifier = createHash("sha256").update(userId).digest("hex");
@@ -238,8 +233,20 @@ export async function createAssistantLiveSession(
     session: z.object({ id: z.string().min(1).max(200) }),
     transport: z.object({ type: z.literal("webrtc"), sdp: z.string().min(1).max(MAX_SDP_LENGTH) }),
   }).safeParse(payload);
-  if (!result.success || !conversationId) {
+  if (!result.success) {
     throw new AssistantLiveError("assistant_live_session_failed", 502, "La réponse du service vocal est invalide.");
+  }
+
+  // Create a new conversation only after OpenAI has accepted the session.
+  // A rejected SDP or provider outage should not leave an empty chat behind.
+  if (!conversationId) {
+    try {
+      conversationId = isLocalPreviewMode()
+        ? createPreviewConversation().id
+        : (await createAssistantConversation(userId)).id;
+    } catch {
+      throw new AssistantLiveError("assistant_live_session_failed", 502, "La conversation vocale n’a pas pu être créée.");
+    }
   }
 
   const ticket: LiveTicket = {
