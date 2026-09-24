@@ -5,15 +5,13 @@ import MealJournal from "@/components/meal-journal";
 import MealFoodCategoryTrends from "@/components/meal-food-category-trends";
 import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
-import MealScoreOverviewPanel from "@/components/meal-score-overview";
-import MealSupplements from "@/components/meal-supplements";
+import MealScoreOverviewPanel, { MealScoreHistoryPanel } from "@/components/meal-score-overview";
 import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
 import { LoadingSurface } from "@/components/loading-surface";
 import { mealFoodGroupHistory, mealNutritionHistory } from "@/domain/lab/meals";
 import { apiMealToRecord, MEAL_SLOTS, type MealJournalData } from "@/domain/meal-record";
 import type { Meal } from "@/domain/meals";
 import { mealRecipeToView, type MealRecipe } from "@/domain/meal-recipes";
-import { supplementDefinitionToView, supplementEntryToView } from "@/domain/supplements";
 import { buildMealScoreOverview } from "@/domain/scores/meal-overview";
 import type { MealSlotState } from "@/domain/scores/meal-balance";
 import { DEFAULT_NUTRITION_TARGETS } from "@/domain/nutrition-targets";
@@ -28,7 +26,6 @@ import { listMealRecipes, MealRecipeServiceError } from "@/services/meal-recipes
 import { listMeals, loadConfirmedMealRecords } from "@/services/meals";
 import { loadDailyNutritionTargetsForUser } from "@/services/nutrition-targets";
 import { loadActiveGoal } from "@/services/active-goals";
-import { listSupplementDefinitions, listSupplementEntries } from "@/services/supplements";
 
 import styles from "./meals-page.module.css";
 
@@ -95,7 +92,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const requestedDate = typeof params.date === "string" && isIsoDate(params.date) && params.date <= today ? params.date : today;
   const historyFrom = addDays(requestedDate, -27);
 
-  const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult, supplementDefinitionsResult, supplementEntriesResult] = await Promise.all([
+  const [mealResult, recipeResult, nutritionResult, targetsResult, goalResult] = await Promise.all([
     isLocalPreviewMode()
       ? loadSafely(() => listPreviewMeals(user.id, { from: historyFrom, to: requestedDate }))
       : loadSafely(() => listMeals(user.id, { from: historyFrom, to: requestedDate })),
@@ -115,8 +112,6 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
       if (isLocalPreviewMode()) return previewProfile.primaryGoal;
       return (await loadActiveGoal(user.id)).type;
     }),
-    loadSafely(() => listSupplementDefinitions(user.id)),
-    loadSafely(() => listSupplementEntries(user.id, { from: requestedDate, to: requestedDate })),
   ]);
 
   const records = mealResult.ok ? mealsForDate(mealResult.value, requestedDate).map((meal) => apiMealToRecord(mealToApi(meal))) : [];
@@ -132,9 +127,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const balanceOverview = nutritionResult.ok && goalResult.ok
     ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.value), slotStatesByDate: statesByDate })
     : null;
-  const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
-  const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];
-  const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Supplements are temporarily unavailable." : null;
+  const scoreTrend = (balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }));
 
   return (
     <main id="main-page-content" className={`${styles.page} meals-page`} lang="en">
@@ -143,27 +136,28 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
-          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }))}
+          trend={scoreTrend}
           date={requestedDate}
           today={today}
+          showHistory={false}
           className="meals-page-score"
         />
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
-            <h2 id="meals-journal-title">Meal journal</h2>
+            <h2 id="meals-journal-title" className={styles.visuallyHidden}>Meal journal</h2>
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
+        <MealScoreHistoryPanel trend={scoreTrend} />
         {nutritionResult.ok
           ? <>
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
             <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
           </>
           : <MealsInitialLoadError kind="nutrition" />}
-        <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
         <footer className={styles.provenance} aria-label="Nutrition data provenance">
-          <h2>Provenance</h2>
+          <h2 className={styles.visuallyHidden}>Provenance</h2>
           <p>Confirmed meals logged in Soma · Score and totals calculated by Soma from confirmed meals only</p>
           <p>Period from {formatShortDate(historyFrom)} to {formatShortDate(requestedDate)} · Unlogged days remain empty, never zero</p>
         </footer>

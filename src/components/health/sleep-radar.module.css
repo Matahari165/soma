@@ -5,7 +5,7 @@
   --radar-text: var(--lab-text-primary, #f1f1f1);
   --radar-muted: var(--lab-text-secondary, #aaaaaa);
   --radar-data: var(--lab-text-primary, #f1f1f1);
-  --radar-data-surface: color-mix(in srgb, var(--radar-data) 9%, transparent);
+  --radar-data-surface: color-mix(in srgb, var(--radar-data) 10%, transparent);
   --radar-signal: var(--lab-signal, #d5e5da);
   --radar-error: var(--lab-error, #e2b2aa);
   display: grid;
@@ -105,7 +105,7 @@
 .valueLine {
   fill: none;
   stroke: var(--radar-data);
-  stroke-width: 1.5;
+  stroke-width: 1.75;
   vector-effect: non-scaling-stroke;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;

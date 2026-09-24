@@ -55,7 +55,7 @@
 }
 
 .valueShape {
-  fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
+  fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 10%, transparent);
   stroke: none;
   fill-opacity: 0;
   transform-box: fill-box;

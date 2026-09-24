@@ -90,12 +90,19 @@ export function MealFoodCategoryTrends({ points, className, illustrative = false
   const visibleGroups = groups.length
     ? [...groups, ...(hasRemainder && !selectedGroups.has("other") ? ["other" as MealFoodGroup] : [])]
     : ["other" as MealFoodGroup];
+  const drawnIndexes = chartPoints.flatMap((point, index) => {
+    const hasVisibleBars = Object.values(point.counts ?? {}).some((value) => Number.isFinite(value) && value > 0);
+    return hasVisibleBars ? [index] : [];
+  });
+  const titleGridColumn = drawnIndexes.length
+    ? `${drawnIndexes[0] + 1} / ${drawnIndexes.at(-1)! + 2}`
+    : `1 / ${Math.max(chartPoints.length, 1) + 1}`;
 
   return (
     <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-category-trends-title">
       <header className={styles.header}>
-        <div>
-          <h2 id="meal-category-trends-title">Food group distribution</h2>
+        <div className={styles.headerPlot} style={{ "--point-count": Math.max(chartPoints.length, 1) } as CSSProperties}>
+          <h2 id="meal-category-trends-title" style={{ gridColumn: titleGridColumn }}>Food group distribution</h2>
         </div>
         <span className={styles.period}>28 DAYS</span>
       </header>

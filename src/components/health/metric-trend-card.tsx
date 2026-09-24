@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { filterCalendarWindow, summarizeTrend, type MetricPoint, type TrendDirection } from "@/domain/metrics/trends";
 import { aggregateBarPoints, type BarAggregation } from "@/domain/metrics/bar-aggregation";
@@ -60,6 +61,13 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
       : <article className="metric-trend-card metric-trend-card--pending">{pendingContent}</article>;
   }
   if (compact) {
+    const measuredIndexes = axisPoints.flatMap((point, index) => typeof point.value === "number" && Number.isFinite(point.value) ? [index] : []);
+    // The bars occupy the SVG's 8–292 plot. Center the heading between the
+    // first and last drawn bars, even when the calendar has empty end slots.
+    const plotMidpoint = chartType === "bar" && measuredIndexes.length && axisPoints.length
+      ? (8 + ((measuredIndexes[0] + measuredIndexes.at(-1)! + 1) / 2) * (284 / axisPoints.length)) / 300
+      : 0.5;
+    const titlePosition: CSSProperties = { position: "relative", left: `calc(${(plotMidpoint * 100).toFixed(4)}% - 50%)` };
     const coverage = chartPoints.length ? Math.round((completeCount / chartPoints.length) * 100) : 0;
     const displayedValues = axisPoints.map((point) => point.value).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
     const displayedAverage = displayedValues.length ? displayedValues.reduce((sum, value) => sum + value, 0) / displayedValues.length : null;
@@ -70,7 +78,7 @@ export function MetricTrendCard({ label, points, unit, direction, format = defau
       ? <BarTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} aggregation={barAggregation} average={averageInChart ? displayedAverage : null} highlightLatest={!averageInChart} />
       : <LineTrendChart points={chartPoints} label={label} target={target} unit={unit} valueFormat={valueFormat} />;
     const compactContent = <>
-      <header><div><span>{label}</span>{!averageInChart && currentContent}</div>{!averageInChart && <small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)}`}</small>}</header>
+      <header><div><span style={titlePosition}>{label}</span>{!averageInChart && currentContent}</div>{!averageInChart && <small className="metric-trend-card__average">{compactAverage === null ? "avg —" : `avg ${formatCompactAverage(compactAverage, format, unit)}`}</small>}</header>
       <div className="chart-frame">{chart}</div>
       <div className="chart-axis" aria-hidden="true"><span>{firstDate}</span><span>{lastDate}</span></div>
     </>;

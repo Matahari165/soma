@@ -63,6 +63,11 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
   const copy = metricCopy[metric.id];
   const points = metric.points.slice(-period);
   const available = points.filter((point): point is MealNutritionTrendPoint & { value: number } => point.value !== null && Number.isFinite(point.value));
+  const drawnIndexes = points.flatMap((point, index) => point.value !== null && Number.isFinite(point.value) ? [index] : []);
+  const pointCount = Math.max(points.length, 1);
+  const titleGridColumn = drawnIndexes.length
+    ? `${drawnIndexes[0] + 1} / ${drawnIndexes.at(-1)! + 2}`
+    : `1 / ${pointCount + 1}`;
   const current = latestPoint(points);
   const periodAverage = average(points);
   const maxValue = available.length ? Math.max(...available.map((point) => point.value)) : 1;
@@ -73,16 +78,16 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
   const coverageLabel = `${available.length} ${available.length === 1 ? "jour mesuré" : "jours mesurés"} sur ${points.length}`;
 
   return <article className={styles.card} data-metric={metric.id} aria-labelledby={`nutrition-${metric.id}-title`}>
-    <header className={styles.cardHeader}>
-      <div>
+    <header className={styles.cardHeader} style={{ "--point-count": pointCount } as CSSProperties}>
+      <div style={{ gridColumn: titleGridColumn }}>
         <span className={styles.metricLabel} id={`nutrition-${metric.id}-title`}>{copy.label}</span>
         <strong className={styles.value}>{formatValue(current?.value ?? null)}{current ? <small>{copy.unit}</small> : null}</strong>
       </div>
-      <span className={styles.average}>{periodAverage === null ? "Aucune mesure" : `Moy. ${formatValue(periodAverage)} ${copy.unit}`}</span>
+      <span className={styles.average} style={{ gridColumn: titleGridColumn }}>{periodAverage === null ? "Aucune mesure" : `Moy. ${formatValue(periodAverage)} ${copy.unit}`}</span>
     </header>
 
     <div className={styles.chartFrame}>
-      <div className={styles.barChart} style={{ "--point-count": points.length } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${coverageLabel}.`}>
+      <div className={styles.barChart} style={{ "--point-count": pointCount } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${coverageLabel}.`}>
         {points.map((point) => {
           const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
           const barStyle = { "--bar-scale": String(height / 100) } as CSSProperties & { "--bar-scale": string };
@@ -99,7 +104,7 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
 }
 
 export function MealNutritionTrends({ metrics, className }: { metrics: MealNutritionTrendMetric[]; className?: string }) {
-  const [period, setPeriod] = useState<Period>(7);
+  const [period, setPeriod] = useState<Period>(30);
 
   return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-nutrition-trends-title">
     <header className={styles.sectionHeader}>

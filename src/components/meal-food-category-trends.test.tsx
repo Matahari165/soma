@@ -6,7 +6,7 @@ import { MealFoodCategoryTrends } from "./meal-food-category-trends";
 describe("MealFoodCategoryTrends", () => {
   it("shows an accessible empty state", () => {
     const html = renderToStaticMarkup(<MealFoodCategoryTrends points={[]} />);
-    expect(html).toContain('<h2 id="meal-category-trends-title">Food group distribution</h2>');
+    expect(html).toMatch(/<h2 id="meal-category-trends-title"[^>]*>Food group distribution<\/h2>/);
     expect(html).toContain("28 DAYS");
     expect(html).toContain("No data available");
   });

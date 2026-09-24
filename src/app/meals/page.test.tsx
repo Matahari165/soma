@@ -19,7 +19,6 @@ vi.mock("@/services/meal-recipes", () => ({
   MealRecipeServiceError: class MealRecipeServiceError extends Error {},
 }));
 vi.mock("@/services/nutrition-targets", () => ({ loadDailyNutritionTargetsForUser: vi.fn().mockResolvedValue({ targets: {}, effectiveTargets: {} }) }));
-vi.mock("@/services/supplements", () => ({ listSupplementDefinitions: vi.fn().mockResolvedValue([]), listSupplementEntries: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/services/meal-preview", () => ({ listPreviewMeals: vi.fn(), loadPreviewConfirmedMealRecords: vi.fn() }));
 vi.mock("@/domain/meal-record", () => ({
   MEAL_SLOTS: ["breakfast", "lunch", "snack", "dinner"],
@@ -36,8 +35,7 @@ vi.mock("@/components/meal-journal", () => ({ default: () => null }));
 vi.mock("@/components/meal-food-category-trends", () => ({ default: () => null }));
 vi.mock("@/components/meal-nutrition-trends", () => ({ MealNutritionTrends: () => null }));
 vi.mock("@/components/meal-recipe-library", () => ({ MealRecipeLibrary: () => null }));
-vi.mock("@/components/meal-score-overview", () => ({ default: () => null }));
-vi.mock("@/components/meal-supplements", () => ({ default: () => null }));
+vi.mock("@/components/meal-score-overview", () => ({ default: () => null, MealScoreHistoryPanel: () => null }));
 vi.mock("@/components/meals-initial-load-error", () => ({ MealsInitialLoadError: () => null }));
 
 import MealsPage from "./page";

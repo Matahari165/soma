@@ -38,9 +38,13 @@ export type MealScoreOverviewPanelProps = {
   className?: string;
   date?: string;
   today?: string;
+  showHistory?: boolean;
 };
 
 const DIMENSION_KEYS = MEAL_BALANCE_COMPONENT_ORDER;
+const RADAR_RADIUS = 132;
+const RADAR_LABEL_RADIUS = 166;
+const RADAR_GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 const DIMENSION_LABELS: Record<MealBalanceComponentKey, string> = {
   nutritionAdequacy: "Nutritional adequacy",
   foodQuality: "Food quality",
@@ -110,17 +114,6 @@ function scoreBarStyle(score: number | null): CSSProperties | undefined {
   return { "--bar-scale": String(scale) } as CSSProperties;
 }
 
-function RollingWindow({ item, days }: { item: MealScoreRolling | undefined; days: 14 | 28 }) {
-  const score = item?.score ?? null;
-  const observedLabel = item
-    ? `${item.observedDays} observed`
-    : "unavailable";
-  return <li className={styles.rollingItem} data-window={`${days}`}>
-    <span className={styles.rollingLabel}>{days}-day ({observedLabel})</span>
-    <strong className={styles.rollingScore} aria-label={scoreDescription(score)}>{formatScore(score)}<span>/100</span></strong>
-  </li>;
-}
-
 type RadarAxis = {
   keyName: MealBalanceComponentKey;
   label: string;
@@ -174,7 +167,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     focusAxis(next);
   }
 
-  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100));
+  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score, 0), 100) / 100));
   const radarSegments = measuredPoints.flatMap((point, index) => {
     const next = measuredPoints[(index + 1) % measuredPoints.length];
     return point && next ? [{ from: point, to: next }] : [];
@@ -184,14 +177,18 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     <svg viewBox="0 0 420 420" role="group" aria-labelledby="meal-balance-radar-title meal-balance-radar-description">
       <title id="meal-balance-radar-title">Dietary dimensions profile</title>
       <desc id="meal-balance-radar-description">{description}. Missing values remain unavailable and are not represented as zero. Select a label to view its details.</desc>
-      {[37.5, 75, 112.5, 150].map((radius) => <polygon className={styles.radarGrid} key={radius} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />)}
+      {RADAR_GRID_RATIOS.map((ratio) => {
+        const radius = RADAR_RADIUS * ratio;
+        return <polygon className={styles.radarGrid} key={ratio} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />;
+      })}
       {axes.map((axis, index) => {
-        const edge = radarPoint(index, 150);
-        const [x, y] = radarPoint(index, 188);
-        const anchor = x < 185 ? "end" : x > 235 ? "start" : "middle";
+        const edge = radarPoint(index, RADAR_RADIUS);
+        const [labelX, y] = radarPoint(index, RADAR_LABEL_RADIUS);
+        const anchor = labelX < 185 ? "end" : labelX > 235 ? "start" : "middle";
+        const x = Math.min(Math.max(labelX, 100), 320);
         const lines = RADAR_LABEL_LINES[axis.keyName];
         const firstDy = lines.length > 1 ? -7 : 0;
-        const point = axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100);
+        const point = axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score, 0), 100) / 100);
         const selected = selectedKey === axis.keyName;
         const actionLabel = selected ? "Hide dimension details" : "Show dimension details";
         return <g
@@ -220,7 +217,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
           </text>
         </g>;
       })}
-      {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
+      {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
       {radarSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.radarSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
     </svg>
     <figcaption className={styles.srOnly}>Interactive chart. The five axes are keyboard-accessible buttons.</figcaption>
@@ -281,19 +278,57 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
   </aside>;
 }
 
-export function MealScoreOverviewPanel({ daily, rolling, trend, className, date, today }: MealScoreOverviewPanelProps) {
-  const dailyScore = daily?.score ?? null;
-  const isToday = !date || !today || date === today;
+
+export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTrendPoint[] }) {
   const observedTrend = trend.filter((point) => point.score !== null && Number.isFinite(point.score));
-  const rolling14 = rolling.find((item) => item.days === 14);
-  const rolling28 = rolling.find((item) => item.days === 28);
+  const measuredIndexes = trend.flatMap((point, index) => point.score !== null && Number.isFinite(point.score) ? [index] : []);
+  const midpoint = measuredIndexes.length > 1 && trend.length > 1
+    ? (measuredIndexes[0] + measuredIndexes.at(-1)!) / (2 * (trend.length - 1))
+    : 0.5;
+  const titleOffset = midpoint - 0.5;
+  const titlePixelOffset = titleOffset * -38;
+  const titleStyle: CSSProperties = {
+    position: "relative",
+    left: `calc(${(titleOffset * 100).toFixed(4)}% ${titlePixelOffset < 0 ? "-" : "+"} ${Math.abs(titlePixelOffset).toFixed(4)}px)`,
+  };
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
       ? `${formatDate(point.date, true)}: no score, day omitted from chart`
       : `${formatDate(point.date, true)}: score ${formatScore(point.score)} out of 100${point.status === "limited" ? `, confidence ${formatPercent(point.confidence)}` : ""}`).join(". ")
     : "No days available for this trend.";
+  return (
+  <section className={styles.historySection} aria-labelledby="meal-score-history-title">
+        <h2 className={styles.srOnly} id="meal-score-history-title">Score history</h2>
+        <div className={styles.historyContent}>
+          <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
+            <div className={styles.panelHeading}><h3 id="meal-score-trend-title" style={titleStyle}>Nutrition score trend</h3></div>
+            {observedTrend.length >= 2 ? <figure className={styles.chartFigure}>
+              <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
+                <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
+                <div className={styles.lineChart} data-testid="meal-score-line-chart">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    {trendSegments(trend).map((segment, index) => <line data-testid="meal-score-line-segment" key={index} {...segment} />)}
+                  </svg>
+                  {trend.map((point, index) => point.score === null || !Number.isFinite(point.score) ? null : <span className={styles.linePoint} data-testid="meal-score-line-point" key={point.date} style={trendPointStyle(index, trend.length, point.score)} aria-hidden="true" />)}
+                </div>
+              </div>
+              <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
+              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a point and are not counted as a zero score.</p>
+            </figure> : <p className={styles.emptyInline}>{observedTrend.length ? "At least two measured days are needed to show a score trend." : "No score history available."}</p>}
+          </section>
+        </div>
+      </section>
+  );
+}
+
+export function MealScoreOverviewPanel({ daily, rolling, trend, className, date, today, showHistory = true }: MealScoreOverviewPanelProps) {
+  const dailyScore = daily?.score ?? null;
+  const scoreDate = date && today && date !== today ? formatDate(date) : null;
+  const rolling14 = rolling.find((item) => item.days === 14);
+  const rolling28 = rolling.find((item) => item.days === 28);
   const [selectedKey, setSelectedKey] = useState<MealBalanceComponentKey | null>(null);
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [openFact, setOpenFact] = useState<number | null>(null);
   const scoreDetailId = useId();
   const scoreButtonRef = useRef<HTMLButtonElement>(null);
   const radarButtonRefs = useRef<Partial<Record<MealBalanceComponentKey, SVGGElement | null>>>({});
@@ -346,6 +381,13 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
     else setSelectedKey(key);
   }
 
+  const facts = [
+    { label: "14-day average", value: formatScore(rolling14?.score ?? null), suffix: "/100", context: rolling14 ? `${rolling14.observedDays} observed days` : "No observations", explanation: "Average of days with a calculated nutrition score over the last 14 days. Missing days are excluded." },
+    { label: "28-day average", value: formatScore(rolling28?.score ?? null), suffix: "/100", context: rolling28 ? `${rolling28.observedDays} observed days` : "No observations", explanation: "Average of days with a calculated nutrition score over the last 28 days. Missing days are excluded." },
+    { label: "Confidence", value: formatPercent(daily?.confidence), suffix: "", context: daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "Unavailable", explanation: "Soma estimates confidence from the confirmed observations. It can adjust the score slightly." },
+    { label: "Dimensions observed", value: daily ? String(daily.observedDimensions) : "—", suffix: "/5", context: "Confirmed meals only", explanation: "The five nutrition dimensions use confirmed meals. Unobserved dimensions remain unavailable." },
+  ];
+
   return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-label="Dietary balance">
     <div className={styles.scoreTop} data-score-part="top">
       <div className={styles.scoreEssentials}>
@@ -356,51 +398,32 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
           </div>
         </div>
         <article className={styles.dailyPanel} aria-labelledby="meal-score-daily-title">
-          <div className={styles.panelHeading}><h3 id="meal-score-daily-title">{isToday ? "Today" : formatDate(date ?? "", true)}</h3></div>
+          <div className={styles.panelHeading}><h3 id="meal-score-daily-title">Nutrition score</h3></div>
           <button ref={scoreButtonRef} type="button" className={styles.dailyScoreTrigger} aria-label={`${scoreDescription(dailyScore)}. ${scoreOpen ? "Close" : "View"} score calculation.`} aria-controls={scoreDetailId} aria-expanded={scoreOpen} onClick={() => { setSelectedKey(null); setScoreOpen((open) => !open); }}><strong className={styles.dailyScore}>{formatScore(dailyScore)}<span>/100</span></strong></button>
+          <p className={styles.scoreAverage}>{scoreDate ? `${scoreDate} · ` : ""}28-day avg · {formatScore(rolling28?.score ?? null)} /100</p>
           <div className={styles.scoreInline} id={scoreDetailId} data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen}>
             <div className={styles.scoreInlineInner}>
               <h4>Nutrition calculation</h4>
-              <p>Soma combines five weighted dimensions. Confidence slightly adjusts the result.</p>
               <dl>{DIMENSION_KEYS.map((key) => {
                 const component = componentFor(daily, key);
-                return <div key={key}><dt>{DIMENSION_LABELS[key]}</dt><dd>{formatScore(component?.adjustedScore)} /100</dd><small>{Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])}%</small></div>;
+                return <div key={key}><dt>{DIMENSION_LABELS[key]}</dt><dd aria-label={`Adjusted score ${formatScore(component?.adjustedScore)} out of 100; contribution ${formatContribution(component?.contribution)} points; weight ${Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])} percent`}>{formatScore(component?.adjustedScore)} /100</dd><small>{component ? `${formatContribution(component.contribution)} points · ` : "— · "}{Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])}%</small></div>;
               })}</dl>
             </div>
           </div>
           <div className={styles.scoreRail} aria-hidden="true">{dailyScore === null ? null : <span style={{ width: `${Math.min(Math.max(dailyScore, 0), 100)}%` }} />}</div>
-          <dl className={styles.scoreMetaList}>
-            <div><dt>Status</dt><dd>{daily ? daily.status === "ready" ? "Complete" : daily.status === "limited" ? "Partial" : "Insufficient" : "—"}</dd></div>
-            <div><dt>Confidence</dt><dd>{formatPercent(daily?.confidence)}</dd></div>
-          </dl>
         </article>
       </div>
 
-      <section className={styles.historySection} aria-labelledby="meal-score-history-title">
-        <h2 className={styles.sectionTitle} id="meal-score-history-title">Score history</h2>
-        <div className={styles.historyContent}>
-          <section className={styles.rollingPanel} aria-labelledby="meal-score-rolling-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-rolling-title">Rolling averages</h3></div>
-            {rolling.length ? <ul className={styles.rollingList}><RollingWindow days={14} item={rolling14} /><RollingWindow days={28} item={rolling28} /></ul> : <p className={styles.emptyInline}>No averages available.</p>}
-          </section>
-          <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-trend-title">Overall score trend</h3></div>
-            {observedTrend.length ? <figure className={styles.chartFigure}>
-              <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
-                <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
-                <div className={styles.lineChart} data-testid="meal-score-line-chart">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                    {trendSegments(trend).map((segment, index) => <line data-testid="meal-score-line-segment" key={index} {...segment} />)}
-                  </svg>
-                  {trend.map((point, index) => point.score === null || !Number.isFinite(point.score) ? null : <span className={styles.linePoint} data-testid="meal-score-line-point" key={point.date} style={trendPointStyle(index, trend.length, point.score)} aria-hidden="true" />)}
-                </div>
-              </div>
-              <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
-              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a point and are not counted as a zero score.</p>
-            </figure> : <p className={styles.emptyInline}>No score history available.</p>}
-          </section>
-        </div>
-      </section>
+      <dl className={styles.summaryFacts} aria-label="Nutrition score context">
+        {facts.map((fact, index) => <div key={fact.label}>
+          <dt>{fact.label}</dt>
+          <dd><button type="button" className={styles.factToggle} aria-expanded={openFact === index} aria-controls={`nutrition-fact-${index}`} onClick={() => setOpenFact((current) => current === index ? null : index)}>{fact.value}<small>{fact.suffix}</small><span className={styles.factChevron} aria-hidden="true">⌄</span></button></dd>
+          <p>{fact.context}</p>
+          <div className={styles.factExplanation} id={`nutrition-fact-${index}`} hidden={openFact !== index}>{fact.explanation}</div>
+        </div>)}
+      </dl>
+
+      {showHistory && <MealScoreHistoryPanel trend={trend} />}
     </div>
   </section>;
 }
