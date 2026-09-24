@@ -285,7 +285,7 @@
 
 .scoreSummary :global(.recovery-score-control) {
   position: relative;
-  justify-items: start;
+  justify-items: stretch;
   margin-top: 18px;
 }
 
@@ -300,6 +300,8 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+  justify-items: start;
+  text-align: left;
   /* Align the value with its label and the score rail. */
   margin-inline-start: 0;
 }

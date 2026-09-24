@@ -286,7 +286,7 @@ export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTren
         <div className={styles.historyContent}>
           <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
             <div className={styles.panelHeading}><h3 id="meal-score-trend-title">Nutrition score trend</h3></div>
-            {observedTrend.length ? <figure className={styles.chartFigure}>
+            {observedTrend.length >= 2 ? <figure className={styles.chartFigure}>
               <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
                 <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
                 <div className={styles.lineChart} data-testid="meal-score-line-chart">
@@ -298,7 +298,7 @@ export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTren
               </div>
               <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
               <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a point and are not counted as a zero score.</p>
-            </figure> : <p className={styles.emptyInline}>No score history available.</p>}
+            </figure> : <p className={styles.emptyInline}>{observedTrend.length ? "At least two measured days are needed to show a score trend." : "No score history available."}</p>}
           </section>
         </div>
       </section>

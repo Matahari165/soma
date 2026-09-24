@@ -2,9 +2,9 @@
 
 ## Statut et autorité
 
-Ce document sert de base de travail pour `/activity`, `/meals`, `/sleep` et `/recovery`. Il décrit d'abord la page Activity locale approuvée par l'utilisateur, puis définit ce qui doit être partagé par les autres pages. La référence cartographiée est la branche `codex/activity-annotations-20260924`, commit `644449f` du 24 septembre 2026. Ce commit n'est pas inclus dans `main` au moment de cette rédaction : vérifier son intégration avant de comparer une autre branche.
+Ce document sert de base de travail pour `/activity`, `/meals`, `/sleep` et `/recovery`. Il décrit d'abord la page Activity locale approuvée par l'utilisateur, puis définit ce qui doit être partagé par les autres pages. La référence cartographiée est la branche `codex/activity-annotations-20260924`, commit `644449f` du 24 septembre 2026. Les quatre pages sont réunies sur la branche locale `codex/secondary-page-unification-20260924` ; vérifier son intégration avant de comparer `main`.
 
-`DESIGN.md` reste l'autorité pour l'identité globale de Soma et la page `/`. Ce document précise le contrat des pages secondaires lorsque la composition de l'ancien contrat de `DESIGN.md` diffère de l'Activity validée. Il ne prétend pas que Nutrition, Sommeil et Récupération appliquent déjà ce contrat.
+`DESIGN.md` reste l'autorité pour l'identité globale de Soma et la page `/`. Ce document précise le contrat des pages secondaires lorsque la composition de l'ancien contrat de `DESIGN.md` diffère de l'Activity validée. Nutrition, Sommeil et Récupération l'appliquent sur la branche locale d'uniformisation, avec leurs données et preuves propres.
 
 **Nature des preuves.** Les valeurs ci-dessous proviennent des règles CSS, du JSX et des captures de l'Activity locale fournies dans la conversation. Les dimensions du navigateur sont indicatives lorsque les captures ne donnent pas de mesure DOM. Les valeurs CSS sont exactes ; les positions finales varient avec la largeur, les polices chargées, la présence de données et les panneaux ouverts. Aucune mesure personnelle issue des captures n'est reprise ici.
 
@@ -107,7 +107,7 @@ Ces lignes décrivent les données et composants présents dans le dépôt au mo
 5. Choisir les séries temporelles et leurs graphes selon la donnée, avec même gabarit visuel et accès clavier.
 6. Vérifier sur `/`, puis sur chaque page secondaire à `1440 × 900`, `390 × 844` et aux ruptures `1000`, `720`, `560px` ; contrôler focus, clavier, ouverture/fermeture, trous de données, chargement, vide, erreur et `prefers-reduced-motion: reduce`.
 
-**Limite actuelle.** Ce document est une spécification, pas une refonte déjà appliquée à `/meals`, `/sleep` ou `/recovery`. Une capture de la page rendue vérifie la composition, mais pas le comportement tactile, la lecture d'écran ou une session authentifiée en production.
+**Limite actuelle.** L'implémentation des trois pages se trouve sur une branche locale, pas sur `main`. Les captures locales permettent de vérifier la composition, mais pas une session authentifiée en production ni la lecture d'écran réelle.
 
 ## Sources de la cartographie
 
