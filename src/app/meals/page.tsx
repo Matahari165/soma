@@ -5,7 +5,7 @@ import MealJournal from "@/components/meal-journal";
 import MealFoodCategoryTrends from "@/components/meal-food-category-trends";
 import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
-import MealScoreOverviewPanel from "@/components/meal-score-overview";
+import MealScoreOverviewPanel, { MealScoreHistoryPanel } from "@/components/meal-score-overview";
 import MealSupplements from "@/components/meal-supplements";
 import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
 import { LoadingSurface } from "@/components/loading-surface";
@@ -132,6 +132,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const balanceOverview = nutritionResult.ok && goalResult.ok
     ? buildMealScoreOverview({ records: nutritionResult.value, targets: effectiveTargets, date: requestedDate, goalMode: goalMode(goalResult.value), slotStatesByDate: statesByDate })
     : null;
+  const scoreTrend = (balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }));
   const supplementDefinitions = supplementDefinitionsResult.ok ? supplementDefinitionsResult.value.map(supplementDefinitionToView) : [];
   const supplementEntries = supplementEntriesResult.ok ? supplementEntriesResult.value.map(supplementEntryToView) : [];
   const supplementError = !supplementDefinitionsResult.ok || !supplementEntriesResult.ok ? "Supplements are temporarily unavailable." : null;
@@ -143,17 +144,19 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         <MealScoreOverviewPanel
           daily={balanceOverview?.balanceScore ?? null}
           rolling={balanceOverview?.rolling ?? []}
-          trend={(balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }))}
+          trend={scoreTrend}
           date={requestedDate}
           today={today}
+          showHistory={false}
           className="meals-page-score"
         />
         {initialData ? (
           <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
-            <h2 id="meals-journal-title">Meal journal</h2>
+            <h2 id="meals-journal-title" className={styles.visuallyHidden}>Meal journal</h2>
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
+        <MealScoreHistoryPanel trend={scoreTrend} />
         {nutritionResult.ok
           ? <>
             <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
@@ -163,7 +166,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
         <MealSupplements date={requestedDate} initialDefinitions={supplementDefinitions} initialEntries={supplementEntries} initialError={supplementError} className="meals-page-supplements" />
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
         <footer className={styles.provenance} aria-label="Nutrition data provenance">
-          <h2>Provenance</h2>
+          <h2 className={styles.visuallyHidden}>Provenance</h2>
           <p>Confirmed meals logged in Soma · Score and totals calculated by Soma from confirmed meals only</p>
           <p>Period from {formatShortDate(historyFrom)} to {formatShortDate(requestedDate)} · Unlogged days remain empty, never zero</p>
         </footer>

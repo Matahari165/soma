@@ -564,3 +564,24 @@
   .root:global(.meals-page-trends) .periodOptions button,
   .root:global(.meals-page-trends) .periodOptions button:nth-child(2) { min-width: 0; }
 }
+
+/* Metric headings and charts follow the secondary-page chart grid. */
+.root:global(.meals-page-trends) { padding: 32px 0; border-top: 0; }
+.root:global(.meals-page-trends) .sectionHeader { justify-content: flex-end; }
+.root:global(.meals-page-trends) .sectionHeader > div { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.root:global(.meals-page-trends) .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; margin-top: 24px; }
+.root:global(.meals-page-trends) .card,
+.root:global(.meals-page-trends) .card + .card { min-height: 0; grid-template-rows: minmax(64px, auto) auto auto; gap: 16px; padding: 0; border: 0; }
+.root:global(.meals-page-trends) .cardHeader { flex-direction: column; align-items: center; text-align: center; }
+.root:global(.meals-page-trends) .cardHeader > div { display: flex; flex-direction: column; align-items: center; }
+.root:global(.meals-page-trends) .metricLabel { color: var(--lab-text-secondary); font-size: 12px; font-weight: 400; letter-spacing: 0; line-height: 16px; text-transform: none; }
+.root:global(.meals-page-trends) .value { margin-top: 5px; font-size: 20px; font-weight: 400; line-height: 26px; }
+.root:global(.meals-page-trends) .average { font-family: var(--font-soma-mono), ui-monospace, monospace; font-size: 11px; }
+.root:global(.meals-page-trends) .barChart { min-height: 116px; }
+.root:global(.meals-page-trends) .barColumn { height: 104px; }
+.root:global(.meals-page-trends) .axis { font-family: var(--font-soma-mono), ui-monospace, monospace; }
+@media (max-width: 560px) {
+  .root:global(.meals-page-trends) { padding: 24px 0; }
+  .root:global(.meals-page-trends) .grid { grid-template-columns: 1fr; gap: 24px; }
+  .root:global(.meals-page-trends) .card { grid-template-rows: minmax(64px, auto) auto auto; padding: 0; }
+}

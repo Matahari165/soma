@@ -250,3 +250,57 @@
   .dimensionDetail,
   .bar { transition: none; }
 }
+
+/* Activity-derived secondary-page rhythm; nutrition values keep their own meaning. */
+.root { padding-bottom: 0; }
+.scoreEssentials { padding-bottom: 0; border-bottom: 0; }
+.balanceRadar svg { width: min(100%, 420px); }
+.dailyPanel { align-self: start; padding: 18px 0 0; border: 0; }
+.panelHeading h3 { color: var(--score-muted); font-size: 13px; font-weight: 400; line-height: 18px; letter-spacing: 0; }
+.dailyScoreTrigger { margin-top: 8px; }
+.dailyScore { gap: 8px; }
+.dailyScore span { font-size: 14px; }
+.scoreAverage { margin: 12px 0 0; color: var(--score-muted); font: 400 12px/16px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.scoreRail { height: 4px; margin-top: 24px; border-radius: 0; background: #686868; }
+.scoreRail span { min-width: 0; background: var(--score-text); }
+.scoreInline { width: 100%; }
+.scoreInline dl > div { grid-template-columns: minmax(0, 1fr) auto auto; }
+.summaryFacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 24px 0 0; padding: 32px 0; text-align: center; }
+.summaryFacts > div { min-width: 0; }
+.summaryFacts dt { color: var(--score-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.summaryFacts dd { margin: 5px 0 0; color: var(--score-text); font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.summaryFacts small { margin-left: 3px; color: var(--score-muted); font-size: 12px; }
+.summaryFacts p { margin: 2px 0 0; color: var(--score-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
+.historySection { margin-top: 24px; padding: 32px 0; border: 0; }
+.historyContent { display: block; margin-top: 0; }
+.trendSection .panelHeading { justify-content: center; min-height: 64px; }
+.trendSection .panelHeading h3 { font-size: 12px; }
+.chartFigure { margin-top: 16px; }
+.chart { height: 116px; }
+.chartScale { font-size: 11px; }
+@media (max-width: 720px) {
+  .scoreEssentials { grid-template-columns: 1fr; gap: 24px; }
+  .dailyPanel { padding: 12px 0 0; }
+  .summaryFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; margin-top: 16px; padding: 24px 0; }
+  .historySection { margin-top: 16px; padding: 24px 0; }
+}
+@media (max-width: 560px) {
+  .balanceRadar svg { width: min(100%, 360px); }
+  .dailyScore { font-size: 64px; }
+}
+@media (min-width: 721px) {
+  .scoreEssentials { grid-template-columns: minmax(0, 420px) minmax(300px, 1fr); }
+}
+.lineChart { position: relative; min-width: 0; height: 100%; }
+.lineChart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.lineChart line { stroke: var(--score-text); stroke-width: 1.75; vector-effect: non-scaling-stroke; }
+.linePoint { position: absolute; width: 6px; height: 6px; border: 1px solid var(--score-canvas); border-radius: 50%; background: var(--score-text); transform: translate(-50%, 50%); }
+.historySection { --score-text: var(--lab-text-primary, #f1f1f1); --score-muted: var(--lab-text-secondary, #aaaaaa); --score-canvas: var(--lab-canvas, #050505); --score-rule: var(--lab-border, #292929); --score-rule-strong: var(--lab-border-strong, #3a3a3a); color: var(--score-text); }
+.factToggle { display: inline-flex; min-width: 76px; min-height: 44px; flex-direction: column; align-items: center; justify-content: center; padding: 4px 8px 8px; border: 0; background: transparent; color: var(--score-text); font: inherit; cursor: pointer; }
+.factToggle:hover { background: color-mix(in srgb, var(--score-text) 5%, transparent); }
+.factToggle:focus-visible { outline: 2px solid var(--score-text); outline-offset: 2px; }
+.factChevron { margin-top: 3px; color: var(--score-muted); font: 400 15px/15px var(--font-soma-ui), system-ui, sans-serif; transition: transform 320ms cubic-bezier(.16, 1, .3, 1); }
+.factToggle[aria-expanded="true"] .factChevron { transform: rotate(180deg); }
+.factExplanation { max-width: 22rem; margin: 12px auto 0; color: var(--score-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; text-align: left; }
+.factExplanation[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .factChevron { transition: none; } }

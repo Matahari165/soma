@@ -73,7 +73,7 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toContain("Confidence");
     expect(html).not.toContain("Coverage");
     expect(html).toContain("No score history available.");
-    expect(html).toContain("No averages available.");
+    expect(html).toContain("No observations");
     expect(html).not.toContain(">0%</dd>");
   });
 
@@ -99,8 +99,10 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toContain("Contribution");
     expect(html).toContain("Dimension details");
     expect(html).toContain("28-day trend");
-    expect(html).toContain("14-day (8 observed)");
-    expect(html).toContain("28-day (12 observed)");
+    expect(html).toContain("14-day average");
+    expect(html).toContain("8 observed days");
+    expect(html).toContain("28-day average");
+    expect(html).toContain("12 observed days");
     expect(html.match(/role="button"/g)).toHaveLength(5);
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
     expect(html).toContain('data-key="nutritionAdequacy"');

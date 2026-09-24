@@ -56,3 +56,10 @@
   .stack { width: min(100%, 9px); }
   .legend { gap: 5px 11px; }
 }
+
+.root:global(.meals-page-categories) { padding: 32px 0; }
+.root:global(.meals-page-categories) .header { justify-content: center; min-height: 64px; }
+.root:global(.meals-page-categories) .header h2 { color: var(--category-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; letter-spacing: 0; }
+.root:global(.meals-page-categories) .period { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.root:global(.meals-page-categories) .figure { margin-top: 16px; }
+@media (max-width: 560px) { .root:global(.meals-page-categories) { padding: 24px 0; } }

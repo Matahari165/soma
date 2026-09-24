@@ -36,7 +36,7 @@ vi.mock("@/components/meal-journal", () => ({ default: () => null }));
 vi.mock("@/components/meal-food-category-trends", () => ({ default: () => null }));
 vi.mock("@/components/meal-nutrition-trends", () => ({ MealNutritionTrends: () => null }));
 vi.mock("@/components/meal-recipe-library", () => ({ MealRecipeLibrary: () => null }));
-vi.mock("@/components/meal-score-overview", () => ({ default: () => null }));
+vi.mock("@/components/meal-score-overview", () => ({ default: () => null, MealScoreHistoryPanel: () => null }));
 vi.mock("@/components/meal-supplements", () => ({ default: () => null }));
 vi.mock("@/components/meals-initial-load-error", () => ({ MealsInitialLoadError: () => null }));
 
