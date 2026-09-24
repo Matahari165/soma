@@ -279,7 +279,7 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
               {interactiveAxis && <line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" />}
               {interactiveAxis && <circle className={styles.labelHit} cx={position.x} cy={position.y} r="30" aria-hidden="true" />}
               {interactiveAxis && <circle className={styles.focusRing} cx={position.x} cy={position.y} r="26" aria-hidden="true" />}
-              <g className={styles.labelGroup} aria-hidden="true">
+              <g className={styles.labelGroup} data-side={Math.cos(angleFor(index, count)) < -0.28 ? "left" : undefined} aria-hidden="true">
                 <title>{readableDimension(dimension)}</title>
                 <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}{selected ? " ●" : ""}</text>
                 {displayValue || comparison ? (

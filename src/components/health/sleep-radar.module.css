@@ -133,6 +133,12 @@
   pointer-events: none;
 }
 
+@media (max-width: 370px) {
+  .labelGroup[data-side="left"] {
+    transform: translateX(16px);
+  }
+}
+
 .axisButton {
   cursor: pointer;
   outline: none;
