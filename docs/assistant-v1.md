@@ -28,6 +28,9 @@ benchmarks must be available when the user asks to see them.
   GPT-6 Luna. Only photos explicitly
   attached to the current message are transmitted to OpenAI; historical photos are
   not resent automatically.
+- Voice mode uses GPT-Live 1 for the spoken conversation and client delegation
+  to the existing GPT-6 Luna assistant for Soma data, analysis and actions. The
+  one-shot dictation control remains a separate flow.
 - Responses render safe headings, lists and emphasis. Native charts and tables
   remain outside this conversation-only V1.
 - Web search is intentionally disabled in V1. GPT-6 Luna answers from its model
@@ -133,6 +136,48 @@ the model or request body.
   duration, status and safe error codes.
 - Conversation photos remain private, belong to the conversation and are
   deleted with it. They never become memory automatically.
+
+## Live voice backend
+
+- The browser creates a WebRTC offer and sends it with an optional conversation
+  ID to the authenticated `POST /api/assistant/live/sessions` route. Soma checks
+  conversation ownership, then exchanges the offer with OpenAI's
+  `POST /v1/live/sessions` endpoint using `gpt-live-1`, client delegation and
+  `store: false`. The browser receives the SDP answer, the Soma conversation ID,
+  the Live session ID and a short-lived signed session ticket. The OpenAI key is
+  never returned to the browser.
+- The WebRTC audio connection runs from the browser to OpenAI. Soma does not
+  upload or persist the raw audio. The Live session sets `store: false`; this
+  disables Live session storage and recording access. Provider retention and
+  account controls still need to be reviewed separately, as for Responses.
+- The WebRTC data channel is restricted to `session.commentary.append` and
+  `session.close` from the browser. Soma allows only the startup, transcript,
+  delegation, usage, close, error and info events needed by the interface.
+- GPT-Live emits transcript fragments as `session.input_transcript.delta` and
+  identifies work with `session.delegation.created`. Those events do not mark a
+  complete user turn. The client groups transcript fragments using their
+  timeline offsets and the delegation event before submitting backend work.
+- The client posts `{ sessionToken, delegationId, transcript }` to the
+  authenticated `POST /api/assistant/live/delegations` route. Soma verifies the
+  signed ticket and checks that it belongs to the authenticated user. The ticket
+  carries the Live session and conversation IDs; the existing assistant flow
+  rechecks conversation ownership before accessing it. Luna's user message,
+  assistant response, run, tool checks and audit records use the same storage
+  path as text chat. A deterministic request ID derived from the Live session
+  and delegation ID makes retries idempotent.
+- The browser receives only the delegation ID and a spoken handoff capped at
+  1,600 UTF-8 bytes; it splits the text into commentary events of at most 350
+  UTF-8 bytes each, below GPT-Live's documented 500-token event limit. When
+  trimming is needed, Soma prefers a sentence boundary and otherwise cuts at a
+  word boundary, then points the user to the complete Luna answer in the
+  conversation. The client does not receive tool internals or health data from
+  any other user's conversation.
+- Configure `OPENAI_LIVE_API_KEY` in the server's `.env.local` or server-side
+  deployment settings. It is separate from `OPENAI_API_KEY` (GPT-6 Luna) and
+  `OPENAI_TRANSCRIPTION_API_KEY` (recorded dictation). All three stay server
+  side and the checked-in `.env.example` values remain blank. The Live SDP offer
+  is capped at 96 KiB (128 KiB route/proxy body limit), delegated transcript at
+  8,000 characters, and the signed ticket expires after 55 minutes.
 
 ## Definition of done
 

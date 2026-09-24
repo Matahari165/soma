@@ -1,0 +1,28 @@
+.control { display: flex; position: relative; min-width: 0; align-items: center; gap: 8px; }
+.control[data-phase="recording"] { grid-column: 1 / -1; }
+.button, .cancel { display: inline-grid; flex: none; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--lab-text-secondary); cursor: pointer; }
+.button:hover:not(:disabled), .cancel:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
+.button:disabled { cursor: not-allowed; opacity: .45; }
+.button:focus-visible, .cancel:focus-visible, .action:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
+.wave { display: inline-flex; flex: 1; min-width: 0; height: 36px; align-items: center; justify-content: space-between; gap: 2px; overflow: hidden; }
+.wave span { width: 2px; height: 34px; border-radius: 2px; background: var(--lab-text-primary); transform: scaleY(.16); }
+.liveMeter span { transform: scaleY(var(--level, .16)); }
+.timer { color: var(--lab-text-primary); font: 400 12px/1 var(--lab-data-font); font-variant-numeric: tabular-nums; }
+.action { display: inline-flex; flex: none; min-height: 36px; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid var(--lab-border-strong); border-radius: 4px; background: transparent; color: var(--lab-text-primary); cursor: pointer; font: 500 12px/1 var(--font-soma-ui), system-ui, sans-serif; }
+.action:hover { background: var(--lab-surface-selected); }
+.stop { width: 36px; min-width: 36px; justify-content: center; padding: 0; }
+.send { border-color: var(--lab-brand); border-radius: 22px; background: var(--lab-brand); color: var(--lab-canvas); }
+.send:hover { background: var(--lab-text-primary); }
+.status { min-width: 0; color: var(--lab-text-secondary); font: 400 12px/1.35 var(--font-soma-ui), system-ui, sans-serif; }
+.recordingStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.statusError { position: absolute; top: calc(100% + 6px); right: 0; width: min(300px, calc(100vw - 48px)); color: var(--lab-error); }
+@media (max-width: 700px) {
+  .button, .cancel { width: 44px; height: 44px; }
+  .wave { height: 44px; }
+  .wave span:nth-child(n + 13) { display: none; }
+  .action { min-width: 44px; min-height: 44px; justify-content: center; padding: 0 8px; }
+  .stop { width: 44px; padding: 0; }
+  .send { border-radius: 20px; }
+  .control { gap: 4px; }
+}
+@media (max-width: 360px) { .send span { display: none; } }
