@@ -130,4 +130,18 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).toContain('bottom:0%');
     expect(html).not.toContain("NaN");
   });
+
+  it("centre le titre de tendance entre les premiers et derniers jours mesurés", () => {
+    const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
+      { date: "2026-09-08", score: null },
+      { date: "2026-09-09", score: 61 },
+      { date: "2026-09-10", score: null },
+      { date: "2026-09-11", score: null },
+      { date: "2026-09-12", score: 72 },
+      { date: "2026-09-13", score: null },
+      { date: "2026-09-14", score: null },
+    ]} />);
+
+    expect(html).toContain('id="meal-score-trend-title" style="position:relative;left:calc(-8.3333% + 3.1667px)"');
+  });
 });

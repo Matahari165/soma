@@ -286,7 +286,11 @@ export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTren
     ? (measuredIndexes[0] + measuredIndexes.at(-1)!) / (2 * (trend.length - 1))
     : 0.5;
   const titleOffset = midpoint - 0.5;
-  const titleStyle: CSSProperties = { position: "relative", left: `calc(${(titleOffset * 100).toFixed(4)}% - ${(titleOffset * 38).toFixed(4)}px)` };
+  const titlePixelOffset = titleOffset * -38;
+  const titleStyle: CSSProperties = {
+    position: "relative",
+    left: `calc(${(titleOffset * 100).toFixed(4)}% ${titlePixelOffset < 0 ? "-" : "+"} ${Math.abs(titlePixelOffset).toFixed(4)}px)`,
+  };
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
       ? `${formatDate(point.date, true)}: no score, day omitted from chart`

@@ -104,7 +104,7 @@ function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMet
 }
 
 export function MealNutritionTrends({ metrics, className }: { metrics: MealNutritionTrendMetric[]; className?: string }) {
-  const [period, setPeriod] = useState<Period>(7);
+  const [period, setPeriod] = useState<Period>(30);
 
   return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-nutrition-trends-title">
     <header className={styles.sectionHeader}>
