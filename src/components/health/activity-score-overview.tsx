@@ -29,7 +29,6 @@ type ActivityScoreOverviewProps = {
   dimensions: readonly ActivityRadarDimension[];
   score: number | null;
   average: number | null;
-  coverage: number | null;
   breakdown: ActivityScoreBreakdown | null;
   persistedScore?: number | null;
 };
@@ -90,7 +89,7 @@ function DimensionDetail({ dimension }: { dimension: ActivityRadarDimension | nu
   </>;
 }
 
-export function ActivityScoreOverview({ dimensions, score, average, coverage, breakdown, persistedScore }: ActivityScoreOverviewProps) {
+export function ActivityScoreOverview({ dimensions, score, average, breakdown, persistedScore }: ActivityScoreOverviewProps) {
   const [selectedDetail, setSelectedDetail] = useState<SelectedDetail | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -154,7 +153,6 @@ export function ActivityScoreOverview({ dimensions, score, average, coverage, br
         <div className={styles.scoreInlineInner}><BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /></div>
       </div>
       <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>
-      <dl className={styles.summaryFacts}><div><dt>Coverage</dt><dd>{coverage === null ? "—" : `${Math.round(coverage * 100)}%`}</dd></div><div><dt>Components</dt><dd>{breakdown ? `${breakdown.components.filter((component) => component.normalizedValue !== null).length}/4` : "—"}</dd></div></dl>
     </aside>
   </div>;
 }
