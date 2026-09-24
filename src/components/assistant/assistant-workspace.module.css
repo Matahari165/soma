@@ -193,8 +193,7 @@
 .transcript { grid-row: 1; grid-column: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #353535 transparent; }
 .messages { width: min(780px, calc(100% - 64px)); padding: 42px 0 56px; gap: 34px; }
 .messages > .userMessage { max-width: min(600px, 78%); }
-.speaker { color: #8f8f8f; font-size: 11px; }
-.userMessage .messageBody { padding: 11px 16px; border-radius: 16px; background: #222; line-height: 1.55; }
+.userMessage .messageBody { padding: 11px 16px; border-radius: 16px; background: #292929; line-height: 1.55; }
 .messageBody { line-height: 1.68; }
 .messageBody p { max-width: 68ch; }
 .editMessage { transition: opacity 150ms ease, color 150ms ease; }
@@ -213,13 +212,13 @@
 .composer { width: min(640px, 100%); padding: 9px 11px; border: 1px solid #373737; border-radius: 22px; background: #1b1b1b; box-shadow: 0 8px 28px #0005; transition: border-color 160ms ease, background-color 160ms ease; }
 .composer:hover { border-color: #494949; }
 .composer:focus-within { border-color: #3e3e3e; background: #222; }
-.composerLine { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: end; gap: 8px; }
-.composer textarea { min-height: 40px; max-height: 220px; padding: 7px 0; }
+.composerLine { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: end; gap: 8px; }
+.composer textarea { min-height: 36px; max-height: 220px; padding: 7px 0; font-size: 15px; line-height: 1.45; }
 .page .composer textarea:focus-visible { outline: none; }
 .composer textarea::placeholder { color: #a5a5a5; opacity: 1; }
 .composer textarea:disabled { cursor: not-allowed; opacity: .6; }
-.attachButton { min-width: 40px; min-height: 40px; border-radius: 50%; color: var(--lab-text-secondary); transition: background-color 150ms ease, color 150ms ease; }
-.sendButton { min-width: 40px; min-height: 40px; border-radius: 50%; transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease; }
+.attachButton { min-width: 36px; min-height: 36px; border-radius: 50%; color: var(--lab-text-secondary); transition: background-color 150ms ease, color 150ms ease; }
+.sendButton { min-width: 36px; min-height: 36px; border-radius: 50%; transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease; }
 .sendButton:hover:not(:disabled) { transform: translateY(-1px); }
 .sendButton:active:not(:disabled), .attachButton:active:not(:disabled) { transform: scale(.96); }
 .photoList { flex-wrap: wrap; margin-bottom: 8px; }
@@ -250,8 +249,9 @@
   .inlineEditorActions { flex-wrap: wrap; }
   .composerRegion { padding: 8px 12px max(12px, env(safe-area-inset-bottom)); }
   .composer { padding: 8px 10px; border-radius: 20px; }
-  .composerLine { grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 6px; }
-  .composer textarea { max-height: min(220px, 30dvh); }
+  .composerLine { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 6px; }
+  .composer textarea { max-height: min(220px, 30dvh); font-size: 16px; }
+  .attachButton, .sendButton { min-width: 44px; min-height: 44px; }
   .jumpToLatest { margin-bottom: 10px; }
 }
 
@@ -262,6 +262,9 @@
 @media (orientation: landscape) and (max-height: 520px) and (min-width: 701px) and (max-width: 900px) {
   .page { height: calc(100dvh - 52px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
+
+/* Observatory navigation reserves 72px above every authenticated chat surface. */
+:global(body.observatory-mode) .page { height: calc(100dvh - 72px - env(safe-area-inset-bottom)); }
 
 @media (prefers-reduced-motion: reduce) {
   .newButton, .moreConversation, .conversationList .conversationRow > button:first-child, .composer, .attachButton, .sendButton, .starterList button { transition: none; }

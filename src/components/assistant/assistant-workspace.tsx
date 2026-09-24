@@ -609,7 +609,7 @@ export function AssistantWorkspace() {
             <ol className={styles.messages}>
               {messages.filter((message) => message.role !== "tool").map((message) => (
                 <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
-                  <span className={styles.speaker}>{message.role === "user" ? "Vous" : "Soma"}</span>
+                  <span className={styles.srOnly}>{message.role === "user" ? "Votre message" : "Réponse de Soma"}</span>
                   {editingMessageId === message.id ? <div className={styles.inlineEditor}>
                     <label className={styles.srOnly} htmlFor={`edit-${message.id}`}>Modifier le message</label>
                     <textarea id={`edit-${message.id}`} ref={editTextareaRef} value={editingDraft} onChange={(event) => setEditingDraft(event.target.value)} rows={Math.max(3, Math.min(8, editingDraft.split("\n").length + 1))} onKeyDown={(event) => {
@@ -622,7 +622,7 @@ export function AssistantWorkspace() {
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
               ))}
-              {sending && <li className={styles.assistantMessage}><span className={styles.speaker}>Soma</span><div className={styles.thinking} role="status" aria-label="Soma analyse votre demande"><span /><span /><span /></div></li>}
+              {sending && <li className={styles.assistantMessage}><div className={styles.thinking} role="status" aria-label="Soma analyse votre demande"><span /><span /><span /></div></li>}
             </ol>
           )}
         </div>
@@ -642,7 +642,7 @@ export function AssistantWorkspace() {
             <label className={styles.srOnly} htmlFor="assistant-message">Message à Soma</label>
             <div className={styles.composerLine}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={20} strokeWidth={2.2} aria-hidden="true" /></button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={18} strokeWidth={2.1} aria-hidden="true" /></button>
               <textarea
                 id="assistant-message"
                 ref={textareaRef}
@@ -653,7 +653,7 @@ export function AssistantWorkspace() {
                 placeholder={editingMessageId ? "Termine la modification ci-dessus…" : "Demande à Soma…"}
                 disabled={sending || notConfigured || Boolean(editingMessageId)}
               />
-              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={21} strokeWidth={2.5} aria-hidden="true" /></button>
+              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={18} strokeWidth={2.3} aria-hidden="true" /></button>
             </div>
           </form>
         </div>
