@@ -224,8 +224,14 @@
 .photoList { flex-wrap: wrap; margin-bottom: 8px; }
 .starterList button { transition: background-color 160ms ease, color 160ms ease; }
 .starterList button:hover:not(:disabled) { background: #151515; }
+.starters, .welcome { animation: exploreArrival 880ms cubic-bezier(.16, 1, .3, 1) both; }
 .freshMessage { animation-duration: 200ms; }
 .page button:focus-visible, .page textarea:focus-visible, .analysis summary:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 3px; }
+
+@keyframes exploreArrival {
+  from { opacity: .08; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 @media (hover: none), (pointer: coarse) {
   .moreConversation, .editMessage { opacity: 1; }
@@ -267,6 +273,7 @@
 :global(body.observatory-mode) .page { height: calc(100dvh - 72px - env(safe-area-inset-bottom)); }
 
 @media (prefers-reduced-motion: reduce) {
+  .starters, .welcome { animation: none; }
   .newButton, .moreConversation, .conversationList .conversationRow > button:first-child, .composer, .attachButton, .sendButton, .starterList button { transition: none; }
   .sendButton:hover:not(:disabled), .sendButton:active:not(:disabled), .attachButton:active:not(:disabled) { transform: none; }
 }
