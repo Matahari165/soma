@@ -24,6 +24,8 @@ const publicPaths = [
 const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
 export function requestBodyLimitForPath(pathname: string) {
   if (pathname === "/api/assistant/attachments") return 4 * 1024 * 1024 + 256 * 1024;
+  if (pathname === "/api/assistant/transcriptions") return 4 * 1024 * 1024 + 256 * 1024;
+  if (pathname === "/api/assistant/live/sessions") return 128 * 1024;
   return (/^\/api\/meals\/[^/]+\/photos$/.test(pathname) || pathname === "/api/meals/analyze")
     ? MAX_MEAL_MULTIPART_BYTES
     : 64 * 1024;
@@ -53,7 +55,7 @@ export async function proxy(request: NextRequest) {
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("X-Frame-Options", "DENY");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+    response.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=(), payment=()");
     if (!request.nextUrl.pathname.startsWith("/privacy") && !request.nextUrl.pathname.startsWith("/terms")) response.headers.set("Cache-Control", "private, no-store");
     return response;
   };

@@ -4,6 +4,8 @@ import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pe
 import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
+import { AssistantDictation } from "./assistant-dictation";
+import { AssistantLiveVoice } from "./assistant-live-voice";
 
 type Conversation = {
   id: string;
@@ -175,6 +177,8 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [loadingList, setLoadingList] = useState(true);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [sending, setSending] = useState(false);
+  const [dictationBusy, setDictationBusy] = useState(false);
+  const [liveVoiceBusy, setLiveVoiceBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -195,6 +199,9 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const historyPanelRef = useRef<HTMLElement>(null);
   const followConversationRef = useRef(true);
   const starterRequestRef = useRef(0);
+  const activeIdRef = useRef(activeId);
+  const sendMessageRef = useRef<(event?: FormEvent, overrideText?: string) => Promise<void>>(async () => {});
+  activeIdRef.current = activeId;
 
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
@@ -262,6 +269,43 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
       setError(loadError instanceof Error ? loadError.message : "Les conversations n’ont pas pu être chargées.");
     } finally {
       setLoadingList(false);
+    }
+  }, []);
+
+  const activateVoiceConversation = useCallback(async (conversationId: string) => {
+    activeIdRef.current = conversationId;
+    setActiveId(conversationId);
+    setLoadingConversation(true);
+    setError(null);
+    setMessages([]);
+    setText("");
+    try {
+      const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(conversationId)}`, { cache: "no-store" }));
+      if (activeIdRef.current === conversationId) setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+    } catch (loadError) {
+      if (activeIdRef.current === conversationId) setError(loadError instanceof Error ? loadError.message : "Cette conversation n’a pas pu être chargée.");
+    } finally {
+      if (activeIdRef.current === conversationId) setLoadingConversation(false);
+    }
+    await loadConversations();
+  }, [loadConversations]);
+
+  const refreshVoiceConversation = useCallback(async (conversationId: string) => {
+    try {
+      const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(conversationId)}`, { cache: "no-store" }));
+      if (activeIdRef.current === conversationId && Array.isArray(payload?.messages)) setMessages(payload.messages);
+      await loadConversations();
+    } catch (loadError) {
+      if (activeIdRef.current === conversationId) setError(loadError instanceof Error ? loadError.message : "La réponse vocale n’a pas pu être rechargée.");
+    }
+  }, [loadConversations]);
+
+  const handleDictationTranscript = useCallback((transcript: string, sendImmediately: boolean) => {
+    if (sendImmediately) void sendMessageRef.current(undefined, transcript);
+    else {
+      setText(transcript);
+      requestAnimationFrame(resizeComposer);
+      textareaRef.current?.focus();
     }
   }, []);
 
@@ -519,6 +563,8 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     }
   }
 
+  sendMessageRef.current = sendMessage;
+
   function editMessage(message: Message) {
     const value = messageText(message);
     if (!value || sending) return;
@@ -642,7 +688,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
             <label className={styles.srOnly} htmlFor="assistant-message">Message à Soma</label>
             <div className={styles.composerLine}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={previewMode || sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={previewMode ? "Photos indisponibles dans l’aperçu" : "Joindre une image"} title={previewMode ? "Photos indisponibles dans l’aperçu" : undefined}><Plus size={18} strokeWidth={2.1} aria-hidden="true" /></button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={previewMode || sending || liveVoiceBusy || dictationBusy || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={previewMode ? "Photos indisponibles dans l’aperçu" : "Joindre une image"} title={previewMode ? "Photos indisponibles dans l’aperçu" : undefined}><Plus size={18} strokeWidth={2.1} aria-hidden="true" /></button>
               <textarea
                 id="assistant-message"
                 ref={textareaRef}
@@ -651,9 +697,23 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
                 onChange={(event) => { setText(event.target.value); resizeComposer(); }}
                 onKeyDown={onComposerKeyDown}
                 placeholder={editingMessageId ? "Termine la modification ci-dessus…" : "Demande à Soma…"}
-                disabled={sending || notConfigured || Boolean(editingMessageId)}
+                disabled={sending || liveVoiceBusy || notConfigured || Boolean(editingMessageId)}
               />
-              <button type="submit" className={styles.sendButton} disabled={sending || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={18} strokeWidth={2.3} aria-hidden="true" /></button>
+              <AssistantDictation
+                className={styles.dictationAction}
+                disabled={sending || liveVoiceBusy || Boolean(editingMessageId)}
+                onBusyChange={setDictationBusy}
+                onTranscript={handleDictationTranscript}
+              />
+              <AssistantLiveVoice
+                className={styles.liveAction}
+                conversationId={activeId}
+                disabled={sending || dictationBusy || Boolean(editingMessageId) || notConfigured}
+                onBusyChange={setLiveVoiceBusy}
+                onConversationStarted={(conversationId) => void activateVoiceConversation(conversationId)}
+                onConversationUpdated={(conversationId) => void refreshVoiceConversation(conversationId)}
+              />
+              <button type="submit" className={styles.sendButton} disabled={sending || liveVoiceBusy || dictationBusy || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={18} strokeWidth={2.3} aria-hidden="true" /></button>
             </div>
           </form>
         </div>
