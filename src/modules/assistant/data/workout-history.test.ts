@@ -38,8 +38,8 @@ it("reads only the owner's completed session and preserves a missing load separa
   expect(filters.filter(([column]) => column === "user_id")).toHaveLength(2);
   expect(filters).toContainEqual(["status", "completed"]);
   expect(result.sessions[0].sets).toEqual([
-    expect.objectContaining({ exercise: "Squat", completedReps: 7, weightKg: null }),
-    expect.objectContaining({ exercise: "Squat", completedReps: 8, weightKg: 0 }),
+    expect.objectContaining({ exercise: "Squat", loggedReps: 7, repsEvidence: "unverified_entry", weightKg: null }),
+    expect.objectContaining({ exercise: "Squat", loggedReps: 8, repsEvidence: "unverified_entry", weightKg: 0 }),
   ]);
   expect(result.complete).toBe(true);
 });

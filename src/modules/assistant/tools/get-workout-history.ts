@@ -8,7 +8,7 @@ import { executeAuditedAssistantTool } from "./audited-tool";
 
 export function createGetWorkoutHistoryTool(context: { userId: string; runId: string }) {
   return tool({
-    description: "Lit les dernières séances de musculation terminées et les séries réellement enregistrées dans Soma. Charge weightKg en kg : null signifie non renseignée, pas zéro. Utilise cet outil pour les questions sur la dernière séance, les répétitions ou les charges soulevées ; les activités santé importées ne contiennent pas ces séries.",
+    description: "Lit les dernières séances de musculation terminées et les séries consignées dans Soma. Charge weightKg en kg : null signifie non renseignée, pas zéro. loggedReps n'est pas une preuve de répétitions réellement effectuées : l'ancienne interface copiait automatiquement la cible. Utilise cet outil pour la dernière séance ou les charges soulevées ; les activités santé importées ne contiennent pas ces séries.",
     inputSchema: z.object({ limit: z.number().int().min(1).max(5).default(1) }),
     execute: async (input, options) => executeAuditedAssistantTool({
       context,
