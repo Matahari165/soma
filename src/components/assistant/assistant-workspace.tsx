@@ -166,7 +166,7 @@ function messageText(message: Message) {
   return message.parts.filter((part): part is TextPart => part.type === "text").map((part) => part.text).join("\n\n");
 }
 
-export function AssistantWorkspace() {
+export function AssistantWorkspace({ previewMode = false }: { previewMode?: boolean }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -642,7 +642,7 @@ export function AssistantWorkspace() {
             <label className={styles.srOnly} htmlFor="assistant-message">Message à Soma</label>
             <div className={styles.composerLine}>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.heif" multiple hidden onChange={(event) => addPhotos(event.target.files)} />
-              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label="Joindre une image"><Plus size={18} strokeWidth={2.1} aria-hidden="true" /></button>
+              <button type="button" className={styles.attachButton} onClick={() => fileRef.current?.click()} disabled={previewMode || sending || Boolean(editingMessageId) || photos.length >= 4 || notConfigured} aria-label={previewMode ? "Photos indisponibles dans l’aperçu" : "Joindre une image"} title={previewMode ? "Photos indisponibles dans l’aperçu" : undefined}><Plus size={18} strokeWidth={2.1} aria-hidden="true" /></button>
               <textarea
                 id="assistant-message"
                 ref={textareaRef}

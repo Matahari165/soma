@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html className={`${schibsted.variable} ${azeretMono.variable}`} lang="en" data-lab-theme={darkInterface ? "observatory" : undefined} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={[localPreview && "local-preview", observatoryMode && "observatory-mode"].filter(Boolean).join(" ") || undefined}>
         <SkipLink />
-        {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Demo data · Nothing is transmitted or saved</span></div>}
+        {localPreview && <div className="preview-banner" role="status"><strong>LOCAL PREVIEW</strong><span>Données de démo · Les messages du chat sont envoyés à OpenAI, sans sauvegarde locale durable</span></div>}
         {observatoryMode && <LabGlobalNavigation />}
         <AppShell user={user} localPreview={localPreview}>{children}</AppShell>
       </body>
