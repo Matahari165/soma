@@ -44,7 +44,13 @@ function formatScore(value: number | null | undefined) {
 }
 
 function formatContribution(value: number | null) {
-  return measured(value) ? `${value.toFixed(1).replace(".0", "")} pts` : "—";
+  return measured(value) ? `${value.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} points` : "—";
+}
+
+function formatMeasuredAgainstTarget(measuredLabel: string, targetLabel: string) {
+  const unit = targetLabel.match(/ (min|kcal|steps)$/)?.[1];
+  const measuredValue = unit && measuredLabel.endsWith(` ${unit}`) ? measuredLabel.slice(0, -(unit.length + 1)) : measuredLabel;
+  return `${measuredValue} / ${targetLabel}`;
 }
 
 function scoreLabel(score: number | null) {
@@ -63,8 +69,8 @@ function BreakdownDetail({ breakdown, persistedScore }: { breakdown: ActivitySco
     {scoreMismatch && <p className={styles.detailFootnote}>Recorded score: {formatScore(persistedScore)} /100 · v3 recomputed from inputs: {formatScore(breakdown.score)} /100.</p>}
     <dl className={styles.breakdownList}>
       {breakdown.components.map((component) => <div className={styles.breakdownRow} key={component.id}>
-        <dt><span>{component.label}</span><small>{component.weight}%</small></dt>
-        <dd><span><small>Mesuré</small><strong>{component.sourceValueLabel}</strong></span><span><small>Repère</small><strong>{component.targetLabel}</strong></span><span><small>Points</small><strong>{formatContribution(component.contribution)}</strong></span></dd>
+        <dt>{component.label}</dt>
+        <dd><span><span className="sr-only">Mesuré / repère : </span>{formatMeasuredAgainstTarget(component.sourceValueLabel, component.targetLabel)}</span><span><span className="sr-only">Contribution : </span>{formatContribution(component.contribution)}</span><span><span className="sr-only">Pondération : </span>{component.weight} %</span></dd>
       </div>)}
     </dl>
     {missing.length > 0 && <p className={styles.detailFootnote}>Données absentes : {missing.join(", ")}. Le score utilise les mesures disponibles.</p>}
