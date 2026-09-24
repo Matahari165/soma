@@ -5,7 +5,7 @@ import { HealthLoadingShell } from "@/components/health/health-loading-shell";
 import { RecoveryDetails } from "@/components/health/recovery-details";
 import { getRecoveryAnalytics } from "@/services/health-analytics";
 
-export const metadata: Metadata = { title: { absolute: "Recovery — Soma" } };
+export const metadata: Metadata = { title: { absolute: "Soma" } };
 
 async function RecoveryPageContent() {
   return <RecoveryDetails data={await getRecoveryAnalytics()} />;

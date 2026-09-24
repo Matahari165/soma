@@ -6,7 +6,6 @@ type RadarNumber = number | null | undefined;
 type RadarData = { sleepMinutes:RadarNumber; recoveryScore:RadarNumber; effortScore:RadarNumber; caloriesKcal:RadarNumber; calorieTarget?:RadarNumber; averageSleepMinutes:RadarNumber; averageRecoveryScore:RadarNumber; averageEffortScore:RadarNumber; averageCaloriesKcal:RadarNumber };
 const DEFAULT_RADAR_RADIUS = 430;
 const SLEEP_TARGET_MINUTES = 510;
-const CALORIE_REFERENCE_FALLBACK = 3000;
 function measured(value: RadarNumber): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -95,19 +94,18 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     return()=>window.removeEventListener(MEAL_TOTALS_EVENT,update);
   },[router, date]);
   const calorieTargetMeasured = calorieTarget !== null && calorieTarget > 0 ? calorieTarget : null;
-  const caloriePlotTarget = calorieTargetMeasured ?? CALORIE_REFERENCE_FALLBACK;
   const axes=[
     {id:"sleep",label:"Sommeil",average:averageSleepMinutes,value:sleepMinutes,target:SLEEP_TARGET_MINUTES,unit:"min",display:sleepMinutes===null?"—":formatDuration(sleepMinutes),goal:"8 h 30",source:"Google Health",definition:"Temps de sommeil mesuré comparé au besoin de 8 h 30.",readingDirection:"Plus proche de 8 h 30 = meilleur",role:"Indicateur du jour",formula:"minutes mesurées",normalization:"minutes ÷ 510, plafonné à 100 %"},
     {id:"recovery",label:"Récupération",average:averageRecoveryScore,value:recoveryScore,target:100,unit:"",display:recoveryScore===null?"—":`${Math.round(recoveryScore)}`,goal:"100",source:"Soma",definition:"Score de récupération calculé par Soma à partir de vos signaux.",readingDirection:"Plus élevé = meilleur",role:"Indicateur du jour",formula:"moteur de récupération Soma",normalization:"0–100"},
     {id:"effort",label:"Effort",average:averageEffortScore===null?null:averageEffortScore*.21,value:effortScore===null?null:effortScore*.21,target:21,unit:"",display:effortScore===null?"—":`${(effortScore*.21).toFixed(1)}`,goal:"21 / 21 (100 %)",source:"Soma",definition:"Score d’effort converti sur 21 points.",readingDirection:"Plus élevé = plus de charge accomplie",role:"Indicateur du jour",formula:"score d’effort × 0,21",normalization:"0–21"},
-    {id:"calories",label:"Calories",average:averageCaloriesKcal,value:calories,target:caloriePlotTarget,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:calorieTargetMeasured!==null?`${Math.round(calorieTargetMeasured).toLocaleString("fr-FR")} kcal`:`Indisponible · repère ${CALORIE_REFERENCE_FALLBACK.toLocaleString("fr-FR")} kcal (aucune cible définie)`,source:"Journal",definition:calorieTargetMeasured!==null?"Énergie des repas confirmés comparée à votre cible.":"Énergie des repas confirmés. Aucune cible personnelle définie : le contour à 3 000 kcal est un simple repère visuel.",readingDirection:"Proche de la cible = meilleur",role:"Indicateur du jour",formula:"somme des repas confirmés",normalization:"kcal ÷ cible, plafonné à 100 %",targetMissing:calorieTargetMeasured===null},
+    {id:"calories",label:"Calories",average:averageCaloriesKcal,value:calories,target:calorieTargetMeasured,unit:"kcal",display:calories===null?"—":Math.round(calories).toLocaleString("fr-FR"),goal:calorieTargetMeasured!==null?`${Math.round(calorieTargetMeasured).toLocaleString("fr-FR")} kcal`:"Indisponible",source:"Journal",definition:calorieTargetMeasured!==null?"Énergie des repas confirmés comparée à votre cible.":"Énergie des repas confirmés. Aucune cible personnelle définie : le point n’est pas tracé sur le radar.",readingDirection:calorieTargetMeasured!==null?"Proche de la cible = meilleur":"Comparaison à une cible indisponible",role:"Indicateur du jour",formula:"somme des repas confirmés",normalization:calorieTargetMeasured!==null?"kcal ÷ cible, plafonné à 100 %":"Indisponible sans cible personnelle",targetMissing:calorieTargetMeasured===null},
   ];
   const radarRadius = Number.isFinite(radius) && (radius as number) > 0 ? (radius as number) : DEFAULT_RADAR_RADIUS;
   // Les décalages restent proportionnels au rayon pour que les libellés gardent le même écart relatif.
   const unit = radarRadius / DEFAULT_RADAR_RADIUS;
   const gap = (base: number) => Math.round(base * unit);
   const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*radarRadius*ratio,280+Math.sin(angle)*radarRadius*ratio];};
-  const points=axes.map((axis,index)=>axis.value===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
+  const points=axes.map((axis,index)=>axis.value===null||axis.target===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   const hasCompleteValueShape = validPoints.length === axes.length;
   const valueSegments = points.flatMap((point, index) => {
@@ -153,8 +151,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     else setInternalSelected(null);
     if (id) window.requestAnimationFrame(() => buttonRefs.current[id]?.focus());
   }
-  return <figure className={`observatory-radar${traceSettled ? " observatory-radar--trace-settled" : ""}`} aria-label="Progression des quatre indicateurs par rapport à leurs objectifs" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
-    <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
+  return <figure className={`observatory-radar${traceSettled ? " observatory-radar--trace-settled" : ""}`} aria-label="Indicateurs du jour et objectifs disponibles" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
+    <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs disponibles. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
       {[.25,.5,.75,1].map(ratio=><Fragment key={ratio}>
         <polygon className="radar-grid" points={[0,1,2,3].map(i=>coordinate(i,ratio).join(",")).join(" ")} />
         <path className={`radar-grid-left${ratio === 1 ? " radar-grid-left--outer" : ""}`} d={[0,3,2].map((i,index)=>`${index===0?"M":"L"} ${coordinate(i,ratio).join(" ")}`).join(" ")} />

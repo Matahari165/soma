@@ -754,9 +754,9 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress__track { height:10px; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art {
     width:100%!important;
-    height:min(470px,calc(110vw + 40px))!important;
-    min-height:min(470px,calc(110vw + 40px))!important;
-    margin:48px 0 40px!important;
+    height:min(360px,calc(100vw - 32px))!important;
+    min-height:min(360px,calc(100vw - 32px))!important;
+    margin:24px 0!important;
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .observatory-radar { transform:none!important; }
 
@@ -795,6 +795,13 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     padding-inline:8px;
     font-size:12px;
   }
+}
+
+html[data-lab-theme="observatory"] .arrival-context-date {
+  display:block;
+  margin-block:0 16px;
+  color:var(--lab-text-secondary);
+  font:400 12px/1.4 var(--font-soma-mono),monospace;
 }
 
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-choice--binary {

@@ -7,7 +7,7 @@ import { expect, it, vi } from "vitest";
 import { MEAL_TOTALS_EVENT } from "@/domain/meal-record";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-const data = { sleepMinutes: 460, recoveryScore: 70, effortScore: 75, caloriesKcal: 1800, averageSleepMinutes: 480, averageRecoveryScore: 60, averageEffortScore: 75, averageCaloriesKcal: 2000 };
+const data = { sleepMinutes: 460, recoveryScore: 70, effortScore: 75, caloriesKcal: 1800, calorieTarget: 2400, averageSleepMinutes: 480, averageRecoveryScore: 60, averageEffortScore: 75, averageCaloriesKcal: 2000 };
 it("compares each value with its own 30-day average, including equality", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={data} />);
   expect(html).toContain("7h 40 ↓");
@@ -28,6 +28,14 @@ it("does not invent a zero or close the radar when a measure is absent", () => {
   expect(html).not.toContain("70 ↑");
 });
 
+it("keeps calories readable without plotting an invented target", () => {
+  const html = renderToStaticMarkup(<ObservatoryRadar data={{ ...data, calorieTarget: null }} />);
+  expect(html).toMatch(/1[\s\u202f]800 kcal/);
+  expect(html).toContain("Objectif : Indisponible");
+  expect(html).not.toContain('class="radar-value"');
+  expect((html.match(/class="radar-point"/g) ?? []).length).toBe(3);
+});
+
 it("does not bridge across an absent interior axis", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={{ ...data, recoveryScore: null }} />);
 
@@ -43,6 +51,7 @@ it("renders radar metrics for a specific past date", () => {
     recoveryScore: 85,
     effortScore: 60,
     caloriesKcal: 2300,
+    calorieTarget: 2400,
     averageSleepMinutes: 480,
     averageRecoveryScore: 60,
     averageEffortScore: 75,

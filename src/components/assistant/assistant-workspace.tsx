@@ -217,7 +217,40 @@ export function AssistantWorkspace() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyPanelRef = useRef<HTMLElement>(null);
   const followConversationRef = useRef(true);
+
+  const closeHistory = useCallback(() => {
+    setHistoryOpen(false);
+    window.requestAnimationFrame(() => historyTriggerRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const panel = historyPanelRef.current;
+    panel?.querySelector<HTMLButtonElement>("button")?.focus();
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeHistory();
+      }
+      if (event.key !== "Tab" || !panel) return;
+      const buttons = Array.from(panel.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [historyOpen, closeHistory]);
 
   const scrollToLatest = useCallback(() => {
     const transcript = transcriptRef.current;
@@ -260,6 +293,7 @@ export function AssistantWorkspace() {
     setLoadingConversation(true);
     setError(null);
     setHistoryOpen(false);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
     followConversationRef.current = true;
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" }));
@@ -475,16 +509,16 @@ export function AssistantWorkspace() {
   return (
     <main id="main-page-content" className={styles.page} lang="fr">
       <header className={styles.mobileToolbar}>
-        <button type="button" onClick={() => setHistoryOpen(true)} aria-label="Ouvrir les conversations"><Menu size={20} aria-hidden="true" /></button>
+        <button ref={historyTriggerRef} type="button" onClick={() => setHistoryOpen(true)} aria-label="Ouvrir les conversations" aria-controls="assistant-conversations" aria-expanded={historyOpen}><Menu size={20} aria-hidden="true" /></button>
         <span>Soma</span>
         <button type="button" onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={20} aria-hidden="true" /></button>
       </header>
 
-      {historyOpen && <button className={styles.scrim} type="button" aria-label="Fermer les conversations" onClick={() => setHistoryOpen(false)} />}
-      <aside className={`${styles.history} ${historyOpen ? styles.historyOpen : ""}`} aria-label="Conversations">
+      {historyOpen && <button className={styles.scrim} type="button" aria-label="Fermer les conversations" onClick={closeHistory} />}
+      <aside id="assistant-conversations" ref={historyPanelRef} className={`${styles.history} ${historyOpen ? styles.historyOpen : ""}`} aria-label="Conversations" role={historyOpen ? "dialog" : undefined} aria-modal={historyOpen || undefined}>
         <div className={styles.historyHeader}>
           <button type="button" className={styles.newButton} onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={18} aria-hidden="true" /></button>
-          <button type="button" className={styles.closeHistory} onClick={() => setHistoryOpen(false)} aria-label="Fermer les conversations"><X size={19} aria-hidden="true" /></button>
+          <button type="button" className={styles.closeHistory} onClick={closeHistory} aria-label="Fermer les conversations"><X size={19} aria-hidden="true" /></button>
         </div>
         <nav aria-label="Historique des conversations" className={styles.conversationList}>
           {loadingList ? <p className={styles.listStatus} role="status">Chargement…</p> : conversations.length ? conversations.map((conversation) => (

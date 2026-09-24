@@ -15,7 +15,10 @@ type JournalProgress = { date: string; count: number; total: number };
 
 export function LabArrival({
   theme,
+  date,
   radar,
+  selectedDate,
+  todayDate,
   personalization,
 }: {
   theme: string;
@@ -60,6 +63,7 @@ export function LabArrival({
         <h1 id="arrival-title" tabIndex={-1}>
           {message.lines.map((line, index) => <span className="arrival-title-line" key={`${message.moment}-${index}`}><span>{line}</span></span>)}
         </h1>
+        {selectedDate && todayDate && selectedDate !== todayDate && <time className="arrival-context-date" dateTime={selectedDate}>{date}</time>}
         {message.activityNote && <p className="arrival-signal"><span className="sr-only">Notable signal: </span>{message.activityNote}</p>}
         {journalProgress && <div className="arrival-journal-progress" aria-label={`Journal progress: ${journalProgress.count} habits confirmed out of ${journalProgress.total}`}>
           <div className="arrival-journal-progress__header">
