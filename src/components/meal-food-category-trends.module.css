@@ -41,23 +41,27 @@
   display: grid;
   min-width: 0;
   height: 187px;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 12px;
 }
 
 .scale {
   display: flex;
+  grid-column: 2;
+  grid-row: 1;
   flex-direction: column;
   justify-content: space-between;
   padding: 3px 0 8px;
   color: var(--lab-text-secondary, #aaaaaa);
   font: 400 11px/14px var(--font-soma-mono, ui-monospace, monospace);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
 }
 
 .chartPlot {
   position: relative;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   height: 187px;
   border-bottom: 1px solid var(--lab-border-strong, #3a3a3a);
@@ -123,9 +127,8 @@
   min-height: 16px;
   justify-content: space-between;
   gap: 8px;
-  padding-inline-start: calc((100% - 38px) * .04);
-  padding-inline-end: calc((100% - 38px) * .04);
-  margin: 8px 0 0 38px;
+  padding-inline: calc((100% - 88px) * .04);
+  margin: 8px 88px 0 0;
   color: var(--lab-text-secondary, #aaaaaa);
   font: 400 11px/16px var(--font-soma-mono, ui-monospace, monospace);
   font-variant-numeric: tabular-nums;
@@ -184,7 +187,7 @@
 }
 
 @media (max-width: 560px) {
-  .chart { grid-template-columns: 28px minmax(0, 1fr); gap: 8px; }
+  .chart { gap: 12px; }
   .stack { width: min(100%, 8px); }
   .legend { gap: 5px 11px; }
 }
