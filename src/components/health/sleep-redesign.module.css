@@ -513,6 +513,10 @@
 
 @media (max-width: 520px) {
   .root :global(.health-detail-page--sleep) { gap: 24px; padding: 24px 16px 48px; overflow-x: clip; }
+  .overviewSection { min-height: calc(100svh - 174px); align-items: start; }
+  .readingsGrid { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
+  .reading { width: 100%; }
+  .reading summary { width: 100%; min-height: 110px; }
   .redesign { gap: 40px; }
   .sleepScoreOverview { gap: 24px; }
   .sleepRadarStage > figure { width: min(100%, 320px); }
@@ -536,7 +540,11 @@
   }
 }
 
+.redesign [data-health-reveal][data-reveal="pending"] { opacity: 0; transform: translateY(12px); }
+.redesign [data-health-reveal][data-reveal="visible"] { opacity: 1; transform: translateY(0); transition: opacity 560ms cubic-bezier(.2, .8, .2, 1), transform 560ms cubic-bezier(.2, .8, .2, 1); }
+
 @media (prefers-reduced-motion: reduce) {
+  .redesign [data-health-reveal] { opacity: 1 !important; transform: none !important; }
   .root *,
   .root *::before,
   .root *::after {

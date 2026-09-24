@@ -6,6 +6,7 @@ import type { HealthAnalytics, HealthMetricDay } from "@/services/health-analyti
 
 import styles from "./sleep-redesign.module.css";
 import { HealthPageShell } from "./health-page-shell";
+import { HealthScrollReveal } from "./health-scroll-reveal";
 import { SleepStageDistribution } from "./health-charts";
 import { averageLast30Measured, formatDurationMinutes, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
@@ -243,7 +244,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
   ] : [];
 
   return <div className={`${styles.root} health-observatory-route`}><HealthPageShell kind="sleep" title="Sleep" description="Duration, efficiency, and regularity of your sleep." score={score} freshness={freshness} timezone={data.timezone} showHeroScore={false} showFreshness={true}>
-    <section className={`${styles.redesign} health-observatory-content`} aria-label="Sleep content">
+    <section className={`${styles.redesign} health-observatory-content`} aria-label="Sleep content" data-health-reveal-root>
+      <HealthScrollReveal />
       {latest ? <>
         <section className={`${styles.overviewSection} health-observatory-panel`} aria-label="Sleep summary">
           <SleepScoreOverview
@@ -254,7 +256,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           />
         </section>
 
-        <section className={styles.readingsSection} aria-label="Sleep indicators">
+        <section className={styles.readingsSection} aria-label="Sleep indicators" data-health-reveal>
           <div className={styles.readingsGrid}>
             {[
               { label: "Duration", value: formatDurationMinutes(latest.sleep_minutes), context: `30-day avg · ${formatDurationMinutes(averageSleep)}`, detail: "Measured sleep duration compared with your estimated need." },
@@ -265,7 +267,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           </div>
         </section>
 
-        <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends">
+        <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends" data-health-reveal>
           <div className={styles.trendGrid}>
             <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
             <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" />
@@ -274,7 +276,7 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
             <MetricTrendCard label="Deep + REM sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
           </div>
         </section>
-        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-label="Last night sleep stages">
+        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-label="Last night sleep stages" data-health-reveal>
           <p className={styles.stagePeriod}>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</p>
           <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>

@@ -397,6 +397,11 @@
 
 @media (max-width: 560px) {
   .root :global(.health-detail-page--activity) { padding-inline: 16px; overflow-x: clip; }
+  .heroScene { min-height: calc(100svh - 174px); }
+  .readingsGrid { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
+  .readingsGrid > div { width: 100%; }
+  .readingsGrid dt { min-height: 32px; display: grid; place-items: center; text-wrap: balance; }
+  .benchmarkTrigger { min-height: 88px; }
   .radarStage,
   .radarStage[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
   .detailPanel { max-width: none; max-height: 0; padding: 0; border: 0; overflow: hidden; transform: translateY(4px); }
@@ -434,6 +439,10 @@
   .sectionHeader { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 
+.content [data-health-reveal][data-reveal="pending"] { opacity: 0; transform: translateY(12px); }
+.content [data-health-reveal][data-reveal="visible"] { opacity: 1; transform: translateY(0); transition: opacity 560ms cubic-bezier(.2, .8, .2, 1), transform 560ms cubic-bezier(.2, .8, .2, 1); }
+
 @media (prefers-reduced-motion: reduce) {
+  .content [data-health-reveal] { opacity: 1 !important; transform: none !important; }
   .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

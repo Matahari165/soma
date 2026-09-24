@@ -7,6 +7,7 @@ import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/heal
 
 import { averageLast30MeasuredWithCount, formatAverage, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage } from "./health-metric-utils";
 import { HealthPageShell } from "./health-page-shell";
+import { HealthScrollReveal } from "./health-scroll-reveal";
 import { MetricTrendCard } from "./metric-trend-card";
 import type { RecoveryRadarDimension } from "./recovery-radar";
 import { RecoveryRadar } from "./recovery-radar";
@@ -218,7 +219,8 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       timezone={data.timezone}
       heroScore={<span className="sr-only">Recovery score: {scoreText(score)} out of 100. 30-day average: {scoreText(averages.recovery)} out of 100.</span>}
     >
-      <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-recovery-scroll-reveal-root="true">
+      <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-health-reveal-root>
+        <HealthScrollReveal />
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
             <div className={styles.radarRegion} data-detail-open={detailOpen}>
@@ -254,7 +256,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             </aside>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recent recovery signals">
+          <section className={`${styles.section} health-observatory-panel`} data-health-reveal aria-label="Recent recovery signals">
             <div className={styles.signalRows}>
               {[
                 { label: "HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
@@ -264,13 +266,13 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             </div>
           </section>
 
-          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recovery trends over 30 days">
+          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recovery trends over 30 days" data-health-reveal>
             <div className={styles.trendGrid}>
               {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} format={(value) => value.toFixed(1)} valueFormat="decimal" chartType="bar" compact averageInChart animateCurrent animationFormat="decimal" />)}
             </div>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Heart-rate zones, daily average of measured days">
+          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Heart-rate zones, daily average of measured days" data-health-reveal>
             <div className={styles.zonesHeading}><span>Heart-rate zones</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div>
             <WeeklyZoneChart summary={weeklyZones} />
           </section>
