@@ -79,12 +79,15 @@ function labelPosition(index: number, count: number) {
   const cosine = Math.cos(angle);
   const sine = Math.sin(angle);
   const labelRadius = RADIUS + 34;
+  // Leave room for measured values and arrows at phone widths while keeping
+  // each side label outside the outer grid (whose radius is RADIUS).
+  const horizontalRadius = labelRadius - 24;
   const textAnchor: "start" | "middle" | "end" = cosine > 0.28 ? "start" : cosine < -0.28 ? "end" : "middle";
   const dy = sine > 0.35 ? "0" : sine < -0.35 ? "0" : "0.35em";
   const valueDy = sine > 0.35 ? "1.55em" : "1.4em";
 
   return {
-    x: CENTER_X + cosine * labelRadius,
+    x: CENTER_X + cosine * (Math.abs(cosine) > 0.28 ? horizontalRadius : labelRadius),
     y: CENTER_Y + sine * labelRadius,
     textAnchor,
     dy,

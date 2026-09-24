@@ -541,7 +541,7 @@
 }
 
 .redesign [data-health-reveal][data-reveal="pending"] { opacity: 0; transform: translateY(12px); }
-.redesign [data-health-reveal][data-reveal="visible"] { opacity: 1; transform: translateY(0); transition: opacity 560ms cubic-bezier(.2, .8, .2, 1), transform 560ms cubic-bezier(.2, .8, .2, 1); }
+.redesign [data-health-reveal][data-reveal="visible"] { opacity: 1; transform: translateY(0); transition: opacity 720ms cubic-bezier(.2, .8, .2, 1), transform 720ms cubic-bezier(.2, .8, .2, 1); }
 
 @media (prefers-reduced-motion: reduce) {
   .redesign [data-health-reveal] { opacity: 1 !important; transform: none !important; }
