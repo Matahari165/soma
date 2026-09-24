@@ -761,7 +761,7 @@ describe("MealJournal", () => {
     expect(breakfastContent).toContain('data-metric="carbs"');
     expect(breakfastContent).toContain('data-metric="fat"');
     expect(breakfastContent).toContain('data-metric="sugar"');
-    expect(snackContent).toMatch(/<h3[^>]*>Snack<span[^>]*role="status"[^>]*>Skipped<\/span><\/h3>/);
+    expect(snackContent).toMatch(/^id="meal-snack-title"[^>]*>Snack<span[^>]*role="status"[^>]*>Skipped<\/span><\/h3>/);
     expect(html).toContain('aria-label="Meal history"');
     expect(html).toContain('aria-label="Previous day"');
     expect(html).toContain("Needs retry");
