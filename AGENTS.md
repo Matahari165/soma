@@ -3,7 +3,7 @@
 ## Délégation et coordination
 
 - L’agent principal est le coordinateur : il fixe le périmètre, délègue, arbitre, intègre et vérifie.
-- Pour toute tâche qui demande du travail, lance systématiquement 1 à 3 sous-agents **GPT-5.6 Luna**. Utilise `xhigh` par défaut et `max` dès qu’un besoin de profondeur, de complexité, d’ambiguïté ou de risque apparaît, même faible.
+- Pour toute tâche qui demande du travail, lance systématiquement 1 à 3 sous-agents **GPT-6 Luna**, avec un niveau d’effort `xhigh` (extra high) par défaut. Si la tâche est vraiment complexe, les sous-agents peuvent utiliser **GPT-6 Sol** avec un niveau d’effort `low` (léger).
 - Découpe le travail en lots autonomes et parallèles lorsque possible. Donne à chaque agent une mission, des fichiers et des invariants disjoints, ainsi qu’une preuve attendue. Évite doublons et chevauchements ; l’agent principal reste responsable du résultat final.
 - Si plusieurs agents ou conversations travaillent sur Soma, ils se contactent directement pour annoncer leur périmètre, gérer les dépendances et résoudre les conflits.
 
