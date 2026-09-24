@@ -42,6 +42,9 @@ export type MealScoreOverviewPanelProps = {
 };
 
 const DIMENSION_KEYS = MEAL_BALANCE_COMPONENT_ORDER;
+const RADAR_RADIUS = 132;
+const RADAR_LABEL_RADIUS = 166;
+const RADAR_GRID_RATIOS = [0.25, 0.5, 0.75, 1] as const;
 const DIMENSION_LABELS: Record<MealBalanceComponentKey, string> = {
   nutritionAdequacy: "Nutritional adequacy",
   foodQuality: "Food quality",
@@ -174,15 +177,18 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     <svg viewBox="0 0 420 420" role="group" aria-labelledby="meal-balance-radar-title meal-balance-radar-description">
       <title id="meal-balance-radar-title">Dietary dimensions profile</title>
       <desc id="meal-balance-radar-description">{description}. Missing values remain unavailable and are not represented as zero. Select a label to view its details.</desc>
-      {[37.5, 75, 112.5, 150].map((radius) => <polygon className={styles.radarGrid} key={radius} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />)}
+      {RADAR_GRID_RATIOS.map((ratio) => {
+        const radius = RADAR_RADIUS * ratio;
+        return <polygon className={styles.radarGrid} key={ratio} points={DIMENSION_KEYS.map((_, index) => radarPoint(index, radius).join(",")).join(" ")} aria-hidden="true" />;
+      })}
       {axes.map((axis, index) => {
-        const edge = radarPoint(index, 150);
-        const [labelX, y] = radarPoint(index, 188);
+        const edge = radarPoint(index, RADAR_RADIUS);
+        const [labelX, y] = radarPoint(index, RADAR_LABEL_RADIUS);
         const anchor = labelX < 185 ? "end" : labelX > 235 ? "start" : "middle";
         const x = Math.min(Math.max(labelX, 100), 320);
         const lines = RADAR_LABEL_LINES[axis.keyName];
         const firstDy = lines.length > 1 ? -7 : 0;
-        const point = axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100);
+        const point = axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score, 0), 100) / 100);
         const selected = selectedKey === axis.keyName;
         const actionLabel = selected ? "Hide dimension details" : "Show dimension details";
         return <g
@@ -211,7 +217,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
           </text>
         </g>;
       })}
-      {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, 150 * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
+      {complete ? <polygon className={styles.radarValue} points={axes.map((axis, index) => radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score ?? 0, 0), 100) / 100).join(",")).join(" ")} aria-hidden="true" /> : null}
       {radarSegments.map(({ from, to }, index) => <line key={`segment-${index}`} className={styles.radarSegment} data-radar-trace="" data-radar-segment-index={index} style={{ "--radar-segment-index": index } as CSSProperties} pathLength="1" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} aria-hidden="true" />)}
     </svg>
     <figcaption className={styles.srOnly}>Interactive chart. The five axes are keyboard-accessible buttons.</figcaption>

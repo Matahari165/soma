@@ -250,7 +250,7 @@
 
 /* Activity-derived secondary-page rhythm; nutrition values keep their own meaning. */
 .root { padding-bottom: 0; }
-.scoreEssentials { padding-bottom: 0; border-bottom: 0; }
+.scoreEssentials { align-items: start; padding: 0 0 0 32px; border-bottom: 0; }
 .balanceRadar svg { width: min(100%, 420px); }
 .dailyPanel { align-self: start; padding: 18px 0 0; border: 0; }
 .panelHeading h3 { color: var(--score-muted); font-size: 13px; font-weight: 400; line-height: 18px; letter-spacing: 0; }
@@ -276,13 +276,14 @@
 .chart { height: 116px; }
 .chartScale { font-size: 11px; }
 @media (max-width: 720px) {
-  .scoreEssentials { grid-template-columns: 1fr; gap: 24px; }
-  .dailyPanel { padding: 12px 0 0; }
+  .scoreEssentials { grid-template-columns: 1fr; gap: 24px; padding-left: 0; }
+  .dailyPanel { padding: 18px 0 0; }
   .summaryFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; margin-top: 16px; padding: 24px 0; }
   .historySection { margin-top: 16px; padding: 24px 0; }
 }
 @media (max-width: 560px) {
-  .balanceRadar svg { width: min(100%, 360px); }
+  .radarStage, .radarStage[data-detail-open="true"] { grid-template-columns: 1fr; }
+  .balanceRadar svg { width: min(100%, 320px); }
   .dailyScore { font-size: 64px; }
 }
 @media (min-width: 721px) {
