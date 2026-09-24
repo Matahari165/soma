@@ -679,8 +679,9 @@ export function LabMealCard({
         <div className="relative">
           <textarea
             id={inputId}
-            className="w-full bg-obsidian border border-hairline rounded text-xs text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-hairline-light font-sans"
-            rows={1}
+            className={`w-full bg-obsidian border border-hairline rounded text-content-primary placeholder:text-content-secondary font-sans ${styles.captureNote}`}
+            rows={2}
+            aria-label={`Describe ${slotLabel}`}
             placeholder="Describe this meal or its ingredients…"
             value={noteText}
             disabled={disabled || processingFiles || mutationBusy}
@@ -697,7 +698,7 @@ export function LabMealCard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+              className={`px-2.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`}
               aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
@@ -707,7 +708,7 @@ export function LabMealCard({
             </button>
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+              className={`px-2.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`}
               aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
@@ -721,8 +722,8 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
-                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium flex items-center gap-1.5"
+                  ? `!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`
+                  : `!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 rounded text-xs font-sans font-medium flex items-center gap-1.5 ${styles.captureAction}`
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}
