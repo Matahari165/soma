@@ -9,6 +9,7 @@ import type { PersonalLabSnapshot } from "@/services/personal-lab";
 
 import { localizedMetricLabel, localizedMetricUnit } from "./lab-copy";
 import { effectText, outcomeExplanation, percentText, RelationDetail } from "./relation-detail";
+import { StrongestEffectsLoading } from "./strongest-effects-loading";
 import { calculableRelations, compareInfluenceGroups, groupMatrixRows, groupRelationsByComparison, influenceGroup, significantRelations } from "./relationship-groups";
 import { useTemporalStabilityPreference } from "./personal-lab-preferences";
 
@@ -138,6 +139,10 @@ export function matrixTimingLabel(lagDays: number) {
 
 function strongestTimingText(lagDays: number) {
   return lagDays > 0 ? `J+${lagDays}` : "J";
+}
+
+function strongestRowKey(relation: Pick<MatrixRelation, "period" | "predictorId" | "outcomeId" | "lagDays">) {
+  return `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`;
 }
 
 /** Relation details must stay within the published relation set. */
@@ -331,10 +336,14 @@ export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outc
   }, []);
 }
 
-function StrongestEffects({ relations, outcomes, onSelect, periodControl = null, filterControl = null, requireTemporalStability = true, standalone = false }: {
+function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = null, detailRef = null, onCloseSelection = () => {}, scrollReveal = false, periodControl = null, filterControl = null, requireTemporalStability = true, standalone = false }: {
   relations: MatrixRelation[];
   outcomes: PersonalLabSnapshot["matrix"]["outcomes"];
-  onSelect: (relation: MatrixRelation) => void;
+  onSelect: (relation: MatrixRelation, trigger: HTMLButtonElement) => void;
+  selectedRelations?: MatrixRelation[] | null;
+  detailRef?: RefObject<HTMLElement | null> | null;
+  onCloseSelection?: () => void;
+  scrollReveal?: boolean;
   periodControl?: ReactNode;
   filterControl?: ReactNode;
   requireTemporalStability?: boolean;
@@ -365,32 +374,31 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
     return [...categories.entries()];
   }, [meaningful]);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const rowRefs = useRef(new Map<string, HTMLLIElement>());
-  const setRowRef = useCallback((key: string, node: HTMLLIElement | null) => {
-    if (node) rowRefs.current.set(key, node);
-    else rowRefs.current.delete(key);
-  }, []);
+  const selectedRelation = selectedRelations?.[0] ?? null;
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
     const isLocalObservatory = section.closest('.lab-experience.lab-continuous[data-continuous-theme="observatory"]') !== null;
-    const rows = meaningful.map((relation) => `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`);
-    if (!rows.length) {
-      if (isLocalObservatory && section) delete section.dataset.motionReady;
+    const shouldRevealRows = scrollReveal || isLocalObservatory;
+    const rowElements = Array.from(section.querySelectorAll<HTMLLIElement>(".strongest-effects__row"));
+    if (!rowElements.length) {
+      delete section.dataset.motionReady;
       return;
     }
 
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     if (reduceMotion || typeof IntersectionObserver === "undefined") {
-      rowRefs.current.forEach((node) => node.classList.add("is-visible"));
+      delete section.dataset.motionReady;
+      rowElements.forEach((node) => node.classList.add("is-visible"));
       return;
     }
 
-    if (isLocalObservatory) {
+    if (shouldRevealRows) {
       section.dataset.motionReady = "true";
-      rowRefs.current.forEach((node) => node.classList.remove("is-visible"));
+      rowElements.forEach((node) => node.classList.remove("is-visible"));
+    } else {
+      delete section.dataset.motionReady;
     }
-    const rowKeys = new Set(rows);
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
@@ -400,15 +408,13 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
       }
     }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
 
-    rowRefs.current.forEach((node, key) => {
-      if (rowKeys.has(key)) observer.observe(node);
-    });
+    rowElements.forEach((node) => observer.observe(node));
 
     return () => {
       observer.disconnect();
-      if (isLocalObservatory) delete section.dataset.motionReady;
+      delete section.dataset.motionReady;
     };
-  }, [meaningful]);
+  }, [meaningful, scrollReveal]);
 
   return <section ref={sectionRef} className="strongest-effects" aria-labelledby="strongest-effects-title">
     <header>
@@ -449,9 +455,11 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
             : Math.max(Math.abs(relation.effect - relation.effectConfidenceLow), Math.abs(relation.effectConfidenceHigh - relation.effect)) / relation.practicalThreshold / 4;
         const low = Math.max(-1, point - uncertainty);
         const high = Math.min(1, point + uncertainty);
-        const rowKey = `${relation.period}:${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`;
+        const rowKey = strongestRowKey(relation);
+        const selectedForRow = selectedRelation !== null && strongestRowKey(selectedRelation) === rowKey;
         const intervalOrigin = low >= 0 ? "left" : high <= 0 ? "right" : "center";
-        const rowStyle = { "--matrix-row-delay": `${index * 56}ms` } as CSSProperties;
+        const rowDelay = scrollReveal ? (index % 5) * 64 : index * 56;
+        const rowStyle = { "--matrix-row-delay": `${rowDelay}ms` } as CSSProperties;
         const intervalStyle = {
           left: `${50 + low * 46}%`,
           width: `${Math.max(1, (high - low) * 46)}%`,
@@ -461,13 +469,12 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
         const outcomeLabel = localizedMetricLabel(relation.outcomeId, relation.outcomeLabel);
         const relationLabel = `${predictorLabel} (${formatComparisonLabel(relation.comparisonLabel)}) → ${outcomeLabel}: ${effectText(relation)}${percentText(relation) ? ` (${percentText(relation)})` : ""}, ${strongestTimingText(relation.lagDays)}, période ${periodDisplayLabel(relation.period)}, échantillon de ${relation.sampleSize} jours, ${strongestUncertaintyLabel(relation)}`;
         return <li
-          className="strongest-effects__row"
+          className={`strongest-effects__row${selectedForRow ? " is-selected" : ""}`}
           data-matrix-effect-key={rowKey}
           key={rowKey}
-          ref={(node) => setRowRef(rowKey, node)}
           style={rowStyle}
         >
-          <button type="button" onClick={() => onSelect(relation)} aria-label={`Ouvrir la relation : ${relationLabel}`}>
+          <button type="button" onClick={(event) => onSelect(relation, event.currentTarget)} aria-expanded={selectedForRow} aria-controls={selectedForRow ? "relation-detail-panel" : undefined} aria-label={`Ouvrir la relation : ${relationLabel}`}>
             <span className={`strongest-effects__plot ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`} aria-hidden="true">
               <i className="strongest-effects__zero" />
               <i className="strongest-effects__interval" style={intervalStyle} />
@@ -475,6 +482,7 @@ function StrongestEffects({ relations, outcomes, onSelect, periodControl = null,
             </span>
             <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
           </button>
+          {selectedForRow && selectedRelations && detailRef && <RelationDetail relations={selectedRelations} direction={direction} onClose={onCloseSelection} detailRef={detailRef} variant="inline" panelId="relation-detail-panel" />}
         </li>;
       })}</ol>
         </section>)}
@@ -528,15 +536,13 @@ function EffectsSummary({ relations, period, requireTemporalStability }: { relat
 
   const byKey = new Map(relations.map((relation) => [summaryRelationKey(relation), relation]));
   const entries = ranked?.map((key) => byKey.get(key)).filter((relation): relation is MatrixRelation => Boolean(relation)) ?? relations.slice(0, 3);
-  return <section className="effects-summary" aria-labelledby="effects-summary-title">
-    <div className="effects-summary__heading"><h2 id="effects-summary-title">À retenir</h2><span>{ranked ? "Sélection par GPT-6 Luna" : "Associations mesurées"}</span></div>
+  return <section className="effects-summary" aria-label="Résumé des associations">
     {entries.length ? <ol>{entries.map((relation) => <li key={summaryRelationKey(relation)}>
       <span className="effects-summary__arrow" aria-hidden="true">→</span>
       <p><strong>{localizedMetricLabel(relation.predictorId, relation.predictorLabel)}</strong> <span>({formatComparisonLabel(relation.comparisonLabel)})</span> → <strong>{localizedMetricLabel(relation.outcomeId, relation.outcomeLabel)}</strong> <b>{effectText(relation)}</b> <small>{strongestTimingText(relation.lagDays)}</small></p>
     </li>)}</ol> : <p className="effects-summary__empty">Aucune relation assez solide pour un récapitulatif sur cette période.</p>}
     {entries.length > 0 && !ranked ? <div className="effects-summary__action"><button type="button" onClick={() => void generateSummary()} disabled={loadingKey === requestKey}>{loadingKey === requestKey ? "Sélection en cours…" : "Générer le résumé IA"}</button><span>Envoie une sélection d’associations à OpenAI pour les classer.</span></div> : null}
     {errorKey === requestKey && !ranked ? <p className="effects-summary__error" role="status">Résumé IA indisponible. Les associations mesurées restent affichées.</p> : null}
-    <p className="effects-summary__footnote">Ces liens sont des associations observées, pas des causes démontrées.</p>
   </section>;
 }
 
@@ -548,6 +554,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
   const relationDetailRef = useRef<HTMLElement | null>(null);
+  const relationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const { requireTemporalStability, setRequireTemporalStability } = useTemporalStabilityPreference();
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod, force = false) => {
@@ -575,8 +582,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   useEffect(() => {
     if (!selected) return;
     window.requestAnimationFrame(() => {
-      relationDetailRef.current?.focus();
-      scrollToMatrixElement(relationDetailRef.current);
+      relationDetailRef.current?.focus({ preventScroll: true });
     });
   }, [selected]);
 
@@ -590,6 +596,12 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   function toggleTemporalStability(next: boolean) {
     setRequireTemporalStability(next);
     setSelected(null);
+  }
+
+  function closeSelectedRelation() {
+    const trigger = relationTriggerRef.current;
+    setSelected(null);
+    window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   }
 
   const rows = rowsByPeriod[period] ?? [];
@@ -609,22 +621,36 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
     </span>
   </label>;
 
-  if (!outcomes.length || loadingPeriod === period || (loadError && !rowsByPeriod[period])) return <section className="strongest-effects-panel lab-entry__section" aria-labelledby="strongest-effects-loading-title" aria-busy={loadingPeriod !== null}>
-    <header className="strongest-effects-panel__header">
-      <h2 id="strongest-effects-loading-title">Analyses</h2>
-      <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
-    </header>
-    {loadError
-      ? <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>
-      : <p className="strongest-effects-panel__state" role="status">Chargement des relations…</p>}
-  </section>;
+  if (loadError && !rowsByPeriod[period]) return <div className="strongest-effects-panel lab-entry__section" aria-busy="false">
+    <section className="strongest-effects" aria-labelledby="strongest-effects-loading-title">
+      <header>
+        <div><h2 id="strongest-effects-loading-title">Strongest Effects</h2></div>
+        <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
+      </header>
+      <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>
+    </section>
+  </div>;
+
+  if (!outcomes.length || loadingPeriod === period) return <StrongestEffectsLoading
+    showSummary={showSummary}
+    filterControl={filterControl}
+    periodControl={periodControl}
+  />;
 
   return <div className="strongest-effects-panel lab-entry__section" aria-busy={loadingPeriod !== null}>
     {showSummary && <EffectsSummary relations={summaryRelations} period={period} requireTemporalStability={requireTemporalStability} />}
     <StrongestEffects
       relations={relations}
       outcomes={outcomes}
-      onSelect={(relation) => setSelected(publishedRelationsForPair(relations, relation, { requireTemporalStability }))}
+      onSelect={(relation, trigger) => {
+        relationTriggerRef.current = trigger;
+        const matchingRelations = publishedRelationsForPair(relations, relation, { requireTemporalStability });
+        setSelected([relation, ...matchingRelations.filter((candidate) => candidate !== relation)]);
+      }}
+      selectedRelations={selected}
+      detailRef={relationDetailRef}
+      onCloseSelection={closeSelectedRelation}
+      scrollReveal
       periodControl={periodControl}
       filterControl={filterControl}
       requireTemporalStability={requireTemporalStability}
@@ -632,7 +658,6 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
     />
     {loadingPeriod === period && <p className="strongest-effects-panel__state" role="status">Chargement des relations…</p>}
     {loadError && <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>}
-    {selected?.length && <RelationDetail relations={selected} direction={outcomes.find((outcome) => outcome.id === selected[0].outcomeId)?.direction ?? "target"} onClose={() => setSelected(null)} detailRef={relationDetailRef} />}
   </div>;
 }
 

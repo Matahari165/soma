@@ -159,18 +159,19 @@ export function findingSentence(relation: MatrixRelation) {
   return `${predictorLabel} (${sentenceComparisonText(relation)}) is associated with a ${magnitude} ${direction} in ${outcomeLabel} ${sentenceTimingText(relation)}${relative}.`;
 }
 
-export function RelationDetail({ relations, direction, onClose, detailRef }: { relations: MatrixRelation[]; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null> }) {
+export function RelationDetail({ relations, direction, onClose, detailRef, variant = "popover", panelId }: { relations: MatrixRelation[]; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null>; variant?: "inline" | "popover"; panelId?: string }) {
   const first = relations[0];
   if (!first) return null;
   void direction;
+  const isInline = variant === "inline";
   const predictorLabel = localizedMetricLabel(first.predictorId, first.predictorLabel);
   const outcomeLabel = localizedMetricLabel(first.outcomeId, first.outcomeLabel);
-  return <aside ref={detailRef} className="relation-detail relation-detail--popover" tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
+  return <aside id={panelId} ref={detailRef} className={`relation-detail relation-detail--${variant}`} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
     <header>
-      <div><span className="relation-detail__eyebrow">Relation</span><h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
+      <div>{!isInline && <span className="relation-detail__eyebrow">Relation</span>}<h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation details" onClick={onClose}><X size={17} /></button>
     </header>
-    <div className="relation-detail__popover-body">
+    <div className={isInline ? "relation-detail__body" : "relation-detail__popover-body"}>
       {relations.map((relation) => <p className="relation-detail__finding" key={`${relation.predictorId}:${relation.outcomeId}:${relation.lagDays}`}>{findingSentence(relation)}</p>)}
       <dl className="relation-detail__definitions">
         <div><dt>Predictor</dt><dd>{predictorExplanation({ ...first, predictorLabel })}</dd></div>
