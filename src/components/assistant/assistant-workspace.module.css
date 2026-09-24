@@ -65,6 +65,14 @@
 .welcome button:hover:not(:disabled) { background: var(--lab-brand); }
 .welcome button:disabled { cursor: not-allowed; opacity: .4; }
 
+.starters { width: min(700px, calc(100% - 48px)); padding-bottom: min(8vh, 72px); }
+.starters h2 { margin: 0 0 32px; font: 400 clamp(30px, 3.5vw, 44px)/1.12 Georgia, "Times New Roman", serif; letter-spacing: -.03em; }
+.starterList { display: grid; border-top: 1px solid var(--lab-border); }
+.starterList button { display: flex; min-height: 66px; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 4px; border: 0; border-bottom: 1px solid var(--lab-border); background: transparent; color: var(--lab-text-primary); font: 400 16px/1.4 var(--font-soma-ui), system-ui, sans-serif; text-align: left; transition: color 220ms ease; }
+.starterList button span { flex: none; color: var(--lab-text-secondary); font-size: 20px; line-height: 1; }
+.starterList button:hover:not(:disabled) { color: var(--lab-brand); }
+.starterList button:disabled { cursor: not-allowed; opacity: .4; }
+
 .messages { display: flex; width: min(760px, calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; flex-direction: column; gap: 30px; list-style: none; }
 .messages > li { display: grid; min-width: 0; grid-template-columns: 1fr; gap: 8px; }
 .messages > .assistantMessage { width: 100%; align-self: flex-start; }
@@ -150,6 +158,9 @@
   .welcome { width: calc(100% - 32px); padding-bottom: 6vh; }
   .welcome h2 { font-size: 32px; }
   .welcome p { font-size: 16px; }
+  .starters { width: calc(100% - 32px); padding-bottom: 4vh; }
+  .starters h2 { margin-bottom: 24px; font-size: 32px; }
+  .starterList button { min-height: 72px; gap: 16px; font-size: 15px; }
   .messages { width: calc(100% - 32px); padding: 24px 0 32px; gap: 28px; }
   .messages > li { grid-template-columns: 1fr; gap: 8px; }
   .messages > .assistantMessage { width: 100%; }
@@ -167,4 +178,5 @@
   .loadingState span, .thinking span { animation: none; opacity: .7; }
   .freshMessage { animation: none; }
   .editMessage { transition: none; }
+  .starterList button { transition: none; }
 }
