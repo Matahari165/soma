@@ -567,14 +567,16 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
 
   const currentDayTotal = data?.date === selectedDate ? sumLikelyDay(data.meals) : null;
   const emitMealTotals = useCallback(() => {
-    if (!publishMealTotals || typeof window === "undefined") return;
+    // A loading or failed journal has no new measurement to publish. In
+    // particular, it must not erase the calories already rendered by the server.
+    if (!publishMealTotals || loadState !== "ready" || data?.date !== selectedDate || typeof window === "undefined") return;
     const calorieTarget = effectiveTargets.caloriesKcal.likely > 0 ? effectiveTargets.caloriesKcal.likely : null;
     const calories = currentDayTotal?.calories ?? null;
     const calorieProgress = calorieProgressForDisplay(calories, calorieTarget ?? 0);
     window.dispatchEvent(new CustomEvent(MEAL_TOTALS_EVENT, {
       detail: { date: selectedDate, isToday: selectedDate === today, calories, calorieTarget, calorieProgress },
     }));
-  }, [currentDayTotal?.calories, effectiveTargets.caloriesKcal.likely, publishMealTotals, selectedDate, today]);
+  }, [currentDayTotal?.calories, data?.date, effectiveTargets.caloriesKcal.likely, loadState, publishMealTotals, selectedDate, today]);
 
   useEffect(() => {
     if (!publishMealTotals || typeof window === "undefined") return;
