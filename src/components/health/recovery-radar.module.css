@@ -175,11 +175,11 @@
 
 @media (max-width: 640px) {
   .root {
-    width: min(100%, 320px);
+    width: min(100%, 380px);
   }
 
   .chart {
-    max-width: 320px;
+    max-width: 380px;
   }
 
   .axisName {
