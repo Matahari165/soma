@@ -1,0 +1,77 @@
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, expect, it, vi } from "vitest";
+
+import { AssistantWorkspace } from "./assistant-workspace";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  document.body.innerHTML = "";
+});
+
+it("sends a deterministic starter immediately without copying it into the composer", async () => {
+  const question = "Que montrent mes dernières données ?";
+  const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [
+      { id: "one", text: question }, { id: "two", text: "Deuxième question" }, { id: "three", text: "Troisième question" },
+    ] });
+    if (url.endsWith("/conversations") && init?.method === "POST") return Response.json({ conversation: { id: "conversation-1" } });
+    if (url.endsWith("/chat")) {
+      requests.push({ url, body: JSON.parse(String(init?.body)) });
+      return Response.json({ userMessage: { id: "user-1", sequence: 1, role: "user", status: "completed", parts: [{ type: "text", text: question }] }, assistantMessage: { id: "answer-1", sequence: 2, role: "assistant", status: "completed", parts: [{ type: "text", text: "Réponse" }] } });
+    }
+    return Response.json({ conversations: [] });
+  }));
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const starter = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes(question));
+  expect(starter).toBeDefined();
+  await act(async () => starter?.click());
+
+  expect(requests).toHaveLength(1);
+  expect(requests[0].body.text).toBe(question);
+  expect(container.textContent).not.toContain("Troisième question");
+  await act(async () => root.unmount());
+});
+
+it("edits a previous message inline and uses the existing edit request", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const original = { id: "user-1", sequence: 1, role: "user", status: "completed", parts: [{ type: "text", text: "Ancienne question" }] };
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [] });
+    if (url.includes("conversationId=conversation-1")) return Response.json({ messages: [original] });
+    if (url.endsWith("/chat")) {
+      requests.push(JSON.parse(String(init?.body)));
+      return Response.json({ conversationId: "conversation-2", userMessage: { ...original, id: "user-2", parts: [{ type: "text", text: "Question corrigée" }] }, assistantMessage: { id: "answer-2", sequence: 2, role: "assistant", status: "completed", parts: [{ type: "text", text: "Réponse" }] } });
+    }
+    return Response.json({ conversations: [{ id: "conversation-1", title: "Test" }] });
+  }));
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const conversationButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Test");
+  await act(async () => conversationButton?.click());
+  await act(async () => container.querySelector<HTMLButtonElement>("[aria-label='Modifier ce message']")?.click());
+
+  const editor = container.querySelector<HTMLTextAreaElement>("[id^='edit-']");
+  expect(editor?.value).toBe("Ancienne question");
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  setter?.call(editor, "Question corrigée");
+  await act(async () => editor?.dispatchEvent(new Event("input", { bubbles: true })));
+  const save = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Enregistrer et envoyer"));
+  await act(async () => save?.click());
+
+  expect(requests).toHaveLength(1);
+  expect(requests[0]).toMatchObject({ editMessageId: "user-1", text: "Question corrigée" });
+  await act(async () => root.unmount());
+});

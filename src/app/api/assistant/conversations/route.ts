@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { deleteR2AssistantAttachment } from "@/lib/r2";
+import { createPreviewConversation, deletePreviewConversation, getPreviewConversation, listPreviewConversations } from "@/modules/assistant/local-preview-chat";
 import {
   createAssistantConversation,
   deleteAssistantConversation,
@@ -24,8 +25,12 @@ export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
   const conversationId = searchParams.get("conversationId");
   if (isLocalPreviewMode()) {
-    if (conversationId) return NextResponse.json({ conversation: { id: conversationId, title: null }, messages: [], preview: true }, { headers: noStore });
-    return NextResponse.json({ conversations: [], preview: true }, { headers: noStore });
+    if (conversationId) {
+      const conversation = getPreviewConversation(conversationId);
+      if (!conversation) return NextResponse.json({ error: "Conversation introuvable.", code: "conversation_not_found" }, { status: 404, headers: noStore });
+      return NextResponse.json({ conversation, messages: conversation.messages, preview: true }, { headers: noStore });
+    }
+    return NextResponse.json({ conversations: listPreviewConversations(), preview: true }, { headers: noStore });
   }
   if (conversationId) {
     const parsedId = z.uuid().safeParse(conversationId);
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "La conversation est invalide.", code: "invalid_request" }, { status: 400, headers: noStore });
   if (isLocalPreviewMode()) {
-    return NextResponse.json({ conversation: { id: crypto.randomUUID(), title: parsed.data.title ?? null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, preview: true }, { status: 201, headers: noStore });
+    return NextResponse.json({ conversation: createPreviewConversation(parsed.data.title ?? null), preview: true }, { status: 201, headers: noStore });
   }
   const conversation = await createAssistantConversation(user.id, parsed.data.title ?? null);
   return NextResponse.json({ conversation }, { status: 201, headers: noStore });
@@ -64,7 +69,7 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: "Authentication required.", code: "unauthorized" }, { status: 401, headers: noStore });
   const parsedId = z.uuid().safeParse(new URL(request.url).searchParams.get("conversationId"));
   if (!parsedId.success) return NextResponse.json({ error: "La conversation est invalide.", code: "invalid_request" }, { status: 400, headers: noStore });
-  if (isLocalPreviewMode()) return NextResponse.json({ deleted: true, preview: true }, { headers: noStore });
+  if (isLocalPreviewMode()) return NextResponse.json({ deleted: deletePreviewConversation(parsedId.data), preview: true }, { headers: noStore });
 
   const conversation = await findAssistantConversation(user.id, parsedId.data);
   if (!conversation) return NextResponse.json({ error: "Conversation introuvable.", code: "conversation_not_found" }, { status: 404, headers: noStore });
