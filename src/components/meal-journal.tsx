@@ -1003,7 +1003,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   // Keep the newest day on the left, like the shared Personal Lab selector.
   const visibleHistoryDates = historyDates;
   const showDateArrows = variant === "lab" || variant === "meals";
-  const showDatePicker = showDateNavigation && (variant === "lab" || variant === "meals");
+  const showDatePicker = showDateNavigation && !readOnly && (variant === "lab" || variant === "meals");
   const internalDateNavigation = showDateNavigation ? <>
     <nav className={`${styles.historyNavigation} ${showDateArrows ? styles.historyNavigationWithArrows : ""} personal-lab-day-strip`} aria-label="Meal history">
       {showDateArrows && <button className={styles.historyArrow} type="button" disabled={navigationDisabled} aria-label="Previous day" onClick={() => selectDate(shiftIsoDate(selectedDate, -1))}>‹</button>}
@@ -1056,12 +1056,18 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     {pageHeader}{dateNavigation}
     <div className={styles.mealList}>{MEAL_SLOTS.map((slot) => {
       const meal = readyData.meals[slot] ?? null;
-      return <article className={styles.mealCard} key={slot} aria-label={SLOT_LABELS[slot]}>
-        <h3>{SLOT_LABELS[slot]}</h3>
-        {meal?.entryState === "skipped" ? <p>Skipped</p> : !meal ? <p>No meal logged.</p> : <>
-          <p>{statusLabel(meal)}</p>
+      const skipped = meal?.entryState === "skipped";
+      return <article className={styles.mealCard} key={slot} aria-labelledby={`meal-${slot}-title`}>
+        <header className={styles.readOnlyMealHeader}>
+          <h3 id={`meal-${slot}-title`} className={styles.readOnlyMealTitle}>
+            {SLOT_LABELS[slot]}
+            {skipped && <span className={styles.skippedSlotLabel} role="status">Skipped</span>}
+          </h3>
+          {meal && !skipped && <MealSourceEvidence meal={meal} inline />}
+        </header>
+        {skipped ? null : !meal ? <p>No meal logged.</p> : <>
+          {(meal.status !== "confirmed" || meal.error) && <p>{statusLabel(meal)}</p>}
           {meal.analysis && <LabMealSummary meal={meal} />}
-          <MealSourceEvidence meal={meal} />
           {meal.error && <p role="alert">{visibleAnalysisError(meal.error)}</p>}
         </>}
       </article>;

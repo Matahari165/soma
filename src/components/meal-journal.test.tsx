@@ -698,6 +698,77 @@ describe("MealJournal", () => {
     expect(html).toContain("Select date");
     expect(html).toContain(`max="${date}"`);
   });
+
+  it("simplifie le journal Nutrition en lecture seule sans perdre la navigation ni les détails du repas", () => {
+    const html = renderToStaticMarkup(<div className="meals-page"><MealJournal variant="lab" className="meal-journal-lab" readOnly date={date} today={date} initialData={{
+      date,
+      meals: {
+        breakfast: {
+          id: "read-only-confirmed-breakfast",
+          date,
+          slot: "breakfast",
+          note: "Lait et pain.",
+          photos: [{ id: "breakfast-photo", url: "/api/meals/read-only-confirmed-breakfast/photos/breakfast-photo", filename: "breakfast.jpg", origin: "homemade" }],
+          analysis: {
+            ingredients: [],
+            calories: { low: 400, likely: 500, high: 600 },
+            proteinGrams: { low: 20, likely: 25, high: 30 },
+            carbohydratesGrams: { low: 40, likely: 45, high: 50 },
+            fatGrams: { low: 10, likely: 12, high: 15 },
+            addedSugarGrams: { low: 2, likely: 4, high: 6 },
+          },
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+        },
+        snack: {
+          id: "read-only-skipped-snack",
+          date,
+          slot: "snack",
+          note: "",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+          entryState: "skipped",
+        },
+        dinner: {
+          id: "read-only-retry-dinner",
+          date,
+          slot: "dinner",
+          note: "",
+          photos: [],
+          analysis: null,
+          mouthHeat: null,
+          stomachLoad: null,
+          status: "confirmed",
+          error: "analysis_failed",
+        },
+      },
+    }} /></div>);
+    const breakfastStart = html.indexOf('id="meal-breakfast-title"');
+    const breakfastContent = html.slice(breakfastStart, html.indexOf('id="meal-lunch-title"'));
+    const breakfastHeader = breakfastContent.slice(0, breakfastContent.indexOf("</header>"));
+    const snackStart = html.indexOf('id="meal-snack-title"');
+    const snackContent = html.slice(snackStart, html.indexOf('id="meal-dinner-title"'));
+
+    expect(breakfastContent).not.toContain(">Confirmed</p>");
+    expect(breakfastHeader).toContain('aria-label="Photos and notes for Breakfast"');
+    expect(breakfastContent).toContain("Daily note");
+    expect(breakfastContent).toContain('data-metric="calories"');
+    expect(breakfastContent).toContain('data-metric="protein"');
+    expect(breakfastContent).toContain('data-metric="carbs"');
+    expect(breakfastContent).toContain('data-metric="fat"');
+    expect(breakfastContent).toContain('data-metric="sugar"');
+    expect(snackContent).toMatch(/<h3[^>]*>Snack<span[^>]*role="status"[^>]*>Skipped<\/span><\/h3>/);
+    expect(html).toContain('aria-label="Meal history"');
+    expect(html).toContain('aria-label="Previous day"');
+    expect(html).toContain("Needs retry");
+    expect(html).not.toContain("Select date");
+    expect(html).not.toContain('id="meal-date-picker"');
+  });
+
   it("affiche les badges Confirmé et Brouillon ainsi que le compteur de note", () => {
     const html = renderToStaticMarkup(<MealJournal date={date} today={date} initialData={{
       date,
