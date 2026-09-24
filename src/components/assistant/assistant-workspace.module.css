@@ -320,6 +320,16 @@
 @media (max-width: 700px) {
   .composerLine { grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px; }
   .composerLine > .attachButton, .composerLine > .dictationAction, .composerLine > .liveAction, .composerLine > .sendButton { align-self: end; }
+  .composerLine > .sendButton {
+    background: radial-gradient(circle 18px at center, var(--lab-brand) 99%, transparent 100%);
+  }
+  .composerLine > .sendButton:hover:not(:disabled) {
+    background: radial-gradient(circle 18px at center, var(--lab-text-primary) 99%, transparent 100%);
+  }
+  .composerLine > .attachButton svg,
+  .composerLine > .dictationAction svg,
+  .composerLine > .liveAction svg,
+  .composerLine > .sendButton svg { width: 16px; height: 16px; }
   .composer:has(.dictationAction[data-phase="recording"]) .composerLine,
   .composer:has(.liveAction[data-live-phase="requesting"]) .composerLine,
   .composer:has(.liveAction[data-live-phase="connecting"]) .composerLine,
@@ -329,4 +339,44 @@
 
 @media (max-width: 360px) {
   .composerLine { grid-template-columns: 44px minmax(0, 1fr) 40px 40px 40px; gap: 3px; }
+}
+
+/* Keep the first action in view on compact phones instead of centering it in a tall transcript. */
+@media (max-width: 700px) {
+  .transcriptEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: clamp(32px, 8dvh, 72px) 0 24px;
+    box-sizing: border-box;
+  }
+  .transcriptEmpty .loadingState { margin: 24px auto; }
+  .starters, .welcome { width: calc(100% - 40px); padding-bottom: 0; }
+  .starters h2 { margin-bottom: 20px; font-size: clamp(29px, 8vw, 34px); }
+  .starterList { border-top: 0; }
+  .starterList button {
+    min-height: 72px;
+    padding: 12px 0;
+    border-bottom-color: #242424;
+    overflow-wrap: anywhere;
+  }
+  .starterList button span { align-self: center; }
+  .welcome { text-align: left; }
+  .welcome h2, .welcome p { margin-left: 0; margin-right: 0; }
+  .messages, .messageBody, .messageBody p, .analysis dd { overflow-wrap: anywhere; }
+  .conversationMenu button { min-height: 44px; }
+}
+
+@media (max-width: 360px) {
+  .composerLine { grid-template-columns: 44px minmax(0, 1fr) repeat(3, 44px); gap: 4px; }
+  .composerLine > textarea { grid-column: 1 / -1; grid-row: 1; }
+  .composerLine > .attachButton,
+  .composerLine > .dictationAction,
+  .composerLine > .liveAction,
+  .composerLine > .sendButton { grid-row: 2; }
+  .composerLine > .attachButton { grid-column: 1; }
+  .composerLine > .dictationAction { grid-column: 3; }
+  .composerLine > .liveAction { grid-column: 4; }
+  .composerLine > .sendButton { grid-column: 5; }
 }
