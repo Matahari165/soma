@@ -582,8 +582,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   useEffect(() => {
     if (!selected) return;
     window.requestAnimationFrame(() => {
-      relationDetailRef.current?.focus();
-      scrollToMatrixElement(relationDetailRef.current);
+      relationDetailRef.current?.focus({ preventScroll: true });
     });
   }, [selected]);
 
@@ -602,7 +601,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   function closeSelectedRelation() {
     const trigger = relationTriggerRef.current;
     setSelected(null);
-    window.requestAnimationFrame(() => trigger?.focus());
+    window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   }
 
   const rows = rowsByPeriod[period] ?? [];
