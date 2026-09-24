@@ -82,6 +82,7 @@ describe("Google Health automatic schedule", () => {
       "sleep",
       "daily-heart-rate-variability",
       "daily-resting-heart-rate",
+      "daily-heart-rate-zones",
       "daily-respiratory-rate",
       "steps",
       "active-zone-minutes",

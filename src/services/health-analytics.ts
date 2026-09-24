@@ -80,7 +80,20 @@ export type HealthMetricDay = {
 export type ScoreDay = { score_date: string; kind: "sleep" | "recovery" | "effort"; score: number | null; drivers: Record<string, unknown>; algorithm_version?: string | null };
 export type SleepStageSegment = { type: "AWAKE" | "LIGHT" | "DEEP" | "REM" | "ASLEEP" | "RESTLESS"; startTime: string; endTime: string };
 export type HeartRateSample = { measuredAt: string; bpm: number };
-export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; maximumHeartRate?: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null };
+export type ExerciseSplitSummary = {
+  startTime: string | null;
+  endTime: string | null;
+  activeMinutes: number | null;
+  distanceKm: number | null;
+  averagePaceSecondsPerKm: number | null;
+};
+export type ExerciseHeartRateZones = {
+  lightMinutes: number | null;
+  moderateMinutes: number | null;
+  vigorousMinutes: number | null;
+  peakMinutes: number | null;
+};
+export type ExerciseSummary = { id: string; date: string; name: string; type: string; durationMinutes: number | null; activeMinutes: number | null; calories: number | null; distanceKm: number | null; averageHeartRate: number | null; maximumHeartRate?: number | null; zoneMinutes: number | null; averageSpeedKph: number | null; averagePaceSecondsPerKm: number | null; elevationGainMeters: number | null; steps: number | null; runVo2Max: number | null; swimLengths: number | null; cadence: number | null; strideLengthMeters: number | null; groundContactMilliseconds: number | null; verticalOscillationMillimeters: number | null; verticalRatio: number | null; startTime?: string | null; endTime?: string | null; splits?: ExerciseSplitSummary[]; heartRateZones?: ExerciseHeartRateZones | null };
 
 export type HealthAnalytics = {
   timezone: string;
@@ -129,6 +142,12 @@ function durationMinutes(value: unknown) {
   if (typeof value !== "string") return null;
   const seconds = Number(value.replace(/s$/, ""));
   return Number.isFinite(seconds) ? seconds / 60 : null;
+}
+
+function durationMinutesOrNull(value: unknown) {
+  if (typeof value !== "string") return null;
+  const seconds = Number(value.endsWith("s") ? value.slice(0, -1) : value);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds / 60 : null;
 }
 
 function minutesSinceMidnightIn(value: string, timeZone: string) {
@@ -268,7 +287,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
     ],
     heartRateSamples: Array.from({ length: 48 }, (_, index) => ({ measuredAt: new Date(now.getTime() - (47 - index) * 30 * 60_000).toISOString(), bpm: Math.round(62 + Math.sin(index / 3) * 8 + (index > 27 && index < 32 ? 55 : 0)) })),
     exercises: [
-      { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 41, calories: 430, distanceKm: 7.2, averageHeartRate: 151, maximumHeartRate: 178, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1 },
+      { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 44, calories: 430, distanceKm: 7.2, averageHeartRate: 151, maximumHeartRate: 178, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1, startTime: `${lastDate}T06:00:00.000Z`, endTime: `${lastDate}T06:44:00.000Z`, splits: Array.from({ length: 7 }, (_, index) => ({ startTime: null, endTime: null, activeMinutes: (349 + index * 6) / 60, distanceKm: 1, averagePaceSecondsPerKm: 349 + index * 6 })).concat([{ startTime: null, endTime: null, activeMinutes: 1.2, distanceKm: 0.2, averagePaceSecondsPerKm: 360 }]), heartRateZones: { lightMinutes: 4, moderateMinutes: 12, vigorousMinutes: 16, peakMinutes: 4 } },
       { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, maximumHeartRate: 157, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
     ],
     effortTargets: effortScoreTargets(),
@@ -540,6 +559,41 @@ type ExerciseRecord = { source_record_id: string; civil_date: string | null; sta
 export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSummary {
     const exercise = findObject(record.payload, "exercise") ?? {};
     const metricsSummary = isObject(exercise.metricsSummary) ? exercise.metricsSummary : {};
+    const interval = isObject(exercise.interval) ? exercise.interval : {};
+    const startTime = record.start_time ?? (typeof interval.startTime === "string" ? interval.startTime : null);
+    const endTime = record.end_time ?? (typeof interval.endTime === "string" ? interval.endTime : null);
+    const distanceMillimeters = findNumber(metricsSummary, ["distanceMillimeters"]);
+    const distanceKm = distanceMillimeters === null ? null : distanceMillimeters / 1_000_000;
+    const activeDurationMinutes = durationMinutesOrNull(exercise.activeDuration);
+    const sourcePaceSecondsPerMeter = findNumber(metricsSummary, ["averagePaceSecondsPerMeter"]);
+    const averagePaceSecondsPerKm = sourcePaceSecondsPerMeter === null
+      ? activeDurationMinutes !== null && activeDurationMinutes > 0 && distanceKm !== null && distanceKm > 0 ? (activeDurationMinutes * 60) / distanceKm : null
+      : sourcePaceSecondsPerMeter * 1000;
+    const rawHeartRateZones = isObject(metricsSummary.heartRateZoneDurations) ? metricsSummary.heartRateZoneDurations : null;
+    const heartRateZones = rawHeartRateZones ? {
+      lightMinutes: durationMinutesOrNull(rawHeartRateZones.lightTime),
+      moderateMinutes: durationMinutesOrNull(rawHeartRateZones.moderateTime),
+      vigorousMinutes: durationMinutesOrNull(rawHeartRateZones.vigorousTime),
+      peakMinutes: durationMinutesOrNull(rawHeartRateZones.peakTime),
+    } : null;
+    const splits = (Array.isArray(exercise.splitSummaries) ? exercise.splitSummaries : []).flatMap((split): ExerciseSplitSummary[] => {
+      if (!isObject(split) || split.splitType !== "DISTANCE") return [];
+      const splitMetrics = isObject(split.metricsSummary) ? split.metricsSummary : {};
+      const splitDistanceMillimeters = findNumber(splitMetrics, ["distanceMillimeters"]);
+      const splitDistanceKm = splitDistanceMillimeters === null ? null : splitDistanceMillimeters / 1_000_000;
+      const splitPaceSecondsPerMeter = findNumber(splitMetrics, ["averagePaceSecondsPerMeter"]);
+      const splitActiveMinutes = durationMinutesOrNull(split.activeDuration);
+      const splitPaceSecondsPerKm = splitPaceSecondsPerMeter === null
+        ? splitActiveMinutes !== null && splitActiveMinutes > 0 && splitDistanceKm !== null && splitDistanceKm > 0 ? (splitActiveMinutes * 60) / splitDistanceKm : null
+        : splitPaceSecondsPerMeter * 1000;
+      return [{
+        startTime: typeof split.startTime === "string" ? split.startTime : null,
+        endTime: typeof split.endTime === "string" ? split.endTime : null,
+        activeMinutes: splitActiveMinutes,
+        distanceKm: splitDistanceKm,
+        averagePaceSecondsPerKm: splitPaceSecondsPerKm,
+      }];
+    });
     const duration = record.start_time && record.end_time ? (Date.parse(record.end_time) - Date.parse(record.start_time)) / 60_000 : null;
     return {
       id: record.source_record_id,
@@ -549,13 +603,13 @@ export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSumma
       durationMinutes: duration,
       activeMinutes: durationMinutes(exercise.activeDuration),
       calories: findNumber(metricsSummary, ["caloriesKcal"]),
-      distanceKm: (() => { const mm = findNumber(metricsSummary, ["distanceMillimeters"]); return mm === null ? null : mm / 1_000_000; })(),
+      distanceKm,
       averageHeartRate: findNumber(metricsSummary, ["averageHeartRateBeatsPerMinute"]),
       maximumHeartRate: findNumber(metricsSummary, ["maximumHeartRateBeatsPerMinute", "maxHeartRateBeatsPerMinute", "maximumHeartRate", "maxHeartRate"])
         ?? findNumber(exercise, ["maximumHeartRateBeatsPerMinute", "maxHeartRateBeatsPerMinute", "maximumHeartRate", "maxHeartRate"]),
       zoneMinutes: findNumber(metricsSummary, ["activeZoneMinutes"]),
       averageSpeedKph: (() => { const mm = findNumber(metricsSummary, ["averageSpeedMillimetersPerSecond"]); return mm === null ? null : mm * 0.0036; })(),
-      averagePaceSecondsPerKm: (() => { const secondsPerMeter = findNumber(metricsSummary, ["averagePaceSecondsPerMeter"]); return secondsPerMeter === null ? null : secondsPerMeter * 1000; })(),
+      averagePaceSecondsPerKm,
       elevationGainMeters: (() => { const mm = findNumber(metricsSummary, ["elevationGainMillimeters"]); return mm === null ? null : mm / 1000; })(),
       steps: findNumber(metricsSummary, ["steps"]),
       runVo2Max: findNumber(metricsSummary, ["runVo2Max"]),
@@ -565,6 +619,10 @@ export function exerciseSummaryFromRecord(record: ExerciseRecord): ExerciseSumma
       groundContactMilliseconds: (() => { const raw = findObject(metricsSummary, "mobilityMetrics")?.avgGroundContactTimeDuration; const minutes = durationMinutes(raw); return minutes === null ? null : minutes * 60_000; })(),
       verticalOscillationMillimeters: findNumber(metricsSummary, ["avgVerticalOscillationMillimeters"]),
       verticalRatio: findNumber(metricsSummary, ["avgVerticalRatio"]),
+      startTime,
+      endTime,
+      splits,
+      heartRateZones,
     };
 }
 
