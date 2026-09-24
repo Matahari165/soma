@@ -281,11 +281,18 @@
 .trendCard :global(.health-chart-average-label) { position: absolute; right: 0; display: block; width: 76px; color: var(--lab-info, #adc5df); font: 500 11px/14px var(--font-soma-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateY(-50%); }
 .trendCard :global(.health-chart-average-label)::before { display: inline-block; width: 9px; margin-right: 4px; border-top: 1.5px dashed currentColor; vertical-align: 3px; content: ""; }
 .trendCard .emptyInline { margin: 16px 0 0; color: var(--lab-text-secondary, #aaaaaa); font: 400 12px/18px var(--font-soma-ui, system-ui, sans-serif); }
-.factToggle { display: inline-flex; min-width: 76px; min-height: 44px; flex-direction: column; align-items: center; justify-content: center; padding: 4px 8px 8px; border: 0; background: transparent; color: var(--score-text); font: inherit; cursor: pointer; }
-.factToggle:hover { background: color-mix(in srgb, var(--score-text) 5%, transparent); }
+.factToggle { display: inline-flex; min-width: 76px; min-height: 44px; flex-direction: column; align-items: center; justify-content: center; padding: 4px 8px 8px; border: 0; background: transparent; color: var(--score-text); font: inherit; cursor: pointer; transform-origin: center; transition: transform 420ms cubic-bezier(.16, 1, .3, 1); }
+.factToggle:hover,
+.factToggle:focus-visible,
+.factToggle[aria-expanded="true"] { transform: scale(1.035); }
 .factToggle:focus-visible { outline: 2px solid var(--score-text); outline-offset: 2px; }
 .factChevron { margin-top: 3px; color: var(--score-muted); font: 400 15px/15px var(--font-soma-ui), system-ui, sans-serif; transition: transform 320ms cubic-bezier(.16, 1, .3, 1); }
 .factToggle[aria-expanded="true"] .factChevron { transform: rotate(180deg); }
 .factExplanation { max-width: 22rem; margin: 12px auto 0; color: var(--score-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; text-align: left; }
 .factExplanation[hidden] { display: none; }
-@media (prefers-reduced-motion: reduce) { .factChevron { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .factToggle, .factChevron { transition: none; }
+  .factToggle:hover,
+  .factToggle:focus-visible,
+  .factToggle[aria-expanded="true"] { transform: none; }
+}
