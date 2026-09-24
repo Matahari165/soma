@@ -70,23 +70,33 @@
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* The Observatory radar uses global classes because it belongs to the
-   immersive scene; its entrance is slightly slower than the route radars. */
+/* The Observatory radar follows one continuous circuit: each point appears
+   when the previous segment reaches it, then the next segment begins. */
+@keyframes soma-observatory-point {
+  from { opacity: 0; transform: scale(.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes soma-observatory-fill {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .observatory-radar {
-  --soma-radar-fill-duration: 1050ms;
-  --soma-radar-trace-duration: 900ms;
-  --soma-radar-point-duration: 360ms;
-  --soma-radar-fill-delay: 150ms;
-  --soma-radar-trace-delay: 180ms;
-  --soma-radar-point-delay: 820ms;
-  --soma-radar-stagger: 105ms;
-  --soma-radar-ease: cubic-bezier(.33, 0, .2, 1);
+  --soma-radar-fill-duration: 580ms;
+  --soma-radar-trace-duration: 420ms;
+  --soma-radar-point-duration: 180ms;
+  --soma-radar-fill-delay: 2600ms;
+  --soma-radar-trace-delay: 360ms;
+  --soma-radar-point-delay: 180ms;
+  --soma-radar-stagger: 600ms;
+  --soma-radar-ease: cubic-bezier(.42, 0, .58, 1);
 }
 
 .observatory-radar .radar-value {
   transform-box: fill-box;
   transform-origin: center;
-  animation: soma-radar-fill var(--soma-radar-fill-duration) var(--soma-radar-ease) var(--soma-radar-fill-delay) both;
+  animation: soma-observatory-fill var(--soma-radar-fill-duration) var(--soma-radar-ease) var(--soma-radar-fill-delay) both;
 }
 
 .observatory-radar .radar-value-segment {
@@ -99,7 +109,7 @@
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: soma-radar-point var(--soma-radar-point-duration) var(--soma-radar-ease) calc(var(--soma-radar-point-delay) + var(--radar-point-index, 0) * var(--soma-radar-stagger)) both;
+  animation: soma-observatory-point var(--soma-radar-point-duration) var(--soma-radar-ease) calc(var(--soma-radar-point-delay) + var(--radar-point-index, 0) * var(--soma-radar-stagger)) both;
 }
 
 /* Controls acknowledge state without lifting, bouncing or glowing. */

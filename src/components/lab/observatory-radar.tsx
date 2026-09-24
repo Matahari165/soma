@@ -50,12 +50,6 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     startTransition(()=>setCalories(next));
   },[data.caloriesKcal]);
   useEffect(()=>{
-    // The last point finishes at 1495 ms with the Observatory motion tokens.
-    // Settle only after the entire entrance has completed.
-    const finish = window.setTimeout(() => setTraceSettled(true), 1650);
-    return () => window.clearTimeout(finish);
-  },[]);
-  useEffect(()=>{
     const next = nullable(data.calorieTarget);
     // Une réponse partielle sans cible garde la cible courante ; une cible
     // reçue remplace l’ancienne même si elle est plus basse (pas de max conservé).
@@ -98,10 +92,9 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const hasCompleteValueShape = validPoints.length === axes.length;
   const valueSegments = points.flatMap((point, index) => {
     const next = points[(index + 1) % points.length];
-    return point && next ? [{ from: point, to: next }] : [];
-  }).map((segment, sequenceIndex) => ({ ...segment, sequenceIndex }));
-  const animatedPoints = points.flatMap((point) => point ? [point] : [])
-    .map((point, sequenceIndex) => ({ point, sequenceIndex }));
+    return point && next ? [{ from: point, to: next, sequenceIndex: index }] : [];
+  });
+  const animatedPoints = points.flatMap((point, index) => point ? [{ point, sequenceIndex: index }] : []);
   const generatedDetailId = useId();
   const detailId = detailIdProp ?? `observatory-radar-detail-${generatedDetailId.replace(/[^a-zA-Z0-9]/g, "")}`;
   const detailTitleId = `${detailId}-title`;
@@ -147,7 +140,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
       </Fragment>)}
       {[0,1,2,3].map(i=><line key={i} className="radar-axis" x1="330" y1="280" x2={coordinate(i,1)[0]} y2={coordinate(i,1)[1]}/>)}
       <g className="radar-data-layer" aria-hidden="true">
-        {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} />}
+        {hasCompleteValueShape&&<polygon className="radar-value" points={validPoints.map(p=>p.join(",")).join(" ")} onAnimationEnd={() => setTraceSettled(true)} />}
         {valueSegments.map(({ from, to, sequenceIndex })=><line className="radar-value-segment" data-radar-trace="" data-radar-segment-index={sequenceIndex} pathLength="1" style={{ "--radar-segment-index": sequenceIndex } as CSSProperties} key={`radar-value-segment-${sequenceIndex}`} x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />)}
         {animatedPoints.map(({ point, sequenceIndex })=><circle className="radar-point" data-radar-point="" data-radar-point-index={sequenceIndex} style={{ "--radar-point-index": sequenceIndex } as CSSProperties} key={sequenceIndex} cx={point[0]} cy={point[1]} r={Math.round(8*unit*10)/10}/>)}
       </g>
