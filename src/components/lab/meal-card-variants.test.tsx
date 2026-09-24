@@ -6,17 +6,16 @@ import type { MealRecord } from "@/domain/meal-record";
 import { AnalysisDetails, LabMealCard } from "./meal-card-variants";
 
 describe("LabMealCard nutrition chart", () => {
-  it("replaces the draft with one truthful analysis screen and updates its server stage", () => {
+  it("keeps the meal visible while the analysis stage changes", () => {
     const meal: MealRecord = { id: "meal-dinner", date: "2026-09-23", slot: "dinner", note: "Example dinner", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "accepted" };
     const props = { meal, slot: "dinner" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined };
-    const connecting = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "connecting", foods: [] }} />);
-    expect(connecting).toContain("Connexion au service");
-    expect(connecting).toContain('aria-current="step"');
-    expect(connecting).not.toContain("Example dinner");
-    const analyzing = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "analyzing" }} analysisProgress={{ stage: "analyzing", foods: [] }} />);
-    expect(analyzing).toContain("Le repas est examiné");
-    expect(analyzing).toContain("Annuler l’analyse");
-    expect(analyzing).not.toContain("Example dinner");
+    for (const [stage, label] of Object.entries({ connecting: "Connexion…", preparing: "Préparation des photos…", queued: "Analyse en attente…", analyzing: "Analyse du repas…" }) as Array<["connecting" | "preparing" | "queued" | "analyzing", string]>) {
+      const html = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage, foods: [] }} />);
+      expect(html).toContain(label);
+      expect(html).toContain("Example dinner");
+      expect(html).toContain("Annuler l’analyse");
+      expect(html).not.toContain('aria-current="step"');
+    }
   });
 
   it("explains a completed analysis without nutrition and exposes fiber and total sugar in details", () => {

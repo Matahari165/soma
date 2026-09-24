@@ -232,31 +232,29 @@ export interface LabMealCardProps {
   confirmError?: string | null;
 }
 
-function MealAnalysisScreen({ slot, stage, onCancel }: {
+function MealAnalysisScreen({ slot, stage, note, photoCount, onCancel }: {
   slot: MealSlot;
   stage: "connecting" | "preparing" | "queued" | "analyzing";
+  note: string;
+  photoCount: number;
   onCancel: () => void;
 }) {
-  const currentStep = stage === "connecting" || stage === "preparing" ? 0 : 1;
-  const message = {
-    connecting: ["Connexion au service", "Envoi de la demande d’analyse."],
-    preparing: ["Préparation des photos", "Les images du repas sont envoyées."],
-    queued: ["Analyse en attente", "La demande est reçue et attend son traitement."],
-    analyzing: ["Analyse en cours", "Le repas est examiné. Le résultat apparaîtra ici."],
+  const label = {
+    connecting: "Connexion…",
+    preparing: "Préparation des photos…",
+    queued: "Analyse en attente…",
+    analyzing: "Analyse du repas…",
   }[stage];
 
-  return <article className={styles.analysisScreen} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
+  return <article className={`${styles.analysisScreen} ${styles.personalLabType}`} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
     <div className={styles.analysisScreenTop}>
       <h3 id={`meal-${slot}-title`}>{SLOT_LABELS[slot]}</h3>
-      <span>Analyse du repas</span>
     </div>
     <div className={styles.analysisScreenBody}>
+      {note.trim() && <p className={styles.analysisMealNote}>{note.trim()}</p>}
+      {photoCount > 0 && <p className={styles.analysisPhotoCount}>{photoCount} {photoCount === 1 ? "photo" : "photos"}</p>}
       <div className={styles.analysisSignal} aria-hidden="true"><span /></div>
-      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{message[0]}</p>
-      <p className={styles.analysisScreenCopy}>{message[1]}</p>
-      <ol className={styles.analysisSteps} aria-label="Progression de l’analyse">
-        {["Connexion", "Analyse", "Résultat"].map((label, index) => <li key={label} data-state={index < currentStep ? "done" : index === currentStep ? "current" : "pending"} aria-current={index === currentStep ? "step" : undefined}>{label}</li>)}
-      </ol>
+      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{label}</p>
     </div>
     <button type="button" className={styles.analysisCancel} onClick={onCancel}>Annuler l’analyse</button>
   </article>;
@@ -524,7 +522,7 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
-    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} onCancel={onCancelAnalysis} />;
+    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} onCancel={onCancelAnalysis} />;
   }
 
   if (status === "error") {
