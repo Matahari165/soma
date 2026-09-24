@@ -191,10 +191,10 @@ describe("health route states", () => {
     expect(markup).toContain("/100");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toMatch(/<g[^>]*aria-pressed=/);
-    expect(markup).toContain("Stage distribution");
+    expect(markup).toContain('aria-label="Last night sleep stages"');
     expect(markup).not.toContain("Autres mesures");
-    expect(markup).not.toContain("<details");
-    expect(markup).not.toContain("<summary");
+    expect(markup.match(/<details/g)?.length).toBe(4);
+    expect(markup.match(/<summary/g)?.length).toBe(4);
     expect(markup).not.toContain("Next night");
     expect(markup.match(/<article class="metric-trend-card/g)?.length).toBe(5);
     expect(markup).not.toContain('<article class="metric-trend-card"><span>Sommeil total');
@@ -292,7 +292,8 @@ describe("health route states", () => {
   it("uses the shared bar-chart treatment once per distinct recovery signal", () => {
     const markup = renderToStaticMarkup(createElement(RecoveryDetails, { data: buildPreviewAnalytics() }));
 
-    expect(markup).toContain(">Graphiques</h2>");
+    expect(markup).toContain('aria-label="Recovery trends over 30 days"');
+    expect(markup).not.toContain(">Graphiques</h2>");
     expect(markup.match(/health-bar-chart/g)?.length).toBe(3);
     expect(markup.match(/health-chart-average-label/g)?.length).toBe(3);
     expect(markup).not.toContain("Heart rate variability");

@@ -74,8 +74,7 @@ function ScoreBreakdownDetail({ breakdown }: { breakdown: SleepScoreBreakdown | 
     <dl className={styles.sleepBreakdownList}>
       {breakdown.components.map((component) => <div className={styles.sleepBreakdownRow} key={component.id}>
         <dt>{component.label}</dt>
-        <dd>{component.sourceValueLabel}</dd>
-        <small>{component.weight}%</small>
+        <dd><span>{component.sourceValueLabel}</span><span>{formatContribution(component.contribution)} points</span><span>{component.weight}%</span></dd>
       </div>)}
     </dl>
   </>;
@@ -203,6 +202,7 @@ export function SleepScoreOverview({ dimensions, score, average, breakdown }: Sl
       <div className={styles.scoreInline} id="sleep-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Sleep score details">
         <div className={styles.scoreInlineInner}><ScoreBreakdownDetail breakdown={breakdown} /></div>
       </div>
+      <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>
     </div>
   </div>;
 }

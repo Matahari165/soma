@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import type { HealthAnalytics, HealthMetricDay, ScoreDay } from "@/services/health-analytics";
 
-import { averageLast30MeasuredWithCount, formatAverage, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage, metricTone } from "./health-metric-utils";
+import { averageLast30MeasuredWithCount, formatAverage, healthSourceLabel, latestSourceMeasuredAt, measuredCoverage } from "./health-metric-utils";
 import { HealthPageShell } from "./health-page-shell";
 import { MetricTrendCard } from "./metric-trend-card";
 import type { RecoveryRadarDimension } from "./recovery-radar";
@@ -175,7 +175,6 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
     : latest ? measuredCoverage([latest.hrv_ms, latest.resting_heart_rate, latest.sleep_minutes]) : 0;
   const freshness = calculateSignalFreshness({ measuredAt: latestSourceMeasuredAt(latest), importedAt: data.importedAt, coverage });
   const sourceLabel = healthSourceLabel(latest);
-  const heroScoreTone = metricTone(score, averages.recovery, "higher_is_better");
   const weeklyZones = averageWeeklyZoneMinutes(data.days, latest?.metric_date);
   const [selectedAxis, setSelectedAxis] = useState<string | null>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -222,7 +221,7 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
       <section className={`${styles.content} health-observatory-content`} aria-label="Recovery content" data-recovery-scroll-reveal-root="true">
         {latest ? <>
           <section className={`${styles.heroScene} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-score-summary-title">
-            <div className={styles.radarRegion}>
+            <div className={styles.radarRegion} data-detail-open={detailOpen}>
               <h2 className="sr-only">Score factors</h2>
               <RecoveryRadar dimensions={dimensions} detailId={detailId} interactive selectedId={selectedAxis} onSelect={(id) => setSelectedAxis((current) => (current === id ? null : id))} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
               <aside className={styles.recoveryDetailPanel} id={detailId} data-open={detailOpen} aria-labelledby={detailTitleId} aria-hidden={!detailOpen} inert={!detailOpen}>
@@ -246,19 +245,16 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
               </aside>
             </div>
             <aside className={styles.scoreSummary} aria-labelledby="recovery-score-summary-title">
-              <h2 id="recovery-score-summary-title">Recovery score</h2>
               <RecoveryScorePopover hrv={scoreDriver(drivers, "hrv")} restingHeartRate={scoreDriver(drivers, "restingHeartRate")} sleep={scoreDriver(drivers, "sleep")}>
+                <span id="recovery-score-summary-title" className={styles.summaryLabel}>Recovery score</span>
                 <span className={styles.summaryValue} aria-label={`Recovery score: ${scoreText(score)} out of 100`}><strong>{scoreText(score)}</strong><span>/100</span></span>
+                <span className={styles.summaryAverage}>30-day avg · {scoreText(averages.recovery)} /100</span>
               </RecoveryScorePopover>
-              <div className={`${styles.summaryRail} metric-tone--${heroScoreTone}`} aria-hidden="true"><span style={{ width: score === null ? "0%" : `${Math.min(100, Math.max(0, score))}%` }} /></div>
-              <dl className={styles.summaryFacts}>
-                <div><dt>30-day avg</dt><dd>{scoreText(averages.recovery)}<span>/100</span></dd></div>
-              </dl>
+              <div className={styles.summaryRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(1, Math.max(0, score / 100))})` }} /></div>
             </aside>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="latest-signals-heading">
-            <header className={styles.sectionHeader}><h2 id="latest-signals-heading">Recent signals</h2></header>
+          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recent recovery signals">
             <div className={styles.signalRows}>
               {[
                 { label: "HRV", value: latest.hrv_ms, average: signalAverages.hrv, unit: "ms", decimals: 0 },
@@ -268,15 +264,14 @@ export function RecoveryDetails({ data }: { data: HealthAnalytics }) {
             </div>
           </section>
 
-          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-trends-heading">
-            <header className={styles.sectionHeader}><h2 id="recovery-trends-heading">Graphiques</h2><span>30 days</span></header>
+          <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Recovery trends over 30 days">
             <div className={styles.trendGrid}>
               {visibleTrendKeys.map((key) => <MetricTrendCard key={key} label={trendLabels[key].label} unit={trendLabels[key].unit} points={points(data.days, key)} direction={directionMap[trendLabels[key].direction]} format={(value) => value.toFixed(1)} valueFormat="decimal" chartType="bar" compact averageInChart animateCurrent animationFormat="decimal" />)}
             </div>
           </section>
 
-          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-labelledby="weekly-zones-heading">
-            <header className={styles.sectionHeader}><h2 id="weekly-zones-heading">Heart-rate zones</h2><div className={styles.sectionHeaderMeta}><span className={styles.supporting}>Daily average · measured days only</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div></header>
+          <section className={`${styles.section} health-observatory-panel`} data-recovery-scroll-reveal="true" aria-label="Heart-rate zones, daily average of measured days">
+            <div className={styles.zonesHeading}><span>Heart-rate zones</span><span className={styles.sectionDate}>{weeklyZones.startDate && weeklyZones.endDate ? `${formatCivilDate(weeklyZones.startDate)} – ${formatCivilDate(weeklyZones.endDate)}` : "—"}</span></div>
             <WeeklyZoneChart summary={weeklyZones} />
           </section>
         </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} data-recovery-scroll-reveal="true" aria-labelledby="recovery-empty-heading"><span className={styles.emptyMark} aria-hidden="true">+</span><div><h2 id="recovery-empty-heading">No recovery data</h2><p>0 measured days over the last 30 days. Import your signals from a connected health source, then return here.</p><p><a className={styles.emptyAction} href="/settings">Check your health connection</a></p></div></section>}
