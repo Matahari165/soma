@@ -60,7 +60,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
     <div className={["app-shell", localPreview && "app-shell--preview", sidebarCollapsed && "app-shell--sidebar-collapsed", isStitchWorkspace && "app-shell--personal-lab"].filter(Boolean).join(" ")}>
       <aside id="primary-sidebar" className={sidebarCollapsed ? "sidebar sidebar--collapsed" : "sidebar"} aria-label="Primary navigation">
         <div className="sidebar__header">
-          <Link className="brand" href="/" aria-label="Soma Home">
+          <Link className="brand" href="/" prefetch={!localPreview} aria-label="Soma Home">
             <SomaLogo compact={sidebarCollapsed} />
           </Link>
         </div>
@@ -70,6 +70,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
             <Link
               className={isActive(href) ? "nav-link nav-link--active" : "nav-link"}
               href={href}
+              prefetch={!localPreview}
               key={href}
               aria-current={isActive(href) ? "page" : undefined}
               aria-label={label}
@@ -93,7 +94,7 @@ export function AppShell({ children, user, localPreview = false }: { children: R
           >
             {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
           </button>
-          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
+          <Link className={isActive("/settings") ? "profile-card profile-card--active" : "profile-card"} href="/settings" prefetch={!localPreview} aria-label={`Open settings for ${displayName}`} title={sidebarCollapsed ? `Open settings for ${displayName}` : undefined}>
             <span className="avatar">{initials}</span>
             <span>
               <strong>{displayName}</strong>
@@ -105,13 +106,14 @@ export function AppShell({ children, user, localPreview = false }: { children: R
       </aside>
 
       <header className="mobile-header">
-        <Link className="brand" href="/" aria-label="Soma Home">
+        <Link className="brand" href="/" prefetch={!localPreview} aria-label="Soma Home">
           <SomaLogo />
         </Link>
         <nav className="mobile-header-nav" aria-label="Primary mobile navigation">
           {activeMobileNavigation.map(({ label, href, icon: Icon }) => (
             <Link
               href={href}
+              prefetch={!localPreview}
               key={href}
               className={isActive(href) ? "mobile-header-nav__link mobile-header-nav__link--active" : "mobile-header-nav__link"}
               aria-current={isActive(href) ? "page" : undefined}
