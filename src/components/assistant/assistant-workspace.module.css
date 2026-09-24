@@ -277,3 +277,56 @@
   .newButton, .moreConversation, .conversationList .conversationRow > button:first-child, .composer, .attachButton, .sendButton, .starterList button { transition: none; }
   .sendButton:hover:not(:disabled), .sendButton:active:not(:disabled), .attachButton:active:not(:disabled) { transform: none; }
 }
+
+/* The composer keeps dictation, live voice and text in one predictable control row. */
+.composerLine { grid-template-columns: 36px minmax(0, 1fr) 36px 36px 36px; }
+.composerLine > .attachButton { grid-column: 1; grid-row: 1; }
+.composerLine > textarea { grid-column: 2; grid-row: 1; }
+.composerLine > .dictationAction { grid-column: 3; grid-row: 1; }
+.composerLine > .liveAction { grid-column: 4; grid-row: 1; }
+.composerLine > .sendButton { grid-column: 5; grid-row: 1; }
+.composerLine > .dictationAction[data-phase="recording"],
+.composerLine > .liveAction[data-live-phase="requesting"],
+.composerLine > .liveAction[data-live-phase="connecting"],
+.composerLine > .liveAction[data-live-phase="active"],
+.composerLine > .liveAction[data-live-phase="closing"] { grid-column: 1 / -1; grid-row: 1; }
+
+.composer:has(.dictationAction[data-phase="recording"]) .composerLine,
+.composer:has(.liveAction[data-live-phase="requesting"]) .composerLine,
+.composer:has(.liveAction[data-live-phase="connecting"]) .composerLine,
+.composer:has(.liveAction[data-live-phase="active"]) .composerLine,
+.composer:has(.liveAction[data-live-phase="closing"]) .composerLine { grid-template-columns: minmax(0, 1fr); }
+.composer:has(.dictationAction[data-phase="recording"]) .attachButton,
+.composer:has(.dictationAction[data-phase="recording"]) .composerLine > textarea,
+.composer:has(.dictationAction[data-phase="recording"]) .liveAction,
+.composer:has(.dictationAction[data-phase="recording"]) .sendButton,
+.composer:has(.liveAction[data-live-phase="requesting"]) .attachButton,
+.composer:has(.liveAction[data-live-phase="requesting"]) .composerLine > textarea,
+.composer:has(.liveAction[data-live-phase="requesting"]) .dictationAction,
+.composer:has(.liveAction[data-live-phase="requesting"]) .sendButton,
+.composer:has(.liveAction[data-live-phase="connecting"]) .attachButton,
+.composer:has(.liveAction[data-live-phase="connecting"]) .composerLine > textarea,
+.composer:has(.liveAction[data-live-phase="connecting"]) .dictationAction,
+.composer:has(.liveAction[data-live-phase="connecting"]) .sendButton,
+.composer:has(.liveAction[data-live-phase="active"]) .attachButton,
+.composer:has(.liveAction[data-live-phase="active"]) .composerLine > textarea,
+.composer:has(.liveAction[data-live-phase="active"]) .dictationAction,
+.composer:has(.liveAction[data-live-phase="active"]) .sendButton,
+.composer:has(.liveAction[data-live-phase="closing"]) .attachButton,
+.composer:has(.liveAction[data-live-phase="closing"]) .composerLine > textarea,
+.composer:has(.liveAction[data-live-phase="closing"]) .dictationAction,
+.composer:has(.liveAction[data-live-phase="closing"]) .sendButton { display: none; }
+
+@media (max-width: 700px) {
+  .composerLine { grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px; }
+  .composerLine > .attachButton, .composerLine > .dictationAction, .composerLine > .liveAction, .composerLine > .sendButton { align-self: end; }
+  .composer:has(.dictationAction[data-phase="recording"]) .composerLine,
+  .composer:has(.liveAction[data-live-phase="requesting"]) .composerLine,
+  .composer:has(.liveAction[data-live-phase="connecting"]) .composerLine,
+  .composer:has(.liveAction[data-live-phase="active"]) .composerLine,
+  .composer:has(.liveAction[data-live-phase="closing"]) .composerLine { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 360px) {
+  .composerLine { grid-template-columns: 44px minmax(0, 1fr) 40px 40px 40px; gap: 3px; }
+}

@@ -1,0 +1,31 @@
+.control { display: flex; position: relative; min-width: 0; align-items: center; justify-content: flex-end; gap: 8px; }
+.startButton, .muteButton, .soundButton { display: inline-grid; flex: none; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--lab-text-secondary); cursor: pointer; }
+.startButton:hover:not(:disabled), .muteButton:hover, .soundButton:hover { background: var(--lab-surface-selected); color: var(--lab-text-primary); }
+.startButton:disabled { cursor: not-allowed; opacity: .4; }
+.startButton:focus-visible, .muteButton:focus-visible, .soundButton:focus-visible, .endButton:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
+.expanded { grid-column: 1 / -1; width: 100%; justify-content: stretch; }
+.audioOutput { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.statusIcon { display: inline-grid; flex: none; width: 28px; height: 36px; place-items: center; color: var(--lab-text-primary); }
+.status { min-width: max-content; color: var(--lab-text-secondary); font: 400 13px/1.4 var(--font-soma-ui), system-ui, sans-serif; }
+.captions { display: grid; min-width: 0; flex: 1; gap: 3px; color: var(--lab-text-secondary); font: 400 12px/1.4 var(--font-soma-ui), system-ui, sans-serif; }
+.captions p { display: flex; min-width: 0; gap: 8px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.captions p span { flex: none; color: var(--lab-text-primary); }
+.endButton { display: inline-flex; flex: none; min-height: 36px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--lab-border-strong); border-radius: 4px; background: transparent; color: var(--lab-text-primary); cursor: pointer; font: 500 13px/1 var(--font-soma-ui), system-ui, sans-serif; }
+.endButton:hover:not(:disabled) { background: var(--lab-surface-selected); }
+.endButton:disabled { cursor: wait; opacity: .65; }
+.error { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 1; width: min(360px, calc(100vw - 48px)); color: var(--lab-error); font: 400 12px/1.45 var(--font-soma-ui), system-ui, sans-serif; }
+.spinner { animation: liveSpin 900ms linear infinite; }
+@keyframes liveSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 700px) {
+  .startButton, .muteButton, .soundButton { width: 44px; height: 44px; }
+  .expanded { flex-wrap: wrap; gap: 4px; }
+  .statusIcon { width: 24px; height: 44px; }
+  .status { font-size: 13px; }
+  .captions { order: 5; flex: 1 0 100%; padding: 4px 0 0 28px; }
+  .endButton { min-height: 44px; margin-inline-start: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
