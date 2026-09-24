@@ -58,9 +58,11 @@
   fill: color-mix(in srgb, var(--lab-text-primary, #f1f1f1) 9%, transparent);
   stroke: none;
   fill-opacity: 0;
-  animation: recoveryRadarFill 600ms cubic-bezier(.22,1,.36,1) 100ms both;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: var(--soma-radar-fill-name) var(--soma-radar-fill-duration, 900ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) var(--soma-radar-fill-delay, 120ms) both;
 }
-.valueSegment { fill:none; stroke:var(--lab-text-primary,#f1f1f1); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:recoveryRadarTrace 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
+.valueSegment { fill:none; stroke:var(--lab-text-primary,#f1f1f1); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:var(--soma-radar-trace-name) var(--soma-radar-trace-duration, 760ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) calc(var(--soma-radar-trace-delay, 150ms) + var(--radar-segment-index, 0) * var(--soma-radar-stagger, 90ms)) both; }
 
 .valuePoint {
   fill: var(--lab-text-primary, #f1f1f1);
@@ -70,11 +72,8 @@
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: recoveryRadarPoint 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both;
+  animation: var(--soma-radar-point-name) var(--soma-radar-point-duration, 300ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) calc(var(--soma-radar-point-delay, 700ms) + var(--radar-point-index, 0) * var(--soma-radar-stagger, 90ms)) both;
 }
-@keyframes recoveryRadarTrace { to { stroke-dashoffset:0; } }
-@keyframes recoveryRadarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
-@keyframes recoveryRadarPoint { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 
 .valuePointActive {
   fill: var(--radar-signal);

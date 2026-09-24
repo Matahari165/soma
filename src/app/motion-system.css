@@ -7,6 +7,18 @@
   --soma-motion-state: 240ms;
   --soma-motion-enter: 680ms;
   --soma-motion-distance: 10px;
+
+  /* Radars enter as one calm, shared sequence on every health surface. */
+  --soma-radar-fill-name: soma-radar-fill;
+  --soma-radar-trace-name: soma-radar-trace;
+  --soma-radar-point-name: soma-radar-point;
+  --soma-radar-fill-duration: 900ms;
+  --soma-radar-trace-duration: 760ms;
+  --soma-radar-point-duration: 300ms;
+  --soma-radar-fill-delay: 120ms;
+  --soma-radar-trace-delay: 150ms;
+  --soma-radar-point-delay: 700ms;
+  --soma-radar-stagger: 90ms;
 }
 
 /* CSS entrance runs without changing server-rendered attributes during hydration. */
@@ -38,6 +50,47 @@
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
+/* A radar is a measured shape: let it grow from the centre, draw its trace,
+   then settle its measured points. The sequence is finite and data-neutral. */
+@keyframes soma-radar-fill {
+  0% { opacity: 0; fill-opacity: 0; transform: scale(.18); }
+  38% { opacity: .34; fill-opacity: .34; transform: scale(.5); }
+  78% { opacity: .82; fill-opacity: .82; transform: scale(.9); }
+  100% { opacity: 1; fill-opacity: 1; transform: scale(1); }
+}
+
+@keyframes soma-radar-trace {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes soma-radar-point {
+  0% { opacity: 0; transform: scale(.72); }
+  48% { opacity: .7; transform: scale(.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* The Observatory radar uses global classes because it belongs to the
+   immersive scene; keep it on the same timing as the route radars. */
+.observatory-radar .radar-value {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: soma-radar-fill var(--soma-radar-fill-duration) var(--soma-ease-enter) var(--soma-radar-fill-delay) both;
+}
+
+.observatory-radar .radar-value-segment {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: soma-radar-trace var(--soma-radar-trace-duration) var(--soma-ease-enter) calc(var(--soma-radar-trace-delay) + var(--radar-segment-index, 0) * var(--soma-radar-stagger)) both;
+}
+
+.observatory-radar .radar-point {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: soma-radar-point var(--soma-radar-point-duration) var(--soma-ease-enter) calc(var(--soma-radar-point-delay) + var(--radar-point-index, 0) * var(--soma-radar-stagger)) both;
+}
+
 /* Controls acknowledge state without lifting, bouncing or glowing. */
 :is(button, [role="button"], a)[aria-pressed],
 :is(button, [role="button"], a)[aria-selected],
@@ -63,6 +116,16 @@ details > summary {
   .lab-continuous .arrival-artwork {
     animation: none !important;
     opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .observatory-radar .radar-value,
+  .observatory-radar .radar-value-segment,
+  .observatory-radar .radar-point {
+    animation: none !important;
+    opacity: 1 !important;
+    fill-opacity: 1 !important;
+    stroke-dashoffset: 0 !important;
     transform: none !important;
   }
 }

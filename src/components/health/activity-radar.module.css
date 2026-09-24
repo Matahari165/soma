@@ -19,12 +19,9 @@
 .axis { stroke: var(--radar-axis); }
 .gridOuter { stroke: var(--radar-grid-strong); }
 .dataLayer { transform-box:fill-box; transform-origin:center; }
-.valueArea { fill: var(--radar-data-surface); stroke:none; fill-opacity:0; animation:radarFill 600ms cubic-bezier(.22,1,.36,1) 100ms both; }
-.valueSegment { fill:none; stroke:var(--radar-data); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:radarTrace 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
-.point { fill:var(--radar-data); stroke:var(--lab-canvas,#050505); stroke-width:1.5; vector-effect:non-scaling-stroke; transform-box:fill-box; transform-origin:center; opacity:0; animation:radarPoint 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both; }
-@keyframes radarTrace { to { stroke-dashoffset:0; } }
-@keyframes radarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
-@keyframes radarPoint { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.valueArea { fill: var(--radar-data-surface); stroke:none; fill-opacity:0; transform-box:fill-box; transform-origin:center; animation:var(--soma-radar-fill-name) var(--soma-radar-fill-duration, 900ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) var(--soma-radar-fill-delay, 120ms) both; }
+.valueSegment { fill:none; stroke:var(--radar-data); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:1; stroke-dashoffset:1; animation:var(--soma-radar-trace-name) var(--soma-radar-trace-duration, 760ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) calc(var(--soma-radar-trace-delay, 150ms) + var(--radar-segment-index, 0) * var(--soma-radar-stagger, 90ms)) both; }
+.point { fill:var(--radar-data); stroke:var(--lab-canvas,#050505); stroke-width:1.5; vector-effect:non-scaling-stroke; transform-box:fill-box; transform-origin:center; opacity:0; animation:var(--soma-radar-point-name) var(--soma-radar-point-duration, 300ms) var(--soma-ease-enter, cubic-bezier(.16, 1, .3, 1)) calc(var(--soma-radar-point-delay, 700ms) + var(--radar-point-index, 0) * var(--soma-radar-stagger, 90ms)) both; }
 
 .labelGroup { pointer-events: none; }
 .label, .valueLabel { fill: var(--radar-text); font-family: var(--font-soma-ui, system-ui, sans-serif); font-size: 13px; font-weight: 400; }
