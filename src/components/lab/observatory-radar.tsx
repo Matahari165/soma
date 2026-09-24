@@ -203,6 +203,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         return (
           <g key={axis.id} className={`radar-axis-label radar-axis-label--${i}`} role="button" tabIndex={0} aria-controls={detailId} aria-expanded={selected} aria-label={readable} data-selected={selected} onClick={() => select(axis.id)} onKeyDown={handleKeyDown} ref={(node) => { buttonRefs.current[axis.id] = node; }}>
             <title>{`${axis.label} : ${axis.display}. ${comparison}. Objectif : ${axis.goal}.`}</title>
+            <rect className="radar-hit-area" x={textAnchor === "start" ? labelX - 10 : textAnchor === "end" ? labelX - 170 : labelX - 110} y={labelY - 37} width={textAnchor === "middle" ? 220 : 180} height={Math.max(82, numberY - labelY + 35)} rx="4" fill="transparent" stroke="transparent" aria-hidden="true" />
             <text x={labelX} y={labelY} textAnchor={textAnchor} className="radar-label" aria-hidden="true">{axis.label}</text>
             <text x={numberX} y={numberY} textAnchor={textAnchor} className="radar-number" aria-hidden="true">{valueText}</text>
           </g>

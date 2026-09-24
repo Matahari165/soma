@@ -761,6 +761,33 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .observatory-radar { transform:none!important; }
 
+  /* Keep the first reading near the top of the phone, with the whole radar
+     available before the journal rather than vertically centring empty space. */
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-intro {
+    min-height:0;
+    align-items:flex-start;
+    padding-block:clamp(32px,6svh,64px) 48px;
+  }
+  html[data-lab-theme="observatory"] body.local-preview .lab-experience.lab-continuous .lab-intro { min-height:0; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-arrival { min-height:0; padding:0; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { padding-inline:clamp(16px,5vw,24px)!important; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-heading h1 {
+    font-size:clamp(34px,9vw,44px)!important;
+    line-height:1.12;
+    text-wrap:balance;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art {
+    height:min(390px,100vw)!important;
+    min-height:0!important;
+    margin:12px 0 0!important;
+  }
+  html[data-lab-theme="observatory"] .observatory-radar svg { overflow:visible; }
+  html[data-lab-theme="observatory"] .radar-label { font-size:30px!important; }
+  html[data-lab-theme="observatory"] .radar-number { font-size:26px!important; }
+  html[data-lab-theme="observatory"] .radar-axis-label { cursor:pointer; }
+  html[data-lab-theme="observatory"] .radar-axis-label:focus-visible { outline:none; }
+  html[data-lab-theme="observatory"] .radar-axis-label:focus-visible .radar-hit-area { stroke:#eee; stroke-width:3; }
+
   html[data-lab-theme="observatory"] .radar-axis-label--1 { transform:translateX(-24px); }
   html[data-lab-theme="observatory"] .radar-axis-label--3 { transform:translateX(24px); }
 
