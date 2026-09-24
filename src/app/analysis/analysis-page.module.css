@@ -121,11 +121,18 @@
   }
 
   .header {
-    min-height: 64px;
-    margin-bottom: 24px;
+    min-height: 0;
+    margin-bottom: 20px;
   }
 
   .page :global(.effects-summary) { gap: 12px; margin-bottom: 28px; padding-bottom: 22px; }
+  .page :global(.effects-summary li p) { font-size: 16px; overflow-wrap: anywhere; }
+  .page :global(.strongest-effects__controls),
+  .page :global(.strongest-effects__comparison-group),
+  .page :global(.strongest-effects__comparison-group > ol) { min-width: 0; }
+  .page :global(.strongest-effects__periods) { max-width: 100%; overflow-x: auto; }
+  .page :global(.strongest-effects__comparison-header strong),
+  .page :global(.strongest-effects__relation) { overflow-wrap: anywhere; }
   .page :global(.strongest-effects__group + .strongest-effects__group) { margin-top: 28px; }
   .page :global(.strongest-effects__influence + .strongest-effects__influence) { margin-top: 18px; }
 }
