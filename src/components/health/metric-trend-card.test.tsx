@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { MetricTrendCard } from "./metric-trend-card";
-import { aggregateBarPoints } from "./health-charts";
+import { aggregateBarPoints, ChartHoverTooltip } from "./health-charts";
 
 describe("MetricTrendCard", () => {
   it("makes overview cards directly navigable without exposing secondary variability copy", () => {
@@ -150,6 +150,48 @@ describe("MetricTrendCard", () => {
     expect(markup).toContain("500 kcal");
     expect(markup).not.toContain("health-chart-bar--latest");
     expect(markup).not.toContain("metric-trend-card__average-legend");
+  });
+
+  it("keeps one measured bar visible on a fixed score scale and exposes every missing date slot", () => {
+    const markup = renderToStaticMarkup(createElement(MetricTrendCard, {
+      label: "Score history",
+      points: [
+        { date: "2026-09-08", value: 76 },
+        { date: "2026-09-09", value: null },
+        { date: "2026-09-10", value: null },
+      ],
+      unit: "/100",
+      direction: "higher_is_better",
+      compact: true,
+      chartType: "bar",
+      valueFormat: "number",
+      averageInChart: true,
+      domain: { min: 0, max: 100 },
+    }));
+
+    expect(markup).toContain("health-bar-chart");
+    expect(markup.match(/class="health-chart-bar/g)?.length).toBe(1);
+    expect(markup.match(/data-chart-hit-area=/g)?.length).toBe(3);
+    expect(markup).toContain("Donnée absente");
+    expect(markup).toContain("100 /100");
+    expect(markup).toContain("0 /100");
+    expect(markup).not.toContain("More measurements needed");
+  });
+
+  it("renders a localized date/value tooltip and announces keyboard or touch selections", () => {
+    const markup = renderToStaticMarkup(createElement(ChartHoverTooltip, {
+      date: "2026-09-09",
+      value: "76 /100",
+      xPercent: 12,
+      align: "start",
+      announce: true,
+    }));
+
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain('data-align="start"');
+    expect(markup).toContain("9 sept.");
+    expect(markup).toContain("76 /100");
   });
 
   it("aggregates weekly bars without converting missing or zero values", () => {

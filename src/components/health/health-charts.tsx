@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import type { HeartRateSample, SleepStageSegment } from "@/services/health-analytics";
 import type { MetricPoint } from "@/domain/metrics/trends";
@@ -37,43 +37,95 @@ function chartDescription(label: string, points: MetricPoint[], unit?: string, v
   return `${label}. ${points.map((point) => `${point.date} : ${formatChartValue(point.value, unit, valueFormat)}`).join(" ; ")}`;
 }
 
+type ChartTooltipAlignment = "start" | "center" | "end";
+type ChartSelection = { index: number; pinned: boolean; source: "pointer" | "keyboard" | "touch" };
+
+function formatChartDate(date: string) {
+  const civilDate = date.slice(0, 10);
+  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(civilDate) ? new Date(`${civilDate}T12:00:00`) : new Date(date);
+  if (!Number.isFinite(parsedDate.getTime())) return date;
+  return new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" }).format(parsedDate);
+}
+
+/** Shared compact date/value label for chart interactions. Its parent should match the plot width and be positioned. */
+export function ChartHoverTooltip({ date, value, xPercent, align = "center", announce = false }: {
+  date: string;
+  value: string;
+  xPercent: number;
+  align?: ChartTooltipAlignment;
+  announce?: boolean;
+}) {
+  const safeXPercent = Number.isFinite(xPercent) ? Math.min(100, Math.max(0, xPercent)) : 50;
+  return <output className={styles.chartTooltip} data-align={align} role={announce ? "status" : "tooltip"} aria-live={announce ? "polite" : "off"} aria-atomic="true" style={{ left: `${safeXPercent}%` }}>
+    {formatChartDate(date)} · {value}
+  </output>;
+}
+
+function tooltipAlignment(xPercent: number): ChartTooltipAlignment {
+  return xPercent < 18 ? "start" : xPercent > 82 ? "end" : "center";
+}
+
+function useChartSelection(pointCount: number, defaultIndex: number) {
+  const [selection, setSelection] = useState<ChartSelection | null>(null);
+  const onFocus = () => setSelection((current) => current ?? { index: defaultIndex, pinned: false, source: "keyboard" });
+  const onBlur = () => setSelection((current) => current?.pinned ? current : null);
+  const onKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
+    if (event.key === "Escape") {
+      setSelection(null);
+      return;
+    }
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    setSelection((current) => {
+      const index = current?.index ?? defaultIndex;
+      const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? pointCount - 1 : Math.min(pointCount - 1, Math.max(0, index + (event.key === "ArrowLeft" ? -1 : 1)));
+      return { index: nextIndex, pinned: false, source: "keyboard" };
+    });
+  };
+  const onPointerEnter = (index: number) => setSelection({ index, pinned: false, source: "pointer" });
+  const onPointerLeave = (event: PointerEvent<SVGRectElement>) => setSelection((current) => event.pointerType === "touch" && current?.pinned ? current : null);
+  const onTouchEnd = (index: number) => setSelection({ index, pinned: true, source: "touch" });
+  const onClick = (index: number) => setSelection((current) => ({
+    index,
+    pinned: true,
+    source: current?.index === index && current.source === "touch" ? "touch" : current?.index === index && current.source === "keyboard" ? "keyboard" : "pointer",
+  }));
+  return { selection, onFocus, onBlur, onKeyDown, onPointerEnter, onPointerLeave, onTouchEnd, onClick };
+}
+
 function formatDurationMs(value: number | null) {
   if (value === null || !Number.isFinite(value) || value <= 0) return "durée indisponible";
   const minutes = Math.max(1, Math.round(value / 60_000));
   return `${minutes} min`;
 }
 
-export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null, highlightLatest = true }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null; highlightLatest?: boolean }) {
+export function BarTrendChart({ points, label, target, unit, valueFormat = "decimal", aggregation = "day", average = null, highlightLatest = true, domain }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat; aggregation?: BarAggregation; average?: number | null; highlightLatest?: boolean; domain?: { min: number; max: number } }) {
   const titleId = useId();
   const descriptionId = useId();
-  const [activePoint, setActivePoint] = useState<{ date: string; value: number } | null>(null);
   const chartPoints = aggregateBarPoints(points, aggregation);
-  const dated = chartPoints.map((point) => ({ ...point, timestamp: Date.parse(`${point.date.slice(0, 10)}T12:00:00.000Z`) }));
-  const available = dated.filter((point): point is typeof point & { value: number } => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp));
+  const available = chartPoints.filter((point): point is MetricPoint & { value: number } => typeof point.value === "number" && Number.isFinite(point.value));
+  const latestMeasuredIndex = chartPoints.reduce((latest, point, index) => typeof point.value === "number" && Number.isFinite(point.value) ? index : latest, 0);
+  const selectionState = useChartSelection(chartPoints.length, latestMeasuredIndex);
+  const { selection } = selectionState;
   const description = chartDescription(label, chartPoints, unit, valueFormat);
-  if (available.length < 2) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
+  if (available.length === 0) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
   const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
   const rawMin = Math.min(...available.map((point) => point.value), measuredTarget ?? 0, 0);
   const measuredAverage = typeof average === "number" && Number.isFinite(average) ? average : null;
   const rawMax = Math.max(...available.map((point) => point.value), measuredTarget ?? 0, measuredAverage ?? 0, 1);
-  const range = Math.max(rawMax - rawMin, Math.abs(rawMax) * 0.1, 1);
-  const min = rawMin;
-  const max = min + range;
+  const domainMin = domain && Number.isFinite(domain.min) ? domain.min : null;
+  const domainMax = domain && domainMin !== null && Number.isFinite(domain.max) && domain.max > domainMin ? domain.max : null;
+  const min = domainMin === null ? rawMin : Math.min(domainMin, rawMin);
+  const max = domainMax === null ? min + Math.max(rawMax - rawMin, Math.abs(rawMax) * 0.1, 1) : Math.max(domainMax, rawMax);
+  const range = Math.max(max - min, 1);
   const y = (value: number) => CHART_PLOT_BOTTOM - ((value - min) / range) * CHART_PLOT_HEIGHT;
   const baseline = y(0);
   const slotWidth = 284 / Math.max(chartPoints.length, 1);
   const barWidth = Math.max(3, Math.min(20, slotWidth * 0.64));
   const x = (index: number) => 8 + index * slotWidth + (slotWidth - barWidth) / 2;
-  const moveActivePoint = (direction: -1 | 1 | "first" | "last") => {
-    const currentIndex = activePoint ? available.findIndex((point) => point.date === activePoint.date && point.value === activePoint.value) : available.length - 1;
-    const nextIndex = direction === "first" ? 0 : direction === "last" ? available.length - 1 : Math.min(available.length - 1, Math.max(0, currentIndex + direction));
-    setActivePoint(available[nextIndex]);
-  };
-  return <div className="health-line-chart-wrap"><svg className={`${styles.barChart} health-bar-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={() => setActivePoint(available.at(-1) ?? null)} onBlur={() => setActivePoint(null)} onKeyDown={(event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    moveActivePoint(event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "Home" ? "first" : "last");
-  }}>
+  const activePoint = selection ? chartPoints[selection.index] : null;
+  const tooltipXPercent = selection ? ((8 + (selection.index + .5) * slotWidth) / CHART_VIEWBOX_WIDTH) * 100 : 50;
+  return <div className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.barChart} health-bar-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
     <line x1="8" y1={baseline} x2="292" y2={baseline} className="health-chart-grid" />
     {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${formatChartValue(measuredTarget, unit, valueFormat)}`}</title></line>}
     {chartPoints.map((point, index) => {
@@ -82,22 +134,23 @@ export function BarTrendChart({ points, label, target, unit, valueFormat = "deci
       const bottom = y(Math.min(point.value, 0));
       const height = Math.max(1, Math.abs(bottom - top));
       const isLatest = point.date === available.at(-1)?.date && point.value === available.at(-1)?.value;
-      return <rect key={`${point.date}-${index}`} x={x(index)} y={Math.min(top, bottom)} width={barWidth} height={height} rx="1" className={isLatest && highlightLatest ? "health-chart-bar health-chart-bar--latest" : "health-chart-bar"} onPointerEnter={() => setActivePoint({ date: point.date, value: point.value as number })} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint({ date: point.date, value: point.value as number })}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></rect>;
+      const className = ["health-chart-bar", isLatest && highlightLatest ? "health-chart-bar--latest" : "", selection?.index === index ? "health-chart-bar--active" : ""].filter(Boolean).join(" ");
+      return <rect key={`${point.date}-${index}`} x={x(index)} y={Math.min(top, bottom)} width={barWidth} height={height} rx="1" className={className}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></rect>;
     })}
     {measuredAverage !== null && <line x1="8" y1={y(measuredAverage)} x2="292" y2={y(measuredAverage)} className="health-chart-average"><title>{`Moyenne des périodes mesurées : ${formatChartValue(measuredAverage, unit, valueFormat)}`}</title></line>}
-  </svg><span id={titleId} className="sr-only">{label} : tendance en barres sur {available.length} périodes mesurées</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas dessinées. Utilisez les flèches gauche et droite pour parcourir les barres.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{measuredAverage !== null && <span className="health-chart-average-label" aria-hidden="true" style={{ top: `${(y(measuredAverage) / CHART_VIEWBOX_HEIGHT) * 100}%` }}>{formatChartValue(measuredAverage, unit, valueFormat)}</span>}{activePoint && (() => {
-    const activeIndex = available.findIndex((point) => point.date === activePoint.date && point.value === activePoint.value);
-    const alignRight = activeIndex >= 0 && activeIndex > available.length / 2;
-    return <output className="health-chart-tooltip" aria-live="polite" style={{ left: alignRight ? "auto" : 8, right: alignRight ? 8 : "auto", maxWidth: "calc(100% - 16px)", whiteSpace: "normal", overflowWrap: "anywhere" }}>{new Date(`${activePoint.date}T12:00:00`).toLocaleDateString("fr-FR", { month: "short", day: "numeric" })} · {formatChartValue(activePoint.value, unit, valueFormat)}</output>;
-  })()}</div>;
+    {chartPoints.map((point, index) => <rect key={`slot-${point.date}-${index}`} className={styles.hitArea} data-chart-hit-area="" x={8 + index * slotWidth} y={CHART_PLOT_TOP} width={slotWidth} height={CHART_PLOT_HEIGHT} aria-hidden="true" onPointerEnter={() => selectionState.onPointerEnter(index)} onPointerLeave={selectionState.onPointerLeave} onPointerUp={(event) => { if (event.pointerType === "touch") selectionState.onTouchEnd(index); }} onClick={() => selectionState.onClick(index)} />)}
+  </svg>{activePoint && <ChartHoverTooltip date={activePoint.date} value={formatChartValue(activePoint.value, unit, valueFormat)} xPercent={tooltipXPercent} align={tooltipAlignment(tooltipXPercent)} announce={selection?.source !== "pointer"} />}</div><span id={titleId} className="sr-only">{label} : tendance en barres sur {available.length} périodes mesurées</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas dessinées comme zéro. Utilisez les flèches gauche et droite, Home et End pour parcourir toutes les périodes, y compris celles sans mesure.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{measuredAverage !== null && <span className="health-chart-average-label" aria-hidden="true" style={{ top: `${(y(measuredAverage) / CHART_VIEWBOX_HEIGHT) * 100}%` }}>{formatChartValue(measuredAverage, unit, valueFormat)}</span>}</div>;
 }
 
 export function LineTrendChart({ points, label, target, unit, valueFormat = "decimal" }: { points: MetricPoint[]; label: string; target?: number | null; unit?: string; valueFormat?: ChartValueFormat }) {
   const titleId = useId();
   const descriptionId = useId();
-  const [activePoint, setActivePoint] = useState<{ date: string; value: number } | null>(null);
-  const dated = points.map((point) => ({ ...point, timestamp: Date.parse(point.date) }));
+  const dated = points.map((point, index) => ({ ...point, index, timestamp: Date.parse(point.date) }));
+  const selectable = dated.filter((point) => Number.isFinite(point.timestamp));
   const available = dated.filter((point): point is typeof point & { value: number } => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp));
+  const latestMeasuredIndex = dated.reduce((latest, point) => typeof point.value === "number" && Number.isFinite(point.value) && Number.isFinite(point.timestamp) ? point.index : latest, 0);
+  const selectionState = useChartSelection(dated.length, latestMeasuredIndex);
+  const { selection } = selectionState;
   const description = chartDescription(label, points, unit, valueFormat);
   if (available.length < 2) return <div className="health-line-chart-wrap"><p className="health-empty">Pas assez de mesures complètes pour afficher une tendance.</p><p id={descriptionId} className="sr-only">{description}</p></div>;
   const measuredTarget = typeof target === "number" && Number.isFinite(target) ? target : null;
@@ -108,8 +161,8 @@ export function LineTrendChart({ points, label, target, unit, valueFormat = "dec
   const midpoint = (rawMin + rawMax) / 2;
   const min = midpoint - range / 2;
   const max = midpoint + range / 2;
-  const firstTime = Math.min(...available.map((point) => point.timestamp));
-  const lastTime = Math.max(...available.map((point) => point.timestamp));
+  const firstTime = Math.min(...selectable.map((point) => point.timestamp));
+  const lastTime = Math.max(...selectable.map((point) => point.timestamp));
   const x = (timestamp: number) => 8 + ((timestamp - firstTime) / Math.max(lastTime - firstTime, 1)) * 284;
   const y = (value: number) => CHART_PLOT_BOTTOM - ((value - min) / range) * CHART_PLOT_HEIGHT;
   const segments: Array<typeof available> = [];
@@ -128,16 +181,9 @@ export function LineTrendChart({ points, label, target, unit, valueFormat = "dec
     current.push(point as typeof available[number]);
   }
   if (current.length) segments.push(current);
-  const moveActivePoint = (direction: -1 | 1 | "first" | "last") => {
-    const currentIndex = activePoint ? available.findIndex((point) => point.date === activePoint.date && point.value === activePoint.value) : available.length - 1;
-    const nextIndex = direction === "first" ? 0 : direction === "last" ? available.length - 1 : Math.min(available.length - 1, Math.max(0, currentIndex + direction));
-    setActivePoint(available[nextIndex]);
-  };
-  return <div className="health-line-chart-wrap"><svg className={`${styles.lineChart} health-line-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={() => setActivePoint(available.at(-1) ?? null)} onBlur={() => setActivePoint(null)} onKeyDown={(event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    moveActivePoint(event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "Home" ? "first" : "last");
-  }}>
+  const activePoint = selection ? dated[selection.index] : null;
+  const tooltipXPercent = activePoint && Number.isFinite(activePoint.timestamp) ? (x(activePoint.timestamp) / CHART_VIEWBOX_WIDTH) * 100 : 50;
+  return <div className="health-line-chart-wrap"><div className={styles.chartPlot}><svg className={`${styles.lineChart} health-line-chart`} viewBox={`0 0 ${CHART_VIEWBOX_WIDTH} ${CHART_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" tabIndex={0} aria-labelledby={titleId} aria-describedby={descriptionId} onFocus={selectionState.onFocus} onBlur={selectionState.onBlur} onKeyDown={selectionState.onKeyDown}>
     <line x1="8" y1={CHART_PLOT_BOTTOM} x2="292" y2={CHART_PLOT_BOTTOM} className="health-chart-grid" />
     <line x1="8" y1={y(average)} x2="292" y2={y(average)} className="health-chart-average"><title>{`Moyenne ${formatChartValue(average, unit, valueFormat)}`}</title></line>
     {measuredTarget !== null && <line x1="8" y1={y(measuredTarget)} x2="292" y2={y(measuredTarget)} className="health-chart-target"><title>{`Objectif ${formatChartValue(measuredTarget, unit, valueFormat)}`}</title></line>}
@@ -146,12 +192,15 @@ export function LineTrendChart({ points, label, target, unit, valueFormat = "dec
       const area = `${x(segment[0].timestamp)},${CHART_PLOT_BOTTOM} ${line} ${x(segment.at(-1)?.timestamp ?? segment[0].timestamp)},${CHART_PLOT_BOTTOM}`;
       return <g key={`${segment[0].date}-${index}`}><polygon points={area} className="health-chart-area" data-chart-area="" /><polyline points={line} pathLength="1" className="health-chart-line" data-chart-trace="" /></g>;
     })}
-    {available.map((point, index) => <circle key={`${point.date}-${point.value}-${index}`} cx={x(point.timestamp)} cy={y(point.value)} r={index === available.length - 1 ? 3.8 : 1.8} onPointerEnter={() => setActivePoint(point)} onPointerLeave={() => setActivePoint(null)} onClick={() => setActivePoint(point)} onFocus={() => setActivePoint(point)} tabIndex={0} role="img" aria-label={`${point.date} : ${formatChartValue(point.value, unit, valueFormat)}`} className={index === available.length - 1 ? "health-chart-point health-chart-point--latest" : "health-chart-point"}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></circle>)}
-  </svg><span id={titleId} className="sr-only">{label} : tendance sur {available.length} jours mesurés</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas reliées. Utilisez les flèches gauche et droite pour parcourir les points.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span>{activePoint && (() => {
-    const activeIndex = available.findIndex((point) => point.date === activePoint.date && point.value === activePoint.value);
-    const alignRight = activeIndex >= 0 && activeIndex > available.length / 2;
-    return <output className="health-chart-tooltip" aria-live="polite" style={{ left: alignRight ? "auto" : 8, right: alignRight ? 8 : "auto", maxWidth: "calc(100% - 16px)", whiteSpace: "normal", overflowWrap: "anywhere" }}>{new Date(activePoint.date).toLocaleDateString("fr-FR", { month: "short", day: "numeric" })} · {formatChartValue(activePoint.value, unit, valueFormat)}</output>;
-  })()}</div>;
+    {available.map((point, index) => <circle key={`${point.date}-${point.value}-${index}`} cx={x(point.timestamp)} cy={y(point.value)} r={selection?.index === point.index || index === available.length - 1 ? 3.8 : 1.8} className={`${index === available.length - 1 ? "health-chart-point health-chart-point--latest" : "health-chart-point"}${selection?.index === point.index ? " health-chart-point--active" : ""}`}><title>{`${point.date}: ${formatChartValue(point.value, unit, valueFormat)}`}</title></circle>)}
+    {selectable.map((point, index) => {
+      const previous = selectable[index - 1];
+      const next = selectable[index + 1];
+      const left = previous ? Math.max(8, (x(previous.timestamp) + x(point.timestamp)) / 2) : 8;
+      const right = next ? Math.min(292, (x(point.timestamp) + x(next.timestamp)) / 2) : 292;
+      return <rect key={`slot-${point.date}-${point.index}`} className={styles.hitArea} data-chart-hit-area="" x={left} y={CHART_PLOT_TOP} width={Math.max(1, right - left)} height={CHART_PLOT_HEIGHT} aria-hidden="true" onPointerEnter={() => selectionState.onPointerEnter(point.index)} onPointerLeave={selectionState.onPointerLeave} onPointerUp={(event) => { if (event.pointerType === "touch") selectionState.onTouchEnd(point.index); }} onClick={() => selectionState.onClick(point.index)} />;
+    })}
+  </svg>{activePoint && <ChartHoverTooltip date={activePoint.date} value={formatChartValue(activePoint.value, unit, valueFormat)} xPercent={tooltipXPercent} align={tooltipAlignment(tooltipXPercent)} announce={selection?.source !== "pointer"} />}</div><span id={titleId} className="sr-only">{label} : tendance sur {available.length} jours mesurés</span><p id={descriptionId} className="sr-only">{description}. Les absences ne sont pas reliées par le tracé. Utilisez les flèches gauche et droite, Home et End pour parcourir toutes les dates, y compris celles sans mesure.</p><span className="health-chart-range" aria-hidden="true"><b>{formatChartValue(max, unit, valueFormat)}</b><b>{formatChartValue(min, unit, valueFormat)}</b></span></div>;
 }
 
 const stageClass: Record<SleepStageSegment["type"], string> = { AWAKE: "awake", LIGHT: "light", DEEP: "deep", REM: "rem", ASLEEP: "light", RESTLESS: "awake" };

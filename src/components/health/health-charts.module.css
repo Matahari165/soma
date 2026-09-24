@@ -10,6 +10,21 @@
   overflow: visible;
 }
 
+.chartPlot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.hitArea {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+  cursor: crosshair;
+}
+
 .barChart:focus-visible {
   outline: 2px solid var(--lab-brand);
   outline-offset: 4px;
@@ -20,10 +35,49 @@
   fill: var(--domain-color, var(--lab-brand));
   opacity: .7;
   vector-effect: non-scaling-stroke;
+  transition: opacity 180ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .barChart :global(.health-chart-bar--latest) {
   opacity: 1;
+}
+
+.barChart :global(.health-chart-bar--active) { opacity: 1; }
+
+.lineChart :global(.health-chart-point--active) {
+  opacity: 1;
+  stroke-width: 3;
+}
+
+.chartTooltip {
+  --tooltip-x-offset: -50%;
+  position: absolute;
+  z-index: 3;
+  top: 2px;
+  left: 0;
+  max-width: calc(100% - 8px);
+  padding: 5px 7px;
+  overflow: hidden;
+  border: 1px solid var(--lab-border, #292929);
+  border-radius: 2px;
+  background: var(--lab-surface, #080808);
+  color: var(--lab-text-primary, #f1f1f1);
+  font: 400 11px/15px var(--font-soma-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  translate: var(--tooltip-x-offset) 0;
+  transition: left 180ms cubic-bezier(.2, .8, .2, 1), translate 180ms cubic-bezier(.2, .8, .2, 1), opacity 180ms ease;
+  animation: chartTooltipAppear 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.chartTooltip[data-align="start"] { --tooltip-x-offset: 0; }
+.chartTooltip[data-align="end"] { --tooltip-x-offset: -100%; }
+
+@keyframes chartTooltipAppear {
+  from { opacity: 0; translate: var(--tooltip-x-offset) 2px; }
+  to { opacity: 1; translate: var(--tooltip-x-offset) 0; }
 }
 
 .lineChart :global([data-chart-trace]) {
@@ -46,6 +100,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .chartTooltip { transition: none; animation: none; }
+  .barChart :global(.health-chart-bar) { transition: none; }
+
   .lineChart {
     scroll-behavior: auto;
   }
