@@ -96,12 +96,9 @@
 .radarAxisButton:focus-visible .radarFocusRing { opacity: 1; }
 .radarLabelHit { fill: transparent; pointer-events: all; }
 .radarFocusRing { fill: none; stroke: var(--score-text); stroke-dasharray: 3 3; stroke-width: 1.5; opacity: 0; pointer-events: none; }
-.radarValue { fill:color-mix(in srgb,var(--score-text) 8%,transparent); stroke:none; pointer-events:none; fill-opacity:0; animation:scoreRadarFill 600ms cubic-bezier(.22,1,.36,1) 100ms both; }
-.radarSegment { fill:none; stroke:var(--score-text); stroke-width:1.75; stroke-linecap:round; pointer-events:none; stroke-dasharray:1; stroke-dashoffset:1; animation:scoreRadarTrace 380ms cubic-bezier(.22,1,.36,1) calc(100ms + var(--radar-segment-index,0) * 45ms) both; }
-.radarPoint { fill:var(--score-text); stroke:var(--lab-canvas,#050505); stroke-width:1.5; pointer-events:none; transform-box:fill-box; transform-origin:center; opacity:0; animation:scoreRadarPoint 180ms cubic-bezier(.22,1,.36,1) calc(350ms + var(--radar-point-index,0) * 45ms) both; }
-@keyframes scoreRadarTrace { to { stroke-dashoffset:0; } }
-@keyframes scoreRadarFill { from { fill-opacity:0; } to { fill-opacity:1; } }
-@keyframes scoreRadarPoint { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+.radarValue { fill:color-mix(in srgb,var(--score-text) 10%,transparent); stroke:none; pointer-events:none; fill-opacity:0; transform-box:fill-box; transform-origin:center; animation:var(--soma-radar-fill-name) var(--soma-radar-fill-duration,900ms) var(--soma-ease-enter,cubic-bezier(.16,1,.3,1)) var(--soma-radar-fill-delay,120ms) both; }
+.radarSegment { fill:none; stroke:var(--score-text); stroke-width:1.75; stroke-linecap:round; vector-effect:non-scaling-stroke; pointer-events:none; stroke-dasharray:1; stroke-dashoffset:1; animation:var(--soma-radar-trace-name) var(--soma-radar-trace-duration,760ms) var(--soma-ease-enter,cubic-bezier(.16,1,.3,1)) calc(var(--soma-radar-trace-delay,150ms) + var(--radar-segment-index,0) * var(--soma-radar-stagger,90ms)) both; }
+.radarPoint { fill:var(--score-text); stroke:var(--lab-canvas,#050505); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; transform-box:fill-box; transform-origin:center; opacity:0; animation:var(--soma-radar-point-name) var(--soma-radar-point-duration,300ms) var(--soma-ease-enter,cubic-bezier(.16,1,.3,1)) calc(var(--soma-radar-point-delay,700ms) + var(--radar-point-index,0) * var(--soma-radar-stagger,90ms)) both; }
 @media (prefers-reduced-motion: reduce) { .radarValue,.radarSegment,.radarPoint { animation:none; stroke-dashoffset:0; fill-opacity:1; opacity:1; transform:none; } }
 .radarLabel { fill: var(--score-muted); font: 400 13px/1.2 var(--font-soma-ui), sans-serif; pointer-events: none; }
 .radarLabelValue { fill: var(--score-text); font-family: var(--font-soma-mono), monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -273,7 +270,7 @@
 .summaryFacts p { margin: 2px 0 0; color: var(--score-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .historySection { margin-top: 24px; padding: 32px 0; border: 0; }
 .historyContent { display: block; margin-top: 0; }
-.trendSection .panelHeading { justify-content: center; min-height: 64px; }
+.trendSection .panelHeading { justify-content: center; min-height: 64px; padding-left: 38px; }
 .trendSection .panelHeading h3 { font-size: 12px; }
 .chartFigure { margin-top: 16px; }
 .chart { height: 116px; }

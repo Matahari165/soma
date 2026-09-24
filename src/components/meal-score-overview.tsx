@@ -388,7 +388,6 @@ export function MealScoreOverviewPanel({ daily, rolling, trend, className, date,
           <div className={styles.scoreInline} id={scoreDetailId} data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen}>
             <div className={styles.scoreInlineInner}>
               <h4>Nutrition calculation</h4>
-              <p>Soma combines five weighted dimensions. Confidence slightly adjusts the result.</p>
               <dl>{DIMENSION_KEYS.map((key) => {
                 const component = componentFor(daily, key);
                 return <div key={key}><dt>{DIMENSION_LABELS[key]}</dt><dd aria-label={`Adjusted score ${formatScore(component?.adjustedScore)} out of 100; contribution ${formatContribution(component?.contribution)} points; weight ${Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])} percent`}>{formatScore(component?.adjustedScore)} /100</dd><small>{component ? `${formatContribution(component.contribution)} points · ` : "— · "}{Math.round(component?.weight ?? MEAL_BALANCE_NORMALIZED_COMPONENT_WEIGHTS[key])}%</small></div>;
