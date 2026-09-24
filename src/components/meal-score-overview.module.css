@@ -270,10 +270,10 @@
 .summaryFacts p { margin: 2px 0 0; color: var(--score-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .historySection { margin-top: 24px; padding: 32px 0; border: 0; }
 .historyContent { display: block; margin-top: 0; }
-.trendSection .panelHeading { justify-content: center; min-height: 64px; padding-left: 38px; }
+.trendSection .panelHeading { justify-content: center; min-height: 24px; padding-left: 38px; }
 .trendSection .panelHeading h3 { font-size: 12px; }
-.chartFigure { margin-top: 16px; }
-.chart { height: 116px; }
+.chartFigure { margin-top: 8px; }
+.chart { height: 193px; }
 .chartScale { font-size: 11px; }
 @media (max-width: 720px) {
   .scoreEssentials { grid-template-columns: 1fr; gap: 24px; padding-left: 0; }

@@ -167,7 +167,7 @@ function MealBalanceRadar({ daily, selectedKey, onSelect, registerButton }: Meal
     focusAxis(next);
   }
 
-  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, 150 * Math.min(Math.max(axis.score, 0), 100) / 100));
+  const measuredPoints = axes.map((axis, index) => axis.score === null || !Number.isFinite(axis.score) ? null : radarPoint(index, RADAR_RADIUS * Math.min(Math.max(axis.score, 0), 100) / 100));
   const radarSegments = measuredPoints.flatMap((point, index) => {
     const next = measuredPoints[(index + 1) % measuredPoints.length];
     return point && next ? [{ from: point, to: next }] : [];
@@ -281,6 +281,12 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
 
 export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTrendPoint[] }) {
   const observedTrend = trend.filter((point) => point.score !== null && Number.isFinite(point.score));
+  const measuredIndexes = trend.flatMap((point, index) => point.score !== null && Number.isFinite(point.score) ? [index] : []);
+  const midpoint = measuredIndexes.length > 1 && trend.length > 1
+    ? (measuredIndexes[0] + measuredIndexes.at(-1)!) / (2 * (trend.length - 1))
+    : 0.5;
+  const titleOffset = midpoint - 0.5;
+  const titleStyle: CSSProperties = { position: "relative", left: `calc(${(titleOffset * 100).toFixed(4)}% - ${(titleOffset * 38).toFixed(4)}px)` };
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
       ? `${formatDate(point.date, true)}: no score, day omitted from chart`
@@ -291,7 +297,7 @@ export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTren
         <h2 className={styles.srOnly} id="meal-score-history-title">Score history</h2>
         <div className={styles.historyContent}>
           <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-trend-title">Nutrition score trend</h3></div>
+            <div className={styles.panelHeading}><h3 id="meal-score-trend-title" style={titleStyle}>Nutrition score trend</h3></div>
             {observedTrend.length >= 2 ? <figure className={styles.chartFigure}>
               <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
                 <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
