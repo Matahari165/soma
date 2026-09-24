@@ -585,7 +585,33 @@
   .root:global(.meals-page-trends) { padding: 24px 0; }
   .root:global(.meals-page-trends) .grid { grid-template-columns: 1fr; gap: 24px; }
   .root:global(.meals-page-trends) .card { grid-template-rows: minmax(64px, auto) auto auto; padding: 0; }
-  .root:global(.meals-page-trends) .cardHeader { padding-inline: 2px; }
+  .root:global(.meals-page-trends) .cardHeader {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 12px;
+    min-height: 64px;
+    padding-inline: 2px;
+    text-align: left;
+  }
+  .root:global(.meals-page-trends) .cardHeader > div {
+    width: auto;
+    min-width: 0;
+    align-items: start;
+    justify-self: start;
+    grid-column: 1 !important;
+  }
+  .root:global(.meals-page-trends) .metricLabel {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+  .root:global(.meals-page-trends) .average {
+    width: auto;
+    max-width: 126px;
+    align-self: start;
+    justify-self: end;
+    grid-column: 2 !important;
+    white-space: normal;
+  }
   .root:global(.meals-page-trends) .barChart,
   .root:global(.meals-page-trends) .axis { width: 100%; }
 }
