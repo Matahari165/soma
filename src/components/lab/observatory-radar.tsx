@@ -107,6 +107,11 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     else setInternalSelected(next);
   };
   const buttonRefs = useRef<Record<string, SVGGElement|null>>({});
+  const mobileButtonRefs = useRef<Record<string, HTMLButtonElement|null>>({});
+  const restoreAxisFocus = (id: string) => {
+    const mobile = window.matchMedia("(max-width: 700px)").matches;
+    (mobile ? mobileButtonRefs.current[id] : buttonRefs.current[id])?.focus();
+  };
   const headingRef = useRef<HTMLHeadingElement>(null);
   const selectedAxis = axes.find((axis) => axis.id === selectedId) ?? null;
   const detailOpen = selectedAxis !== null;
@@ -121,7 +126,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
       const id = selectedId;
       if (controlled) onSelectProp?.(null);
       else setInternalSelected(null);
-      window.requestAnimationFrame(() => buttonRefs.current[id ?? ""]?.focus());
+      window.requestAnimationFrame(() => restoreAxisFocus(id ?? ""));
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -130,7 +135,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     const id = restoreId ?? selectedId;
     if (controlled) onSelectProp?.(null);
     else setInternalSelected(null);
-    if (id) window.requestAnimationFrame(() => buttonRefs.current[id]?.focus());
+    if (id) window.requestAnimationFrame(() => restoreAxisFocus(id));
   }
   return <figure className={`observatory-radar${traceSettled ? " observatory-radar--trace-settled" : ""}`} aria-label="Indicateurs du jour et objectifs disponibles" style={shiftX || shiftY ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}>
     <svg viewBox="0 0 660 560" role="group" aria-label={`Graphique radar. Le contour représente les objectifs disponibles. ${axes.map(axis => `${axis.label} : ${axis.display} ${axis.unit}. ${axis.value === null || axis.average === null ? "Comparaison indisponible" : axis.value > axis.average ? "Au-dessus de la moyenne sur 30 jours" : axis.value < axis.average ? "Sous la moyenne sur 30 jours" : "Au niveau de la moyenne sur 30 jours"}. Objectif : ${axis.goal}.`).join(" ")}`}>
@@ -210,6 +215,15 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         );
       })}
     </svg>
+    <div className="observatory-radar__mobile-labels">
+      {axes.map((axis, index) => {
+        const trend = axis.value === null || axis.average === null ? "" : axis.value > axis.average ? "↑" : axis.value < axis.average ? "↓" : "↔";
+        return <button key={axis.id} ref={(node) => { mobileButtonRefs.current[axis.id] = node; }} type="button" className={`observatory-radar__mobile-label observatory-radar__mobile-label--${index}`} aria-controls={detailId} aria-expanded={selectedId === axis.id} onClick={() => select(axis.id)}>
+          <span>{axis.label}</span>
+          <strong>{axis.display}{axis.unit ? ` ${axis.unit}` : ""}{trend ? ` ${trend}` : ""}</strong>
+        </button>;
+      })}
+    </div>
     <aside id={detailId} aria-labelledby={detailTitleId} aria-hidden={!detailOpen} inert={!detailOpen} style={{ display: detailOpen ? "block" : "none", minHeight: 44 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
         <h3 id={detailTitleId} ref={headingRef} tabIndex={-1} style={{ margin: 0 }}>{selectedAxis ? selectedAxis.label : "Détail"}</h3>

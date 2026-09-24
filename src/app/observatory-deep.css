@@ -23,6 +23,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-numbe
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__header { border:0; }
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button[aria-current="date"] { background:#19262c; }
 .observatory-radar { margin:0; width:100%; max-width:520px; min-width:0; height:100%; display:grid; grid-template-rows:minmax(0,1fr) auto auto; }
+.observatory-radar__mobile-labels { display:none; }
 .observatory-radar svg { width:100%; height:100%; overflow:visible; }
 .radar-grid,.radar-axis { fill:none; stroke:#2a343a; stroke-width:1; }
 .radar-grid:last-of-type { stroke:#6e868f; }
@@ -823,6 +824,44 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     padding-inline:8px;
     font-size:12px;
   }
+}
+
+@media(max-width:700px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world { padding-inline:20px; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench { padding-inline:0!important; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip { margin-inline:0; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-meal-column { max-width:none!important; }
+
+  html[data-lab-theme="observatory"] .observatory-radar { position:relative; max-width:none; }
+  html[data-lab-theme="observatory"] .observatory-radar svg { display:block; width:68%; height:100%; margin-inline:auto; overflow:hidden; }
+  html[data-lab-theme="observatory"] .observatory-radar .radar-axis-label { display:none; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-labels {
+    position:absolute;
+    inset:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows:56px minmax(0,1fr) 56px;
+    pointer-events:none;
+  }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label {
+    width:max-content;
+    max-width:100%;
+    min-width:76px;
+    min-height:48px;
+    padding:4px 2px;
+    border:0;
+    background:transparent;
+    color:#bdbdbd;
+    font:400 14px/1.3 var(--font-soma-sans),sans-serif;
+    text-align:center;
+    pointer-events:auto;
+  }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label strong { display:block; color:#f1f1f1; font:400 12px/1.4 var(--font-soma-mono),monospace; white-space:nowrap; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label--0 { grid-area:1 / 1 / 2 / 3; justify-self:center; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label--1 { grid-area:2 / 2; justify-self:end; align-self:center; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label--2 { grid-area:3 / 1 / 4 / 3; justify-self:center; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label--3 { grid-area:2 / 1; justify-self:start; align-self:center; }
+  html[data-lab-theme="observatory"] .observatory-radar__mobile-label:focus-visible { outline:2px solid #eee; outline-offset:2px; }
 }
 
 html[data-lab-theme="observatory"] .arrival-context-date {
