@@ -191,6 +191,13 @@
 .conversationMenu button:hover { background: #303030; }
 .conversation { position: relative; height: 100%; background: var(--lab-canvas); }
 .transcript { grid-row: 1; grid-column: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #353535 transparent; }
+.voiceStage { display: grid; min-height: 100%; align-items: center; padding: 48px max(24px, calc((100% - 780px) / 2)); }
+.voiceStageContent { display: grid; align-content: center; gap: 32px; width: 100%; max-width: 780px; }
+.voiceStageStatus { margin: 0; color: var(--lab-text-secondary); font: 400 13px/1.4 var(--font-soma-ui), sans-serif; }
+.voiceTurn { min-width: 0; }
+.voiceTurn > span { display: block; margin-bottom: 8px; color: var(--lab-text-secondary); font: 400 13px/1.4 var(--font-soma-ui), sans-serif; }
+.voiceTurn p { max-width: 65ch; margin: 0; color: var(--lab-text-primary); font: 400 clamp(20px, 2.4vw, 28px)/1.4 var(--font-soma-ui), sans-serif; overflow-wrap: anywhere; white-space: pre-wrap; }
+.voicePrompt { margin: 0; color: var(--lab-text-primary); font: 400 clamp(28px, 4vw, 44px)/1.2 Georgia, serif; }
 .messages { width: min(780px, calc(100% - 64px)); padding: 42px 0 56px; gap: 34px; }
 .messages > .userMessage { max-width: min(600px, 78%); }
 .userMessage .messageBody { padding: 11px 16px; border-radius: 16px; background: #292929; line-height: 1.55; }

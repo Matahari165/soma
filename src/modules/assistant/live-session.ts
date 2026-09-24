@@ -22,7 +22,7 @@ const liveInstructions = [
   "Interruption policy: Si l’utilisateur t’interrompt, arrête de parler et écoute. Une correction met à jour la demande en cours.",
   "Delegation policy:",
   "Backend tools:",
-  "- Données personnelles Soma : consulter les mesures de santé, repas, sommeil, récupération, effort, activités, objectifs et plans.",
+  "- Données personnelles Soma : consulter les mesures de santé, repas, sommeil, récupération, effort, activités, séances de musculation enregistrées, objectifs et plans.",
   "- Analyse et coaching : comparer les données, expliquer les tendances, préparer des entraînements et proposer des objectifs chiffrés.",
   "- Actions Soma : créer ou modifier les éléments pris en charge par le backend, selon les validations qu’il demande.",
   "Delegate to the backend when:",

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./assistant-live-voice.module.css";
 
 type Phase = "idle" | "requesting" | "connecting" | "active" | "closing";
+export type LiveVoicePresentation = { phase: Phase; userCaption: string; assistantCaption: string; muted: boolean };
 type LiveEvent = Record<string, unknown> & { type?: unknown };
 type TranscriptFragment = { startMs: number; endMs: number; text: string };
 type PendingDelegation = {
@@ -127,6 +128,7 @@ export function AssistantLiveVoice({
   onBusyChange,
   onConversationStarted,
   onConversationUpdated,
+  onPresentationChange,
   className,
 }: {
   conversationId: string | null;
@@ -134,6 +136,7 @@ export function AssistantLiveVoice({
   onBusyChange: (busy: boolean) => void;
   onConversationStarted: (conversationId: string) => void;
   onConversationUpdated: (conversationId: string) => void;
+  onPresentationChange?: (presentation: LiveVoicePresentation | null) => void;
   className?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -142,6 +145,7 @@ export function AssistantLiveVoice({
   const [userCaption, setUserCaption] = useState("");
   const [assistantCaption, setAssistantCaption] = useState("");
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
+  const completedTurnRef = useRef(false);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const microphoneRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
@@ -374,8 +378,7 @@ export function AssistantLiveVoice({
         if (!isCurrent()) return;
         const sent = sendCommentary(delegationId, payload.responseText);
         if (!sent) throw new Error("La session vocale s’est interrompue avant la réponse.");
-        setUserCaption("");
-        setAssistantCaption("");
+        completedTurnRef.current = true;
         onConversationUpdatedRef.current(currentConversationId);
       } catch (cause) {
         if (!isCurrent()) return;
@@ -448,7 +451,11 @@ export function AssistantLiveVoice({
         const endMs = eventTime(event.end_ms) ?? startMs;
         transcriptFragmentsRef.current.push({ startMs, endMs, text: delta });
         if (transcriptFragmentsRef.current.length > 500) transcriptFragmentsRef.current.splice(0, transcriptFragmentsRef.current.length - 500);
-        setUserCaption((current) => `${current}${delta}`.slice(-420));
+        if (completedTurnRef.current) {
+          completedTurnRef.current = false;
+          setAssistantCaption("");
+          setUserCaption(delta);
+        } else setUserCaption((current) => `${current}${delta}`.slice(-12_000));
         for (const pending of pendingDelegationsRef.current.values()) {
           if (startMs <= pending.offsetMs) {
             clearTimeout(pending.timer);
@@ -463,7 +470,7 @@ export function AssistantLiveVoice({
       const delta = textFromEvent(event);
       if (delta) {
         lastActivityRef.current = Date.now();
-        setAssistantCaption((current) => `${current}${delta}`.slice(-420));
+        setAssistantCaption((current) => `${current}${delta}`.slice(-12_000));
       }
       return;
     }
@@ -490,6 +497,7 @@ export function AssistantLiveVoice({
     if (disabled || phaseRef.current !== "idle") return;
     requestedConversationIdRef.current = conversationId;
     lastActivityRef.current = Date.now();
+    completedTurnRef.current = false;
     setError(null);
     setUserCaption("");
     setAssistantCaption("");
@@ -647,6 +655,9 @@ export function AssistantLiveVoice({
   }
 
   const busy = phase !== "idle";
+  useEffect(() => {
+    onPresentationChange?.(busy ? { phase, userCaption, assistantCaption, muted } : null);
+  }, [assistantCaption, busy, muted, onPresentationChange, phase, userCaption]);
   const status = phase === "requesting" ? "Autorisation du microphone…"
     : phase === "connecting" ? "Connexion vocale…"
       : phase === "active" ? (muted ? "Micro coupé" : "Mode vocal actif")
@@ -664,10 +675,6 @@ export function AssistantLiveVoice({
     ><AudioLines size={19} aria-hidden="true" /></button> : <>
       <span className={styles.statusIcon} aria-hidden="true">{phase === "active" ? <AudioLines size={19} /> : <LoaderCircle size={18} className={styles.spinner} />}</span>
       <span className={styles.status} role="status" aria-live="polite">{status}</span>
-      {phase === "active" && (userCaption || assistantCaption) && <div className={styles.captions} aria-label="Dernières paroles transcrites">
-        {userCaption && <p><span>Vous</span>{userCaption}</p>}
-        {assistantCaption && <p><span>Soma</span>{assistantCaption}</p>}
-      </div>}
       {playbackBlocked && phase === "active" && <button type="button" className={styles.soundButton} onClick={() => void enablePlayback()} aria-label="Activer le son"><Volume2 size={17} aria-hidden="true" /></button>}
       {phase === "active" && <button type="button" className={styles.muteButton} onClick={toggleMute} aria-label={muted ? "Activer le microphone" : "Couper le microphone"} aria-pressed={muted}>{muted ? <MicOff size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}</button>}
       <button type="button" className={styles.endButton} onClick={() => void endSession()} disabled={phase === "closing"} aria-label="Terminer le mode vocal">
