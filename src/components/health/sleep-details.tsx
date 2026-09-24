@@ -146,9 +146,9 @@ function sleepScoreBreakdown(latest: HealthMetricDay | undefined, scoreEntry: He
   if (exactEngine.score !== Math.round(scoreEntry.score)) return null;
 
   const components: SleepScoreComponent[] = [
-    { id: "duration" as const, label: "Duration", weight: 70, sourceValueLabel: `${formatDurationMinutes(latest.sleep_minutes)} · need ${formatDurationMinutes(latest.sleep_need_minutes)}`, formula: "duration ÷ estimated need", normalization: "clamp(0, 1, duration ÷ need)", normalizedValue: exactEngine.durationComponent },
-    { id: "efficiency" as const, label: "Efficiency", weight: 10, sourceValueLabel: formatPercent(latest.sleep_efficiency), formula: "source efficiency ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.efficiencyComponent },
-    { id: "regularity" as const, label: "Regularity", weight: 20, sourceValueLabel: formatPercent(latest.sleep_regularity), formula: "source regularity ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.regularityComponent },
+    { id: "duration" as const, label: "Duration", weight: 70, sourceValueLabel: `${formatDurationMinutes(latest.sleep_minutes)} / ${formatDurationMinutes(latest.sleep_need_minutes)}`, formula: "duration ÷ estimated need", normalization: "clamp(0, 1, duration ÷ need)", normalizedValue: exactEngine.durationComponent },
+    { id: "efficiency" as const, label: "Efficiency", weight: 10, sourceValueLabel: `${formatPercent(latest.sleep_efficiency)} / 100%`, formula: "source efficiency ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.efficiencyComponent },
+    { id: "regularity" as const, label: "Regularity", weight: 20, sourceValueLabel: `${formatPercent(latest.sleep_regularity)} / 100%`, formula: "source regularity ÷ 100", normalization: "clamp(0, 1, value ÷ 100)", normalizedValue: exactEngine.regularityComponent },
   ].map((component) => ({ ...component, contribution: component.normalizedValue * component.weight }));
 
   return { score: Math.round(scoreEntry.score), algorithmVersion: scoreEntry.algorithm_version, components };
@@ -254,8 +254,18 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
           />
         </section>
 
-        <section className={`${styles.trendsSection} health-observatory-panel`} aria-labelledby="sleep-trends-heading">
-          <header className="health-observatory-panel-header"><h2 id="sleep-trends-heading">Graphiques</h2><span>30 days</span></header>
+        <section className={styles.readingsSection} aria-label="Sleep indicators">
+          <div className={styles.readingsGrid}>
+            {[
+              { label: "Duration", value: formatDurationMinutes(latest.sleep_minutes), context: `30-day avg · ${formatDurationMinutes(averageSleep)}`, detail: "Measured sleep duration compared with your estimated need." },
+              { label: "Efficiency", value: formatPercent(latest.sleep_efficiency), context: `30-day avg · ${formatPercent(averageEfficiency)}`, detail: "Share of time in bed spent asleep, provided by the health source." },
+              { label: "Regularity", value: formatPercent(latest.sleep_regularity), context: `30-day avg · ${formatPercent(averageRegularity)}`, detail: "Consistency of your sleep schedule relative to its observed rhythm." },
+              { label: "Sleep debt", value: formatDurationMinutes(latest.cumulative_sleep_debt_minutes), context: `30-day avg · ${formatDurationMinutes(averageDebt)}`, detail: "Cumulative missed sleep relative to your estimated needs, calculated by Soma. It is not part of the sleep score." },
+            ].map((item) => <details className={styles.reading} key={item.label}><summary><span>{item.label}</span><strong>{item.value}</strong><small>{item.context}</small><span className={styles.readingChevron} aria-hidden="true" /></summary><p>{item.detail}</p></details>)}
+          </div>
+        </section>
+
+        <section className={`${styles.trendsSection} health-observatory-panel`} aria-label="Sleep trends">
           <div className={styles.trendGrid}>
             <MetricTrendCard label="Duration" points={points(data.days, "sleep_minutes")} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
             <MetricTrendCard label="Efficiency" points={points(data.days, "sleep_efficiency")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" />
@@ -264,8 +274,8 @@ export function SleepDetails({ data }: { data: HealthAnalytics }) {
             <MetricTrendCard label="Deep + REM sleep" points={restorativeSleepPoints(data.days)} direction="higher_is_better" format={formatDurationMinutes} valueFormat="duration" chartType="bar" compact averageInChart animateCurrent animationFormat="duration" />
           </div>
         </section>
-        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-labelledby="sleep-stages-heading">
-          <header className="health-observatory-panel-header"><h2 id="sleep-stages-heading">Stage distribution</h2><span>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</span></header>
+        <section className={`${styles.lastNightSection} health-observatory-panel`} aria-label="Last night sleep stages">
+          <p className={styles.stagePeriod}>{clock(latest.bedtime, data.timezone)} → {clock(latest.wake_time, data.timezone)}</p>
           <div className={styles.distributionPanel}><SleepStageDistribution stages={[{ label: "Deep", value: latest.sleep_deep_percent, tone: "deep" }, { label: "REM", value: latest.sleep_rem_percent, tone: "rem" }, { label: "Light", value: latest.sleep_light_percent, tone: "light" }, { label: "Awake", value: latest.sleep_awake_percent, tone: "awake" }]} /></div>
         </section>
       </> : <section className={`${styles.empty} health-observatory-panel health-observatory-empty`} aria-labelledby="sleep-empty-heading"><MoonStar size={24} aria-hidden="true" /><div><h2 id="sleep-empty-heading">No sleep data</h2><p>0 measured nights over the last 30 days. Import your sleep from a connected health source, then return here.</p><p><a href="/settings">Check your health connection</a></p></div></section>}
