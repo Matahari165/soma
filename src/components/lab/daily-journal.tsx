@@ -381,7 +381,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               </button>}
             </div>
           </div>
-          <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-hairline-light border border-hairline">
             <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${adherenceRate}%` }} />
           </div>
         </div>

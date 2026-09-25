@@ -636,7 +636,7 @@ export function MealLabHeader({
         </div>
       </div>
       {showCalorieProgress && <div
-        className={`w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border ${calPct === null ? "border-dashed border-hairline opacity-70" : "border-hairline"}`}
+        className={`w-full h-2 rounded-full overflow-hidden bg-hairline-light border ${calPct === null ? "border-dashed border-hairline opacity-70" : "border-hairline"}`}
         {...(calPct === null
           ? { role: "img", "aria-label": "Calorie target progress: Calories unavailable" }
           : { role: "progressbar", "aria-label": "Calorie target progress", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": calPct, "aria-valuetext": `${calPct}% of calorie target` })}

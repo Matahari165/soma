@@ -16,7 +16,7 @@ export type ObservatoryRingsData = {
 const valid = (value: Measure): value is number => typeof value === "number" && Number.isFinite(value);
 const progress = (value: Measure, target: Measure) => valid(value) && valid(target) && target > 0 ? Math.max(0, value / target) : null;
 const duration = (minutes: number) => `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60).toString().padStart(2, "0")}`;
-const ringStartAngle = -100;
+const ringStartAngle = -90;
 const ringPoint = (radius: number, angle: number) => {
   const radians = angle * Math.PI / 180;
   return { x: 160 + radius * Math.cos(radians), y: 160 + radius * Math.sin(radians) };
@@ -49,15 +49,11 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   }, [date, data.calorieTarget]);
 
   const rings = [
-    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#c7e1f1", labelColor: "#98c0dc" },
-    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#c4e7d3", labelColor: "#99cbae" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#f0d5b0", labelColor: "#d5b38a" },
-    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#e4cdee", labelColor: "#c2a6d4" },
+    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#a9d8f2", labelColor: "#86bada" },
+    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#a7e0c4", labelColor: "#83c4a4" },
+    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#f1c995", labelColor: "#d0a46f" },
+    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#dfb9ef", labelColor: "#b88cd1" },
   ] as const;
-
-  const dateLabel = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
-    ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00Z`)).toUpperCase()
-    : "AUJOURD’HUI";
 
   return <figure className={styles.figure} data-home-rings="" aria-label="Progression du jour pour le sommeil, la récupération, l’effort et les calories">
     <div className={styles.visual}>
@@ -85,9 +81,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
             {end && <circle className={styles.lapEnd} data-lap-end={ring.id} cx={end.x} cy={end.y} r="13.5" />}
           </g>;
         })}
-        {rings.map(ring => <text key={ring.id} className={styles.ringNumber} data-ring-value={ring.id} style={{ "--ring-label": ring.labelColor } as CSSProperties} dy="6" aria-hidden="true"><textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="2%">{ring.ringDisplay}</textPath></text>)}
-        <text className={styles.centerTop} x="160" y="158" textAnchor="middle">{dateLabel}</text>
-        <text className={styles.centerBottom} x="160" y="176" textAnchor="middle">OBJECTIFS</text>
+        {rings.map(ring => <text key={ring.id} className={styles.ringNumber} data-ring-value={ring.id} style={{ "--ring-label": ring.labelColor } as CSSProperties} dy="6" aria-hidden="true"><textPath href={`#${ringPathPrefix}-${ring.id}`} startOffset="0%">{ring.ringDisplay}</textPath></text>)}
       </svg>
     </div>
   </figure>;
