@@ -232,31 +232,29 @@ export interface LabMealCardProps {
   confirmError?: string | null;
 }
 
-function MealAnalysisScreen({ slot, stage, onCancel }: {
+function MealAnalysisScreen({ slot, stage, note, photoCount, onCancel }: {
   slot: MealSlot;
   stage: "connecting" | "preparing" | "queued" | "analyzing";
+  note: string;
+  photoCount: number;
   onCancel: () => void;
 }) {
-  const currentStep = stage === "connecting" || stage === "preparing" ? 0 : 1;
-  const message = {
-    connecting: ["Connexion au service", "Envoi de la demande d’analyse."],
-    preparing: ["Préparation des photos", "Les images du repas sont envoyées."],
-    queued: ["Analyse en attente", "La demande est reçue et attend son traitement."],
-    analyzing: ["Analyse en cours", "Le repas est examiné. Le résultat apparaîtra ici."],
+  const label = {
+    connecting: "Connexion…",
+    preparing: "Préparation des photos…",
+    queued: "Analyse en attente…",
+    analyzing: "Analyse du repas…",
   }[stage];
 
-  return <article className={styles.analysisScreen} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
+  return <article className={`${styles.analysisScreen} ${styles.personalLabType}`} aria-labelledby={`meal-${slot}-title`} aria-busy="true" data-purpose={`meal-${slot}-analyzing`}>
     <div className={styles.analysisScreenTop}>
       <h3 id={`meal-${slot}-title`}>{SLOT_LABELS[slot]}</h3>
-      <span>Analyse du repas</span>
     </div>
     <div className={styles.analysisScreenBody}>
+      {note.trim() && <p className={styles.analysisMealNote}>{note.trim()}</p>}
+      {photoCount > 0 && <p className={styles.analysisPhotoCount}>{photoCount} {photoCount === 1 ? "photo" : "photos"}</p>}
       <div className={styles.analysisSignal} aria-hidden="true"><span /></div>
-      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{message[0]}</p>
-      <p className={styles.analysisScreenCopy}>{message[1]}</p>
-      <ol className={styles.analysisSteps} aria-label="Progression de l’analyse">
-        {["Connexion", "Analyse", "Résultat"].map((label, index) => <li key={label} data-state={index < currentStep ? "done" : index === currentStep ? "current" : "pending"} aria-current={index === currentStep ? "step" : undefined}>{label}</li>)}
-      </ol>
+      <p className={styles.analysisScreenTitle} role="status" aria-live="polite" aria-atomic="true">{label}</p>
     </div>
     <button type="button" className={styles.analysisCancel} onClick={onCancel}>Annuler l’analyse</button>
   </article>;
@@ -524,7 +522,7 @@ export function LabMealCard({
 
   // Analyzing indicator
   if (isAnalyzing) {
-    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} onCancel={onCancelAnalysis} />;
+    return <MealAnalysisScreen slot={slot} stage={analysisProgress?.stage ?? (status === "analyzing" ? "analyzing" : "queued")} note={noteText} photoCount={photos.length} onCancel={onCancelAnalysis} />;
   }
 
   if (status === "error") {
@@ -681,8 +679,9 @@ export function LabMealCard({
         <div className="relative">
           <textarea
             id={inputId}
-            className="w-full bg-obsidian border border-hairline rounded text-xs text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-hairline-light font-sans"
-            rows={1}
+            className={`w-full bg-obsidian border border-hairline rounded text-content-primary placeholder:text-content-secondary font-sans ${styles.captureNote}`}
+            rows={2}
+            aria-label={`Describe ${slotLabel}`}
             placeholder="Describe this meal or its ingredients…"
             value={noteText}
             disabled={disabled || processingFiles || mutationBusy}
@@ -699,7 +698,7 @@ export function LabMealCard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+              className={`px-2.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`}
               aria-label={`Take photo for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => cameraRef.current?.click()}
@@ -709,7 +708,7 @@ export function LabMealCard({
             </button>
             <button
               type="button"
-              className="px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
+              className={`px-2.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`}
               aria-label={`Choose photos for ${slotLabel}`}
               disabled={disabled || processingFiles || mutationBusy}
               onClick={() => galleryRef.current?.click()}
@@ -723,8 +722,8 @@ export function LabMealCard({
               type="button"
               className={
                 canAnalyze
-                  ? "!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150"
-                  : "!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs font-sans font-medium flex items-center gap-1.5"
+                  ? `!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 rounded transition-colors text-xs font-sans flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform duration-150 ${styles.captureAction}`
+                  : `!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 rounded text-xs font-sans font-medium flex items-center gap-1.5 ${styles.captureAction}`
               }
               disabled={!canAnalyze || disabled || processingFiles || mutationBusy}
               onClick={handleAnalyzeClick}

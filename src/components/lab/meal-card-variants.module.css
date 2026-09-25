@@ -848,16 +848,36 @@
 /* ==========================================================================
    États d'analyse en cours / erreur
    ========================================================================== */
+.captureNote {
+  min-height: 76px;
+  padding: 12px;
+  resize: vertical;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.captureNote:focus-visible,
+.captureAction:focus-visible {
+  outline: 2px solid var(--lab-text-primary, #f1f1f1);
+  outline-offset: 2px;
+}
+
+.captureAction {
+  min-height: 44px;
+  justify-content: center;
+}
+
 .analysisScreen {
   display: flex;
   flex-direction: column;
-  min-height: 242px;
+  min-height: 174px;
   padding: 16px;
   border: 1px solid var(--lab-border, #292929);
   border-radius: 4px;
-  background: var(--lab-surface, #080808);
+  background: var(--lab-canvas, #050505);
   color: var(--lab-text-primary, #f1f1f1);
   font-family: var(--font-soma-ui), sans-serif;
+  transition: background 240ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .analysisScreenTop {
@@ -867,22 +887,42 @@
   gap: 16px;
 }
 
-.analysisScreenTop h3,
-.analysisScreenTop span {
+.analysisScreenTop h3 {
   margin: 0;
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-family: var(--font-soma-ui), sans-serif;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
-
-.analysisScreenTop span { color: var(--lab-text-secondary, #aaa); }
 
 .analysisScreenBody {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
-  padding-block: 18px 12px;
+  justify-content: flex-end;
+  min-width: 0;
+  padding-block: 14px 0;
+}
+
+.analysisMealNote {
+  margin: 0 auto 4px 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--lab-text-secondary, #aaa);
+  font-size: 16px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.analysisPhotoCount {
+  margin: 0;
+  color: var(--lab-text-secondary, #aaa);
+  font-family: var(--font-soma-mono), ui-monospace, monospace;
+  font-size: 12px;
 }
 
 .analysisSignal {
@@ -890,16 +930,17 @@
   overflow: hidden;
   width: 100%;
   height: 2px;
-  margin-bottom: 22px;
+  margin: auto 0 13px;
+  margin-top: 18px;
   background: var(--lab-border, #292929);
 }
 
 .analysisSignal span {
   position: absolute;
   inset-block: 0;
-  width: 34%;
+  width: 24%;
   background: var(--lab-text-primary, #f1f1f1);
-  animation: mealAnalysisSignal 1.9s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+  animation: mealAnalysisSignal 4.8s cubic-bezier(.45, 0, .55, 1) infinite alternate;
 }
 
 @keyframes mealAnalysisSignal {
@@ -909,42 +950,14 @@
 
 .analysisScreenTitle {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.35;
 }
-
-.analysisScreenCopy {
-  min-height: 21px;
-  margin: 4px 0 0;
-  color: var(--lab-text-secondary, #aaa);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.analysisSteps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.analysisSteps li {
-  padding-top: 8px;
-  border-top: 1px solid var(--lab-border, #292929);
-  color: var(--lab-text-secondary, #aaa);
-  font-family: var(--font-soma-mono), ui-monospace, monospace;
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-.analysisSteps li[data-state="done"] { border-color: var(--lab-text-secondary, #aaa); }
-.analysisSteps li[data-state="current"] { border-color: var(--lab-text-primary, #f1f1f1); color: var(--lab-text-primary, #f1f1f1); }
 
 .analysisCancel {
   align-self: flex-end;
   min-height: 44px;
+  margin-top: 2px;
   padding: 0 4px;
   border: 0;
   background: transparent;

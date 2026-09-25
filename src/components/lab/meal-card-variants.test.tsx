@@ -6,17 +6,16 @@ import type { MealRecord } from "@/domain/meal-record";
 import { AnalysisDetails, LabMealCard } from "./meal-card-variants";
 
 describe("LabMealCard nutrition chart", () => {
-  it("replaces the draft with one truthful analysis screen and updates its server stage", () => {
+  it("keeps the meal visible while the analysis stage changes", () => {
     const meal: MealRecord = { id: "meal-dinner", date: "2026-09-23", slot: "dinner", note: "Example dinner", photos: [], analysis: null, mouthHeat: null, stomachLoad: null, status: "accepted" };
     const props = { meal, slot: "dinner" as const, saving: false, processingFiles: false, mutationBusy: false, onFiles: () => undefined, onRemovePhoto: () => undefined, onAnalyze: () => undefined, onCancelAnalysis: () => undefined, onNote: () => undefined };
-    const connecting = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "connecting", foods: [] }} />);
-    expect(connecting).toContain("Connexion au service");
-    expect(connecting).toContain('aria-current="step"');
-    expect(connecting).not.toContain("Example dinner");
-    const analyzing = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "analyzing" }} analysisProgress={{ stage: "analyzing", foods: [] }} />);
-    expect(analyzing).toContain("Le repas est examiné");
-    expect(analyzing).toContain("Annuler l’analyse");
-    expect(analyzing).not.toContain("Example dinner");
+    for (const [stage, label] of Object.entries({ connecting: "Connexion…", preparing: "Préparation des photos…", queued: "Analyse en attente…", analyzing: "Analyse du repas…" }) as Array<["connecting" | "preparing" | "queued" | "analyzing", string]>) {
+      const html = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage, foods: [] }} />);
+      expect(html).toContain(label);
+      expect(html).toContain("Example dinner");
+      expect(html).toContain("Annuler l’analyse");
+      expect(html).not.toContain('aria-current="step"');
+    }
   });
 
   it("explains a completed analysis without nutrition and exposes fiber and total sugar in details", () => {
@@ -198,14 +197,11 @@ describe("LabMealCard nutrition chart", () => {
       onMarkSkipped={() => undefined}
     />);
 
-    // Analyze meal button when canAnalyze is true
-    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors");
-    // Camera and Photos buttons
-    expect(html).toContain("px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
-    // Skip button
-    expect(html).toContain("text-xs font-sans text-content-secondary hover:text-content-primary transition-colors");
-    // Slot title
-    expect(html).toContain("font-sans text-xs font-semibold uppercase tracking-wider text-content-primary");
+    expect(html).toContain('rows="2" aria-label="Describe Lunch"');
+    expect(html).toContain('aria-label="Take photo for Lunch"');
+    expect(html).toContain('aria-label="Choose photos for Lunch"');
+    expect(html).toContain('aria-label="Analyze Lunch"');
+    expect(html).not.toContain('disabled="" aria-label="Analyze Lunch"');
   });
 
   it("applies explicit disabled styling on Analyze meal when cannot analyze", () => {
@@ -235,9 +231,7 @@ describe("LabMealCard nutrition chart", () => {
       onMarkSkipped={() => undefined}
     />);
 
-    // Analyze meal button when canAnalyze is false
-    expect(html).toContain("!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs");
-    expect(html).toContain("disabled=\"\"");
+    expect(html).toContain('disabled="" aria-label="Analyze Snack"');
   });
 
   it("removes Target text from pending meal card", () => {
