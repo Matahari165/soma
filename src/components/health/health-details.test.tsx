@@ -122,6 +122,28 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
+  it("shows today's recorded activity score and today's radar measurements", () => {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const yesterday = new Date(`${today}T12:00:00.000Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const previous = yesterday.toISOString().slice(0, 10);
+    const markup = renderToStaticMarkup(createElement(ActivityDetails, { data: analytics({
+      days: [
+        day({ metric_date: previous, steps: 1_000, zone_minutes: 5, weekly_load: 50 }),
+        day({ metric_date: today, steps: 8_000, zone_minutes: 40, weekly_load: 125 }),
+      ],
+      scores: [
+        { score_date: previous, kind: "effort", score: 50, drivers: {} },
+        { score_date: today, kind: "effort", score: 75, drivers: {} },
+      ],
+    }) }));
+
+    expect(markup).toContain("Activity score: 75 out of 100");
+    expect(markup).toContain("8,000 steps");
+    expect(markup).toContain("40 min");
+    expect(markup).toContain("125 pts");
+  });
+
   it("keeps the effort targets aligned between the radar and its detail", () => {
     const preview = buildPreviewAnalytics();
     const markup = renderToStaticMarkup(createElement(ActivityDetails, {
@@ -390,13 +412,11 @@ describe("health route states", () => {
 
   it("does not infer full effort coverage from a non-null score", () => {
     const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-    const previousDate = new Date(`${currentDate}T12:00:00.000Z`);
-    previousDate.setUTCDate(previousDate.getUTCDate() - 1);
     const markup = renderToStaticMarkup(createElement(ActivityDetails, {
       data: analytics({
-        days: [day({ metric_date: previousDate.toISOString().slice(0, 10), steps: 1_000 })],
-        scores: [{ score_date: previousDate.toISOString().slice(0, 10), kind: "effort", score: 50, drivers: {} }],
-        exercises: [{ id: "strength", date: previousDate.toISOString().slice(0, 10), name: "Renfo", type: "WEIGHT_TRAINING", durationMinutes: 40, activeMinutes: 30, calories: 200, distanceKm: null, averageHeartRate: 120, zoneMinutes: 15, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1_000, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null }],
+        days: [day({ metric_date: currentDate, steps: 1_000 })],
+        scores: [{ score_date: currentDate, kind: "effort", score: 50, drivers: {} }],
+        exercises: [{ id: "strength", date: currentDate, name: "Renfo", type: "WEIGHT_TRAINING", durationMinutes: 40, activeMinutes: 30, calories: 200, distanceKm: null, averageHeartRate: 120, zoneMinutes: 15, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1_000, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null }],
       }),
     }));
 

@@ -108,18 +108,17 @@ export function normalizeEffortContextValue(value: number | null, windowValues: 
 export function ActivityDetails({ data }: { data: HealthAnalytics }) {
   const currentDate = new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const activityDays = completedActivityDays(data.days, currentDate);
-  const latest = activityDays.at(-1);
+  const latest = activityDays.findLast((day) => day.metric_date === currentDate);
   const effortTargets = data.effortTargets ?? effortScoreTargets();
   const effortTargetSource = data.effortTargetSource ?? "fallback";
   const effortComponents = effortComponentDefinitions(effortTargets, effortTargetSource);
   const effortScores = data.scores.filter((item) => item.kind === "effort");
   const scoreBreakdown = activityScoreBreakdown(latest, effortTargets, effortComponents);
-  const latestEffort = latest ? effortScores.findLast((item) => item.score_date === latest.metric_date) : undefined;
+  const latestEffort = effortScores.findLast((item) => item.score_date === currentDate);
   const persistedScore = latestEffort?.score ?? null;
-  // Persisted scores remain authoritative for the headline and 30-day average.
-  // The radar/breakdown is always recomputed from the four raw inputs so a
-  // stale preview or legacy row cannot turn into a made-up component.
-  const score = persistedScore ?? scoreBreakdown?.score ?? null;
+  // Use the same recorded daily score as the home view. The radar/breakdown
+  // derives only its component values from today's raw measurements.
+  const score = persistedScore;
   const averages = {
     steps: latest ? averageLast30Measured(activityDays, "steps", latest.metric_date) : null,
     zoneMinutes: latest ? averageLast30Measured(activityDays, "zone_minutes", latest.metric_date) : null,
@@ -161,7 +160,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     sourceLabel: "Soma",
   }] : [];
   return <div className={styles.root}>
-    <HealthPageShell kind="activity" title="Activity" description="Activity score based on zone minutes, exercise duration, active energy, and steps." score={score} freshness={freshness} timezone={data.timezone} showFreshness={true} heroScore={<span className="sr-only">Activity score: {score === null ? "unavailable" : `${score} out of 100`}. 30-day average: {averages.effort === null ? "unavailable" : `${Math.round(averages.effort)} out of 100`}. {scoreCoverage === null ? "Score coverage unavailable" : `${Math.round(scoreCoverage * 100)}% score coverage`}.</span>}>
+    <HealthPageShell kind="activity" title="Activity" description="Today's activity score based on zone minutes, exercise duration, active energy, and steps." score={score} freshness={freshness} timezone={data.timezone} showFreshness={true} heroScore={<span className="sr-only">Activity score: {score === null ? "unavailable" : `${score} out of 100`}. 30-day average: {averages.effort === null ? "unavailable" : `${Math.round(averages.effort)} out of 100`}. {scoreCoverage === null ? "Score coverage unavailable" : `${Math.round(scoreCoverage * 100)}% score coverage`}.</span>}>
       <section className={`${styles.content} health-observatory-content`} aria-label="Activity content" data-health-reveal-root>
         <HealthScrollReveal />
         {latest ? <>
