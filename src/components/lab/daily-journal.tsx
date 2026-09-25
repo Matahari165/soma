@@ -2,6 +2,7 @@
 
 import { Check, LoaderCircle, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -90,12 +91,16 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const managerTriggerRef = useRef<HTMLButtonElement>(null);
   const managerRef = useRef<HTMLElement>(null);
   const [feedback, setFeedback] = useState<{ fieldId: string; token: number } | null>(null);
+  const [completionNotice, setCompletionNotice] = useState<{ date: string } | null>(null);
   const [completionRevision, setCompletionRevision] = useState(0);
   const [recordedByDate, setRecordedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(entries.filter((entry) => entry.entryDate === date).map((entry) => entry.variableId))])));
+  const recordedByDateRef = useRef(recordedByDate);
   const [skippedByDate, setSkippedByDate] = useState<Record<string, Set<string>>>(() => Object.fromEntries(dateOptions.map((date) => [date, new Set(days.find((day) => day.entryDate === date)?.omittedVariableIds ?? [])])));
   const [manualOverrideKeys, setManualOverrideKeys] = useState<Set<string>>(() => new Set());
+  const manualOverrideKeysRef = useRef(manualOverrideKeys);
   const feedbackSequence = useRef(0);
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNumericFeedback = useRef(new Set<string>());
   const day = days.find((candidate) => candidate.entryDate === entryDate);
   const validated = day?.status === "validated" || validatedDates.has(entryDate);
@@ -114,12 +119,17 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const skipped = useMemo(() => new Set([...(skippedByDate[entryDate] ?? [])].filter((id) => !automaticIds.has(id))), [automaticIds, skippedByDate, entryDate]);
   const completionCount = useMemo(() => activeVariables.reduce((count, variable) => count + (recorded.has(variable.id) ? 1 : 0), 0), [activeVariables, recorded]);
 
+  function isDateFullyRecorded(date: string, dateRecorded: ReadonlySet<string>, overrides: ReadonlySet<string>) {
+    return activeVariables.length > 0 && activeVariables.every((variable) => dateRecorded.has(variable.id) || (automaticIdsByDate[date]?.has(variable.id) === true && !overrides.has(`${date}:${variable.id}`)));
+  }
+
   useEffect(() => {
     onCompletionChange?.(completionCount, activeVariables.length);
   }, [activeVariables.length, completionCount, completionRevision, entryDate, onCompletionChange]);
 
   useEffect(() => () => {
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    if (completionNoticeTimeout.current) clearTimeout(completionNoticeTimeout.current);
   }, []);
 
   useEffect(() => {
@@ -132,6 +142,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   useEffect(() => {
     if (selectedDateRef.current === entryDate) return;
     selectedDateRef.current = entryDate;
+    clearCompletionNotice();
     setSaveStatus("draft");
     setError(null);
     pendingNumericFeedback.current.clear();
@@ -142,6 +153,22 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     setFeedback({ fieldId, token: feedbackSequence.current });
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
     feedbackTimeout.current = setTimeout(() => setFeedback(null), 520);
+  }
+
+  function clearCompletionNotice() {
+    if (completionNoticeTimeout.current) clearTimeout(completionNoticeTimeout.current);
+    completionNoticeTimeout.current = null;
+    setCompletionNotice(null);
+  }
+
+  function announceCompletion(date: string) {
+    if (presentation !== "personal-lab") return;
+    if (completionNoticeTimeout.current) clearTimeout(completionNoticeTimeout.current);
+    setCompletionNotice({ date });
+    completionNoticeTimeout.current = setTimeout(() => {
+      setCompletionNotice((current) => current?.date === date ? null : current);
+      completionNoticeTimeout.current = null;
+    }, 3600);
   }
 
   function commitField(fieldId: string) {
@@ -234,6 +261,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     selectedDateRef.current = date;
     if (selectedDateProp === undefined) setInternalEntryDate(date);
     onDateChange?.(date);
+    clearCompletionNotice();
     if (!drafts.current[date]) {
       const next = { ...drafts.current, [date]: journalValuesForDate(activeVariables, entries, days, date) };
       drafts.current = next;
@@ -247,24 +275,31 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   function changeValue(variableId: string, value: DraftValue) {
     const date = selectedDateRef.current;
     const variable = activeVariables.find((candidate) => candidate.id === variableId);
+    const currentRecordedByDate = recordedByDateRef.current;
+    const currentDateRecorded = currentRecordedByDate[date] ?? new Set<string>();
+    const wasFullyRecorded = isDateFullyRecorded(date, currentDateRecorded, manualOverrideKeysRef.current);
+    const nextRecorded = new Set(currentDateRecorded);
+    if (value === null) nextRecorded.delete(variableId);
+    else nextRecorded.add(variableId);
+    const nextRecordedByDate = { ...currentRecordedByDate, [date]: nextRecorded };
+    recordedByDateRef.current = nextRecordedByDate;
+    setRecordedByDate(nextRecordedByDate);
+    const nextManualOverrideKeys = new Set(manualOverrideKeysRef.current);
+    if (automaticIdsByDate[date]?.has(variableId)) nextManualOverrideKeys.add(`${date}:${variableId}`);
+    manualOverrideKeysRef.current = nextManualOverrideKeys;
+    setManualOverrideKeys(nextManualOverrideKeys);
+    const isNowFullyRecorded = isDateFullyRecorded(date, nextRecorded, nextManualOverrideKeys);
+    if (!wasFullyRecorded && isNowFullyRecorded) announceCompletion(date);
+    else if (!isNowFullyRecorded && presentation === "personal-lab") clearCompletionNotice();
     const next = updateJournalDraft(drafts.current, date, variableId, value);
     drafts.current = next;
     setDraftsByDate(next);
-    setRecordedByDate((current) => {
-      const nextRecorded = new Set(current[date] ?? []);
-      if (value === null) nextRecorded.delete(variableId);
-      else nextRecorded.add(variableId);
-      return { ...current, [date]: nextRecorded };
-    });
     setSkippedByDate((current) => {
       const nextSkipped = new Set(current[date] ?? []);
       if (value === null) nextSkipped.add(variableId);
       else nextSkipped.delete(variableId);
       return { ...current, [date]: nextSkipped };
     });
-    if (automaticIdsByDate[date]?.has(variableId)) {
-      setManualOverrideKeys((current) => new Set(current).add(`${date}:${variableId}`));
-    }
     if (variable && textNumericTypes.has(variable.variableType)) pendingNumericFeedback.current.add(variableId);
     else if (variable) triggerFeedback(variableId);
     setCompletionRevision((current) => current + 1);
@@ -384,14 +419,10 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
           const sectionDisplayName = isPersonalLab ? (periodNames[section.id] ?? sectionLabel) : sectionLabel;
 
           if (isPersonalLab) {
-            const completedText = `${completedCount} sur ${section.variables.length}`;
             return (
               <section className="space-y-4" key={section.id} data-purpose={`${section.id}-habits`}>
-                <div className="flex items-center justify-between">
+                <div>
                   <span className="text-xs font-mono uppercase tracking-wider text-content-secondary font-medium">{sectionDisplayName}</span>
-                  <span className={`text-[11px] font-mono ${complete ? 'text-sage' : 'text-content-secondary'}`}>
-                    {completedText}
-                  </span>
                 </div>
                 <div className="divide-y divide-hairline border-t border-b border-hairline">
                   {section.variables.map((variable) => (
@@ -415,6 +446,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         })}</div> : <p className="journal-empty">Add your first tracked variable below.</p>}
         {error && <p className="form-error" role="alert">{error} <button type="button" onClick={retryJournalSave}>Retry</button></p>}
         {validated && <p className="journal-save-note" role="status">Changes are saved automatically and remain included in your relations.</p>}
+        {isPersonalLab && completionNotice?.date === entryDate && typeof document !== "undefined" && createPortal(<div className="journal-completion-notice" role="status" aria-live="polite" aria-atomic="true"><Check size={16} aria-hidden="true" /><span>All habits are filled in.</span></div>, document.body)}
       </section>;
     }}
   </VariableManager>;
