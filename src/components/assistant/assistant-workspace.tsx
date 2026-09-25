@@ -602,7 +602,6 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     <main id="main-page-content" className={styles.page} lang="fr">
       <header className={styles.mobileToolbar}>
         <button ref={historyTriggerRef} type="button" onClick={() => setHistoryOpen(true)} aria-label="Ouvrir les conversations" aria-controls="assistant-conversations" aria-expanded={historyOpen}><Menu size={20} aria-hidden="true" /></button>
-        <span>Soma</span>
         <button type="button" onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={20} aria-hidden="true" /></button>
       </header>
 

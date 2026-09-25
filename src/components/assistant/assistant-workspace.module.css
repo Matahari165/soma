@@ -391,3 +391,15 @@
   .composerLine > .liveAction { grid-column: 4; }
   .composerLine > .sendButton { grid-column: 5; }
 }
+
+/* On phones, keep the conversation controls quiet and the composer clear of
+   the home indicator. The input stays above iOS's automatic zoom threshold. */
+@media (max-width: 700px) {
+  .mobileToolbar { border: 0; background: transparent; }
+  .mobileToolbar button:last-child { grid-column: 3; }
+  .messageBody, .starterList button { font-size: 17px; }
+  .composerRegion { padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .composer { padding: 12px; transition: border-color 160ms ease, background-color 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1); }
+  .composer:focus-within { transform: scale(1.015); transform-origin: center bottom; }
+  .composer textarea { min-height: 48px; padding: 10px 0; font-size: 17px; }
+}
