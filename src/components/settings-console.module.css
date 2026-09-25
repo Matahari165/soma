@@ -77,6 +77,9 @@
 .page :global(.privacy-actions > :nth-child(3)[data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-delay: 130ms; }
 .page :global(.privacy-actions > :nth-child(4)[data-scroll-reveal="privacy"][data-reveal="visible"]) { transition-delay: 195ms; }
 
+/* The observed section needs an unclipped box to enter the viewport. */
+.page :global([data-scroll-reveal][data-reveal="pending"]) { clip-path: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .page :global([data-scroll-reveal]) {
     opacity: 1 !important;

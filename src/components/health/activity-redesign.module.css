@@ -527,6 +527,9 @@
 .content [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(5) { animation-delay: 220ms; }
 .content [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(6) { animation-delay: 255ms; }
 
+/* IntersectionObserver must see the section before its entrance can run. */
+.content [data-scroll-reveal][data-reveal="pending"] { clip-path: none; }
+
 @keyframes soma-measurement-arrive {
   from { opacity: .2; transform: translate3d(0, 14px, 0) scale(.985); }
   to { opacity: 1; transform: none; }

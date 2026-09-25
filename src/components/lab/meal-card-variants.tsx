@@ -556,7 +556,7 @@ export function LabMealCard({
   }
 
   const confirmedIndicator = status === "confirmed" && !meal?.error ? <span className={styles.confirmedIndicator}>
-    <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationTickArrival)} />
+    <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: React.AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationTickArrival)} />
     Confirmed
   </span> : null;
 

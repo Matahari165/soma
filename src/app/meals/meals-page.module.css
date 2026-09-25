@@ -132,6 +132,9 @@
   clip-path: inset(0 0 40% 0);
 }
 
+/* Clipping the observed element prevents its own intersection from firing. */
+.page [data-scroll-reveal][data-reveal="pending"] { clip-path: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .page [data-scroll-reveal] {
     opacity: 1 !important;

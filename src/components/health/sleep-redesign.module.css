@@ -584,6 +584,9 @@
 }
 .redesign [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(2) { animation-delay: 55ms; }
 .redesign [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(3) { animation-delay: 110ms; }
+
+/* Keep the observed box visible to IntersectionObserver while it approaches. */
+.redesign [data-scroll-reveal][data-reveal="pending"] { clip-path: none; }
 .redesign [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(4) { animation-delay: 165ms; }
 .redesign [data-scroll-reveal="trends"][data-reveal="visible"] .trendGrid > :nth-child(5) { animation-delay: 220ms; }
 

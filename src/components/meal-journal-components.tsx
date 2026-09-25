@@ -17,7 +17,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type AnimationEvent, type ChangeEvent, type KeyboardEvent, type RefObject } from "react";
 
 import { ScoreRing } from "@/components/dashboard/score-ring";
 import { type MealFoodCourse } from "@/domain/meals";
@@ -503,13 +503,13 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact ? <div className={styles.labHeaderActions}>
-        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span> : null}
+        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span> : null}
         {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls mutationBusy={mutationBusy} onConfirm={onConfirm} retryable={Boolean(meal.error)} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
         {!skipped && status === "draft" ? <button className={styles.mealHeaderSkip} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skip</button> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && !skipped && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
-        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
-      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
+        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
+      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event: AnimationEvent<SVGSVGElement>) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status"><span>Skipped · this slot is excluded from the score.</span><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onMarkRecorded}>Log this meal</button></div>}
     {unavailable && <div className={styles.skippedState} role="status">Slot skipped in journal.</div>}
