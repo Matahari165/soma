@@ -134,7 +134,7 @@
   .stitchWorkbench {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 64px !important;
     padding: 24px 16px !important;
   }
 
