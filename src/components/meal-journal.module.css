@@ -3907,6 +3907,10 @@
 /* Mobile homepage: keep each meal's title, content and actions inside one
    quiet boundary so repeated controls cannot be mistaken for the next slot. */
 @media (max-width: 700px) {
+  :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot {
+    padding-inline: 0;
+  }
+
   :global(html[data-lab-theme]) :global(.personal-lab-meal-column) > .labRoot > .mealList {
     gap: 12px;
   }
