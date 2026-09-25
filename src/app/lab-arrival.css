@@ -67,7 +67,7 @@ html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-co
   transition: transform 180ms cubic-bezier(.2,.8,.2,1);
 }
 .lab-experience.lab-continuous .arrival-heading--with-activity { top: -18px; }
-.arrival-activity-summary { display: grid; gap: 7px; width: min(100%, 520px); margin-top: 18px; color: var(--world-ink, var(--lab-text-primary)); }
+.arrival-activity-summary { display: grid; gap: 7px; width: min(100%, 520px); margin-top: 24px; color: var(--world-ink, var(--lab-text-primary)); }
 .arrival-activity-summary__identity { min-width: 0; }
 .arrival-activity-summary__identity strong { color: var(--world-ink, var(--lab-text-primary)); font-size: 14px; font-weight: 520; line-height: 1.3; overflow-wrap: anywhere; }
 .arrival-activity-summary__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px 14px; margin: 0; }
@@ -76,7 +76,7 @@ html[data-lab-theme] .app-shell:has(.lab-discrete[data-arrival="true"]) .main-co
 .arrival-activity-summary__metrics dd { margin: 2px 0 0; color: var(--world-ink, var(--lab-text-primary)); font: 12px/1.35 var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 @media(max-width:700px) {
   .lab-experience.lab-continuous .arrival-heading--with-activity { top: -10px; }
-  .arrival-activity-summary { width: 100%; margin-top: 16px; }
+  .arrival-activity-summary { width: 100%; margin-top: 20px; }
   .arrival-activity-summary__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @keyframes arrival-enter { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
