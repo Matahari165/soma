@@ -87,7 +87,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
   const unit = radarRadius / DEFAULT_RADAR_RADIUS;
   const gap = (base: number) => Math.round(base * unit);
   const coordinate=(index:number,ratio:number)=>{const angle=-Math.PI/2+index*Math.PI/2;return [330+Math.cos(angle)*radarRadius*ratio,280+Math.sin(angle)*radarRadius*ratio];};
-  const points=axes.map((axis,index)=>axis.value===null||axis.target===null?null:coordinate(index,Math.min(1,Math.max(0,axis.value/axis.target))));
+  const ratios=axes.map((axis)=>axis.value===null||axis.target===null?null:Math.min(1,Math.max(0,axis.value/axis.target)));
+  const points=ratios.map((ratio,index)=>ratio===null?null:coordinate(index,ratio));
   const validPoints=points.filter((p):p is [number,number]=>p!==null);
   const hasCompleteValueShape = validPoints.length === axes.length;
   const valueSegments = points.flatMap((point, index) => {
@@ -160,33 +161,30 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
         let numberY = 280;
         let textAnchor: "middle" | "start" | "end" = "middle";
 
+        const [pointX, pointY] = points[i] ?? coordinate(i, 1);
         if (i === 0) {
-          const [, yEdge] = coordinate(0, 1);
-          labelX = 330;
-          labelY = yEdge - gap(72);
-          numberX = 330;
-          numberY = yEdge - gap(38);
+          labelX = pointX;
+          labelY = pointY - gap(72);
+          numberX = pointX;
+          numberY = pointY - gap(38);
           textAnchor = "middle";
         } else if (i === 1) {
-          const [xEdge, yEdge] = coordinate(1, 1);
-          labelX = xEdge + gap(42);
-          labelY = yEdge - 8;
-          numberX = xEdge + gap(42);
-          numberY = yEdge + 10;
+          labelX = pointX + gap(42);
+          labelY = pointY - 8;
+          numberX = pointX + gap(42);
+          numberY = pointY + 10;
           textAnchor = "start";
         } else if (i === 2) {
-          const [, yEdge] = coordinate(2, 1);
-          labelX = 330;
-          labelY = yEdge + gap(68);
-          numberX = 330;
-          numberY = yEdge + gap(100);
+          labelX = pointX;
+          labelY = pointY + gap(68);
+          numberX = pointX;
+          numberY = pointY + gap(100);
           textAnchor = "middle";
         } else if (i === 3) {
-          const [xEdge, yEdge] = coordinate(3, 1);
-          labelX = xEdge - gap(42);
-          labelY = yEdge - 8;
-          numberX = xEdge - gap(42);
-          numberY = yEdge + 10;
+          labelX = pointX - gap(42);
+          labelY = pointY - 8;
+          numberX = pointX - gap(42);
+          numberY = pointY + 10;
           textAnchor = "end";
         }
 
@@ -218,7 +216,8 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
     <div className="observatory-radar__mobile-labels">
       {axes.map((axis, index) => {
         const trend = axis.value === null || axis.average === null ? "" : axis.value > axis.average ? "↑" : axis.value < axis.average ? "↓" : "↔";
-        return <button key={axis.id} ref={(node) => { mobileButtonRefs.current[axis.id] = node; }} type="button" className={`observatory-radar__mobile-label observatory-radar__mobile-label--${index}`} aria-controls={detailId} aria-expanded={selectedId === axis.id} onClick={() => select(axis.id)}>
+        const distance = ((ratios[index] ?? 1) * radarRadius * 72 / 660).toFixed(2);
+        return <button key={axis.id} ref={(node) => { mobileButtonRefs.current[axis.id] = node; }} type="button" className={`observatory-radar__mobile-label observatory-radar__mobile-label--${index}`} style={{ "--radar-point-distance": `${distance}cqw` } as CSSProperties} aria-controls={detailId} aria-expanded={selectedId === axis.id} onClick={() => select(axis.id)}>
           <span>{axis.label}</span>
           <strong>{axis.display}{axis.unit ? ` ${axis.unit}` : ""}{trend ? ` ${trend}` : ""}</strong>
         </button>;
@@ -247,9 +246,7 @@ export function ObservatoryRadar({data, date, radius = DEFAULT_RADAR_RADIUS, shi
 }
 
 export const OBSERVATORY_RADAR_PRESENTATION = {
-  // Keep the outer labels inside the 660 × 560 viewBox. The previous
-  // presentation radius placed the top and bottom values outside the SVG,
-  // where the arrival composition could clip them at some viewport heights.
+  // Keep the measured points and their nearby labels inside the 660 × 560 viewBox.
   size: 220,
   shiftY: -24,
   shiftX: -24,

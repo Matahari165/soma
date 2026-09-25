@@ -74,6 +74,27 @@ it("scales label offsets proportionally with the radius prop", () => {
   expect(html.slice(0, html.indexOf("</svg>"))).not.toContain("Google Health");
 });
 
+it("anchors desktop and mobile labels to measured points as values change", () => {
+  const read = (sleepMinutes: number) => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(<ObservatoryRadar data={{ ...data, sleepMinutes }} radius={220} />);
+    return {
+      pointY: Number(container.querySelector('[data-radar-point-index="0"]')?.getAttribute("cy")),
+      labelY: Number(container.querySelector(".radar-axis-label--0 .radar-label")?.getAttribute("y")),
+      mobileDistance: Number((container.querySelector(".observatory-radar__mobile-label--0") as HTMLElement).style.getPropertyValue("--radar-point-distance").replace("cqw", "")),
+      targetY: Number(container.querySelector(".radar-axis")?.getAttribute("y2")),
+    };
+  };
+  const nearerTarget = read(460);
+  const fartherFromTarget = read(255);
+
+  expect(nearerTarget.targetY).toBe(fartherFromTarget.targetY);
+  expect(nearerTarget.pointY).toBeLessThan(fartherFromTarget.pointY);
+  expect(nearerTarget.labelY).toBeLessThan(fartherFromTarget.labelY);
+  expect(nearerTarget.pointY - nearerTarget.labelY).toBeCloseTo(fartherFromTarget.pointY - fartherFromTarget.labelY);
+  expect(nearerTarget.mobileDistance).toBeGreaterThan(fartherFromTarget.mobileDistance);
+});
+
 it("caps every plotted metric at its target while keeping the real values visible", () => {
   const html = renderToStaticMarkup(<ObservatoryRadar data={{
     ...data,
