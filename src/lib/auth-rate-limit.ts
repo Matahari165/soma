@@ -23,3 +23,15 @@ export async function allowAuthAttempt(request: Request, email: string): Promise
 }
 
 export const AUTH_RETRY_AFTER_SECONDS = 15 * 60;
+
+/** A separate, tighter shared quota protects the email delivery path. */
+export async function allowRecoveryAttempt(request: Request, email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  const accountAllowed = await consumeAuthAttempt(`recovery:account:${hashed(normalized)}`, 3, 60 * 60_000);
+  const verifiedIp = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+  if (!verifiedIp) return accountAllowed;
+  const ipAllowed = await consumeAuthAttempt(`recovery:ip:${hashed(verifiedIp)}`, 20, 60 * 60_000);
+  return accountAllowed && ipAllowed;
+}
+
+export const RECOVERY_RETRY_AFTER_SECONDS = 60 * 60;

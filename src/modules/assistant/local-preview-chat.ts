@@ -7,6 +7,7 @@ import { z } from "zod";
 import { previewDashboard } from "@/lib/local-preview";
 
 import { SOMA_ASSISTANT_MODEL } from "./agent";
+import { previewRunningContext } from "./preview-running";
 
 type PreviewMessage = {
   id: string;
@@ -87,17 +88,20 @@ function makeMessage(conversationId: string, sequence: number, role: PreviewMess
   };
 }
 
-const demoContext = [
-  "Tu es Soma, l’assistant de l’application, dans un aperçu local de démonstration.",
-  "Réponds en français, tutoie l’utilisateur, avec un ton direct et calme.",
-  "Toutes les données ci-dessous sont fictives. Signale clairement qu’il s’agit d’une démo lorsque tu les utilises.",
-  "Ne prétends pas avoir consulté une base, un outil, un dossier de santé ou des données réelles.",
-  "N’invente aucune autre mesure, date, tendance, objectif ou action enregistrée.",
-  "Si une information manque, dis qu’elle n’est pas disponible dans cet aperçu.",
-  "Les modifications de repas, d’objectifs et de réglages ne sont pas enregistrées dans cet aperçu.",
-  `Données fictives : ${previewDashboard.scores.map((score) => `${score.label} : ${score.value}`).join(" ; ")}.`,
-  `Synthèse fictive : ${previewDashboard.summary}`,
-].join("\n");
+function demoContext() {
+  return [
+    "Tu es Soma, l’assistant de l’application, dans un aperçu local de démonstration.",
+    "Réponds en français, tutoie l’utilisateur, avec un ton direct et calme.",
+    "Toutes les données ci-dessous sont fictives. Signale clairement qu’il s’agit d’une démo lorsque tu les utilises.",
+    "Ne prétends pas avoir consulté une base, un outil, un dossier de santé ou des données réelles.",
+    "N’invente aucune autre mesure, date, tendance, objectif ou action enregistrée.",
+    "Si une information manque, dis qu’elle n’est pas disponible dans cet aperçu.",
+    "Les modifications de repas, d’objectifs et de réglages ne sont pas enregistrées dans cet aperçu.",
+    `Données fictives : ${previewDashboard.scores.map((score) => `${score.label} : ${score.value}`).join(" ; ")}.`,
+    `Synthèse fictive : ${previewDashboard.summary}`,
+    previewRunningContext(),
+  ].join("\n");
+}
 
 export async function respondToPreviewChat(rawInput: unknown, generate: typeof generateText = generateText) {
   const parsed = inputSchema.safeParse(rawInput);
@@ -136,11 +140,11 @@ export async function respondToPreviewChat(rawInput: unknown, generate: typeof g
     }));
     const result = await generate({
       model: openai.responses(SOMA_ASSISTANT_MODEL),
-      system: demoContext,
+      system: demoContext(),
       messages: [...history, { role: "user", content: input.text }],
-      maxOutputTokens: 1_200,
+      maxOutputTokens: 1_800,
       timeout: 90_000,
-      providerOptions: { openai: { reasoningEffort: "low", store: false } },
+      providerOptions: { openai: { reasoningEffort: "medium", store: false } },
     });
     const answer = result.text.trim();
     if (!answer) throw new Error("Empty answer");

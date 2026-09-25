@@ -1,11 +1,11 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
-import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
 import { AssistantDictation } from "./assistant-dictation";
-import { AssistantLiveVoice } from "./assistant-live-voice";
+import { AssistantLiveVoice, type LiveVoicePresentation } from "./assistant-live-voice";
 
 type Conversation = {
   id: string;
@@ -179,12 +179,16 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [sending, setSending] = useState(false);
   const [dictationBusy, setDictationBusy] = useState(false);
   const [liveVoiceBusy, setLiveVoiceBusy] = useState(false);
+  const [voicePresentation, setVoicePresentation] = useState<LiveVoicePresentation | null>(null);
+  const [voiceLatestMessage, setVoiceLatestMessage] = useState<Message | null>(null);
+  const handleVoicePresentationChange = useCallback((presentation: LiveVoicePresentation | null) => setVoicePresentation(presentation), []);
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [revealedEditMessageId, setRevealedEditMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [showLatest, setShowLatest] = useState(false);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
@@ -193,6 +197,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const preEditDraftRef = useRef("");
+  const longPressRef = useRef<{ timer: number; pointerId: number; x: number; y: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
@@ -202,6 +207,42 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const activeIdRef = useRef(activeId);
   const sendMessageRef = useRef<(event?: FormEvent, overrideText?: string) => Promise<void>>(async () => {});
   activeIdRef.current = activeId;
+
+  function cancelLongPress() {
+    if (!longPressRef.current) return;
+    window.clearTimeout(longPressRef.current.timer);
+    longPressRef.current = null;
+  }
+
+  function startLongPress(event: ReactPointerEvent<HTMLDivElement>, messageId: string) {
+    if (event.pointerType !== "touch" || sending) return;
+    cancelLongPress();
+    const timer = window.setTimeout(() => {
+      longPressRef.current = null;
+      setRevealedEditMessageId(messageId);
+    }, 500);
+    longPressRef.current = { timer, pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+  }
+
+  function moveLongPress(event: ReactPointerEvent<HTMLDivElement>) {
+    const press = longPressRef.current;
+    if (press?.pointerId === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cancelLongPress();
+  }
+
+  useEffect(() => () => {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer);
+  }, []);
+
+  useEffect(() => {
+    if (!revealedEditMessageId) return;
+    const hideOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-edit-message-id]")?.getAttribute("data-edit-message-id") === revealedEditMessageId) return;
+      setRevealedEditMessageId(null);
+    };
+    document.addEventListener("pointerdown", hideOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", hideOnOutsidePress);
+  }, [revealedEditMessageId]);
 
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
@@ -273,6 +314,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }, []);
 
   const activateVoiceConversation = useCallback(async (conversationId: string) => {
+    setVoiceLatestMessage(null);
     activeIdRef.current = conversationId;
     setActiveId(conversationId);
     setLoadingConversation(true);
@@ -293,7 +335,11 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const refreshVoiceConversation = useCallback(async (conversationId: string) => {
     try {
       const payload = await readJson(await fetch(`/api/assistant/conversations?conversationId=${encodeURIComponent(conversationId)}`, { cache: "no-store" }));
-      if (activeIdRef.current === conversationId && Array.isArray(payload?.messages)) setMessages(payload.messages);
+      if (activeIdRef.current === conversationId && Array.isArray(payload?.messages)) {
+        const updatedMessages = payload.messages as Message[];
+        setMessages(updatedMessages);
+        setVoiceLatestMessage(updatedMessages.findLast((message) => message.role === "assistant" && message.status === "completed") ?? null);
+      }
       await loadConversations();
     } catch (loadError) {
       if (activeIdRef.current === conversationId) setError(loadError instanceof Error ? loadError.message : "La réponse vocale n’a pas pu être rechargée.");
@@ -365,6 +411,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     if (id === activeId && messages.length) return;
     setActiveId(id);
     setEditingMessageId(null);
+    setRevealedEditMessageId(null);
     preEditDraftRef.current = "";
     setOpenMenuId(null);
     setProgressiveMessageId(null);
@@ -399,6 +446,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setError(null);
     setHistoryOpen(false);
     setEditingMessageId(null);
+    setRevealedEditMessageId(null);
     setEditingDraft("");
     preEditDraftRef.current = "";
     setOpenMenuId(null);
@@ -570,6 +618,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     if (!value || sending) return;
     preEditDraftRef.current = text;
     setEditingMessageId(message.id);
+    setRevealedEditMessageId(null);
     setEditingDraft(value);
     setError(null);
     requestAnimationFrame(() => editTextareaRef.current?.focus());
@@ -594,7 +643,6 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     <main id="main-page-content" className={styles.page} lang="fr">
       <header className={styles.mobileToolbar}>
         <button ref={historyTriggerRef} type="button" onClick={() => setHistoryOpen(true)} aria-label="Ouvrir les conversations" aria-controls="assistant-conversations" aria-expanded={historyOpen}><Menu size={20} aria-hidden="true" /></button>
-        <span>Soma</span>
         <button type="button" onClick={startConversation} aria-label="Nouvelle conversation"><Plus size={20} aria-hidden="true" /></button>
       </header>
 
@@ -623,13 +671,23 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
       </aside>
 
       <section className={styles.conversation} aria-label="Conversation avec Soma">
-        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions" aria-busy={loadingConversation || sending} onScroll={(event) => {
+        <div ref={transcriptRef} className={`${styles.transcript} ${empty ? styles.transcriptEmpty : ""}`} role="log" aria-label="Conversation" aria-live={voicePresentation ? "off" : "polite"} aria-relevant="additions" aria-busy={loadingConversation || sending} onScroll={(event) => {
           const element = event.currentTarget;
           const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
           followConversationRef.current = distance < 80;
           setShowLatest(distance > 240);
         }}>
-          {loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
+          {voicePresentation ? <section className={styles.voiceStage} aria-label="Conversation vocale en cours">
+            <div className={styles.voiceStageContent}>
+              {previewMode && <p className={styles.voicePreviewNotice}>Aperçu local · données de démonstration. Les données personnelles ne sont pas disponibles ici.</p>}
+              <p className={styles.voiceStageStatus} role="status">{voicePresentation.phase === "requesting" ? "Autorisation du microphone…" : voicePresentation.phase === "connecting" ? "Connexion vocale…" : voicePresentation.phase === "closing" ? "Fermeture de la session…" : voicePresentation.muted ? "Micro coupé" : voicePresentation.assistantCaption ? "Soma répond" : "À ton écoute"}</p>
+              {voicePresentation.error && <p className={styles.voiceStageError} role="alert">{voicePresentation.error}</p>}
+              {voicePresentation.userCaption && <div className={styles.voiceTurn}><span>Vous</span><p>{voicePresentation.userCaption}</p></div>}
+              {voiceLatestMessage ? <div className={styles.voiceAnswer}><span>Dernière réponse complète</span><div className={styles.messageBody}><MessageBody message={voiceLatestMessage} /></div></div>
+                : voicePresentation.assistantCaption && <div className={styles.voiceTurn}><span>Soma</span><p>{voicePresentation.assistantCaption}</p></div>}
+              {!voicePresentation.userCaption && !voicePresentation.assistantCaption && !voiceLatestMessage && voicePresentation.phase === "active" && <p className={styles.voicePrompt}>Parle à Soma.</p>}
+            </div>
+          </section> : loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
             <div className={styles.loadingState} role="status"><span /><span /><span /><p>Préparation de votre espace…</p></div>
           ) : empty && starterState === "calibration" ? (
             <div className={styles.welcome}>
@@ -654,7 +712,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           ) : (
             <ol className={styles.messages}>
               {messages.filter((message) => message.role !== "tool").map((message) => (
-                <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
+                <li key={message.id} data-edit-message-id={message.role === "user" ? message.id : undefined} data-edit-revealed={revealedEditMessageId === message.id || undefined} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
                   <span className={styles.srOnly}>{message.role === "user" ? "Votre message" : "Réponse de Soma"}</span>
                   {editingMessageId === message.id ? <div className={styles.inlineEditor}>
                     <label className={styles.srOnly} htmlFor={`edit-${message.id}`}>Modifier le message</label>
@@ -663,7 +721,12 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
                       if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void sendMessage(undefined, editingDraft);
                     }} disabled={sending} />
                     <div className={styles.inlineEditorActions}><button type="button" onClick={cancelEditing} disabled={sending}>Annuler</button><button type="button" onClick={() => void sendMessage(undefined, editingDraft)} disabled={sending || !editingDraft.trim()}><Check size={15} aria-hidden="true" /> Enregistrer et envoyer</button></div>
-                  </div> : <div className={styles.messageBody}><MessageBody message={message} /></div>}
+                  </div> : <div className={styles.messageBody} onPointerDown={message.role === "user" && message.status !== "pending" ? (event) => startLongPress(event, message.id) : undefined} onPointerMove={message.role === "user" ? moveLongPress : undefined} onPointerUp={message.role === "user" ? cancelLongPress : undefined} onPointerCancel={message.role === "user" ? cancelLongPress : undefined} onContextMenu={message.role === "user" ? (event) => {
+                    if (!window.matchMedia?.("(pointer: coarse)").matches) return;
+                    event.preventDefault();
+                    cancelLongPress();
+                    setRevealedEditMessageId(message.id);
+                  } : undefined}><MessageBody message={message} /></div>}
                   {message.role === "user" && message.status !== "pending" && editingMessageId !== message.id && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
@@ -673,7 +736,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           )}
         </div>
 
-        {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> Dernier message</button>}
+        {showLatest && !empty && !voicePresentation && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> Dernier message</button>}
 
         <div className={styles.composerRegion}>
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
@@ -712,6 +775,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
                 onBusyChange={setLiveVoiceBusy}
                 onConversationStarted={(conversationId) => void activateVoiceConversation(conversationId)}
                 onConversationUpdated={(conversationId) => void refreshVoiceConversation(conversationId)}
+                onPresentationChange={handleVoicePresentationChange}
               />
               <button type="submit" className={styles.sendButton} disabled={sending || liveVoiceBusy || dictationBusy || notConfigured || Boolean(editingMessageId) || (!text.trim() && !photos.length)} aria-label="Envoyer le message"><ArrowUp size={18} strokeWidth={2.3} aria-hidden="true" /></button>
             </div>

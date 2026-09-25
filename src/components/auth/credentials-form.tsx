@@ -1,25 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 export function CredentialsForm({ next }: { next?: string | null }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "recover">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [recoveryRequested, setRecoveryRequested] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setRecoveryRequested(false);
     setLoading(true);
 
-    const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-    const payload = mode === "login"
+    const endpoint = mode === "login" ? "/api/auth/login" : mode === "register" ? "/api/auth/register" : "/api/auth/password-recovery/request";
+    const payload = mode === "recover" ? { email } : mode === "login"
       ? { email, password }
       : { email, password, displayName: displayName.trim() || undefined };
 
@@ -33,16 +36,24 @@ export function CredentialsForm({ next }: { next?: string | null }) {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setError(data.error || (mode === "login" ? "Invalid email or password." : "Failed to create account."));
+        setError(data.error || (mode === "login" ? "Invalid email or password." : mode === "register" ? "Failed to create account." : "Could not request a recovery link."));
         setLoading(false);
         return;
       }
 
       if (mode === "register") {
-        // SaaS transition: show clear feedback, switch to login tab, prefill email
         setMode("login");
         setPassword("");
-        setSuccessMessage("If the address can be used, you can now sign in with your password.");
+        setSuccessMessage("If this address is new, your account is ready. An existing account keeps its original password; use recovery if needed.");
+        setLoading(false);
+        return;
+      }
+
+      if (mode === "recover") {
+        setMode("login");
+        setPassword("");
+        setSuccessMessage("If this address has a Soma password, check its inbox for a recovery link.");
+        setRecoveryRequested(true);
         setLoading(false);
         return;
       }
@@ -58,7 +69,11 @@ export function CredentialsForm({ next }: { next?: string | null }) {
 
   return (
     <div className="auth-credentials">
-      <div className="auth-tabs" role="tablist" aria-label="Authentication modes">
+      {mode === "recover" ? (
+        <button type="button" className="auth-text-action auth-text-action--back" onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}>
+          Back to sign in
+        </button>
+      ) : <div className="auth-tabs" role="tablist" aria-label="Authentication modes">
         <button
           type="button"
           role="tab"
@@ -77,13 +92,21 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         >
           Create account
         </button>
-      </div>
+      </div>}
 
       <form className="auth-credentials-form" onSubmit={handleSubmit}>
+        {mode === "recover" && <p className="auth-recovery-copy">Enter your account address. We’ll send a link to set a new password.</p>}
         {successMessage && (
           <div className="auth-success-banner" role="status">
             <CheckCircle2 size={16} aria-hidden="true" />
-            <span>{successMessage}</span>
+            <span>
+              {successMessage}
+              {recoveryRequested && (
+                <Link className="auth-recovery-help-link" href="/login?reset=1">
+                  Link opened on localhost? Continue in Soma.
+                </Link>
+              )}
+            </span>
           </div>
         )}
         {mode === "register" && (
@@ -115,7 +138,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
           />
         </div>
 
-        <div className="field">
+        {mode !== "recover" && <div className="field">
           <label htmlFor="auth-password">Password</label>
           <input
             id="auth-password"
@@ -129,7 +152,13 @@ export function CredentialsForm({ next }: { next?: string | null }) {
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
           />
-        </div>
+        </div>}
+
+        {mode === "login" && (
+          <button type="button" className="auth-text-action auth-forgot-password" onClick={() => { setMode("recover"); setError(null); setSuccessMessage(null); }}>
+            Forgot password?
+          </button>
+        )}
 
         {error && (
           <p className="form-error auth-error" role="alert">
@@ -145,10 +174,10 @@ export function CredentialsForm({ next }: { next?: string | null }) {
           {loading ? (
             <span className="auth-loading-spinner">
               <Loader2 className="spin" size={16} aria-hidden="true" />
-              {mode === "login" ? "Signing in…" : "Creating account…"}
+              {mode === "login" ? "Signing in…" : mode === "register" ? "Creating account…" : "Sending link…"}
             </span>
           ) : (
-            mode === "login" ? "Sign in" : "Create account"
+            mode === "login" ? "Sign in" : mode === "register" ? "Create account" : "Send recovery link"
           )}
         </button>
       </form>

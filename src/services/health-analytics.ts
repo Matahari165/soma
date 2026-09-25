@@ -6,6 +6,7 @@ import { createCloudflareServerClient } from "@/lib/cloudflare/server";
 import { calculateEffortScoreFromAvailable, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
+import { summarizePersonalLabActivities, type PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export type HealthMetricDay = {
@@ -640,6 +641,30 @@ export async function allImportedExercises(userId: string): Promise<ExerciseSumm
     const page = (data ?? []).map(exerciseSummaryFromRecord);
     records.push(...page);
     if (page.length < pageSize) return records;
+  }
+}
+
+export async function getPersonalLabActivitySummaries(userId: string, startDate: string, endDate: string): Promise<PersonalLabActivitySummary[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) return [];
+
+  if (isLocalPreviewMode()) {
+    return summarizePersonalLabActivities(buildPreviewAnalytics().exercises.filter((exercise) => exercise.date >= startDate && exercise.date <= endDate));
+  }
+
+  const admin = createCloudflareAdminClient();
+  const pageSize = 500;
+  const exercises: ExerciseSummary[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await admin.from("health_records")
+      .select("source_record_id,civil_date,start_time,end_time,payload")
+      .eq("user_id", userId).eq("data_type", "exercise")
+      .gte("civil_date", startDate).lte("civil_date", endDate)
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Exercise history could not be loaded.");
+    const page = (data ?? []).map(exerciseSummaryFromRecord);
+    exercises.push(...page);
+    if (page.length < pageSize) return summarizePersonalLabActivities(exercises);
   }
 }
 

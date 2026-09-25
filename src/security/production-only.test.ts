@@ -39,7 +39,7 @@ describe("production-only application contract", () => {
     const loginPage = readFileSync(`${sourceRoot}/app/login/page.tsx`, "utf8");
     expect(proxySource).not.toContain('hasSessionCookie && request.nextUrl.pathname === "/login"');
     expect(loginPage).toContain("await Promise.all([searchParams, getCurrentUser()])");
-    expect(loginPage).toContain('if (user) redirect("/")');
+    expect(loginPage).toContain('if (user && !reset) redirect("/")');
   });
 
   it("keeps the authenticated home on the dark observatory workspace", () => {

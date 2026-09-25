@@ -12,6 +12,8 @@ describe("assistant quality policy", () => {
   it("routes images and comparisons to balanced quality", () => {
     expect(classifyAssistantQuality({ text: "Que vois-tu ?", attachmentCount: 1 })).toBe("balanced");
     expect(classifyAssistantQuality({ text: "Compare mes deux dernières semaines." })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Qu’est-ce que tu penses de mes données de course sur les trois dernières semaines ?" })).toBe("balanced");
+    expect(classifyAssistantQuality({ text: "Analyse mes séances de course des 3 dernières semaines." })).toBe("balanced");
   });
   it("routes plans and explicit deep analysis to deep quality", () => {
     expect(classifyAssistantQuality({ text: "Fais-moi un plan pour courir 30 kilomètres." })).toBe("deep");

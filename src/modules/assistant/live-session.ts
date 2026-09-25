@@ -22,7 +22,7 @@ const liveInstructions = [
   "Interruption policy: Si l’utilisateur t’interrompt, arrête de parler et écoute. Une correction met à jour la demande en cours.",
   "Delegation policy:",
   "Backend tools:",
-  "- Données personnelles Soma : consulter les mesures de santé, repas, sommeil, récupération, effort, activités, objectifs et plans.",
+  "- Données personnelles Soma : consulter les mesures de santé, repas, sommeil, récupération, effort, activités, séances de musculation enregistrées, objectifs et plans.",
   "- Analyse et coaching : comparer les données, expliquer les tendances, préparer des entraînements et proposer des objectifs chiffrés.",
   "- Actions Soma : créer ou modifier les éléments pris en charge par le backend, selon les validations qu’il demande.",
   "Delegate to the backend when:",
@@ -160,6 +160,9 @@ export async function createAssistantLiveSession(
   if (!parsed.success) throw new AssistantLiveError("assistant_live_invalid_request", 400, "La demande de session vocale est invalide.");
 
   const apiKey = liveApiKey();
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    throw new AssistantLiveError("assistant_live_not_configured", 503, "L’assistant Soma n’est pas configuré sur ce serveur. Ajoute sa clé OpenAI avant de démarrer le mode vocal.");
+  }
   const now = options.now?.() ?? Date.now();
   let conversationId = parsed.data.conversationId;
 

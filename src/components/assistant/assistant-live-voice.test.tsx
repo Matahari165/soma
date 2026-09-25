@@ -72,6 +72,7 @@ it("connects the microphone through Soma, returns Luna's result to the Live dele
   const onBusyChange = vi.fn();
   const onConversationStarted = vi.fn();
   const onConversationUpdated = vi.fn();
+  const onPresentationChange = vi.fn();
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -83,6 +84,7 @@ it("connects the microphone through Soma, returns Luna's result to the Live dele
       onBusyChange={onBusyChange}
       onConversationStarted={onConversationStarted}
       onConversationUpdated={onConversationUpdated}
+      onPresentationChange={onPresentationChange}
     />,
   ));
   await act(async () => {
@@ -108,6 +110,11 @@ it("connects the microphone through Soma, returns Luna's result to the Live dele
     delegationId: "delegation-1",
     transcript: "Analyse mon sommeil, s’il te plaît.",
   });
+  expect(onPresentationChange).toHaveBeenCalledWith(expect.objectContaining({
+    phase: "active",
+    userCaption: "Analyse mon sommeil, s’il te plaît.",
+  }));
+  expect(container.querySelector('[aria-label="Dernières paroles transcrites"]')).toBeNull();
   const commentaryChunks = latestChannel?.sent
     .filter((event) => event.type === "session.commentary.append")
     .map((event) => String(event.content));

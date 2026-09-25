@@ -3447,7 +3447,7 @@
 /* /meals follows the same quiet, line-led date rail as the Personal Lab.
    Keep the structure and interaction contract identical without widening the
    global selector outside this route. */
-:global(.meals-page) .labRoot .personal-lab-day-strip {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip) {
   display: block;
   min-height: 44px;
   height: auto;
@@ -3459,7 +3459,7 @@
   box-shadow: none;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) {
   display: flex;
   width: 100%;
   max-width: none;
@@ -3474,7 +3474,7 @@
   box-shadow: none;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button {
   display: flex;
   min-width: 0;
   min-height: 44px;
@@ -3492,7 +3492,7 @@
   text-align: center;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button > :is(span:not(.sr-only), small) {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button > :is(span:not(.sr-only), small) {
   display: block;
   max-width: 100%;
   overflow: hidden;
@@ -3500,28 +3500,28 @@
   white-space: nowrap;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button > small {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button > small {
   color: inherit;
   font: 400 12px/1.15 var(--font-soma-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button:is(:hover, :focus-visible) {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button:is(:hover, :focus-visible) {
   background: rgba(238, 238, 238, .045);
   color: #f1f1f1;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button[aria-current="date"] {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button[aria-current="date"] {
   background: rgba(238, 238, 238, .07);
   box-shadow: inset 0 -1px #eee;
   color: #f1f1f1;
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button[aria-current="date"] small {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button[aria-current="date"] small {
   color: rgba(241, 241, 241, .78);
 }
 
-:global(.meals-page) .labRoot .personal-lab-day-strip__days > button:focus-visible {
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip__days) > button:focus-visible {
   outline: 2px solid #ddd;
   outline-offset: 3px;
 }
@@ -3592,6 +3592,16 @@
 }
 
 @media (max-width: 700px) {
+  :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] {
+    background: #222;
+    color: #f1f1f1;
+    box-shadow: inset 0 -1px #eee;
+  }
+
+  :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] span {
+    color: #f1f1f1;
+  }
+
   :global(.meals-page) .labRoot .personal-lab-day-strip__days {
     overflow-x: auto;
     scrollbar-width: none;
@@ -4329,4 +4339,26 @@
   :global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary > svg {
     transition: none;
   }
+}
+
+/* Match the Personal Lab date rail while keeping the meal summaries compact. */
+:global(.meals-page) .labRoot :global(.personal-lab-day-strip) > div {
+  max-width: none;
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList {
+  gap: 12px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList > .mealCard {
+  min-height: 0;
+  align-content: start;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot > .mealList > .mealCard > p {
+  margin: 0;
 }
