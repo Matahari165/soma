@@ -16,12 +16,27 @@ it("shows the four home measures with their current values", () => {
   expect(html).toContain("Effort");
   expect(html).toContain("Calories");
   expect(html).toContain("50 % de l’objectif");
-  expect(html).toMatch(/data-ring-value="sleep"[^>]*>8h09<\/text>/);
-  expect(html).toMatch(/data-ring-value="recovery"[^>]*>59<\/text>/);
-  expect(html).toMatch(/data-ring-value="effort"[^>]*>4\.0<\/text>/);
-  expect(html).toMatch(/data-ring-value="calories"[^>]*>1200<\/text>/);
+  expect(html).toMatch(/data-ring-value="sleep"[^>]*><textPath[^>]*>8h09<\/textPath><\/text>/);
+  expect(html).toMatch(/data-ring-value="recovery"[^>]*><textPath[^>]*>59<\/textPath><\/text>/);
+  expect(html).toMatch(/data-ring-value="effort"[^>]*><textPath[^>]*>4\.0<\/textPath><\/text>/);
+  expect(html).toMatch(/data-ring-value="calories"[^>]*><textPath[^>]*>1200<\/textPath><\/text>/);
   expect((html.match(/stroke-dasharray="/g) ?? []).length).toBe(4);
   expect(html).not.toContain("<figcaption");
+});
+
+it("shows a visible second lap after a goal is exceeded", () => {
+  const html = renderToStaticMarkup(<ObservatoryRings data={{
+    sleepMinutes: 1020,
+    recoveryScore: 125,
+    effortScore: 0,
+    caloriesKcal: 0,
+    calorieTarget: 2400,
+  }} />);
+  expect(html).toContain("200 % de l’objectif");
+  expect(html).toContain("125 % de l’objectif");
+  expect(html).toContain('data-ring="sleep" data-turns="2"');
+  expect(html).toContain('data-lap-end="sleep"');
+  expect(html).toContain('stroke-dasharray="25 100"');
 });
 
 it("leaves missing measurements and a missing calorie goal unfilled", () => {
