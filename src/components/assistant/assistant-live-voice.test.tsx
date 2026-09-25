@@ -48,12 +48,25 @@ class TestPeerConnection {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  Object.defineProperty(navigator, "vibrate", { configurable: true, value: undefined });
   document.body.innerHTML = "";
   latestChannel = null;
   latestPeerClose = null;
 });
 
 it("connects the microphone through Soma, returns Luna's result to the Live delegation, and closes cleanly", async () => {
+  const vibrate = vi.fn();
+  Object.defineProperty(navigator, "vibrate", { configurable: true, value: vibrate });
+  const noteStarts = vi.fn();
+  vi.stubGlobal("AudioContext", class {
+    state = "running";
+    currentTime = 0;
+    destination = {};
+    resume = vi.fn(async () => {});
+    close = vi.fn(async () => {});
+    createOscillator = () => ({ type: "sine", frequency: { value: 0 }, connect: () => ({ connect: () => undefined }), start: noteStarts, stop: vi.fn() });
+    createGain = () => ({ gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() }, connect: () => undefined });
+  });
   const stopTrack = vi.fn();
   const audioTrack = { enabled: true, readyState: "live" as MediaStreamTrackState, stop: stopTrack };
   stopTrack.mockImplementation(() => { audioTrack.readyState = "ended"; });
@@ -95,6 +108,9 @@ it("connects the microphone through Soma, returns Luna's result to the Live dele
   expect(onConversationStarted).toHaveBeenCalledWith("conversation-1");
   await vi.waitFor(() => expect(container.querySelector('[data-live-phase="active"]')).not.toBeNull());
   expect(latestChannel).not.toBeNull();
+  expect(vibrate).toHaveBeenCalledWith(18);
+  expect(noteStarts).toHaveBeenCalledTimes(2);
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Terminer le mode vocal");
 
   await act(async () => {
     latestChannel?.emit({ type: "session.input_transcript.delta", delta: "Analyse mon sommeil, ", start_ms: 0, end_ms: 1_200 });
@@ -126,10 +142,13 @@ it("connects the microphone through Soma, returns Luna's result to the Live dele
   await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Terminer le mode vocal"]')?.click());
   expect(latestChannel?.sent).toContainEqual(expect.objectContaining({ type: "session.close" }));
   expect(stopTrack).toHaveBeenCalledOnce();
+  expect(vibrate).toHaveBeenLastCalledWith(12);
+  expect(noteStarts).toHaveBeenCalledTimes(4);
   expect(latestChannel?.close).not.toHaveBeenCalled();
   await act(async () => latestChannel?.emit({ type: "session.closed", reason: "close_requested", usage: { seconds: 5 } }));
   expect(stopTrack).toHaveBeenCalledOnce();
   expect(container.querySelector('[data-live-phase="idle"]')).not.toBeNull();
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Démarrer le mode vocal");
   expect(onBusyChange).toHaveBeenLastCalledWith(false);
   await act(async () => root.unmount());
 });

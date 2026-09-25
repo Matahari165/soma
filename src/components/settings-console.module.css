@@ -1,4 +1,19 @@
+.chartPresentation { display: grid; gap: 12px; margin: 0; padding: 0; border: 0; }
+.chartPresentation legend { padding: 0; color: var(--lab-text-primary, #f1f1f1); font-size: 14px; font-weight: 500; }
+.chartPresentationOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.chartPresentationOption { display: flex; align-items: flex-start; gap: 12px; min-height: 72px; padding: 12px; border: 1px solid var(--lab-border, #292929); border-radius: 4px; background: transparent; color: var(--lab-text-primary, #f1f1f1); cursor: pointer; }
+.chartPresentationOption[data-selected="true"] { border-color: var(--lab-border-strong, #3a3a3a); background: var(--lab-surface-subtle, #0c0c0c); }
+.chartPresentationOption:focus-within { outline: 2px solid var(--lab-text-primary, #f1f1f1); outline-offset: 2px; }
+.chartPresentationOption input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--lab-brand, #eeeeee); }
+.chartPresentationOption span { display: grid; gap: 4px; min-width: 0; }
+.chartPresentationOption strong { font-size: 14px; font-weight: 500; }
+.chartPresentationOption small { color: var(--lab-text-secondary, #aaaaaa); font-size: 14px; line-height: 1.4; }
+
 @media (max-width: 700px) {
+  .chartPresentationOptions { grid-template-columns: 1fr; }
+  .chartPresentationOption { min-height: 64px; }
+  .page :global(.settings-layout > nav) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
   :global(html[data-lab-theme="observatory"]) .page :global(.settings-layout) {
     min-width: 0;
     gap: 20px;
@@ -7,7 +22,7 @@
 
   :global(html[data-lab-theme="observatory"]) .page :global(.settings-layout > nav) {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
     overflow: visible;
   }

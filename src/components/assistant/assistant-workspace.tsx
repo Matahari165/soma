@@ -181,7 +181,14 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [liveVoiceBusy, setLiveVoiceBusy] = useState(false);
   const [voicePresentation, setVoicePresentation] = useState<LiveVoicePresentation | null>(null);
   const [voiceLatestMessage, setVoiceLatestMessage] = useState<Message | null>(null);
-  const handleVoicePresentationChange = useCallback((presentation: LiveVoicePresentation | null) => setVoicePresentation(presentation), []);
+  const handleVoicePresentationChange = useCallback((presentation: LiveVoicePresentation | null) => {
+    if (presentation?.phase === "requesting") {
+      followConversationRef.current = true;
+      setShowLatest(false);
+    }
+    if (presentation?.turnState === "hearing" && !presentation.assistantCaption) setVoiceLatestMessage(null);
+    setVoicePresentation(presentation);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -407,6 +414,11 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     const frame = window.requestAnimationFrame(scrollToLatest);
     return () => window.cancelAnimationFrame(frame);
   }, [messages, sending, scrollToLatest]);
+  useEffect(() => {
+    if (!voicePresentation) return;
+    const frame = window.requestAnimationFrame(scrollToLatest);
+    return () => window.cancelAnimationFrame(frame);
+  }, [voicePresentation, voiceLatestMessage, scrollToLatest]);
   async function openConversation(id: string) {
     if (id === activeId && messages.length) return;
     setActiveId(id);
@@ -638,6 +650,10 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }
 
   const empty = !loadingConversation && messages.length === 0;
+  const voiceMessages = messages.filter((message) => message.role === "user" || message.role === "assistant");
+  const currentAnswerIndex = voiceLatestMessage ? voiceMessages.findIndex((message) => message.id === voiceLatestMessage.id) : -1;
+  const currentQuestionIndex = currentAnswerIndex < 0 ? -1 : voiceMessages.findLastIndex((message, index) => index < currentAnswerIndex && message.role === "user");
+  const voiceHistoryMessages = currentAnswerIndex < 0 ? voiceMessages : voiceMessages.slice(0, currentQuestionIndex < 0 ? currentAnswerIndex : currentQuestionIndex);
 
   return (
     <main id="main-page-content" className={styles.page} lang="fr">
@@ -680,12 +696,20 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           {voicePresentation ? <section className={styles.voiceStage} aria-label="Conversation vocale en cours">
             <div className={styles.voiceStageContent}>
               {previewMode && <p className={styles.voicePreviewNotice}>Aperçu local · données de démonstration. Les données personnelles ne sont pas disponibles ici.</p>}
-              <p className={styles.voiceStageStatus} role="status">{voicePresentation.phase === "requesting" ? "Autorisation du microphone…" : voicePresentation.phase === "connecting" ? "Connexion vocale…" : voicePresentation.phase === "closing" ? "Fermeture de la session…" : voicePresentation.muted ? "Micro coupé" : voicePresentation.assistantCaption ? "Soma répond" : "À ton écoute"}</p>
-              {voicePresentation.error && <p className={styles.voiceStageError} role="alert">{voicePresentation.error}</p>}
-              {voicePresentation.userCaption && <div className={styles.voiceTurn}><span>Vous</span><p>{voicePresentation.userCaption}</p></div>}
-              {voiceLatestMessage ? <div className={styles.voiceAnswer}><span>Dernière réponse complète</span><div className={styles.messageBody}><MessageBody message={voiceLatestMessage} /></div></div>
-                : voicePresentation.assistantCaption && <div className={styles.voiceTurn}><span>Soma</span><p>{voicePresentation.assistantCaption}</p></div>}
-              {!voicePresentation.userCaption && !voicePresentation.assistantCaption && !voiceLatestMessage && voicePresentation.phase === "active" && <p className={styles.voicePrompt}>Parle à Soma.</p>}
+              {voiceHistoryMessages.length > 0 && <ol className={styles.voiceHistory} aria-label="Échanges précédents">
+                {voiceHistoryMessages.map((message) => <li key={message.id}><span>{message.role === "user" ? "Toi" : "Soma"}</span><div className={styles.messageBody}><MessageBody message={message} /></div></li>)}
+              </ol>}
+              <div className={styles.voiceCurrent}>
+                <p className={styles.voiceStageStatus} data-turn-state={voicePresentation.turnState}>
+                  <span className={styles.voiceStatusMark} aria-hidden="true" />
+                  {voicePresentation.phase === "requesting" ? "Accès au micro…" : voicePresentation.phase === "connecting" ? "Connexion à Soma…" : voicePresentation.phase === "closing" ? "Fermeture…" : voicePresentation.muted ? "Micro coupé" : voicePresentation.turnState === "thinking" ? "Soma réfléchit…" : voicePresentation.turnState === "speaking" ? "Soma répond" : voicePresentation.turnState === "hearing" ? "Je t'écoute" : "À ton écoute"}
+                </p>
+                {voicePresentation.error && <p className={styles.voiceStageError} role="alert">{voicePresentation.error}</p>}
+                {voicePresentation.userCaption && <div className={styles.voiceTurn}><span>Toi</span><p>{voicePresentation.userCaption}</p></div>}
+                {voiceLatestMessage ? <div className={styles.voiceAnswer}><span>Soma</span><div className={styles.messageBody}><MessageBody message={voiceLatestMessage} /></div></div>
+                  : voicePresentation.assistantCaption && <div className={styles.voiceAnswer}><span>Soma</span><p>{voicePresentation.assistantCaption}</p></div>}
+                {!voicePresentation.userCaption && !voicePresentation.assistantCaption && !voiceLatestMessage && voicePresentation.phase === "active" && <p className={styles.voicePrompt}>Parle à Soma.</p>}
+              </div>
             </div>
           </section> : loadingConversation ? <div className={styles.loadingState} role="status"><span /><span /><span /><p>Chargement de la conversation…</p></div> : empty && starterState === "loading" ? (
             <div className={styles.loadingState} role="status"><span /><span /><span /><p>Préparation de votre espace…</p></div>
@@ -736,7 +760,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           )}
         </div>
 
-        {showLatest && !empty && !voicePresentation && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> Dernier message</button>}
+        {showLatest && !empty && <button type="button" className={styles.jumpToLatest} onClick={jumpToLatest}><ArrowDown size={16} aria-hidden="true" /> {voicePresentation ? "Dernier échange" : "Dernier message"}</button>}
 
         <div className={styles.composerRegion}>
           {error && <div className={`${styles.error} ${notConfigured ? styles.configurationError : ""}`} role="alert"><strong>{notConfigured ? "Assistant non configuré" : "Envoi impossible"}</strong><span>{error}</span></div>}
