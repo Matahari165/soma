@@ -878,6 +878,7 @@
   color: var(--lab-text-primary, #f1f1f1);
   font-family: var(--font-soma-ui), sans-serif;
   transition: background 240ms cubic-bezier(.2, .8, .2, 1);
+  animation: mealAnalysisEnter 180ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .analysisScreenTop {
@@ -925,27 +926,134 @@
   font-size: 12px;
 }
 
-.analysisSignal {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  height: 2px;
-  margin: auto 0 13px;
-  margin-top: 18px;
-  background: var(--lab-border, #292929);
+.analysisSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: auto 0 12px;
+  padding: 0;
+  list-style: none;
 }
 
-.analysisSignal span {
-  position: absolute;
-  inset-block: 0;
-  width: 24%;
-  background: var(--lab-text-primary, #f1f1f1);
-  animation: mealAnalysisSignal 4.8s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+.analysisSteps li {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--lab-border, #292929);
+  color: var(--lab-text-secondary, #aaa);
+  font-size: 12px;
+  line-height: 16px;
+  transition: color 420ms cubic-bezier(.2, .8, .2, 1), border-color 420ms cubic-bezier(.2, .8, .2, 1);
 }
 
-@keyframes mealAnalysisSignal {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(295%); }
+.analysisSteps li > span {
+  color: var(--lab-text-secondary, #aaa);
+  font: 11px/14px var(--font-soma-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisSteps li[data-state="complete"] { border-top-color: var(--lab-text-secondary, #aaa); }
+.analysisSteps li[data-state="active"] { border-top-color: var(--lab-brand, #eee); color: var(--lab-text-primary, #f1f1f1); }
+.analysisSteps li[data-state="upcoming"] { color: var(--lab-text-secondary, #aaa); }
+
+.errorState {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--lab-error, #e2b2aa);
+  border-radius: var(--lab-radius-sm, 4px);
+  background: var(--lab-error-soft, #382a28);
+  color: var(--lab-text-primary, #f1f1f1);
+  animation: mealFailureArrival 220ms ease-out both;
+}
+.errorCopy { display: grid; min-width: 0; gap: 4px; }
+.errorCopy strong { color: var(--lab-error, #e2b2aa); font-size: 12px; font-weight: 600; line-height: 16px; }
+.errorCopy span { color: var(--lab-text-primary, #f1f1f1); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.errorActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.confirmError {
+  margin: 10px 0 0;
+  padding: 9px 10px;
+  border: 1px solid var(--lab-error, #e2b2aa);
+  border-radius: var(--lab-radius-sm, 4px);
+  background: var(--lab-error-soft, #382a28);
+  color: var(--lab-text-primary, #f1f1f1);
+  font-size: 12px;
+  line-height: 17px;
+  animation: mealFailureArrival 220ms ease-out both;
+}
+
+@keyframes mealFailureArrival {
+  from { opacity: .5; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.confirmedIndicator {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  color: var(--lab-text-secondary, #aaa);
+  font: 12px/16px var(--font-soma-ui), sans-serif;
+  white-space: nowrap;
+}
+
+.confirmationTickArrival { animation: mealConfirmationTick 420ms cubic-bezier(.16, 1, .3, 1) both; }
+
+.v1FilledActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmationPending {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--lab-border, #292929);
+  color: var(--lab-text-secondary, #aaa);
+  font: 12px/17px var(--font-soma-ui), sans-serif;
+  animation: mealPendingArrival 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes mealPendingArrival {
+  from { opacity: .5; }
+  to { opacity: 1; }
+}
+
+.analysisResultArrival {
+  animation: mealResultArrival 760ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.analysisResultArrival :is(.metricChart > li, .labMealNutrition > span, .personalLabNutrients > div) {
+  animation: mealResultValueArrival 540ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.analysisResultArrival :is(.metricChart > li:nth-child(1), .labMealNutrition > span:nth-child(1), .personalLabNutrients > div:nth-child(1)) { animation-delay: 55ms; }
+.analysisResultArrival :is(.metricChart > li:nth-child(2), .labMealNutrition > span:nth-child(2), .personalLabNutrients > div:nth-child(2)) { animation-delay: 85ms; }
+.analysisResultArrival :is(.metricChart > li:nth-child(3), .labMealNutrition > span:nth-child(3), .personalLabNutrients > div:nth-child(3)) { animation-delay: 115ms; }
+.analysisResultArrival :is(.metricChart > li:nth-child(4), .labMealNutrition > span:nth-child(4), .personalLabNutrients > div:nth-child(4)) { animation-delay: 145ms; }
+.analysisResultArrival :is(.metricChart > li:nth-child(5), .labMealNutrition > span:nth-child(5), .personalLabNutrients > div:nth-child(5)) { animation-delay: 175ms; }
+
+@keyframes mealAnalysisEnter {
+  from { opacity: .55; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mealResultArrival {
+  from { opacity: .25; transform: translateY(12px); clip-path: inset(0 0 12% 0); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(0); filter: blur(0); }
+}
+
+@keyframes mealResultValueArrival {
+  from { opacity: .3; transform: translateY(8px); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes mealConfirmationTick {
+  0% { opacity: .25; transform: scale(.55) rotate(-12deg); }
+  72% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
 }
 
 .analysisScreenTitle {
@@ -970,7 +1078,28 @@
 .analysisCancel:focus-visible { outline: 2px solid var(--lab-brand, #eee); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .analysisSignal span { animation: none; transform: none; width: 100%; }
+  .analysisScreen { animation: mealAnalysisAccessible 160ms ease-out both; }
+  .errorState, .confirmError { animation: mealAnalysisAccessible 160ms ease-out both; }
+  .analysisSteps li { transition: none; }
+  .analysisResultArrival { animation: mealResultAccessible 160ms ease-out both; }
+  .analysisResultArrival :is(.metricChart > li, .labMealNutrition > span, .personalLabNutrients > div) { animation: none; opacity: 1; filter: none; transform: none; }
+  .confirmationTickArrival { animation: mealConfirmationAccessible 160ms ease-out both; }
+  .confirmationPending { animation: mealAnalysisAccessible 160ms ease-out both; }
+}
+
+@keyframes mealAnalysisAccessible {
+  from { opacity: .6; }
+  to { opacity: 1; }
+}
+
+@keyframes mealResultAccessible {
+  from { opacity: .55; }
+  to { opacity: 1; }
+}
+
+@keyframes mealConfirmationAccessible {
+  from { opacity: .4; }
+  to { opacity: 1; }
 }
 
 .analyzingState {

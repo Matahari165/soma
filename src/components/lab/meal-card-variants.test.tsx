@@ -14,8 +14,11 @@ describe("LabMealCard nutrition chart", () => {
       expect(html).toContain(label);
       expect(html).toContain("Example dinner");
       expect(html).toContain("Annuler l’analyse");
-      expect(html).not.toContain('aria-current="step"');
+      expect(html).toContain('aria-label="Progression de l’analyse"');
+      expect(html).toContain('aria-current="step"');
     }
+    const detailedPhase = renderToStaticMarkup(<LabMealCard {...props} analysisProgress={{ stage: "analyzing", phase: "Lecture des détails du repas…", foods: [] }} />);
+    expect(detailedPhase).toContain("Lecture des détails du repas…");
   });
 
   it("explains a completed analysis without nutrition and exposes fiber and total sugar in details", () => {
@@ -37,6 +40,13 @@ describe("LabMealCard nutrition chart", () => {
     expect(review).toContain('aria-label="Added sugar">S</dt><dd>—</dd>');
     const failedConfirmation = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, error: "Confirmation indisponible" }} onConfirm={() => undefined} />);
     expect(failedConfirmation).toContain("Retry confirmation");
+    expect(failedConfirmation).not.toContain(">Confirmed</span>");
+    expect(failedConfirmation).toContain('role="alert"');
+    const pendingConfirmation = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "review" }} saving onConfirm={() => undefined} />);
+    expect(pendingConfirmation).toContain("Saving meal…");
+    expect(pendingConfirmation).not.toContain(">Confirmed</span>");
+    const confirmed = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, status: "confirmed" }} onConfirm={() => undefined} />);
+    expect(confirmed).toContain(">Confirmed</span>");
     const draft = renderToStaticMarkup(<LabMealCard {...props} meal={{ ...meal, analysis: null, status: "draft" }} />);
     expect(draft).toContain("Sauce à part");
     expect(draft).toContain("commentaire facultatif");
@@ -300,11 +310,12 @@ describe("LabMealCard nutrition chart", () => {
       onNote={() => undefined}
     />);
 
-    expect(html).not.toContain("Confirmed");
+    expect(html).toContain("Confirmed");
     expect(html).toContain('aria-label="Déplier Breakfast"');
     expect(html).not.toContain("08:30");
     expect(html).not.toContain("08:15");
-    expect(html).toContain("animate-fade-in");
+    expect(html).toContain(">Confirmed</span>");
+    expect(html).not.toContain("animate-fade-in");
   });
 
   it("renders Delete meal button in expanded AnalysisDetails when onDeleteMeal is provided", () => {

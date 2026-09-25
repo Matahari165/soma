@@ -413,9 +413,13 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
   confirmError?: string | null;
 }) {
   const status = meal?.status ?? "draft";
+  const completed = Boolean(meal?.analysis && !meal.error && status === "confirmed");
   const [correctionMode, setCorrectionMode] = useState(false);
   const [ratingSaveState, setRatingSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [analysisChoice, setAnalysisChoice] = useState<{ status: string; open: boolean } | null>(null);
+  const previousFeedback = useRef({ status, analysis: meal?.analysis ?? null, completed });
+  const analysisArrivalRef = useRef<HTMLDivElement | null>(null);
+  const confirmationRef = useRef<SVGSVGElement | null>(null);
   const autoConfirmMealRef = useRef<string | null>(null);
   const analysisOpen = analysisChoice?.status === status ? analysisChoice.open : status === "review";
   const setAnalysisOpen = (next: boolean | ((previous: boolean) => boolean)) => setAnalysisChoice({ status, open: typeof next === "function" ? next(analysisOpen) : next });
@@ -471,8 +475,6 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
 
   // A legacy `review` response means the existing confirmation request is
   // still pending. Only the persisted confirmed status gets completion UI.
-  const completed = Boolean(meal?.analysis && !meal.error && status === "confirmed");
-
   useEffect(() => {
     if (status !== "review" || !meal?.analysis || meal.error) {
       if (status !== "review") autoConfirmMealRef.current = null;
@@ -483,17 +485,31 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
     onConfirm();
   }, [meal?.analysis, meal?.error, meal?.id, onConfirm, status]);
 
-  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles}>
+  useEffect(() => {
+    const previous = previousFeedback.current;
+    const wasAnalyzing = previous.status === "accepted" || previous.status === "analyzing";
+    const receivedNewAnalysis = wasAnalyzing
+      && (status === "review" || status === "confirmed")
+      && Boolean(meal?.analysis)
+      && previous.analysis !== meal?.analysis
+      && !meal?.error;
+
+    if (receivedNewAnalysis && analysisArrivalRef.current) analysisArrivalRef.current.classList.add(styles.analysisResultArrival);
+    if (completed && !previous.completed && confirmationRef.current) confirmationRef.current.classList.add(styles.confirmationCheckArrival);
+    previousFeedback.current = { status, analysis: meal?.analysis ?? null, completed };
+  }, [completed, meal?.analysis, meal?.error, status]);
+
+  return <article className={`${styles.mealCard} ${!meal ? styles.mealCardEmpty : ""} ${completed ? styles.mealCardConfirmed : ""} ${priority ? styles.mealCardPriority : ""}`} aria-labelledby={headingId} aria-busy={saving || processingFiles || status === "accepted" || status === "analyzing"}>
     <header className={styles.mealHeader}>
       <div className={styles.mealTitle}><h3 id={headingId} tabIndex={-1}>{SLOT_LABELS[slot]}</h3></div>
       {labCompact ? <div className={styles.labHeaderActions}>
-        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{visibleStatus}</span> : null}
+        {meal && visibleStatus ? <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal.error ? "error" : completed ? "confirmed" : meal.status}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span> : null}
         {meal?.analysis && !skipped && (status === "review" || status === "confirmed") ? <MealCompletionControls mutationBusy={mutationBusy} onConfirm={onConfirm} retryable={Boolean(meal.error)} onEdit={() => { setCorrectionMode(true); setAnalysisOpen(true); }} /> : null}
         {!skipped && status === "draft" ? <button className={styles.mealHeaderSkip} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skip</button> : null}
       </div> : mealsCompact ? <div className={styles.mealHeaderMeta}>
         {meal?.analysis && !skipped && <span className={styles.mealCalories}>{likelyLabel(meal.analysis.calories)} kcal</span>}
-        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
-      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check size={14} aria-hidden="true" /> : null}{visibleStatus}</span>}
+        {visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
+      </div> : visibleStatus && <span className={styles.mealStatus} data-status={skipped ? "skipped" : meal?.error ? "error" : completed ? "confirmed" : meal?.status ?? "empty"}>{completed && !skipped ? <Check ref={confirmationRef} size={14} aria-hidden="true" onAnimationEnd={(event) => event.currentTarget.classList.remove(styles.confirmationCheckArrival)} /> : null}{visibleStatus}</span>}
     </header>
     {skipped && <div className={styles.skippedState} role="status"><span>Skipped · this slot is excluded from the score.</span><button className={styles.secondaryButton} type="button" disabled={mutationBusy} onClick={onMarkRecorded}>Log this meal</button></div>}
     {unavailable && <div className={styles.skippedState} role="status">Slot skipped in journal.</div>}
@@ -514,8 +530,16 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
         <button className={styles.emptyNoteButton} type="button" disabled={mutationBusy} onClick={onMarkSkipped}>Skipped</button>
       </div>
     </div>}
-    {!inactive && status === "accepted" && <div className={styles.analyzingState} role="status" aria-live="polite"><strong>Analysis queued</strong><span>It will continue in the background.</span><button className={styles.secondaryButton} type="button" onClick={onCancelAnalysis}>Cancel</button></div>}
-    {!inactive && status === "analyzing" && <div className={styles.analyzingState} role="status" aria-live="polite"><span className={styles.progressTrace} aria-hidden="true" /><strong>Analyzing…</strong><button className={styles.secondaryButton} type="button" onClick={onCancelAnalysis}>Cancel</button></div>}
+    {!inactive && (status === "accepted" || status === "analyzing") && <div className={styles.analyzingState} role="status" aria-live="polite" aria-atomic="true">
+      <div className={styles.analysisProgressCopy}><strong>{status === "accepted" ? "Analysis queued" : "Analyzing…"}</strong><span>{status === "accepted" ? "It will continue in the background." : "Reading the meal details and estimating nutrients."}</span></div>
+      <ol className={styles.mealAnalysisSteps} aria-label="Analysis progress">
+        {(["Queued", "Analysis", "Results"] as const).map((step, index) => {
+          const activeStep = status === "accepted" ? 0 : 1;
+          return <li key={step} data-state={index < activeStep ? "complete" : index === activeStep ? "active" : "upcoming"} aria-current={index === activeStep ? "step" : undefined}><span aria-hidden="true">0{index + 1}</span>{step}</li>;
+        })}
+      </ol>
+      <button className={styles.secondaryButton} type="button" onClick={onCancelAnalysis}>Cancel</button>
+    </div>}
     {!inactive && !compactEmptyState && !compactDraftCapture && status !== "accepted" && status !== "analyzing" && <div className={`${styles.mealBody} ${status === "draft" ? styles.draftMeal : ""}`}>
       {hasPhotos && <PhotoStrip meal={meal as MealRecord} onRemove={onRemovePhoto} onOrigin={onOrigin} onComment={onPhotoComment} disabled={mutationBusy || disabled || skipped} />}
       <MealTextInput key={`meal-input-${slot}`} slot={slot} meal={meal} disabled={processingFiles || mutationBusy || disabled || skipped} onNote={onNote} onAnalyze={onAnalyze} />
@@ -530,7 +554,10 @@ export function MealCard({ meal, slot, saving, processingFiles, mutationBusy, di
       {status === "error" && <div className={styles.errorState} role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Analysis interrupted</strong><span>{visibleAnalysisError(meal?.error)}</span></div><button className={styles.retryButton} type="button" disabled={mutationBusy} onClick={onRetry}><RefreshCw size={15} aria-hidden="true" />Try again</button></div>}
       {status === "confirmed" && !labCompact && meal && <MealSourceEvidence meal={meal} />}
       {(status === "review" || status === "confirmed") && meal?.analysis && <>
-        {mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}
+        <div ref={analysisArrivalRef} onAnimationEnd={(event) => { if (event.target === event.currentTarget) event.currentTarget.classList.remove(styles.analysisResultArrival); }}>
+          {mealsCompact ? <MealsMealSummary meal={meal} /> : labCompact ? <LabMealSummary meal={meal} /> : <AnalysisSummary meal={meal} />}
+        </div>
+        {status === "review" && saving && !meal.error && <p className={styles.confirmationPending} role="status" aria-live="polite">Saving meal…</p>}
         {labCompact && status === "review" && <div className={styles.labAnalysisRow}><MealAnalysisTrigger open={analysisOpen} controlsId={analysisContentId} triggerRef={analysisTriggerRef} onToggle={() => setAnalysisOpen((open) => !open)} /></div>}
         {labCompact && analysisOpen && <div id={analysisContentId} className={styles.labAnalysisContent} onKeyDown={(event) => {
           if (event.key === "Escape") {
