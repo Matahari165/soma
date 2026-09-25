@@ -724,7 +724,7 @@
 
 :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
   height: 194px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) {
@@ -1073,7 +1073,7 @@
     padding: 0;
   }
 
-  .page .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 32px; }
+  .page .trendGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 48px; }
 
   .trendGrid :global(.metric-trend-card):last-child:nth-child(odd) {
     grid-column: auto;
@@ -1087,7 +1087,7 @@
 
   :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.metric-trend-card) :global(.chart-frame) {
     height: 187px;
-    margin-top: 8px;
+    margin-top: 4px;
   }
 
   :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) {
@@ -1123,7 +1123,7 @@
   .signalRow > span { overflow: visible; white-space: normal; text-overflow: clip; text-wrap: balance; }
   .radarRegion,
   .radarRegion[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
-  .page .trendGrid { grid-template-columns: 1fr; row-gap: 24px; }
+  .page .trendGrid { grid-template-columns: 1fr; row-gap: 32px; }
   .zoneLegend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .zonesHeading { justify-content: space-between; flex-wrap: wrap; }
 }

@@ -1,6 +1,9 @@
-import { createElement } from "react";
+// @vitest-environment jsdom
+
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defaultJournalVariables, type JournalVariable } from "@/domain/lab/journal";
 
@@ -11,6 +14,12 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const todayDate = "2026-08-26";
 const variables: JournalVariable[] = defaultJournalVariables.map((variable, index) => ({ ...variable, id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, isActive: true, options: [...variable.options] }));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+  document.body.innerHTML = "";
+});
 
 describe("journal motion states", () => {
   it("keeps save and validation language distinct", () => {
@@ -204,7 +213,7 @@ describe("journal motion states", () => {
     expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
   });
 
-  it("renders phase counters with 'X sur Y' format without Logged or Completed in Personal Lab", () => {
+  it("shows phase names without habit counters in Personal Lab", () => {
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
       entries: [],
@@ -214,10 +223,85 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toMatch(/\d+ sur \d+/);
+    expect(html).not.toContain(" sur ");
     expect(html).not.toContain("Logged");
     expect(html).not.toContain("Completed");
     expect(html).toContain("text-xs font-mono uppercase tracking-wider text-content-secondary font-medium");
+  });
+
+  it("does not announce completion for a date that was already complete on load", () => {
+    const habits = variables.filter((variable) => variable.variableType === "boolean").slice(0, 2);
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables: habits,
+      entries: habits.map((habit) => ({ variableId: habit.id, entryDate: todayDate, value: true })),
+      days: [],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).not.toContain("journal-completion-notice");
+  });
+
+  it("announces a completed Personal Lab journal after interaction, clears on correction/date change, and auto-hides", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const firstDate = todayDate;
+    const otherDate = "2026-08-25";
+    const habits: JournalVariable[] = [
+      { id: "00000000-0000-4000-8000-000000000101", name: "Habit one", emoji: "✓", variableType: "boolean", unit: null, options: [], position: 0, isActive: true, defaultValue: null, dayPeriod: "morning" },
+      { id: "00000000-0000-4000-8000-000000000102", name: "Habit two", emoji: "✓", variableType: "boolean", unit: null, options: [], position: 1, isActive: true, defaultValue: null, dayPeriod: "morning" },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
+    vi.useFakeTimers();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DailyJournal
+      variables={habits}
+      entries={[
+        { variableId: habits[0].id, entryDate: firstDate, value: true },
+        ...habits.map((habit) => ({ variableId: habit.id, entryDate: otherDate, value: true })),
+      ]}
+      days={[{ entryDate: firstDate, status: "draft", validatedAt: null, omittedVariableIds: [habits[1].id] }]}
+      todayDate={firstDate}
+      availableDates={[firstDate, otherDate]}
+      presentation="personal-lab"
+    />));
+
+    try {
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+
+      const dateButtons = container.querySelectorAll<HTMLButtonElement>('nav[aria-label="Journal date"] button');
+      await act(async () => dateButtons[1]?.click());
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+      await act(async () => container.querySelector<HTMLButtonElement>('nav[aria-label="Journal date"] button:first-of-type')?.click());
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Confirm Yes for Habit two"]')?.click());
+      const notice = document.querySelector<HTMLElement>(".journal-completion-notice");
+      expect(notice?.textContent).toBe("All habits are filled in.");
+      expect(notice?.getAttribute("role")).toBe("status");
+      expect(notice?.getAttribute("aria-live")).toBe("polite");
+      expect(notice?.textContent).not.toMatch(/saved|validated/i);
+
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Reset Habit two"]')?.click());
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Confirm Yes for Habit two"]')?.click());
+      expect(document.querySelector(".journal-completion-notice")).not.toBeNull();
+      await act(async () => { await vi.advanceTimersByTimeAsync(3600); });
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+
+      const updatedDateButtons = container.querySelectorAll<HTMLButtonElement>('nav[aria-label="Journal date"] button');
+      await act(async () => updatedDateButtons[1]?.click());
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+      await act(async () => container.querySelector<HTMLButtonElement>('nav[aria-label="Journal date"] button:first-of-type')?.click());
+      expect(document.querySelector(".journal-completion-notice")).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
+    }
   });
 
   it("renders Yes then No buttons when boolean is unrecorded in Personal Lab", () => {
@@ -353,7 +437,7 @@ describe("journal motion states", () => {
     expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
   });
 
-  it("uses space-y-12 spacing between phases in Personal Lab", () => {
+  it("keeps Personal Lab phases compact", () => {
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
       entries: [],
@@ -363,7 +447,7 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("space-y-12");
+    expect(html).toContain("space-y-6");
   });
 
   it("applies enhanced typography and button styles in Personal Lab", () => {
@@ -382,6 +466,22 @@ describe("journal motion states", () => {
     expect(html).toContain('aria-label="Edit protocol"');
     expect(html).toContain("text-content-secondary border border-hairline");
     expect(html).not.toContain("Edit protocol</button>");
+  });
+
+  it("shows the validated state in the Personal Lab header", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [{ entryDate: todayDate, status: "validated", validatedAt: `${todayDate}T08:00:00.000Z`, omittedVariableIds: [] }],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain('class="journal-header-validated');
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Validated</span>");
+    expect(html).not.toContain('journal-header-validate ');
   });
 
   it("renders date strip without pulsing green dot for selected date", () => {

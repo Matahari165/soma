@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { recoveryTokenFromRedirect } from "@/lib/recovery-link";
 
 export function ResetPasswordForm() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -12,6 +13,7 @@ export function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirectAddress, setRedirectAddress] = useState("");
 
   useEffect(() => {
     const fragment = new URLSearchParams(window.location.hash.slice(1));
@@ -54,6 +56,18 @@ export function ResetPasswordForm() {
     }
   }
 
+  function useLocalRedirect(event: React.FormEvent) {
+    event.preventDefault();
+    const token = recoveryTokenFromRedirect(redirectAddress, window.location.origin);
+    if (!token) {
+      setError("This address has no usable recovery session. Open the newest email link, then copy the full address shown in the browser.");
+      return;
+    }
+    setAccessToken(token);
+    setRedirectAddress("");
+    setError(null);
+  }
+
   if (completed) return (
     <div className="auth-credentials">
       <p className="auth-success-banner" role="status"><CheckCircle2 size={16} aria-hidden="true" />Password updated. Sign in with your new password.</p>
@@ -63,7 +77,15 @@ export function ResetPasswordForm() {
 
   if (ready && !accessToken) return (
     <div className="auth-credentials">
-      <p className="form-error auth-error" role="alert">This recovery link is invalid or expired. Request another link from the sign-in page.</p>
+      <p className="auth-recovery-copy">Did the email link open a local address? Copy the full address shown after opening it and paste it here. Keep the link private.</p>
+      <form className="auth-credentials-form" onSubmit={useLocalRedirect}>
+        <div className="field">
+          <label htmlFor="reset-redirect-address">Address shown after opening the email link</label>
+          <input id="reset-redirect-address" type="password" autoComplete="off" required value={redirectAddress} onChange={(event) => setRedirectAddress(event.target.value)} />
+        </div>
+        {error && <p className="form-error auth-error" role="alert">{error}</p>}
+        <button type="submit" className="button button--primary auth-submit-btn">Continue</button>
+      </form>
       <Link className="auth-text-action" href="/login">Back to sign in</Link>
     </div>
   );

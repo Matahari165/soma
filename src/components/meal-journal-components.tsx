@@ -605,11 +605,13 @@ export function MealLabHeader({
   targetsExpanded = false,
   calories = null,
   targetCalories = 2400,
+  showCalorieProgress = true,
 }: {
   onToggleTargets?: () => void;
   targetsExpanded?: boolean;
   calories?: number | null;
   targetCalories?: number | null;
+  showCalorieProgress?: boolean;
 }) {
   const targetVal = targetCalories ?? 2400;
   const calPct = calorieProgressForDisplay(calories ?? null, targetVal);
@@ -633,7 +635,7 @@ export function MealLabHeader({
           )}
         </div>
       </div>
-      <div
+      {showCalorieProgress && <div
         className={`w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border ${calPct === null ? "border-dashed border-hairline opacity-70" : "border-hairline"}`}
         {...(calPct === null
           ? { role: "img", "aria-label": "Calorie target progress: Calories unavailable" }
@@ -641,7 +643,7 @@ export function MealLabHeader({
         data-state={calPct === null ? "unavailable" : "available"}
       >
         {calPct !== null && <div className="h-full bg-sage rounded-full transition-bar" style={{ width: `${calPct}%` }} />}
-      </div>
+      </div>}
     </header>
   );
 }

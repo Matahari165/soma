@@ -79,6 +79,7 @@ describe("homepage streamed date ownership", () => {
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     window.history.replaceState(null, "", "/");
+    window.localStorage.setItem("soma.dashboard.primary-chart-presentation", "radar");
     Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: true, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() }) });
     vi.stubGlobal("IntersectionObserver", class {
       observe() {}
@@ -88,6 +89,7 @@ describe("homepage streamed date ownership", () => {
   });
 
   afterEach(() => {
+    window.localStorage.removeItem("soma.dashboard.primary-chart-presentation");
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
     vi.unstubAllGlobals();
   });
