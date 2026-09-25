@@ -30,7 +30,7 @@ export function HealthDataCoverageIndicator({ coverage, phase, error = false }: 
   const nights = coverage ? `${coverage.usedNights} / ${coverage.importedNights}` : "—";
   const period = coverage ? `${formatDate(coverage.startDate)} — ${formatDate(coverage.endDate)}` : "—";
 
-  return <section className="health-data-coverage" aria-labelledby="health-data-coverage-title" aria-busy={!coverage && !error}>
+  return <section className="health-data-coverage" data-scroll-reveal="coverage" aria-labelledby="health-data-coverage-title" aria-busy={!coverage && !error}>
     <header>
       <strong id="health-data-coverage-title">Données dans Soma</strong>
       <span className={`health-data-coverage__status health-data-coverage__status--${status.tone}`}>{status.label}</span>

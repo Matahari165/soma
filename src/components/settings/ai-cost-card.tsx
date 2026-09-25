@@ -39,7 +39,7 @@ export function AiCostCard() {
   const totalCount = summary?.totalAnalyses ?? 0;
 
   return (
-    <article className="settings-card ai-cost-card" aria-labelledby="ai-cost-title">
+    <article className="settings-card ai-cost-card" aria-labelledby="ai-cost-title" data-scroll-reveal="privacy">
       <header className="settings-card__header">
         <div className="settings-card__icon" aria-hidden="true">
           <Sparkles size={20} />

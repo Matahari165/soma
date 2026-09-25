@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import MealJournal from "@/components/meal-journal";
+import { PageScrollReveal } from "@/components/page-scroll-reveal";
 import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
 import MealScoreOverviewPanel from "@/components/meal-score-overview";
@@ -129,7 +130,8 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
   const scoreTrend = (balanceOverview?.scoreTrend ?? []).map((point) => ({ date: point.date, score: point.balanceScore, rawScore: point.rawBalanceScore, status: point.balanceStatus, confidence: point.balanceConfidence, dimensionScores: point.dimensionScores, dimensionAdjustedScores: point.dimensionAdjustedScores }));
 
   return (
-    <main id="main-page-content" className={`${styles.page} meals-page`} lang="en">
+    <main id="main-page-content" className={`${styles.page} meals-page`} lang="en" data-scroll-reveal-root>
+      <PageScrollReveal />
       <header className={styles.header}><h1>Nutrition</h1></header>
       <div className={styles.flow}>
         <MealScoreOverviewPanel
@@ -142,7 +144,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           className="meals-page-score"
         />
         {initialData ? (
-          <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title">
+          <section className={`${styles.journal} meals-page-journal`} aria-labelledby="meals-journal-title" data-scroll-reveal="journal">
             <h2 id="meals-journal-title" className={styles.visuallyHidden}>Meal journal</h2>
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly showCalorieProgress={false} />
           </section>
@@ -157,7 +159,7 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
           />
           : <MealsInitialLoadError kind="nutrition" />}
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
-        <footer className={styles.provenance} aria-label="Nutrition data provenance">
+        <footer className={styles.provenance} aria-label="Nutrition data provenance" data-scroll-reveal="provenance">
           <h2 className={styles.visuallyHidden}>Provenance</h2>
           <p>Confirmed meals logged in Soma · Score and totals calculated by Soma from confirmed meals only</p>
           <p>Period from {formatShortDate(historyFrom)} to {formatShortDate(requestedDate)} · Unlogged days remain empty, never zero</p>
