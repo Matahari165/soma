@@ -276,7 +276,7 @@
 .benchmarkExplanation span { min-height: 0; overflow: hidden; color: var(--effort-muted); font: 400 12px/18px var(--font-soma-ui), system-ui, sans-serif; }
 .benchmarkExplanation[data-open="true"] span { padding-top: 8px; }
 
-.trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; min-width: 0; }
+.trendGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 48px; min-width: 0; }
 .trendGrid :global(.metric-trend-card) { min-width: 0; padding: 0; border: 0 !important; border-radius: 0; background: transparent; box-shadow: none; }
 .trendGrid :global(.metric-trend-card) :global(header) { justify-content: center; text-align: center; }
 .trendGrid :global(.metric-trend-card) :global(header > div) {
@@ -285,7 +285,7 @@
   justify-items: center;
 }
 .root .trendGrid :global(.metric-trend-card) :global(header) { min-height: 24px; align-items: flex-start; }
-:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; height: 194px; margin-top: 8px; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; height: 194px; margin-top: 4px; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; padding-right: 88px; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-chart-average) { stroke: var(--lab-info); stroke-dasharray: 4 5; stroke-width: 1.5; opacity: 1; vector-effect: non-scaling-stroke; }
 .trendGrid :global(.health-chart-range) { top: 0; right: 0; bottom: 0; width: 76px; }
@@ -444,7 +444,7 @@
   .dimensionMetrics,
   .dimensionFormula { grid-template-columns: 1fr; }
   .dimensionMetrics > div:last-child { grid-column: auto; }
-  .trendGrid { grid-template-columns: 1fr; gap: 24px; }
+  .trendGrid { grid-template-columns: 1fr; column-gap: 32px; row-gap: 32px; }
   .trendGrid :global(.metric-trend-card) :global(header > div) { width: calc(100% - 64px); margin-inline-end: 64px; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { padding-right: 64px; }
   .trendGrid :global(.health-chart-range),

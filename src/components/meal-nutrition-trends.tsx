@@ -118,16 +118,16 @@ export function MealNutritionTrends({
     <h2 className={styles.srOnly} id="meal-trends-title">Nutrition trends</h2>
     <div className={styles.toolbar}>
       <fieldset className={styles.periodPicker}>
-        <legend>Period</legend>
+        <legend className={styles.srOnly}>Period</legend>
         <div className={styles.periodOptions} role="group" aria-label="Choose chart period">
           {periods.map((option) => <button className={styles.periodButton} key={option.value} type="button" aria-pressed={period === option.value} onClick={() => setPeriod(option.value)}>{option.label}</button>)}
         </div>
       </fieldset>
+      <ul className={styles.legend} aria-label="Trend chart legend">
+        <li><span className={styles.barKey} aria-hidden="true" />Daily value</li>
+        <li><span className={styles.averageKey} aria-hidden="true" />Measured average</li>
+      </ul>
     </div>
-    <ul className={styles.legend} aria-label="Trend chart legend">
-      <li><span className={styles.barKey} aria-hidden="true" />Daily value</li>
-      <li><span className={styles.averageKey} aria-hidden="true" />Measured average</li>
-    </ul>
     {hasAnySeries ? <div className={styles.chartGrid}>
       {metrics.map((metric) => <NutritionMetricChart key={metric.id} metric={metric} period={period} />)}
       {foodGroups.length > 0 && <MealFoodCategoryTrends points={selectedFoodGroups} illustrative={illustrative} />}
