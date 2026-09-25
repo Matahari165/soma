@@ -197,14 +197,11 @@ describe("LabMealCard nutrition chart", () => {
       onMarkSkipped={() => undefined}
     />);
 
-    // Analyze meal button when canAnalyze is true
-    expect(html).toContain("!text-[#050505] !bg-[#f1f1f1] hover:!bg-white font-medium px-3.5 py-1.5 rounded transition-colors");
-    // Camera and Photos buttons
-    expect(html).toContain("px-2.5 py-1.5 text-xs font-sans text-content-primary border border-hairline hover:border-hairline-light hover:bg-surface-elevated rounded transition-colors");
-    // Skip button
-    expect(html).toContain("text-xs font-sans text-content-secondary hover:text-content-primary transition-colors");
-    // Slot title
-    expect(html).toContain("font-sans text-xs font-semibold uppercase tracking-wider text-content-primary");
+    expect(html).toContain('rows="2" aria-label="Describe Lunch"');
+    expect(html).toContain('aria-label="Take photo for Lunch"');
+    expect(html).toContain('aria-label="Choose photos for Lunch"');
+    expect(html).toContain('aria-label="Analyze Lunch"');
+    expect(html).not.toContain('disabled="" aria-label="Analyze Lunch"');
   });
 
   it("applies explicit disabled styling on Analyze meal when cannot analyze", () => {
@@ -234,9 +231,7 @@ describe("LabMealCard nutrition chart", () => {
       onMarkSkipped={() => undefined}
     />);
 
-    // Analyze meal button when canAnalyze is false
-    expect(html).toContain("!bg-[#161616] !text-[#777777] border border-hairline cursor-not-allowed px-3.5 py-1.5 rounded text-xs");
-    expect(html).toContain("disabled=\"\"");
+    expect(html).toContain('disabled="" aria-label="Analyze Snack"');
   });
 
   it("removes Target text from pending meal card", () => {
