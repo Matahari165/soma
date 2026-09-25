@@ -206,7 +206,7 @@ describe("journal motion states", () => {
     const addedSugar = variables.find((variable) => variable.name === "Added sugar");
     const html = renderToStaticMarkup(createElement(DailyJournal, { variables, entries: addedSugar ? [{ variableId: addedSugar.id, entryDate: todayDate, value: 5 }] : [], days: [], todayDate, presentation: "personal-lab", showDateNavigation: false }));
     const actionsStart = html.indexOf('journal-workspace-header__actions');
-    const actionsEnd = html.indexOf('class="w-full h-1.5', actionsStart);
+    const actionsEnd = html.indexOf('class="w-full h-2', actionsStart);
 
     expect(html).toContain("Daily Protocol");
     expect(html.slice(actionsStart, actionsEnd)).toContain("Validate day");

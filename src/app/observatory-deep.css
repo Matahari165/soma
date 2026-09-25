@@ -764,9 +764,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
     margin:0 0 16px!important;
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress {
-    width:100%;
-    max-width:none;
-    margin:0;
+    display:none;
   }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress__header { font-size:13px; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-journal-progress__track { height:10px; }
