@@ -21,6 +21,7 @@ import {
 import type { JournalAchievement } from "@/domain/lab/journal-achievement";
 
 import { JournalFieldRow } from "./daily-journal-fields";
+import styles from "./daily-journal-feedback.module.css";
 import {
   addDays,
   dayPeriodLabel,
@@ -446,7 +447,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         })}</div> : <p className="journal-empty">Add your first tracked variable below.</p>}
         {error && <p className="form-error" role="alert">{error} <button type="button" onClick={retryJournalSave}>Retry</button></p>}
         {validated && <p className="journal-save-note" role="status">Changes are saved automatically and remain included in your relations.</p>}
-        {isPersonalLab && completionNotice?.date === entryDate && typeof document !== "undefined" && createPortal(<div className="journal-completion-notice" role="status" aria-live="polite" aria-atomic="true"><Check size={16} aria-hidden="true" /><span>All habits are filled in.</span></div>, document.body)}
+        {isPersonalLab && completionNotice?.date === entryDate && typeof document !== "undefined" && createPortal(<div className={`journal-completion-notice ${styles.completionToast}`} role="status" aria-live="polite" aria-atomic="true"><Check size={16} aria-hidden="true" /><span>All habits are filled in.</span></div>, document.body)}
       </section>;
     }}
   </VariableManager>;

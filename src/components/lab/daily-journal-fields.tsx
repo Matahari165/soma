@@ -369,7 +369,9 @@ export function JournalFieldRow({ variable, value, draftKey, confirmed, skipped,
     const confirmationLabel = `Confirm ${variable.variableType === "boolean" ? value === false ? "No" : "Yes" : "displayed value"} for ${journalVariableLabel(variable)}`;
     const heading = <>
       <div className="flex items-center gap-2">
-        {confirmed ? <CircleCheck size={15} aria-hidden="true" /> : skipped ? <CircleMinus size={15} aria-hidden="true" /> : <CircleDashed size={15} aria-hidden="true" />}
+        <span key={`row-mark-${variable.id}-${feedbackToken ?? "idle"}`} className="journal-field-row__state-icon" aria-hidden="true">
+          {confirmed ? <CircleCheck size={15} /> : skipped ? <CircleMinus size={15} /> : <CircleDashed size={15} />}
+        </span>
         <span className="journal-habit-name text-content-primary truncate">{variable.name}</span>
       </div>
       <div className="flex items-center gap-2.5">
@@ -380,13 +382,14 @@ export function JournalFieldRow({ variable, value, draftKey, confirmed, skipped,
       </div>
     </>;
     return (
-      <div className={`journal-field-row py-3.5 flex items-center justify-between gap-4 group${confirmed ? " journal-field-row--confirmed" : ""}`} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
+      <div className={`journal-field-row py-3.5 flex items-center justify-between gap-4 group${confirmed ? " journal-field-row--confirmed" : ""}${feedbackToken ? " journal-field-row--changed" : ""}`} data-state={confirmed ? "recorded" : skipped ? "skipped" : "pending"} onClick={(event) => {
         if (canConfirm && !(event.target as HTMLElement).closest("button, a, input, select, textarea")) confirmValue();
       }}>
         {canConfirm || editMode && onEdit ? <button type="button" className="space-y-1.5 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label={canConfirm ? confirmationLabel : `Edit ${journalVariableLabel(variable)}`} onClick={canConfirm ? confirmValue : onEdit}>{heading}</button> : <div className="space-y-1.5 flex-1 min-w-0">{heading}</div>}
         <div className="shrink-0">
           <Field variable={variable} value={value} draftKey={draftKey} onChange={onChange} onCommit={onCommit} disabled={disabled} presentation={presentation} confirmed={confirmed} />
         </div>
+        {feedbackToken ? <span key={`row-feedback-${variable.id}-${feedbackToken}`} className="journal-field-row__feedback" aria-hidden="true" /> : null}
       </div>
     );
   }

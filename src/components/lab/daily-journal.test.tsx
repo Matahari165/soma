@@ -280,6 +280,7 @@ describe("journal motion states", () => {
 
       await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Confirm Yes for Habit two"]')?.click());
       const notice = document.querySelector<HTMLElement>(".journal-completion-notice");
+      expect(container.querySelector(".journal-field-row--changed .journal-field-row__feedback")).not.toBeNull();
       expect(notice?.textContent).toBe("All habits are filled in.");
       expect(notice?.getAttribute("role")).toBe("status");
       expect(notice?.getAttribute("aria-live")).toBe("polite");

@@ -1,0 +1,28 @@
+.completionToast:global(.journal-completion-notice) {
+  animation: personal-lab-completion-arrive 700ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.completionToast:global(.journal-completion-notice) svg {
+  transform-origin: center;
+  animation: personal-lab-completion-mark 640ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes personal-lab-completion-arrive {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.98); }
+  24% { opacity: 1; transform: translate(-50%, 0) scale(1.01); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes personal-lab-completion-mark {
+  0% { opacity: .45; transform: scale(.76); }
+  28% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .completionToast:global(.journal-completion-notice),
+  .completionToast:global(.journal-completion-notice) svg {
+    animation: none;
+    opacity: 1;
+  }
+}

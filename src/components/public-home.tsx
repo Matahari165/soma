@@ -5,6 +5,7 @@ import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { SomaLogo } from "@/components/soma-logo";
 import { hasCloudflareConfig } from "@/lib/env";
+import styles from "./public-home-motion.module.css";
 
 export function PublicHome({
   next,
@@ -20,7 +21,7 @@ export function PublicHome({
   const configured = hasCloudflareConfig();
 
   return (
-    <main className="auth-page" id="main-page-content">
+    <main className={`auth-page ${styles.publicLanding}`} id="main-page-content">
       <section className="auth-intro" aria-labelledby="auth-intro-title">
         <Link className="brand brand--auth" href="/" aria-label="Soma Home">
           <SomaLogo />

@@ -6,6 +6,7 @@ import { arrivalMessageFor } from "@/domain/lab/arrival-message";
 import { isLocalPreviewMode } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth";
 import { getPersonalLabActivitySummaries } from "@/services/health-analytics";
+import styles from "./lab-world-motion.module.css";
 
 export async function LabWorldJournalPreview({ stream }: { stream: Pick<PersonalLabStream, "journal"> }) {
   const journal = await stream.journal;
@@ -28,6 +29,7 @@ export async function LabWorldPreview({ stream }: { stream: Pick<PersonalLabStre
     initialMessage: arrivalMessageFor({ name: overview.greetingName, timeZone: overview.timeZone, activity: overview.today.activity }),
   } as const;
   return <LabWorldWorkspace
+    className={styles.observatoryScroll}
     date={date}
     radar={<ObservatoryRadar data={overview.today} />}
     overview={overview}
