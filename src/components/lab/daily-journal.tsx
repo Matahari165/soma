@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, PencilLine } from "lucide-react";
+import { Check, LoaderCircle, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -83,7 +83,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const pendingSavesByDate = useRef<Record<string, number>>({});
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const [validatingDate, setValidatingDate] = useState<string | null>(null);
-  const [validatedDate, setValidatedDate] = useState<string | null>(null);
+  const [validatedDates, setValidatedDates] = useState<Set<string>>(() => new Set());
   const [saveStatus, setSaveStatus] = useState<JournalSaveStatus>("draft");
   const [error, setError] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -98,7 +98,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNumericFeedback = useRef(new Set<string>());
   const day = days.find((candidate) => candidate.entryDate === entryDate);
-  const validated = day?.status === "validated" || validatedDate === entryDate;
+  const validated = day?.status === "validated" || validatedDates.has(entryDate);
   const validating = validatingDate === entryDate;
   const values = draftsByDate[entryDate] ?? journalValuesForDate(activeVariables, entries, days, entryDate);
   const automaticIdsByDate = useMemo(() => {
@@ -159,6 +159,9 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     const response = await fetch("/api/lab/entries", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entryDate: date, mode, entries: entriesToSave }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Le journal n’a pas pu être enregistré.");
+    if (mode === "validate" && !result.preview && result.status !== "validated") {
+      throw new Error("La validation n’a pas été confirmée par le serveur.");
+    }
   }
 
   function queueDraft(date: string, variableId: string, draftValues: Record<string, DraftValue>) {
@@ -169,7 +172,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
       .then(() => persist(date, "draft", draftValues, variableId))
       .then(() => {
         const breakfast = activeVariables.find((variable) => variable.id === variableId && variable.variableType === "boolean" && journalVariableKey(variable.name) === "breakfast");
-        const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDate === date;
+        const dayIsValidated = days.some((candidate) => candidate.entryDate === date && candidate.status === "validated") || validatedDates.has(date);
         if (date === todayDate && breakfast && dayIsValidated) onTodayBreakfastValidation?.(draftValues[breakfast.id] === false);
         if (date === selectedDateRef.current && pendingSavesByDate.current[date] === 1) {
           setSaveStatus("saved");
@@ -198,8 +201,8 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
     try {
       await saveQueue.current;
       await persist(date, "validate", drafts.current[date] ?? journalValuesForDate(activeVariables, entries, days, date));
+      setValidatedDates((current) => new Set(current).add(date));
       if (date === selectedDateRef.current) {
-        setValidatedDate(date);
         setSaveStatus("saved");
         setError(null);
       }
@@ -338,9 +341,9 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
               }} ref={managerTriggerRef}>
                 <PencilLine size={14} aria-hidden="true" />
               </button>
-              <button className={`journal-header-validate inline-flex min-h-9 items-center justify-center px-2.5 py-1 text-xs font-sans rounded transition-colors duration-150 ${validating ? "text-content-tertiary cursor-not-allowed" : "text-content-secondary hover:text-content-primary"}`} type="button" onClick={() => void validate()} disabled={validating}>
+              {validated ? <span className="journal-header-validated inline-flex min-h-9 items-center gap-1.5 px-2.5 text-xs" role="status"><Check size={13} aria-hidden="true" />Validated</span> : <button className={`journal-header-validate inline-flex min-h-9 items-center justify-center px-2.5 py-1 text-xs font-sans rounded transition-colors duration-150 ${validating ? "text-content-tertiary cursor-not-allowed" : "text-content-secondary hover:text-content-primary"}`} type="button" onClick={() => void validate()} disabled={validating}>
                 {validating ? 'Validating…' : 'Validate day'}
-              </button>
+              </button>}
             </div>
           </div>
           <div className="w-full h-1.5 rounded-full overflow-hidden bg-hairline-light border border-hairline">

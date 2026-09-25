@@ -384,6 +384,22 @@ describe("journal motion states", () => {
     expect(html).not.toContain("Edit protocol</button>");
   });
 
+  it("shows the validated state in the Personal Lab header", () => {
+    const html = renderToStaticMarkup(createElement(DailyJournal, {
+      variables,
+      entries: [],
+      days: [{ entryDate: todayDate, status: "validated", validatedAt: `${todayDate}T08:00:00.000Z`, omittedVariableIds: [] }],
+      todayDate,
+      presentation: "personal-lab",
+      showDateNavigation: false,
+    }));
+
+    expect(html).toContain('class="journal-header-validated');
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Validated</span>");
+    expect(html).not.toContain('journal-header-validate ');
+  });
+
   it("renders date strip without pulsing green dot for selected date", () => {
     const html = renderToStaticMarkup(createElement(PersonalLabDateStrip, {
       dates: [todayDate],

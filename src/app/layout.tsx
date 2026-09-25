@@ -31,6 +31,7 @@ import "./lab-final-focus.css";
 import "./lab-final-index.css";
 import "./observatory-geometry.css";
 import "./observatory-deep.css";
+import "./observatory-motion.css";
 import "./observatory-pages.css";
 import "./motion-system.css";
 
@@ -53,9 +54,9 @@ export const metadata: Metadata = {
   applicationName: "Soma",
   description: "A personal health laboratory to understand the relationships between sleep, recovery, movement, and performance.",
   icons: {
-    icon: [{ url: "/icon.png?v=soma-symbol-1", type: "image/png" }],
-    shortcut: [{ url: "/favicon.ico?v=soma-symbol-1" }],
-    apple: [{ url: "/apple-icon.png?v=soma-symbol-1", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/icon.png?v=soma-symbol-2", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico?v=soma-symbol-2" }],
+    apple: [{ url: "/apple-icon.png?v=soma-symbol-2", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
