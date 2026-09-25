@@ -782,7 +782,7 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art {
     height:min(390px,100vw)!important;
     min-height:0!important;
-    margin:12px 0 0!important;
+    margin:-12px 0 0!important;
   }
   html[data-lab-theme="observatory"] .observatory-radar svg { overflow:visible; }
   html[data-lab-theme="observatory"] .radar-label { font-size:30px!important; }

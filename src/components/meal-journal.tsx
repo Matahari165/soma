@@ -51,6 +51,7 @@ import {
 } from "@/services/meal-client";
 import { normalizeMealImage } from "@/services/meal-image";
 import { LabMealCard, type MealDesignVariant } from "@/components/lab/meal-card-variants";
+import { PersonalLabDateStrip } from "@/components/lab/personal-lab-date-strip";
 import {
   calorieProgressForDisplay,
   compactDayLabel,
@@ -167,12 +168,13 @@ type Props = {
   initialEffortTargetContext?: EffortTargetContext;
   hideAddMealButton?: boolean;
   allowTargetEditing?: boolean;
+  showCalorieProgress?: boolean;
   designVariant?: MealDesignVariant;
 };
 
 type LoadState = "loading" | "ready" | "error";
 
-export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, designVariant = "v1" }: Props) {
+export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
   const router = useRouter();
   const today = providedToday ?? todayInLocalTime();
   const requestedDate = date ?? initialData?.date ?? today;
@@ -1004,7 +1006,17 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const visibleHistoryDates = historyDates;
   const showDateArrows = variant === "lab" || variant === "meals";
   const showDatePicker = showDateNavigation && !readOnly && (variant === "lab" || variant === "meals");
-  const internalDateNavigation = showDateNavigation ? <>
+  const internalDateNavigation = showDateNavigation && variant === "lab" && readOnly ? (
+    <PersonalLabDateStrip
+      dates={visibleHistoryDates}
+      selectedDate={selectedDate}
+      todayDate={today}
+      disabled={navigationDisabled}
+      ariaLabel="Meal history"
+      showDayStatus={false}
+      onDateChange={selectDate}
+    />
+  ) : showDateNavigation ? <>
     <nav className={`${styles.historyNavigation} ${showDateArrows ? styles.historyNavigationWithArrows : ""} personal-lab-day-strip`} aria-label="Meal history">
       {showDateArrows && <button className={styles.historyArrow} type="button" disabled={navigationDisabled} aria-label="Previous day" onClick={() => selectDate(shiftIsoDate(selectedDate, -1))}>‹</button>}
       <div className={`${styles.weekStrip} ${variant === "meals" ? styles.mealsWeekStrip : ""} personal-lab-day-strip__days`} role="group" aria-label="Available days">
@@ -1039,6 +1051,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
         targetsExpanded={targetsExpanded}
         calories={labCalories}
         targetCalories={labTargetCalories}
+        showCalorieProgress={showCalorieProgress}
       />
     : <MealPageHeader
         totals={currentDayTotal}

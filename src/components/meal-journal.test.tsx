@@ -763,7 +763,9 @@ describe("MealJournal", () => {
     expect(breakfastContent).toContain('data-metric="sugar"');
     expect(snackContent).toMatch(/^id="meal-snack-title"[^>]*>Snack<span[^>]*role="status"[^>]*>Skipped<\/span><\/h3>/);
     expect(html).toContain('aria-label="Meal history"');
-    expect(html).toContain('aria-label="Previous day"');
+    expect(html).toContain('data-purpose="timeline-selector"');
+    expect(html).toContain('aria-label="Show previous days"');
+    expect(html).not.toContain('aria-label="Previous day"');
     expect(html).toContain("Needs retry");
     expect(html).not.toContain("Select date");
     expect(html).not.toContain('id="meal-date-picker"');
