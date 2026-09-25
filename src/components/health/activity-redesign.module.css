@@ -432,6 +432,11 @@
 
 @media (max-width: 560px) {
   .root :global(.health-detail-page--activity) { padding-inline: 16px; overflow-x: clip; }
+  .heroScene { min-height: calc(100svh - 174px); }
+  .readingsGrid { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
+  .readingsGrid > div { width: 100%; }
+  .readingsGrid dt { min-height: 32px; display: grid; place-items: center; text-wrap: balance; }
+  .benchmarkTrigger { min-height: 88px; }
   .radarStage,
   .radarStage[data-detail-open="true"] { grid-template-columns: 1fr; gap: 16px; }
   .detailPanel { max-width: none; max-height: 0; padding: 0; border: 0; overflow: hidden; transform: translateY(4px); }
@@ -440,6 +445,13 @@
   .dimensionFormula { grid-template-columns: 1fr; }
   .dimensionMetrics > div:last-child { grid-column: auto; }
   .trendGrid { grid-template-columns: 1fr; gap: 24px; }
+  .trendGrid :global(.metric-trend-card) :global(header > div) { width: calc(100% - 64px); margin-inline-end: 64px; }
+  :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { padding-right: 64px; }
+  .trendGrid :global(.health-chart-range),
+  .trendGrid :global(.health-chart-average-label) { text-align: right; }
+  .trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
+  .activityFilters { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 3px; }
+  .activityFilters button { min-width: 44px; padding-inline: 4px; font-size: clamp(11px, 3.1vw, 12px); white-space: nowrap; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 187px; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; }
   .featuredActivityMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -471,6 +483,10 @@
   .sectionHeader { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 
+.content [data-health-reveal][data-reveal="pending"] { opacity: 0; transform: translateY(12px); }
+.content [data-health-reveal][data-reveal="visible"] { opacity: 1; transform: translateY(0); transition: opacity 720ms cubic-bezier(.2, .8, .2, 1), transform 720ms cubic-bezier(.2, .8, .2, 1); }
+
 @media (prefers-reduced-motion: reduce) {
+  .content [data-health-reveal] { opacity: 1 !important; transform: none !important; }
   .root *, .root *::before, .root *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

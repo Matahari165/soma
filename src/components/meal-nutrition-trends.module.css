@@ -285,7 +285,11 @@
   .periodButton { flex: 1 1 0; }
   .chartGrid { grid-template-columns: 1fr; gap: 24px; margin-top: 16px; }
   .chartHeader { min-height: 72px; }
-  .chartGrid :global(.health-line-chart-wrap) { height: 187px; }
+  .chartHeading { width: calc(100% - 64px); margin-inline-end: 64px; }
+  .chartGrid :global(.health-line-chart-wrap) { height: 187px; padding-right: 64px; }
+  .chartGrid :global(.health-chart-range),
+  .chartGrid :global(.health-chart-average-label) { text-align: right; }
+  .chartAxis { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
 }
 
 @media (prefers-reduced-motion: reduce) {
