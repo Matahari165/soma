@@ -38,10 +38,10 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   }, [date, data.calorieTarget]);
 
   const rings = [
-    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", goal: "8h 30", color: "#d4e6ee" },
-    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#bad8c8" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#d7c9af" },
-    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#d3bfd4" },
+    { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#d4e6ee" },
+    { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#bad8c8" },
+    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#d7c9af" },
+    { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#d3bfd4" },
   ] as const;
 
   const dateLabel = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
@@ -50,18 +50,19 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
 
   return <figure className={styles.figure} data-home-rings="" aria-label="Progression du jour pour le sommeil, la récupération, l’effort et les calories">
     <div className={styles.visual}>
-      <svg className={styles.chart} viewBox="0 0 420 420" role="img" aria-label={rings.map(ring => `${ring.label} : ${ring.display}, objectif ${ring.goal}${progress(ring.value, ring.target) === null ? ", progression indisponible" : `, ${Math.round(progress(ring.value, ring.target)! * 100)} % de l’objectif`}`).join(". ")}>
+      <svg className={styles.chart} viewBox="0 0 320 320" role="img" aria-label={rings.map(ring => `${ring.label} : ${ring.display}, objectif ${ring.goal}${progress(ring.value, ring.target) === null ? ", progression indisponible" : `, ${Math.round(progress(ring.value, ring.target)! * 100)} % de l’objectif`}`).join(". ")}>
         {rings.map((ring, index) => {
-          const radius = 172 - index * 39;
+          const radius = 136 - index * 29;
           const ratio = progress(ring.value, ring.target);
           return <g key={ring.id} className={styles.ring} style={{ "--ring-color": ring.color, "--ring-delay": `${index * 90}ms` } as CSSProperties}>
-            <circle className={styles.track} cx="210" cy="210" r={radius} />
-            {ratio !== null && <circle className={styles.progress} cx="210" cy="210" r={radius} pathLength="100" strokeDasharray={`${Math.max(0, ratio * 100)} 100`} />}
-            {ratio === null && <circle className={styles.unknown} cx="210" cy="210" r={radius} pathLength="100" strokeDasharray="1 2.8" />}
+            <circle className={styles.track} cx="160" cy="160" r={radius} />
+            {ratio !== null && <circle className={styles.progress} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray={`${Math.max(0, ratio * 100)} 100`} />}
+            {ratio === null && <circle className={styles.unknown} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="1 2.8" />}
           </g>;
         })}
-        <text className={styles.centerTop} x="210" y="205" textAnchor="middle">{dateLabel}</text>
-        <text className={styles.centerBottom} x="210" y="229" textAnchor="middle">OBJECTIFS</text>
+        {rings.map((ring, index) => <text key={ring.id} className={styles.ringNumber} data-ring-value={ring.id} data-on-track={progress(ring.value, ring.target) === null || progress(ring.value, ring.target)! < .09} x="160" y={160 - (136 - index * 29)} textAnchor="middle" dominantBaseline="middle" aria-hidden="true">{ring.ringDisplay}</text>)}
+        <text className={styles.centerTop} x="160" y="158" textAnchor="middle">{dateLabel}</text>
+        <text className={styles.centerBottom} x="160" y="176" textAnchor="middle">OBJECTIFS</text>
       </svg>
     </div>
     <figcaption className={styles.legend}>

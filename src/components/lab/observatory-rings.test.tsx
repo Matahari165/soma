@@ -16,6 +16,10 @@ it("shows the four home measures with their current values", () => {
   expect(html).toContain("Effort");
   expect(html).toContain("Calories");
   expect(html).toContain("50 % de l’objectif");
+  expect(html).toMatch(/data-ring-value="sleep"[^>]*>8h09<\/text>/);
+  expect(html).toMatch(/data-ring-value="recovery"[^>]*>59<\/text>/);
+  expect(html).toMatch(/data-ring-value="effort"[^>]*>4\.0<\/text>/);
+  expect(html).toMatch(/data-ring-value="calories"[^>]*>1200<\/text>/);
   expect((html.match(/stroke-dasharray="/g) ?? []).length).toBe(4);
 });
 
