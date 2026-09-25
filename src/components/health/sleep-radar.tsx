@@ -79,12 +79,15 @@ function labelPosition(index: number, count: number) {
   const cosine = Math.cos(angle);
   const sine = Math.sin(angle);
   const labelRadius = RADIUS + 34;
+  // Leave room for measured values and arrows at phone widths while keeping
+  // each side label outside the outer grid (whose radius is RADIUS).
+  const horizontalRadius = labelRadius - 24;
   const textAnchor: "start" | "middle" | "end" = cosine > 0.28 ? "start" : cosine < -0.28 ? "end" : "middle";
   const dy = sine > 0.35 ? "0" : sine < -0.35 ? "0" : "0.35em";
   const valueDy = sine > 0.35 ? "1.55em" : "1.4em";
 
   return {
-    x: CENTER_X + cosine * labelRadius,
+    x: CENTER_X + cosine * (Math.abs(cosine) > 0.28 ? horizontalRadius : labelRadius),
     y: CENTER_Y + sine * labelRadius,
     textAnchor,
     dy,
@@ -276,7 +279,7 @@ export function SleepRadar({ dimensions, title = "Radar du sommeil", summary, cl
               {interactiveAxis && <line className={styles.axisHit} x1={CENTER_X} y1={CENTER_Y} x2={position.x} y2={position.y} aria-hidden="true" />}
               {interactiveAxis && <circle className={styles.labelHit} cx={position.x} cy={position.y} r="30" aria-hidden="true" />}
               {interactiveAxis && <circle className={styles.focusRing} cx={position.x} cy={position.y} r="26" aria-hidden="true" />}
-              <g className={styles.labelGroup} aria-hidden="true">
+              <g className={styles.labelGroup} data-side={Math.cos(angleFor(index, count)) < -0.28 ? "left" : undefined} aria-hidden="true">
                 <title>{readableDimension(dimension)}</title>
                 <text className={styles.label} x={position.x} y={position.y} dy={position.dy} textAnchor={position.textAnchor}>{dimension.label}{selected ? " ●" : ""}</text>
                 {displayValue || comparison ? (
