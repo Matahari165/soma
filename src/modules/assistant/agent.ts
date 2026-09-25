@@ -9,6 +9,7 @@ import { createGetUserContextTool } from "./tools/get-user-context";
 import { createGetPlanDetailsTool } from "./tools/get-plan-details";
 import { createGetStrongestEffectsTool } from "./tools/get-strongest-effects";
 import { createGetWorkoutHistoryTool } from "./tools/get-workout-history";
+import { createGetLatestRunTool } from "./tools/get-latest-run";
 import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createManageNutritionTargetsTool } from "./tools/manage-nutrition-targets";
@@ -47,12 +48,13 @@ export function createSomaAssistantAgent(input: {
   const settings = qualitySettings[input.quality];
   return new ToolLoopAgent({
     model: openai.responses(SOMA_ASSISTANT_MODEL),
-    instructions: SOMA_ASSISTANT_INSTRUCTIONS,
+    instructions: `${SOMA_ASSISTANT_INSTRUCTIONS}\n\nHORLOGE SERVEUR : ${new Date().toISOString()} (UTC). Utilise le fuseau renvoyé par les outils Soma pour interpréter « aujourd'hui » et « hier ».`,
     tools: {
       getUserContext: createGetUserContextTool(input),
       getPlanDetails: createGetPlanDetailsTool(input),
       getStrongestEffects: createGetStrongestEffectsTool(input),
       getWorkoutHistory: createGetWorkoutHistoryTool(input),
+      getLatestRun: createGetLatestRunTool(input),
       querySomaData: createQuerySomaDataTool(input),
       manageUserContext: createManageUserContextTool(input),
       manageMeal: createManageMealTool(input),
