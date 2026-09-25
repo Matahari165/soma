@@ -154,7 +154,9 @@ describe("assistant Live voice session", () => {
       .rejects.toMatchObject({ code: "assistant_live_session_invalid", status: 401 });
     expect(state.respondToAssistant).toHaveBeenCalledTimes(2);
 
-    const damagedToken = `${session.sessionToken.slice(0, -1)}${session.sessionToken.endsWith("a") ? "b" : "a"}`;
+    const [payload, signature] = session.sessionToken.split(".");
+    const damagedSignature = `${signature.startsWith("a") ? "b" : "a"}${signature.slice(1)}`;
+    const damagedToken = `${payload}.${damagedSignature}`;
     await expect(respondToAssistantLiveDelegation(userId, { ...request, sessionToken: damagedToken }))
       .rejects.toMatchObject({ code: "assistant_live_session_invalid", status: 401 });
     expect(state.respondToAssistant).toHaveBeenCalledTimes(2);
