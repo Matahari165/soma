@@ -29,6 +29,10 @@ describe("local assistant preview", () => {
     const call = vi.mocked(generate).mock.calls[0][0];
     expect(call.system).toContain("fictives");
     expect(call.system).toContain("Sommeil");
+    expect(call.system).toContain("Courses fictives de démonstration");
+    expect(call.system).toContain("allure moyenne pondérée");
+    expect(call.system).toContain("FC moyenne");
+    expect(call.providerOptions).toMatchObject({ openai: { reasoningEffort: "medium" } });
     expect(call.providerOptions).toMatchObject({ openai: { store: false } });
     expect(result).toMatchObject({ preview: true, userMessage: { role: "user" }, assistantMessage: { role: "assistant" } });
     const secondRequestId = crypto.randomUUID();

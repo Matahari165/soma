@@ -12,7 +12,13 @@ const headers = { "Cache-Control": "private, no-store" };
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required.", code: "unauthorized" }, { status: 401, headers });
-  if (isLocalPreviewMode()) return NextResponse.json({ calibrated: true, prompts: selectStarterPrompts({ hasGoals: false, hasRunning: false, hasEffort: false, hasSleep: false, hasRecovery: false, hasMeals: false }), preview: true }, { headers });
+  if (isLocalPreviewMode()) {
+    const prompts = selectStarterPrompts({ hasGoals: false, hasRunning: true, hasEffort: false, hasSleep: false, hasRecovery: false, hasMeals: false })
+      .map((prompt) => prompt.id === "running"
+        ? { ...prompt, text: "Que montrent mes courses fictives des trois dernières semaines : volume, allure et fréquence cardiaque ?" }
+        : prompt);
+    return NextResponse.json({ calibrated: true, prompts, preview: true }, { headers });
+  }
   try {
     return NextResponse.json(await loadAssistantStarterPrompts(user.id), { headers });
   } catch {

@@ -718,6 +718,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 .live-progress { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--lab-text-primary); }
 .live-progress > span:last-child { display: block; height: 100%; background: var(--lab-border); }
 .live-title h1 { margin-block: 12px; font-size: clamp(3rem, 7vw, 7rem); }
+.live-set-weight { display: grid; gap: 8px; max-width: 240px; color: var(--lab-text-secondary); font-size: 14px; }
+.live-set-fields { display: flex; flex-wrap: wrap; gap: 16px; }
+.live-set-fields > label { flex: 1 1 180px; }
+.live-set-weight input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--lab-border-strong); border-radius: 4px; background: var(--lab-surface-subtle); color: var(--lab-text-primary); font: 400 16px/1 var(--lab-data-font); }
+.live-set-weight input:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
 .live-cues { display: grid; align-content: center; gap: 12px; margin: 0; padding: 20px 20px 20px 42px; border-block: 1px solid color-mix(in srgb, var(--paper) 25%, transparent); color: color-mix(in srgb, var(--paper) 82%, transparent); }
 .live-cues li { padding-left: 6px; }
 .rest-timer { grid-column: 1 / -1; display: grid; place-items: center; padding: 20px; border: 1px solid var(--line-strong); border-radius: var(--radius-data); }
