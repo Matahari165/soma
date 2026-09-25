@@ -403,3 +403,27 @@
   .composer:focus-within { transform: scale(1.015); transform-origin: center bottom; }
   .composer textarea { min-height: 48px; padding: 10px 0; font-size: 17px; }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .userMessage { gap: 0; }
+  .userMessage .editMessage,
+  .userMessage:hover .editMessage {
+    min-height: 0;
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .userMessage[data-edit-revealed="true"] .editMessage,
+  .userMessage[data-edit-revealed="true"]:hover .editMessage,
+  .userMessage .editMessage:focus-visible {
+    min-height: 44px;
+    max-height: 44px;
+    margin-top: 6px;
+    padding: 0 2px;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

@@ -7,8 +7,49 @@ import { afterEach, expect, it, vi } from "vitest";
 import { AssistantWorkspace } from "./assistant-workspace";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
+});
+
+it("reveals edit only after a stationary long press and dismisses it on an outside tap", async () => {
+  const original = { id: "user-1", sequence: 1, role: "user", status: "completed", parts: [{ type: "text", text: "Question" }] };
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [] });
+    if (url.includes("conversationId=conversation-1")) return Response.json({ messages: [original] });
+    return Response.json({ conversations: [{ id: "conversation-1", title: "Test" }] });
+  }));
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const conversationButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Test");
+  await act(async () => conversationButton?.click());
+  const item = container.querySelector<HTMLElement>("[data-edit-message-id='user-1']");
+  const body = item?.querySelector("div");
+  const pointer = (type: string, x: number) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperties(event, {
+      pointerType: { value: "touch" }, pointerId: { value: 1 }, clientX: { value: x }, clientY: { value: 0 },
+    });
+    return event;
+  };
+
+  vi.useFakeTimers();
+  await act(async () => body?.dispatchEvent(pointer("pointerdown", 0)));
+  await act(async () => vi.advanceTimersByTime(499));
+  expect(item?.getAttribute("data-edit-revealed")).toBeNull();
+  await act(async () => body?.dispatchEvent(pointer("pointermove", 20)));
+  await act(async () => vi.advanceTimersByTime(1));
+  expect(item?.getAttribute("data-edit-revealed")).toBeNull();
+
+  await act(async () => body?.dispatchEvent(pointer("pointerdown", 0)));
+  await act(async () => vi.advanceTimersByTime(500));
+  expect(item?.getAttribute("data-edit-revealed")).toBe("true");
+  await act(async () => document.body.dispatchEvent(pointer("pointerdown", 0)));
+  expect(item?.getAttribute("data-edit-revealed")).toBeNull();
+  await act(async () => root.unmount());
 });
 
 it("sends a deterministic starter immediately without copying it into the composer", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Check, Image as ImageIcon, Menu, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
-import { FormEvent, KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./assistant-workspace.module.css";
 import { AssistantDictation } from "./assistant-dictation";
@@ -188,6 +188,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [revealedEditMessageId, setRevealedEditMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [showLatest, setShowLatest] = useState(false);
   const [progressiveMessageId, setProgressiveMessageId] = useState<string | null>(null);
@@ -196,6 +197,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const preEditDraftRef = useRef("");
+  const longPressRef = useRef<{ timer: number; pointerId: number; x: number; y: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
@@ -205,6 +207,42 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   const activeIdRef = useRef(activeId);
   const sendMessageRef = useRef<(event?: FormEvent, overrideText?: string) => Promise<void>>(async () => {});
   activeIdRef.current = activeId;
+
+  function cancelLongPress() {
+    if (!longPressRef.current) return;
+    window.clearTimeout(longPressRef.current.timer);
+    longPressRef.current = null;
+  }
+
+  function startLongPress(event: ReactPointerEvent<HTMLDivElement>, messageId: string) {
+    if (event.pointerType !== "touch" || sending) return;
+    cancelLongPress();
+    const timer = window.setTimeout(() => {
+      longPressRef.current = null;
+      setRevealedEditMessageId(messageId);
+    }, 500);
+    longPressRef.current = { timer, pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+  }
+
+  function moveLongPress(event: ReactPointerEvent<HTMLDivElement>) {
+    const press = longPressRef.current;
+    if (press?.pointerId === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cancelLongPress();
+  }
+
+  useEffect(() => () => {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer);
+  }, []);
+
+  useEffect(() => {
+    if (!revealedEditMessageId) return;
+    const hideOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-edit-message-id]")?.getAttribute("data-edit-message-id") === revealedEditMessageId) return;
+      setRevealedEditMessageId(null);
+    };
+    document.addEventListener("pointerdown", hideOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", hideOnOutsidePress);
+  }, [revealedEditMessageId]);
 
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
@@ -373,6 +411,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     if (id === activeId && messages.length) return;
     setActiveId(id);
     setEditingMessageId(null);
+    setRevealedEditMessageId(null);
     preEditDraftRef.current = "";
     setOpenMenuId(null);
     setProgressiveMessageId(null);
@@ -407,6 +446,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     setError(null);
     setHistoryOpen(false);
     setEditingMessageId(null);
+    setRevealedEditMessageId(null);
     setEditingDraft("");
     preEditDraftRef.current = "";
     setOpenMenuId(null);
@@ -578,6 +618,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
     if (!value || sending) return;
     preEditDraftRef.current = text;
     setEditingMessageId(message.id);
+    setRevealedEditMessageId(null);
     setEditingDraft(value);
     setError(null);
     requestAnimationFrame(() => editTextareaRef.current?.focus());
@@ -671,7 +712,7 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
           ) : (
             <ol className={styles.messages}>
               {messages.filter((message) => message.role !== "tool").map((message) => (
-                <li key={message.id} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
+                <li key={message.id} data-edit-message-id={message.role === "user" ? message.id : undefined} data-edit-revealed={revealedEditMessageId === message.id || undefined} className={`${message.role === "user" ? styles.userMessage : styles.assistantMessage} ${message.status === "pending" ? styles.pendingMessage : ""} ${message.id === progressiveMessageId ? styles.freshMessage : ""}`}>
                   <span className={styles.srOnly}>{message.role === "user" ? "Votre message" : "Réponse de Soma"}</span>
                   {editingMessageId === message.id ? <div className={styles.inlineEditor}>
                     <label className={styles.srOnly} htmlFor={`edit-${message.id}`}>Modifier le message</label>
@@ -680,7 +721,12 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
                       if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void sendMessage(undefined, editingDraft);
                     }} disabled={sending} />
                     <div className={styles.inlineEditorActions}><button type="button" onClick={cancelEditing} disabled={sending}>Annuler</button><button type="button" onClick={() => void sendMessage(undefined, editingDraft)} disabled={sending || !editingDraft.trim()}><Check size={15} aria-hidden="true" /> Enregistrer et envoyer</button></div>
-                  </div> : <div className={styles.messageBody}><MessageBody message={message} /></div>}
+                  </div> : <div className={styles.messageBody} onPointerDown={message.role === "user" && message.status !== "pending" ? (event) => startLongPress(event, message.id) : undefined} onPointerMove={message.role === "user" ? moveLongPress : undefined} onPointerUp={message.role === "user" ? cancelLongPress : undefined} onPointerCancel={message.role === "user" ? cancelLongPress : undefined} onContextMenu={message.role === "user" ? (event) => {
+                    if (!window.matchMedia?.("(pointer: coarse)").matches) return;
+                    event.preventDefault();
+                    cancelLongPress();
+                    setRevealedEditMessageId(message.id);
+                  } : undefined}><MessageBody message={message} /></div>}
                   {message.role === "user" && message.status !== "pending" && editingMessageId !== message.id && <button type="button" className={styles.editMessage} onClick={() => editMessage(message)} disabled={sending} aria-label="Modifier ce message"><Pencil size={14} aria-hidden="true" /> Modifier</button>}
                   {message.status === "failed" && <span className={styles.failedMessage}>Réponse interrompue</span>}
                 </li>
