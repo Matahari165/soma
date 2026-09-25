@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   GOOGLE_HEALTH_DAILY_ROLLUP_TYPES,
@@ -12,6 +12,7 @@ import {
   getGoogleHealthClientId,
   GOOGLE_HEALTH_SCOPES,
   isGoogleHealthDataType,
+  rollUpGoogleHealthSessionHeartRate,
 } from "./client";
 
 const originalClientId = process.env.GOOGLE_HEALTH_CLIENT_ID;
@@ -51,6 +52,29 @@ describe("Google Health OAuth configuration", () => {
 });
 
 describe("Google Health query contracts", () => {
+  it("requests one heart-rate maximum for the exact session window", async () => {
+    const request = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({
+      rollupDataPoints: [{ heartRate: { beatsPerMinuteMax: 178 } }],
+    }), { status: 200 }));
+    try {
+      const result = await rollUpGoogleHealthSessionHeartRate({
+        accessToken: "test-token",
+        start: new Date("2026-08-01T10:00:00.000Z"),
+        end: new Date("2026-08-01T11:06:00.000Z"),
+      });
+      expect(result.rollupDataPoints?.[0]?.heartRate?.beatsPerMinuteMax).toBe(178);
+      expect(request.mock.calls[0]?.[0]).toBe("https://health.googleapis.com/v4/users/me/dataTypes/heart-rate/dataPoints:rollUp");
+      const init = request.mock.calls[0]?.[1];
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        range: { startTime: "2026-08-01T10:00:00.000Z", endTime: "2026-08-01T11:06:00.000Z" },
+        windowSize: "3960s",
+        pageSize: 1,
+      });
+    } finally {
+      request.mockRestore();
+    }
+  });
   it("uses larger raw pages while respecting Google's session limits", () => {
     expect(googleHealthDataPointPageSize("sleep")).toBe(25);
     expect(googleHealthDataPointPageSize("exercise")).toBe(25);
@@ -142,6 +166,8 @@ describe("Google Health consent", () => {
     const activity = getGrantedGoogleHealthDataTypes([GOOGLE_HEALTH_SCOPES[0]]);
     expect(activity).toContain("steps");
     expect(activity).not.toContain("daily-resting-heart-rate");
+    const physiology = getGrantedGoogleHealthDataTypes([GOOGLE_HEALTH_SCOPES[1]]);
+    expect(physiology).toContain("daily-heart-rate-zones");
   });
 
   it("rejects unknown webhook data types", () => {
