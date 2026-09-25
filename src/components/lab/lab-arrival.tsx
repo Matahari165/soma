@@ -79,13 +79,8 @@ export function LabArrival({
           </div>
         </div>}
         {dayActivitySummary && <section className="arrival-activity-summary" aria-label={`Activités du ${date}`}>
-          <p className="arrival-activity-summary__count">
-            {dayActivitySummary.count} activité{dayActivitySummary.count === 1 ? "" : "s"}
-            {dayActivitySummary.count > 1 ? " · activité la plus longue" : ""}
-          </p>
           <div className="arrival-activity-summary__identity">
             <strong>{dayActivitySummary.activity.name.trim() || activityTypeLabel(dayActivitySummary.activity.type)}</strong>
-            <span>{activityTypeLabel(dayActivitySummary.activity.type)}</span>
           </div>
           <dl className="arrival-activity-summary__metrics">
             {activitySummaryMetrics(dayActivitySummary).map(({ label, value }) => <div key={label}>
@@ -134,7 +129,7 @@ function activitySummaryMetrics(summary: PersonalLabActivitySummary) {
     pace === null || pace <= 0 ? null : { label: "Allure", value: `${Math.floor(Math.round(pace) / 60)}:${String(Math.round(pace) % 60).padStart(2, "0")} min/km` },
     averageHeartRate === null ? null : { label: "FC moy.", value: `${Math.round(averageHeartRate)} bpm` },
     maximumHeartRate === null ? null : { label: "FC max.", value: `${Math.round(maximumHeartRate)} bpm` },
-    calories === null ? null : { label: "Calories estimées", value: `${Math.round(calories).toLocaleString("fr-FR")} kcal` },
+    calories === null ? null : { label: "Calories", value: `${Math.round(calories).toLocaleString("fr-FR")} kcal` },
   ].filter((metric): metric is { label: string; value: string } => metric !== null);
 }
 
