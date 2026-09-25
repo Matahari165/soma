@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -10,12 +11,14 @@ export function CredentialsForm({ next }: { next?: string | null }) {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [recoveryRequested, setRecoveryRequested] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setRecoveryRequested(false);
     setLoading(true);
 
     const endpoint = mode === "login" ? "/api/auth/login" : mode === "register" ? "/api/auth/register" : "/api/auth/password-recovery/request";
@@ -50,6 +53,7 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         setMode("login");
         setPassword("");
         setSuccessMessage("If this address has a Soma password, check its inbox for a recovery link.");
+        setRecoveryRequested(true);
         setLoading(false);
         return;
       }
@@ -95,7 +99,14 @@ export function CredentialsForm({ next }: { next?: string | null }) {
         {successMessage && (
           <div className="auth-success-banner" role="status">
             <CheckCircle2 size={16} aria-hidden="true" />
-            <span>{successMessage}</span>
+            <span>
+              {successMessage}
+              {recoveryRequested && (
+                <Link className="auth-recovery-help-link" href="/login?reset=1">
+                  Link opened on localhost? Continue in Soma.
+                </Link>
+              )}
+            </span>
           </div>
         )}
         {mode === "register" && (
