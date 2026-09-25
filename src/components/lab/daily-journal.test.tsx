@@ -213,7 +213,7 @@ describe("journal motion states", () => {
     expect(html.indexOf("Daily Protocol")).toBeLessThan(html.indexOf("Validate day"));
   });
 
-  it("shows phase names without habit counters in Personal Lab", () => {
+  it("keeps phase names accessible while omitting visible phase headings in Personal Lab", () => {
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
       entries: [],
@@ -226,7 +226,14 @@ describe("journal motion states", () => {
     expect(html).not.toContain(" sur ");
     expect(html).not.toContain("Logged");
     expect(html).not.toContain("Completed");
-    expect(html).toContain("text-xs font-mono uppercase tracking-wider text-content-secondary font-medium");
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    const groups = Array.from(container.querySelectorAll<HTMLElement>('[data-purpose$="-habits"]'));
+    expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual([
+      "Morning Phase", "Daytime Phase", "Evening Phase", "Day Context & Modifiers",
+    ]);
+    expect(groups.every((group) => group.firstElementChild?.classList.contains("divide-y"))).toBe(true);
+    expect(html).toContain("space-y-0 max-sm:space-y-3");
   });
 
   it("does not announce completion for a date that was already complete on load", () => {
