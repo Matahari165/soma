@@ -278,18 +278,17 @@
 .trendGrid :global(.metric-trend-card) { min-width: 0; padding: 0; border: 0 !important; border-radius: 0; background: transparent; box-shadow: none; }
 .trendGrid :global(.metric-trend-card) :global(header) { justify-content: center; text-align: center; }
 .trendGrid :global(.metric-trend-card) :global(header > div) {
-  width: calc(100% - 88px);
-  margin-inline-end: 88px;
+  width: 100%;
   justify-items: center;
 }
 .root .trendGrid :global(.metric-trend-card) :global(header) { min-height: 24px; align-items: flex-start; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { width: 100%; height: 194px; margin-top: 8px; }
-:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; padding-right: 88px; }
+:global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; padding-right: 0; }
 :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-chart-average) { stroke: var(--lab-info); stroke-dasharray: 4 5; stroke-width: 1.5; opacity: 1; vector-effect: non-scaling-stroke; }
 .trendGrid :global(.health-chart-range) { top: 0; right: 0; bottom: 0; width: 76px; }
 .trendGrid :global(.health-chart-average-label) { position: absolute; right: 0; display: block; width: 76px; color: var(--lab-info); font: 500 11px/14px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateY(-50%); }
 .trendGrid :global(.health-chart-average-label)::before { content: ""; display: inline-block; width: 9px; margin-right: 4px; border-top: 1.5px dashed currentColor; vertical-align: 3px; }
-.trendGrid :global(.chart-axis) { padding-inline-start: calc((100% - 88px) * .04); padding-inline-end: calc(88px + (100% - 88px) * .04); }
+.trendGrid :global(.chart-axis) { padding-inline: 4%; }
 
 @media (prefers-reduced-motion: reduce) {
   .benchmarkTrigger svg,
@@ -439,6 +438,8 @@
   .dimensionFormula { grid-template-columns: 1fr; }
   .dimensionMetrics > div:last-child { grid-column: auto; }
   .trendGrid { grid-template-columns: 1fr; gap: 24px; }
+  .activityFilters { width: 100%; flex-wrap: nowrap; gap: 4px; }
+  .activityFilters button { min-width: 0; padding-inline: 4px; font-size: 12px; white-space: nowrap; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.metric-trend-card) :global(.chart-frame) { height: 187px; }
   :global(html[data-lab-theme="observatory"]) .root .trendGrid :global(.health-line-chart-wrap) { height: 187px; }
   .featuredActivityMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
