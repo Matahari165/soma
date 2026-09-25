@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./assistant-live-voice.module.css";
 
 type Phase = "idle" | "requesting" | "connecting" | "active" | "closing";
-export type LiveVoicePresentation = { phase: Phase; userCaption: string; assistantCaption: string; muted: boolean; error: string | null };
+type TurnState = "listening" | "hearing" | "thinking" | "speaking";
+export type LiveVoicePresentation = { phase: Phase; turnState: TurnState; userCaption: string; assistantCaption: string; muted: boolean; error: string | null };
 type LiveEvent = Record<string, unknown> & { type?: unknown };
 type TranscriptFragment = { startMs: number; endMs: number; text: string };
 type PendingDelegation = {
@@ -23,6 +24,32 @@ const DELEGATION_MAX_WAIT_MS = 1_400;
 const SESSION_CLOSE_TIMEOUT_MS = 15_000;
 const DELEGATION_DRAIN_TIMEOUT_MS = 45_000;
 const IDLE_CLOSE_MS = 5 * 60_000;
+const SPEECH_QUIET_MS = 1_800;
+
+function vibrateBriefly(duration: number) {
+  try { navigator.vibrate?.(duration); } catch { /* Haptics are optional. */ }
+}
+
+function playSessionTone(context: AudioContext | null, kind: "start" | "stop") {
+  if (!context || context.state === "closed") return;
+  try {
+    const now = context.currentTime;
+    const notes = kind === "start" ? [523.25, 659.25] : [659.25, 523.25];
+    notes.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const begins = now + index * 0.105;
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, begins);
+      gain.gain.exponentialRampToValueAtTime(0.055, begins + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, begins + 0.18);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(begins);
+      oscillator.stop(begins + 0.19);
+    });
+  } catch { /* Audio feedback must never interrupt a voice session. */ }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -145,6 +172,13 @@ export function AssistantLiveVoice({
   const [userCaption, setUserCaption] = useState("");
   const [assistantCaption, setAssistantCaption] = useState("");
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
+  const [turnState, setTurnState] = useState<TurnState>("listening");
+  const feedbackContextRef = useRef<AudioContext | null>(null);
+  const speechQuietTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionStartedWaiterRef = useRef<(() => void) | null>(null);
+  const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const endButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousPhaseRef = useRef<Phase>("idle");
   const completedTurnRef = useRef(false);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const microphoneRef = useRef<MediaStream | null>(null);
@@ -180,6 +214,13 @@ export function AssistantLiveVoice({
     onConversationStartedRef.current = onConversationStarted;
     onConversationUpdatedRef.current = onConversationUpdated;
   }, [onBusyChange, onConversationStarted, onConversationUpdated]);
+
+  useEffect(() => {
+    const previous = previousPhaseRef.current;
+    previousPhaseRef.current = phase;
+    if (phase === "active" && previous !== "active") endButtonRef.current?.focus();
+    if (phase === "idle" && previous !== "idle") startButtonRef.current?.focus();
+  }, [phase]);
 
   const setCurrentPhase = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -230,6 +271,9 @@ export function AssistantLiveVoice({
     transcriptCursorRef.current = 0;
     handledDelegationsRef.current.clear();
     sessionStartedRef.current = false;
+    if (speechQuietTimerRef.current) clearTimeout(speechQuietTimerRef.current);
+    speechQuietTimerRef.current = null;
+    sessionStartedWaiterRef.current = null;
     if (mountedRef.current) {
       setMuted(false);
       setPlaybackBlocked(false);
@@ -250,6 +294,7 @@ export function AssistantLiveVoice({
       }
     }
     setCurrentPhase("idle");
+    setTurnState("listening");
   }, [releaseTransport, setCurrentPhase]);
 
   const closeLiveSession = useCallback((channel: RTCDataChannel) => {
@@ -300,6 +345,7 @@ export function AssistantLiveVoice({
     return () => {
       mountedRef.current = false;
       finalizeRef.current?.();
+      if (feedbackContextRef.current) void feedbackContextRef.current.close().catch(() => undefined);
       onBusyChangeRef.current(false);
     };
   }, []);
@@ -396,6 +442,7 @@ export function AssistantLiveVoice({
   const queueDelegation = useCallback((delegationId: string, offsetMs: number) => {
     if (handledDelegationsRef.current.has(delegationId)) return;
     setError(null);
+    setTurnState("thinking");
     handledDelegationsRef.current.add(delegationId);
     const superseded = new Set([
       ...pendingDelegationsRef.current.keys(),
@@ -438,16 +485,23 @@ export function AssistantLiveVoice({
 
   const handleServerEvent = useCallback((event: LiveEvent) => {
     if (event.type === "session.started") {
+      if (sessionStartedRef.current) return;
       sessionStartedRef.current = true;
       lastActivityRef.current = Date.now();
       setError(null);
       setCurrentPhase("active");
+      setTurnState("listening");
+      sessionStartedWaiterRef.current?.();
+      playSessionTone(feedbackContextRef.current, "start");
+      vibrateBriefly(18);
       return;
     }
     if (event.type === "session.input_transcript.delta") {
       const delta = textFromEvent(event);
       if (delta) {
         lastActivityRef.current = Date.now();
+        if (speechQuietTimerRef.current) clearTimeout(speechQuietTimerRef.current);
+        setTurnState("hearing");
         const startMs = eventTime(event.start_ms) ?? 0;
         const endMs = eventTime(event.end_ms) ?? startMs;
         transcriptFragmentsRef.current.push({ startMs, endMs, text: delta });
@@ -471,6 +525,9 @@ export function AssistantLiveVoice({
       const delta = textFromEvent(event);
       if (delta) {
         lastActivityRef.current = Date.now();
+        setTurnState("speaking");
+        if (speechQuietTimerRef.current) clearTimeout(speechQuietTimerRef.current);
+        speechQuietTimerRef.current = setTimeout(() => setTurnState("listening"), SPEECH_QUIET_MS);
         setAssistantCaption((current) => `${current}${delta}`.slice(-12_000));
       }
       return;
@@ -502,6 +559,7 @@ export function AssistantLiveVoice({
     setError(null);
     setUserCaption("");
     setAssistantCaption("");
+    setTurnState("listening");
     setCurrentPhase("requesting");
     if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined") {
       setError("Le mode vocal n’est pas disponible dans ce navigateur.");
@@ -512,14 +570,21 @@ export function AssistantLiveVoice({
     const controller = new AbortController();
     createAbortRef.current = controller;
     try {
+      if (typeof AudioContext !== "undefined") {
+        try {
+          feedbackContextRef.current ??= new AudioContext();
+          void feedbackContextRef.current.resume().catch(() => undefined);
+        } catch { /* Optional feedback must not block microphone access. */ }
+      }
+      // Pre-gather ICE candidates while microphone permission is pending.
+      const peer = new RTCPeerConnection({ iceCandidatePoolSize: 1 });
+      peerRef.current = peer;
       const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!mountedRef.current || controller.signal.aborted) {
         microphone.getTracks().forEach((track) => track.stop());
         return;
       }
       microphoneRef.current = microphone;
-      const peer = new RTCPeerConnection();
-      peerRef.current = peer;
       peer.ontrack = (event) => {
         const audio = remoteAudioRef.current;
         if (!audio) return;
@@ -578,11 +643,24 @@ export function AssistantLiveVoice({
       onConversationStartedRef.current(payload.conversationId);
       await peer.setRemoteDescription({ type: "answer", sdp: payload.sdp });
       if (!mountedRef.current || controller.signal.aborted) return;
-      const startedDeadline = Date.now() + 20_000;
-      while (!sessionStartedRef.current && peer.connectionState !== "failed" && Date.now() < startedDeadline) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        if (controller.signal.aborted) return;
-      }
+      if (!sessionStartedRef.current) await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => finish(new Error("La session vocale n’a pas confirmé son démarrage.")), 20_000);
+        const onAbort = () => finish(new DOMException("Connexion annulée", "AbortError"));
+        const onConnectionChange = () => {
+          if (peer.connectionState === "failed" || peer.connectionState === "closed") finish(new Error("La connexion vocale a échoué."));
+        };
+        const finish = (error?: Error) => {
+          clearTimeout(timeout);
+          controller.signal.removeEventListener("abort", onAbort);
+          peer.removeEventListener("connectionstatechange", onConnectionChange);
+          sessionStartedWaiterRef.current = null;
+          if (error) reject(error); else resolve();
+        };
+        sessionStartedWaiterRef.current = () => finish();
+        controller.signal.addEventListener("abort", onAbort, { once: true });
+        peer.addEventListener("connectionstatechange", onConnectionChange);
+        if (sessionStartedRef.current) finish();
+      });
       if (!sessionStartedRef.current) throw new Error("La session vocale n’a pas confirmé son démarrage.");
       lastActivityRef.current = Date.now();
     } catch (cause) {
@@ -616,6 +694,8 @@ export function AssistantLiveVoice({
     }
     setCurrentPhase("closing");
     stopMicrophoneInput();
+    playSessionTone(feedbackContextRef.current, "stop");
+    vibrateBriefly(12);
     const drainDeadline = Date.now() + DELEGATION_DRAIN_TIMEOUT_MS;
     while ((pendingDelegationsRef.current.size > 0 || queuedDelegationsRef.current.size > 0 || inFlightDelegationsRef.current.size > 0) && Date.now() < drainDeadline) {
       await new Promise((resolve) => setTimeout(resolve, 150));
@@ -657,17 +737,18 @@ export function AssistantLiveVoice({
 
   const busy = phase !== "idle";
   useEffect(() => {
-    onPresentationChange?.(busy ? { phase, userCaption, assistantCaption, muted, error } : null);
-  }, [assistantCaption, busy, error, muted, onPresentationChange, phase, userCaption]);
+    onPresentationChange?.(busy ? { phase, turnState, userCaption, assistantCaption, muted, error } : null);
+  }, [assistantCaption, busy, error, muted, onPresentationChange, phase, turnState, userCaption]);
   const status = phase === "requesting" ? "Autorisation du microphone…"
     : phase === "connecting" ? "Connexion vocale…"
-      : phase === "active" ? (muted ? "Micro coupé" : "Mode vocal actif")
+      : phase === "active" ? (muted ? "Micro coupé" : turnState === "thinking" ? "Soma réfléchit…" : turnState === "speaking" ? "Soma répond" : turnState === "hearing" ? "Je t'écoute" : "À ton écoute")
         : phase === "closing" ? "Fermeture de la session…" : "";
 
   return <div className={`${styles.control} ${busy ? styles.expanded : ""} ${className ?? ""}`} data-live-phase={phase}>
     <audio ref={remoteAudioRef} className={styles.audioOutput} autoPlay playsInline aria-label="Voix de Soma" />
     {!busy ? <button
       type="button"
+      ref={startButtonRef}
       className={styles.startButton}
       onClick={() => void startSession()}
       disabled={disabled}
@@ -678,7 +759,7 @@ export function AssistantLiveVoice({
       <span className={styles.status} role="status" aria-live="polite">{status}</span>
       {playbackBlocked && phase === "active" && <button type="button" className={styles.soundButton} onClick={() => void enablePlayback()} aria-label="Activer le son"><Volume2 size={17} aria-hidden="true" /></button>}
       {phase === "active" && <button type="button" className={styles.muteButton} onClick={toggleMute} aria-label={muted ? "Activer le microphone" : "Couper le microphone"} aria-pressed={muted}>{muted ? <MicOff size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}</button>}
-      <button type="button" className={styles.endButton} onClick={() => void endSession()} disabled={phase === "closing"} aria-label="Terminer le mode vocal">
+      <button type="button" ref={endButtonRef} className={styles.endButton} onClick={() => void endSession()} disabled={phase === "closing"} aria-label="Terminer le mode vocal">
         {phase === "closing" ? <LoaderCircle size={15} className={styles.spinner} aria-hidden="true" /> : <><Square size={12} fill="currentColor" aria-hidden="true" /><span>Terminer</span></>}
       </button>
     </>}
