@@ -6,6 +6,8 @@ import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { useLabTheme } from "./lab-theme";
 import { LabArrival, type LabArrivalPersonalization } from "./lab-arrival";
 import { OBSERVATORY_RADAR_PRESENTATION, ObservatoryRadar } from "./observatory-radar";
+import { ObservatoryRings } from "./observatory-rings";
+import { usePrimaryChartPresentation } from "@/components/dashboard/chart-presentation-preference";
 import { ArrivalBackdrop } from "./arrival-backdrops";
 import { PersonalLabJournalWorkspace } from "./personal-lab-journal-workspace";
 import { PersonalLabJournalLoading } from "./personal-lab";
@@ -79,6 +81,7 @@ export function LabWorldWorkspace({
   personalization?: LabArrivalPersonalization;
 }) {
   const theme = useLabTheme();
+  const { primaryChartPresentation } = usePrimaryChartPresentation();
   const root = useRef<HTMLElement>(null);
 
   const todayDate = overview?.todayDate ?? journal?.todayDate;
@@ -151,7 +154,9 @@ export function LabWorldWorkspace({
 
   const radarPresentation = OBSERVATORY_RADAR_PRESENTATION;
   const activeRadar = radarData ? (
-    <ObservatoryRadar data={radarData} date={activeDate} radius={radarPresentation.size} shiftX={radarPresentation.shiftX} shiftY={radarPresentation.shiftY} key={activeDate} />
+    primaryChartPresentation === "rings"
+      ? <ObservatoryRings data={radarData} date={activeDate} key={activeDate} />
+      : <ObservatoryRadar data={radarData} date={activeDate} radius={radarPresentation.size} shiftX={radarPresentation.shiftX} shiftY={radarPresentation.shiftY} key={activeDate} />
   ) : radar && isValidElement(radar)
     ? cloneElement(radar as ReactElement<{ radius?: number; shiftX?: number; shiftY?: number }>, { radius: radarPresentation.size, shiftX: radarPresentation.shiftX, shiftY: radarPresentation.shiftY })
     : radar;

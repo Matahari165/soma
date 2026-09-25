@@ -7,7 +7,7 @@ import { arrivalMessageFor } from "@/domain/lab/arrival-message";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
-describe("LabWorldWorkspace day navigation and radar display", () => {
+describe("LabWorldWorkspace day navigation and home goal display", () => {
   const mockOverview: PersonalLabOverview = {
     todayDate: "2026-09-12",
     overnightFingerprint: null,
@@ -54,7 +54,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     },
   };
 
-  it("renders today's date and today's radar by default", () => {
+  it("renders today's date and today's rings by default", () => {
     const html = renderToStaticMarkup(
       <LabWorldWorkspace
         overview={mockOverview}
@@ -66,7 +66,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain("Saturday, September 12");
     expect(html).toContain("8h 00");
     expect(html).toMatch(/2[\s\u202f]200 kcal/);
-    expect(html).toContain('class="radar-value"');
+    expect(html).toContain('data-home-rings=""');
     expect(html).not.toContain('aria-label="Previous day"');
   });
 
@@ -84,7 +84,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(defaultHtml).not.toContain('aria-label="Add a meal"');
   });
 
-  it("renders previous day's date and star graph when a past day is selected", () => {
+  it("renders previous day's date and rings when a past day is selected", () => {
     const html = renderToStaticMarkup(
       <LabWorldWorkspace
         overview={mockOverview}
@@ -98,7 +98,7 @@ describe("LabWorldWorkspace day navigation and radar display", () => {
     expect(html).toContain("8h 40");
     expect(html).toContain("88");
     expect(html).toMatch(/2[\s\u202f]400 kcal/);
-    expect(html).toContain('class="radar-value"');
+    expect(html).toContain('data-home-rings=""');
   });
 
   it("keeps date navigation in the shared day strip instead of the arrival header", () => {

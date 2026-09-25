@@ -41,6 +41,20 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
 @supports(animation-timeline:scroll()) {
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous :is(.arrival-heading,.arrival-art) { animation:observatory-hero-recede linear both; animation-timeline:scroll(root); animation-range:0px 600px; }
 }
+
+/* The ring presentation includes its own four-value key beneath the chart on phones. */
+html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art:has([data-home-rings]) {
+  height:auto!important;
+  min-height:0!important;
+  padding-top:0;
+}
+@media(max-width:700px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-art:has([data-home-rings]) {
+    height:auto!important;
+    min-height:0!important;
+    margin-block:8px 0!important;
+  }
+}
 @keyframes observatory-hero-recede { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:.18; transform:translateY(-32px) scale(.97); } }
 @media(max-width:700px) {
  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .arrival-composition { grid-template-columns:minmax(0,1fr)!important; min-height:0!important; gap:0!important; }
