@@ -1,32 +1,40 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 
-import type { MealNutritionTrendMetric, MealNutritionTrendPoint, MealNutritionTrendMetricId } from "@/domain/lab/meals";
+import { BarTrendChart } from "@/components/health/health-charts";
+import type { MetricPoint } from "@/domain/metrics/trends";
+import type { MealFoodGroupTrendPoint, MealNutritionTrendMetric, MealNutritionTrendPoint } from "@/domain/lab/meals";
 
+import { MealFoodCategoryTrends } from "./meal-food-category-trends";
+import { MealScoreHistoryPanel, type MealScoreTrendPoint } from "./meal-score-overview";
 import styles from "./meal-nutrition-trends.module.css";
 
-type Period = 7 | 14 | 30;
+export type MealTrendPeriod = 7 | 14 | 30;
 
-const periods: ReadonlyArray<{ value: Period; label: string }> = [
+const periods: ReadonlyArray<{ value: MealTrendPeriod; label: string }> = [
   { value: 7, label: "7 jours" },
   { value: 14, label: "2 semaines" },
   { value: 30, label: "1 mois" },
 ];
 
-const periodLabels: Record<Period, string> = {
+const periodLabels: Record<MealTrendPeriod, string> = {
   7: "les 7 derniers jours",
   14: "les 2 dernières semaines",
   30: "le dernier mois",
 };
 
-const metricCopy: Record<MealNutritionTrendMetricId, { label: string; unit: string }> = {
+const metricCopy: Record<MealNutritionTrendMetric["id"], { label: string; unit: string }> = {
   caloriesKcal: { label: "Calories", unit: "kcal" },
   proteinG: { label: "Protéines", unit: "g" },
   addedSugarG: { label: "Sucres ajoutés", unit: "g" },
   fatG: { label: "Lipides", unit: "g" },
   carbsG: { label: "Glucides", unit: "g" },
 };
+
+export function limitMealTrendPoints<T extends { date: string }>(points: readonly T[], period: MealTrendPeriod) {
+  return points.slice(-period);
+}
 
 function formatValue(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "—";
@@ -35,92 +43,95 @@ function formatValue(value: number | null) {
 
 function formatShortDate(date: string) {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" })
-    .format(new Date(`${date}T12:00:00`))
+    .format(new Date(date + "T12:00:00"))
     .replace(".", "");
 }
 
 function formatLongDate(date: string) {
   return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" })
-    .format(new Date(`${date}T12:00:00`));
+    .format(new Date(date + "T12:00:00"));
 }
 
-function average(points: readonly MealNutritionTrendPoint[]) {
+function measuredAverage(points: readonly MealNutritionTrendPoint[]) {
   const values = points.flatMap((point) => point.value === null || !Number.isFinite(point.value) ? [] : [point.value]);
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
-function latestPoint(points: readonly MealNutritionTrendPoint[]) {
+function latestMeasuredPoint(points: readonly MealNutritionTrendPoint[]) {
   return [...points].reverse().find((point) => point.value !== null && Number.isFinite(point.value)) ?? null;
 }
 
-function pointDescription(point: MealNutritionTrendPoint, unit: string) {
+function metricPointDescription(point: MealNutritionTrendPoint, unit: string) {
   return point.value === null
-    ? `${formatLongDate(point.date)} : aucune estimation disponible`
-    : `${formatLongDate(point.date)} : ${formatValue(point.value)} ${unit}`;
+    ? formatLongDate(point.date) + " : aucune estimation disponible"
+    : formatLongDate(point.date) + " : " + formatValue(point.value) + " " + unit;
 }
 
-function NutritionMetricCard({ metric, period }: { metric: MealNutritionTrendMetric; period: Period }) {
+function NutritionMetricChart({ metric, period }: { metric: MealNutritionTrendMetric; period: MealTrendPeriod }) {
   const copy = metricCopy[metric.id];
-  const points = metric.points.slice(-period);
-  const available = points.filter((point): point is MealNutritionTrendPoint & { value: number } => point.value !== null && Number.isFinite(point.value));
-  const drawnIndexes = points.flatMap((point, index) => point.value !== null && Number.isFinite(point.value) ? [index] : []);
-  const pointCount = Math.max(points.length, 1);
-  const titleGridColumn = drawnIndexes.length
-    ? `${drawnIndexes[0] + 1} / ${drawnIndexes.at(-1)! + 2}`
-    : `1 / ${pointCount + 1}`;
-  const current = latestPoint(points);
-  const periodAverage = average(points);
-  const maxValue = available.length ? Math.max(...available.map((point) => point.value)) : 1;
-  const scaleMax = maxValue === 0 ? 1 : maxValue * 1.12;
+  const points = limitMealTrendPoints(metric.points, period);
+  const available = points.filter((point) => point.value !== null && Number.isFinite(point.value));
+  const latest = latestMeasuredPoint(points);
+  const average = measuredAverage(points);
+  const coverage = available.length + " " + (available.length === 1 ? "jour mesuré" : "jours mesurés") + " sur " + points.length;
+  const titleId = "meal-trend-" + metric.id + "-title";
+  const summaryId = "meal-trend-" + metric.id + "-summary";
+  const chartPoints: MetricPoint[] = points.map((point) => ({ date: point.date, value: point.value }));
   const firstDate = points[0]?.date;
   const lastDate = points.at(-1)?.date ?? firstDate;
-  const summaryId = `nutrition-${metric.id}-summary`;
-  const coverageLabel = `${available.length} ${available.length === 1 ? "jour mesuré" : "jours mesurés"} sur ${points.length}`;
 
-  return <article className={styles.card} data-metric={metric.id} aria-labelledby={`nutrition-${metric.id}-title`}>
-    <header className={styles.cardHeader} style={{ "--point-count": pointCount } as CSSProperties}>
-      <div style={{ gridColumn: titleGridColumn }}>
-        <span className={styles.metricLabel} id={`nutrition-${metric.id}-title`}>{copy.label}</span>
-        <strong className={styles.value}>{formatValue(current?.value ?? null)}{current ? <small>{copy.unit}</small> : null}</strong>
+  return <article className={styles.chartCard} data-metric={metric.id} aria-labelledby={titleId} aria-describedby={summaryId}>
+    <header className={styles.chartHeader}>
+      <div className={styles.chartHeading}>
+        <h3 className={styles.metricLabel} id={titleId}>{copy.label}</h3>
+        <strong className={styles.value}>{formatValue(latest?.value ?? null)}{latest ? <small>{copy.unit}</small> : null}</strong>
+        <p className={styles.average}>{average === null ? "Aucune mesure" : "Moy. " + formatValue(average) + " " + copy.unit}</p>
       </div>
-      <span className={styles.average} style={{ gridColumn: titleGridColumn }}>{periodAverage === null ? "Aucune mesure" : `Moy. ${formatValue(periodAverage)} ${copy.unit}`}</span>
     </header>
-
     <div className={styles.chartFrame}>
-      <div className={styles.barChart} style={{ "--point-count": pointCount } as CSSProperties} role="group" aria-describedby={summaryId} aria-label={`${copy.label}, ${periodLabels[period]}. ${coverageLabel}.`}>
-        {points.map((point) => {
-          const height = point.value === null ? 0 : (point.value / scaleMax) * 100;
-          const barStyle = { "--bar-scale": String(height / 100) } as CSSProperties & { "--bar-scale": string };
-          return <div className={styles.barColumn} key={point.date}>
-            {point.value === null ? <span className={styles.barMissing} aria-hidden="true" /> : point.value === 0 ? <span className={styles.barZero} aria-hidden="true" /> : <span className={styles.bar} style={barStyle} aria-hidden="true" />}
-          </div>;
-        })}
-      </div>
-      <div className={styles.axis} aria-hidden="true"><span>{firstDate ? formatShortDate(firstDate) : ""}</span><span>{lastDate ? formatShortDate(lastDate) : ""}</span></div>
-      <p id={summaryId} className="sr-only">{points.map((point) => pointDescription(point, copy.unit)).join(". ")}</p>
+      {available.length ? <BarTrendChart points={chartPoints} label={copy.label + ", " + periodLabels[period] + ". " + coverage} unit={copy.unit} valueFormat="number" average={average} /> : <p className={styles.emptyInline}>Aucune mesure sur cette période.</p>}
+      <div className={styles.chartAxis} aria-hidden="true"><span>{firstDate ? formatShortDate(firstDate) : ""}</span><span>{lastDate ? formatShortDate(lastDate) : ""}</span></div>
+      <p id={summaryId} className={styles.srOnly}>{points.map((point) => metricPointDescription(point, copy.unit)).join(". ")}. Les jours sans estimation restent vides. Moyenne calculée uniquement sur les jours mesurés.</p>
     </div>
-
   </article>;
 }
 
-export function MealNutritionTrends({ metrics, className }: { metrics: MealNutritionTrendMetric[]; className?: string }) {
-  const [period, setPeriod] = useState<Period>(30);
+export function MealNutritionTrends({
+  metrics,
+  foodGroups,
+  scoreTrend,
+  className,
+  illustrative = false,
+}: {
+  metrics: MealNutritionTrendMetric[];
+  foodGroups: readonly MealFoodGroupTrendPoint[];
+  scoreTrend: readonly MealScoreTrendPoint[];
+  className?: string;
+  illustrative?: boolean;
+}) {
+  const [period, setPeriod] = useState<MealTrendPeriod>(30);
+  const selectedFoodGroups = limitMealTrendPoints(foodGroups, period);
+  const selectedScoreTrend = limitMealTrendPoints(scoreTrend, period);
+  const hasAnySeries = metrics.length > 0 || foodGroups.length > 0 || scoreTrend.length > 0;
 
-  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-nutrition-trends-title">
-    <header className={styles.sectionHeader}>
-      <div>
-        <span className={styles.eyebrow}>Historique quotidien</span>
-        <h2 id="meal-nutrition-trends-title">Évolution nutritionnelle</h2>
-        <p>Une barre correspond au total estimé de la journée. Les jours non renseignés restent vides.</p>
-      </div>
+  return <section className={[styles.root, className].filter(Boolean).join(" ")} aria-labelledby="meal-trends-title" data-period={period}>
+    <h2 className={styles.srOnly} id="meal-trends-title">Nutrition trends</h2>
+    <div className={styles.toolbar}>
       <fieldset className={styles.periodPicker}>
-        <legend>Période</legend>
-        <div className={styles.periodOptions} role="group" aria-label="Choisir la période">
-          {periods.map((option) => <button key={option.value} type="button" aria-pressed={period === option.value} onClick={() => setPeriod(option.value)}>{option.label}</button>)}
+        <legend>Period</legend>
+        <div className={styles.periodOptions} role="group" aria-label="Choose chart period">
+          {periods.map((option) => <button className={styles.periodButton} key={option.value} type="button" aria-pressed={period === option.value} onClick={() => setPeriod(option.value)}>{option.label}</button>)}
         </div>
       </fieldset>
-    </header>
-
-    {metrics.length ? <div className={styles.grid}>{metrics.map((metric) => <NutritionMetricCard key={metric.id} metric={metric} period={period} />)}</div> : <p className={styles.emptyState} role="status">Aucune donnée nutritionnelle validée sur cette période.</p>}
+    </div>
+    <ul className={styles.legend} aria-label="Trend chart legend">
+      <li><span className={styles.barKey} aria-hidden="true" />Daily value</li>
+      <li><span className={styles.averageKey} aria-hidden="true" />Measured average</li>
+    </ul>
+    {hasAnySeries ? <div className={styles.chartGrid}>
+      {metrics.map((metric) => <NutritionMetricChart key={metric.id} metric={metric} period={period} />)}
+      {foodGroups.length > 0 && <MealFoodCategoryTrends points={selectedFoodGroups} illustrative={illustrative} />}
+      {scoreTrend.length > 0 && <MealScoreHistoryPanel trend={selectedScoreTrend} />}
+    </div> : <p className={styles.emptyState} role="status">Aucune série nutritionnelle disponible.</p>}
   </section>;
 }

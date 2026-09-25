@@ -10,7 +10,7 @@ import {
   type MealBalanceScore,
 } from "@/domain/scores/meal-balance";
 
-import { MealScoreOverviewPanel } from "./meal-score-overview";
+import { MealScoreHistoryPanel, MealScoreOverviewPanel } from "./meal-score-overview";
 
 function completeComponent(key: MealBalanceComponentKey, score: number): MealBalanceComponent {
   return {
@@ -107,8 +107,11 @@ describe("MealScoreOverviewPanel", () => {
     expect(html.match(/aria-controls="meal-score-dimension-detail"/g)).toHaveLength(5);
     expect(html).toContain('data-key="nutritionAdequacy"');
     expect(html).toContain("Dietary dimensions profile");
-    expect((html.match(/data-testid="meal-score-line-point"/g) ?? [])).toHaveLength(2);
-    expect(html).not.toContain('data-testid="meal-score-line-segment"');
+    expect(html).toContain('data-testid="meal-score-bar-chart"');
+    expect(html).toContain("health-chart-average");
+    expect(html).toContain("health-chart-average-label");
+    expect(html).not.toContain("meal-score-line-point");
+    expect(html).not.toContain("meal-score-line-segment");
     expect(html).toContain("65%");
     expect(html).not.toContain("Couverture nutritionnelle");
     expect(html).not.toContain("Exposition liquide / concentrée");
@@ -116,7 +119,7 @@ describe("MealScoreOverviewPanel", () => {
     expect(html).not.toContain("NaN");
   });
 
-  it("relie seulement les jours de score repas consécutifs et garde zéro mesuré", () => {
+  it("montre les scores mesurés en barres et garde zéro distinct des jours absents", () => {
     const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
       { date: "2026-09-08", score: 61 },
       { date: "2026-09-09", score: 0 },
@@ -125,13 +128,14 @@ describe("MealScoreOverviewPanel", () => {
       { date: "2026-09-12", score: 74 },
     ]} />);
 
-    expect((html.match(/data-testid="meal-score-line-point"/g) ?? [])).toHaveLength(4);
-    expect((html.match(/data-testid="meal-score-line-segment"/g) ?? [])).toHaveLength(2);
-    expect(html).toContain('bottom:0%');
+    expect(html).toContain('data-testid="meal-score-bar-chart"');
+    expect((html.match(/class="health-chart-bar/g) ?? [])).toHaveLength(4);
+    expect(html).toContain("Donnée absente");
+    expect(html).toContain("health-chart-average-label");
     expect(html).not.toContain("NaN");
   });
 
-  it("centre le titre de tendance entre les premiers et derniers jours mesurés", () => {
+  it("garde l’échelle de score bornée à 0–100", () => {
     const html = renderToStaticMarkup(<MealScoreOverviewPanel daily={completeScore} rolling={[]} trend={[
       { date: "2026-09-08", score: null },
       { date: "2026-09-09", score: 61 },
@@ -142,6 +146,22 @@ describe("MealScoreOverviewPanel", () => {
       { date: "2026-09-14", score: null },
     ]} />);
 
-    expect(html).toContain('id="meal-score-trend-title" style="position:relative;left:calc(-8.3333% + 3.1667px)"');
+    expect(html).toMatch(/<b>100 pts<\/b>/);
+    expect(html).toMatch(/<b>0 pts<\/b>/);
+    expect(html).toContain('id="meal-score-trend-title"');
+  });
+
+  it("shows a single observed score without filling missing dates with zero bars", () => {
+    const html = renderToStaticMarkup(<MealScoreHistoryPanel trend={[
+      { date: "2026-09-08", score: null },
+      { date: "2026-09-09", score: 64 },
+      { date: "2026-09-10", score: null },
+    ]} />);
+
+    expect((html.match(/class="health-chart-bar/g) ?? [])).toHaveLength(1);
+    expect(html.match(/data-chart-hit-area/g) ?? []).toHaveLength(3);
+    expect(html).toContain("health-chart-average-label");
+    expect(html).toContain("Donnée absente");
+    expect(html).not.toContain("bottom:0%");
   });
 });

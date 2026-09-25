@@ -4182,3 +4182,146 @@
     font-size: 16px !important;
   }
 }
+
+/* The read-only meals journal keeps status and source controls with each title. */
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .readOnlyMealHeader {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .readOnlyMealTitle {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  color: var(--lab-text-primary);
+  font-size: var(--lab-type-ui);
+  font-weight: 400;
+  line-height: 20px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .skippedSlotLabel {
+  flex: 0 0 auto;
+  color: var(--lab-text-secondary);
+  font-family: var(--lab-data-font);
+  font-size: var(--lab-type-label);
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline {
+  flex: 0 0 auto;
+  margin: 0;
+  border: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline[open] {
+  flex: 1 0 100%;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary {
+  display: grid;
+  width: 44px;
+  min-height: 44px;
+  place-items: center;
+  margin-inline-start: auto;
+  padding: 0;
+  color: var(--lab-text-secondary);
+  font-size: 0;
+  font-weight: 400;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary::before {
+  content: none;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary > svg {
+  transition: transform 160ms cubic-bezier(.2, .8, .2, 1);
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline[open] > summary > svg {
+  transform: rotate(180deg);
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary:focus-visible {
+  outline: 2px solid var(--lab-brand);
+  outline-offset: 2px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline .sourceDetailsBody {
+  padding: 0 0 4px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px 16px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span {
+  grid-column: auto !important;
+  justify-items: center;
+  padding: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span:first-child {
+  justify-items: start;
+  text-align: left;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span > small {
+  overflow: visible;
+  font-size: 11px;
+  line-height: 14px;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span > strong,
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span[data-metric="calories"] > strong {
+  color: var(--lab-text-primary);
+  font-family: var(--lab-data-font);
+  font-size: 15px !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400 !important;
+  line-height: 20px;
+}
+
+:global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span > strong > small {
+  color: var(--lab-text-secondary);
+  font-family: var(--lab-data-font);
+  font-size: 10px !important;
+}
+
+@media (max-width: 700px) {
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    column-gap: 16px;
+    row-gap: 12px;
+  }
+
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .labMealNutrition > span:last-child {
+    grid-column: 3 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-lab-theme]) :global(.meals-page) .labRoot .sourceDetailsInline > summary > svg {
+    transition: none;
+  }
+}

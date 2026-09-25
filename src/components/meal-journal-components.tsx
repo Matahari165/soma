@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Camera,
   Check,
+  ChevronDown,
   ImagePlus,
   Pencil,
   RefreshCw,
@@ -355,7 +356,7 @@ function PhotoStrip({ meal, onRemove, onOrigin, onComment, disabled }: { meal: M
  * the existing "Edit" action remains the single way to change a note or
  * add new evidence.
  */
-export function MealSourceEvidence({ meal }: { meal: MealRecord }) {
+export function MealSourceEvidence({ meal, inline = false }: { meal: MealRecord; inline?: boolean }) {
   const photos = meal.status === "confirmed"
     ? []
     : meal.photos.filter((photo) => (photo.storageStatus ?? "available") === "available" && Boolean(photo.url));
@@ -364,8 +365,10 @@ export function MealSourceEvidence({ meal }: { meal: MealRecord }) {
     : meal.photos.filter((photo) => photo.storageStatus === "purged" || photo.storageStatus === "purge_pending" || !photo.url).length;
   const note = meal.note.trim();
   if (!photos.length && !note && purgedPhotoCount === 0) return null;
-  return <details className={styles.sourceDetails}>
-    <summary>Photo and note of the day</summary>
+  return <details className={`${styles.sourceDetails} ${inline ? styles.sourceDetailsInline : ""}`}>
+    {inline
+      ? <summary aria-label={`Photos and notes for ${SLOT_LABELS[meal.slot]}`}><ChevronDown size={16} aria-hidden="true" /></summary>
+      : <summary>Photo and note of the day</summary>}
     <div className={styles.sourceDetailsBody}>
       {photos.length > 0 && <div className={styles.sourcePhotoGrid} role="list" aria-label={`${photos.length} original meal photo${photos.length > 1 ? "s" : ""}`}>
         {photos.map((photo, index) => <figure className={styles.sourcePhoto} role="listitem" key={photo.id}>
