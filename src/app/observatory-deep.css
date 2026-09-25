@@ -355,6 +355,11 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip button[aria-current="date"] small {
   color:rgba(241,241,241,.78);
 }
+@media (max-width:700px) {
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip__mobile .personal-lab-day-strip__day[aria-current="date"] {
+    border-radius:4px;
+  }
+}
 
 /* Time fields use the same data face and scale as the journal controls. */
 html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-clock input,
