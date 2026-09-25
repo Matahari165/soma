@@ -13,6 +13,7 @@ import { HealthPageShell } from "./health-page-shell";
 import { HealthScrollReveal } from "./health-scroll-reveal";
 import { averageLast30Measured, formatAverage, healthSourceLabel, latestSourceMeasuredAt, metricTone } from "./health-metric-utils";
 import { MetricTrendCard } from "./metric-trend-card";
+import { RefreshActiveHealthPage } from "./refresh-active-health-page";
 import styles from "./activity-redesign.module.css";
 
 type EffortComponentId = "zoneMinutes" | "exerciseMinutes" | "activeEnergyKcal" | "steps";
@@ -160,6 +161,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
     sourceLabel: "Soma",
   }] : [];
   return <div className={styles.root}>
+    <RefreshActiveHealthPage />
     <HealthPageShell kind="activity" title="Activity" description="Today's activity score based on zone minutes, exercise duration, active energy, and steps." score={score} freshness={freshness} timezone={data.timezone} showFreshness={true} heroScore={<span className="sr-only">Activity score: {score === null ? "unavailable" : `${score} out of 100`}. 30-day average: {averages.effort === null ? "unavailable" : `${Math.round(averages.effort)} out of 100`}. {scoreCoverage === null ? "Score coverage unavailable" : `${Math.round(scoreCoverage * 100)}% score coverage`}.</span>}>
       <section className={`${styles.content} health-observatory-content`} aria-label="Activity content" data-health-reveal-root>
         <HealthScrollReveal />
@@ -173,7 +175,7 @@ export function ActivityDetails({ data }: { data: HealthAnalytics }) {
           ]} /></section>
           <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />
           <section className={`${styles.section} ${styles.trendsSection} health-observatory-panel`} aria-label="Activity trends" data-health-reveal><div className={styles.trendGrid}><MetricTrendCard label="Zone minutes" points={points(activityDays, "zone_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Exercise duration" points={points(activityDays, "exercise_minutes")} unit="min" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Active calories" points={points(activityDays, "active_energy_kcal")} unit="kcal" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Steps" points={points(activityDays, "steps")} direction="higher_is_better" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Weekly load" points={points(activityDays, "weekly_load")} direction="context_only" format={(value) => Math.round(value).toLocaleString("en-US")} valueFormat="number" chartType="bar" barAggregation="week" compact averageInChart animateCurrent animationFormat="number" /><MetricTrendCard label="Activity consistency" points={points(activityDays, "activity_consistency_28d")} unit="%" direction="higher_is_better" format={(value) => Math.round(value).toString()} valueFormat="number" chartType="bar" compact averageInChart animateCurrent animationFormat="number" /></div></section>
-        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No recent daily measurement</h2><p>No measured day was found over the last 30 days. Older workouts remain available below.</p><p><a href="/settings">Check your health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />}</>}
+        </> : <><section className={`${styles.empty} health-observatory-panel`} aria-labelledby="activity-empty-heading"><Footprints size={24} aria-hidden="true" /><div><h2 id="activity-empty-heading">No activity measurement for today yet</h2><p>Activity for today will appear after Google Health sends new measurements. Older workouts remain available below.</p><p><a href="/settings">Check your health connection</a></p></div></section>{data.exercises.length > 0 && <ActivityHistory exercises={data.exercises} referenceDate={currentDate} />}</>}
       </section>
     </HealthPageShell>
   </div>;
