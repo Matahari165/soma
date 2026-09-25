@@ -371,11 +371,11 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         context: "Day Context & Modifiers",
       };
 
-      return <section className={isPersonalLab ? "space-y-9 max-sm:space-y-4" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
+      return <section className={isPersonalLab ? "space-y-3" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
         {headerElement}
         {tools}
         {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}
-        {activeVariables.length > 0 ? <div className={isPersonalLab ? "space-y-12" : "journal-sections"}>{sections.map((section) => {
+        {activeVariables.length > 0 ? <div className={isPersonalLab ? "space-y-6" : "journal-sections"}>{sections.map((section) => {
           const completedCount = section.variables.filter((variable) => recorded.has(variable.id)).length;
           const complete = completedCount === section.variables.length;
           const canConfirmDefaults = section.variables.some((variable) => !recorded.has(variable.id) && !skipped.has(variable.id) && (values[variable.id] ?? null) !== null);
