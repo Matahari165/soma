@@ -190,6 +190,57 @@ describe("health analytics first-screen loading", () => {
     expect(absent.maximumHeartRate).toBeNull();
   });
 
+  it("extracts distance splits, heart-rate zone durations, exercise times, and falls back to active-duration pace", () => {
+    const summary = exerciseSummaryFromRecord({
+      source_record_id: "run-details",
+      civil_date: "2026-09-10",
+      start_time: null,
+      end_time: null,
+      payload: {
+        exercise: {
+          exerciseType: "RUNNING",
+          interval: { startTime: "2026-09-10T07:00:00Z", endTime: "2026-09-10T08:05:00Z" },
+          activeDuration: "3900s",
+          metricsSummary: {
+            distanceMillimeters: 13_000_000,
+            heartRateZoneDurations: { lightTime: "120s", moderateTime: "600s", vigorousTime: "1800s", peakTime: "30s" },
+          },
+          splitSummaries: [
+            { splitType: "DISTANCE", startTime: "2026-09-10T07:00:00Z", endTime: "2026-09-10T07:05:00Z", activeDuration: "300s", metricsSummary: { distanceMillimeters: 1_000_000 } },
+            { splitType: "DISTANCE", startTime: "2026-09-10T08:00:00Z", endTime: "2026-09-10T08:02:00Z", activeDuration: "120s", metricsSummary: { distanceMillimeters: 400_000 } },
+            { splitType: "DURATION", activeDuration: "600s", metricsSummary: { distanceMillimeters: 2_000_000 } },
+          ],
+        },
+      },
+    });
+
+    expect(summary).toMatchObject({
+      startTime: "2026-09-10T07:00:00Z",
+      endTime: "2026-09-10T08:05:00Z",
+      distanceKm: 13,
+      averagePaceSecondsPerKm: 300,
+      heartRateZones: { lightMinutes: 2, moderateMinutes: 10, vigorousMinutes: 30, peakMinutes: 0.5 },
+      splits: [
+        { startTime: "2026-09-10T07:00:00Z", endTime: "2026-09-10T07:05:00Z", activeMinutes: 5, distanceKm: 1, averagePaceSecondsPerKm: 300 },
+        { startTime: "2026-09-10T08:00:00Z", endTime: "2026-09-10T08:02:00Z", activeMinutes: 2, distanceKm: 0.4, averagePaceSecondsPerKm: 300 },
+      ],
+    });
+  });
+
+  it("does not synthesize distance splits or pace when the source omits required measurements", () => {
+    const summary = exerciseSummaryFromRecord({
+      source_record_id: "run-with-gaps",
+      civil_date: "2026-09-10",
+      start_time: null,
+      end_time: null,
+      payload: { exercise: { exerciseType: "RUNNING", metricsSummary: { distanceMillimeters: 5_000_000 }, splitSummaries: [{ splitType: "DURATION", metricsSummary: { distanceMillimeters: 1_000_000 } }] } },
+    });
+
+    expect(summary.averagePaceSecondsPerKm).toBeNull();
+    expect(summary.splits).toEqual([]);
+    expect(summary.heartRateZones).toBeNull();
+  });
+
   it("keeps sleep's latest detail read and 30-day recommendation inputs intact", async () => {
     await getSleepAnalytics();
 
