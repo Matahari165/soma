@@ -6,6 +6,7 @@ import { FormEvent, KeyboardEvent, type PointerEvent as ReactPointerEvent, type 
 import styles from "./assistant-workspace.module.css";
 import { AssistantDictation } from "./assistant-dictation";
 import { AssistantLiveVoice, type LiveVoicePresentation } from "./assistant-live-voice";
+import { consumeHomeAssistantMessage } from "@/lib/assistant-home-handoff";
 
 type Conversation = {
   id: string;
@@ -624,6 +625,10 @@ export function AssistantWorkspace({ previewMode = false }: { previewMode?: bool
   }
 
   sendMessageRef.current = sendMessage;
+  useEffect(() => {
+    const firstMessage = consumeHomeAssistantMessage();
+    if (firstMessage) void sendMessageRef.current(undefined, firstMessage);
+  }, []);
 
   function editMessage(message: Message) {
     const value = messageText(message);
