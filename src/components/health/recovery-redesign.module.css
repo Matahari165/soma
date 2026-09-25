@@ -1110,6 +1110,12 @@
 }
 
 @media (max-width: 560px) {
+  /* Match the plot and right-hand scale to the 16px page rail. */
+  .trendGrid :global(.metric-trend-card) :global(header > div) { width: calc(100% - 64px); margin-inline-end: 64px; }
+  :global(html[data-lab-theme="observatory"]) .page .trendGrid :global(.health-line-chart-wrap) { padding-right: 64px; }
+  .trendGrid :global(.metric-trend-card) :global(.health-chart-range),
+  .trendGrid :global(.metric-trend-card) :global(.health-chart-average-label) { text-align: right; }
+  .trendGrid :global(.metric-trend-card) :global(.chart-axis) { padding-inline-start: calc((100% - 64px) * .04); padding-inline-end: calc(64px + (100% - 64px) * .04); }
   .page .heroScene { min-height: calc(100svh - 174px); align-content: start; }
   .signalRows { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
   .signalRow { width: 100%; }
