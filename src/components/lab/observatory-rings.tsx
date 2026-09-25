@@ -16,6 +16,13 @@ export type ObservatoryRingsData = {
 const valid = (value: Measure): value is number => typeof value === "number" && Number.isFinite(value);
 const progress = (value: Measure, target: Measure) => valid(value) && valid(target) && target > 0 ? Math.min(1, Math.max(0, value / target)) : null;
 const duration = (minutes: number) => `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60).toString().padStart(2, "0")}`;
+const ringStartAngle = -100;
+const ringLabelPosition = (radius: number, ratio: number | null, label: string) => {
+  const labelWidth = label.length * 10;
+  const insetAngle = (labelWidth / 2 + 7) / radius * 180 / Math.PI;
+  const angle = (ringStartAngle + (ratio === null ? 10 : Math.max(0, ratio * 360 - insetAngle))) * Math.PI / 180;
+  return { x: 160 + radius * Math.cos(angle), y: 160 + radius * Math.sin(angle) };
+};
 
 export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; date?: string }) {
   const [mealTotals, setMealTotals] = useState<{ date?: string; calories: Measure; target: Measure } | null>(null);
@@ -60,21 +67,14 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
             {ratio === null && <circle className={styles.unknown} cx="160" cy="160" r={radius} pathLength="100" strokeDasharray="1 2.8" />}
           </g>;
         })}
-        {rings.map((ring, index) => <text key={ring.id} className={styles.ringNumber} data-ring-value={ring.id} data-on-track={progress(ring.value, ring.target) === null || progress(ring.value, ring.target)! < .09} x="160" y={160 - (136 - index * 29)} textAnchor="middle" dominantBaseline="middle" aria-hidden="true">{ring.ringDisplay}</text>)}
+        {rings.map((ring, index) => {
+          const ratio = progress(ring.value, ring.target);
+          const position = ringLabelPosition(136 - index * 29, ratio, ring.ringDisplay);
+          return <text key={ring.id} className={styles.ringNumber} data-ring-value={ring.id} x={position.x} y={position.y} textAnchor="middle" dominantBaseline="middle" aria-hidden="true">{ring.ringDisplay}</text>;
+        })}
         <text className={styles.centerTop} x="160" y="158" textAnchor="middle">{dateLabel}</text>
         <text className={styles.centerBottom} x="160" y="176" textAnchor="middle">OBJECTIFS</text>
       </svg>
     </div>
-    <figcaption className={styles.legend}>
-      {rings.map(ring => {
-        const ratio = progress(ring.value, ring.target);
-        return <div className={styles.metric} key={ring.id} style={{ "--ring-color": ring.color } as CSSProperties}>
-          <span className={styles.marker} aria-hidden="true" />
-          <span className={styles.label}>{ring.label}</span>
-          <strong className={styles.value}>{ring.display}</strong>
-          <span className={styles.goal}>{!valid(ring.value) ? "Donnée indisponible" : ratio === null ? "Objectif indisponible" : `${Math.round(ratio * 100)} % de l’objectif`}</span>
-        </div>;
-      })}
-    </figcaption>
   </figure>;
 }

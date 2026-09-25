@@ -21,6 +21,7 @@ it("shows the four home measures with their current values", () => {
   expect(html).toMatch(/data-ring-value="effort"[^>]*>4\.0<\/text>/);
   expect(html).toMatch(/data-ring-value="calories"[^>]*>1200<\/text>/);
   expect((html.match(/stroke-dasharray="/g) ?? []).length).toBe(4);
+  expect(html).not.toContain("<figcaption");
 });
 
 it("leaves missing measurements and a missing calorie goal unfilled", () => {
@@ -31,8 +32,8 @@ it("leaves missing measurements and a missing calorie goal unfilled", () => {
     caloriesKcal: 1200,
     calorieTarget: null,
   }} />);
-  expect(html).toContain("Objectif indisponible");
-  expect(html).toContain("Donnée indisponible");
+  expect(html).toContain("progression indisponible");
+  expect(html).toContain("objectif —");
   expect(html).not.toContain("0 % de l’objectif");
   expect((html.match(/stroke-dasharray="1 2.8"/g) ?? []).length).toBe(4);
 });
