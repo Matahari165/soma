@@ -19,10 +19,11 @@ const authErrors: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string; deleted?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; deleted?: string; reset?: string }>;
 }) {
   const [params, user] = await Promise.all([searchParams, getCurrentUser()]);
-  if (user) redirect("/");
+  const reset = params.reset === "1";
+  if (user && !reset) redirect("/");
   const errorCode = params.error;
   const errorMessage = errorCode ? authErrors[errorCode] ?? "Authentication failed. Please try again." : null;
   const nextParam = typeof params.next === "string" ? params.next : null;
@@ -39,5 +40,5 @@ export default async function LoginPage({
       : null;
   const deleted = params.deleted === "1";
 
-  return <PublicHome next={nextPath} errorMessage={errorMessage} deleted={deleted} />;
+  return <PublicHome next={nextPath} errorMessage={errorMessage} deleted={deleted} reset={reset} />;
 }

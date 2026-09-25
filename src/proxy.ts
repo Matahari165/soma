@@ -21,7 +21,12 @@ const publicPaths = [
   "/terms",
 ];
 
-const publicAuthPaths = ["/api/auth/register", "/api/auth/login"];
+const publicAuthPaths = [
+  "/api/auth/register",
+  "/api/auth/login",
+  "/api/auth/password-recovery/request",
+  "/api/auth/password-recovery/complete",
+];
 export function requestBodyLimitForPath(pathname: string) {
   if (pathname === "/api/assistant/attachments") return 4 * 1024 * 1024 + 256 * 1024;
   if (pathname === "/api/assistant/transcriptions") return 4 * 1024 * 1024 + 256 * 1024;
