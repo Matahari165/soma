@@ -6,13 +6,15 @@ export type PrimaryChartPresentation = "radar" | "rings";
 
 const PRIMARY_CHART_PRESENTATION_KEY = "soma.dashboard.primary-chart-presentation";
 const PRIMARY_CHART_PRESENTATION_CHANGE_EVENT = "soma:primary-chart-presentation-change";
-const DEFAULT_PRESENTATION: PrimaryChartPresentation = "radar";
+const DEFAULT_PRESENTATION: PrimaryChartPresentation = "rings";
+let inMemoryPresentation: PrimaryChartPresentation = DEFAULT_PRESENTATION;
 
 function readPrimaryChartPresentation(): PrimaryChartPresentation {
   try {
-    return window.localStorage.getItem(PRIMARY_CHART_PRESENTATION_KEY) === "rings" ? "rings" : DEFAULT_PRESENTATION;
+    const stored = window.localStorage.getItem(PRIMARY_CHART_PRESENTATION_KEY);
+    return stored === "radar" || stored === "rings" ? stored : DEFAULT_PRESENTATION;
   } catch {
-    return DEFAULT_PRESENTATION;
+    return inMemoryPresentation;
   }
 }
 
@@ -33,10 +35,11 @@ function serverPrimaryChartPresentation(): PrimaryChartPresentation {
 }
 
 function savePrimaryChartPresentation(next: PrimaryChartPresentation) {
+  inMemoryPresentation = next;
   try {
     window.localStorage.setItem(PRIMARY_CHART_PRESENTATION_KEY, next);
   } catch {
-    // Keep the control usable if browser storage is unavailable.
+    // Keep the current selection usable when browser storage is unavailable.
   }
   window.dispatchEvent(new Event(PRIMARY_CHART_PRESENTATION_CHANGE_EVENT));
 }
