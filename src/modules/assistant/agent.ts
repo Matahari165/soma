@@ -8,6 +8,7 @@ import { SOMA_ASSISTANT_INSTRUCTIONS } from "./prompt";
 import { createGetUserContextTool } from "./tools/get-user-context";
 import { createGetPlanDetailsTool } from "./tools/get-plan-details";
 import { createGetStrongestEffectsTool } from "./tools/get-strongest-effects";
+import { createGetWorkoutHistoryTool } from "./tools/get-workout-history";
 import { createManageUserContextTool } from "./tools/manage-user-context";
 import { createManageMealTool } from "./tools/manage-meal";
 import { createManageNutritionTargetsTool } from "./tools/manage-nutrition-targets";
@@ -21,7 +22,7 @@ const qualitySettings: Record<AssistantQuality, {
   maxSteps: number;
   reasoningEffort: OpenAILanguageModelResponsesOptions["reasoningEffort"];
 }> = {
-  fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "low" },
+  fast: { maxOutputTokens: 1_200, maxSteps: 6, reasoningEffort: "medium" },
   balanced: { maxOutputTokens: 2_400, maxSteps: 10, reasoningEffort: "medium" },
   deep: { maxOutputTokens: 4_000, maxSteps: 14, reasoningEffort: "high" },
 };
@@ -51,6 +52,7 @@ export function createSomaAssistantAgent(input: {
       getUserContext: createGetUserContextTool(input),
       getPlanDetails: createGetPlanDetailsTool(input),
       getStrongestEffects: createGetStrongestEffectsTool(input),
+      getWorkoutHistory: createGetWorkoutHistoryTool(input),
       querySomaData: createQuerySomaDataTool(input),
       manageUserContext: createManageUserContextTool(input),
       manageMeal: createManageMealTool(input),
