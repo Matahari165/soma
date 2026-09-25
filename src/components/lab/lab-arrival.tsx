@@ -129,7 +129,7 @@ function activitySummaryMetrics(summary: PersonalLabActivitySummary) {
   const maximumHeartRate = finiteActivityValue(activity.maximumHeartRate);
   const calories = finiteActivityValue(activity.calories);
   return [
-    duration === null ? null : { label: "Durée", value: formatActivityDuration(duration) },
+    { label: "Durée", value: duration === null ? "Indisponible" : formatActivityDuration(duration) },
     distance === null ? null : { label: "Distance", value: `${distance.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km` },
     pace === null || pace <= 0 ? null : { label: "Allure", value: `${Math.floor(Math.round(pace) / 60)}:${String(Math.round(pace) % 60).padStart(2, "0")} min/km` },
     averageHeartRate === null ? null : { label: "FC moy.", value: `${Math.round(averageHeartRate)} bpm` },

@@ -371,7 +371,7 @@ export function DailyJournal({ variables, entries, days, achievements, todayDate
         context: "Day Context & Modifiers",
       };
 
-      return <section className={isPersonalLab ? "space-y-3" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
+      return <section className={isPersonalLab ? "space-y-9 max-sm:space-y-3" : `checkin-card journal-card journal-card--status-${statusTreatment}`} data-managing={managerOpen ? "true" : undefined} data-status-treatment={statusTreatment} aria-labelledby="journal-title">
         {headerElement}
         {tools}
         {showDateNavigation && <nav className="journal-date-strip" aria-label="Journal date">{dateOptions.map((date, index) => <button type="button" aria-current={date === entryDate ? "date" : undefined} onClick={() => changeDate(date)} key={date}><span>{index === 0 ? "Today" : new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${date}T12:00:00`)).replace(".", "")}</span><small>{date.slice(8)}</small></button>)}</nav>}

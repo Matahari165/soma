@@ -353,7 +353,7 @@ describe("journal motion states", () => {
     expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*aria-label="Decrease Added sugar"/);
   });
 
-  it("uses space-y-12 spacing between phases in Personal Lab", () => {
+  it("keeps Personal Lab phases compact", () => {
     const html = renderToStaticMarkup(createElement(DailyJournal, {
       variables,
       entries: [],
@@ -363,7 +363,7 @@ describe("journal motion states", () => {
       showDateNavigation: false,
     }));
 
-    expect(html).toContain("space-y-12");
+    expect(html).toContain("space-y-6");
   });
 
   it("applies enhanced typography and button styles in Personal Lab", () => {

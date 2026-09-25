@@ -3592,6 +3592,16 @@
 }
 
 @media (max-width: 700px) {
+  :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] {
+    background: #222;
+    color: #f1f1f1;
+    box-shadow: inset 0 -1px #eee;
+  }
+
+  :global(.meals-page) .labRoot :global(.personal-lab-day-strip__mobile) button[aria-current="date"] span {
+    color: #f1f1f1;
+  }
+
   :global(.meals-page) .labRoot .personal-lab-day-strip__days {
     overflow-x: auto;
     scrollbar-width: none;
