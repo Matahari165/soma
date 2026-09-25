@@ -833,7 +833,18 @@ html[data-lab-theme="observatory"] .lab-experience.lab-continuous .journal-card-
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip > div { padding-inline:0; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .lab-world__capture .personal-lab-workbench { padding-inline:0!important; }
   html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-day-strip { margin-inline:0; }
-  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-meal-column { max-width:none!important; }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-meal-column {
+    width: 100%;
+    max-width: none !important;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  html[data-lab-theme="observatory"] .lab-experience.lab-continuous .personal-lab-meal-column > .meal-journal-lab {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-inline: 0 !important;
+  }
 
   html[data-lab-theme="observatory"] .observatory-radar { position:relative; max-width:none; }
   html[data-lab-theme="observatory"] .observatory-radar svg { display:block; width:72%; height:100%; margin-inline:auto; overflow:visible; }
