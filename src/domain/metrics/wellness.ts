@@ -62,6 +62,6 @@ export function completedActivityDays<T extends {
   active_energy_kcal: number | null;
   exercise_minutes: number | null;
 }>(days: T[], currentDate: string) {
-  return days.filter((day) => day.metric_date < currentDate
+  return days.filter((day) => day.metric_date <= currentDate
     && [day.steps, day.zone_minutes, day.active_minutes, day.active_energy_kcal, day.exercise_minutes].some((value) => value !== null));
 }

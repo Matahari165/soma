@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPreviewAnalytics } from "@/services/health-analytics";
+import { previewData } from "@/services/personal-lab-preview";
 
 import { previewDashboard, previewScoreHistory } from "./local-preview";
 
 describe("local preview health contract", () => {
+  it("shares the same daily activity scores and measurements between Home and Activity", () => {
+    const home = previewData();
+    const activity = buildPreviewAnalytics();
+    for (const day of activity.days.slice(-30)) {
+      const homeDay = home.health.find((item) => item.metric_date === day.metric_date);
+      const homeScore = home.scores.find((item) => item.kind === "effort" && item.score_date === day.metric_date);
+      const activityScore = activity.scores.find((item) => item.kind === "effort" && item.score_date === day.metric_date);
+      expect(homeDay?.steps).toBe(day.steps);
+      expect(homeDay?.zone_minutes).toBe(day.zone_minutes);
+      expect(homeDay?.exercise_minutes).toBe(day.exercise_minutes);
+      expect(homeScore?.score).toBe(activityScore?.score);
+    }
+  });
+
   it("uses the same current scores on Today and detailed health pages", () => {
     const analytics = buildPreviewAnalytics();
     for (const metric of previewDashboard.scores) {
