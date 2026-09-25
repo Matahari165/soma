@@ -10,6 +10,8 @@ import {
   type MealBalanceScore,
   type MealBalanceSubcomponent,
 } from "@/domain/scores/meal-balance";
+import type { MetricPoint } from "@/domain/metrics/trends";
+import { BarTrendChart } from "@/components/health/health-charts";
 
 import styles from "./meal-score-overview.module.css";
 
@@ -90,22 +92,6 @@ function scoreDescription(score: number | null) {
 
 function componentFor(daily: MealBalanceScore | null, key: MealBalanceComponentKey) {
   return daily?.components.find((component) => component.key === key) ?? null;
-}
-
-function trendPointStyle(index: number, count: number, score: number): CSSProperties {
-  const x = count <= 1 ? 50 : index / (count - 1) * 100;
-  const y = Math.min(Math.max(score, 0), 100);
-  return { left: `${x}%`, bottom: `${y}%` };
-}
-
-function trendSegments(trend: readonly MealScoreTrendPoint[]) {
-  if (trend.length < 2) return [];
-  return trend.slice(0, -1).flatMap((point, index) => {
-    const next = trend[index + 1];
-    if (point.score === null || next.score === null || !Number.isFinite(point.score) || !Number.isFinite(next.score)) return [];
-    const denominator = trend.length - 1;
-    return [{ x1: index / denominator * 100, y1: 100 - Math.min(Math.max(point.score, 0), 100), x2: (index + 1) / denominator * 100, y2: 100 - Math.min(Math.max(next.score, 0), 100) }];
-  });
 }
 
 function scoreBarStyle(score: number | null): CSSProperties | undefined {
@@ -281,43 +267,35 @@ function DimensionDetail({ dimension, open, trend, headingRef, onClose }: Dimens
 
 export function MealScoreHistoryPanel({ trend }: { trend: readonly MealScoreTrendPoint[] }) {
   const observedTrend = trend.filter((point) => point.score !== null && Number.isFinite(point.score));
-  const measuredIndexes = trend.flatMap((point, index) => point.score !== null && Number.isFinite(point.score) ? [index] : []);
-  const midpoint = measuredIndexes.length > 1 && trend.length > 1
-    ? (measuredIndexes[0] + measuredIndexes.at(-1)!) / (2 * (trend.length - 1))
-    : 0.5;
-  const titleOffset = midpoint - 0.5;
-  const titlePixelOffset = titleOffset * -38;
-  const titleStyle: CSSProperties = {
-    position: "relative",
-    left: `calc(${(titleOffset * 100).toFixed(4)}% ${titlePixelOffset < 0 ? "-" : "+"} ${Math.abs(titlePixelOffset).toFixed(4)}px)`,
-  };
+  const latest = observedTrend.at(-1)?.score ?? null;
+  const average = observedTrend.length
+    ? observedTrend.reduce((sum, point) => sum + (point.score ?? 0), 0) / observedTrend.length
+    : null;
+  const chartPoints: MetricPoint[] = trend.map((point) => ({ date: point.date, value: point.score }));
+  const firstDate = trend[0]?.date;
+  const lastDate = trend.at(-1)?.date ?? firstDate;
+  const titleId = "meal-score-trend-title";
+  const descriptionId = "meal-score-trend-description";
   const chartDescription = trend.length
     ? trend.map((point) => point.score === null
-      ? `${formatDate(point.date, true)}: no score, day omitted from chart`
-      : `${formatDate(point.date, true)}: score ${formatScore(point.score)} out of 100${point.status === "limited" ? `, confidence ${formatPercent(point.confidence)}` : ""}`).join(". ")
+      ? formatDate(point.date, true) + ": no score, day remains empty in the chart"
+      : formatDate(point.date, true) + ": score " + formatScore(point.score) + " out of 100" + (point.status === "limited" ? ", confidence " + formatPercent(point.confidence) : "")).join(". ")
     : "No days available for this trend.";
   return (
-  <section className={styles.historySection} aria-labelledby="meal-score-history-title">
-        <h2 className={styles.srOnly} id="meal-score-history-title">Score history</h2>
-        <div className={styles.historyContent}>
-          <section className={styles.trendSection} aria-labelledby="meal-score-trend-title">
-            <div className={styles.panelHeading}><h3 id="meal-score-trend-title" style={titleStyle}>Nutrition score trend</h3></div>
-            {observedTrend.length >= 2 ? <figure className={styles.chartFigure}>
-              <div className={styles.chart} role="img" aria-labelledby="meal-score-trend-title" aria-describedby="meal-score-trend-description">
-                <div className={styles.chartScale} aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
-                <div className={styles.lineChart} data-testid="meal-score-line-chart">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                    {trendSegments(trend).map((segment, index) => <line data-testid="meal-score-line-segment" key={index} {...segment} />)}
-                  </svg>
-                  {trend.map((point, index) => point.score === null || !Number.isFinite(point.score) ? null : <span className={styles.linePoint} data-testid="meal-score-line-point" key={point.date} style={trendPointStyle(index, trend.length, point.score)} aria-hidden="true" />)}
-                </div>
-              </div>
-              <figcaption className={styles.chartCaption}><span>{formatDate(trend[0].date)}</span><span>{formatDate(trend.at(-1)?.date ?? trend[0].date)}</span></figcaption>
-              <p id="meal-score-trend-description" className={styles.srOnly}>{chartDescription}. Missing days remain without a point and are not counted as a zero score.</p>
-            </figure> : <p className={styles.emptyInline}>{observedTrend.length ? "At least two measured days are needed to show a score trend." : "No score history available."}</p>}
-          </section>
+    <article className={styles.trendCard} aria-labelledby={titleId} aria-describedby={descriptionId}>
+      <header className={styles.trendHeader}>
+        <div className={styles.trendHeading}>
+          <h3 id={titleId}>Nutrition score trend</h3>
+          <strong>{latest === null ? "—" : formatScore(latest)}{latest === null ? null : <small>/100</small>}</strong>
+          <p>{average === null ? "No measured average" : "Avg. " + formatScore(average) + "/100"}</p>
         </div>
-      </section>
+      </header>
+      <div className={styles.trendChartFrame} data-testid="meal-score-bar-chart">
+        {observedTrend.length ? <BarTrendChart points={chartPoints} label="Nutrition score trend" unit="pts" valueFormat="number" average={average} domain={{ min: 0, max: 100 }} /> : <p className={styles.emptyInline}>No score history available.</p>}
+        <div className={styles.trendAxis} aria-hidden="true"><span>{firstDate ? formatDate(firstDate) : ""}</span><span>{lastDate ? formatDate(lastDate) : ""}</span></div>
+        <p id={descriptionId} className={styles.srOnly}>{chartDescription} Missing days stay empty and are not counted as a zero score.</p>
+      </div>
+    </article>
   );
 }
 

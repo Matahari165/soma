@@ -6,8 +6,7 @@ import { MealFoodCategoryTrends } from "./meal-food-category-trends";
 describe("MealFoodCategoryTrends", () => {
   it("shows an accessible empty state", () => {
     const html = renderToStaticMarkup(<MealFoodCategoryTrends points={[]} />);
-    expect(html).toMatch(/<h2 id="meal-category-trends-title"[^>]*>Food group distribution<\/h2>/);
-    expect(html).toContain("28 DAYS");
+    expect(html).toMatch(/<h3[^>]*>Food group distribution<\/h3>/);
     expect(html).toContain("No data available");
   });
 
@@ -15,8 +14,9 @@ describe("MealFoodCategoryTrends", () => {
     const html = renderToStaticMarkup(<MealFoodCategoryTrends points={[
       { date: "2026-09-12", counts: null },
     ]} />);
-    expect(html).toContain("No food groups classified");
-    expect(html).not.toContain("Food group legend");
+    expect(html).toContain("No food groups classified over this period.");
+    expect(html).not.toContain("Food group occurrence legend");
+    expect(html).toContain("Donnée absente");
   });
 
   it("keeps missing days empty and exposes the crossed-family legend", () => {
@@ -27,8 +27,12 @@ describe("MealFoodCategoryTrends", () => {
     expect(html).toContain("Fruits");
     expect(html).toContain("Vegetables");
     expect(html).toContain("Plant protein");
-    expect(html).toContain("Food groups may overlap");
+    expect(html).toContain("groups may overlap");
+    expect(html).toContain("not caloric share");
     expect(html).toContain('role="img"');
+    expect(html).toContain('data-testid="meal-food-group-chart"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain("Use the left and right arrow keys to move between dates.");
   });
 
   it("adds clearly labelled illustrative history only when requested", () => {

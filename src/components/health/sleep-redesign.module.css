@@ -287,9 +287,11 @@
 .reading summary::-webkit-details-marker { display: none; }
 .reading summary > span:first-child,
 .reading small { color: var(--sleep-secondary); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
-.reading strong { color: var(--sleep-primary); font: 400 20px/26px var(--lab-data-font), monospace; font-variant-numeric: tabular-nums; }
+.reading strong { color: var(--sleep-primary); font: 400 20px/26px var(--lab-data-font), monospace; font-variant-numeric: tabular-nums; transform-origin: center; transition: transform 420ms cubic-bezier(.16, 1, .3, 1); }
 .reading small { font-family: var(--lab-data-font), monospace; }
-.reading summary:hover { background: var(--lab-surface-selected); }
+.reading summary:hover strong,
+.reading summary:focus-visible strong,
+.reading[open] strong { transform: scale(1.035); }
 .reading summary:focus-visible { outline: 2px solid var(--lab-brand); outline-offset: 2px; }
 .readingChevron { width: 7px; height: 7px; margin-top: 5px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
 .reading[open] .readingChevron { transform: rotate(225deg); }
@@ -545,6 +547,9 @@
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
   }
+  .reading summary:hover strong,
+  .reading summary:focus-visible strong,
+  .reading[open] strong { transform: none; }
   .scorePanel:hover .scoreValue,
   .scorePanel:focus-visible .scoreValue,
   .scorePanel[data-detail-selected="true"] .scoreValue { transform: none; }

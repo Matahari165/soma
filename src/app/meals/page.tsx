@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import MealJournal from "@/components/meal-journal";
-import MealFoodCategoryTrends from "@/components/meal-food-category-trends";
 import { MealNutritionTrends } from "@/components/meal-nutrition-trends";
 import { MealRecipeLibrary } from "@/components/meal-recipe-library";
-import MealScoreOverviewPanel, { MealScoreHistoryPanel } from "@/components/meal-score-overview";
+import MealScoreOverviewPanel from "@/components/meal-score-overview";
 import { MealsInitialLoadError } from "@/components/meals-initial-load-error";
 import { LoadingSurface } from "@/components/loading-surface";
 import { mealFoodGroupHistory, mealNutritionHistory } from "@/domain/lab/meals";
@@ -148,12 +147,14 @@ async function MealsPageContent({ searchParams, user }: MealsPageProps & { user:
             <MealJournal date={requestedDate} today={today} initialData={initialData} variant="lab" className="meal-journal-lab" historyDays={7} publishMealTotals readOnly />
           </section>
         ) : <MealsInitialLoadError kind="meals" />}
-        <MealScoreHistoryPanel trend={scoreTrend} />
         {nutritionResult.ok
-          ? <>
-            <MealNutritionTrends metrics={mealNutritionHistory(nutritionResult.value, requestedDate)} className="meals-page-trends" />
-            <MealFoodCategoryTrends illustrative={isLocalPreviewMode()} points={mealFoodGroupHistory(nutritionResult.value, requestedDate)} className="meals-page-categories" />
-          </>
+          ? <MealNutritionTrends
+            metrics={mealNutritionHistory(nutritionResult.value, requestedDate)}
+            foodGroups={mealFoodGroupHistory(nutritionResult.value, requestedDate, 30)}
+            scoreTrend={scoreTrend}
+            illustrative={isLocalPreviewMode()}
+            className="meals-page-trends"
+          />
           : <MealsInitialLoadError kind="nutrition" />}
         <MealRecipeLibrary initialRecipes={recipeResult.recipes.map(mealRecipeToView)} initialError={recipeResult.error} embedded className="meals-page-recipes" />
         <footer className={styles.provenance} aria-label="Nutrition data provenance">

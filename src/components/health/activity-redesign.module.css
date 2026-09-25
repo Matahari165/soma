@@ -263,11 +263,13 @@
 .readingsGrid .benchmark { align-content: start; }
 .benchmark > dd { width: 100%; }
 .benchmarkTrigger { display: grid; width: 100%; min-height: 76px; justify-items: center; align-content: start; gap: 2px; padding: 4px 8px 8px; border: 0; background: transparent; color: var(--effort-text); cursor: pointer; }
-.benchmarkTrigger strong { font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.benchmarkTrigger strong { font: 400 20px/26px var(--font-soma-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; transform-origin: center; transition: transform 420ms cubic-bezier(.16, 1, .3, 1); }
 .benchmarkTrigger small { color: var(--effort-muted); font: 400 12px/16px var(--font-soma-ui), system-ui, sans-serif; }
 .benchmarkTrigger svg { margin-top: 3px; color: var(--effort-muted); transition: transform 320ms cubic-bezier(.2, .8, .2, 1); }
 .benchmarkTrigger[aria-expanded="true"] svg { transform: rotate(180deg); }
-.benchmarkTrigger:hover { background: var(--lab-surface-selected); }
+.benchmarkTrigger:hover strong,
+.benchmarkTrigger:focus-visible strong,
+.benchmarkTrigger[aria-expanded="true"] strong { transform: scale(1.035); }
 .benchmarkTrigger:focus-visible { outline: 2px solid var(--effort-accent); outline-offset: 2px; }
 .readingsGrid .benchmarkExplanation { display: grid; grid-template-rows: 0fr; margin: 0; opacity: 0; text-align: left; transition: grid-template-rows 320ms cubic-bezier(.2, .8, .2, 1), opacity 240ms ease; }
 .benchmarkExplanation[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
@@ -293,9 +295,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .benchmarkTrigger svg,
+  .benchmarkTrigger strong,
   .readingsGrid .benchmarkExplanation,
   .scoreButton > strong,
   .scoreInline { transition: none; }
+  .benchmarkTrigger:hover strong,
+  .benchmarkTrigger:focus-visible strong,
+  .benchmarkTrigger[aria-expanded="true"] strong { transform: none; }
   .scoreButton:hover strong,
   .scoreButton:focus-visible strong,
   .scoreButton[aria-expanded="true"] strong { transform: none; }
