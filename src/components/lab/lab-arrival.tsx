@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { arrivalMessageFor, type ArrivalActivity, type ArrivalMessage } from "@/domain/lab/arrival-message";
 import type { PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
 import { JOURNAL_PROGRESS_EVENT } from "./personal-lab-journal-workspace";
+import { HomeSomaEntry } from "./home-soma-entry";
 
 export type LabArrivalPersonalization = {
   name: string;
@@ -65,7 +66,7 @@ export function LabArrival({
     <div className="arrival-composition" style={{ position: "relative" }}>
       <div className={`arrival-heading${personalization ? " arrival-heading--personalized" : ""}${dayActivitySummary ? " arrival-heading--with-activity" : ""}`} style={{ position: "relative", zIndex: 1 }}>
         <h1 id="arrival-title" tabIndex={-1}>
-          {message.lines.map((line, index) => <span className="arrival-title-line" key={`${message.moment}-${index}`}><span>{line}</span></span>)}
+          {message.lines.map((line, index) => <span className={`arrival-title-line${personalization && index > 0 ? " arrival-title-line--secondary" : ""}`} key={`${message.moment}-${index}`}><span>{line}</span></span>)}
         </h1>
         {selectedDate && todayDate && selectedDate !== todayDate && <time className="arrival-context-date" dateTime={selectedDate}>{date}</time>}
         {message.activityNote && <p className="arrival-signal"><span className="sr-only">Notable signal: </span>{message.activityNote}</p>}
@@ -89,6 +90,7 @@ export function LabArrival({
             </div>)}
           </dl>
         </section>}
+        {personalization && <HomeSomaEntry visible={!selectedDate || !todayDate || selectedDate === todayDate} />}
       </div>
       <div className="arrival-art" style={{ position: "relative", zIndex: 1 }}>{radar}</div>
     </div>

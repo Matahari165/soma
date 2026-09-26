@@ -48,7 +48,8 @@ SQL
 psql "$SOMA_MIGRATION_SMOKE_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
   -f supabase/migrations/20260923120000_atomic_lab_matrix_revision.sql \
   -f supabase/migrations/20260923121000_auth_attempt_limits.sql \
-  -f supabase/migrations/20260925113516_email_password_recovery.sql
+  -f supabase/migrations/20260925113516_email_password_recovery.sql \
+  -f supabase/migrations/20260925202017_home_soma_context_cache.sql
 
 psql "$SOMA_MIGRATION_SMOKE_DATABASE_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
 insert into public.soma_rows(table_name, row_key, user_id, json_data)
@@ -80,6 +81,36 @@ begin
   if has_function_privilege('anon', 'public.complete_soma_password_recovery(uuid,text,text,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.complete_soma_password_recovery(uuid,text,text,text)', 'EXECUTE') then
     raise exception 'Recovery RPC is exposed to a client role';
+  end if;
+  if not (public.claim_home_soma_insight('synthetic-user', current_date, 'morning', repeat('a', 64))->>'claimed')::boolean then
+    raise exception 'First home insight generation was not claimed';
+  end if;
+  if (public.claim_home_soma_insight('synthetic-user', current_date, 'morning', repeat('a', 64))->>'claimed')::boolean then
+    raise exception 'Concurrent home insight generation was not blocked';
+  end if;
+  update public.home_soma_insights set status = 'ready', insight_text = 'Synthetic cached insight', generated_at = now()
+    where user_id = 'synthetic-user';
+  if public.claim_home_soma_insight('synthetic-user', current_date, 'morning', repeat('a', 64))->>'text' <> 'Synthetic cached insight'
+    or (public.claim_home_soma_insight('synthetic-user', current_date, 'morning', repeat('b', 64))->>'claimed')::boolean then
+    raise exception 'Home insight cache or cooldown failed';
+  end if;
+  for i in 2..5 loop
+    update public.home_soma_insights set claimed_at = now() - interval '3 minutes', generated_at = now() - interval '46 minutes'
+      where user_id = 'synthetic-user';
+    if not (public.claim_home_soma_insight('synthetic-user', current_date, 'morning', repeat(i::text, 64))->>'claimed')::boolean then
+      raise exception 'Home insight claim below daily limit failed';
+    end if;
+  end loop;
+  update public.home_soma_insights set claimed_at = now() - interval '3 minutes', generated_at = now() - interval '46 minutes'
+    where user_id = 'synthetic-user';
+  if (public.claim_home_soma_insight('synthetic-user', current_date, 'day', repeat('f', 64))->>'claimed')::boolean then
+    raise exception 'Home insight daily generation limit failed';
+  end if;
+  if has_table_privilege('anon', 'public.home_soma_insights', 'SELECT')
+    or has_table_privilege('authenticated', 'public.home_soma_insights', 'SELECT')
+    or has_function_privilege('anon', 'public.claim_home_soma_insight(text,date,text,text)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.claim_home_soma_insight(text,date,text,text)', 'EXECUTE') then
+    raise exception 'Home insight cache is exposed to a client role';
   end if;
 end;
 $$;
