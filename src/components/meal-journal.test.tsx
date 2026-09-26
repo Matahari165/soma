@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiMealToRecord } from "@/domain/meal-record";
-import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, mealHistoryDates, mealPhotoLimitMessage, mergeLocalMealDrafts, reconcileMealJournalData, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
+import { MealCorrectionPanel, MealJournal, calorieProgressForDisplay, defaultAnalyze, defaultRemoveMeal, defaultSave, defaultSetEntryState, firstAvailableMealSlot, groupMealIngredients, localMealDraftsForStash, mealHistoryDates, mealPhotoLimitMessage, mergeLocalMealDrafts, reconcileMealJournalData, recordAnalysisToApi, type MealJournalData } from "./meal-journal";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
@@ -58,6 +58,17 @@ describe("MealJournal", () => {
     const merged = mergeLocalMealDrafts(emptyServerData, date, undefined, { lunch: "Note locale à compléter" });
 
     expect(merged.meals.lunch).toMatchObject({ date, slot: "lunch", note: "Note locale à compléter", status: "draft" });
+  });
+
+  it("stashes an unsaved photo draft before controlled date navigation loads another day", () => {
+    const meals: MealJournalData["meals"] = {
+      breakfast: null,
+      lunch: { id: "local-meal-draft", date, slot: "lunch", note: "", photos: [{ id: "photo-local", url: "blob:photo", filename: "repas.jpg", origin: "homemade" }], analysis: null, mouthHeat: null, stomachLoad: null, status: "draft" },
+      snack: null,
+      dinner: null,
+    };
+
+    expect(localMealDraftsForStash(meals).lunch).toEqual(meals.lunch);
   });
 
   it("garde la note modifiable et masque la photo après confirmation", () => {

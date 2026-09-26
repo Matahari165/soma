@@ -204,6 +204,16 @@ export function mergeLocalMealDrafts(loaded: MealJournalData, dateKey: string, c
   return { ...loaded, meals };
 }
 
+export function localMealDraftsForStash(meals: MealJournalData["meals"]): MealJournalData["meals"] {
+  return Object.fromEntries(MEAL_SLOTS.map((slot) => {
+    const meal = meals[slot];
+    const keep = meal
+      && (meal.status === "draft" || meal.status === "error")
+      && (meal.note.trim().length > 0 || meal.photos.length > 0);
+    return [slot, keep ? meal : null];
+  })) as MealJournalData["meals"];
+}
+
 export function MealJournal({ readOnly = false, date, today: providedToday, initialData, api, className, disabledSlots = [], selectedDate: selectedDateProp, onDateChange, showDateNavigation = true, sharedDateNavigation, children, historyDays, variant = "page", publishMealTotals = false, initialTargets, initialEffectiveTargets, initialEffortTargetContext, initialTargetsPersisted, initialTargetsFresh = false, initialTargetsDate, allowTargetEditing, showCalorieProgress = true, designVariant = "v1" }: Props) {
   const router = useRouter();
   const today = providedToday ?? todayInLocalTime();
@@ -283,13 +293,7 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
   const navigationDisabled = processingFiles;
 
   const stashLocalDrafts = useCallback((dateKey: string, meals: MealJournalData["meals"]) => {
-    const drafts = Object.fromEntries(MEAL_SLOTS.map((slot) => {
-      const meal = meals[slot];
-      const keep = meal
-        && (meal.status === "draft" || meal.status === "error")
-        && (meal.note.trim().length > 0 || meal.photos.length > 0);
-      return [slot, keep ? meal : null];
-    })) as MealJournalData["meals"];
+    const drafts = localMealDraftsForStash(meals);
     if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
     else draftCache.current.delete(dateKey);
   }, []);
@@ -390,6 +394,8 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
       return;
     }
     if (!initialData) initialMealSnapshotRef.current = null;
+    const current = dataRef.current;
+    if (current && current.date !== selectedDate) stashLocalDrafts(current.date, current.meals);
     void load();
   }, [initialData, initialDate, load, mergeCachedDrafts, selectedDate, selectedDateProp, stashLocalDrafts]);
 
