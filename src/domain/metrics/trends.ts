@@ -1,6 +1,6 @@
 export type TrendDirection = "higher_is_better" | "lower_is_better" | "context_only";
 
-export type MetricPoint = { date: string; value: number | null };
+export type MetricPoint = { date: string; value: number | null; label?: string };
 
 export type PeriodComparison = {
   days: 7 | 30 | 90;
@@ -23,7 +23,7 @@ function dayNumber(value: string) {
   return Number.isFinite(parsed) ? Math.floor(parsed / 86_400_000) : null;
 }
 
-export function filterCalendarWindow(points: MetricPoint[], days: 7 | 30 | 90) {
+export function filterCalendarWindow(points: MetricPoint[], days: number) {
   const latestDay = [...points].reverse().map((point) => dayNumber(point.date)).find((value): value is number => value !== null);
   if (latestDay === undefined) return [];
   return points.filter((point) => {

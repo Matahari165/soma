@@ -140,6 +140,7 @@ export function PersonalLabJournalWorkspace({
 
   const sharedDateNavigation = (
     <PersonalLabDateStrip
+      locale="fr-CH"
       dates={recentDatesFirst ? [...dates].reverse() : dates}
       selectedDate={activeDate}
       todayDate={data.todayDate}

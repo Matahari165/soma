@@ -5,8 +5,9 @@ type Step = { toolResults: ReadonlyArray<ToolResult> };
 type Domain = Extract<AssistantMessagePart, { type: "data-summary" }>["domains"][number];
 
 function domainsFor(dataset: string, input: unknown): Domain[] {
-  if (dataset === "nutrition_daily") return ["nutrition"];
+  if (dataset === "nutrition_daily" || dataset === "meals") return ["nutrition"];
   if (dataset === "activities") return ["effort"];
+  if (dataset === "sleep_sessions") return ["sleep"];
   if (!input || typeof input !== "object") return [];
   const value = input as Record<string, unknown>;
   if (dataset === "scores") {
@@ -32,6 +33,7 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
   const latestByQuery = new Map<string, boolean>();
   const seenPages = new Set<string>();
   const periods: Array<{ from: string; to: string }> = [];
+  const coveredPeriods: Array<{ from: string; to: string }> = [];
   let itemCount = 0;
   for (const query of queries) {
     const output = query.output && typeof query.output === "object" ? query.output as Record<string, unknown> : null;
@@ -39,6 +41,7 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
     if (!parsed.success) continue;
     const manifest = parsed.data;
     periods.push(manifest.requestedPeriod);
+    if (manifest.coveredPeriod) coveredPeriods.push(manifest.coveredPeriod);
     for (const domain of domainsFor(manifest.dataset, query.input)) domains.add(domain);
     const input = query.input && typeof query.input === "object" ? query.input as Record<string, unknown> : {};
     const queryWithoutPagination = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "pagination"));
@@ -54,11 +57,16 @@ export function dataSummaryFromSteps(steps: ReadonlyArray<Step> | undefined): Ex
   if (!periods.length) return null;
   const from = periods.map((period) => period.from).sort()[0];
   const to = periods.map((period) => period.to).sort().at(-1)!;
+  const coveredPeriod = coveredPeriods.length ? {
+    from: coveredPeriods.map((period) => period.from).sort()[0],
+    to: coveredPeriods.map((period) => period.to).sort().at(-1)!,
+  } : null;
   const complete = [...latestByQuery.values()].every(Boolean);
   return {
     type: "data-summary",
     label: complete ? "Données Soma consultées" : "Données Soma consultées · analyse partielle",
     period: { from, to },
+    coveredPeriod,
     itemCount,
     domains: [...domains],
   };

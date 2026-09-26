@@ -116,3 +116,99 @@ it("edits a previous message inline and uses the existing edit request", async (
   expect(requests[0]).toMatchObject({ editMessageId: "user-1", text: "Question corrigée" });
   await act(async () => root.unmount());
 });
+
+it("offers a retry when a conversation cannot be loaded", async () => {
+  let loadAttempts = 0;
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [] });
+    if (url.includes("conversationId=conversation-1")) {
+      loadAttempts += 1;
+      if (loadAttempts === 1) return Response.json({ error: "Service indisponible" }, { status: 503 });
+      return Response.json({ messages: [{
+        id: "answer-1", sequence: 2, role: "assistant", status: "completed", parts: [{ type: "text", text: "Conversation rechargée." }],
+      }] });
+    }
+    return Response.json({ conversations: [{ id: "conversation-1", title: "Test" }] });
+  }));
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const conversationButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Test");
+  await act(async () => conversationButton?.click());
+
+  expect(loadAttempts).toBe(1);
+  expect(container.textContent).toContain("Conversation indisponible");
+  const retry = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Réessayer");
+  expect(retry).toBeDefined();
+  await act(async () => retry?.click());
+
+  expect(loadAttempts).toBe(2);
+  expect(container.textContent).toContain("Conversation rechargée.");
+  expect(container.textContent).not.toContain("Conversation indisponible");
+  await act(async () => root.unmount());
+});
+
+it("distinguishes new search coverage from legacy summaries without coverage", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [] });
+    if (url.includes("conversationId=conversation-1")) return Response.json({ messages: [
+      {
+        id: "answer-legacy", sequence: 2, role: "assistant", status: "completed", parts: [
+          { type: "text", text: "Les données historiques restent disponibles." },
+          { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-24", to: "2026-09-24" }, itemCount: 4, domains: ["effort"] },
+        ],
+      },
+      {
+        id: "answer-empty", sequence: 4, role: "assistant", status: "completed", parts: [
+          { type: "text", text: "Aucune course aujourd’hui." },
+          { type: "data-summary", label: "Données Soma consultées", period: { from: "2026-09-24", to: "2026-09-24" }, coveredPeriod: null, itemCount: 0, domains: ["effort"] },
+        ],
+      },
+    ] });
+    return Response.json({ conversations: [{ id: "conversation-1", title: "Course" }] });
+  }));
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const conversationButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Course");
+  await act(async () => conversationButton?.click());
+
+  const summaries = Array.from(container.querySelectorAll("details")).filter((summary) =>
+    summary.querySelector("summary")?.textContent?.includes("Données Soma consultées"),
+  );
+  expect(summaries).toHaveLength(2);
+  const legacyLabels = Array.from(summaries[0].querySelectorAll("dt"), (label) => label.textContent);
+  expect(legacyLabels).toContain("Période");
+  expect(legacyLabels).not.toContain("Trouvé");
+  const newLabels = Array.from(summaries[1].querySelectorAll("dt"), (label) => label.textContent);
+  expect(newLabels).toContain("Recherche");
+  expect(newLabels).toContain("Trouvé");
+  expect(container.textContent).toContain("24 sept. 2026");
+  expect(container.textContent).toContain("Aucune donnée sur cette période");
+  await act(async () => root.unmount());
+});
+
+it("labels a failed new conversation request as a send error", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/starter-prompts")) return Response.json({ calibrated: true, prompts: [{ id: "test", text: "Question de test" }, { id: "two", text: "Deuxième question" }, { id: "three", text: "Troisième question" }] });
+    if (init?.method === "POST") return Response.json({ error: "Service indisponible" }, { status: 503 });
+    return Response.json({ conversations: [] });
+  }));
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<AssistantWorkspace />));
+  const starter = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Question de test"));
+  expect(starter).toBeDefined();
+  await act(async () => starter?.click());
+  expect(container.textContent).toContain("Envoi impossible");
+  expect(container.textContent).not.toContain("Conversation indisponible");
+  await act(async () => root.unmount());
+});

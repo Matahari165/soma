@@ -5,8 +5,10 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { calculateSignalFreshness } from "@/domain/health/freshness";
 import { aggregateConfirmedMeals, type MealDailyAggregate } from "@/domain/lab/meals";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { allImportedExercises, type ExerciseSummary, type HealthMetricDay, type ScoreDay } from "@/services/health-analytics";
+import type { Meal } from "@/domain/meals";
+import { exerciseSummaryFromRecord, type ExerciseSummary, type HealthMetricDay, type ScoreDay } from "@/services/health-analytics";
 import { loadConfirmedMealRecords } from "@/services/meals";
+import { listMeals } from "@/repositories/meals";
 
 import {
   assistantSemanticQuerySchema,
@@ -34,8 +36,43 @@ export type AssistantObservation = {
 
 export type AssistantDailyRecord = { type: "daily"; date: string; observations: AssistantObservation[] };
 export type AssistantScoreRecord = { type: "score"; date: string; kind: ScoreDay["kind"]; observation: AssistantObservation };
-export type AssistantActivityRecord = { type: "activity"; date: string; activity: ExerciseSummary };
-export type AssistantSemanticRecord = AssistantDailyRecord | AssistantScoreRecord | AssistantActivityRecord;
+export type AssistantActivitySource = {
+  activity: ExerciseSummary;
+  provider: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  importedAt: string | null;
+  paceSource?: "health_source" | "soma_calculation";
+};
+export type AssistantActivityRecord = { type: "activity"; date: string; activity: ExerciseSummary; startTime: string | null; endTime: string | null; qualityFlags: Array<"zone_minutes_exceed_duration" | "active_minutes_exceed_duration">; observations: AssistantObservation[] };
+export type AssistantSleepSessionSource = { provider: string | null; sourceDevice: string | null; sourceRecordId: string; civilDate: string | null; startTime: string | null; endTime: string | null; updatedAt: string | null; payload: unknown };
+type HealthRecordRow = { provider: unknown; source_device: unknown; source_record_id: unknown; civil_date: unknown; start_time: unknown; end_time: unknown; updated_at: unknown; payload: unknown };
+export type AssistantSleepSessionRecord = { type: "sleep_session"; date: string; session: {
+  id: string; startTime: string | null; endTime: string | null; durationMinutes: number | null;
+  sleepMinutes: number | null; minutesInSleepPeriod: number | null; minutesAwake: number | null;
+  minutesToFallAsleep: number | null; stages: Array<{ type: string; startTime: string | null; endTime: string | null; durationMinutes: number | null }>;
+  stagesSummary: Array<{ type: string; minutes: number | null; count: number | null }>;
+  sourceDevice: string | null; provider: string | null; importedAt: string | null;
+}; observations: AssistantObservation[] };
+type AssistantMealRange = { low: number | null; likely: number | null; high: number | null } | null;
+type AssistantMealTotals = {
+  calories: AssistantMealRange; proteinGrams: AssistantMealRange; carbohydrateGrams: AssistantMealRange;
+  fatGrams: AssistantMealRange; fiberGrams: AssistantMealRange; sugarGrams: AssistantMealRange; addedSugarGrams: AssistantMealRange;
+};
+export type AssistantMealRecord = { type: "meal"; date: string; meal: {
+  id: string; mealType: Meal["mealType"]; status: Meal["status"]; entryState: Meal["entryState"];
+  nutritionEligible: boolean; nutritionExclusionReason: "draft" | "explicitly_skipped" | null;
+  note: string | null; origin: "homemade" | "prepared" | "mixed" | "unknown"; recordedAt: string;
+  analysis: { status: string; provider: string | null; model: string | null; confidence: string | null; coverage: number; totals: AssistantMealTotals; foods: Array<{
+    id: string | null; name: string; preparation: string | null; portion: string | null; estimatedGrams: number | null;
+    quantity: unknown; kind: unknown; parentId: string | null; course: unknown; countedInTotals: boolean | null;
+    calories: AssistantMealRange; proteinGrams: AssistantMealRange; carbohydrateGrams: AssistantMealRange;
+    fatGrams: AssistantMealRange; fiberGrams: AssistantMealRange; sugarGrams: AssistantMealRange;
+    addedSugarGrams: AssistantMealRange; confidence: string | null;
+  }> } | null;
+  provenance: { source: "confirmed_meals"; provider: string | null; algorithmVersion: string | null };
+}; observations: AssistantObservation[] };
+export type AssistantSemanticRecord = AssistantDailyRecord | AssistantScoreRecord | AssistantActivityRecord | AssistantSleepSessionRecord | AssistantMealRecord;
 
 export type AssistantQueryManifest = {
   dataset: AssistantSemanticQuery["dataset"];
@@ -57,7 +94,9 @@ type AssistantDataSources = {
   health(userId: string, period: { from: string; to: string }): Promise<HealthMetricDay[]>;
   scores(userId: string, period: { from: string; to: string }): Promise<ScoreDay[]>;
   nutrition(userId: string, period: { from: string; to: string }): Promise<MealDailyAggregate[]>;
-  activities(userId: string, period: { from: string; to: string }): Promise<ExerciseSummary[]>;
+  activities(userId: string, period: { from: string; to: string }): Promise<AssistantActivitySource[]>;
+  sleepSessions(userId: string, period: { from: string; to: string }): Promise<AssistantSleepSessionSource[]>;
+  meals(userId: string, period: { from: string; to: string }): Promise<Meal[]>;
 };
 
 type CursorPayload = { version: 1; dataset: AssistantSemanticQuery["dataset"]; queryHash: string; position: string };
@@ -160,7 +199,11 @@ function queryHash(query: AssistantSemanticQuery) {
     ? query.metrics
     : query.dataset === "scores"
       ? query.kinds
-      : query.activityTypes;
+      : query.dataset === "activities"
+        ? query.activityTypes
+        : query.dataset === "meals"
+          ? query.mealTypes
+          : [];
   return createHash("sha256").update(JSON.stringify({
     dataset: query.dataset,
     period: query.period,
@@ -180,6 +223,78 @@ async function readAllRows(table: string, userId: string, period: { from: string
     rows.push(...page);
     if (page.length < STORAGE_PAGE_SIZE) return rows;
   }
+}
+
+function shiftCivilDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function periodContains(period: { from: string; to: string }, date: string) {
+  return date >= period.from && date <= period.to;
+}
+
+async function readHealthRecordBranch(userId: string, dataType: "exercise" | "sleep", period: { from: string; to: string }, branch: "civil_date" | "start_time" | "end_time") {
+  const admin = createCloudflareAdminClient();
+  const rows: HealthRecordRow[] = [];
+  const lower = `${shiftCivilDate(period.from, -1)}T00:00:00.000Z`;
+  const upper = `${shiftCivilDate(period.to, 2)}T00:00:00.000Z`;
+  for (let offset = 0; ; offset += STORAGE_PAGE_SIZE) {
+    let query = admin.from("health_records")
+      .select("provider,source_device,source_record_id,civil_date,start_time,end_time,updated_at,payload")
+      .eq("user_id", userId).eq("data_type", dataType)
+      .order("civil_date", { ascending: false }).order("end_time", { ascending: false })
+      .order("provider", { ascending: true }).order("source_record_id", { ascending: true });
+    if (branch === "civil_date") query = query.gte("civil_date", period.from).lte("civil_date", period.to);
+    else {
+      query = query.is("civil_date", null).gte(branch, lower).lt(branch, upper);
+      if (branch === "start_time" && dataType === "sleep") query = query.is("end_time", null);
+    }
+    const result = await query.range(offset, offset + STORAGE_PAGE_SIZE - 1);
+    if (result.error) throw new Error(`Assistant ${dataType} data could not be loaded.`);
+    const page = (result.data ?? []) as HealthRecordRow[];
+    rows.push(...page);
+    if (page.length < STORAGE_PAGE_SIZE) return rows;
+  }
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeHealthRecord(row: HealthRecordRow): AssistantSleepSessionSource | null {
+  const sourceRecordId = nullableString(row.source_record_id);
+  if (!sourceRecordId) return null;
+  return {
+    provider: nullableString(row.provider),
+    sourceDevice: nullableString(row.source_device),
+    sourceRecordId,
+    civilDate: nullableString(row.civil_date),
+    startTime: nullableString(row.start_time),
+    endTime: nullableString(row.end_time),
+    updatedAt: nullableString(row.updated_at),
+    payload: row.payload,
+  };
+}
+
+async function readTargetedHealthRecords(userId: string, dataType: "exercise" | "sleep", period: { from: string; to: string }) {
+  const branches: Array<"civil_date" | "start_time" | "end_time"> = dataType === "exercise"
+    ? ["civil_date", "start_time"]
+    : ["civil_date", "end_time", "start_time"];
+  const pages = await Promise.all(branches.map((branch) => readHealthRecordBranch(userId, dataType, period, branch)));
+  const byId = new Map<string, AssistantSleepSessionSource>();
+  for (const rawRow of pages.flat()) {
+    const row = normalizeHealthRecord(rawRow);
+    if (!row) continue;
+    const date = row.civilDate ?? (dataType === "exercise" ? row.startTime : row.endTime ?? row.startTime)?.slice(0, 10) ?? "";
+    if (periodContains(period, date)) byId.set(`${row.provider ?? ""}\u0000${row.sourceRecordId}`, row);
+  }
+  return [...byId.values()].sort((first, second) => {
+    const firstDate = first.civilDate ?? (dataType === "exercise" ? first.startTime : first.endTime ?? first.startTime)?.slice(0, 10) ?? "";
+    const secondDate = second.civilDate ?? (dataType === "exercise" ? second.startTime : second.endTime ?? second.startTime)?.slice(0, 10) ?? "";
+    return secondDate.localeCompare(firstDate) || String(second.endTime ?? "").localeCompare(String(first.endTime ?? ""));
+  });
 }
 
 const defaultSources: AssistantDataSources = {
@@ -202,12 +317,43 @@ const defaultSources: AssistantDataSources = {
     return aggregateConfirmedMeals(await loadConfirmedMealRecords(userId, period));
   },
   async activities(userId, period) {
-    return (await allImportedExercises(userId)).filter((activity) => activity.date >= period.from && activity.date <= period.to);
+    const rows = await readTargetedHealthRecords(userId, "exercise", period);
+    return rows.map((row) => {
+      const activity = exerciseSummaryFromRecord({
+        source_record_id: row.sourceRecordId,
+        civil_date: row.civilDate,
+        start_time: row.startTime,
+        end_time: row.endTime,
+        payload: row.payload,
+      });
+      const exercise = findObject(row.payload, "exercise") ?? {};
+      const metricsSummary = isObject(exercise.metricsSummary) ? exercise.metricsSummary : {};
+      const sourcePace = nestedNumber(metricsSummary, ["averagePaceSecondsPerMeter"]);
+      return {
+        activity,
+        provider: row.provider,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        importedAt: row.updatedAt,
+        paceSource: sourcePace === null ? "soma_calculation" as const : "health_source" as const,
+      };
+    });
+  },
+  async sleepSessions(userId, period) {
+    return await readTargetedHealthRecords(userId, "sleep", period);
+  },
+  async meals(userId, period) {
+    return await listMeals(userId, { from: period.from, to: period.to, preferLatestCompletedAnalysis: true });
   },
 };
 
 function finiteNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function projectMealRange(value: unknown): AssistantMealRange {
+  if (!isObject(value)) return null;
+  return { low: finiteNumber(value.low), likely: finiteNumber(value.likely), high: finiteNumber(value.high) };
 }
 
 function healthMeasuredAt(day: HealthMetricDay) {
@@ -224,6 +370,8 @@ function healthRecords(rows: HealthMetricDay[], query: Extract<AssistantSemantic
   return rows.map((day) => {
     const measuredAt = healthMeasuredAt(day);
     const freshness = calculateSignalFreshness({ measuredAt, importedAt, coverage: measuredAt ? 1 : 0 });
+    const providers = day.data_quality?.providers?.filter((provider) => typeof provider === "string" && provider.length > 0) ?? [];
+    const provider = providers.length === 1 ? providers[0] : null;
     return {
       type: "daily" as const,
       date: day.metric_date,
@@ -237,7 +385,7 @@ function healthRecords(rows: HealthMetricDay[], query: Extract<AssistantSemantic
         return {
           metric, value, unit: metadata?.unit ?? null, availability: metricAvailability, coverage,
           measuredAt, importedAt, freshness: freshness.state,
-          provenance: { source: metadata?.source ?? "health_source", provider: null, algorithmVersion: metadata?.source === "soma_calculation" ? "daily-health-metrics" : null },
+          provenance: { source: metadata?.source ?? "health_source", provider, algorithmVersion: metadata?.source === "soma_calculation" ? "daily-health-metrics" : null },
         };
       }),
     };
@@ -278,14 +426,273 @@ function nutritionRecords(rows: MealDailyAggregate[], query: Extract<AssistantSe
   }));
 }
 
-function activityRecords(rows: ExerciseSummary[], query: Extract<AssistantSemanticQuery, { dataset: "activities" }>): AssistantActivityRecord[] {
+function sourceObservation(input: {
+  metric: string; value: number | null; unit: string | null; source: AssistantObservation["provenance"]["source"];
+  provider: string | null; algorithmVersion?: string | null; measuredAt: string | null; importedAt: string | null;
+}) {
+  const value = finiteNumber(input.value);
+  const coverage = value === null ? 0 : 1;
+  const freshness = input.source === "confirmed_meals"
+    ? value === null ? "missing" as const : "current" as const
+    : calculateSignalFreshness({ measuredAt: input.measuredAt, importedAt: input.importedAt, coverage }).state;
+  return {
+    metric: input.metric,
+    value,
+    unit: input.unit,
+    availability: value === null ? "missing" as const : "observed" as const,
+    coverage,
+    measuredAt: input.measuredAt,
+    importedAt: input.importedAt,
+    freshness,
+    provenance: { source: input.source, provider: input.provider, algorithmVersion: input.algorithmVersion ?? null },
+  };
+}
+
+const activityMetricDefinitions = [
+  ["duration_minutes", "durationMinutes", "min"], ["active_minutes", "activeMinutes", "min"], ["calories_kcal", "calories", "kcal"],
+  ["distance_km", "distanceKm", "km"], ["average_heart_rate", "averageHeartRate", "bpm"], ["maximum_heart_rate", "maximumHeartRate", "bpm"],
+  ["zone_minutes", "zoneMinutes", "min"], ["average_speed_kph", "averageSpeedKph", "km/h"],
+  ["average_pace_seconds_per_km", "averagePaceSecondsPerKm", "s/km"], ["elevation_gain_meters", "elevationGainMeters", "m"],
+  ["steps", "steps", "steps"], ["run_vo2_max", "runVo2Max", "ml/kg/min"], ["swim_lengths", "swimLengths", "lengths"],
+  ["cadence", "cadence", "steps/min"], ["stride_length_meters", "strideLengthMeters", "m"],
+  ["ground_contact_milliseconds", "groundContactMilliseconds", "ms"], ["vertical_oscillation_millimeters", "verticalOscillationMillimeters", "mm"],
+  ["vertical_ratio", "verticalRatio", "%"],
+] as const;
+
+function activityRecords(rows: AssistantActivitySource[], query: Extract<AssistantSemanticQuery, { dataset: "activities" }>): AssistantActivityRecord[] {
   const types = new Set(query.activityTypes.map((value) => value.toLocaleUpperCase("en-US")));
-  return rows.filter((activity) => !types.size || types.has(activity.type.toLocaleUpperCase("en-US")))
-    .map((activity) => ({ type: "activity" as const, date: activity.date, activity }));
+  return rows.filter(({ activity }) => periodContains(query.period, activity.date))
+    .filter(({ activity }) => !types.size || types.has(activity.type.toLocaleUpperCase("en-US")))
+    .map((source) => {
+      const measuredAt = source.endTime ?? source.startTime;
+      const duration = finiteNumber(source.activity.durationMinutes);
+      const qualityFlags: AssistantActivityRecord["qualityFlags"] = [];
+      if (duration !== null && duration >= 0) {
+        if (source.activity.zoneMinutes !== null && source.activity.zoneMinutes > duration + 1) qualityFlags.push("zone_minutes_exceed_duration");
+        if (source.activity.activeMinutes !== null && source.activity.activeMinutes > duration + 1) qualityFlags.push("active_minutes_exceed_duration");
+      }
+      return {
+        type: "activity" as const,
+        date: source.activity.date,
+        activity: source.activity,
+        startTime: source.startTime,
+        endTime: source.endTime,
+        qualityFlags,
+        observations: activityMetricDefinitions.map(([metric, key, unit]) => sourceObservation({
+          metric,
+          value: source.activity[key] as number | null,
+          unit,
+          source: metric === "duration_minutes" || (metric === "average_pace_seconds_per_km" && source.paceSource === "soma_calculation")
+            ? "soma_calculation"
+            : "health_source",
+          provider: source.provider,
+          algorithmVersion: metric === "duration_minutes"
+            ? "session-times-v1"
+            : metric === "average_pace_seconds_per_km" && source.paceSource === "soma_calculation"
+              ? "activity-derived-pace-v1"
+              : null,
+          measuredAt,
+          importedAt: source.importedAt,
+        })),
+      };
+    });
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function findObject(value: unknown, key: string): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findObject(item, key); if (found) return found; }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  if (isObject(value[key])) return value[key] as Record<string, unknown>;
+  for (const child of Object.values(value)) { const found = findObject(child, key); if (found) return found; }
+  return null;
+}
+
+function nestedNumber(value: unknown, keys: string[]): number | null {
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = nestedNumber(item, keys); if (found !== null) return found; }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const key of keys) {
+    const parsed = Number(value[key]);
+    if (value[key] !== null && value[key] !== undefined && Number.isFinite(parsed)) return parsed;
+  }
+  for (const child of Object.values(value)) { const found = nestedNumber(child, keys); if (found !== null) return found; }
+  return null;
+}
+
+function durationMinutes(value: unknown) {
+  if (typeof value !== "string") return null;
+  const seconds = Number(value.replace(/s$/u, ""));
+  return Number.isFinite(seconds) ? seconds / 60 : null;
+}
+
+function sleepSessionRecords(rows: AssistantSleepSessionSource[], query: Extract<AssistantSemanticQuery, { dataset: "sleep_sessions" }>, importedAt: string | null): AssistantSleepSessionRecord[] {
+  return rows.flatMap((row) => {
+    const date = row.civilDate ?? (row.endTime ?? row.startTime)?.slice(0, 10) ?? "";
+    if (!periodContains(query.period, date)) return [];
+    const sleep = findObject(row.payload, "sleep") ?? {};
+    const summary = isObject(sleep.summary) ? sleep.summary : {};
+    const stageValues = Array.isArray(sleep.stages) ? sleep.stages : [];
+    const stages = stageValues.flatMap((stage) => {
+      if (!isObject(stage)) return [];
+      const type = typeof stage.type === "string" ? stage.type.toUpperCase() : "UNKNOWN";
+      return [{
+        type,
+        startTime: typeof stage.startTime === "string" ? stage.startTime : null,
+        endTime: typeof stage.endTime === "string" ? stage.endTime : null,
+        durationMinutes: durationMinutes(stage.duration) ?? (typeof stage.durationMinutes === "number" && Number.isFinite(stage.durationMinutes) ? stage.durationMinutes : null),
+      }];
+    });
+    const summaryStages = Array.isArray(summary.stagesSummary) ? summary.stagesSummary : [];
+    const stagesSummary = summaryStages.flatMap((stage) => isObject(stage) ? [{
+      type: typeof stage.type === "string" ? stage.type.toUpperCase() : "UNKNOWN",
+      minutes: finiteNumber(stage.minutes),
+      count: finiteNumber(stage.count),
+    }] : []);
+    const sleepMinutes = nestedNumber(summary, ["minutesAsleep"]);
+    const inBedMinutes = nestedNumber(summary, ["minutesInSleepPeriod", "timeInBedMinutes"]);
+    const awakeMinutes = nestedNumber(summary, ["minutesAwake"]);
+    const latencyMinutes = nestedNumber(summary, ["minutesToFallAsleep"]);
+    const measuredAt = row.endTime ?? row.startTime;
+    const recordImportedAt = row.updatedAt ?? importedAt;
+    const sourceMetrics = [
+      sourceObservation({ metric: "sleep_minutes", value: sleepMinutes, unit: "min", source: "health_source", provider: row.provider, measuredAt, importedAt: recordImportedAt }),
+      sourceObservation({ metric: "sleep_in_bed_minutes", value: inBedMinutes, unit: "min", source: "health_source", provider: row.provider, measuredAt, importedAt: recordImportedAt }),
+      sourceObservation({ metric: "sleep_awake_minutes", value: awakeMinutes, unit: "min", source: "health_source", provider: row.provider, measuredAt, importedAt: recordImportedAt }),
+      sourceObservation({ metric: "sleep_latency_minutes", value: latencyMinutes, unit: "min", source: "health_source", provider: row.provider, measuredAt, importedAt: recordImportedAt }),
+    ];
+    const duration = row.startTime && row.endTime ? (Date.parse(row.endTime) - Date.parse(row.startTime)) / 60_000 : null;
+    return [{
+      type: "sleep_session" as const,
+      date,
+      session: {
+        id: row.sourceRecordId,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        durationMinutes: duration !== null && Number.isFinite(duration) && duration >= 0 ? duration : null,
+        sleepMinutes,
+        minutesInSleepPeriod: inBedMinutes,
+        minutesAwake: awakeMinutes,
+        minutesToFallAsleep: latencyMinutes,
+        stages,
+        stagesSummary,
+        sourceDevice: row.sourceDevice,
+        provider: row.provider,
+        importedAt: recordImportedAt,
+      },
+      observations: sourceMetrics,
+    }];
+  });
+}
+
+const mealMetricDefinitions = [
+  ["calories_kcal", "calories", "kcal"], ["protein_g", "proteinGrams", "g"], ["carbs_g", "carbohydrateGrams", "g"],
+  ["fat_g", "fatGrams", "g"], ["fiber_g", "fiberGrams", "g"], ["sugar_g", "sugarGrams", "g"], ["added_sugar_g", "addedSugarGrams", "g"],
+] as const;
+
+function mealRecords(rows: Meal[], query: Extract<AssistantSemanticQuery, { dataset: "meals" }>): AssistantMealRecord[] {
+  const mealTypes = new Set(query.mealTypes);
+  return rows.filter((meal) => periodContains(query.period, meal.mealDate))
+    .filter((meal) => !mealTypes.size || mealTypes.has(meal.mealType))
+    .map((meal) => {
+      const entryState = meal.entryState ?? "recorded";
+      const nutritionEligible = meal.status === "confirmed" && entryState !== "skipped";
+      const nutritionExclusionReason = entryState === "skipped" ? "explicitly_skipped" as const : meal.status !== "confirmed" ? "draft" as const : null;
+      const analysis = nutritionEligible && meal.analysis?.status === "completed" && meal.analysis.result
+        ? meal.analysis
+        : nutritionEligible && meal.lastSuccessfulAnalysis?.status === "completed" && meal.lastSuccessfulAnalysis.result
+          ? meal.lastSuccessfulAnalysis
+          : null;
+      const result = analysis?.result ?? null;
+      const totals: AssistantMealTotals = {
+        calories: projectMealRange(result?.totals.calories),
+        proteinGrams: projectMealRange(result?.totals.proteinGrams),
+        carbohydrateGrams: projectMealRange(result?.totals.carbohydrateGrams),
+        fatGrams: projectMealRange(result?.totals.fatGrams),
+        fiberGrams: projectMealRange(result?.totals.fiberGrams),
+        sugarGrams: projectMealRange(result?.totals.sugarGrams),
+        addedSugarGrams: projectMealRange(result?.totals.addedSugarGrams),
+      };
+      const provider = analysis?.provider ?? null;
+      const model = analysis?.model ?? null;
+      const coreFields = [totals.calories, totals.proteinGrams, totals.carbohydrateGrams, totals.fatGrams, totals.fiberGrams];
+      const coverage = coreFields.filter((range) => range !== null && range !== undefined).length / coreFields.length;
+      const observations = nutritionEligible ? mealMetricDefinitions.map(([metric, key, unit]) => {
+        const range = totals[key];
+        return sourceObservation({
+          metric,
+          value: range ? range.likely : null,
+          unit,
+          source: "confirmed_meals",
+          provider,
+          algorithmVersion: model,
+          measuredAt: null,
+          importedAt: meal.createdAt,
+        });
+      }) : mealMetricDefinitions.map(([metric]) => ({
+        metric, value: null, unit: null, availability: "not_calculable" as const, coverage: 0,
+        measuredAt: null, importedAt: meal.createdAt, freshness: "missing" as const,
+        provenance: { source: "confirmed_meals" as const, provider: null, algorithmVersion: null },
+      }));
+      return {
+        type: "meal" as const,
+        date: meal.mealDate,
+        meal: {
+          id: meal.id,
+          mealType: meal.mealType,
+          status: meal.status,
+          entryState,
+          nutritionEligible,
+          nutritionExclusionReason,
+          note: meal.note,
+          origin: meal.photos.length ? (new Set(meal.photos.map((photo) => photo.origin)).size > 1 ? "mixed" : meal.photos[0].origin) : "unknown",
+          recordedAt: meal.createdAt,
+          analysis: result ? {
+            status: analysis?.status ?? "missing",
+            provider,
+            model,
+            confidence: result.confidence,
+            coverage,
+            totals,
+            foods: result.foods.map((food) => ({
+              id: food.id ?? null, name: food.name, preparation: food.preparation, portion: food.portion,
+              estimatedGrams: food.estimatedGrams, quantity: food.quantity ?? null, kind: food.kind ?? null,
+              parentId: food.parentId ?? null, course: food.course ?? null, countedInTotals: food.countedInTotals ?? null,
+              calories: projectMealRange(food.calories), proteinGrams: projectMealRange(food.proteinGrams), carbohydrateGrams: projectMealRange(food.carbohydrateGrams),
+              fatGrams: projectMealRange(food.fatGrams), fiberGrams: projectMealRange(food.fiberGrams), sugarGrams: projectMealRange(food.sugarGrams),
+              addedSugarGrams: projectMealRange(food.addedSugarGrams), confidence: food.confidence,
+            })),
+          } : null,
+          provenance: { source: "confirmed_meals" as const, provider, algorithmVersion: model },
+        },
+        observations,
+      };
+    });
 }
 
 function recordPosition(record: AssistantSemanticRecord) {
-  return record.type === "score" ? `${record.date}|${record.kind}` : record.type === "activity" ? `${record.date}|${record.activity.id}` : record.date;
+  if (record.type === "score") return `${record.date}|${record.kind}`;
+  if (record.type === "activity") {
+    const timestamp = record.endTime ?? record.startTime;
+    const source = record.observations[0]?.provenance.provider ?? "";
+    return `${record.date}|${normalizeTimestamp(timestamp)}|${source}|${record.activity.id}`;
+  }
+  if (record.type === "sleep_session") return `${record.date}|${normalizeTimestamp(record.session.endTime ?? record.session.startTime)}|${record.session.provider ?? ""}|${record.session.id}`;
+  if (record.type === "meal") return `${record.date}|${normalizeTimestamp(record.meal.recordedAt)}|${record.meal.id}`;
+  return record.date;
+}
+
+function normalizeTimestamp(value: string | null) {
+  if (!value) return "";
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
 }
 
 function paginate(records: AssistantSemanticRecord[], query: AssistantSemanticQuery, explicitSecret?: string) {
@@ -314,13 +721,22 @@ export async function queryAssistantData(
   const query = assistantSemanticQuerySchema.parse(input);
   if (periodDays(query.period) > MAX_PERIOD_DAYS) throw new Error(`Assistant queries are limited to ${MAX_PERIOD_DAYS} days per request.`);
   const sources = options.sources ?? defaultSources;
-  const profile = await sources.profile(userId);
+  let sourceRowsPromise: Promise<HealthMetricDay[] | ScoreDay[] | MealDailyAggregate[] | AssistantActivitySource[] | AssistantSleepSessionSource[] | Meal[]>;
+  if (query.dataset === "daily_health") sourceRowsPromise = sources.health(userId, query.period);
+  else if (query.dataset === "scores") sourceRowsPromise = sources.scores(userId, query.period);
+  else if (query.dataset === "nutrition_daily") sourceRowsPromise = sources.nutrition(userId, query.period);
+  else if (query.dataset === "activities") sourceRowsPromise = sources.activities(userId, query.period);
+  else if (query.dataset === "sleep_sessions") sourceRowsPromise = sources.sleepSessions(userId, query.period);
+  else sourceRowsPromise = sources.meals(userId, query.period);
+  const [profile, sourceRows] = await Promise.all([sources.profile(userId), sourceRowsPromise]);
 
   let records: AssistantSemanticRecord[];
-  if (query.dataset === "daily_health") records = healthRecords(await sources.health(userId, query.period), query, profile.importedAt);
-  else if (query.dataset === "scores") records = scoreRecords(await sources.scores(userId, query.period), query, profile.importedAt);
-  else if (query.dataset === "nutrition_daily") records = nutritionRecords(await sources.nutrition(userId, query.period), query);
-  else records = activityRecords(await sources.activities(userId, query.period), query);
+  if (query.dataset === "daily_health") records = healthRecords(sourceRows as HealthMetricDay[], query, profile.importedAt);
+  else if (query.dataset === "scores") records = scoreRecords(sourceRows as ScoreDay[], query, profile.importedAt);
+  else if (query.dataset === "nutrition_daily") records = nutritionRecords(sourceRows as MealDailyAggregate[], query);
+  else if (query.dataset === "activities") records = activityRecords(sourceRows as AssistantActivitySource[], query);
+  else if (query.dataset === "sleep_sessions") records = sleepSessionRecords(sourceRows as AssistantSleepSessionSource[], query, profile.importedAt);
+  else records = mealRecords(sourceRows as Meal[], query);
 
   const paginated = paginate(records, query, options.cursorSecret);
   const coveredDates = records.map((record) => record.date).sort();
