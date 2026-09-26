@@ -20,6 +20,7 @@ import { createQueryLabAnalysesTool } from "./tools/query-lab-analyses";
 import { createGetActivityTelemetryTool } from "./tools/get-activity-telemetry";
 import { createQueryRawHealthTool } from "./tools/query-raw-health";
 import { createSummarizeSomaDataTool } from "./tools/summarize-soma-data";
+import { createReadConversationMessageTool } from "./tools/read-conversation-message";
 import { createSearchConversationTool } from "./tools/search-conversation";
 import { createReopenConversationImageTool } from "./tools/reopen-conversation-image";
 
@@ -67,6 +68,7 @@ export function createSomaAssistantAgent(input: {
     queryRawHealth: createQueryRawHealthTool(input),
     summarizeSomaData: createSummarizeSomaDataTool(input),
     searchConversation: createSearchConversationTool(input),
+    readConversationMessage: createReadConversationMessageTool(input),
     reopenConversationImage: createReopenConversationImageTool(input),
     manageUserContext: createManageUserContextTool(input),
     manageMeal: createManageMealTool(input),

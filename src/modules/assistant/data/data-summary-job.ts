@@ -1,11 +1,12 @@
 import "server-only";
 
+import { abortable } from "@/lib/abortable";
 import { z } from "zod";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { assistantSemanticQuerySchema, type AssistantSemanticQuery } from "../contracts";
 import { queryAssistantData, type AssistantSemanticResult } from "./semantic-query";
 import { queryFingerprint } from "./scoped-cursor";
-import { loadAssistantActivityTelemetry } from "./activity-telemetry";
+import { loadAssistantActivityTelemetry, AssistantActivityTelemetryUnavailableError } from "./activity-telemetry";
 
 export const assistantDataSummarySchema = z.object({
   query: assistantSemanticQuerySchema,
@@ -20,10 +21,13 @@ type Statistic = {
 };
 export type AssistantDataSummaryJob = {
   id: string; user_id: string; query_hash: string; query: AssistantSemanticQuery;
+  telemetry_progress?: { activityId: string; nextPageToken: string | null; complete: boolean } | null;
   cursor: string | null; status: "running" | "completed"; processed: number; total: number | null;
   covered_from: string | null; covered_to: string | null; statistics: Record<string, Statistic>;
   activity_types: Record<string, number>; include_zones: boolean; zones: { sessions: number; partial: number; unavailable: number; seconds: Record<string, number>; observedSeconds: number; activeSeconds: number; belowZoneSeconds: number; aboveMaximumSeconds: number; references: Record<string, number> }; created_at: string; updated_at: string;
 };
+class SummaryCheckpointConflict extends Error {}
+
 type JobStore = { load(userId: string, id: string): Promise<AssistantDataSummaryJob | null>; findPending?(userId: string, hash: string): Promise<AssistantDataSummaryJob | null>; save(job: AssistantDataSummaryJob, previousVersion?: string): Promise<boolean> };
 
 const defaultStore: JobStore = {
@@ -98,7 +102,7 @@ function accumulate(job: AssistantDataSummaryJob, result: AssistantSemanticResul
   job.status = result.manifest.hasMore ? "running" : "completed";
 }
 
-function publicResult(job: AssistantDataSummaryJob) {
+function publicResult(job: AssistantDataSummaryJob, pauseReason?: "time_budget" | "source_unavailable") {
   const statistics = Object.fromEntries(Object.entries(job.statistics).map(([key, stat]) => {
     const denominator = stat.count * stat.sumXX - stat.sumX * stat.sumX;
     return [key, { observations: stat.count, missing: stat.missing, partial: stat.partial,
@@ -110,7 +114,7 @@ function publicResult(job: AssistantDataSummaryJob) {
       nonNumericValuesComplete: Object.keys(stat.nonNumeric).length <= 20 }];
   }));
   return {
-    jobId: job.id, status: job.status, statistics, activityTypes: job.activity_types,
+    jobId: job.id, status: job.status, ...(pauseReason ? { pauseReason } : {}), statistics, activityTypes: job.activity_types,
     heartRateZones: job.include_zones ? { ...job.zones, method: "percent_max_heart_rate", source: "soma_calculation", coveragePercent: job.zones.activeSeconds ? Math.min(100, 100 * job.zones.observedSeconds / job.zones.activeSeconds) : null } : null,
     manifest: { dataset: job.query.dataset, requestedPeriod: job.query.period,
       coveredPeriod: job.covered_from && job.covered_to ? { from: job.covered_from, to: job.covered_to } : null,
@@ -121,65 +125,100 @@ function publicResult(job: AssistantDataSummaryJob) {
 }
 
 export async function summarizeAssistantData(userId: string, input: unknown, options: {
-  store?: JobStore; queryPage?: typeof queryAssistantData; maxPages?: number; now?: () => number; telemetry?: typeof loadAssistantActivityTelemetry;
+  store?: JobStore; queryPage?: typeof queryAssistantData; maxPages?: number; now?: () => number; telemetry?: typeof loadAssistantActivityTelemetry; budgetMs?: number;
 } = {}) {
   if (!userId) throw new Error("Authenticated user is required.");
   const parsed = assistantDataSummarySchema.parse(input);
   if (parsed.includeHeartRateZones && parsed.query.dataset !== "activities") throw new Error("Heart-rate zones require an activities query.");
-  const query = assistantSemanticQuerySchema.parse({ ...parsed.query, pagination: { limit: parsed.includeHeartRateZones ? 2 : 200, cursor: null, order: "asc" } });
+  const query = assistantSemanticQuerySchema.parse({ ...parsed.query, pagination: { limit: parsed.includeHeartRateZones ? 1 : 200, cursor: null, order: "asc" } });
+  const now = options.now ?? Date.now;
+  const started = now();
+  const budgetMs = Math.max(1, Math.min(20_000, options.budgetMs ?? 20_000));
+  const signal = AbortSignal.timeout(budgetMs);
   const hash = queryFingerprint(userId, { query, includeHeartRateZones: parsed.includeHeartRateZones });
   const store = options.store ?? defaultStore;
-  const now = options.now ?? Date.now;
   let job: AssistantDataSummaryJob;
   if (parsed.jobId) {
-    const existing = await store.load(userId, parsed.jobId);
+    const existing = await abortable(store.load(userId, parsed.jobId), signal);
     if (!existing || existing.user_id !== userId || existing.query_hash !== hash) throw new Error("Summary job does not belong to this user and query.");
     job = structuredClone(existing);
     if (job.status === "completed") return publicResult(job);
   } else {
     // Recover a checkpoint even when a connection died before the first jobId reached the model.
-    const pending = await store.findPending?.(userId, hash);
+    const pending = await abortable(store.findPending?.(userId, hash) ?? Promise.resolve(null), signal);
     if (pending && pending.user_id === userId && pending.query_hash === hash) {
       job = structuredClone(pending);
     } else {
-    const timestamp = new Date(now()).toISOString();
-    job = { id: crypto.randomUUID(), user_id: userId, query_hash: hash, query, cursor: null, status: "running",
-      processed: 0, total: null, covered_from: null, covered_to: null, statistics: {}, activity_types: {}, include_zones: parsed.includeHeartRateZones,
-      zones: { sessions: 0, partial: 0, unavailable: 0, seconds: {}, observedSeconds: 0, activeSeconds: 0, belowZoneSeconds: 0, aboveMaximumSeconds: 0, references: {} }, created_at: timestamp, updated_at: timestamp };
-    await store.save(job);
+      const timestamp = new Date(now()).toISOString();
+      job = { id: crypto.randomUUID(), user_id: userId, query_hash: hash, query, cursor: null, status: "running",
+        processed: 0, total: null, covered_from: null, covered_to: null, statistics: {}, activity_types: {}, include_zones: parsed.includeHeartRateZones,
+        zones: { sessions: 0, partial: 0, unavailable: 0, seconds: {}, observedSeconds: 0, activeSeconds: 0, belowZoneSeconds: 0, aboveMaximumSeconds: 0, references: {} }, created_at: timestamp, updated_at: timestamp };
+      await abortable(store.save(job), signal);
     }
   }
-  const started = now();
+  let durableJob = structuredClone(job);
   const pages = Math.max(1, Math.min(100, options.maxPages ?? 40));
-  for (let page = 0; page < pages && now() - started < 20_000; page += 1) {
-    const previousVersion = job.updated_at;
-    const result = await (options.queryPage ?? queryAssistantData)(userId, { ...query, pagination: { ...query.pagination, cursor: job.cursor } });
-    if (result.manifest.hasMore && (!result.manifest.nextCursor || result.manifest.nextCursor === job.cursor)) throw new Error("Summary pagination made no progress.");
-    if (job.include_zones) for (const item of result.items) {
-      if (item.type !== "activity") continue;
-      try {
-        const telemetry = await (options.telemetry ?? loadAssistantActivityTelemetry)(userId, { activityId: item.activity.id });
-        const zones = telemetry.calculatedZones;
-        job.zones.activeSeconds += telemetry.coverage.activeSeconds;
-        job.zones.observedSeconds += telemetry.coverage.observedSeconds;
-        if (!zones) { job.zones.unavailable += 1; continue; }
-        job.zones.sessions += 1;
-        job.zones.partial += Number(!zones.complete || (telemetry.coverage.percent ?? 0) < 99.999 || telemetry.heartRateFetchLimited);
-        job.zones.belowZoneSeconds += zones.belowZoneSeconds;
-        job.zones.aboveMaximumSeconds += zones.aboveMaximumSeconds;
-        for (const [zone, seconds] of Object.entries(zones.seconds)) job.zones.seconds[zone] = (job.zones.seconds[zone] ?? 0) + seconds;
-        const reference = `${zones.maximumHeartRate.source}:${zones.maximumHeartRate.bpm}`;
-        job.zones.references[reference] = (job.zones.references[reference] ?? 0) + 1;
-      } catch { job.zones.unavailable += 1; }
+  try {
+    for (let page = 0; page < pages && now() - started < budgetMs; page += 1) {
+      signal.throwIfAborted();
+      const result = await abortable((options.queryPage ?? queryAssistantData)(userId, { ...query, pagination: { ...query.pagination, cursor: job.cursor } }), signal);
+      if (result.manifest.hasMore && (!result.manifest.nextCursor || result.manifest.nextCursor === job.cursor)) throw new Error("Summary pagination made no progress.");
+      if (job.include_zones) for (const item of result.items) {
+        if (item.type !== "activity") continue;
+        try {
+          const progress = job.telemetry_progress?.activityId === item.activity.id ? job.telemetry_progress : null;
+          const telemetry = await abortable((options.telemetry ?? loadAssistantActivityTelemetry)(userId, { activityId: item.activity.id }, undefined, {
+            signal, heartRatePageToken: progress?.nextPageToken ?? undefined, skipHeartRateFetch: progress?.complete ?? false,
+            onHeartRatePage: async (nextPageToken) => {
+              signal.throwIfAborted();
+              const previousVersion = job.updated_at;
+              job.telemetry_progress = { activityId: item.activity.id, nextPageToken, complete: nextPageToken === null };
+              job.updated_at = new Date(Math.max(now(), Date.parse(previousVersion) + 1)).toISOString();
+              if (!await abortable(store.save(job, previousVersion), signal)) throw new SummaryCheckpointConflict("Summary checkpoint conflict.");
+              durableJob = structuredClone(job);
+            },
+          }), signal);
+          if (job.telemetry_progress?.activityId === item.activity.id && !job.telemetry_progress.complete) return publicResult(durableJob, "source_unavailable");
+          const zones = telemetry.calculatedZones;
+          job.zones.activeSeconds += telemetry.coverage.activeSeconds;
+          job.zones.observedSeconds += telemetry.coverage.observedSeconds;
+          if (!zones) { job.zones.unavailable += 1; continue; }
+          job.zones.sessions += 1;
+          job.zones.partial += Number(!zones.complete || (telemetry.coverage.percent ?? 0) < 99.999 || telemetry.heartRateFetchLimited);
+          job.zones.belowZoneSeconds += zones.belowZoneSeconds;
+          job.zones.aboveMaximumSeconds += zones.aboveMaximumSeconds;
+          for (const [zone, seconds] of Object.entries(zones.seconds)) job.zones.seconds[zone] = (job.zones.seconds[zone] ?? 0) + seconds;
+          const reference = `${zones.maximumHeartRate.source}:${zones.maximumHeartRate.bpm}`;
+          job.zones.references[reference] = (job.zones.references[reference] ?? 0) + 1;
+        } catch (error) {
+          if (signal.aborted || error instanceof SummaryCheckpointConflict) throw error;
+          // Transient source failures remain resumable even before the first fetched page.
+          if (!(error instanceof AssistantActivityTelemetryUnavailableError)) return publicResult(durableJob, "source_unavailable");
+          job.zones.unavailable += 1;
+        }
+      }
+      signal.throwIfAborted();
+      const previousVersion = job.updated_at;
+      job.telemetry_progress = null;
+      accumulate(job, result);
+      job.updated_at = new Date(Math.max(now(), Date.parse(previousVersion) + 1)).toISOString();
+      if (!await abortable(store.save(job, previousVersion), signal)) {
+        const winner = await abortable(store.load(userId, job.id), signal);
+        if (!winner || winner.user_id !== userId || winner.query_hash !== hash) throw new Error("Summary checkpoint conflict.");
+        return publicResult(winner);
+      }
+      durableJob = structuredClone(job);
+      if (job.status === "completed") break;
     }
-    accumulate(job, result);
-    job.updated_at = new Date(Math.max(now(), Date.parse(previousVersion) + 1)).toISOString();
-    if (!await store.save(job, previousVersion)) {
-      const winner = await store.load(userId, job.id);
-      if (!winner || winner.user_id !== userId || winner.query_hash !== hash) throw new Error("Summary checkpoint conflict.");
+  } catch (error) {
+    if (signal.aborted) return publicResult(durableJob, "time_budget");
+    if (error instanceof SummaryCheckpointConflict) {
+      const winner = await abortable(store.load(userId, job.id), signal);
+      if (!winner || winner.user_id !== userId || winner.query_hash !== hash) throw error;
       return publicResult(winner);
     }
-    if (job.status === "completed") break;
+    if (!signal.aborted) throw error;
+    return publicResult(durableJob, "time_budget");
   }
   return publicResult(job);
 }

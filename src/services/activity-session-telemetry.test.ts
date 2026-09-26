@@ -139,3 +139,29 @@ describe("workout heart-rate completion", () => {
     expect(result.coverage.percent).toBe(50);
   });
 });
+
+
+it("stores a fetched page before checkpointing its provider continuation", async () => {
+  state.rows = [];
+  state.stored = [];
+  state.connected = true;
+  state.fetch.mockImplementationOnce(async (options) => {
+    await options.onPage([row(0)], "page-two");
+    throw new Error("synthetic interrupted fetch");
+  });
+  const checkpoint = vi.fn(async (token) => {
+    expect(state.stored).toHaveLength(1);
+    expect(token).toBe("page-two");
+  });
+  await expect(getActivitySessionTelemetry("synthetic-user", range, { onHeartRatePage: checkpoint })).rejects.toThrow("synthetic interrupted fetch");
+  expect(checkpoint).toHaveBeenCalledOnce();
+});
+
+it("skips an already completed raw fetch when resuming the final rollup", async () => {
+  state.rows = [row(0), row(10)];
+  state.connected = true;
+  state.fetch.mockClear();
+  const result = await getActivitySessionTelemetry("synthetic-user", range, { skipHeartRateFetch: true });
+  expect(state.fetch).not.toHaveBeenCalled();
+  expect(result.coverage.percent).toBeLessThan(100);
+});

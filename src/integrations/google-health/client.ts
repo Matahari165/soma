@@ -325,6 +325,7 @@ export function listGoogleHealthDataPoints(input: {
   start: Date;
   end: Date;
   pageToken?: string;
+  signal?: AbortSignal;
 }) {
   const query = new URLSearchParams({
     pageSize: String(googleHealthDataPointPageSize(input.dataType)),
@@ -334,11 +335,12 @@ export function listGoogleHealthDataPoints(input: {
   return googleHealthRequest<DataPointListResponse>(
     `/users/me/dataTypes/${input.dataType}/dataPoints?${query.toString()}`,
     input.accessToken,
+    input.signal ? { signal: input.signal } : undefined,
   );
 }
 
 /** One reconciled maximum for the exercise interval, including sessions with many raw samples. */
-export function rollUpGoogleHealthSessionHeartRate(input: { accessToken: string; start: Date; end: Date }) {
+export function rollUpGoogleHealthSessionHeartRate(input: { accessToken: string; start: Date; end: Date; signal?: AbortSignal }) {
   const durationMs = input.end.getTime() - input.start.getTime();
   if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > 24 * 60 * 60 * 1_000) {
     throw new Error("Google Health session heart-rate range is invalid or too large.");
@@ -346,7 +348,7 @@ export function rollUpGoogleHealthSessionHeartRate(input: { accessToken: string;
   return googleHealthRequest<HeartRateSessionRollupResponse>(
     "/users/me/dataTypes/heart-rate/dataPoints:rollUp",
     input.accessToken,
-    { method: "POST", body: JSON.stringify({
+    { method: "POST", signal: input.signal, body: JSON.stringify({
       range: { startTime: input.start.toISOString(), endTime: input.end.toISOString() },
       windowSize: `${Math.ceil(durationMs / 1_000)}s`,
       pageSize: 1,

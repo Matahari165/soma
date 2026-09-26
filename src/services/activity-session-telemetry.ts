@@ -1,4 +1,5 @@
 import "server-only";
+import { abortable } from "@/lib/abortable";
 
 import { resolveMaximumHeartRate } from "@/domain/health/heart-rate-zones";
 import { decodeHealthArchive } from "@/domain/health/archive-codec";
@@ -16,6 +17,13 @@ import {
 } from "@/integrations/google-health/session-heart-rate";
 
 const PAGE_SIZE = 1_000;
+
+export type SessionTelemetryOptions = {
+  signal?: AbortSignal;
+  heartRatePageToken?: string;
+  skipHeartRateFetch?: boolean;
+  onHeartRatePage?: (nextPageToken: string | null) => Promise<void>;
+};
 
 type SessionRange = { startTime: string; endTime: string; date?: string | null };
 type HealthRow = {
@@ -52,11 +60,12 @@ function validRange(range: SessionRange) {
   return Number.isFinite(start) && Number.isFinite(end) && end > start;
 }
 
-async function readLiveHeartRateRows(userId: string, startTime: string, endTime: string): Promise<HealthRow[]> {
+async function readLiveHeartRateRows(userId: string, startTime: string, endTime: string, signal?: AbortSignal): Promise<HealthRow[]> {
   const admin = createCloudflareAdminClient();
   const rows: HealthRow[] = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const result = await admin.from("health_records")
+    signal?.throwIfAborted();
+    const result = await abortable(admin.from("health_records")
       .select("source_record_id,civil_date,measured_at,payload")
       .eq("user_id", userId)
       .eq("provider", "google_health")
@@ -65,7 +74,7 @@ async function readLiveHeartRateRows(userId: string, startTime: string, endTime:
       .lte("measured_at", endTime)
       .order("measured_at", { ascending: true })
       .order("source_record_id", { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(offset, offset + PAGE_SIZE - 1), signal);
     if (result.error) throw new Error("Session heart-rate data could not be loaded.");
     const page = (result.data ?? []) as HealthRow[];
     rows.push(...page);
@@ -192,33 +201,38 @@ async function googleHealthAccessToken(userId: string): Promise<string | null> {
   return tokens.access_token;
 }
 
-async function fetchAndStoreSessionHeartRate(userId: string, startTime: string, endTime: string, accessToken: string) {
-  const fetched = await fetchGoogleHealthSessionHeartRate({
-    accessToken,
-    start: new Date(startTime),
-    end: new Date(endTime),
-  });
-  const normalized = fetched.dataPoints.map((point) => normalizeGoogleHealthPoint(userId, "heart-rate", point));
+async function fetchAndStoreSessionHeartRate(userId: string, startTime: string, endTime: string, accessToken: string, options: SessionTelemetryOptions) {
   const start = Date.parse(startTime);
   const end = Date.parse(endTime);
-  const matching = normalized.filter((row) => {
+  const admin = createCloudflareAdminClient();
+  const matchingRows = (points: Record<string, unknown>[]) => points.map((point) => normalizeGoogleHealthPoint(userId, "heart-rate", point)).filter((row) => {
     const measuredAt = row.measured_at ? Date.parse(row.measured_at) : Number.NaN;
     return Number.isFinite(measuredAt) && measuredAt >= start && measuredAt <= end;
   });
-  const admin = createCloudflareAdminClient();
-  for (let offset = 0; offset < matching.length; offset += 500) {
-    const result = await admin.from("health_records").upsert(matching.slice(offset, offset + 500), {
-      onConflict: "user_id,provider,data_type,source_record_id",
-    });
-    if (result.error) throw new Error("Google Health session heart-rate data could not be stored.");
-  }
+  let persistedPages = false;
+  const persistPage = async (points: Record<string, unknown>[], nextPageToken: string | null) => {
+    const rows = matchingRows(points);
+    for (let offset = 0; offset < rows.length; offset += 500) {
+      options.signal?.throwIfAborted();
+      const result = await abortable(admin.from("health_records").upsert(rows.slice(offset, offset + 500), {
+        onConflict: "user_id,provider,data_type,source_record_id",
+      }), options.signal);
+      if (result.error) throw new Error("Google Health session heart-rate data could not be stored.");
+    }
+    options.signal?.throwIfAborted();
+    if (options.onHeartRatePage) await options.onHeartRatePage(nextPageToken);
+    persistedPages = true;
+  };
+  const fetched = await fetchGoogleHealthSessionHeartRate({
+    accessToken, start: new Date(startTime), end: new Date(endTime),
+    signal: options.signal, pageToken: options.heartRatePageToken, onPage: persistPage,
+  });
+  // Retains compatibility with injected readers that return a complete result directly.
+  if (!persistedPages) await persistPage(fetched.dataPoints, null);
+  const matching = matchingRows(fetched.dataPoints);
   return {
-    records: matching.map((row) => ({
-      source_record_id: row.source_record_id,
-      civil_date: row.civil_date,
-      measured_at: row.measured_at,
-      payload: row.payload,
-    })),
+    records: matching.map((row) => ({ source_record_id: row.source_record_id, civil_date: row.civil_date,
+      measured_at: row.measured_at, payload: row.payload })),
     limited: fetched.limited,
     status: matching.length ? "fetched" as const : "empty" as const,
   };
@@ -231,16 +245,18 @@ async function fetchAndStoreSessionHeartRate(userId: string, startTime: string, 
 export async function getActivitySessionTelemetry(
   userId: string,
   range: SessionRange,
+  options: SessionTelemetryOptions = {},
 ): Promise<ActivitySessionTelemetry> {
   if (!userId || !validRange(range)) throw new Error("Activity session telemetry requires a valid time range.");
   const startTime = new Date(range.startTime).toISOString();
   const endTime = new Date(range.endTime).toISOString();
-  const [liveRows, manifests, exercisePayloads, profile] = await Promise.all([
-    readLiveHeartRateRows(userId, startTime, endTime),
+  options.signal?.throwIfAborted();
+  const [liveRows, manifests, exercisePayloads, profile] = await abortable(Promise.all([
+    readLiveHeartRateRows(userId, startTime, endTime, options.signal),
     readArchiveManifests(userId, startTime, endTime),
     readExercisePayloads(userId, startTime, endTime),
     readSessionProfile(userId),
-  ]);
+  ]), options.signal);
   const { timeZone } = profile;
   let localDate: string;
   try {
@@ -249,7 +265,8 @@ export async function getActivitySessionTelemetry(
     localDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(startTime));
   }
   const maximumHeartRate = resolveMaximumHeartRate({ ...profile, date: localDate });
-  const archivedRows = await readR2ArchiveRows(userId, manifests, startTime, endTime);
+  const archivedRows = await abortable(readR2ArchiveRows(userId, manifests, startTime, endTime), options.signal);
+  options.signal?.throwIfAborted();
   let heartRateRecords = deduplicateRows([...liveRows, ...archivedRows]).map((row) => ({
     sourceRecordId: row.source_record_id,
     measuredAt: row.measured_at ?? null,
@@ -269,13 +286,13 @@ export async function getActivitySessionTelemetry(
   let accessToken: string | null = null;
   // A partial daily import is not a complete workout trace. Ask Google for
   // missing coverage too, while keeping every previously imported sample.
-  if (!telemetry.heartRateSampleCount || telemetry.coverage.gapCount > 0) {
+  if (!options.skipHeartRateFetch && (options.heartRatePageToken || !telemetry.heartRateSampleCount || telemetry.coverage.gapCount > 0)) {
     try {
-      accessToken = await googleHealthAccessToken(userId);
+      accessToken = await abortable(googleHealthAccessToken(userId), options.signal);
       if (!accessToken) {
         heartRateFetchStatus = "unavailable";
       } else {
-        const fetched = await fetchAndStoreSessionHeartRate(userId, startTime, endTime, accessToken);
+        const fetched = await fetchAndStoreSessionHeartRate(userId, startTime, endTime, accessToken, options);
         heartRateFetchLimited = fetched.limited;
         heartRateFetchStatus = fetched.records.length ? "fetched" : "empty";
         if (fetched.records.length) {
@@ -302,7 +319,8 @@ export async function getActivitySessionTelemetry(
           if (!telemetry.heartRateSampleCount) heartRateFetchStatus = "empty";
         }
       }
-    } catch {
+    } catch (error) {
+      if (options.signal?.aborted || options.onHeartRatePage) throw error;
       heartRateFetchStatus = "failed";
     }
   }
@@ -318,17 +336,19 @@ export async function getActivitySessionTelemetry(
   });
   result.maxHeartRateSource = result.maxHeartRateBpm === null ? "none" : "recorded_samples";
   try {
-    accessToken ??= await googleHealthAccessToken(userId);
+    accessToken ??= await abortable(googleHealthAccessToken(userId), options.signal);
     if (accessToken) {
-      const rollup = await rollUpGoogleHealthSessionHeartRate({ accessToken, start: new Date(startTime), end: new Date(endTime) });
+      const rollup = await abortable(rollUpGoogleHealthSessionHeartRate({ accessToken, start: new Date(startTime), end: new Date(endTime), signal: options.signal }), options.signal);
       const maximum = rollup.rollupDataPoints?.[0]?.heartRate?.beatsPerMinuteMax;
       if (typeof maximum === "number" && Number.isFinite(maximum) && maximum > 0 && maximum <= 300) {
         result.maxHeartRateBpm = maximum;
         result.maxHeartRateSource = "google_health_rollup";
       }
     }
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
     // The recorded sample maximum remains available if the rollup is unavailable.
   }
+  options.signal?.throwIfAborted();
   return result;
 }

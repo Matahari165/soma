@@ -79,7 +79,7 @@ it("aggregates canonical zones only for the activities in the query and preserve
     store: repository, queryPage: queryPage as unknown as NonNullable<Parameters<typeof summarizeAssistantData>[2]>["queryPage"],
     telemetry: telemetry as unknown as NonNullable<Parameters<typeof summarizeAssistantData>[2]>["telemetry"],
   });
-  expect(telemetry).toHaveBeenCalledWith("test-user", { activityId: "test-boxing" });
+  expect(telemetry).toHaveBeenCalledWith("test-user", { activityId: "test-boxing" }, undefined, expect.objectContaining({ signal: expect.any(AbortSignal), skipHeartRateFetch: false }));
   expect(result.heartRateZones).toMatchObject({ sessions: 1, partial: 1, seconds: { z2: 20 }, references: { "personal:200": 1 } });
   expect(result.manifest.complete).toBe(true);
 });
@@ -133,4 +133,99 @@ it("uses the actual storage timestamp when resuming the next checkpoint", async 
     queryPage: vi.fn(async (_user, input) => page(Number(input.pagination.cursor ?? 0))),
   });
   expect(result.manifest).toMatchObject({ complete: true, processedItems: 6 });
+});
+
+
+it("returns the durable checkpoint when a source page exceeds the global budget", async () => {
+  const repository = store();
+  const queryPage = vi.fn(() => new Promise<never>(() => {}));
+  const result = await summarizeAssistantData("test-user", { query }, { store: repository, queryPage, budgetMs: 25 });
+  expect(result).toMatchObject({ status: "running", pauseReason: "time_budget", manifest: { complete: false, processedItems: 0 } });
+  expect(repository.jobs.get(result.jobId)?.processed).toBe(0);
+});
+
+it("resumes unfinished Google pages without recounting the activity or its zones", async () => {
+  const repository = store();
+  const activityQuery = { dataset: "activities", period: query.period, activityTypes: ["BOXING"] };
+  const queryPage = vi.fn(async () => ({ items: [{ type: "activity", date: "2020-01-01", activity: { id: "test-boxing", type: "BOXING", durationMinutes: 1 } }],
+    manifest: { ...page(5).manifest, dataset: "activities", requestedPeriod: query.period, totalItems: 1, returnedItems: 1 } }));
+  const telemetry = vi.fn(async (_user, _input, _deps, options) => {
+    if (options.heartRatePageToken !== "page-two") {
+      await options.onHeartRatePage("page-two");
+      return new Promise<never>(() => {});
+    }
+    await options.onHeartRatePage(null);
+    return { calculatedZones: { maximumHeartRate: { source: "personal", bpm: 200 }, complete: true,
+      seconds: { z1: 0, z2: 60, z3: 0, z4: 0, z5: 0 }, belowZoneSeconds: 0, aboveMaximumSeconds: 0 },
+      coverage: { observedSeconds: 60, activeSeconds: 60, percent: 100 }, heartRateFetchLimited: false };
+  });
+  type Options = NonNullable<Parameters<typeof summarizeAssistantData>[2]>;
+  const first = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"], telemetry: telemetry as unknown as Options["telemetry"], budgetMs: 30,
+  });
+  expect(first).toMatchObject({ status: "running", pauseReason: "time_budget", manifest: { processedItems: 0 } });
+  expect(repository.jobs.get(first.jobId)?.telemetry_progress).toMatchObject({ nextPageToken: "page-two", complete: false });
+  const second = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true, jobId: first.jobId }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"], telemetry: telemetry as unknown as Options["telemetry"],
+  });
+  expect(second).toMatchObject({ status: "completed", manifest: { processedItems: 1 }, heartRateZones: { sessions: 1, seconds: { z2: 60 } } });
+  expect(repository.jobs.get(first.jobId)?.telemetry_progress).toBeNull();
+});
+
+it("does not claim completion when the final checkpoint write outlasts the budget", async () => {
+  const repository = store();
+  const save = vi.fn(async (job: AssistantDataSummaryJob, version?: string) => version ? new Promise<boolean>(() => {}) : repository.save(job));
+  const result = await summarizeAssistantData("test-user", { query }, {
+    store: { ...repository, save }, queryPage: vi.fn(async () => page(5)), budgetMs: 25,
+  });
+  expect(result).toMatchObject({ status: "running", pauseReason: "time_budget", manifest: { processedItems: 0, complete: false } });
+});
+
+
+it("bounds the pending-job lookup within the same global deadline", async () => {
+  const repository = store();
+  const findPending = vi.fn(() => new Promise<never>(() => {}));
+  await expect(summarizeAssistantData("test-user", { query }, {
+    store: { ...repository, findPending }, budgetMs: 25,
+  })).rejects.toMatchObject({ name: "TimeoutError" });
+  expect(repository.save).not.toHaveBeenCalled();
+});
+
+it("retries a provider failure on the first page instead of completing with unavailable zones", async () => {
+  const repository = store();
+  type Options = NonNullable<Parameters<typeof summarizeAssistantData>[2]>;
+  const activityQuery = { dataset: "activities", period: query.period, activityTypes: ["BOXING"] };
+  const queryPage = vi.fn(async () => ({ items: [{ type: "activity", date: "2020-01-01", activity: { id: "test-boxing", type: "BOXING", durationMinutes: 1 } }],
+    manifest: { ...page(5).manifest, dataset: "activities", requestedPeriod: query.period, totalItems: 1, returnedItems: 1 } }));
+  const telemetry = vi.fn().mockRejectedValueOnce(new Error("synthetic provider outage"))
+    .mockResolvedValueOnce({ calculatedZones: null, coverage: { observedSeconds: 0, activeSeconds: 60, percent: 0 }, heartRateFetchLimited: false });
+  const first = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"], telemetry,
+  });
+  expect(first).toMatchObject({ status: "running", pauseReason: "source_unavailable", manifest: { processedItems: 0 }, heartRateZones: { unavailable: 0 } });
+  const second = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true, jobId: first.jobId }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"], telemetry,
+  });
+  expect(second).toMatchObject({ status: "completed", manifest: { processedItems: 1 }, heartRateZones: { unavailable: 1 } });
+});
+
+it("preserves an unfinished continuation when the provider connection becomes unavailable", async () => {
+  const repository = store();
+  type Options = NonNullable<Parameters<typeof summarizeAssistantData>[2]>;
+  const activityQuery = { dataset: "activities", period: query.period, activityTypes: ["BOXING"] };
+  const queryPage = vi.fn(async () => ({ items: [{ type: "activity", date: "2020-01-01", activity: { id: "test-boxing", type: "BOXING", durationMinutes: 1 } }],
+    manifest: { ...page(5).manifest, dataset: "activities", requestedPeriod: query.period, totalItems: 1, returnedItems: 1 } }));
+  const telemetry = vi.fn(async (_user, _input, _deps, options) => {
+    await options.onHeartRatePage("page-two");
+    throw new Error("synthetic provider outage");
+  });
+  const first = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"], telemetry,
+  });
+  const result = await summarizeAssistantData("test-user", { query: activityQuery, includeHeartRateZones: true, jobId: first.jobId }, {
+    store: repository, queryPage: queryPage as unknown as Options["queryPage"],
+    telemetry: vi.fn(async () => ({ calculatedZones: null, coverage: { observedSeconds: 10, activeSeconds: 60, percent: 100 / 6 }, heartRateFetchLimited: false })) as unknown as Options["telemetry"],
+  });
+  expect(result).toMatchObject({ status: "running", pauseReason: "source_unavailable", manifest: { processedItems: 0 } });
+  expect(repository.jobs.get(first.jobId)?.telemetry_progress?.nextPageToken).toBe("page-two");
 });

@@ -1,8 +1,11 @@
 import "server-only";
 
+import { abortable } from "@/lib/abortable";
 import { z } from "zod";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
-import { getActivitySessionTelemetry } from "@/services/activity-session-telemetry";
+import { getActivitySessionTelemetry, type SessionTelemetryOptions } from "@/services/activity-session-telemetry";
+
+export class AssistantActivityTelemetryUnavailableError extends Error {}
 
 export const assistantActivityTelemetrySchema = z.object({
   activityId: z.string().trim().min(1).max(500),
@@ -14,18 +17,19 @@ export const assistantActivityTelemetrySchema = z.object({
 export async function loadAssistantActivityTelemetry(userId: string, input: unknown, dependencies = {
   admin: createCloudflareAdminClient,
   telemetry: getActivitySessionTelemetry,
-}) {
+}, options: SessionTelemetryOptions = {}) {
+  options.signal?.throwIfAborted();
   if (!userId) throw new Error("Authenticated user is required.");
   const query = assistantActivityTelemetrySchema.parse(input);
-  const result = await dependencies.admin().from("health_records")
+  const result = await abortable(dependencies.admin().from("health_records")
     .select("source_record_id,start_time,end_time,civil_date,payload")
     .eq("user_id", userId).eq("provider", "google_health").eq("data_type", "exercise")
-    .eq("source_record_id", query.activityId).maybeSingle();
+    .eq("source_record_id", query.activityId).maybeSingle(), options.signal);
   if (result.error) throw new Error("Activity could not be loaded.");
-  if (!result.data) throw new Error("Activity not found for this user.");
+  if (!result.data) throw new AssistantActivityTelemetryUnavailableError("Activity not found for this user.");
   const { start_time: startTime, end_time: endTime, civil_date: date } = result.data;
-  if (typeof startTime !== "string" || typeof endTime !== "string") throw new Error("Activity timestamps are unavailable.");
-  const telemetry = await dependencies.telemetry(userId, { startTime, endTime, date });
+  if (typeof startTime !== "string" || typeof endTime !== "string") throw new AssistantActivityTelemetryUnavailableError("Activity timestamps are unavailable.");
+  const telemetry = await abortable(dependencies.telemetry(userId, { startTime, endTime, date }, options), options.signal);
   const { heartRateSamples, ...summary } = telemetry;
   const samples = query.includeSamples ? heartRateSamples.slice(query.sampleOffset, query.sampleOffset + query.sampleLimit) : [];
   return {
