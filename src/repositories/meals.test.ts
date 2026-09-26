@@ -9,12 +9,21 @@ const state = vi.hoisted(() => ({
   updates: [] as unknown[],
   selectors: [] as Array<{ table: string; columns: string }>,
   filters: [] as Array<{ table: string; field: string; values: unknown }>,
+  predicates: [] as Array<{ table: string; operator: string; field?: string; value?: unknown }>,
 }));
 
 vi.mock("@/lib/cloudflare/db", () => ({ createCloudflareAdminClient: state.createAdmin }));
 vi.mock("@/lib/r2", () => ({ deleteR2MealPhotoObject: state.deleteR2 }));
 
-import { listMeals, requeueStaleMealAnalyses, selectLatestMealAnalysis, type AnalysisRow } from "./meals";
+import {
+  listFailedMealAnalysesForPhotoPurge,
+  listMealPhotosForFailedAnalysisPurge,
+  listMeals,
+  listRetryableFailedMealAnalyses,
+  requeueStaleMealAnalyses,
+  selectLatestMealAnalysis,
+  type AnalysisRow,
+} from "./meals";
 
 function analysis(overrides: Partial<AnalysisRow>): AnalysisRow {
   return {
@@ -68,6 +77,7 @@ describe("meal photo deletion", () => {
     state.updates = [];
     state.selectors = [];
     state.filters = [];
+    state.predicates = [];
     state.deleteR2.mockReset();
     state.createAdmin.mockImplementation(() => ({
       from(table: string) {
@@ -78,14 +88,36 @@ describe("meal photo deletion", () => {
             state.selectors.push({ table, columns });
             return query;
           },
-          eq: () => query,
-          gte: () => query,
-          lte: () => query,
+          eq: (field: string, value: unknown) => {
+            state.predicates.push({ table, operator: "eq", field, value });
+            return query;
+          },
+          is: (field: string, value: unknown) => {
+            state.predicates.push({ table, operator: "is", field, value });
+            return query;
+          },
+          lt: (field: string, value: unknown) => {
+            state.predicates.push({ table, operator: "lt", field, value });
+            return query;
+          },
+          gte: (field: string, value: unknown) => {
+            state.predicates.push({ table, operator: "gte", field, value });
+            return query;
+          },
+          lte: (field: string, value: unknown) => {
+            state.predicates.push({ table, operator: "lte", field, value });
+            return query;
+          },
+          or: (expression: string) => {
+            state.predicates.push({ table, operator: "or", value: expression });
+            return query;
+          },
           in: (field: string, values: unknown[]) => {
             state.filters.push({ table, field, values });
             return query;
           },
           order: () => query,
+          limit: () => query,
           maybeSingle: () => query,
           update: (values: unknown) => {
             state.operations.push("update");
@@ -102,6 +134,75 @@ describe("meal photo deletion", () => {
         return query;
       },
     }));
+  });
+
+  it("selects only recent due retry candidates with supported flat OR predicates", async () => {
+    const now = "2026-09-26T12:00:00.000Z";
+    const retentionCutoff = "2026-09-25T12:00:00.000Z";
+    state.responses.push(
+      { data: [{ id: "retryable", user_id: "user-1", status: "failed", error_code: "provider_timeout", attempts: 1, failure_started_at: "2026-09-26T10:00:00.000Z" }], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    );
+
+    const rows = await listRetryableFailedMealAnalyses({ now, retentionCutoff, retryableCodes: ["provider_timeout"], maxAttempts: 3, limit: 25 });
+
+    expect(rows.map((row) => row.id)).toEqual(["retryable"]);
+    expect(state.tables).toEqual(Array(4).fill("meal_analyses"));
+    expect(state.selectors).toEqual(Array(4).fill(expect.objectContaining({
+      table: "meal_analyses",
+      columns: "id,user_id,status,error_code,attempts,retry_after_at,failure_started_at,completed_at,updated_at,created_at",
+    })));
+    expect(state.filters).toContainEqual({ table: "meal_analyses", field: "error_code", values: ["provider_timeout"] });
+    expect(state.predicates).toEqual(expect.arrayContaining([
+      { table: "meal_analyses", operator: "eq", field: "status", value: "failed" },
+      { table: "meal_analyses", operator: "is", field: "photo_purge_completed_at", value: null },
+      { table: "meal_analyses", operator: "or", value: "attempts.is.null,attempts.lt.3" },
+      { table: "meal_analyses", operator: "or", value: `retry_after_at.is.null,retry_after_at.lte.${now}` },
+      { table: "meal_analyses", operator: "gte", field: "failure_started_at", value: retentionCutoff },
+      { table: "meal_analyses", operator: "is", field: "failure_started_at", value: null },
+      { table: "meal_analyses", operator: "gte", field: "created_at", value: retentionCutoff },
+    ]));
+  });
+
+  it("limits expired-failure cleanup candidates to unmarked failures past the retention cutoff", async () => {
+    const cutoff = "2026-09-25T12:00:00.000Z";
+    state.responses.push(
+      { data: [{ id: "expired", user_id: "user-1", meal_id: "meal-1", status: "failed", failure_started_at: "2026-09-24T12:00:00.000Z", source_photo_ids: ["photo-1"] }], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    );
+
+    const rows = await listFailedMealAnalysesForPhotoPurge(cutoff, 20);
+
+    expect(rows.map((row) => row.id)).toEqual(["expired"]);
+    expect(state.tables).toEqual(Array(4).fill("meal_analyses"));
+    expect(state.predicates).toEqual(expect.arrayContaining([
+      { table: "meal_analyses", operator: "eq", field: "status", value: "failed" },
+      { table: "meal_analyses", operator: "is", field: "photo_purge_completed_at", value: null },
+      { table: "meal_analyses", operator: "lte", field: "failure_started_at", value: cutoff },
+      { table: "meal_analyses", operator: "lte", field: "created_at", value: cutoff },
+    ]));
+  });
+
+  it("reads only requested source photos, or leaves the query unfiltered for missing legacy snapshots", async () => {
+    state.responses.push(
+      { data: [{ id: "photo-1", object_path: "private/photo", storage_status: "available" }], error: null },
+      { data: [{ id: "legacy-photo", object_path: "private/legacy", storage_status: "purged" }], error: null },
+    );
+
+    const selected = await listMealPhotosForFailedAnalysisPurge("user-1", "meal-1", ["photo-1"]);
+    const legacy = await listMealPhotosForFailedAnalysisPurge("user-1", "meal-2");
+
+    expect(selected).toEqual([{ id: "photo-1", objectPath: "private/photo", storageStatus: "available" }]);
+    expect(legacy).toEqual([{ id: "legacy-photo", objectPath: "private/legacy", storageStatus: "purged" }]);
+    expect(state.selectors).toEqual([
+      { table: "meal_photos", columns: "id,object_path,storage_status" },
+      { table: "meal_photos", columns: "id,object_path,storage_status" },
+    ]);
+    expect(state.filters).toEqual([{ table: "meal_photos", field: "id", values: ["photo-1"] }]);
   });
 
   it("limits list children to the returned meal ids and selects only list columns", async () => {

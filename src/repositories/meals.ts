@@ -525,6 +525,7 @@ export async function listRetryableFailedMealAnalyses(options: {
   const base = () => admin.from("meal_analyses")
     .select(failedAnalysisRetryColumns)
     .eq("status", "failed")
+    .is("photo_purge_completed_at", null)
     .in("error_code", [...options.retryableCodes])
     .or(`attempts.is.null,attempts.lt.${options.maxAttempts}`)
     .or(`retry_after_at.is.null,retry_after_at.lte.${options.now}`);
