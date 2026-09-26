@@ -54,7 +54,7 @@ function formatMeasuredAgainstTarget(measuredLabel: string, targetLabel: string)
 }
 
 function scoreLabel(score: number | null) {
-  return score === null ? "Activity score unavailable" : `Activity score: ${formatScore(score)} out of 100`;
+  return score === null ? "Strain score unavailable" : `Strain score: ${formatScore(score)} out of 100`;
 }
 
 function DetailCloseButton({ label, onClose, closeButtonRef, tabIndex }: { label: string; onClose: () => void; closeButtonRef: RefObject<HTMLButtonElement | null>; tabIndex: number }) {
@@ -86,7 +86,7 @@ function DimensionDetail({ dimension }: { dimension: ActivityRadarDimension | nu
       <div><dt>Current value</dt><dd>{dimension.valueLabel?.trim() || "—"}</dd></div>
       <div><dt>30-day avg</dt><dd>{dimension.averageLabel?.trim() || "—"}</dd></div>
       <div><dt>Reading</dt><dd>{dimension.readingDirection || "—"}</dd></div>
-      <div><dt>Role</dt><dd>{dimension.scoreRole || "Activity score component"}</dd></div>
+      <div><dt>Role</dt><dd>{dimension.scoreRole || "Strain score component"}</dd></div>
       <div><dt>Source</dt><dd>{dimension.sourceLabel?.trim() || "—"}</dd></div>
     </dl>
     {dimension.scoreFormula && (dimension.scoreWeight !== undefined || dimension.scoreContribution !== undefined)
@@ -145,18 +145,18 @@ export function ActivityScoreOverview({ dimensions, score, average, breakdown, p
   const scoreOpen = selectedDetail === "score";
   return <div className={styles.scoreOverview} data-detail-open={detailOpen}>
     <div className={styles.radarStage} data-detail-open={detailOpen}>
-      <ActivityRadar dimensions={dimensions} title="Activity radar" detailId="activity-detail-panel" interactive selectedId={selectedDetail === "score" ? null : selectedDetail} onSelect={(id) => selectDetail(id)} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
+      <ActivityRadar dimensions={dimensions} title="Strain radar" detailId="activity-detail-panel" interactive selectedId={selectedDetail === "score" ? null : selectedDetail} onSelect={(id) => selectDetail(id)} registerButton={(id, node) => { radarButtonRefs.current[id] = node; }} />
       <aside className={styles.detailPanel} data-open={detailOpen} id="activity-detail-panel" aria-hidden={!detailOpen} aria-labelledby="activity-detail-heading" inert={!detailOpen}>
-        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDimension?.label ?? "Activity details"}</h3><DetailCloseButton label={selectedDimension?.label ?? "activity"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
+        <div className={styles.detailHeader}><h3 id="activity-detail-heading" ref={headingRef} tabIndex={-1}>{selectedDimension?.label ?? "Strain details"}</h3><DetailCloseButton label={selectedDimension?.label ?? "Strain"} onClose={closeDetail} closeButtonRef={closeButtonRef} tabIndex={detailOpen ? 0 : -1} /></div>
         <DimensionDetail dimension={selectedDimension} />
       </aside>
     </div>
 
     <aside className={styles.scoreSummary} aria-labelledby="activity-score-summary-title">
       <button ref={scoreButtonRef} className={styles.scoreButton} type="button" aria-controls="activity-score-inline" aria-expanded={scoreOpen} aria-label={`${scoreLabel(score)}. ${scoreOpen ? "Close" : "View"} score breakdown.`} onClick={() => selectDetail("score")}>
-        <span id="activity-score-summary-title" className={styles.scoreLabel}>Activity score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
+        <span id="activity-score-summary-title" className={styles.scoreLabel}>Strain score</span><strong>{formatScore(score)}<small>/100</small></strong><p>30-day avg · {formatScore(average)} /100</p>
       </button>
-      <div className={styles.scoreInline} id="activity-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Activity score details">
+      <div className={styles.scoreInline} id="activity-score-inline" data-open={scoreOpen} aria-hidden={!scoreOpen} inert={!scoreOpen} role="region" aria-label="Strain score details">
         <div className={styles.scoreInlineInner}><BreakdownDetail breakdown={breakdown} persistedScore={persistedScore} /></div>
       </div>
       <div className={styles.scoreRail} aria-hidden="true"><span style={{ transform: `scaleX(${score === null ? 0 : Math.min(100, Math.max(0, score)) / 100})` }} /></div>

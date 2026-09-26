@@ -66,7 +66,7 @@ function fallback(evidence: {
   }
   const sleep = evidence.sleepMinutes === null ? null : `Cette nuit : ${duration(evidence.sleepMinutes)} de sommeil${evidence.sleepBaseline ? `, contre ${duration(evidence.sleepBaseline.mean)} sur ${evidence.sleepBaseline.samples} nuits précédentes` : ""}.`;
   const recovery = evidence.recoveryScore === null ? null : `Récupération Soma : ${Math.round(evidence.recoveryScore)}/100${evidence.recoveryBaseline ? `, contre ${Math.round(evidence.recoveryBaseline.mean)}/100 en moyenne sur ${evidence.recoveryBaseline.samples} jours précédents` : " aujourd’hui"}.`;
-  const effort = evidence.effortScore === null ? null : `Effort Soma accumulé aujourd’hui : ${evidence.effortScore.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/100.${evidence.effortCoverage !== null && evidence.effortCoverage < 1 ? " Données d’activité partielles." : ""}`;
+  const effort = evidence.effortScore === null ? null : `Score Strain aujourd’hui : ${evidence.effortScore.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/100.${evidence.effortCoverage !== null && evidence.effortCoverage < 1 ? " Données d’activité partielles." : ""}`;
   for (const line of evidence.moment === "evening" ? [effort, sleep, recovery] : [sleep, recovery, effort]) {
     if (line && lines.length < 3 && [...lines, line].join("\n").length <= maxInsightLength) lines.push(line);
   }
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       } : null,
     };
     const sourceHash = createHash("sha256").update(JSON.stringify({ format: cacheFormat, evidence })).digest("hex");
-    const source = [activitySummary ? "Activité" : null, evidence.sleepMinutes !== null ? "Sommeil" : null, evidence.recoveryScore !== null ? "Récupération" : null, evidence.effortScore !== null ? "Effort" : null].filter(Boolean).join(" · ") || "Observations du jour";
+    const source = [activitySummary ? "Activité" : null, evidence.sleepMinutes !== null ? "Sommeil" : null, evidence.recoveryScore !== null ? "Récupération" : null, evidence.effortScore !== null ? "Strain" : null].filter(Boolean).join(" · ") || "Observations du jour";
     const defaultText = fallback(evidence);
     if (isLocalPreviewMode()) return NextResponse.json({ text: defaultText, source, moment: slot, preview: true }, { headers });
     if (!process.env.OPENAI_API_KEY) return NextResponse.json({ text: defaultText, source, moment: slot }, { headers });
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
         headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "gpt-6-luna", store: false, reasoning: { effort: "low" }, max_output_tokens: 280,
-          instructions: "Écris 2 à 3 observations concrètes en français, une phrase par ligne, 350 caractères au total maximum. Si les données sont rares, une seule suffit. Priorité à l’activité récente, puis au sommeil et à la récupération; le soir, situe aussi l’effort accumulé. Chaque observation doit citer une mesure avec unité/échelle et son moment, puis une comparaison chiffrée si une baseline est fournie (moyenne des jours précédents, préciser samples). La durée/distance désigne l’activité représentative, jamais la somme des activités; count est leur nombre total. Les scores récupération et effort sont calculés par Soma sur 100, pas mesurés par un capteur. effortCoverage inférieure à 1 signifie données partielles. Utilise seulement les valeurs fournies. null signifie donnée absente, jamais zéro. Sans baseline, ne prétends aucune évolution ou performance. Pas de salutation, formule vague, renvoi vers les pages, injonction, diagnostic, causalité ou promesse.",
+          instructions: "Écris 2 à 3 observations concrètes en français, une phrase par ligne, 350 caractères au total maximum. Si les données sont rares, une seule suffit. Priorité à l’activité récente, puis au sommeil et à la récupération; le soir, situe aussi le score Strain. Chaque observation doit citer une mesure avec unité/échelle et son moment, puis une comparaison chiffrée si une baseline est fournie (moyenne des jours précédents, préciser samples). La durée/distance désigne l’activité représentative, jamais la somme des activités; count est leur nombre total. Les scores récupération et Strain sont calculés par Soma sur 100, pas mesurés par un capteur. effortCoverage inférieure à 1 signifie données partielles. Utilise seulement les valeurs fournies. null signifie donnée absente, jamais zéro. Sans baseline, ne prétends aucune évolution ou performance. Pas de salutation, formule vague, renvoi vers les pages, injonction, diagnostic, causalité ou promesse.",
           input: JSON.stringify(evidence),
           text: { format: { type: "json_schema", name: "home_insight", strict: true, schema: { type: "object", properties: { lines: { type: "array", minItems: 1, maxItems: 3, items: { type: "string" } } }, required: ["lines"], additionalProperties: false } } },
         }),

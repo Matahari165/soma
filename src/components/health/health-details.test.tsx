@@ -124,7 +124,7 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
-  it("shows today's recorded activity score and today's radar measurements", () => {
+  it("shows today's recorded strain score and today's radar measurements", () => {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const yesterday = new Date(`${today}T12:00:00.000Z`);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
@@ -140,7 +140,7 @@ describe("health route states", () => {
       ],
     }) }));
 
-    expect(markup).toContain("Activity score: 75 out of 100");
+    expect(markup).toContain("Strain score: 75 out of 100");
     expect(markup).toContain("8,000 steps");
     expect(markup).toContain("40 min");
     expect(markup).toContain("<strong>125</strong>");

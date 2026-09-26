@@ -135,7 +135,7 @@ it("switches to the evening recap even when an activity took place earlier", asy
   getPersonalLabActivitySummaries.mockResolvedValue([{ count: 1, activity: { type: "RUN", durationMinutes: 44, distanceKm: 7.2 } }]);
   const payload = await (await POST(request())).json();
   expect(payload.moment).toBe("evening");
-  expect(payload.text).toContain("Effort Soma accumulé aujourd’hui : 12/100");
+  expect(payload.text).toContain("Score Strain aujourd’hui : 12/100");
   expect(payload.text).toContain("44 min");
 });
 

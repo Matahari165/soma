@@ -20,8 +20,8 @@ export function generateMorningBrief(input: BriefInput) {
 
 export function generateEveningBrief(input: BriefInput) {
   const effort = input.effortScore === null
-    ? "Today's activity goal score is not available yet."
-    : `Today's activity goal score is ${input.effortScore}/100.`;
+    ? "Today's Strain score is not available yet."
+    : `Today's Strain score is ${input.effortScore}/100.`;
   const bedtime = input.bedtime ? `Aim for a ${input.bedtime} bedtime.` : "A bedtime recommendation needs more sleep data.";
   return `${effort} ${bedtime}`;
 }

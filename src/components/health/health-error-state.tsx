@@ -12,7 +12,7 @@ type HealthRoute = "sleep" | "recovery" | "activity";
 const copy: Record<HealthRoute, { title: string; description: string }> = {
   sleep: { title: "Sleep is temporarily unavailable", description: "Soma could not load sleep data. Previously displayed sections are retained. Please retry for missing sections." },
   recovery: { title: "Recovery is temporarily unavailable", description: "Soma could not load recovery signals. Previously displayed sections are retained. Please retry for missing sections." },
-  activity: { title: "Activity is temporarily unavailable", description: "Soma could not load activity data. Previously displayed sections are retained. Please retry for missing sections." },
+  activity: { title: "Strain is temporarily unavailable", description: "Soma could not load activity data. Previously displayed sections are retained. Please retry for missing sections." },
 };
 
 export function HealthErrorState({ route, reset }: { route: HealthRoute; reset: () => void }) {

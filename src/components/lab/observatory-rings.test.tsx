@@ -13,7 +13,7 @@ it("shows the four home measures with their current values", () => {
   expect(html).toContain("Sommeil");
   expect(html).toContain("8h 09");
   expect(html).toContain("Récupération");
-  expect(html).toContain("Effort : 19, objectif 100");
+  expect(html).toContain("Strain : 19, objectif 100");
   expect(html).toContain("Calories");
   expect(html).toContain("50 % de l’objectif");
   expect(html).toMatch(/data-ring-value="sleep"[^>]*><textPath[^>]*>8h09<\/textPath><\/text>/);
