@@ -39,7 +39,7 @@ export function previewData() {
     scores.push(
       { score_date: dateString, kind: "sleep", score: Math.round(72 + (sleep - 450) / 5) },
       { score_date: dateString, kind: "recovery", score: Math.round(66 + (sleep - 450) / 4 + Math.sin(index / 5) * 5) },
-      { score_date: dateString, kind: "effort", score: activityScore ? activityScore.score : olderEffort?.score ?? null, drivers: { coverage: activityScore?.drivers.coverage ?? olderEffort?.coverage ?? null } },
+      { score_date: dateString, kind: "effort", score: activityScore ? activityScore.score : olderEffort?.score ?? null, drivers: { strainVersion: activityScore?.algorithm_version, strainMeasurements: activityScore?.drivers.strainMeasurements, activeHours: activityScore?.drivers.activeHours, strengthMinutes: activityScore?.drivers.strengthMinutes, coverage: activityScore?.drivers.coverage ?? olderEffort?.coverage ?? null, activityLoadScore: activityScore ? activityScore.drivers.activityLoadScore : olderEffort?.loadScore ?? null } },
     );
     calendars.push({ metric_date: dateString, deep_work_minutes: deepWork, deep_work_event_count: deepWork ? 2 : 0, total_scheduled_minutes: deepWork + 210, synced_at: new Date().toISOString() });
     const rating = (value: number) => Math.max(1, Math.min(5, Math.round(value)));

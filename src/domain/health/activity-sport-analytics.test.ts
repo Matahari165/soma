@@ -11,6 +11,7 @@ import {
   activityRegularity,
   activityVolumeAverage,
   activityVolumePoints,
+  runningWeekSummary,
 } from "./activity-sport-analytics";
 
 function exercise(overrides: Partial<ExerciseSummary> & Pick<ExerciseSummary, "id" | "date" | "type">): ExerciseSummary {
@@ -115,5 +116,28 @@ describe("activity sport analytics", () => {
     ], "2026-09-21");
 
     expect(result).toMatchObject({ activeWeeks: 1, percent: 17, previousPercent: null, deltaPoints: null });
+  });
+});
+
+
+describe("running week summary", () => {
+  it("starts on Monday in the profile timezone, excludes other sports and future days, and counts each session once", () => {
+    const runs = [
+      exercise({id: "monday", date: "2026-09-20", startTime: "2026-09-20T22:30:00Z", type: "RUN", durationMinutes: 30.5}),
+      exercise({id: "sunday", date: "2026-09-21", startTime: "2026-09-20T21:30:00Z", type: "RUNNING", durationMinutes: 80}),
+      exercise({id: "trail", date: "2026-09-25", type: "TRAIL_RUNNING", durationMinutes: 40}),
+      exercise({id: "trail", date: "2026-09-25", type: "TRAIL_RUNNING", durationMinutes: 40}),
+      exercise({id: "walk", date: "2026-09-25", type: "WALKING", durationMinutes: 60}),
+      exercise({id: "future", date: "2026-09-27", type: "RUNNING", durationMinutes: 60}),
+    ];
+    expect(runningWeekSummary(runs, "2026-09-26", "Europe/Paris")).toEqual({startDate: "2026-09-21", sessions: 2, minutes: 70.5, missingDurations: 0});
+  });
+  it("resets on Monday across years and does not replace missing duration with zero", () => {
+    const runs = [exercise({id: "old", date: "2025-12-28", type: "RUNNING", durationMinutes: 80}), exercise({id: "new", date: "2025-12-29", type: "RUNNING"})];
+    expect(runningWeekSummary(runs, "2026-01-01", "UTC")).toEqual({startDate: "2025-12-29", sessions: 1, minutes: null, missingDurations: 1});
+    expect(runningWeekSummary([], "2026-01-05", "UTC")).toEqual({startDate: "2026-01-05", sessions: 0, minutes: 0, missingDurations: 0});
+  });
+  it("preserves a known subtotal when another session has no valid duration", () => {
+    expect(runningWeekSummary([exercise({id: "known", date: "2026-09-21", type: "RUNNING", durationMinutes: 20}), exercise({id: "missing", date: "2026-09-22", type: "RUNNING", durationMinutes: NaN})], "2026-09-26", "UTC")).toMatchObject({sessions: 2, minutes: 20, missingDurations: 1});
   });
 });

@@ -70,7 +70,7 @@ export function ResetPasswordForm() {
 
   if (completed) return (
     <div className="auth-credentials">
-      <p className="auth-success-banner" role="status"><CheckCircle2 size={16} aria-hidden="true" />Password updated. Sign in with your new password.</p>
+      <p className="auth-success-banner soma-motion-state" role="status"><CheckCircle2 size={16} aria-hidden="true" />Password updated. Sign in with your new password.</p>
       <Link className="auth-text-action" href="/login">Back to sign in</Link>
     </div>
   );
@@ -83,7 +83,7 @@ export function ResetPasswordForm() {
           <label htmlFor="reset-redirect-address">Address shown after opening the email link</label>
           <input id="reset-redirect-address" type="password" autoComplete="off" required value={redirectAddress} onChange={(event) => setRedirectAddress(event.target.value)} />
         </div>
-        {error && <p className="form-error auth-error" role="alert">{error}</p>}
+        {error && <p className="form-error auth-error soma-motion-state" role="alert">{error}</p>}
         <button type="submit" className="button button--primary auth-submit-btn">Continue</button>
       </form>
       <Link className="auth-text-action" href="/login">Back to sign in</Link>
@@ -101,7 +101,7 @@ export function ResetPasswordForm() {
           <label htmlFor="reset-confirmation">Confirm new password</label>
           <input id="reset-confirmation" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={!ready || loading} />
         </div>
-        {error && <p className="form-error auth-error" role="alert">{error}</p>}
+        {error && <p className="form-error auth-error soma-motion-state" role="alert">{error}</p>}
         <button type="submit" className="button button--primary auth-submit-btn" disabled={!ready || loading}>
           {loading ? <span className="auth-loading-spinner"><Loader2 className="spin" size={16} aria-hidden="true" />Updating password…</span> : "Set new password"}
         </button>

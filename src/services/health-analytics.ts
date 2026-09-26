@@ -1,13 +1,13 @@
+import { previewActiveHours } from "@/lib/preview-active-hours";
 import { getCurrentUser } from "@/lib/auth";
 import { isLocalPreviewMode } from "@/lib/env";
 import { previewScoreHistory } from "@/lib/local-preview";
 import { createCloudflareAdminClient } from "@/lib/cloudflare/db";
 import { createCloudflareServerClient } from "@/lib/cloudflare/server";
-import { calculateEffortScoreFromAvailable, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
+import { calculateDailyStrain, calculateEffortScoreFromAvailable, effortScoreTargets, type EffortScoreTargets } from "@/domain/scores/effort";
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { recommendBedtimeFromHistory, type BedtimeRecommendation } from "@/domain/scores/sleep-need";
 import { summarizePersonalLabActivities, type PersonalLabActivitySummary } from "@/domain/lab/activity-summary";
-import { loadNutritionTargetsStateForUser } from "./nutrition-targets";
 
 export type HealthMetricDay = {
   metric_date: string;
@@ -105,7 +105,7 @@ export type HealthAnalytics = {
   latestSleepStages: SleepStageSegment[];
   heartRateSamples: HeartRateSample[];
   exercises: ExerciseSummary[];
-  /** Shared score references; active energy follows the configured calorie target when available. */
+  /** Legacy load references, independent from the four daily Strain goals. */
   effortTargets: EffortScoreTargets;
   effortTargetSource: "nutrition_targets" | "fallback";
 };
@@ -180,6 +180,7 @@ function sleepRecommendationFor(input: {
   });
 }
 
+
 export function buildPreviewAnalytics(): HealthAnalytics {
   const now = new Date();
   const days = Array.from({ length: 91 }, (_, index): HealthMetricDay => {
@@ -252,12 +253,16 @@ export function buildPreviewAnalytics(): HealthAnalytics {
           activeEnergyKcal: day.active_energy_kcal,
           steps: day.steps,
         });
+        const activeHours = previewActiveHours(day.metric_date, "Europe/Zurich", now);
+        const strengthMinutes = (day.exercise_minutes ?? 0) >= 10 ? 10 : 0;
+        const strainMeasurements = { steps: day.steps, zoneMinutes: day.zone_minutes, strengthMinutes, activeHoursProgress: activeHours.progress };
+        const strain = calculateDailyStrain(strainMeasurements);
         return {
           score_date: day.metric_date,
           kind: "effort" as const,
-          score: effort.score,
-          drivers: { coverage: effort.coverage },
-          algorithm_version: effort.algorithmVersion,
+          score: strain.score,
+          drivers: { coverage: strain.coverage, activityLoadScore: effort.loadScore, strengthMinutes, activeHours, strainMeasurements, strainVersion: strain.algorithmVersion },
+          algorithm_version: strain.algorithmVersion,
         };
       })(),
     ];
@@ -288,6 +293,7 @@ export function buildPreviewAnalytics(): HealthAnalytics {
     ],
     heartRateSamples: Array.from({ length: 48 }, (_, index) => ({ measuredAt: new Date(now.getTime() - (47 - index) * 30 * 60_000).toISOString(), bpm: Math.round(62 + Math.sin(index / 3) * 8 + (index > 27 && index < 32 ? 55 : 0)) })),
     exercises: [
+      { id: "preview-daily-strength", date: lastDate, name: "Renforcement", type: "WEIGHT_TRAINING", startTime: `${lastDate}T09:00:00.000Z`, endTime: `${lastDate}T09:10:00.000Z`, durationMinutes: 10, activeMinutes: 10, calories: null, distanceKm: null, averageHeartRate: null, zoneMinutes: null, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
       { id: "preview-run", date: lastDate, name: "Outdoor run", type: "RUNNING", durationMinutes: 44, activeMinutes: 44, calories: 430, distanceKm: 7.2, averageHeartRate: 151, maximumHeartRate: 178, zoneMinutes: 36, averageSpeedKph: 9.8, averagePaceSecondsPerKm: 367, elevationGainMeters: 94, steps: 7240, runVo2Max: 47.8, swimLengths: null, cadence: 168, strideLengthMeters: 1.02, groundContactMilliseconds: 246, verticalOscillationMillimeters: 82, verticalRatio: 8.1, startTime: `${lastDate}T06:00:00.000Z`, endTime: `${lastDate}T06:44:00.000Z`, splits: Array.from({ length: 7 }, (_, index) => ({ startTime: null, endTime: null, activeMinutes: (349 + index * 6) / 60, distanceKm: 1, averagePaceSecondsPerKm: 349 + index * 6 })).concat([{ startTime: null, endTime: null, activeMinutes: 1.2, distanceKm: 0.2, averagePaceSecondsPerKm: 360 }]), heartRateZones: { lightMinutes: 4, moderateMinutes: 12, vigorousMinutes: 16, peakMinutes: 4 } },
       { id: "preview-boxing", date: days.at(-2)?.metric_date ?? lastDate, name: "Boxing", type: "BOXING", startTime: `${days.at(-2)?.metric_date ?? lastDate}T06:00:00.000Z`, endTime: `${days.at(-2)?.metric_date ?? lastDate}T06:45:00.000Z`, durationMinutes: 45, activeMinutes: 45, calories: 410, distanceKm: null, averageHeartRate: 145, maximumHeartRate: 172, zoneMinutes: 30, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: null, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
       { id: "preview-strength", date: days.at(-3)?.metric_date ?? lastDate, name: "Strength training", type: "WEIGHT_TRAINING", startTime: `${days.at(-3)?.metric_date ?? lastDate}T06:00:00.000Z`, endTime: `${days.at(-3)?.metric_date ?? lastDate}T06:58:00.000Z`, durationMinutes: 58, activeMinutes: 49, calories: 360, distanceKm: null, averageHeartRate: 126, maximumHeartRate: 157, zoneMinutes: 24, averageSpeedKph: null, averagePaceSecondsPerKm: null, elevationGainMeters: null, steps: 1320, runVo2Max: null, swimLengths: null, cadence: null, strideLengthMeters: null, groundContactMilliseconds: null, verticalOscillationMillimeters: null, verticalRatio: null },
@@ -460,9 +466,6 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   const activityExercisesPromise = scope === "activity"
     ? applyQueryTimeout(supabase.from("health_records").select("source_record_id,civil_date,start_time,end_time,payload").eq("user_id", user.id).eq("data_type", "exercise").order("civil_date", { ascending: false }).order("end_time", { ascending: false }).limit(3), CRITICAL_QUERY_TIMEOUT_MS)
     : Promise.resolve({ data: [], error: null });
-  const effortTargetPromise = scope === "activity" || scope === "all"
-    ? optionalValue(loadNutritionTargetsStateForUser(user.id, { timeoutMs: SECONDARY_QUERY_TIMEOUT_MS }), null)
-    : Promise.resolve(null);
 
   const profilePromise = applyQueryTimeout(supabase.from("profiles").select("timezone").eq("user_id", user.id).maybeSingle(), CRITICAL_QUERY_TIMEOUT_MS);
   const metricsPromise = applyQueryTimeout(supabase.from("daily_health_metrics").select(metricColumns[scope]).eq("user_id", user.id).order("metric_date", { ascending: false }).limit(FIRST_SCREEN_DAYS), CRITICAL_QUERY_TIMEOUT_MS);
@@ -481,7 +484,7 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
       null,
     )
     : Promise.resolve({ data: null, error: null });
-  const optionalBasePromise = Promise.all([connectionPromise, sleepPreferencesPromise, effortTargetPromise]);
+  const optionalBasePromise = Promise.all([connectionPromise, sleepPreferencesPromise]);
 
   const [profileResult, metricsResult, scoresResult, activityExercisesResult] = await Promise.all([
     profilePromise,
@@ -491,18 +494,15 @@ async function loadHealthAnalytics(scope: HealthAnalyticsScope): Promise<HealthA
   ]);
   const failed = [profileResult, metricsResult, scoresResult, activityExercisesResult].find((result) => result.error);
   if (failed?.error) throw new Error("Health analytics are temporarily unavailable.");
-  const [connectionResult, sleepPreferencesResult, effortTargetState] = await optionalValue(
+  const [connectionResult, sleepPreferencesResult] = await optionalValue(
     optionalBasePromise,
-    [{ data: null, error: null }, { data: null, error: null }, null] as const,
+    [{ data: null, error: null }, { data: null, error: null }] as const,
     SECONDARY_GRACE_MS,
   );
   const [{ data: profile }, { data: metrics }, { data: scores }, { data: connection }, { data: sleepPreferences }] = [profileResult, metricsResult, scoresResult, connectionResult, sleepPreferencesResult];
   const timezone = profile?.timezone ?? "Europe/Paris";
-  // A missing nutrition_targets row is not a zero target. The score engine's
-  // documented 700 kcal reference remains the safe fallback until the user
-  // configures a calorie target.
-  const effortTargetSource = effortTargetState?.persisted ? "nutrition_targets" : "fallback";
-  const effortTargets = effortScoreTargets({ activeEnergyKcalTarget: effortTargetState?.persisted ? effortTargetState.targets.caloriesKcal.likely : null });
+  const effortTargetSource = "fallback";
+  const effortTargets = effortScoreTargets();
   const orderedMetrics = [...((metrics ?? []) as unknown as HealthMetricDay[])].reverse();
   const latestRecoveryDate = orderedMetrics.findLast((day) => recoveryMetricKeys.some((key) => {
     const value = day[key];

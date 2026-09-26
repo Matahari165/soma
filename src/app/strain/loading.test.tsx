@@ -9,8 +9,8 @@ describe("activity loading state", () => {
     const html = renderToStaticMarkup(createElement(Loading));
 
     expect(html).toContain('data-health-kind="activity"');
-    expect(html).toContain("Activity");
-    expect(html).not.toContain("Activity score");
+    expect(html).toContain("Strain");
+    expect(html).not.toContain("Strain score");
     expect(html).not.toContain("health-hero-metrics");
   });
 });

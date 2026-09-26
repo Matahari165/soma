@@ -3,6 +3,7 @@
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Plus, Sparkles, Trash2, Watch } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
 import { useRef, useState } from "react";
 
 import { SomaLogo } from "@/components/soma-logo";
@@ -85,6 +86,7 @@ export function OnboardingForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  useMotionUpdate(formRef, step);
 
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitCategory, setNewHabitCategory] = useState<HabitCategory>("sleep");
@@ -477,7 +479,7 @@ export function OnboardingForm({
             </fieldset>
           )}
 
-          {error && <p className="form-error" role="alert" aria-live="assertive">{error}</p>}
+          {error && <p className="form-error soma-motion-state" role="alert" aria-live="assertive">{error}</p>}
           <div className="form-navigation">
             <button className="secondary-button" type="button" onClick={() => goToStep(Math.max(0, step - 1))} disabled={step === 0 || saving}><ArrowLeft size={17} aria-hidden="true" /> Back</button>
             {step < steps.length - 1 ? (

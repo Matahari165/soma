@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 import { calculateSleepScore } from "@/domain/scores/sleep";
 import { buildPreviewAnalytics, type HealthAnalytics, type HealthMetricDay } from "@/services/health-analytics";
 
-import { ActivityDetails, effortComponentDefinitions, normalizeEffortContextValue, normalizeEffortTargetValue } from "./activity-details";
+import { ActivityDetails, effortComponentDefinitions, normalizeEffortTargetValue } from "./activity-details";
 import { averageWeeklyZoneMinutes, RecoveryDetails } from "./recovery-details";
 import { SleepDetails } from "./sleep-details";
 import { SleepStageDistribution, ZoneDistribution } from "./health-charts";
@@ -124,7 +124,7 @@ describe("health chart data semantics", () => {
 });
 
 describe("health route states", () => {
-  it("shows today's recorded activity score and today's radar measurements", () => {
+  it("shows today's recorded strain score and today's radar measurements", () => {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const yesterday = new Date(`${today}T12:00:00.000Z`);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
@@ -136,14 +136,14 @@ describe("health route states", () => {
       ],
       scores: [
         { score_date: previous, kind: "effort", score: 50, drivers: {} },
-        { score_date: today, kind: "effort", score: 75, drivers: {} },
+        { score_date: today, kind: "effort", score: 75, algorithm_version: "effort-v6", drivers: {} },
       ],
     }) }));
 
-    expect(markup).toContain("Activity score: 75 out of 100");
-    expect(markup).toContain("8,000 steps");
+    expect(markup).toContain("Strain score: 75 out of 100");
+    expect(markup).toContain("8,000 pas");
     expect(markup).toContain("40 min");
-    expect(markup).toContain("125 pts");
+    expect(markup).toContain("<strong>125</strong>");
   });
 
   it("keeps the effort targets aligned between the radar and its detail", () => {
@@ -157,9 +157,9 @@ describe("health route states", () => {
     }));
     const readable = markup.replaceAll("\u202f", " ");
 
-    expect(readable).toContain("Radar de l’effort avec 5 composantes");
+    expect(readable).toContain("Radar de l’effort avec 4 composantes");
     expect(readable).toContain("Weekly load");
-    expect(readable).toContain("Context · excluded from score");
+    expect(readable).not.toContain("Context · excluded from score");
     expect(readable).toContain("Workout history");
     expect(readable).toContain("Running");
     expect(readable).toContain("Pace");
@@ -170,16 +170,16 @@ describe("health route states", () => {
     expect(readable).not.toContain("Recent activity");
     expect(readable).not.toContain("Active time");
 
-    const components = effortComponentDefinitions({ zoneMinutes: 75, activeEnergyKcal: 1_000, exerciseMinutes: 60, steps: 10_000 }, "nutrition_targets");
-    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10,000 steps" });
-    expect(components.find((component) => component.id === "activeEnergyKcal")).toMatchObject({ target: 1_000, targetLabel: "1,000 kcal" });
+    const components = effortComponentDefinitions();
+    expect(components.find((component) => component.id === "activeHoursProgress")?.weight).toBe(10);
+    expect(components.find((component) => component.id === "zoneMinutes")?.weight).toBe(30);
+    expect(components.find((component) => component.id === "steps")).toMatchObject({ target: 10_000, targetLabel: "10 000 pas", weight: 30 });
+    expect(components.find((component) => component.id === "strengthMinutes")).toMatchObject({ target: 10, targetLabel: "10 min", weight: 30 });
+    expect(components.find((component) => component.id === "zoneMinutes")).toMatchObject({ target: 45 });
+    expect(components.find((component) => component.id === "activeHoursProgress")).toMatchObject({ target: 1 });
   });
 
-  it("normalizes weekly load from finite values without inventing missing data", () => {
-    expect(normalizeEffortContextValue(20, [10, 20, 30])).toBeCloseTo(0.5);
-    expect(normalizeEffortContextValue(null, [10, 20, 30])).toBeNull();
-    expect(normalizeEffortContextValue(20, [])).toBeNull();
-    expect(normalizeEffortContextValue(20, [20, 20])).toBe(1);
+  it("keeps goal gauges capped without inventing missing data", () => {
     expect(normalizeEffortTargetValue(10_000, 10_000)).toBe(1);
     expect(normalizeEffortTargetValue(12_000, 10_000)).toBe(1);
     expect(normalizeEffortTargetValue(null, 10_000)).toBeNull();
@@ -444,4 +444,21 @@ describe("health route states", () => {
     expect(markup).toMatch(/25\s*%\s*score coverage/i);
     expect(markup).toContain("Strength");
   });
+});
+
+
+it("shows this week's running total and session count even without daily activity measurements", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-26T12:00:00Z"));
+  try {
+    const preview = buildPreviewAnalytics();
+    const base = preview.exercises[0];
+    const markup = renderToStaticMarkup(createElement(ActivityDetails, {data: {...preview, timezone: "UTC", days: [], exercises: [
+      {...base, id: "monday-run", date: "2026-09-21", startTime: "2026-09-21T08:00:00Z", type: "RUNNING", durationMinutes: 30},
+      {...base, id: "friday-run", date: "2026-09-25", startTime: "2026-09-25T08:00:00Z", type: "RUNNING", durationMinutes: 45},
+      {...base, id: "last-week", date: "2026-09-20", startTime: "2026-09-20T08:00:00Z", type: "RUNNING", durationMinutes: 90},
+    ]}}));
+    expect(markup).toContain("Running · this week");
+    expect(markup).toContain("<strong>75 min</strong><small>2 sessions</small>");
+  } finally { vi.useRealTimers(); }
 });

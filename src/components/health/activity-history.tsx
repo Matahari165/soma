@@ -3,6 +3,9 @@
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { useMotionPresence } from "@/components/motion/use-motion-presence";
+import { useMotionUpdate } from "@/components/motion/use-motion-update";
+
 import {
   ACTIVITY_FILTERS,
   activityFilterForType,
@@ -92,6 +95,8 @@ function SessionHeartRate({ samples }: { samples: SessionTelemetry["heartRateSam
 function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
   const detailId = useId();
   const [open, setOpen] = useState(false);
+  const present = useMotionPresence(open);
+  const telemetryRef = useRef<HTMLDivElement>(null);
   const [telemetry, setTelemetry] = useState<SessionTelemetry | null>(null);
   const [telemetryState, setTelemetryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [retryCount, setRetryCount] = useState(0);
@@ -106,6 +111,7 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
       .catch(() => { if (!controller.signal.aborted) setTelemetryState("error"); });
     return () => controller.abort();
   }, [open, exercise.id, exercise.startTime, exercise.endTime, retryCount]);
+  useMotionUpdate(telemetryRef, `${telemetryState}:${paceState}`);
   const retryTelemetry = () => { setTelemetryState("loading"); setRetryCount((count) => count + 1); };
   const hasPace = !exerciseMatchesFilter(exercise.type, "boxing") && !exerciseMatchesFilter(exercise.type, "strength");
   const loadPace = () => {
@@ -138,7 +144,9 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
           <div><dt>Estimated calories</dt><dd>{metric(exercise.calories, "kcal")}</dd></div>
         </dl>
       </div>
-      <div id={detailId} className={styles.activitySessionDetails} hidden={!open} aria-busy={telemetryState === "loading"}>
+      <div id={detailId} className="soma-motion-disclosure" data-motion-open={open} hidden={!present} inert={!open} aria-hidden={!open} aria-busy={telemetryState === "loading"}>
+        <div className="soma-motion-disclosure__content">
+        <div ref={telemetryRef} className={styles.activitySessionDetails}>
         {hasPace && <div className={styles.activityDetailSection}>
           <h3>Pace by split</h3>
           {exercise.splits?.length ? <ol className={styles.activitySplits}>{exercise.splits.map((split, index) => <li key={`${split.startTime ?? index}-${index}`}><span>{split.distanceKm !== null && Math.abs(split.distanceKm - 1) < 0.05 ? `Kilometer ${index + 1}` : `Split ${index + 1}`}</span><span>{metric(split.distanceKm, "km", 2)}</span><strong>{paceValue(split.averagePaceSecondsPerKm)}</strong></li>)}</ol> : estimatedSplits.length ? <><ol className={styles.activitySplits}>{estimatedSplits.map((split) => <li key={split.index}><span>{split.partial ? `Final segment` : `Kilometer ${split.index}`}</span><span>{metric(split.distanceKm, "km", 2)}</span><strong>{paceValue(split.paceSecondsPerKm)}</strong></li>)}</ol><p>Estimated by Soma from recorded distance intervals.</p></> : <p>{paceState === "loading" ? "Checking recorded distance…" : paceState === "error" ? "Distance intervals could not be loaded." : "Per-kilometer pace is unavailable for this workout."}</p>}
@@ -160,6 +168,8 @@ function ActivitySession({ exercise }: { exercise: ExerciseSummary }) {
           {telemetry?.heartRateSampleCount ? <><SessionHeartRate samples={telemetry.heartRateSamples} /><p>{telemetry.heartRateSampleCount.toLocaleString("en-US")} readings · {telemetry.coverage.percent === null ? "Coverage unavailable" : `${Math.round(telemetry.coverage.percent)}% measured coverage`}{telemetry.heartRateSamplesDownsampled ? " · chart simplified" : ""}{telemetry.heartRateFetchLimited ? " · API sample limit reached" : ""}. {telemetry.maxHeartRateSource === "google_health_rollup" ? "Maximum from Google Health for the full workout." : "Maximum calculated from available readings."}</p></> : telemetryState === "error" ? <p>Readings could not be loaded. <button type="button" onClick={retryTelemetry}>Retry</button></p> : <p>{telemetryState === "loading" ? "Loading readings…" : telemetry?.heartRateFetchStatus === "failed" ? "Google Health readings could not be retrieved." : "No heart-rate readings are available for this workout."}{telemetry?.maxHeartRateSource === "google_health_rollup" ? " Workout maximum was retrieved from Google Health." : ""}</p>}
           {telemetry?.heartRateSampleCount && (telemetryState === "error" || telemetry.heartRateFetchStatus === "failed") ? <p>Some readings could not be refreshed. Available measurements are shown. <button type="button" onClick={retryTelemetry}>Retry</button></p> : null}
           {!telemetry?.heartRateSampleCount && telemetryState !== "error" && telemetry?.heartRateFetchStatus === "failed" && <p><button type="button" onClick={retryTelemetry}>Retry</button></p>}
+        </div>
+        </div>
         </div>
       </div>
   </li>;
