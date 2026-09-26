@@ -13,12 +13,12 @@ it("shows the four home measures with their current values", () => {
   expect(html).toContain("Sommeil");
   expect(html).toContain("8h 09");
   expect(html).toContain("Récupération");
-  expect(html).toContain("Effort");
+  expect(html).toContain("Effort : 19, objectif 100");
   expect(html).toContain("Calories");
   expect(html).toContain("50 % de l’objectif");
   expect(html).toMatch(/data-ring-value="sleep"[^>]*><textPath[^>]*>8h09<\/textPath><\/text>/);
   expect(html).toMatch(/data-ring-value="recovery"[^>]*><textPath[^>]*>59<\/textPath><\/text>/);
-  expect(html).toMatch(/data-ring-value="effort"[^>]*><textPath[^>]*>4\.0<\/textPath><\/text>/);
+  expect(html).toMatch(/data-ring-value="effort"[^>]*><textPath[^>]*>19<\/textPath><\/text>/);
   expect(html).toMatch(/data-ring-value="calories"[^>]*><textPath[^>]*>1200<\/textPath><\/text>/);
   expect(html).not.toContain("<figcaption");
   expect(html).not.toContain("OBJECTIFS");

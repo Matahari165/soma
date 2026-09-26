@@ -10,26 +10,25 @@ const dimensions: ActivityRadarDimension[] = [
   { id: "exerciseMinutes", label: "Durée d’exercice", normalizedValue: 0.3, valueLabel: "22 min" },
   { id: "activeEnergyKcal", label: "Calories actives", normalizedValue: 0.6, valueLabel: "425 kcal" },
   { id: "steps", label: "Pas", normalizedValue: 0.7, valueLabel: "7 198 pas" },
-  { id: "weeklyLoad", label: "Charge hebdomadaire", normalizedValue: 0.5, valueLabel: "382 points" },
 ];
 
 it("relie les points mesurés du radar complet", () => {
   const html = renderToStaticMarkup(<ActivityRadar dimensions={dimensions} />);
 
   expect(html).toContain("valueArea");
-  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(5);
+  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
 });
 
 it("garde les points partiels sans relier une mesure absente", () => {
   const html = renderToStaticMarkup(<ActivityRadar dimensions={[
-    ...dimensions.slice(0, 4),
-    { ...dimensions[4], normalizedValue: null, valueLabel: undefined },
+    ...dimensions.slice(0, 3),
+    { ...dimensions[3], normalizedValue: null, valueLabel: undefined },
   ]} />);
 
   expect(html).not.toContain("valueArea");
   expect((html.match(/valueSegment/g) ?? []).length).toBeGreaterThan(0);
-  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
-  expect(html).toContain(">Charge hebdomadaire<");
+  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(3);
+  expect(html).toContain(">Pas<");
   expect(html).toContain(">—<");
   expect(html).not.toContain('cx="210" cy="210"');
 });
@@ -42,7 +41,7 @@ it("ne relie pas deux axes en traversant une mesure absente", () => {
   ]} />);
 
   expect(html).not.toContain("valueArea");
-  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(4);
+  expect((html.match(/class="[^"]*point/g) ?? []).length).toBe(3);
 });
 
 it("keeps an explicit zero at the center as a measured point", () => {

@@ -51,7 +51,7 @@ export function ObservatoryRings({ data, date }: { data: ObservatoryRingsData; d
   const rings = [
     { id: "sleep", label: "Sommeil", value: data.sleepMinutes, target: 510, display: valid(data.sleepMinutes) ? duration(data.sleepMinutes) : "—", ringDisplay: valid(data.sleepMinutes) ? duration(data.sleepMinutes).replace(" ", "") : "—", goal: "8h 30", color: "#a9d8f2", labelColor: "#86bada" },
     { id: "recovery", label: "Récupération", value: data.recoveryScore, target: 100, display: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", ringDisplay: valid(data.recoveryScore) ? String(Math.round(data.recoveryScore)) : "—", goal: "100", color: "#a7e0c4", labelColor: "#83c4a4" },
-    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", ringDisplay: valid(data.effortScore) ? (data.effortScore * .21).toFixed(1) : "—", goal: "21", color: "#f1c995", labelColor: "#d0a46f" },
+    { id: "effort", label: "Effort", value: data.effortScore, target: 100, display: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", ringDisplay: valid(data.effortScore) ? String(Math.round(data.effortScore)) : "—", goal: "100", color: "#f1c995", labelColor: "#d0a46f" },
     { id: "calories", label: "Calories", value: calories, target: calorieTarget, display: valid(calories) ? `${Math.round(calories).toLocaleString("fr-FR")} kcal` : "—", ringDisplay: valid(calories) ? String(Math.round(calories)) : "—", goal: valid(calorieTarget) && calorieTarget > 0 ? `${Math.round(calorieTarget).toLocaleString("fr-FR")} kcal` : "—", color: "#dfb9ef", labelColor: "#b88cd1" },
   ] as const;
 
