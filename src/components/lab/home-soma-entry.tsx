@@ -53,6 +53,7 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
       const remaining = lastRequest.current === null ? 0 : refreshDelay - (Date.now() - lastRequest.current);
       if (remaining > 0) {
         if (queued === null) queued = setTimeout(() => { queued = null; refresh(); }, remaining);
+        setLoading(false);
         return;
       }
       if (inFlight) return;
@@ -166,15 +167,15 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
     router.push("/assistant");
   }
 
-  const lines = insight?.unavailable ? [] : insight?.text.split("\n").filter(Boolean).slice(0, 2) ?? [];
   const updated = insight?.generatedAt ? new Date(insight.generatedAt) : null;
   const validUpdated = updated && Number.isFinite(updated.getTime()) ? updated : null;
+  const lines = insight?.unavailable && !validUpdated ? [] : insight?.text.split("\n").filter(Boolean).slice(0, 2) ?? [];
   const observations = visible && <section className={styles.entry} aria-label="Aperçu Soma">
     {loading && !insight ? <p className={styles.loading} role="status">Actualisation…</p> : <div className={styles.observations}>
       {lines.map((line, index) => <button className={styles.observation} type="button" key={index + "-" + line} onClick={() => discuss(line)} title="Demander à Soma d’expliquer cette observation"><ArrowUpRight size={17} aria-hidden="true" /><span>{line}</span></button>)}
     </div>}
     {validUpdated && <time className={styles.srOnly} dateTime={validUpdated.toISOString()}>Résumé mis à jour à {new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(validUpdated)}</time>}
-    {insight?.unavailable && <p className={styles.error} role="status">Résumé indisponible pour le moment.</p>}
+    {insight?.unavailable && <p className={styles.error} role="status">{validUpdated ? "Actualisation indisponible." : "Résumé indisponible pour le moment."}</p>}
   </section>;
   const composer = <div className={styles.conversation}>
     <form ref={form} className={styles.composer + (expanded || text ? " " + styles.expanded : "")} onSubmit={submit} aria-busy={sending}>

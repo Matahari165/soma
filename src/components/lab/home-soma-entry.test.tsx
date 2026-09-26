@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HomeSomaEntry } from "./home-soma-entry";
@@ -114,4 +114,36 @@ it("does not overwrite input typed before browser-draft restoration", async () =
   await type(textarea, "Nouvelle question");
   await act(async () => vi.advanceTimersByTime(0));
   expect(textarea.value).toBe("Nouvelle question");
+});
+
+it("starts only one request under Strict Mode", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () => root.render(<StrictMode><HomeSomaEntry visible /></StrictMode>));
+  await act(async () => vi.advanceTimersByTime(0));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(container.textContent).toContain(observation);
+});
+
+it("keeps the delay after aborting an in-flight request on a past date", async () => {
+  vi.mocked(fetch).mockImplementationOnce((_input, init) => new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+  }));
+  const { root } = await mount();
+  await act(async () => root.render(<HomeSomaEntry visible={false} />));
+  await act(async () => root.render(<HomeSomaEntry visible />));
+  await act(async () => vi.advanceTimersByTime(0));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await act(async () => vi.advanceTimersByTime(5 * 60_000));
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it("shows an initial failure as a status, not an observation", async () => {
+  vi.mocked(fetch).mockRejectedValueOnce(new Error("Offline"));
+  const { container } = await mount();
+  expect(container.querySelector("[role=status]")?.textContent).toContain("indisponible");
+  expect(container.querySelector("section button")).toBeNull();
+  expect(container.querySelector("textarea")).not.toBeNull();
 });
