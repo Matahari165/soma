@@ -306,7 +306,9 @@ export function MealJournal({ readOnly = false, date, today: providedToday, init
     const cached = draftCache.current.get(dateKey);
     for (const slot of MEAL_SLOTS) {
       const meal = meals[slot];
-      if (meal && inFlightSlots.current.has(slot) && cached?.[slot]?.id === meal.id) drafts[slot] = cached[slot];
+      if (meal && (meal.status === "accepted" || meal.status === "analyzing") && inFlightSlots.current.has(slot) && cached?.[slot]) {
+        drafts[slot] = { ...cached[slot], id: meal.id };
+      }
     }
     if (Object.values(drafts).some((meal) => meal !== null)) draftCache.current.set(dateKey, drafts);
     else draftCache.current.delete(dateKey);
