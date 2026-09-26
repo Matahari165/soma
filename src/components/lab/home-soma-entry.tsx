@@ -47,6 +47,7 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
     let active = true;
     let inFlight = false;
     let queued: ReturnType<typeof setTimeout> | null = null;
+    let requestTimeout: ReturnType<typeof setTimeout> | null = null;
     let controller: AbortController | null = null;
     const refresh = () => {
       if (!active || document.visibilityState === "hidden") return;
@@ -61,6 +62,7 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
       lastRequest.current = Date.now();
       controller = new AbortController();
       const signal = controller.signal;
+      requestTimeout = setTimeout(() => controller?.abort(), 35_000);
       void (async () => {
         try {
           const response = await fetch("/api/lab/home-insight", { method: "POST", cache: "no-store", signal });
@@ -73,6 +75,8 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
             ? { ...current, unavailable: true }
             : { text: "Résumé indisponible pour le moment.", source: "", moment: "day", unavailable: true });
         } finally {
+          if (requestTimeout !== null) clearTimeout(requestTimeout);
+          requestTimeout = null;
           inFlight = false;
           if (active) setLoading(false);
         }
@@ -87,6 +91,7 @@ export function HomeSomaEntry({ visible, insightRevision, children }: { visible:
       active = false;
       requestRefresh.current = null;
       controller?.abort();
+      if (requestTimeout !== null) clearTimeout(requestTimeout);
       clearTimeout(initialRefresh);
       if (queued !== null) clearTimeout(queued);
       clearInterval(interval);

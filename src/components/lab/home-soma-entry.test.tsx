@@ -147,3 +147,14 @@ it("shows an initial failure as a status, not an observation", async () => {
   expect(container.querySelector("section button")).toBeNull();
   expect(container.querySelector("textarea")).not.toBeNull();
 });
+
+it("releases a stalled summary request while keeping the composer available", async () => {
+  vi.mocked(fetch).mockImplementationOnce((_input, init) => new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+  }));
+  const { container } = await mount();
+  await act(async () => vi.advanceTimersByTime(35_000));
+  expect(container.querySelector("[role=status]")?.textContent).toContain("indisponible");
+  expect(container.querySelector<HTMLTextAreaElement>("textarea")?.disabled).toBe(false);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
