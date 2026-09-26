@@ -22,6 +22,8 @@ The production audit observed 248,774 GET requests to generic storage in a 24-ho
 
 Local regression tests check bounded opening reads, complete pagination, authenticated ownership, independent recipe loading, storage projections/counts, expired sessions, SQL coverage fixtures, and retry/purge recovery. SQL fixtures run against an isolated Postgres-compatible database. Browser checks use local demo data and synthetic intercepted responses; they do not validate an authenticated production account.
 
+Final local gate: lint, typecheck, **197 test files / 1,208 tests**, and the optimized Next.js production build passed. Real matrix builders match the full snapshot exactly for 15, 30, 90 days and all history. Desktop (1440×900), mobile (390×844), and intermediate (720px) screenshots were inspected. Interactive browser checks verified activity error/retry, six-month filters, history read reuse, independent profile loading, keyboard tabs, and reduced motion. The streaming recipe hydration warning no longer appeared in the final mobile check.
+
 No production data was changed and no production migration was applied. Local development timings include compilation and are not production benchmarks. Production gains must be measured after release.
 
 ## Release order and production verification
