@@ -340,7 +340,7 @@ export function groupOutcomeThemes(outcomes: PersonalLabSnapshot["matrix"]["outc
 }
 
 /** Keep the proof readable during its short exit, but remove it from keyboard navigation. */
-function MatrixMotionDetail({ open, children }: { open: boolean; children: ReactNode }) {
+function MatrixMotionDetail({ open, children, inline = false }: { open: boolean; children: ReactNode; inline?: boolean }) {
   const present = useMotionPresence(open);
   const exitRef = useRef<HTMLElement | null>(null);
   const [retained, setRetained] = useState(children);
@@ -351,8 +351,8 @@ function MatrixMotionDetail({ open, children }: { open: boolean; children: React
     }
   }, [open, children]);
   if (!present) return null;
-  return <div className="matrix-motion-detail" data-state={open ? "open" : "closed"} inert={!open} aria-hidden={!open || undefined}>
-    {open ? children : retained}
+  return <div className={`matrix-motion-detail${inline ? " soma-motion-disclosure" : ""}`} data-motion-open={open} data-state={open ? "open" : "closed"} inert={!open} aria-hidden={!open || undefined}>
+    {inline ? <div className="soma-motion-disclosure__content">{open ? children : retained}</div> : open ? children : retained}
   </div>;
 }
 
@@ -512,7 +512,7 @@ function StrongestEffects({ relations, outcomes, onSelect, selectedRelations = n
             </span>
             <span className={`strongest-effects__outcome ${sign > 0 ? "is-positive" : sign < 0 ? "is-negative" : "is-neutral"}`}><strong>{outcomeLabel}</strong><small><b>{effectText(relation)}</b>{percentText(relation) && <span> ({percentText(relation)})</span>}<em>{strongestTimingText(relation.lagDays)}</em></small></span>
           </button>
-          <MatrixMotionDetail open={Boolean(selectedForRow && selectedRelations && detailRef)}>{selectedForRow && selectedRelations && detailRef && <RelationDetail relations={selectedRelations} direction={direction} onClose={onCloseSelection} detailRef={detailRef} variant="inline" panelId="relation-detail-panel" />}</MatrixMotionDetail>
+          <MatrixMotionDetail inline open={Boolean(selectedForRow && selectedRelations && detailRef)}>{selectedForRow && selectedRelations && detailRef && <RelationDetail relations={selectedRelations} direction={direction} onClose={onCloseSelection} detailRef={detailRef} variant="inline" panelId="relation-detail-panel" />}</MatrixMotionDetail>
         </li>;
       })}</ol>
         </section>)}
@@ -542,12 +542,13 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
   const [loadingPeriod, setLoadingPeriod] = useState<AnalysisPeriod | null>(90);
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<MatrixRelation[] | null>(null);
+  const requestedPeriod = useRef<AnalysisPeriod>(90);
   const relationDetailRef = useRef<HTMLElement | null>(null);
   const relationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const { requireTemporalStability, setRequireTemporalStability } = useTemporalStabilityPreference();
 
   const loadPeriod = useCallback(async (nextPeriod: AnalysisPeriod, force = false) => {
-    if (!force && rowsByPeriod[nextPeriod]) return;
+    if (!force && rowsByPeriod[nextPeriod]) return true;
     setLoadingPeriod(nextPeriod);
     setLoadError(false);
     try {
@@ -556,8 +557,10 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
       if (!response.ok || !Array.isArray(result.rows) || !Array.isArray(result.outcomes)) throw new Error("Matrix request failed");
       setRowsByPeriod((current) => ({ ...current, [nextPeriod]: result.rows }));
       setOutcomes(result.outcomes);
+      return true;
     } catch {
       setLoadError(true);
+      return false;
     } finally {
       setLoadingPeriod(null);
     }
@@ -575,10 +578,11 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
     });
   }, [selected]);
 
-  function selectPeriod(nextPeriod: AnalysisPeriod) {
+  function selectPeriod(nextPeriod: AnalysisPeriod, force = false) {
+    requestedPeriod.current = nextPeriod;
     setSelected(null);
     setLoadError(false);
-    void loadPeriod(nextPeriod).then(() => setPeriod(nextPeriod));
+    void loadPeriod(nextPeriod, force).then((loaded) => { if (loaded) setPeriod(nextPeriod); });
   }
 
   function toggleTemporalStability(next: boolean) {
@@ -615,7 +619,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
         <div><h2 id="strongest-effects-loading-title">Strongest Effects</h2></div>
         <div className="strongest-effects__controls">{filterControl}{periodControl}</div>
       </header>
-      <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>
+      <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => selectPeriod(requestedPeriod.current, true)}>Réessayer</button></p>
     </section>
   </div>;
 
@@ -645,7 +649,7 @@ export function StrongestEffectsPanel({ showSummary = false }: { showSummary?: b
       standalone
     />
     {loadingPeriod !== null && <p className="strongest-effects-panel__state" role="status">Chargement des relations sur {loadingPeriod === "all" ? "toute la période" : `${loadingPeriod} jours`}…</p>}
-    {loadError && <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => void loadPeriod(period, true)}>Réessayer</button></p>}
+    {loadError && <p className="strongest-effects-panel__state" role="alert">Les relations n’ont pas pu être chargées. <button type="button" className="text-link" onClick={() => selectPeriod(requestedPeriod.current, true)}>Réessayer</button></p>}
   </div>;
 }
 

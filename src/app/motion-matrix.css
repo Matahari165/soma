@@ -300,6 +300,8 @@
 
 /* Exit preserves the proof briefly without leaving closed controls focusable. */
 .matrix-motion-detail { display: contents; }
+.matrix-motion-detail.soma-motion-disclosure { display: grid; }
+.matrix-motion-detail.soma-motion-disclosure .relation-detail--inline { animation: none; }
 .matrix-motion-detail[data-state="closed"] > :is(.relation-detail, .influence-detail) {
   pointer-events: none;
   animation: matrix-detail-exit 180ms cubic-bezier(.2, .8, .2, 1) both;

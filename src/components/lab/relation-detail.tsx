@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { RefObject } from "react";
+import { useId, type RefObject } from "react";
 
 import type { MatrixRelation } from "@/domain/lab/matrix";
 
@@ -160,15 +160,16 @@ export function findingSentence(relation: MatrixRelation) {
 }
 
 export function RelationDetail({ relations, direction, onClose, detailRef, variant = "popover", panelId }: { relations: MatrixRelation[]; direction: "higher" | "lower" | "target"; onClose: () => void; detailRef: RefObject<HTMLElement | null>; variant?: "inline" | "popover"; panelId?: string }) {
+  const titleId = useId();
   const first = relations[0];
   if (!first) return null;
   void direction;
   const isInline = variant === "inline";
   const predictorLabel = localizedMetricLabel(first.predictorId, first.predictorLabel);
   const outcomeLabel = localizedMetricLabel(first.outcomeId, first.outcomeLabel);
-  return <aside id={panelId} ref={detailRef} className={`relation-detail relation-detail--${variant}`} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="relation-detail-title">
+  return <aside id={panelId} ref={detailRef} className={`relation-detail relation-detail--${variant}`} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby={titleId}>
     <header>
-      <div>{!isInline && <span className="relation-detail__eyebrow">Relation</span>}<h3 id="relation-detail-title">{predictorLabel} → {outcomeLabel}</h3></div>
+      <div>{!isInline && <span className="relation-detail__eyebrow">Relation</span>}<h3 id={titleId}>{predictorLabel} → {outcomeLabel}</h3></div>
       <button type="button" className="icon-button" aria-label="Close relation details" onClick={onClose}><X size={17} /></button>
     </header>
     <div className={isInline ? "relation-detail__body" : "relation-detail__popover-body"}>

@@ -60,7 +60,7 @@
   animation: soma-state-enter var(--soma-motion-state) var(--soma-ease-state);
   transition: opacity var(--soma-motion-exit) var(--soma-ease-state);
 }
-.soma-motion-overlay[data-motion-open="false"] { opacity: 0; pointer-events: none; }
+.soma-motion-overlay[data-motion-open="false"] { animation: none; opacity: 0; pointer-events: none; }
 
 /* Native disclosures keep their keyboard behavior and gain progressive motion. */
 @supports (interpolate-size: allow-keywords) {
