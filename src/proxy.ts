@@ -71,6 +71,7 @@ export async function proxy(request: NextRequest) {
     return secureResponse(NextResponse.json({ error: "Cet aperçu est en lecture seule." }, { status: 403 }));
   }
   if (isRemoteDemoPreviewMode() && [
+    "/auth/",
     "/api/cron/",
     "/api/settings/ai-usage",
     "/api/health/apple-sync",

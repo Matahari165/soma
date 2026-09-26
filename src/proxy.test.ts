@@ -20,8 +20,8 @@ describe("remote demo preview", () => {
     expect(response.status).toBe(403);
   });
 
-  it("blocks real integration reads", async () => {
-    const response = await proxy(new NextRequest("https://preview.example/api/cron/sync"));
+  it.each(["/api/cron/sync", "/auth/google", "/auth/callback"])("blocks integration access to %s", async (path) => {
+    const response = await proxy(new NextRequest(`https://preview.example${path}`));
     expect(response.status).toBe(403);
   });
 });
